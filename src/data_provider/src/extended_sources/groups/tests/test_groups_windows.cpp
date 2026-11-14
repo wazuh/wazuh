@@ -15,18 +15,18 @@ using ::testing::Return;
 
 class MockGroupsHelper : public IGroupsHelper
 {
-    public:
-        MOCK_METHOD(std::vector<Group>, processLocalGroups, (), (override));
+public:
+    MOCK_METHOD(std::vector<Group>, processLocalGroups, (), (override));
 };
 
 class GroupsProviderWindowsTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            // Reset cache before each test
-            GroupsHelper::resetCache();
-        }
+protected:
+    void SetUp() override
+    {
+        // Reset cache before each test
+        GroupsHelper::resetCache();
+    }
 };
 
 TEST_F(GroupsProviderWindowsTest, CollectAllGroups)
@@ -34,14 +34,10 @@ TEST_F(GroupsProviderWindowsTest, CollectAllGroups)
     auto mockHelper = std::make_shared<MockGroupsHelper>();
     GroupsProvider provider(mockHelper);
 
-    std::vector<Group> testGroups =
-    {
-        {0, 1, "S-1-1", "Administrators", "Admin group"},
-        {0, 2, "S-1-2", "Users", "Users group"}
-    };
+    std::vector<Group> testGroups = {{0, 1, "S-1-1", "Administrators", "Admin group"},
+                                     {0, 2, "S-1-2", "Users", "Users group"}};
 
-    EXPECT_CALL(*mockHelper, processLocalGroups())
-    .WillOnce(Return(testGroups));
+    EXPECT_CALL(*mockHelper, processLocalGroups()).WillOnce(Return(testGroups));
 
     auto result = provider.collect({});
 
@@ -57,15 +53,11 @@ TEST_F(GroupsProviderWindowsTest, CollectWithSpecificGids)
     auto mockHelper = std::make_shared<MockGroupsHelper>();
     GroupsProvider provider(mockHelper);
 
-    std::vector<Group> testGroups =
-    {
-        {0, 10, "S-1-10", "Group10", "Group 10"},
-        {0, 20, "S-1-20", "Group20", "Group 20"},
-        {0, 30, "S-1-30", "Group30", "Group 30"}
-    };
+    std::vector<Group> testGroups = {{0, 10, "S-1-10", "Group10", "Group 10"},
+                                     {0, 20, "S-1-20", "Group20", "Group 20"},
+                                     {0, 30, "S-1-30", "Group30", "Group 30"}};
 
-    EXPECT_CALL(*mockHelper, processLocalGroups())
-    .WillOnce(Return(testGroups));
+    EXPECT_CALL(*mockHelper, processLocalGroups()).WillOnce(Return(testGroups));
 
     std::set<uint32_t> gids = {10, 30};
 
@@ -81,13 +73,9 @@ TEST_F(GroupsProviderWindowsTest, ReturnsEmptyWhenNoMatchingGids)
     auto mockHelper = std::make_shared<MockGroupsHelper>();
     GroupsProvider provider(mockHelper);
 
-    std::vector<Group> testGroups =
-    {
-        {0, 5, "S-1-5", "OtherGroup", "Other"}
-    };
+    std::vector<Group> testGroups = {{0, 5, "S-1-5", "OtherGroup", "Other"}};
 
-    EXPECT_CALL(*mockHelper, processLocalGroups())
-    .WillOnce(Return(testGroups));
+    EXPECT_CALL(*mockHelper, processLocalGroups()).WillOnce(Return(testGroups));
 
     std::set<uint32_t> gids = {100, 200};
 

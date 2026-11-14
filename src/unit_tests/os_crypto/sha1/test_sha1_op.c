@@ -18,15 +18,17 @@
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 
-int OS_SHA1_File_Nbytes(const char *fname, EVP_MD_CTX **c, os_sha1 output, int mode, int64_t nbytes);
+int OS_SHA1_File_Nbytes(const char* fname, EVP_MD_CTX** c, os_sha1 output, int mode, int64_t nbytes);
 
 /* setups/teardowns */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
     return 0;
 }
@@ -35,10 +37,10 @@ static int teardown_group(void **state) {
 
 /* OS_SHA1_File_Nbytes */
 
-void OS_SHA1_File_Nbytes_context_null (void **state)
+void OS_SHA1_File_Nbytes_context_null(void** state)
 {
-    const char *path = "/home/test_file";
-    EVP_MD_CTX *context = NULL;
+    const char* path = "/home/test_file";
+    EVP_MD_CTX* context = NULL;
     os_sha1 output;
     ssize_t nbytes = 4096;
 
@@ -47,10 +49,10 @@ void OS_SHA1_File_Nbytes_context_null (void **state)
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -3);
 }
 
-void OS_SHA1_File_Nbytes_unable_open_file (void **state)
+void OS_SHA1_File_Nbytes_unable_open_file(void** state)
 {
-    const char *path = "/home/test_file";
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    const char* path = "/home/test_file";
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
     os_sha1 output;
     ssize_t nbytes = 4096;
 
@@ -62,7 +64,7 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
     expect_string(__wrap_w_fopen_r, mode, "rb");
     will_return(__wrap_w_fopen_r, NULL);
 #else
-    expect_w_fopen_vetted_follow(path, "rb", (FILE *) NULL);
+    expect_w_fopen_vetted_follow(path, "rb", (FILE*)NULL);
 #endif
 
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -1);
@@ -70,10 +72,10 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
     EVP_MD_CTX_free(context);
 }
 
-void OS_SHA1_File_Nbytes_ok (void **state)
+void OS_SHA1_File_Nbytes_ok(void** state)
 {
-    const char *path = "/home/test_file";
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    const char* path = "/home/test_file";
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
     os_sha1 output;
     ssize_t nbytes = 4000;
 
@@ -84,7 +86,7 @@ void OS_SHA1_File_Nbytes_ok (void **state)
     expect_string(__wrap_w_fopen_r, mode, "rb");
     will_return(__wrap_w_fopen_r, 1);
 #else
-    expect_w_fopen_vetted_follow(path, "rb", (FILE *) 1);
+    expect_w_fopen_vetted_follow(path, "rb", (FILE*)1);
 #endif
 
     will_return(__wrap_fread, "test");
@@ -101,10 +103,10 @@ void OS_SHA1_File_Nbytes_ok (void **state)
     EVP_MD_CTX_free(context);
 }
 
-void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
+void OS_SHA1_File_Nbytes_num_bytes_exceded(void** state)
 {
-    const char *path = "/home/test_file";
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    const char* path = "/home/test_file";
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
     os_sha1 output;
     ssize_t nbytes = 6;
 
@@ -115,7 +117,7 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
     expect_string(__wrap_w_fopen_r, mode, "rb");
     will_return(__wrap_w_fopen_r, 1);
 #else
-    expect_w_fopen_vetted_follow(path, "rb", (FILE *) 1);
+    expect_w_fopen_vetted_follow(path, "rb", (FILE*)1);
 #endif
 
     will_return(__wrap_fread, "test");
@@ -131,11 +133,11 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
 
 /* OS_SHA1_Stream */
 
-void OS_SHA1_Stream_ok (void **state)
+void OS_SHA1_Stream_ok(void** state)
 {
-    char *buf = "hello";
+    char* buf = "hello";
     os_sha1 output;
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
 
     EVP_DigestInit(context, EVP_sha1());
 
@@ -144,11 +146,11 @@ void OS_SHA1_Stream_ok (void **state)
     EVP_MD_CTX_free(context);
 }
 
-void OS_SHA1_Stream_buf_null (void **state)
+void OS_SHA1_Stream_buf_null(void** state)
 {
-    char *buf = NULL;
+    char* buf = NULL;
     os_sha1 output;
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
 
     EVP_DigestInit(context, EVP_sha1());
 
@@ -158,11 +160,11 @@ void OS_SHA1_Stream_buf_null (void **state)
 
 /* OS_SHA1_Stream_Bytes */
 
-void OS_SHA1_Stream_Bytes_hashes_after_nul (void **state)
+void OS_SHA1_Stream_Bytes_hashes_after_nul(void** state)
 {
-    const char buf[] = { 'a', 'b', '\0', 'c', 'd' };
+    const char buf[] = {'a', 'b', '\0', 'c', 'd'};
     os_sha1 output;
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
 
     EVP_DigestInit(context, EVP_sha1());
 
@@ -174,10 +176,10 @@ void OS_SHA1_Stream_Bytes_hashes_after_nul (void **state)
     EVP_MD_CTX_free(context);
 }
 
-void OS_SHA1_Stream_Bytes_buf_null (void **state)
+void OS_SHA1_Stream_Bytes_buf_null(void** state)
 {
     os_sha1 output;
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
 
     EVP_DigestInit(context, EVP_sha1());
 
@@ -189,10 +191,10 @@ void OS_SHA1_Stream_Bytes_buf_null (void **state)
     EVP_MD_CTX_free(context);
 }
 
-void test_sha1_string(void **state)
+void test_sha1_string(void** state)
 {
-    const char *string = "teststring";
-    const char *string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
+    const char* string = "teststring";
+    const char* string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
     os_sha1 buffer;
 
     assert_int_equal(OS_SHA1_Str(string, strlen(string), buffer), 0);
@@ -200,10 +202,10 @@ void test_sha1_string(void **state)
     assert_string_equal(buffer, string_sha1);
 }
 
-void test_sha1_string2(void **state)
+void test_sha1_string2(void** state)
 {
-    const char *string = "teststring";
-    const char *string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
+    const char* string = "teststring";
+    const char* string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
     os_sha1 buffer;
 
     assert_int_equal(OS_SHA1_Str2(string, strlen(string), buffer), 0);
@@ -211,10 +213,10 @@ void test_sha1_string2(void **state)
     assert_string_equal(buffer, string_sha1);
 }
 
-void test_sha1_file(void **state)
+void test_sha1_file(void** state)
 {
-    const char *string = "teststring";
-    const char *string_sha1 = "da39a3ee5e6b4b0d3255bfef95601890afd80709";
+    const char* string = "teststring";
+    const char* string_sha1 = "da39a3ee5e6b4b0d3255bfef95601890afd80709";
     os_sha1 buffer;
 
     char file_name[256];
@@ -235,7 +237,7 @@ void test_sha1_file(void **state)
     assert_string_equal(buffer, string_sha1);
 }
 
-void test_sha1_file_fail(void **state)
+void test_sha1_file_fail(void** state)
 {
     os_sha1 buffer;
 
@@ -249,7 +251,8 @@ void test_sha1_file_fail(void **state)
     assert_int_equal(OS_SHA1_File(file_name, buffer, OS_TEXT), -1);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         // Tests OS_SHA1_File_Nbytes
         cmocka_unit_test(OS_SHA1_File_Nbytes_context_null),

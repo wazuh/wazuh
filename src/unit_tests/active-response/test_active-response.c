@@ -19,16 +19,18 @@
 #include "../wrappers/common.h"
 
 // Structs
-typedef struct test_struct {
-    struct addrinfo *addr;
+typedef struct test_struct
+{
+    struct addrinfo* addr;
 } test_struct_t;
 
 // Setup / Teardown
 
-static int test_setup(void **state) {
-    test_struct_t *init_data = NULL;
+static int test_setup(void** state)
+{
+    test_struct_t* init_data = NULL;
 
-    os_calloc(1,sizeof(test_struct_t),init_data);
+    os_calloc(1, sizeof(test_struct_t), init_data);
     os_calloc(1, sizeof(struct addrinfo), init_data->addr);
     os_calloc(1, sizeof(struct sockaddr), init_data->addr->ai_addr);
 
@@ -39,8 +41,9 @@ static int test_setup(void **state) {
     return OS_SUCCESS;
 }
 
-static int test_teardown(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+static int test_teardown(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     os_free(data->addr->ai_addr);
     os_free(data->addr);
@@ -52,39 +55,42 @@ static int test_teardown(void **state) {
 }
 
 // Tests
-void test_get_ip_version_success_ipv4(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
+void test_get_ip_version_success_ipv4(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* dummy_ipaddr = "";
 
     data->addr->ai_family = AF_INET;
 
     expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
     will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);     //0 means success
+    will_return(__wrap_getaddrinfo, 0); // 0 means success
 
     int ret = get_ip_version(dummy_ipaddr);
 
     assert_int_equal(ret, 4);
 }
 
-void test_get_ip_version_success_ipv6(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
+void test_get_ip_version_success_ipv6(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* dummy_ipaddr = "";
 
     data->addr->ai_family = AF_INET6;
 
     expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
     will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);     //0 means success
+    will_return(__wrap_getaddrinfo, 0); // 0 means success
 
     int ret = get_ip_version(dummy_ipaddr);
 
     assert_int_equal(ret, 6);
 }
 
-void test_get_ip_version_no_success(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
+void test_get_ip_version_no_success(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* dummy_ipaddr = "";
 
     data->addr->ai_family = AF_INET6;
 
@@ -94,60 +100,67 @@ void test_get_ip_version_no_success(void **state) {
 
     int ret = get_ip_version(dummy_ipaddr);
 
-    assert_int_equal(ret, -1);    //OS_INVALID
+    assert_int_equal(ret, -1); // OS_INVALID
 }
 
-void test_get_ip_version_success_invalid_ip(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *dummy_ipaddr = "";
+void test_get_ip_version_success_invalid_ip(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* dummy_ipaddr = "";
 
-    data->addr->ai_family = -1;         //invalid family
+    data->addr->ai_family = -1; // invalid family
 
     expect_string(__wrap_getaddrinfo, node, dummy_ipaddr);
     will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);     //0 means success
+    will_return(__wrap_getaddrinfo, 0); // 0 means success
 
     int ret = get_ip_version(dummy_ipaddr);
 
-    assert_int_equal(ret, -1);    //OS_INVALID
+    assert_int_equal(ret, -1); // OS_INVALID
 }
 
 // validate_srcip: strict numeric-IP whitelist
 
-void test_validate_srcip_ipv4(void **state) {
+void test_validate_srcip_ipv4(void** state)
+{
     (void)state;
     assert_int_equal(validate_srcip("192.168.1.100"), 4);
     assert_int_equal(validate_srcip("10.0.0.1"), 4);
 }
 
-void test_validate_srcip_ipv6(void **state) {
+void test_validate_srcip_ipv6(void** state)
+{
     (void)state;
     assert_int_equal(validate_srcip("2001:db8::1"), 6);
     assert_int_equal(validate_srcip("::1"), 6);
     assert_int_equal(validate_srcip("fe80::a1b2:c3d4"), 6);
 }
 
-void test_validate_srcip_ipv4_mapped_ipv6(void **state) {
+void test_validate_srcip_ipv4_mapped_ipv6(void** state)
+{
     (void)state;
     // IPv4-mapped IPv6 contains both ':' and '.', classified as IPv6
     assert_int_equal(validate_srcip("::ffff:1.2.3.4"), 6);
 }
 
-void test_validate_srcip_null_and_empty(void **state) {
+void test_validate_srcip_null_and_empty(void** state)
+{
     (void)state;
     assert_int_equal(validate_srcip(NULL), OS_INVALID);
     assert_int_equal(validate_srcip(""), OS_INVALID);
-    assert_int_equal(validate_srcip("a"), OS_INVALID);    // shorter than minimum length
+    assert_int_equal(validate_srcip("a"), OS_INVALID); // shorter than minimum length
 }
 
-void test_validate_srcip_rejects_cidr(void **state) {
+void test_validate_srcip_rejects_cidr(void** state)
+{
     (void)state;
     // A '/' would let a CIDR prefix (or extra path) reach the command line
     assert_int_equal(validate_srcip("192.168.1.100/32"), OS_INVALID);
     assert_int_equal(validate_srcip("2001:db8::1/128"), OS_INVALID);
 }
 
-void test_validate_srcip_rejects_argument_injection(void **state) {
+void test_validate_srcip_rejects_argument_injection(void** state)
+{
     (void)state;
     // wpopenv does not quote arguments on Windows; whitespace/metacharacters must be rejected
     // so a crafted source.ip cannot inject extra tokens into the netsh/route command line.
@@ -159,116 +172,136 @@ void test_validate_srcip_rejects_argument_injection(void **state) {
     assert_int_equal(validate_srcip("1.2.3.4\""), OS_INVALID);
 }
 
-void test_validate_srcip_rejects_hostname(void **state) {
+void test_validate_srcip_rejects_hostname(void** state)
+{
     (void)state;
     assert_int_equal(validate_srcip("google.com"), OS_INVALID);
 }
 
 // Tests for is_valid_username
 
-void test_is_valid_username_valid_simple(void **state) {
-    (void) state;
+void test_is_valid_username_valid_simple(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("testuser"), 1);
 }
 
-void test_is_valid_username_valid_with_numbers(void **state) {
-    (void) state;
+void test_is_valid_username_valid_with_numbers(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("user123"), 1);
     assert_int_equal(is_valid_username("1testuser"), 1);
 }
 
-void test_is_valid_username_valid_with_underscore(void **state) {
-    (void) state;
+void test_is_valid_username_valid_with_underscore(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("_testuser"), 1);
     assert_int_equal(is_valid_username("test_user"), 1);
 }
 
-void test_is_valid_username_valid_with_hyphen(void **state) {
-    (void) state;
+void test_is_valid_username_valid_with_hyphen(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test-user"), 1);
 }
 
-void test_is_valid_username_valid_with_dollar(void **state) {
-    (void) state;
+void test_is_valid_username_valid_with_dollar(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("machine$"), 1);
     assert_int_equal(is_valid_username("test$user"), 1);
 }
 
-void test_is_valid_username_valid_uppercase(void **state) {
-    (void) state;
+void test_is_valid_username_valid_uppercase(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("TestUser"), 1);
     assert_int_equal(is_valid_username("TESTUSER"), 1);
 }
 
-void test_is_valid_username_valid_with_dot(void **state) {
-    (void) state;
+void test_is_valid_username_valid_with_dot(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test.user"), 1);
 }
 
-void test_is_valid_username_invalid_root(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_root(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("root"), 0);
 }
 
-void test_is_valid_username_invalid_null(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_null(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username(NULL), 0);
 }
 
-void test_is_valid_username_invalid_empty(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_empty(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username(""), 0);
 }
 
-void test_is_valid_username_invalid_starts_with_dash(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_starts_with_dash(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("-testuser"), 0);
 }
 
-void test_is_valid_username_invalid_starts_with_plus(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_starts_with_plus(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("+testuser"), 0);
 }
 
-void test_is_valid_username_invalid_starts_with_tilde(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_starts_with_tilde(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("~testuser"), 0);
 }
 
-void test_is_valid_username_invalid_with_colon(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_with_colon(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test:user"), 0);
 }
 
-void test_is_valid_username_invalid_with_comma(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_with_comma(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test,user"), 0);
 }
 
-void test_is_valid_username_invalid_with_whitespace(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_with_whitespace(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test user"), 0);
     assert_int_equal(is_valid_username("test\tuser"), 0);
     assert_int_equal(is_valid_username("test\nuser"), 0);
     assert_int_equal(is_valid_username("test\ruser"), 0);
 }
 
-void test_is_valid_username_invalid_with_slash(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_with_slash(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test/user"), 0);
     assert_int_equal(is_valid_username("test\\user"), 0);
 }
 
 // Traversal sequences are rejected by the separator rule, not by a dedicated guard
-void test_is_valid_username_invalid_separators_in_traversal(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_separators_in_traversal(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("../root"), 0);
     assert_int_equal(is_valid_username("test/../user"), 0);
     assert_int_equal(is_valid_username("..\\root"), 0);
 }
 
-void test_is_valid_username_valid_with_consecutive_dots(void **state) {
-    (void) state;
+void test_is_valid_username_valid_with_consecutive_dots(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("john..doe"), 1);
     assert_int_equal(is_valid_username("a..b"), 1);
     assert_int_equal(is_valid_username(".."), 1);
@@ -277,8 +310,9 @@ void test_is_valid_username_valid_with_consecutive_dots(void **state) {
 
 // The 256 bound is the current contract, not a settled one: LOGIN_NAME_MAX counts
 // the NUL, so the real maximum is 255. Confirm before changing.
-void test_is_valid_username_length_boundary(void **state) {
-    (void) state;
+void test_is_valid_username_length_boundary(void** state)
+{
+    (void)state;
     char username[300];
 
     memset(username, 'a', 256);
@@ -290,8 +324,9 @@ void test_is_valid_username_length_boundary(void **state) {
     assert_int_equal(is_valid_username(username), 0);
 }
 
-void test_is_valid_username_invalid_shell_metacharacters(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_shell_metacharacters(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test;user"), 0);
     assert_int_equal(is_valid_username("test|user"), 0);
     assert_int_equal(is_valid_username("test&user"), 0);
@@ -303,64 +338,80 @@ void test_is_valid_username_invalid_shell_metacharacters(void **state) {
     assert_int_equal(is_valid_username("test>user"), 0);
 }
 
-void test_is_valid_username_invalid_plus_or_tilde_anywhere(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_plus_or_tilde_anywhere(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("test+user"), 0);
     assert_int_equal(is_valid_username("test~user"), 0);
 }
 
-void test_is_valid_username_invalid_qualified_name(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_qualified_name(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("alice@example.com"), 0);
     assert_int_equal(is_valid_username("user@REALM"), 0);
 }
 
-void test_is_valid_username_invalid_control_characters(void **state) {
-    (void) state;
-    assert_int_equal(is_valid_username("test\x01" "user"), 0);
-    assert_int_equal(is_valid_username("test\x1b" "user"), 0);
-    assert_int_equal(is_valid_username("test\x7f" "user"), 0);
+void test_is_valid_username_invalid_control_characters(void** state)
+{
+    (void)state;
+    assert_int_equal(is_valid_username("test\x01"
+                                       "user"),
+                     0);
+    assert_int_equal(is_valid_username("test\x1b"
+                                       "user"),
+                     0);
+    assert_int_equal(is_valid_username("test\x7f"
+                                       "user"),
+                     0);
 }
 
-void test_is_valid_username_invalid_non_ascii(void **state) {
-    (void) state;
+void test_is_valid_username_invalid_non_ascii(void** state)
+{
+    (void)state;
     assert_int_equal(is_valid_username("caf\xc3\xa9"), 0);
-    assert_int_equal(is_valid_username("\xff" "user"), 0);
+    assert_int_equal(is_valid_username("\xff"
+                                       "user"),
+                     0);
 }
 
 // Tests for get_username_from_json (the getter must apply is_valid_username)
 
-void test_get_username_from_json_accepts_valid(void **state) {
-    (void) state;
-    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"alice\"}}");
+void test_get_username_from_json_accepts_valid(void** state)
+{
+    (void)state;
+    cJSON* input = cJSON_Parse("{\"user\":{\"name\":\"alice\"}}");
     assert_non_null(input);
-    const char *username = get_username_from_json(input);
+    const char* username = get_username_from_json(input);
     assert_non_null(username);
     assert_string_equal(username, "alice");
     cJSON_Delete(input);
 }
 
-void test_get_username_from_json_rejects_invalid(void **state) {
-    (void) state;
-    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"--help\"}}");
+void test_get_username_from_json_rejects_invalid(void** state)
+{
+    (void)state;
+    cJSON* input = cJSON_Parse("{\"user\":{\"name\":\"--help\"}}");
     assert_non_null(input);
     assert_null(get_username_from_json(input));
     cJSON_Delete(input);
 }
 
-void test_get_username_from_json_accepts_consecutive_dots(void **state) {
-    (void) state;
-    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"john..doe\"}}");
+void test_get_username_from_json_accepts_consecutive_dots(void** state)
+{
+    (void)state;
+    cJSON* input = cJSON_Parse("{\"user\":{\"name\":\"john..doe\"}}");
     assert_non_null(input);
-    const char *username = get_username_from_json(input);
+    const char* username = get_username_from_json(input);
     assert_non_null(username);
     assert_string_equal(username, "john..doe");
     cJSON_Delete(input);
 }
 
-void test_get_username_from_json_rejects_root(void **state) {
-    (void) state;
-    cJSON *input = cJSON_Parse("{\"user\":{\"name\":\"root\"}}");
+void test_get_username_from_json_rejects_root(void** state)
+{
+    (void)state;
+    cJSON* input = cJSON_Parse("{\"user\":{\"name\":\"root\"}}");
     assert_non_null(input);
     assert_null(get_username_from_json(input));
     cJSON_Delete(input);
@@ -376,22 +427,25 @@ static char ar_log_dir[PATH_MAX + 1];
 static char ar_log_cwd[PATH_MAX + 1];
 static int ar_log_saved_test_mode;
 
-static off_t ar_log_size(const char * name) {
+static off_t ar_log_size(const char* name)
+{
     struct stat statbuf;
 
     assert_int_equal(stat(name, &statbuf), 0);
     return statbuf.st_size;
 }
 
-static void ar_log_create_other(void) {
-    FILE * fp = fopen("other", "w");
+static void ar_log_create_other(void)
+{
+    FILE* fp = fopen("other", "w");
 
     assert_non_null(fp);
     assert_true(fputs("sensitive data", fp) >= 0);
     assert_int_equal(fclose(fp), 0);
 }
 
-static int setup_ar_log(void **state) {
+static int setup_ar_log(void** state)
+{
     // The file operations below must reach the file system, not the wrappers.
     ar_log_saved_test_mode = test_mode;
     test_mode = 0;
@@ -403,7 +457,8 @@ static int setup_ar_log(void **state) {
     return 0;
 }
 
-static int teardown_ar_log(void **state) {
+static int teardown_ar_log(void** state)
+{
     remove(LOG_FILE_PATH);
     remove("other");
     remove(AR_LOG_DIR);
@@ -413,7 +468,8 @@ static int teardown_ar_log(void **state) {
     return 0;
 }
 
-void test_write_debug_file_appends(void **state) {
+void test_write_debug_file_appends(void** state)
+{
     write_debug_file("ar-name", "first");
     off_t size = ar_log_size(LOG_FILE_PATH);
     assert_true(size > 0);
@@ -422,7 +478,8 @@ void test_write_debug_file_appends(void **state) {
     assert_true(ar_log_size(LOG_FILE_PATH) > size);
 }
 
-void test_write_debug_file_symlink_not_followed(void **state) {
+void test_write_debug_file_symlink_not_followed(void** state)
+{
     char target[PATH_MAX + 1];
 
     ar_log_create_other();
@@ -434,7 +491,8 @@ void test_write_debug_file_symlink_not_followed(void **state) {
     assert_int_equal(ar_log_size("other"), 14);
 }
 
-void test_write_debug_file_hard_link_not_followed(void **state) {
+void test_write_debug_file_hard_link_not_followed(void** state)
+{
     ar_log_create_other();
     assert_int_equal(link("other", LOG_FILE_PATH), 0);
 
@@ -444,11 +502,12 @@ void test_write_debug_file_hard_link_not_followed(void **state) {
 }
 
 // Tests for execute_command_with_retry
-static char *test_command[] = { "/usr/sbin/iptables", "-I", "INPUT", "-s", "10.0.0.1", "-j", "DROP", NULL };
+static char* test_command[] = {"/usr/sbin/iptables", "-I", "INPUT", "-s", "10.0.0.1", "-j", "DROP", NULL};
 static wfd_t test_wfd[AR_COMMAND_ATTEMPTS];
 
 // Queue one attempt: the command starts, prints output and ends with status
-static void expect_attempt(int i, const char *output, int status) {
+static void expect_attempt(int i, const char* output, int status)
+{
     test_wfd[i].file_out = tmpfile();
     assert_non_null(test_wfd[i].file_out);
     fputs(output, test_wfd[i].file_out);
@@ -457,15 +516,18 @@ static void expect_attempt(int i, const char *output, int status) {
     will_return(__wrap_wpclose, status);
 }
 
-static void close_attempts(int count) {
-    for (int i = 0; i < count; i++) {
+static void close_attempts(int count)
+{
+    for (int i = 0; i < count; i++)
+    {
         // The output is drained before waiting for the command
         assert_int_equal(fgetc(test_wfd[i].file_out), EOF);
         fclose(test_wfd[i].file_out);
     }
 }
 
-void test_execute_command_with_retry_success(void **state) {
+void test_execute_command_with_retry_success(void** state)
+{
     expect_attempt(0, "output\n", 0);
 
     assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_SUCCESS);
@@ -474,7 +536,8 @@ void test_execute_command_with_retry_success(void **state) {
     assert_int_not_equal(access(LOG_FILE_PATH, F_OK), 0);
 }
 
-void test_execute_command_with_retry_succeeds_after_failures(void **state) {
+void test_execute_command_with_retry_succeeds_after_failures(void** state)
+{
     will_return(__wrap_wpopenv, NULL);
     expect_value(__wrap_sleep, seconds, 1);
     expect_attempt(0, "Another app is currently holding the xtables lock.\n", 4 << 8);
@@ -487,10 +550,12 @@ void test_execute_command_with_retry_succeeds_after_failures(void **state) {
     assert_int_not_equal(access(LOG_FILE_PATH, F_OK), 0);
 }
 
-void test_execute_command_with_retry_fails_after_all_attempts(void **state) {
+void test_execute_command_with_retry_fails_after_all_attempts(void** state)
+{
     char line[OS_MAXSTR] = {0};
 
-    for (int i = 0; i < AR_COMMAND_ATTEMPTS - 1; i++) {
+    for (int i = 0; i < AR_COMMAND_ATTEMPTS - 1; i++)
+    {
         expect_attempt(i, "Another app is currently holding the xtables lock.\n", 4 << 8);
         expect_value(__wrap_sleep, seconds, i + 1);
     }
@@ -499,14 +564,16 @@ void test_execute_command_with_retry_fails_after_all_attempts(void **state) {
     assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_INVALID);
 
     close_attempts(AR_COMMAND_ATTEMPTS - 1);
-    FILE *fp = fopen(LOG_FILE_PATH, "r");
+    FILE* fp = fopen(LOG_FILE_PATH, "r");
     assert_non_null(fp);
     assert_non_null(fgets(line, sizeof(line), fp));
     fclose(fp);
-    assert_non_null(strstr(line, "ar-name: Command failed (exit code -1): /usr/sbin/iptables -I INPUT -s 10.0.0.1 -j DROP\n"));
+    assert_non_null(
+        strstr(line, "ar-name: Command failed (exit code -1): /usr/sbin/iptables -I INPUT -s 10.0.0.1 -j DROP\n"));
 }
 
-void test_execute_command_with_retry_other_error_not_retried(void **state) {
+void test_execute_command_with_retry_other_error_not_retried(void** state)
+{
     char line[OS_MAXSTR] = {0};
 
     expect_attempt(0, "iptables: Bad rule (does a matching rule exist in that chain?).\n", 1 << 8);
@@ -514,15 +581,17 @@ void test_execute_command_with_retry_other_error_not_retried(void **state) {
     assert_int_equal(execute_command_with_retry("ar-name", test_command[0], test_command), OS_INVALID);
 
     close_attempts(1);
-    FILE *fp = fopen(LOG_FILE_PATH, "r");
+    FILE* fp = fopen(LOG_FILE_PATH, "r");
     assert_non_null(fp);
     assert_non_null(fgets(line, sizeof(line), fp));
     fclose(fp);
-    assert_non_null(strstr(line, "ar-name: Command failed (exit code 1): /usr/sbin/iptables -I INPUT -s 10.0.0.1 -j DROP\n"));
+    assert_non_null(
+        strstr(line, "ar-name: Command failed (exit code 1): /usr/sbin/iptables -I INPUT -s 10.0.0.1 -j DROP\n"));
 }
 
 // Tests for canonicalize_ip
-void test_canonicalize_ip_ipv4_canonical(void **state) {
+void test_canonicalize_ip_ipv4_canonical(void** state)
+{
     (void)state;
     char out[NI_MAXHOST] = {0};
 
@@ -530,7 +599,8 @@ void test_canonicalize_ip_ipv4_canonical(void **state) {
     assert_string_equal(out, "10.0.0.1");
 }
 
-void test_canonicalize_ip_ipv6_compressed(void **state) {
+void test_canonicalize_ip_ipv6_compressed(void** state)
+{
     (void)state;
     char out[NI_MAXHOST] = {0};
 
@@ -538,7 +608,8 @@ void test_canonicalize_ip_ipv6_compressed(void **state) {
     assert_string_equal(out, "2001:db8::1");
 }
 
-void test_canonicalize_ip_rejects_non_canonical(void **state) {
+void test_canonicalize_ip_rejects_non_canonical(void** state)
+{
     (void)state;
     char out[NI_MAXHOST] = {0};
 
@@ -550,7 +621,8 @@ void test_canonicalize_ip_rejects_non_canonical(void **state) {
     assert_false(canonicalize_ip("192.168.001.010", out, sizeof(out)));
 }
 
-void test_canonicalize_ip_invalid(void **state) {
+void test_canonicalize_ip_invalid(void** state)
+{
     (void)state;
     char out[NI_MAXHOST] = {0};
 
@@ -559,26 +631,30 @@ void test_canonicalize_ip_invalid(void **state) {
 }
 
 // Tests for hosts_deny_rule_matches
-void test_hosts_deny_rule_matches_exact(void **state) {
+void test_hosts_deny_rule_matches_exact(void** state)
+{
     (void)state;
     assert_true(hosts_deny_rule_matches("ALL:10.0.0.1\n", "ALL:10.0.0.1"));
     assert_true(hosts_deny_rule_matches("ALL:10.0.0.1  \t\n", "ALL:10.0.0.1"));
 }
 
-void test_hosts_deny_rule_matches_substring_no_match(void **state) {
+void test_hosts_deny_rule_matches_substring_no_match(void** state)
+{
     (void)state;
     assert_false(hosts_deny_rule_matches("ALL: 110.0.0.1\n", "ALL:10.0.0.1"));
     assert_false(hosts_deny_rule_matches("sshd: 210.0.0.1\n", "ALL:10.0.0.1"));
     assert_false(hosts_deny_rule_matches("ALL:10.0.0.10\n", "ALL:10.0.0.1"));
 }
 
-void test_hosts_deny_rule_matches_null(void **state) {
+void test_hosts_deny_rule_matches_null(void** state)
+{
     (void)state;
     assert_false(hosts_deny_rule_matches(NULL, "ALL:10.0.0.1"));
     assert_false(hosts_deny_rule_matches("ALL:10.0.0.1", NULL));
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_ipv4, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_ipv6, test_setup, test_teardown),
@@ -643,9 +719,12 @@ int main(void) {
 
         // execute_command_with_retry tests
         cmocka_unit_test_setup_teardown(test_execute_command_with_retry_success, setup_ar_log, teardown_ar_log),
-        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_succeeds_after_failures, setup_ar_log, teardown_ar_log),
-        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_fails_after_all_attempts, setup_ar_log, teardown_ar_log),
-        cmocka_unit_test_setup_teardown(test_execute_command_with_retry_other_error_not_retried, setup_ar_log, teardown_ar_log),
+        cmocka_unit_test_setup_teardown(
+            test_execute_command_with_retry_succeeds_after_failures, setup_ar_log, teardown_ar_log),
+        cmocka_unit_test_setup_teardown(
+            test_execute_command_with_retry_fails_after_all_attempts, setup_ar_log, teardown_ar_log),
+        cmocka_unit_test_setup_teardown(
+            test_execute_command_with_retry_other_error_not_retried, setup_ar_log, teardown_ar_log),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

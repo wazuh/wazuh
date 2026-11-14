@@ -1,7 +1,6 @@
 #ifndef _TEST_CONFIG_H
 #define _TEST_CONFIG_H
-constexpr auto TEST_CONFIG_FILE_CONTENT
-{
+constexpr auto TEST_CONFIG_FILE_CONTENT {
     R"DELIMITER({
     "exclusions": [
         {
@@ -156,8 +155,7 @@ constexpr auto TEST_CONFIG_FILE_CONTENT
             "find_field": "name"
         }
     ]
-    })DELIMITER"
-};
+    })DELIMITER"};
 
 constexpr auto TEST_CONFIG_FILE_NAME {"test_config.json"};
 

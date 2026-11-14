@@ -223,25 +223,25 @@ namespace
     /// leaks that hides it.
     class HandleGuard final
     {
-        public:
-            explicit HandleGuard(hc_handle* handle)
-                : m_handle(handle)
+    public:
+        explicit HandleGuard(hc_handle* handle)
+            : m_handle(handle)
+        {
+        }
+
+        ~HandleGuard()
+        {
+            if (m_handle != nullptr)
             {
+                hc_destroy(m_handle);
             }
+        }
 
-            ~HandleGuard()
-            {
-                if (m_handle != nullptr)
-                {
-                    hc_destroy(m_handle);
-                }
-            }
+        HandleGuard(const HandleGuard&) = delete;
+        HandleGuard& operator=(const HandleGuard&) = delete;
 
-            HandleGuard(const HandleGuard&) = delete;
-            HandleGuard& operator=(const HandleGuard&) = delete;
-
-        private:
-            hc_handle* m_handle;
+    private:
+        hc_handle* m_handle;
     };
 
     /// Stops and joins a background thread however the test body leaves. A bare
@@ -249,29 +249,29 @@ namespace
     /// std::thread, calling std::terminate() and aborting the whole binary.
     class ThreadStopper final
     {
-        public:
-            ThreadStopper(std::atomic<bool>& running, std::thread& thread)
-                : m_running(running)
-                , m_thread(thread)
+    public:
+        ThreadStopper(std::atomic<bool>& running, std::thread& thread)
+            : m_running(running)
+            , m_thread(thread)
+        {
+        }
+
+        ~ThreadStopper()
+        {
+            m_running = false;
+
+            if (m_thread.joinable())
             {
+                m_thread.join();
             }
+        }
 
-            ~ThreadStopper()
-            {
-                m_running = false;
+        ThreadStopper(const ThreadStopper&) = delete;
+        ThreadStopper& operator=(const ThreadStopper&) = delete;
 
-                if (m_thread.joinable())
-                {
-                    m_thread.join();
-                }
-            }
-
-            ThreadStopper(const ThreadStopper&) = delete;
-            ThreadStopper& operator=(const ThreadStopper&) = delete;
-
-        private:
-            std::atomic<bool>& m_running;
-            std::thread& m_thread;
+    private:
+        std::atomic<bool>& m_running;
+        std::thread& m_thread;
     };
 
     /// The manager runs in a forked process, so everything the test wants to
@@ -318,17 +318,17 @@ namespace
 
     class FacadeE2eTest : public ::testing::Test
     {
-        protected:
-            static void SetUpTestSuite()
-            {
-                s_manager = new FakeManager(TLS_PORT, KEY_HEX, /*tls=*/true);
-            }
-            static void TearDownTestSuite()
-            {
-                delete s_manager;
-                s_manager = nullptr;
-            }
-            static FakeManager* s_manager;
+    protected:
+        static void SetUpTestSuite()
+        {
+            s_manager = new FakeManager(TLS_PORT, KEY_HEX, /*tls=*/true);
+        }
+        static void TearDownTestSuite()
+        {
+            delete s_manager;
+            s_manager = nullptr;
+        }
+        static FakeManager* s_manager;
     };
 
     FakeManager* FacadeE2eTest::s_manager = nullptr;
@@ -642,7 +642,7 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
 
     const std::string session(256 * 1024, 'H');
     ASSERT_TRUE(hc_submit_sync_session(
-                    handle, "held-session-1", reinterpret_cast<const uint8_t*>(session.data()), session.size()));
+        handle, "held-session-1", reinterpret_cast<const uint8_t*>(session.data()), session.size()));
     std::this_thread::sleep_for(std::chrono::milliseconds {scaledTimeout(300)}); // Get inside the POST.
 
     // Stateless keeps going while the session is stuck mid-flight.
@@ -729,10 +729,20 @@ TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
     // with nothing in the facade knowing the bytes were ever encoded.
     const uint16_t port = TLS_PORT + 12;
     const std::string blob = mergedConfigText(128 * 1024);
-    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
-                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
-                         /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
-                         /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{},
+    FakeManager manager {port,
+                         KEY_HEX,
+                         /*tls=*/true,
+                         /*settingsFlipAfter=*/0,
+                         /*configBlob=*/blob,
+                         /*statelessMaxBody=*/0,
+                         /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/ {},
+                         /*statefulHoldFile=*/ {},
+                         /*vdFeedOffset=*/0,
+                         /*scanVdRejectFirstNAttempts=*/0,
+                         /*enrollPassword=*/ {},
+                         /*enrollForcedStatus=*/0,
+                         /*caBundle=*/ {},
                          DownloadOptions {DownloadReply::Zstd}};
 
     ConfigRecorder recorder;
@@ -755,7 +765,8 @@ TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
     EXPECT_EQ("zstd", fakeManagerDownloadAcceptEncoding(port)); // So the reply really was the encoded one.
 
     std::lock_guard<std::mutex> lock(recorder.mutex);
-    EXPECT_TRUE(recorder.content == blob) << "delivered " << recorder.content.size() << " of " << blob.size() << " bytes";
+    EXPECT_TRUE(recorder.content == blob)
+        << "delivered " << recorder.content.size() << " of " << blob.size() << " bytes";
 }
 
 namespace
@@ -792,11 +803,9 @@ namespace
             {
                 const std::lock_guard<std::mutex> lock(g_warnings.mutex);
 
-                if (std::any_of(g_warnings.lines.begin(), g_warnings.lines.end(),
-                                [&needle](const std::string & line)
-            {
-                return line.find(needle) != std::string::npos;
-                }))
+                if (std::any_of(g_warnings.lines.begin(),
+                                g_warnings.lines.end(),
+                                [&needle](const std::string& line) { return line.find(needle) != std::string::npos; }))
                 {
                     return true;
                 }
@@ -815,10 +824,20 @@ TEST_F(FacadeE2eTest, AConfigTheAgentCannotDecodeIsReportedAsAWarning)
     // back the same on every notify (#38514), so the operator has to hear about it.
     const uint16_t port = TLS_PORT + 13;
     const std::string blob = mergedConfigText(128 * 1024);
-    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
-                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
-                         /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
-                         /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{},
+    FakeManager manager {port,
+                         KEY_HEX,
+                         /*tls=*/true,
+                         /*settingsFlipAfter=*/0,
+                         /*configBlob=*/blob,
+                         /*statelessMaxBody=*/0,
+                         /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/ {},
+                         /*statefulHoldFile=*/ {},
+                         /*vdFeedOffset=*/0,
+                         /*scanVdRejectFirstNAttempts=*/0,
+                         /*enrollPassword=*/ {},
+                         /*enrollForcedStatus=*/0,
+                         /*caBundle=*/ {},
                          DownloadOptions {DownloadReply::ZstdCorrupt}};
 
     ConfigRecorder recorder;
@@ -1098,16 +1117,16 @@ TEST_F(FacadeE2eTest, NotifyNowRaceAgainstReporterTick)
     std::atomic<bool> notifying {true};
     std::thread notifier(
         [&]
-    {
-        // No iteration cap, just a short sleep: keeps contending with the reporter
-        // thread for the whole run, but a spin loop with no sleep at all can starve
-        // it of path.mtx entirely under Valgrind's serialized scheduling.
-        while (notifying.load())
         {
-            hc_notify_now(handle);
-            std::this_thread::sleep_for(std::chrono::milliseconds {1});
-        }
-    });
+            // No iteration cap, just a short sleep: keeps contending with the reporter
+            // thread for the whole run, but a spin loop with no sleep at all can starve
+            // it of path.mtx entirely under Valgrind's serialized scheduling.
+            while (notifying.load())
+            {
+                hc_notify_now(handle);
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+        });
     // Stopped/joined (before the handle above is destroyed) even if an assertion below
     // returns early.
     const ThreadStopper notifierStopper {notifying, notifier};

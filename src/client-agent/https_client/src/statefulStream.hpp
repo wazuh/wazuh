@@ -42,64 +42,70 @@
  */
 class StatefulStream final
 {
-    public:
-        StatefulStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
-                       IClock& clock, IRandom& random, ISpoolFileFactory& spoolFactory,
-                       ICallbackSink& sink, AuthGate& authGate, CompressionGate& compressionGate,
-                       IFileCompressor& fileCompressor);
+public:
+    StatefulStream(const ModuleConfig& config,
+                   IHttpPerformer& performer,
+                   const ISigner& signer,
+                   IClock& clock,
+                   IRandom& random,
+                   ISpoolFileFactory& spoolFactory,
+                   ICallbackSink& sink,
+                   AuthGate& authGate,
+                   CompressionGate& compressionGate,
+                   IFileCompressor& fileCompressor);
 
-        /// Intake: spool the buffer to a temp file and enqueue it. Returns false
-        /// when the queue is full or the spool fails.
-        bool submit(const std::string& sessionId, const uint8_t* buffer, size_t length);
+    /// Intake: spool the buffer to a temp file and enqueue it. Returns false
+    /// when the queue is full or the spool fails.
+    bool submit(const std::string& sessionId, const uint8_t* buffer, size_t length);
 
-        /// Intake: adopt an already-spooled session file (the intake streamed it
-        /// off the local socket). The file is deleted after the session is sent.
-        /// Returns false when the queue is full.
-        bool submitFile(const std::string& sessionId, const std::string& filePath, uint64_t size);
+    /// Intake: adopt an already-spooled session file (the intake streamed it
+    /// off the local socket). The file is deleted after the session is sent.
+    /// Returns false when the queue is full.
+    bool submitFile(const std::string& sessionId, const std::string& filePath, uint64_t size);
 
-        /// One sender iteration: send the next queued session (if any) and report
-        /// its result. Returns true when a session was processed.
-        bool step(Waiter& waiter);
+    /// One sender iteration: send the next queued session (if any) and report
+    /// its result. Returns true when a session was processed.
+    bool step(Waiter& waiter);
 
-        bool hasPending() const;
+    bool hasPending() const;
 
-    private:
-        struct Session
-        {
-            std::string id;
-            std::shared_ptr<SpoolFile> spool; ///< RAII-deletes the temp file when done.
-            uint64_t size {0};
-        };
+private:
+    struct Session
+    {
+        std::string id;
+        std::shared_ptr<SpoolFile> spool; ///< RAII-deletes the temp file when done.
+        uint64_t size {0};
+    };
 
-        struct SendResult
-        {
-            /// Raw HTTP status code the manager answered with (the /stateful contract
-            /// interprets these directly - it does not go through the shared D9
-            /// classifier, whose numeric-code meanings are specific to /stateless).
-            /// 0 means no HTTP response was received at all (timeout/connect/TLS
-            /// failure/abort) - the sync protocol treats that like a 503.
-            long httpCode {0};
-            std::string body;
-        };
+    struct SendResult
+    {
+        /// Raw HTTP status code the manager answered with (the /stateful contract
+        /// interprets these directly - it does not go through the shared D9
+        /// classifier, whose numeric-code meanings are specific to /stateless).
+        /// 0 means no HTTP response was received at all (timeout/connect/TLS
+        /// failure/abort) - the sync protocol treats that like a 503.
+        long httpCode {0};
+        std::string body;
+    };
 
-        bool acceptableId(const std::string& sessionId) const;
-        bool enqueue(Session session);
-        bool popNext(Session& out);
-        SendResult sendSession(const Session& session, Waiter& waiter);
+    bool acceptableId(const std::string& sessionId) const;
+    bool enqueue(Session session);
+    bool popNext(Session& out);
+    SendResult sendSession(const Session& session, Waiter& waiter);
 
-        const ModuleConfig& m_config;
-        AuthGate& m_authGate;
-        CompressionGate& m_compressionGate;
-        Backoff m_backoff;
-        RetrySender m_sender;
-        ISpoolFileFactory& m_spoolFactory;
-        IFileCompressor& m_fileCompressor;
-        ICallbackSink& m_sink;
+    const ModuleConfig& m_config;
+    AuthGate& m_authGate;
+    CompressionGate& m_compressionGate;
+    Backoff m_backoff;
+    RetrySender m_sender;
+    ISpoolFileFactory& m_spoolFactory;
+    IFileCompressor& m_fileCompressor;
+    ICallbackSink& m_sink;
 
-        mutable std::mutex m_mutex;
-        std::deque<Session> m_queue;
-        size_t m_maxQueue;
-        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+    mutable std::mutex m_mutex;
+    std::deque<Session> m_queue;
+    size_t m_maxQueue;
+    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 
 #endif // _HC_STATEFUL_STREAM_HPP

@@ -64,11 +64,8 @@ LastLoginResolution resolveLastLogins(const nlohmann::json& collectedUsers,
     }
 
     // Rule 2: decided from the recorded logins only, before the sessions below are merged in.
-    resolution.known = std::any_of(resolution.byName.cbegin(), resolution.byName.cend(),
-                                   [](const auto & entry)
-    {
-        return entry.second > 0;
-    });
+    resolution.known = std::any_of(
+        resolution.byName.cbegin(), resolution.byName.cend(), [](const auto& entry) { return entry.second > 0; });
 
     for (const auto& item : collectedLoggedInUser)
     {
@@ -83,8 +80,8 @@ LastLoginResolution resolveLastLogins(const nlohmann::json& collectedUsers,
         // Rule 3.
         if (entry != resolution.byName.end())
         {
-            entry->second = std::max(entry->second,
-                                     static_cast<uint32_t>(std::max<int32_t>(item["time"].get<int32_t>(), 0)));
+            entry->second =
+                std::max(entry->second, static_cast<uint32_t>(std::max<int32_t>(item["time"].get<int32_t>(), 0)));
         }
     }
 

@@ -13,7 +13,9 @@
 
 #include <utility>
 
-SyncSocketTransport::SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger,
+SyncSocketTransport::SyncSocketTransport(std::string socketPath,
+                                         std::string moduleName,
+                                         LoggerFunc logger,
                                          std::chrono::milliseconds ioTimeout)
     : m_socketPath(std::move(socketPath))
     , m_moduleName(std::move(moduleName))
@@ -198,8 +200,8 @@ bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_
     header.insert(header.end(), sessionId.begin(), sessionId.end());
     putLittleEndian(header, message.size(), 8);
 
-    bool ok = writeAll(fd, header.data(), header.size()) &&
-              (message.empty() || writeAll(fd, message.data(), message.size()));
+    bool ok =
+        writeAll(fd, header.data(), header.size()) && (message.empty() || writeAll(fd, message.data(), message.size()));
 
     if (ok)
     {
@@ -211,8 +213,7 @@ bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_
 
         if (!ok)
         {
-            m_logger(LOG_DEBUG,
-                     "The agent refused sync session " + sessionId + "; it is still ours to retry.");
+            m_logger(LOG_DEBUG, "The agent refused sync session " + sessionId + "; it is still ours to retry.");
         }
     }
 
@@ -233,7 +234,7 @@ namespace
     // once it is stopping; both read as an honest "not available" below, same as the POSIX
     // socket being down.
     std::atomic<asp_sync_session_sender_fn> g_sessionSender {nullptr};
-}
+} // namespace
 
 void setInProcessSyncSessionSender(asp_sync_session_sender_fn sender)
 {

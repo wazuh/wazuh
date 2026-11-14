@@ -26,63 +26,61 @@
 #endif
 #endif
 
-
 #ifndef WIN32
 
-//Alloc and create an agent removal command payload
-static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
+// Alloc and create an agent removal command payload
+static cJSON* w_create_agent_remove_payload(const char* id, const int purge);
 
-//Parse an agent removal response
-static int w_parse_agent_remove_response(const char* buffer,
-                                         char *err_response,
-                                         const int json_format,
-                                         const int exit_on_error);
+// Parse an agent removal response
+static int
+w_parse_agent_remove_response(const char* buffer, char* err_response, const int json_format, const int exit_on_error);
 #endif
 
-//Parse an agent addition response. reenroll_secret (#38993) may be NULL; when given it receives the
-//master's re-enrollment secret, or "" when the answer carries none (not an error).
+// Parse an agent addition response. reenroll_secret (#38993) may be NULL; when given it receives the
+// master's re-enrollment secret, or "" when the answer carries none (not an error).
 static int w_parse_agent_add_response(const char* buffer,
-                                      char *err_response,
+                                      char* err_response,
                                       char* id,
                                       char* key,
                                       char* reenroll_secret,
                                       const int json_format,
                                       const int exit_on_error,
-                                      int *error_code);
+                                      int* error_code);
 
-//Alloc and create an agent addition command payload
-static cJSON* w_create_agent_add_payload(const char *name,
-                                         const char *ip,
-                                         const char *groups,
-                                         const char *key_hash,
-                                         const char *key,
-                                         const char *id,
-                                         authd_force_options_t *force_options,
-                                         const char *token_id,
-                                         const char *reenroll_kid,
-                                         const char *reenroll_bearer,
-                                         const char *source);
-
+// Alloc and create an agent addition command payload
+static cJSON* w_create_agent_add_payload(const char* name,
+                                         const char* ip,
+                                         const char* groups,
+                                         const char* key_hash,
+                                         const char* key,
+                                         const char* id,
+                                         authd_force_options_t* force_options,
+                                         const char* token_id,
+                                         const char* reenroll_kid,
+                                         const char* reenroll_bearer,
+                                         const char* source);
 
 /* Read the agent name for the current agent
  * Returns NULL on error
  */
-char *os_read_agent_name()
+char* os_read_agent_name()
 {
     char buf[1024 + 1];
-    FILE *fp = NULL;
+    FILE* fp = NULL;
 
     mdebug2("Calling os_read_agent_name().");
 
     fp = wfopen(AGENT_INFO_FILE, "r");
 
     /* We give 1 second for the file to be created */
-    if (!fp) {
+    if (!fp)
+    {
         sleep(1);
         fp = wfopen(AGENT_INFO_FILE, "r");
     }
 
-    if (!fp) {
+    if (!fp)
+    {
         mdebug1(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
@@ -90,14 +88,14 @@ char *os_read_agent_name()
     buf[1024] = '\0';
 
     /* Get name */
-    if (fgets(buf, 1024, fp)) {
-        char *ret = NULL;
+    if (fgets(buf, 1024, fp))
+    {
+        char* ret = NULL;
         int len;
 
         // strip the newlines
         len = strlen(buf) - 1;
-        while (len > 0 && buf[len] == '\n')
-            buf[len--] = '\0';
+        while (len > 0 && buf[len] == '\n') buf[len--] = '\0';
 
         os_strdup(buf, ret);
         fclose(fp);
@@ -117,28 +115,33 @@ char *os_read_agent_name()
  * when the agent configuration is read. The nodes are walked as ReadConfig() does.
  * Returns "-" if it is not set, the value the agent info file holds in that case.
  */
-static char *w_get_agent_profile_from_config(OS_XML *xml)
+static char* w_get_agent_profile_from_config(OS_XML* xml)
 {
     XML_NODE roots = OS_GetElementsbyNode(xml, NULL);
-    char *profile = NULL;
+    char* profile = NULL;
 
-    for (size_t i = 0; roots && roots[i]; i++) {
-        if (!roots[i]->element || strcmp(roots[i]->element, WAZUHCONFIG) != 0) {
+    for (size_t i = 0; roots && roots[i]; i++)
+    {
+        if (!roots[i]->element || strcmp(roots[i]->element, WAZUHCONFIG) != 0)
+        {
             continue;
         }
 
         XML_NODE sections = OS_GetElementsbyNode(xml, roots[i]);
 
-        for (size_t j = 0; sections && sections[j]; j++) {
-            if (!sections[j]->element || strcmp(sections[j]->element, "agent") != 0) {
+        for (size_t j = 0; sections && sections[j]; j++)
+        {
+            if (!sections[j]->element || strcmp(sections[j]->element, "agent") != 0)
+            {
                 continue;
             }
 
             XML_NODE options = OS_GetElementsbyNode(xml, sections[j]);
 
-            for (size_t k = 0; options && options[k]; k++) {
-                if (options[k]->element && options[k]->content &&
-                    strcmp(options[k]->element, "config-profile") == 0) {
+            for (size_t k = 0; options && options[k]; k++)
+            {
+                if (options[k]->element && options[k]->content && strcmp(options[k]->element, "config-profile") == 0)
+                {
                     os_free(profile);
                     os_strdup(options[k]->content, profile);
                 }
@@ -152,7 +155,8 @@ static char *w_get_agent_profile_from_config(OS_XML *xml)
 
     OS_ClearNode(roots);
 
-    if (!profile) {
+    if (!profile)
+    {
         os_strdup("-", profile);
     }
 
@@ -171,14 +175,15 @@ static char *w_get_agent_profile_from_config(OS_XML *xml)
  *  It is read from ossec.conf itself rather than from the agent info file, which only
  *  gets the profile of a new configuration once the agent has loaded its keys.
  */
-char *os_read_agent_profile()
+char* os_read_agent_profile()
 {
     OS_XML xml;
-    char *profile;
+    char* profile;
 
     mdebug2("Calling os_read_agent_profile().");
 
-    if (OS_ReadXML(WAZUHCONF, &xml) < 0) {
+    if (OS_ReadXML(WAZUHCONF, &xml) < 0)
+    {
         merror(XML_ERROR, WAZUHCONF, xml.err, xml.err_line);
         OS_ClearXML(&xml);
         return (NULL);
@@ -195,63 +200,67 @@ char *os_read_agent_profile()
 /* Write the agent info to the queue, for the other processes to read
  * Returns 1 on success or <= 0 on failure
  */
-int os_write_agent_info(const char *agent_name, __attribute__((unused)) const char *agent_ip,
-                        const char *agent_id, const char *cfg_profile_name)
+int os_write_agent_info(const char* agent_name,
+                        __attribute__((unused)) const char* agent_ip,
+                        const char* agent_id,
+                        const char* cfg_profile_name)
 {
-    FILE *fp;
+    FILE* fp;
 
     fp = wfopen(AGENT_INFO_FILE, "w");
-    if (!fp) {
+    if (!fp)
+    {
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (0);
     }
 
     /* Nothing reads the profile line: os_read_agent_profile() takes it from ossec.conf */
-    fprintf(
-        fp,
-        "%s\n-\n%s\n%s\n",
-        agent_name,
-        agent_id,
-        (cfg_profile_name) ? cfg_profile_name : "-"
-    );
+    fprintf(fp, "%s\n-\n%s\n%s\n", agent_name, agent_id, (cfg_profile_name) ? cfg_profile_name : "-");
     fclose(fp);
     return (1);
 }
 
-int w_validate_group_name(const char *group, char *response) {
+int w_validate_group_name(const char* group, char* response)
+{
 
     unsigned int i = 0;
     char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
     int offset = 0;
     int valid_chars_length = strlen(valid_chars);
-    const char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char *multi_group_cpy = NULL;
-    char *save_ptr = NULL;
+    const char* multigroup = strchr(group, MULTIGROUP_SEPARATOR);
+    char* multi_group_cpy = NULL;
+    char* save_ptr = NULL;
 
-    os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
-    snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
+    os_calloc(OS_SIZE_65536, sizeof(char), multi_group_cpy);
+    snprintf(multi_group_cpy, OS_SIZE_65536, "%s", group);
 
-    if (strlen(group) == 0) {
+    if (strlen(group) == 0)
+    {
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is 0");
-        if (response) {
+        if (response)
+        {
             snprintf(response, 2048, "ERROR: Invalid group name: Empty Group");
         }
         return -8;
     }
 
-    if (!multigroup && (strlen(group) > MAX_GROUP_NAME)) {
+    if (!multigroup && (strlen(group) > MAX_GROUP_NAME))
+    {
         free(multi_group_cpy);
-        mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
-        if (response) {
+        mdebug1("At w_validate_group_name(): Group length is over %d characters", MAX_GROUP_NAME);
+        if (response)
+        {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", group);
         }
         return -2;
     }
-    else if (multigroup && strlen(group) > OS_SIZE_65536 -1 ) {
+    else if (multigroup && strlen(group) > OS_SIZE_65536 - 1)
+    {
         free(multi_group_cpy);
-        mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
-        if (response) {
+        mdebug1("At w_validate_group_name(): Multigroup length is over %d characters", OS_SIZE_65536);
+        if (response)
+        {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large", group);
         }
         return -3;
@@ -259,38 +268,49 @@ int w_validate_group_name(const char *group, char *response) {
 
     /* Check if the group is only composed by ',' */
     unsigned int comas = 0;
-    for (i = 0; i < strlen(group); i++) {
-        if (group[i] == MULTIGROUP_SEPARATOR) {
+    for (i = 0; i < strlen(group); i++)
+    {
+        if (group[i] == MULTIGROUP_SEPARATOR)
+        {
             comas++;
         }
     }
 
-    if (!multigroup) {
+    if (!multigroup)
+    {
         offset = 1;
         valid_chars[valid_chars_length - offset] = '\0';
     }
 
     /* Check if the multigroups are empty or have consecutive ',' */
-    if (multigroup) {
+    if (multigroup)
+    {
 
         const char delim[2] = ",";
-        char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
+        char* individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
-        while( individual_group != NULL ) {
+        while (individual_group != NULL)
+        {
 
             /* Spaces are not allowed */
-            if (strchr(individual_group,' ')) {
+            if (strchr(individual_group, ' '))
+            {
                 free(multi_group_cpy);
-                if (response) {
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed", group);
+                if (response)
+                {
+                    snprintf(
+                        response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed", group);
                 }
                 return -4;
             }
 
             /* Validate the individual group length */
-            if (strlen(individual_group) > MAX_GROUP_NAME) {
-                if (response) {
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group);
+            if (strlen(individual_group) > MAX_GROUP_NAME)
+            {
+                if (response)
+                {
+                    snprintf(
+                        response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group);
                 }
                 /* individual_group points into multi_group_cpy, free it only after formatting */
                 free(multi_group_cpy);
@@ -301,9 +321,11 @@ int w_validate_group_name(const char *group, char *response) {
         }
 
         /* Look for consecutive ',' */
-        if (strstr(group,",,")) {
+        if (strstr(group, ",,"))
+        {
             free(multi_group_cpy);
-            if (response) {
+            if (response)
+            {
                 snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed", group);
             }
             return -5;
@@ -311,27 +333,35 @@ int w_validate_group_name(const char *group, char *response) {
     }
 
     /* Check if the group is only composed by ',' */
-    if (comas == strlen(group)) {
+    if (comas == strlen(group))
+    {
         free(multi_group_cpy);
-        if (response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
+        if (response)
+        {
+            snprintf(
+                response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
         }
         return -1;
     }
 
     /* Check if the group starts or ends with ',' */
-    if (group[0] == ',' || group[strlen(group) - 1] == ',' ) {
+    if (group[0] == ',' || group[strlen(group) - 1] == ',')
+    {
         free(multi_group_cpy);
-        if (response) {
+        if (response)
+        {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','", group);
         }
         return -6;
     }
 
-    if (strspn(group,valid_chars) != strlen(group)) {
+    if (strspn(group, valid_chars) != strlen(group))
+    {
         free(multi_group_cpy);
-        if (response) {
-            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
+        if (response)
+        {
+            snprintf(
+                response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
         }
         return -1;
     }
@@ -341,7 +371,8 @@ int w_validate_group_name(const char *group, char *response) {
 }
 
 // Connect to Agentd. Returns socket or -1 on error.
-int auth_connect() {
+int auth_connect()
+{
 #ifndef WIN32
     return OS_ConnectUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 #else
@@ -350,7 +381,8 @@ int auth_connect() {
 }
 
 // Connect to Agentd with a receive deadline. Returns socket or -1 on error.
-int auth_connect_timeout(__attribute__((unused)) int recv_timeout) {
+int auth_connect_timeout(__attribute__((unused)) int recv_timeout)
+{
 #ifndef WIN32
     char sockname[PATH_MAX + 1];
 
@@ -368,21 +400,23 @@ int auth_connect_timeout(__attribute__((unused)) int recv_timeout) {
 }
 
 // Close socket if valid.
-int auth_close(int sock) {
+int auth_close(int sock)
+{
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_agent_add_payload(const char *name,
-                                         const char *ip,
-                                         const char *groups,
-                                         const char *key_hash,
-                                         const char *key,
-                                         const char *id,
-                                         authd_force_options_t *force_options,
-                                         const char *token_id,
-                                         const char *reenroll_kid,
-                                         const char *reenroll_bearer,
-                                         const char *source) {
+static cJSON* w_create_agent_add_payload(const char* name,
+                                         const char* ip,
+                                         const char* groups,
+                                         const char* key_hash,
+                                         const char* key,
+                                         const char* id,
+                                         authd_force_options_t* force_options,
+                                         const char* token_id,
+                                         const char* reenroll_kid,
+                                         const char* reenroll_bearer,
+                                         const char* source)
+{
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -391,132 +425,175 @@ static cJSON* w_create_agent_add_payload(const char *name,
     cJSON_AddStringToObject(arguments, "name", name);
     cJSON_AddStringToObject(arguments, "ip", ip);
 
-    if (groups) {
+    if (groups)
+    {
         cJSON_AddStringToObject(arguments, "groups", groups);
     }
 
-    if (key_hash) {
+    if (key_hash)
+    {
         cJSON_AddStringToObject(arguments, "key_hash", key_hash);
     }
 
-    if (key) {
+    if (key)
+    {
         cJSON_AddStringToObject(arguments, "key", key);
     }
 
-    if (id) {
+    if (id)
+    {
         cJSON_AddStringToObject(arguments, "id", id);
     }
 
     // Enrollment token (#38993): only the id travels; the master resolves and counts it.
-    if (token_id) {
+    if (token_id)
+    {
         cJSON_AddStringToObject(arguments, "token_id", token_id);
     }
 
     // Re-enrollment (#38993): the bearer travels unverified -- the secret that signs it is in the
     // master's global.db, so the master is the node that judges it (local_reenroll()).
-    if (reenroll_kid && reenroll_bearer) {
-        cJSON *reenroll = cJSON_AddObjectToObject(arguments, "reenroll");
+    if (reenroll_kid && reenroll_bearer)
+    {
+        cJSON* reenroll = cJSON_AddObjectToObject(arguments, "reenroll");
         cJSON_AddStringToObject(reenroll, "kid", reenroll_kid);
         cJSON_AddStringToObject(reenroll, "bearer", reenroll_bearer);
     }
 
     // Where the agent's request came from, for the master's log line only: `ip` cannot say it, since
     // it is the address to register (often "any"), not the peer's.
-    if (source) {
+    if (source)
+    {
         cJSON_AddStringToObject(arguments, "source", source);
     }
 
     cJSON* j_force = w_force_options_to_json(force_options);
-    if(j_force){
+    if (j_force)
+    {
         cJSON_AddItemToObject(arguments, "force", j_force);
     }
 
     return request;
 }
 
-static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code) {
+static int w_parse_agent_add_response(const char* buffer,
+                                      char* err_response,
+                                      char* id,
+                                      char* key,
+                                      char* reenroll_secret,
+                                      const int json_format,
+                                      const int exit_on_error,
+                                      int* error_code)
+{
     int result = 0;
     cJSON* response = NULL;
-    cJSON * error = NULL;
-    cJSON * message = NULL;
-    cJSON * data = NULL;
-    cJSON * data_id = NULL;
-    cJSON * data_key = NULL;
+    cJSON* error = NULL;
+    cJSON* message = NULL;
+    cJSON* data = NULL;
+    cJSON* data_id = NULL;
+    cJSON* data_key = NULL;
 
     // Parse response
-    const char *jsonErrPtr;
-    if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
-        if (exit_on_error) {
+    const char* jsonErrPtr;
+    if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response)
+    {
+        if (exit_on_error)
+        {
             merror_exit("Parsing JSON response.");
         }
         result = -2;
-    } else {
+    }
+    else
+    {
         // Get error field
-        if (error = cJSON_GetObjectItem(response, "error"), !error) {
-            if (exit_on_error) {
+        if (error = cJSON_GetObjectItem(response, "error"), !error)
+        {
+            if (exit_on_error)
+            {
                 merror_exit("No such status from response.");
             }
             result = -2;
         }
-        else {
+        else
+        {
             // Error response
-            if (error->valueint > 0) {
+            if (error->valueint > 0)
+            {
                 message = cJSON_GetObjectItem(response, "message");
-                if (json_format) {
+                if (json_format)
+                {
                     printf("%s", buffer);
                 }
-                else if (!error_code) {
+                else if (!error_code)
+                {
                     // A caller that asks for the code reports the rejection itself, at the level it decides
                     mwarn("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
                 }
-                if (error_code) {
+                if (error_code)
+                {
                     *error_code = error->valueint;
                 }
                 result = -1;
             }
-            //Success response
-            else {
+            // Success response
+            else
+            {
                 // Get data field
-                if (data = cJSON_GetObjectItem(response, "data"), !data) {
-                    if (exit_on_error) {
+                if (data = cJSON_GetObjectItem(response, "data"), !data)
+                {
+                    if (exit_on_error)
+                    {
                         merror_exit("No data received.");
                     }
                     result = -2;
                 }
-                else {
+                else
+                {
                     // Get data information if required
-                    if (id) {
-                        if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
-                            if (exit_on_error) {
+                    if (id)
+                    {
+                        if (data_id = cJSON_GetObjectItem(data, "id"), !data_id)
+                        {
+                            if (exit_on_error)
+                            {
                                 merror_exit("No id received.");
                             }
                             result = -2;
                         }
-                        else {
+                        else
+                        {
                             strncpy(id, data_id->valuestring, FILE_SIZE);
                             id[FILE_SIZE] = '\0';
                         }
                     }
-                    if (key && result == 0) {
-                        if (data_key = cJSON_GetObjectItem(data, "key"), !data_key) {
-                            if (exit_on_error) {
+                    if (key && result == 0)
+                    {
+                        if (data_key = cJSON_GetObjectItem(data, "key"), !data_key)
+                        {
+                            if (exit_on_error)
+                            {
                                 merror_exit("No key received.");
                             }
                             result = -2;
                         }
-                        else {
+                        else
+                        {
                             strncpy(key, data_key->valuestring, KEYSIZE);
                             key[KEYSIZE] = '\0';
                         }
                     }
-                    if (reenroll_secret && result == 0) {
+                    if (reenroll_secret && result == 0)
+                    {
                         /* Optional (#38993): a master that predates the re-enrollment secret answers without
                          * it, and that is not an error -- the caller then simply has none to hand back. */
-                        cJSON *data_secret = cJSON_GetObjectItem(data, "reenroll_secret");
-                        if (data_secret && cJSON_IsString(data_secret) && data_secret->valuestring) {
+                        cJSON* data_secret = cJSON_GetObjectItem(data, "reenroll_secret");
+                        if (data_secret && cJSON_IsString(data_secret) && data_secret->valuestring)
+                        {
                             strncpy(reenroll_secret, data_secret->valuestring, AGENT_REENROLL_SECRET_HEX_CHARS);
                             reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS] = '\0';
-                        } else {
+                        }
+                        else
+                        {
                             reenroll_secret[0] = '\0';
                         }
                     }
@@ -526,11 +603,14 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
     }
 
     // Create an error response if needed
-    if (err_response) {
-        if (result == -1) {
+    if (err_response)
+    {
+        if (result == -1)
+        {
             snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
         }
-        else if (result == -2) {
+        else if (result == -2)
+        {
             snprintf(err_response, 2048, "ERROR: Invalid message format");
         }
     }
@@ -541,8 +621,9 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
 }
 
 #ifndef WIN32
-cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
-    cJSON * request = cJSON_CreateObject();
+cJSON* w_create_sendsync_payload(const char* daemon_name, cJSON* message)
+{
+    cJSON* request = cJSON_CreateObject();
 
     cJSON_AddStringToObject(request, "daemon_name", daemon_name);
     cJSON_AddItemToObject(request, "message", message);
@@ -550,30 +631,36 @@ cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
     return request;
 }
 
-static cJSON* w_create_agent_remove_payload(const char *id, const int purge) {
+static cJSON* w_create_agent_remove_payload(const char* id, const int purge)
+{
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
     cJSON_AddItemToObject(request, "arguments", arguments);
     cJSON_AddStringToObject(request, "function", "remove");
     cJSON_AddStringToObject(arguments, "id", id);
-    if (purge >= 0) {
+    if (purge >= 0)
+    {
         cJSON_AddNumberToObject(arguments, "purge", purge);
     }
 
     return request;
 }
 
-static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error) {
+static int
+w_parse_agent_remove_response(const char* buffer, char* err_response, const int json_format, const int exit_on_error)
+{
     int result = 0;
     cJSON* response = NULL;
-    cJSON * error = NULL;
-    cJSON * message = NULL;
+    cJSON* error = NULL;
+    cJSON* message = NULL;
 
     // Parse response
-    const char *jsonErrPtr;
-    if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
-        if (exit_on_error) {
+    const char* jsonErrPtr;
+    if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response)
+    {
+        if (exit_on_error)
+        {
             merror_exit("Parsing JSON response.");
         }
         result = -2;
@@ -581,29 +668,38 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
     }
 
     // Detect error field
-    if (error = cJSON_GetObjectItem(response, "error"), !error) {
-        if (exit_on_error) {
+    if (error = cJSON_GetObjectItem(response, "error"), !error)
+    {
+        if (exit_on_error)
+        {
             merror_exit("No such status from response.");
         }
         result = -2;
     }
     // Error response
-    else if (error->valueint > 0) {
+    else if (error->valueint > 0)
+    {
         message = cJSON_GetObjectItem(response, "message");
-        if (json_format) {
+        if (json_format)
+        {
             printf("%s", buffer);
-        } else {
+        }
+        else
+        {
             merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
         }
         result = -1;
     }
 
     // Create an error response if needed
-    if (err_response) {
-        if (result == -1) {
+    if (err_response)
+    {
+        if (result == -1)
+        {
             snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
         }
-        else if (result == -2) {
+        else if (result == -2)
+        {
             snprintf(err_response, 2048, "ERROR: Invalid message format");
         }
     }
@@ -613,7 +709,8 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
     return result;
 }
 
-int w_send_clustered_message(const char* command, const char* payload, char* response) {
+int w_send_clustered_message(const char* command, const char* payload, char* response)
+{
     char sockname[PATH_MAX + 1] = {0};
     int sock = -1;
     int result = 0;
@@ -622,49 +719,57 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     bool send_error = FALSE;
 
     strcpy(sockname, CLUSTER_SOCK);
-    for (send_attempts = 0; send_attempts < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++send_attempts) {
+    for (send_attempts = 0; send_attempts < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++send_attempts)
+    {
         result = 0;
         send_error = FALSE;
-        if (sock = external_socket_connect(sockname, WAZUH_IPC_TIMEOUT), sock >= 0) {
-            if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
-                if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
-                    switch (response_length) {
-                    case -2:
-                        mdebug1("Cluster error detected");
-                        send_error = TRUE;
-                        break;
-                    case -1:
-                        mdebug1("OS_RecvSecureClusterTCP(): %s", strerror(errno));
-                        send_error = TRUE;
-                        break;
-                    case 0:
-                        mdebug1("Empty message from local client.");
-                        break;
-                    case OS_MAXLEN:
-                        merror("Received message > %i", OS_MAXSTR);
-                        break;
+        if (sock = external_socket_connect(sockname, WAZUH_IPC_TIMEOUT), sock >= 0)
+        {
+            if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0)
+            {
+                if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0)
+                {
+                    switch (response_length)
+                    {
+                        case -2:
+                            mdebug1("Cluster error detected");
+                            send_error = TRUE;
+                            break;
+                        case -1:
+                            mdebug1("OS_RecvSecureClusterTCP(): %s", strerror(errno));
+                            send_error = TRUE;
+                            break;
+                        case 0: mdebug1("Empty message from local client."); break;
+                        case OS_MAXLEN: merror("Received message > %i", OS_MAXSTR); break;
                     }
                     result = -1;
                 }
             }
-            else {
+            else
+            {
                 mdebug1("OS_SendSecureTCPCluster(): %s", strerror(errno));
                 send_error = TRUE;
                 result = -2;
             }
             close(sock);
         }
-        else {
+        else
+        {
             mdebug1("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             result = -2;
             send_error = TRUE;
         }
 
-        if (!send_error) {
+        if (!send_error)
+        {
             break;
-        } else if (send_attempts == CLUSTER_SEND_MESSAGE_ATTEMPTS - 1) {
+        }
+        else if (send_attempts == CLUSTER_SEND_MESSAGE_ATTEMPTS - 1)
+        {
             mwarn("Could not send message through the cluster after '%d' attempts.", CLUSTER_SEND_MESSAGE_ATTEMPTS);
-        } else {
+        }
+        else
+        {
             sleep(1);
         }
     }
@@ -672,33 +777,36 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     return result;
 }
 
-//Send a clustered agent add request.
-int w_request_agent_add_clustered(char *err_response,
-                                  const char *name,
-                                  const char *ip,
-                                  const char *groups,
-                                  const char *key_hash,
-                                  char **id,
-                                  char **key,
-                                  char **reenroll_secret,
-                                  authd_force_options_t *force_options,
-                                  const char *agent_id,
-                                  const char *token_id,
-                                  const char *reenroll_kid,
-                                  const char *reenroll_bearer,
-                                  const char *source,
-                                  int *master_error_code) {
+// Send a clustered agent add request.
+int w_request_agent_add_clustered(char* err_response,
+                                  const char* name,
+                                  const char* ip,
+                                  const char* groups,
+                                  const char* key_hash,
+                                  char** id,
+                                  char** key,
+                                  char** reenroll_secret,
+                                  authd_force_options_t* force_options,
+                                  const char* agent_id,
+                                  const char* token_id,
+                                  const char* reenroll_kid,
+                                  const char* reenroll_bearer,
+                                  const char* source,
+                                  int* master_error_code)
+{
     int result;
     char response[OS_MAXSTR + 1];
-    char new_id[FILE_SIZE+1] = { '\0' };
-    char new_key[KEYSIZE+1] = { '\0' };
-    char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = { '\0' };
+    char new_id[FILE_SIZE + 1] = {'\0'};
+    char new_key[KEYSIZE + 1] = {'\0'};
+    char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {'\0'};
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source);
+    cJSON* message = w_create_agent_add_payload(
+        name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source);
 
     // A caller that takes no re-enrollment secret back is a worker's port-1515 listener, whose protocol
     // cannot deliver one: mark the request so that the master issues (and stores) none.
-    if (!reenroll_secret) {
+    if (!reenroll_secret)
+    {
         cJSON_AddTrueToObject(cJSON_GetObjectItem(message, "arguments"), "legacy");
     }
 
@@ -706,18 +814,29 @@ int w_request_agent_add_clustered(char *err_response,
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
-    if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
-        result = w_parse_agent_add_response(response, err_response, new_id, new_key, reenroll_secret ? new_secret : NULL, FALSE, FALSE, master_error_code);
+    if (result = w_send_clustered_message("sendsync", output, response), result == 0)
+    {
+        result = w_parse_agent_add_response(response,
+                                            err_response,
+                                            new_id,
+                                            new_key,
+                                            reenroll_secret ? new_secret : NULL,
+                                            FALSE,
+                                            FALSE,
+                                            master_error_code);
     }
-    else if (err_response) {
+    else if (err_response)
+    {
         snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
     }
 
     free(output);
-    if (0 == result) {
+    if (0 == result)
+    {
         os_strdup(new_id, *id);
         os_strdup(new_key, *key);
-        if (reenroll_secret) {
+        if (reenroll_secret)
+        {
             // Empty when the master sent none (#38993): the caller treats "" as absent.
             os_strdup(new_secret, *reenroll_secret);
         }
@@ -728,8 +847,9 @@ int w_request_agent_add_clustered(char *err_response,
     return result;
 }
 
-//Send a clustered agent remove request.
-int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge) {
+// Send a clustered agent remove request.
+int w_request_agent_remove_clustered(char* err_response, const char* agent_id, int purge)
+{
     int result;
     char response[OS_MAXSTR + 1];
 
@@ -738,10 +858,12 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
-    if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
+    if (result = w_send_clustered_message("sendsync", output, response), result == 0)
+    {
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
-    else if (err_response) {
+    else if (err_response)
+    {
         snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
     }
 
@@ -749,18 +871,31 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 
     return result;
 }
-#endif //!WIN32
+#endif //! WIN32
 
-//Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
+// Send a local agent add request.
+int w_request_agent_add_local(int sock,
+                              char* id,
+                              const char* name,
+                              const char* ip,
+                              const char* groups,
+                              const char* key,
+                              authd_force_options_t* force_options,
+                              const int json_format,
+                              const char* agent_id,
+                              int exit_on_error)
+{
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL);
+    cJSON* payload =
+        w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
-    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
-        if (exit_on_error) {
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0)
+    {
+        if (exit_on_error)
+        {
             merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
         }
         free(output);
@@ -771,19 +906,26 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
 
     char response[OS_MAXSTR + 1];
     ssize_t length;
-    if (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length < 0) {
-        if (exit_on_error) {
+    if (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length < 0)
+    {
+        if (exit_on_error)
+        {
             merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
         }
         result = -1;
         return result;
-    } else if (length == 0) {
-        if (exit_on_error) {
+    }
+    else if (length == 0)
+    {
+        if (exit_on_error)
+        {
             merror_exit("Empty message from local server.");
         }
         result = -1;
         return result;
-    } else {
+    }
+    else
+    {
         response[length] = '\0';
         result = w_parse_agent_add_response(response, NULL, id, NULL, NULL, json_format, exit_on_error, NULL);
     }
@@ -791,21 +933,22 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
     return result;
 }
 
+char* get_agent_id_from_name(const char* agent_name)
+{
 
-char * get_agent_id_from_name(const char *agent_name) {
+    FILE* fp;
+    char* path = NULL;
+    char* buffer = NULL;
 
-    FILE *fp;
-    char *path = NULL;
-    char *buffer = NULL;
+    os_calloc(PATH_MAX, sizeof(char), path);
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), buffer);
 
-    os_calloc(PATH_MAX,sizeof(char),path);
-    os_calloc(OS_SIZE_65536 + 1,sizeof(char),buffer);
-
-    snprintf(path,PATH_MAX,"%s", KEYS_FILE);
+    snprintf(path, PATH_MAX, "%s", KEYS_FILE);
 
     fp = wfopen(path, "r");
 
-    if (!fp) {
+    if (!fp)
+    {
         mdebug1("Couldnt open file '%s'", KEYS_FILE);
         os_free(path);
         os_free(buffer);
@@ -814,24 +957,28 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     os_free(path);
 
-    while(fgets (buffer, OS_SIZE_65536, fp) != NULL) {
+    while (fgets(buffer, OS_SIZE_65536, fp) != NULL)
+    {
 
-        char **parts;
+        char** parts;
 
-        parts = OS_StrBreak(' ',buffer,4);
+        parts = OS_StrBreak(' ', buffer, 4);
 
-        if (!parts) {
+        if (!parts)
+        {
             continue;
         }
 
         // Make sure we have 4 parts
         int count = 0;
         int j;
-        for (j = 0; parts[j]; j++) {
+        for (j = 0; parts[j]; j++)
+        {
             count++;
         }
 
-        if (count < 3) {
+        if (count < 3)
+        {
             free_strarray(parts);
             os_free(buffer);
             fclose(fp);
@@ -839,8 +986,9 @@ char * get_agent_id_from_name(const char *agent_name) {
         }
 
         // If the agent name is the same, return its ID
-        if (strcmp(parts[1],agent_name) == 0) {
-            char *id = strdup(parts[0]);
+        if (strcmp(parts[1], agent_name) == 0)
+        {
+            char* id = strdup(parts[0]);
             fclose(fp);
             free_strarray(parts);
             os_free(buffer);
@@ -856,8 +1004,10 @@ char * get_agent_id_from_name(const char *agent_name) {
     return NULL;
 }
 
-cJSON* w_force_options_to_json(authd_force_options_t *force_options){
-    if(!force_options){
+cJSON* w_force_options_to_json(authd_force_options_t* force_options)
+{
+    if (!force_options)
+    {
         return NULL;
     }
 
@@ -876,67 +1026,86 @@ cJSON* w_force_options_to_json(authd_force_options_t *force_options){
 }
 
 /* Get primary IP address using sysinfo */
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
-static void *sysinfo_module_handle = NULL;
+#if defined(__linux__) || defined(__MACH__) || defined(sun) || defined(FreeBSD) || defined(OpenBSD)
+static void* sysinfo_module_handle = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-char* getPrimaryIP(void) {
-    char * agent_ip = NULL;
-    cJSON *object;
+char* getPrimaryIP(void)
+{
+    char* agent_ip = NULL;
+    cJSON* object;
 
-    if (!sysinfo_module_handle) {
-        if (sysinfo_module_handle = so_get_module_handle("sysinfo"), sysinfo_module_handle) {
+    if (!sysinfo_module_handle)
+    {
+        if (sysinfo_module_handle = so_get_module_handle("sysinfo"), sysinfo_module_handle)
+        {
             sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module_handle, "sysinfo_free_result");
             sysinfo_network_ptr = so_get_function_sym(sysinfo_module_handle, "sysinfo_networks");
         }
     }
 
-    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
+    if (sysinfo_network_ptr && sysinfo_free_result_ptr)
+    {
         const int error_code = sysinfo_network_ptr(&object);
-        if (error_code == 0) {
-            if (object) {
-                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                if (iface) {
+        if (error_code == 0)
+        {
+            if (object)
+            {
+                const cJSON* iface = cJSON_GetObjectItem(object, "iface");
+                if (iface)
+                {
                     const int size_ids = cJSON_GetArraySize(iface);
-                    for (int i = 0; i < size_ids; i++) {
-                        const cJSON *element = cJSON_GetArrayItem(iface, i);
-                        if (!element) {
+                    for (int i = 0; i < size_ids; i++)
+                    {
+                        const cJSON* element = cJSON_GetArrayItem(iface, i);
+                        if (!element)
+                        {
                             continue;
                         }
-                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
-                            const char *primaryIpType = NULL;
-                            const char *secondaryIpType = NULL;
+                        cJSON* gateway = cJSON_GetObjectItem(element, "gateway");
+                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " "))
+                        {
+                            const char* primaryIpType = NULL;
+                            const char* secondaryIpType = NULL;
 
-                            if (strchr(gateway->valuestring, ':') != NULL) {
+                            if (strchr(gateway->valuestring, ':') != NULL)
+                            {
                                 primaryIpType = "IPv6";
                                 secondaryIpType = "IPv4";
-                            } else {
+                            }
+                            else
+                            {
                                 primaryIpType = "IPv4";
                                 secondaryIpType = "IPv6";
                             }
 
-                            const cJSON *ip = cJSON_GetObjectItem(element, primaryIpType);
-                            if (NULL == ip) {
+                            const cJSON* ip = cJSON_GetObjectItem(element, primaryIpType);
+                            if (NULL == ip)
+                            {
                                 ip = cJSON_GetObjectItem(element, secondaryIpType);
-                                if (NULL == ip) {
+                                if (NULL == ip)
+                                {
                                     continue;
                                 }
                             }
                             const int size_proto_interfaces = cJSON_GetArraySize(ip);
-                            for (int j = 0; j < size_proto_interfaces; ++j) {
-                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
-                                if (!element_ip) {
+                            for (int j = 0; j < size_proto_interfaces; ++j)
+                            {
+                                const cJSON* element_ip = cJSON_GetArrayItem(ip, j);
+                                if (!element_ip)
+                                {
                                     continue;
                                 }
-                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
-                                if (address && cJSON_GetStringValue(address)) {
+                                cJSON* address = cJSON_GetObjectItem(element_ip, "address");
+                                if (address && cJSON_GetStringValue(address))
+                                {
                                     os_strdup(address->valuestring, agent_ip);
                                     break;
                                 }
                             }
-                            if (agent_ip) {
+                            if (agent_ip)
+                            {
                                 break;
                             }
                         }
@@ -944,12 +1113,15 @@ char* getPrimaryIP(void) {
                 }
                 sysinfo_free_result_ptr(&object);
             }
-        } else {
+        }
+        else
+        {
             mdebug1("Unable to get system network information. Error code: %d.", error_code);
         }
     }
 
-    if (agent_ip && (strchr(agent_ip, ':') != NULL)) {
+    if (agent_ip && (strchr(agent_ip, ':') != NULL))
+    {
         os_realloc(agent_ip, IPSIZE + 1, agent_ip);
         OS_ExpandIPv6(agent_ip, IPSIZE);
     }

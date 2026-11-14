@@ -30,8 +30,7 @@ std::string encodeStatelessEventLine(const uint8_t* frame, size_t length)
     return line;
 }
 
-EventAccumulator::EventAccumulator(uint64_t batchSizeBytes, uint32_t capMultiplier,
-                                   uint32_t batchIntervalMs)
+EventAccumulator::EventAccumulator(uint64_t batchSizeBytes, uint32_t capMultiplier, uint32_t batchIntervalMs)
     : m_capBytes(batchSizeBytes * capMultiplier)
     , m_batchIntervalMs(batchIntervalMs)
 {

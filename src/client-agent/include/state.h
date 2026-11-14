@@ -39,11 +39,11 @@
 #define W_AGENTD_FIELD_MESSAGES       "messages" ///< Message counters, grouped
 #define W_AGENTD_FIELD_MESSAGES_COUNT "count"    ///< Number of generated events
 
-#define W_AGENTD_FIELD_TASKS            "tasks"               ///< /control task counters, grouped
-#define W_AGENTD_FIELD_TASK_DISPATCHED  "dispatched"          ///< Tasks routed to a handler
-#define W_AGENTD_FIELD_TASK_DUPLICATE   "discarded_duplicate" ///< Tasks discarded as duplicates
-#define W_AGENTD_FIELD_TASK_FAILED      "failed"              ///< Tasks that failed to dispatch/execute
-#define W_AGENTD_FIELD_TOTAL            "total"               ///< Monotonic counter under each
+#define W_AGENTD_FIELD_TASKS           "tasks"               ///< /control task counters, grouped
+#define W_AGENTD_FIELD_TASK_DISPATCHED "dispatched"          ///< Tasks routed to a handler
+#define W_AGENTD_FIELD_TASK_DUPLICATE  "discarded_duplicate" ///< Tasks discarded as duplicates
+#define W_AGENTD_FIELD_TASK_FAILED     "failed"              ///< Tasks that failed to dispatch/execute
+#define W_AGENTD_FIELD_TOTAL           "total"               ///< Monotonic counter under each
 
 #include "shared.h"
 #include "read-agents.h"
@@ -52,26 +52,29 @@
 /**
  * @brief Represent the update field of the statistics
  */
-typedef enum {
-    UPDATE_STATUS = 0,   ///< Update status represented by agent_state_t
-    UPDATE_KEEPALIVE,    ///< Update keepalive represented by time_t
-    INCREMENT_MSG_COUNT, ///< Increment number of messages sent to the buffer
-    RESET_MSG_COUNT_ON_SHRINK, ///< Reset message counter due to buffer shrinking, taking into account new buffer capacity.
-    INCREMENT_TASK_DISPATCHED,         ///< A /control task was routed to a handler
+typedef enum
+{
+    UPDATE_STATUS = 0,         ///< Update status represented by agent_state_t
+    UPDATE_KEEPALIVE,          ///< Update keepalive represented by time_t
+    INCREMENT_MSG_COUNT,       ///< Increment number of messages sent to the buffer
+    RESET_MSG_COUNT_ON_SHRINK, ///< Reset message counter due to buffer shrinking, taking into account new buffer
+                               ///< capacity.
+    INCREMENT_TASK_DISPATCHED, ///< A /control task was routed to a handler
     INCREMENT_TASK_DISCARDED_DUPLICATE, ///< A /control task was discarded as a duplicate
-    INCREMENT_TASK_FAILED              ///< A /control task failed to dispatch/execute
+    INCREMENT_TASK_FAILED               ///< A /control task failed to dispatch/execute
 } w_agentd_state_update_t;
 
 /**
  * @brief A agent_state_t instance stores agent statistics
  */
-typedef struct agent_state_t {
-    agent_status_t status;  ///< Agent status
-    time_t last_keepalive;  ///< Last time a keepalive was sent
-    unsigned int msg_count; ///< Number of generated events
-    unsigned int task_dispatched;         ///< /control tasks routed to a handler
+typedef struct agent_state_t
+{
+    agent_status_t status;                 ///< Agent status
+    time_t last_keepalive;                 ///< Last time a keepalive was sent
+    unsigned int msg_count;                ///< Number of generated events
+    unsigned int task_dispatched;          ///< /control tasks routed to a handler
     unsigned int task_discarded_duplicate; ///< /control tasks discarded as duplicates
-    unsigned int task_failed;             ///< /control tasks that failed to dispatch/execute
+    unsigned int task_failed;              ///< /control tasks that failed to dispatch/execute
 } agent_state_t;
 
 /**
@@ -85,7 +88,7 @@ void w_agentd_state_init();
 #ifdef WIN32
 DWORD WINAPI state_main(__attribute__((unused)) LPVOID arg);
 #else
-void * state_main(__attribute__((unused)) void * args);
+void* state_main(__attribute__((unused)) void* args);
 #endif
 
 /**
@@ -93,7 +96,7 @@ void * state_main(__attribute__((unused)) void * args);
  * @param type Action
  * @param data New data value (if required)
  */
-void w_agentd_state_update(w_agentd_state_update_t type, void * data);
+void w_agentd_state_update(w_agentd_state_update_t type, void* data);
 
 /**
  * @brief Returns statistics in real time
@@ -110,6 +113,6 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data);
  *
  * @return Allocated object the caller owns, or NULL on allocation failure.
  */
-cJSON * w_agentd_state_get(void);
+cJSON* w_agentd_state_get(void);
 
 #endif /* AGENTD_STATE_H */

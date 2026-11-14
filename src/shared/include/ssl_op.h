@@ -38,22 +38,18 @@
  * certificate/key is given. Keep them equal to the schema defaults of auth.ssl_manager_cert/key and
  * remote.https.certificate/key. */
 #ifndef CLIENT
-#define KEYFILE             WAZUH_MANAGER_CONF_DIR "/certs/remoted-key.pem"
-#define CERTFILE            WAZUH_MANAGER_CONF_DIR "/certs/remoted.pem"
+#define KEYFILE  WAZUH_MANAGER_CONF_DIR "/certs/remoted-key.pem"
+#define CERTFILE WAZUH_MANAGER_CONF_DIR "/certs/remoted.pem"
 #else
-#define KEYFILE             "etc/certs/remoted-key.pem"
-#define CERTFILE            "etc/certs/remoted.pem"
+#define KEYFILE  "etc/certs/remoted-key.pem"
+#define CERTFILE "etc/certs/remoted.pem"
 #endif
 /* TLS 1.3 ciphersuite names (SSL_CTX_set_ciphersuites), not a legacy OpenSSL cipher list */
 #define DEFAULT_CIPHERS     "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #define MAX_SSL_PACKET_SIZE 16384
 
-SSL_CTX* os_ssl_keys(int is_server,
-                     const char* os_dir,
-                     const char* ciphers,
-                     const char* cert,
-                     const char* key,
-                     const char* ca_cert);
+SSL_CTX* os_ssl_keys(
+    int is_server, const char* os_dir, const char* ciphers, const char* cert, const char* key, const char* ca_cert);
 SSL_CTX* get_ssl_context(const char* ciphers);
 int load_cert_and_key(SSL_CTX* ctx, const char* cert, const char* key);
 int load_ca_cert(SSL_CTX* ctx, const char* ca_cert);

@@ -13,33 +13,36 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_realtime_adddir(const char *dir,
-                           __attribute__((unused)) directory_t *configuration) {
+int __wrap_realtime_adddir(const char* dir, __attribute__((unused)) directory_t* configuration)
+{
     check_expected(dir);
 
     return mock();
 }
 
-
-int __wrap_realtime_start() {
+int __wrap_realtime_start()
+{
     return 0;
 }
-void __wrap_realtime_process() {
+void __wrap_realtime_process()
+{
     function_called();
 }
 
-void expect_realtime_adddir_call(const char *path, int ret) {
+void expect_realtime_adddir_call(const char* path, int ret)
+{
     expect_string(__wrap_realtime_adddir, dir, path);
     will_return(__wrap_realtime_adddir, ret);
 }
 
-int __wrap_fim_add_inotify_watch(const char *dir,
-                                 __attribute__((unused)) const directory_t *configuration) {
+int __wrap_fim_add_inotify_watch(const char* dir, __attribute__((unused)) const directory_t* configuration)
+{
     check_expected(dir);
 
     return mock();
 }
 
-void __wrap_realtime_sanitize_watch_map() {
+void __wrap_realtime_sanitize_watch_map()
+{
     function_called();
 }

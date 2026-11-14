@@ -39,9 +39,9 @@ std::vector<std::string> tlsCertSanNames(X509* certificate)
     // surface as a baffling second error in unrelated code.
     ERR_set_mark();
 
-    GeneralNamesPtr sanList {static_cast<GENERAL_NAMES*>(
-                                 X509_get_ext_d2i(certificate, NID_subject_alt_name, nullptr, nullptr)),
-                             GENERAL_NAMES_free};
+    GeneralNamesPtr sanList {
+        static_cast<GENERAL_NAMES*>(X509_get_ext_d2i(certificate, NID_subject_alt_name, nullptr, nullptr)),
+        GENERAL_NAMES_free};
 
     if (!sanList)
     {

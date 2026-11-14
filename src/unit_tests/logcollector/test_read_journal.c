@@ -26,71 +26,100 @@ void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void* jour
 
 /* setup/teardown */
 
-static int group_setup(void ** state) {
+static int group_setup(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int group_teardown(void ** state) {
+static int group_teardown(void** state)
+{
     test_mode = 0;
     return 0;
 }
 
 /* Wraps of journal_log */
-int __wrap_w_journal_context_create(w_journal_context_t ** ctx) { return mock_type(int); }
+int __wrap_w_journal_context_create(w_journal_context_t** ctx)
+{
+    return mock_type(int);
+}
 
-int __wrap_w_journal_context_seek_most_recent(w_journal_context_t * ctx) { return mock_type(int); }
+int __wrap_w_journal_context_seek_most_recent(w_journal_context_t* ctx)
+{
+    return mock_type(int);
+}
 
-int __wrap_w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timestamp) {
+int __wrap_w_journal_context_seek_timestamp(w_journal_context_t* ctx, uint64_t timestamp)
+{
     // check timestamp
     check_expected(timestamp);
     return mock_type(int);
 }
 
-int __wrap_w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_filters_list_t filters) {
+int __wrap_w_journal_context_next_newest_filtered(w_journal_context_t* ctx, w_journal_filters_list_t filters)
+{
     return mock_type(int);
 }
 
-w_journal_entry_t * __wrap_w_journal_entry_dump(w_journal_context_t * ctx, w_journal_entry_dump_type_t type) {
-    return mock_type(w_journal_entry_t *);
+w_journal_entry_t* __wrap_w_journal_entry_dump(w_journal_context_t* ctx, w_journal_entry_dump_type_t type)
+{
+    return mock_type(w_journal_entry_t*);
 }
 
-char * __wrap_w_journal_entry_to_string(w_journal_entry_t * entry) { return mock_type(char *); }
+char* __wrap_w_journal_entry_to_string(w_journal_entry_t* entry)
+{
+    return mock_type(char*);
+}
 
-void __wrap_w_journal_entry_free(w_journal_entry_t * entry) { function_called(); }
+void __wrap_w_journal_entry_free(w_journal_entry_t* entry)
+{
+    function_called();
+}
 
-bool __wrap_w_journal_rotation_detected(w_journal_context_t* ctx) { return mock_type(bool); }
+bool __wrap_w_journal_rotation_detected(w_journal_context_t* ctx)
+{
+    return mock_type(bool);
+}
 
 /* Aux setters */
 void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp);
 bool journald_isDisabled();
 
 /* Other wraps */
-int __wrap_isDebug() { return mock(); }
+int __wrap_isDebug()
+{
+    return mock();
+}
 
-int __wrap_w_msg_hash_queues_push(
-    const char * str, char * file, unsigned long size, logtarget * targets, char queue_mq) {
+int __wrap_w_msg_hash_queues_push(const char* str, char* file, unsigned long size, logtarget* targets, char queue_mq)
+{
     check_expected(str);
     check_expected(size);
     return mock_type(int);
 }
 
-int __wrap_can_read() { return mock_type(int); }
+int __wrap_can_read()
+{
+    return mock_type(int);
+}
 
 /* Test w_journald_can_read */
-void test_w_journald_can_read_disable(void ** state) {
+void test_w_journald_can_read_disable(void** state)
+{
     set_gs_journald_global(0, true, NULL);
     assert_false(w_journald_can_read(0));
 }
 
-void test_w_journald_can_read_check_owner(void ** state) {
+void test_w_journald_can_read_check_owner(void** state)
+{
     set_gs_journald_global(2, false, NULL);
     assert_false(w_journald_can_read(1));
     will_return(__wrap_w_journal_rotation_detected, false);
     assert_true(w_journald_can_read(2));
 }
 
-void test_w_journald_can_read_first_time_init_fail() {
+void test_w_journald_can_read_first_time_init_fail()
+{
     int tid = 3;
 
     set_gs_journald_global(0, false, NULL);
@@ -102,7 +131,8 @@ void test_w_journald_can_read_first_time_init_fail() {
     assert_true(journald_isDisabled());
 }
 
-void test_w_journald_can_read_first_time_init_fail_seek() {
+void test_w_journald_can_read_first_time_init_fail_seek()
+{
     int tid = 3;
 
     set_gs_journald_global(0, false, NULL);
@@ -120,7 +150,8 @@ void test_w_journald_can_read_first_time_init_fail_seek() {
     assert_true(journald_isDisabled());
 }
 
-void test_w_journald_can_read_first_time_init_ofe_yes(void ** state) {
+void test_w_journald_can_read_first_time_init_ofe_yes(void** state)
+{
 
     int tid = 3;
 
@@ -138,7 +169,8 @@ void test_w_journald_can_read_first_time_init_ofe_yes(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_w_journald_can_read_first_time_init_ofe_no(void ** state) {
+void test_w_journald_can_read_first_time_init_ofe_no(void** state)
+{
     int tid = 3;
 
     set_gs_journald_global(0, false, NULL);
@@ -156,7 +188,8 @@ void test_w_journald_can_read_first_time_init_ofe_no(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_w_journald_rotation_failed(void** state) {
+void test_w_journald_rotation_failed(void** state)
+{
     int tid = 3;
 
     w_journal_context_t ctxt = {0};
@@ -176,7 +209,8 @@ void test_w_journald_rotation_failed(void** state) {
     assert_true(journald_isDisabled());
 }
 
-void test_w_journald_rotation_succeeded(void** state) {
+void test_w_journald_rotation_succeeded(void** state)
+{
     int tid = 3;
 
     w_journal_context_t ctxt = {0};
@@ -195,12 +229,14 @@ void test_w_journald_rotation_succeeded(void** state) {
 }
 
 /* w_journald_set_ofe */
-void test_w_journald_set_ofe(void ** state) {
+void test_w_journald_set_ofe(void** state)
+{
     w_journald_set_ofe(true);
     w_journald_set_ofe(false);
 }
 
-void test_read_journald_can_read_false(void ** state) {
+void test_read_journald_can_read_false(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -218,7 +254,8 @@ void test_read_journald_can_read_false(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_read_journald_next_entry_error(void ** state) {
+void test_read_journald_next_entry_error(void** state)
+{
     // Prepare environment
     w_journal_context_t ctxt = {0};
     set_gs_journald_global(0, false, &ctxt);
@@ -242,7 +279,8 @@ void test_read_journald_next_entry_error(void ** state) {
     assert_true(journald_isDisabled());
 }
 
-void test_read_journald_next_entry_no_new_entry(void ** state) {
+void test_read_journald_next_entry_no_new_entry(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -265,7 +303,8 @@ void test_read_journald_next_entry_no_new_entry(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_read_journald_dump_entry_error(void ** state) {
+void test_read_journald_dump_entry_error(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -295,7 +334,8 @@ void test_read_journald_dump_entry_error(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_read_journald_dump_entry_error_keeps_reading(void ** state) {
+void test_read_journald_dump_entry_error_keeps_reading(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -337,18 +377,21 @@ void test_read_journald_dump_entry_error_keeps_reading(void ** state) {
 
 static int saved_maximum_lines;
 
-static int setup_maximum_lines_2(void ** state) {
+static int setup_maximum_lines_2(void** state)
+{
     saved_maximum_lines = maximum_lines;
     maximum_lines = 2;
     return 0;
 }
 
-static int teardown_maximum_lines(void ** state) {
+static int teardown_maximum_lines(void** state)
+{
     maximum_lines = saved_maximum_lines;
     return 0;
 }
 
-void test_read_journald_dump_entry_error_counts_toward_max_lines(void ** state) {
+void test_read_journald_dump_entry_error_counts_toward_max_lines(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -361,7 +404,8 @@ void test_read_journald_dump_entry_error_counts_toward_max_lines(void ** state) 
     int rc = 0;
 
     // Two entries that cannot be formatted use up the whole pass
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 2; i++)
+    {
         will_return(__wrap_can_read, 1);
         will_return(__wrap_w_journal_context_next_newest_filtered, 1);
         will_return(__wrap_w_journal_entry_dump, NULL);
@@ -374,7 +418,8 @@ void test_read_journald_dump_entry_error_counts_toward_max_lines(void ** state) 
     assert_false(journald_isDisabled());
 }
 
-void test_read_journald_dump_entry_max_len(void ** state) {
+void test_read_journald_dump_entry_max_len(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -412,7 +457,8 @@ void test_read_journald_dump_entry_max_len(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-void test_read_journald_dump_entry_debug(void ** state) {
+void test_read_journald_dump_entry_debug(void** state)
+{
 
     // Prepare environment
     w_journal_context_t ctxt = {0};
@@ -449,7 +495,8 @@ void test_read_journald_dump_entry_debug(void ** state) {
     assert_false(journald_isDisabled());
 }
 
-int main(void) {
+int main(void)
+{
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_journald_set_ofe),
@@ -468,8 +515,8 @@ int main(void) {
         cmocka_unit_test(test_read_journald_next_entry_no_new_entry),
         cmocka_unit_test(test_read_journald_dump_entry_error),
         cmocka_unit_test(test_read_journald_dump_entry_error_keeps_reading),
-        cmocka_unit_test_setup_teardown(test_read_journald_dump_entry_error_counts_toward_max_lines,
-                                        setup_maximum_lines_2, teardown_maximum_lines),
+        cmocka_unit_test_setup_teardown(
+            test_read_journald_dump_entry_error_counts_toward_max_lines, setup_maximum_lines_2, teardown_maximum_lines),
         cmocka_unit_test(test_read_journald_dump_entry_max_len),
         cmocka_unit_test(test_read_journald_dump_entry_debug),
     };

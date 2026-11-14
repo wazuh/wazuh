@@ -25,67 +25,67 @@
 
 #define TEST_MOCKED
 
-void w_validate_bytes_non_number (void **state)
+void w_validate_bytes_non_number(void** state)
 {
-    const char * value = "hello";
+    const char* value = "hello";
     long long expected_value = -1;
 
     long long ret = w_validate_bytes(value);
     assert_memory_equal(&ret, &expected_value, sizeof(long long));
 }
 
-void w_validate_bytes_bytes (void **state)
+void w_validate_bytes_bytes(void** state)
 {
-    const char * value = "1024B";
+    const char* value = "1024B";
     long long expected_value = 1024;
 
     long long ret = w_validate_bytes(value);
     assert_memory_equal(&ret, &expected_value, sizeof(long long));
 }
 
-void w_validate_bytes_kilobytes (void **state)
+void w_validate_bytes_kilobytes(void** state)
 {
-    const char * value = "1024KB";
-    long long expected_value = 1024*1024;
+    const char* value = "1024KB";
+    long long expected_value = 1024 * 1024;
 
     long long ret = w_validate_bytes(value);
     assert_memory_equal(&ret, &expected_value, sizeof(long long));
 }
 
-void w_validate_bytes_megabytes (void **state)
+void w_validate_bytes_megabytes(void** state)
 {
-    const char * value = "1024MB";
-    long long expected_value = 1024*1024*1024;
+    const char* value = "1024MB";
+    long long expected_value = 1024 * 1024 * 1024;
 
     long long ret = w_validate_bytes(value);
     assert_memory_equal(&ret, &expected_value, sizeof(long long));
 }
 
-void w_validate_bytes_gigabytes (void **state)
+void w_validate_bytes_gigabytes(void** state)
 {
-    const char * value = "1024GB";
-    long long expected_value = 1024 * ((long long) 1024*1024*1024);
+    const char* value = "1024GB";
+    long long expected_value = 1024 * ((long long)1024 * 1024 * 1024);
 
     long long ret = w_validate_bytes(value);
     assert_memory_equal(&ret, &expected_value, sizeof(long long));
 }
 
-void OS_IsValidIP_null(void **state)
+void OS_IsValidIP_null(void** state)
 {
     int ret = OS_IsValidIP(NULL, NULL);
     assert_int_equal(ret, 0);
 }
 
-void OS_IsValidIP_any(void **state)
+void OS_IsValidIP_any(void** state)
 {
     int ret = OS_IsValidIP("any", NULL);
     assert_int_equal(ret, 2);
 }
 
-void OS_IsValidIP_any_struct(void **state)
+void OS_IsValidIP_any_struct(void** state)
 {
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
 
     os_calloc(1, sizeof(os_ip), ret_ip);
 
@@ -100,10 +100,11 @@ void OS_IsValidIP_any_struct(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_not_valid_ip(void **state)
+void OS_IsValidIP_not_valid_ip(void** state)
 {
     unsigned int i = 0;
-    while (ip_address_regex[i] != NULL) {
+    while (ip_address_regex[i] != NULL)
+    {
         expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
         will_return(__wrap_w_expression_compile, true);
         will_return(__wrap_w_expression_match, false);
@@ -114,9 +115,9 @@ void OS_IsValidIP_not_valid_ip(void **state)
     assert_int_equal(ret, 0);
 }
 
-void OS_IsValidIP_valid_multi_ipv4(void **state)
+void OS_IsValidIP_valid_multi_ipv4(void** state)
 {
-    const char * ip_to_test[] = {
+    const char* ip_to_test[] = {
         "1.1.1.1",
         "255.255.255.255",
         "100.100.100.100",
@@ -128,9 +129,10 @@ void OS_IsValidIP_valid_multi_ipv4(void **state)
     };
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
 
-    for (int i = 0; ip_to_test[i] != NULL; i++) {
+    for (int i = 0; ip_to_test[i] != NULL; i++)
+    {
 
         os_calloc(1, sizeof(os_ip), ret_ip);
 
@@ -154,9 +156,9 @@ void OS_IsValidIP_valid_multi_ipv4(void **state)
     }
 }
 
-void OS_IsValidIP_not_valid_multi_ipv4(void **state)
+void OS_IsValidIP_not_valid_multi_ipv4(void** state)
 {
-    const char * ip_to_test[] = {
+    const char* ip_to_test[] = {
         // more or less than 4 octets
         "111",
         "01.01",
@@ -187,9 +189,10 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
     };
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
 
-    for (int i = 0; ip_to_test[i] != NULL; i++) {
+    for (int i = 0; ip_to_test[i] != NULL; i++)
+    {
 
         os_calloc(1, sizeof(os_ip), ret_ip);
 
@@ -198,7 +201,8 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
         will_return(__wrap_w_expression_match, true);
 
         unsigned int a = 0;
-        while (ip_address_regex[a] != NULL) {
+        while (ip_address_regex[a] != NULL)
+        {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
             will_return(__wrap_w_expression_compile, true);
             will_return(__wrap_w_expression_match, false);
@@ -213,11 +217,11 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
     }
 }
 
-void OS_IsValidIP_valid_ipv4_CIDR(void **state)
+void OS_IsValidIP_valid_ipv4_CIDR(void** state)
 {
     char ip_to_test[] = {"192.168.10.12/32"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -240,11 +244,11 @@ void OS_IsValidIP_valid_ipv4_CIDR(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_fail(void **state)
+void OS_IsValidIP_valid_ipv4_fail(void** state)
 {
     char ip_to_test[] = {"192.168.10.12/32"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -265,11 +269,11 @@ void OS_IsValidIP_valid_ipv4_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_zero_fail(void **state)
+void OS_IsValidIP_valid_ipv4_zero_fail(void** state)
 {
     char ip_to_test[] = {"0.0.0.0/32"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -290,11 +294,11 @@ void OS_IsValidIP_valid_ipv4_zero_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_zero_pass(void **state)
+void OS_IsValidIP_valid_ipv4_zero_pass(void** state)
 {
     char ip_to_test[] = {"0.0.0.0/32"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -315,11 +319,11 @@ void OS_IsValidIP_valid_ipv4_zero_pass(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_netmask(void **state)
+void OS_IsValidIP_valid_ipv4_netmask(void** state)
 {
     char ip_to_test[] = {"32.32.32.32/255.255.255.255"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -335,7 +339,6 @@ void OS_IsValidIP_valid_ipv4_netmask(void **state)
     will_return(__wrap_get_ipv4_numeric, OS_SUCCESS);
     will_return(__wrap_get_ipv4_numeric, OS_SUCCESS);
 
-
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
     assert_string_equal(ip_to_test, ret_ip->ip);
     assert_int_equal(ret, 2);
@@ -344,11 +347,11 @@ void OS_IsValidIP_valid_ipv4_netmask(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_0_netmask(void **state)
+void OS_IsValidIP_valid_ipv4_0_netmask(void** state)
 {
     char ip_to_test[] = {"0.0.0.0/255.255.255.255"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -372,11 +375,11 @@ void OS_IsValidIP_valid_ipv4_0_netmask(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_netmask_0(void **state)
+void OS_IsValidIP_valid_ipv4_netmask_0(void** state)
 {
     char ip_to_test[] = {"16.16.16.16/255.255.255.0"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -400,11 +403,11 @@ void OS_IsValidIP_valid_ipv4_netmask_0(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_netmask_fail(void **state)
+void OS_IsValidIP_valid_ipv4_netmask_fail(void** state)
 {
     char ip_to_test[] = {"32.32.32.32/255.255.255.255"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -420,18 +423,17 @@ void OS_IsValidIP_valid_ipv4_netmask_fail(void **state)
     will_return(__wrap_get_ipv4_numeric, OS_SUCCESS);
     will_return(__wrap_get_ipv4_numeric, OS_INVALID);
 
-
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
     assert_int_equal(ret, 0);
 
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_sub_string_0(void **state)
+void OS_IsValidIP_valid_ipv4_sub_string_0(void** state)
 {
     char ip_to_test[] = {"32.32.32.32/255.255.255.255"};
 
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -456,7 +458,7 @@ void OS_IsValidIP_valid_ipv4_sub_string_0(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv4_netmask_0_NULL_struct(void **state)
+void OS_IsValidIP_valid_ipv4_netmask_0_NULL_struct(void** state)
 {
     char ip_to_test[] = {"16.16.16.16/255.255.255.0"};
 
@@ -470,9 +472,9 @@ void OS_IsValidIP_valid_ipv4_netmask_0_NULL_struct(void **state)
     assert_int_equal(ret, 2);
 }
 
-void OS_IsValidIP_valid_multi_ipv6(void **state)
+void OS_IsValidIP_valid_multi_ipv6(void** state)
 {
-    const char * ip_to_test[] = {
+    const char* ip_to_test[] = {
         "2001:db8:abcd:0012:0000:0000:0000:0000",
         "2001:db8:abcd:0012:ffff:ffff:ffff:ffff",
         "fe80::ceaf:9ff2:b33c:1ca7",
@@ -515,9 +517,10 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
     };
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
 
-    for (int i = 0; ip_to_test[i] != NULL; i++) {
+    for (int i = 0; ip_to_test[i] != NULL; i++)
+    {
 
         os_calloc(1, sizeof(os_ip), ret_ip);
 
@@ -540,7 +543,7 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
         will_return(__wrap_get_ipv6_numeric, OS_SUCCESS);
 
         ret = OS_IsValidIP(ip_to_test[i], ret_ip);
-        //assert_string_equal(ip_to_test[i], ret_ip->ip);
+        // assert_string_equal(ip_to_test[i], ret_ip->ip);
         assert_int_equal(ret, 1);
         assert_int_equal(ret_ip->is_ipv6, TRUE);
         assert_non_null(ret_ip->ipv6->ip_address);
@@ -549,10 +552,10 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
     }
 }
 
-void OS_IsValidIP_not_valid_multi_ipv6(void **state)
+void OS_IsValidIP_not_valid_multi_ipv6(void** state)
 {
 
-    const char * ip_to_test[] = {
+    const char* ip_to_test[] = {
         "::11AA:11AA:11AA:11AA:11AA::11AA",
         "::11AA:11AA:11AA:11AA:11AA:11AA:",
         "::11AA:11AA::11AA:11AA:11AA:",
@@ -564,9 +567,10 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
     };
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
 
-    for (int i = 0; ip_to_test[i] != NULL; i++) {
+    for (int i = 0; ip_to_test[i] != NULL; i++)
+    {
 
         os_calloc(1, sizeof(os_ip), ret_ip);
 
@@ -575,7 +579,8 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
         will_return(__wrap_w_expression_match, true);
 
         int a = 0;
-        while (ip_address_regex[a] != NULL) {
+        while (ip_address_regex[a] != NULL)
+        {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
             will_return(__wrap_w_expression_compile, true);
             will_return(__wrap_w_expression_match, false);
@@ -590,12 +595,12 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
     }
 }
 
-void OS_IsValidIP_valid_ipv6_prefix(void **state)
+void OS_IsValidIP_valid_ipv6_prefix(void** state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/60"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -618,14 +623,14 @@ void OS_IsValidIP_valid_ipv6_prefix(void **state)
     will_return(__wrap_get_ipv6_numeric, OS_SUCCESS);
 
     ret = OS_IsValidIP(ip_to_test, ret_ip);
-    //assert_string_equal(ip_to_test, ret_ip->ip);
+    // assert_string_equal(ip_to_test, ret_ip->ip);
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, TRUE);
 
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv6_prefix_NULL_struct(void **state)
+void OS_IsValidIP_valid_ipv6_prefix_NULL_struct(void** state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
 
@@ -645,12 +650,12 @@ void OS_IsValidIP_valid_ipv6_prefix_NULL_struct(void **state)
     assert_int_equal(ret, 2);
 }
 
-void OS_IsValidIP_valid_ipv6_numeric_fail(void **state)
+void OS_IsValidIP_valid_ipv6_numeric_fail(void** state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -676,12 +681,12 @@ void OS_IsValidIP_valid_ipv6_numeric_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv6_converNetmask_fail(void **state)
+void OS_IsValidIP_valid_ipv6_converNetmask_fail(void** state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -708,12 +713,12 @@ void OS_IsValidIP_valid_ipv6_converNetmask_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
+void OS_IsValidIP_valid_ipv6_sub_string_0(void** state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -744,12 +749,12 @@ void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFound_not_valid_ip(void **state)
+void OS_IPFound_not_valid_ip(void** state)
 {
     char ip_to_test[] = {"2001::db8:abcd::0012/64"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     will_return(__wrap_get_ipv4_numeric, OS_INVALID);
@@ -761,12 +766,12 @@ void OS_IPFound_not_valid_ip(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFound_valid_ipv4(void **state)
+void OS_IPFound_valid_ipv4(void** state)
 {
     char ip_to_test[] = {"255.255.255.255"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("255.255.255.255", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
@@ -783,12 +788,12 @@ void OS_IPFound_valid_ipv4(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFound_valid_ipv4_negated(void **state)
+void OS_IPFound_valid_ipv4_negated(void** state)
 {
     char ip_to_test[] = {"16.16.16.16"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("!16.16.16.16", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
@@ -805,22 +810,24 @@ void OS_IPFound_valid_ipv4_negated(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFound_valid_ipv6(void **state)
+void OS_IPFound_valid_ipv6(void** state)
 {
     char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
     ret_ip->is_ipv6 = true;
 
     unsigned int a = 0;
-    for(a = 0; a < 16; a++) {
+    for (a = 0; a < 16; a++)
+    {
         ret_ip->ipv6->ip_address[a] = 0x10;
     }
-    for(a = 0; a < 16; a++) {
+    for (a = 0; a < 16; a++)
+    {
         ret_ip->ipv6->netmask[a] = 0xFF;
     }
 
@@ -834,22 +841,24 @@ void OS_IPFound_valid_ipv6(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFound_valid_ipv6_fail(void **state)
+void OS_IPFound_valid_ipv6_fail(void** state)
 {
     char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
     ret_ip->is_ipv6 = true;
 
     unsigned int a = 0;
-    for(a = 0; a < 16; a++) {
+    for (a = 0; a < 16; a++)
+    {
         ret_ip->ipv6->ip_address[a] = 0x10;
     }
-    for(a = 0; a < 16; a++) {
+    for (a = 0; a < 16; a++)
+    {
         ret_ip->ipv6->netmask[a] = 0xFF;
     }
 
@@ -863,9 +872,9 @@ void OS_IPFound_valid_ipv6_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFound_ipv4_query_ipv6_rule(void **state)
+void OS_IPFound_ipv4_query_ipv6_rule(void** state)
 {
-    os_ip *rule;
+    os_ip* rule;
     os_calloc(1, sizeof(os_ip), rule);
     os_strdup("::/0", rule->ip);
     os_calloc(1, sizeof(os_ipv6), rule->ipv6);
@@ -879,9 +888,9 @@ void OS_IPFound_ipv4_query_ipv6_rule(void **state)
     w_free_os_ip(rule);
 }
 
-void OS_IPFound_ipv6_query_ipv4_rule(void **state)
+void OS_IPFound_ipv6_query_ipv4_rule(void** state)
 {
-    os_ip *rule;
+    os_ip* rule;
     os_calloc(1, sizeof(os_ip), rule);
     os_strdup("10.0.0.0/8", rule->ip);
     os_calloc(1, sizeof(os_ipv4), rule->ipv4);
@@ -899,9 +908,9 @@ void OS_IPFound_ipv6_query_ipv4_rule(void **state)
     w_free_os_ip(rule);
 }
 
-void OS_IPFound_ipv6_query_any_rule(void **state)
+void OS_IPFound_ipv6_query_any_rule(void** state)
 {
-    os_ip *rule;
+    os_ip* rule;
     os_calloc(1, sizeof(os_ip), rule);
     os_strdup("any", rule->ip);
     os_calloc(1, sizeof(os_ipv6), rule->ipv6);
@@ -916,10 +925,10 @@ void OS_IPFound_ipv6_query_any_rule(void **state)
     w_free_os_ip(rule);
 }
 
-void OS_IPFoundList_ipv6_query_ipv4_rule(void **state)
+void OS_IPFoundList_ipv6_query_ipv4_rule(void** state)
 {
-    os_ip **rules;
-    os_calloc(2, sizeof(os_ip *), rules);
+    os_ip** rules;
+    os_calloc(2, sizeof(os_ip*), rules);
     os_calloc(1, sizeof(os_ip), rules[0]);
     os_strdup("10.0.0.0/8", rules[0]->ip);
     os_calloc(1, sizeof(os_ipv4), rules[0]->ipv4);
@@ -937,10 +946,10 @@ void OS_IPFoundList_ipv6_query_ipv4_rule(void **state)
     free(rules);
 }
 
-void OS_IPFoundList_ipv4_query_ipv6_rule(void **state)
+void OS_IPFoundList_ipv4_query_ipv6_rule(void** state)
 {
-    os_ip **rules;
-    os_calloc(2, sizeof(os_ip *), rules);
+    os_ip** rules;
+    os_calloc(2, sizeof(os_ip*), rules);
     os_calloc(1, sizeof(os_ip), rules[0]);
     os_strdup("::/0", rules[0]->ip);
     os_calloc(1, sizeof(os_ipv6), rules[0]->ipv6);
@@ -955,12 +964,12 @@ void OS_IPFoundList_ipv4_query_ipv6_rule(void **state)
     free(rules);
 }
 
-void OS_IPFoundList_fail(void **state)
+void OS_IPFoundList_fail(void** state)
 {
     char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     will_return(__wrap_get_ipv4_numeric, OS_INVALID);
@@ -972,13 +981,13 @@ void OS_IPFoundList_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_IPFoundList_valid_ipv4(void **state)
+void OS_IPFoundList_valid_ipv4(void** state)
 {
     char ip_to_test[] = {"16.16.16.32"};
 
     int ret = 0;
-    os_ip **ret_ip;
-    os_calloc(3, sizeof(os_ip *), ret_ip);
+    os_ip** ret_ip;
+    os_calloc(3, sizeof(os_ip*), ret_ip);
     os_calloc(1, sizeof(os_ip), ret_ip[0]);
     os_calloc(1, sizeof(os_ip), ret_ip[1]);
 
@@ -1005,13 +1014,13 @@ void OS_IPFoundList_valid_ipv4(void **state)
     free(ret_ip);
 }
 
-void OS_IPFoundList_valid_ipv4_negated(void **state)
+void OS_IPFoundList_valid_ipv4_negated(void** state)
 {
     char ip_to_test[] = {"!16.16.16.16"};
 
     int ret = 0;
-    os_ip **ret_ip;
-    os_calloc(2, sizeof(os_ip *), ret_ip);
+    os_ip** ret_ip;
+    os_calloc(2, sizeof(os_ip*), ret_ip);
     os_calloc(1, sizeof(os_ip), ret_ip[0]);
 
     os_strdup("!16.16.16.16", (*ret_ip[0]).ip);
@@ -1031,13 +1040,13 @@ void OS_IPFoundList_valid_ipv4_negated(void **state)
     free(ret_ip);
 }
 
-void OS_IPFoundList_valid_ipv4_not_found(void **state)
+void OS_IPFoundList_valid_ipv4_not_found(void** state)
 {
     char ip_to_test[] = {"16.16.16.32"};
 
     int ret = 0;
-    os_ip **ret_ip;
-    os_calloc(4, sizeof(os_ip *), ret_ip);
+    os_ip** ret_ip;
+    os_calloc(4, sizeof(os_ip*), ret_ip);
     os_calloc(1, sizeof(os_ip), ret_ip[0]);
     os_calloc(1, sizeof(os_ip), ret_ip[1]);
     os_calloc(1, sizeof(os_ip), ret_ip[2]);
@@ -1072,26 +1081,29 @@ void OS_IPFoundList_valid_ipv4_not_found(void **state)
     free(ret_ip);
 }
 
-void OS_IPFoundList_valid_ipv6_fail(void **state)
+void OS_IPFoundList_valid_ipv6_fail(void** state)
 {
     char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
 
     int ret = 0;
-    os_ip **ret_ip;
-    os_calloc(3, sizeof(os_ip *), ret_ip);
+    os_ip** ret_ip;
+    os_calloc(3, sizeof(os_ip*), ret_ip);
     os_calloc(1, sizeof(os_ip), ret_ip[0]);
     os_calloc(1, sizeof(os_ip), ret_ip[1]);
 
-    for(unsigned int i = 0; i < 2; i++) {
+    for (unsigned int i = 0; i < 2; i++)
+    {
         os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
         os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
         (*ret_ip[i]).is_ipv6 = true;
 
         unsigned int a = 0;
-        for(a = 0; a < 16; a++) {
+        for (a = 0; a < 16; a++)
+        {
             (*ret_ip[i]).ipv6->ip_address[a] = 0x10;
         }
-        for(a = 0; a < 16; a++) {
+        for (a = 0; a < 16; a++)
+        {
             (*ret_ip[i]).ipv6->netmask[a] = 0xFF;
         }
     }
@@ -1108,26 +1120,29 @@ void OS_IPFoundList_valid_ipv6_fail(void **state)
     free(ret_ip);
 }
 
-void OS_IPFoundList_valid_ipv6(void **state)
+void OS_IPFoundList_valid_ipv6(void** state)
 {
     char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
 
     int ret = 0;
-    os_ip **ret_ip;
-    os_calloc(3, sizeof(os_ip *), ret_ip);
+    os_ip** ret_ip;
+    os_calloc(3, sizeof(os_ip*), ret_ip);
     os_calloc(1, sizeof(os_ip), ret_ip[0]);
     os_calloc(1, sizeof(os_ip), ret_ip[1]);
 
-    for(unsigned int i = 0; i < 2; i++) {
+    for (unsigned int i = 0; i < 2; i++)
+    {
         os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
         os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
         (*ret_ip[i]).is_ipv6 = true;
 
         unsigned int a = 0;
-        for(a = 0; a < 16; a++) {
+        for (a = 0; a < 16; a++)
+        {
             (*ret_ip[i]).ipv6->ip_address[a] = 0x20;
         }
-        for(a = 0; a < 16; a++) {
+        for (a = 0; a < 16; a++)
+        {
             (*ret_ip[i]).ipv6->netmask[a] = 0xFF;
         }
     }
@@ -1144,12 +1159,12 @@ void OS_IPFoundList_valid_ipv6(void **state)
     free(ret_ip);
 }
 
-void OS_CIDRtoStr_any(void **state)
+void OS_CIDRtoStr_any(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("any", ret_ip->ip);
@@ -1166,12 +1181,12 @@ void OS_CIDRtoStr_any(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv4(void **state)
+void OS_CIDRtoStr_valid_ipv4(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("16.16.16.16", ret_ip->ip);
@@ -1188,19 +1203,20 @@ void OS_CIDRtoStr_valid_ipv4(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv6CIDR_64(void **state)
+void OS_CIDRtoStr_valid_ipv6CIDR_64(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
 
     ret_ip->is_ipv6 = true;
-    for (unsigned int a = 0; a < 8; a++) {
+    for (unsigned int a = 0; a < 8; a++)
+    {
         ret_ip->ipv6->netmask[a] = 0xFF;
     }
 
@@ -1211,19 +1227,20 @@ void OS_CIDRtoStr_valid_ipv6CIDR_64(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv6CIDR_127(void **state)
+void OS_CIDRtoStr_valid_ipv6CIDR_127(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
 
     ret_ip->is_ipv6 = true;
-    for (unsigned int a = 0; a < 15; a++) {
+    for (unsigned int a = 0; a < 15; a++)
+    {
         ret_ip->ipv6->netmask[a] = 0xFF;
     }
     ret_ip->ipv6->netmask[15] = 0xFE;
@@ -1235,19 +1252,20 @@ void OS_CIDRtoStr_valid_ipv6CIDR_127(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv6CIDR_128(void **state)
+void OS_CIDRtoStr_valid_ipv6CIDR_128(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
 
     ret_ip->is_ipv6 = true;
-    for (unsigned int a = 0; a < 16; a++) {
+    for (unsigned int a = 0; a < 16; a++)
+    {
         ret_ip->ipv6->netmask[a] = 0xFF;
     }
 
@@ -1258,12 +1276,12 @@ void OS_CIDRtoStr_valid_ipv6CIDR_128(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv6(void **state)
+void OS_CIDRtoStr_valid_ipv6(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", ret_ip->ip);
@@ -1278,12 +1296,12 @@ void OS_CIDRtoStr_valid_ipv6(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv4_CIDR_24(void **state)
+void OS_CIDRtoStr_valid_ipv4_CIDR_24(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("16.16.16.16", ret_ip->ip);
@@ -1301,12 +1319,12 @@ void OS_CIDRtoStr_valid_ipv4_CIDR_24(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_CIDRtoStr_valid_ipv4_CIDR_0(void **state)
+void OS_CIDRtoStr_valid_ipv4_CIDR_0(void** state)
 {
     char ip_to_test[IPSIZE] = {0};
 
     int ret = 0;
-    os_ip *ret_ip;
+    os_ip* ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
     os_strdup("32.32.32.32", ret_ip->ip);
@@ -1324,7 +1342,8 @@ void OS_CIDRtoStr_valid_ipv4_CIDR_0(void **state)
     w_free_os_ip(ret_ip);
 }
 
-void OS_GetIPv4FromIPv6_success(void **state) {
+void OS_GetIPv4FromIPv6_success(void** state)
+{
 
     char address[IPSIZE + 1] = {0};
     strncpy(address, "::ffff:10.2.2.3", IPSIZE);
@@ -1340,7 +1359,8 @@ void OS_GetIPv4FromIPv6_success(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void OS_GetIPv4FromIPv6_netmask_success(void **state) {
+void OS_GetIPv4FromIPv6_netmask_success(void** state)
+{
 
     char address[IPSIZE + 1] = {0};
     strncpy(address, "::ffff:10.2.2.3/255.255.255.255", IPSIZE);
@@ -1356,7 +1376,8 @@ void OS_GetIPv4FromIPv6_netmask_success(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void OS_GetIPv4FromIPv6_compile_fail(void **state) {
+void OS_GetIPv4FromIPv6_compile_fail(void** state)
+{
 
     char address[IPSIZE + 1] = {0};
     strncpy(address, "10.2.2.4", IPSIZE);
@@ -1370,7 +1391,8 @@ void OS_GetIPv4FromIPv6_compile_fail(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void OS_GetIPv4FromIPv6_match_fail(void **state) {
+void OS_GetIPv4FromIPv6_match_fail(void** state)
+{
 
     char address[IPSIZE + 1] = {0};
     strncpy(address, "10.2.2.5/64", IPSIZE);
@@ -1385,7 +1407,8 @@ void OS_GetIPv4FromIPv6_match_fail(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void OS_GetIPv4FromIPv6_empty_group(void **state) {
+void OS_GetIPv4FromIPv6_empty_group(void** state)
+{
 
     char address[IPSIZE + 1] = {0};
     strncpy(address, "::ffff:10.2.2.3/255.255.255.255", IPSIZE);
@@ -1404,11 +1427,11 @@ void OS_GetIPv4FromIPv6_empty_group(void **state) {
 /* validate_op.c points the defines files at the working directory under WAZUH_UNIT_TESTING, so the
  * real reader can be driven with a real file. Only the local one is written: an absent key falls
  * through to "./internal_options.conf", and a missing defines file is not an error. */
-static int setup_local_defines(void **state)
+static int setup_local_defines(void** state)
 {
     (void)state;
 
-    FILE *fp = fopen("./local_internal_options.conf", "w");
+    FILE* fp = fopen("./local_internal_options.conf", "w");
     assert_non_null(fp);
     fputs("agent.blank_value=\n"
           "agent.good_value=7\n"
@@ -1427,7 +1450,7 @@ static int setup_local_defines(void **state)
     return 0;
 }
 
-static int teardown_local_defines(void **state)
+static int teardown_local_defines(void** state)
 {
     (void)state;
 
@@ -1437,7 +1460,7 @@ static int teardown_local_defines(void **state)
 }
 
 /* Refused: an empty value carries no digit, even where 0 would be in range. */
-void getDefine_Int_default_empty_value_exits(void **state)
+void getDefine_Int_default_empty_value_exits(void** state)
 {
     (void)state;
 
@@ -1446,14 +1469,14 @@ void getDefine_Int_default_empty_value_exits(void **state)
     expect_assert_failure(getDefine_Int_default("agent", "blank_value", 0, 10, 5));
 }
 
-void getDefine_Int_default_absent_key_returns_default(void **state)
+void getDefine_Int_default_absent_key_returns_default(void** state)
 {
     (void)state;
 
     assert_int_equal(getDefine_Int_default("agent", "never_written", 0, 10, 5), 5);
 }
 
-void getDefine_Int_default_present_value_is_read(void **state)
+void getDefine_Int_default_present_value_is_read(void** state)
 {
     (void)state;
 
@@ -1461,14 +1484,14 @@ void getDefine_Int_default_present_value_is_read(void **state)
 }
 
 /* A negative value is read where the declared range allows it (e.g. wazuh_modules.task_nice). */
-void getDefine_Int_default_negative_value_in_range_is_read(void **state)
+void getDefine_Int_default_negative_value_in_range_is_read(void** state)
 {
     (void)state;
 
     assert_int_equal(getDefine_Int_default("agent", "negative_value", -20, 19, 0), -5);
 }
 
-void getDefine_Int_default_negative_value_out_of_range_exits(void **state)
+void getDefine_Int_default_negative_value_out_of_range_exits(void** state)
 {
     (void)state;
 
@@ -1477,7 +1500,7 @@ void getDefine_Int_default_negative_value_out_of_range_exits(void **state)
     expect_assert_failure(getDefine_Int_default("agent", "negative_value", 0, 10, 5));
 }
 
-void getDefine_Int_default_lone_minus_exits(void **state)
+void getDefine_Int_default_lone_minus_exits(void** state)
 {
     (void)state;
 
@@ -1486,7 +1509,7 @@ void getDefine_Int_default_lone_minus_exits(void **state)
     expect_assert_failure(getDefine_Int_default("agent", "lone_minus", -20, 19, 0));
 }
 
-void getDefine_Int_default_inner_minus_exits(void **state)
+void getDefine_Int_default_inner_minus_exits(void** state)
 {
     (void)state;
 
@@ -1496,51 +1519,55 @@ void getDefine_Int_default_inner_minus_exits(void **state)
 }
 
 /* A value past the int range is refused, never wrapped (4294967298 was read as 2, 4294967296 as 0). */
-void getDefine_Int_default_wrapping_value_exits(void **state)
+void getDefine_Int_default_wrapping_value_exits(void** state)
 {
     (void)state;
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.wraps_to_two: '4294967298'.");
+    expect_string(
+        __wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.wraps_to_two: '4294967298'.");
 
     expect_assert_failure(getDefine_Int_default("agent", "wraps_to_two", 0, 2, 0));
 }
 
-void getDefine_Int_default_wrapping_to_zero_exits(void **state)
+void getDefine_Int_default_wrapping_to_zero_exits(void** state)
 {
     (void)state;
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.wraps_to_zero: '4294967296'.");
+    expect_string(
+        __wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.wraps_to_zero: '4294967296'.");
 
     expect_assert_failure(getDefine_Int_default("agent", "wraps_to_zero", 0, 2, 0));
 }
 
-void getDefine_Int_default_past_long_long_exits(void **state)
+void getDefine_Int_default_past_long_long_exits(void** state)
 {
     (void)state;
 
-    expect_string(__wrap__merror_exit, formatted_msg,
+    expect_string(__wrap__merror_exit,
+                  formatted_msg,
                   "(2302): Invalid definition for agent.past_long_long: '99999999999999999999'.");
 
     expect_assert_failure(getDefine_Int_default("agent", "past_long_long", INT_MIN, INT_MAX, 0));
 }
 
-void getDefine_Int_default_below_int_min_exits(void **state)
+void getDefine_Int_default_below_int_min_exits(void** state)
 {
     (void)state;
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.below_int_min: '-2147483649'.");
+    expect_string(
+        __wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.below_int_min: '-2147483649'.");
 
     expect_assert_failure(getDefine_Int_default("agent", "below_int_min", INT_MIN, INT_MAX, 0));
 }
 
-void getDefine_Int_default_int_max_is_read(void **state)
+void getDefine_Int_default_int_max_is_read(void** state)
 {
     (void)state;
 
     assert_int_equal(getDefine_Int_default("agent", "int_max", 0, INT_MAX, 0), INT_MAX);
 }
 
-void getDefine_Int_default_plus_sign_exits(void **state)
+void getDefine_Int_default_plus_sign_exits(void** state)
 {
     (void)state;
 
@@ -1549,7 +1576,8 @@ void getDefine_Int_default_plus_sign_exits(void **state)
     expect_assert_failure(getDefine_Int_default("agent", "plus_sign", 0, 10, 0));
 }
 
-int main(void) {
+int main(void)
+{
 
     const struct CMUnitTest tests[] = {
         // Tests w_validate_bytes
@@ -1616,32 +1644,32 @@ int main(void) {
         cmocka_unit_test(OS_GetIPv4FromIPv6_match_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_empty_group),
         // Test getDefine_Int_default
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_empty_value_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_absent_key_returns_default, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_present_value_is_read, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_negative_value_in_range_is_read, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_negative_value_out_of_range_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_lone_minus_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_inner_minus_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_wrapping_value_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_wrapping_to_zero_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_past_long_long_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_below_int_min_exits, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_int_max_is_read, setup_local_defines,
-                                        teardown_local_defines),
-        cmocka_unit_test_setup_teardown(getDefine_Int_default_plus_sign_exits, setup_local_defines,
-                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_empty_value_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_absent_key_returns_default, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_present_value_is_read, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_negative_value_in_range_is_read, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_negative_value_out_of_range_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_lone_minus_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_inner_minus_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_wrapping_value_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_wrapping_to_zero_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_past_long_long_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_below_int_min_exits, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_int_max_is_read, setup_local_defines, teardown_local_defines),
+        cmocka_unit_test_setup_teardown(
+            getDefine_Int_default_plus_sign_exits, setup_local_defines, teardown_local_defines),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

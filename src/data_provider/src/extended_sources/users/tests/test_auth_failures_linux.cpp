@@ -22,66 +22,66 @@
 
 class AuthFailuresProviderTests : public ::testing::Test
 {
-    protected:
-        void SetUp() override
+protected:
+    void SetUp() override
+    {
+        m_tempDir = std::filesystem::temp_directory_path() / "auth_failures_provider_test";
+        std::filesystem::remove_all(m_tempDir);
+        std::filesystem::create_directories(m_tempDir);
+        m_btmp = (m_tempDir / "btmp").string();
+    }
+
+    void TearDown() override
+    {
+        std::filesystem::remove_all(m_tempDir);
+    }
+
+    /// @brief Writes btmp with one record per {user, time}, then appends a truncated record.
+    void writeBtmp(const std::vector<std::pair<std::string, int32_t>>& records, bool partialTail = false) const
+    {
+        std::ofstream file(m_btmp, std::ios::binary);
+
+        for (const auto& record : records)
         {
-            m_tempDir = std::filesystem::temp_directory_path() / "auth_failures_provider_test";
-            std::filesystem::remove_all(m_tempDir);
-            std::filesystem::create_directories(m_tempDir);
-            m_btmp = (m_tempDir / "btmp").string();
+            struct utmpx entry {};
+            entry.ut_type = LOGIN_PROCESS;
+            std::strncpy(entry.ut_user, record.first.c_str(), sizeof(entry.ut_user) - 1);
+            entry.ut_tv.tv_sec = record.second;
+            file.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
         }
 
-        void TearDown() override
+        if (partialTail)
         {
-            std::filesystem::remove_all(m_tempDir);
+            const std::string junk(sizeof(struct utmpx) / 2, 'x');
+            file.write(junk.data(), static_cast<std::streamsize>(junk.size()));
         }
+    }
 
-        /// @brief Writes btmp with one record per {user, time}, then appends a truncated record.
-        void writeBtmp(const std::vector<std::pair<std::string, int32_t>>& records, bool partialTail = false) const
+    /// @brief Writes the rotated generation that logrotate keeps beside btmp.
+    /// @param records The failures to write.
+    /// @param suffix What logrotate appended: ".1" without dateext, "-YYYYMMDD" with it.
+    void writeRotatedBtmp(const std::vector<std::pair<std::string, int32_t>>& records,
+                          const std::string& suffix = ".1") const
+    {
+        std::ofstream file(m_btmp + suffix, std::ios::binary);
+
+        for (const auto& record : records)
         {
-            std::ofstream file(m_btmp, std::ios::binary);
-
-            for (const auto& record : records)
-            {
-                struct utmpx entry {};
-                entry.ut_type = LOGIN_PROCESS;
-                std::strncpy(entry.ut_user, record.first.c_str(), sizeof(entry.ut_user) - 1);
-                entry.ut_tv.tv_sec = record.second;
-                file.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
-            }
-
-            if (partialTail)
-            {
-                const std::string junk(sizeof(struct utmpx) / 2, 'x');
-                file.write(junk.data(), static_cast<std::streamsize>(junk.size()));
-            }
+            struct utmpx entry {};
+            entry.ut_type = LOGIN_PROCESS;
+            std::strncpy(entry.ut_user, record.first.c_str(), sizeof(entry.ut_user) - 1);
+            entry.ut_tv.tv_sec = record.second;
+            file.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
         }
+    }
 
-        /// @brief Writes the rotated generation that logrotate keeps beside btmp.
-        /// @param records The failures to write.
-        /// @param suffix What logrotate appended: ".1" without dateext, "-YYYYMMDD" with it.
-        void writeRotatedBtmp(const std::vector<std::pair<std::string, int32_t>>& records,
-                              const std::string& suffix = ".1") const
-        {
-            std::ofstream file(m_btmp + suffix, std::ios::binary);
+    AuthFailuresProvider makeProvider(size_t tailBytes = 1024 * 1024) const
+    {
+        return AuthFailuresProvider(m_btmp, tailBytes);
+    }
 
-            for (const auto& record : records)
-            {
-                struct utmpx entry {};
-                entry.ut_type = LOGIN_PROCESS;
-                std::strncpy(entry.ut_user, record.first.c_str(), sizeof(entry.ut_user) - 1);
-                entry.ut_tv.tv_sec = record.second;
-                file.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
-            }
-        }
-
-        AuthFailuresProvider makeProvider(size_t tailBytes = 1024 * 1024) const
-        {
-            return AuthFailuresProvider(m_btmp, tailBytes);
-        }
-
-        std::filesystem::path m_tempDir;
-        std::string m_btmp;
+    std::filesystem::path m_tempDir;
+    std::string m_btmp;
 };
 
 TEST_F(AuthFailuresProviderTests, BtmpCountsFailuresSinceTheLastLogin)

@@ -25,27 +25,27 @@
  */
 class ConfigHashState final
 {
-    public:
-        explicit ConfigHashState(std::string initial)
-            : m_hash(std::move(initial))
-        {
-        }
+public:
+    explicit ConfigHashState(std::string initial)
+        : m_hash(std::move(initial))
+    {
+    }
 
-        std::string get() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_hash;
-        }
+    std::string get() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_hash;
+    }
 
-        void set(const std::string& hash)
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_hash = hash;
-        }
+    void set(const std::string& hash)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_hash = hash;
+    }
 
-    private:
-        mutable std::mutex m_mutex;
-        std::string m_hash;
+private:
+    mutable std::mutex m_mutex;
+    std::string m_hash;
 };
 
 #endif // _HC_CONFIG_HASH_STATE_HPP

@@ -70,10 +70,7 @@ TEST(CaPublicationState, TheContractSequenceFetchesOnceForTheHighest)
     CaPublicationState state {1789000010};
     int arms = 0;
 
-    for (const std::int64_t advertised :
-            {
-                1789000011, 1789000010, 1789000011, 1789000012
-            })
+    for (const std::int64_t advertised : {1789000011, 1789000010, 1789000011, 1789000012})
     {
         if (state.observe(advertised))
         {

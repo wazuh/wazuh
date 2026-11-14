@@ -21,21 +21,21 @@
 
 class PackageMetadataFileTest : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_dir;
+protected:
+    std::filesystem::path m_dir;
 
-        void SetUp() override
-        {
-            const auto suffix {std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())};
-            m_dir = std::filesystem::temp_directory_path() / ("package_metadata_file_test_" + suffix);
-            std::filesystem::create_directory(m_dir);
-        }
+    void SetUp() override
+    {
+        const auto suffix {std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())};
+        m_dir = std::filesystem::temp_directory_path() / ("package_metadata_file_test_" + suffix);
+        std::filesystem::create_directory(m_dir);
+    }
 
-        void TearDown() override
-        {
-            std::error_code ec;
-            std::filesystem::remove_all(m_dir, ec);
-        }
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(m_dir, ec);
+    }
 };
 
 TEST_F(PackageMetadataFileTest, RegularFileIsRead)
@@ -54,11 +54,12 @@ TEST_F(PackageMetadataFileTest, LinesAreReported)
     std::ofstream(path) << "Name: test\nVersion: 1.0\n";
 
     std::vector<std::string> lines;
-    PackageMetadataFileIO::readLineByLine(path, [&](const std::string & line)
-    {
-        lines.push_back(line);
-        return true;
-    });
+    PackageMetadataFileIO::readLineByLine(path,
+                                          [&](const std::string& line)
+                                          {
+                                              lines.push_back(line);
+                                              return true;
+                                          });
 
     EXPECT_EQ(lines, (std::vector<std::string> {"Name: test", "Version: 1.0"}));
 }
@@ -138,11 +139,12 @@ TEST_F(PackageMetadataFileTest, LargeSparseFileWithoutNewlineIsNotBuffered)
     std::filesystem::resize_file(path, 1024ULL * 1024 * 1024);
 
     bool callbackCalled {false};
-    PackageMetadataFileIO::readLineByLine(path, [&](const std::string&)
-    {
-        callbackCalled = true;
-        return true;
-    });
+    PackageMetadataFileIO::readLineByLine(path,
+                                          [&](const std::string&)
+                                          {
+                                              callbackCalled = true;
+                                              return true;
+                                          });
 
     EXPECT_FALSE(callbackCalled);
 }

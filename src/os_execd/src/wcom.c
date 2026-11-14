@@ -24,32 +24,38 @@
  * active-response, logging and internal sections. */
 #define WCOM_MODULE_NAME "execd"
 
-static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
+static int _jailfile(char finalpath[PATH_MAX + 1], const char* basedir, const char* filename);
 int req_timeout;
 int max_restart_lock;
 
-size_t wcom_dispatch(char *command, char ** output) {
-    char *rcv_comm = command;
-    char *rcv_args = NULL;
-    char * source;
-    char * target;
+size_t wcom_dispatch(char* command, char** output)
+{
+    char* rcv_comm = command;
+    char* rcv_args = NULL;
+    char* source;
+    char* target;
 
-    if ((rcv_args = strchr(rcv_comm, ' '))) {
+    if ((rcv_args = strchr(rcv_comm, ' ')))
+    {
         *rcv_args = '\0';
         rcv_args++;
     }
 
-    if (strcmp(rcv_comm, "unmerge") == 0) {
-        if (!rcv_args) {
+    if (strcmp(rcv_comm, "unmerge") == 0)
+    {
+        if (!rcv_args)
+        {
             mdebug1("WCOM unmerge needs arguments.");
             os_strdup("err WCOM unmerge needs arguments", *output);
             return strlen(*output);
         }
         // unmerge [file_path]
         return wcom_unmerge(rcv_args, output);
-
-    } else if (strcmp(rcv_comm, "uncompress") == 0) {
-        if (!rcv_args) {
+    }
+    else if (strcmp(rcv_comm, "uncompress") == 0)
+    {
+        if (!rcv_args)
+        {
             mdebug1("WCOM uncompress needs arguments.");
             os_strdup("err WCOM uncompress needs arguments", *output);
             return strlen(*output);
@@ -57,33 +63,44 @@ size_t wcom_dispatch(char *command, char ** output) {
         // uncompress [file_path]
         source = rcv_args;
 
-        if (target = strchr(rcv_args, ' '), target) {
+        if (target = strchr(rcv_args, ' '), target)
+        {
             *(target++) = '\0';
             return wcom_uncompress(source, target, output);
-        } else {
+        }
+        else
+        {
             mdebug1("Bad WCOM uncompress message.");
             os_strdup("err Too few commands", *output);
             return strlen(*output);
         }
-
-    } else if (strcmp(rcv_comm, "lock_restart") == 0) {
+    }
+    else if (strcmp(rcv_comm, "lock_restart") == 0)
+    {
         max_restart_lock = 0;
         int timeout = -2;
 
-        if (!max_restart_lock) {
+        if (!max_restart_lock)
+        {
             max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
         }
 
-        if (rcv_args) {
+        if (rcv_args)
+        {
             timeout = atoi(rcv_args);
         }
 
-        if (timeout < -1) {
+        if (timeout < -1)
+        {
             os_strdup("err Invalid timeout", *output);
-        } else {
+        }
+        else
+        {
             os_strdup("ok ", *output);
-            if (timeout == -1 || timeout > max_restart_lock) {
-                if (timeout > max_restart_lock) {
+            if (timeout == -1 || timeout > max_restart_lock)
+            {
+                if (timeout > max_restart_lock)
+                {
                     mwarn("Timeout exceeds the maximum allowed.");
                 }
                 timeout = max_restart_lock;
@@ -92,71 +109,87 @@ size_t wcom_dispatch(char *command, char ** output) {
         lock_restart(timeout);
 
         return strlen(*output);
-
-    } else if (strcmp(rcv_comm, "getconfig") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getconfig") == 0)
+    {
         // getconfig section
-        if (!rcv_args) {
+        if (!rcv_args)
+        {
             mdebug1("WCOM getconfig needs arguments.");
             os_strdup("err WCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return wcom_getconfig(rcv_args, output);
-
-    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getallconfig") == 0)
+    {
         return wcom_getallconfig(output);
-
-    } else {
+    }
+    else
+    {
         mdebug1("WCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
 
-size_t wcom_unmerge(const char *file_path, char ** output) {
+size_t wcom_unmerge(const char* file_path, char** output)
+{
     char final_path[PATH_MAX + 1];
 
-    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
+    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0)
+    {
         merror("At WCOM unmerge: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
-    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE) {
+    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE)
+    {
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
-    } else {
+    }
+    else
+    {
         os_strdup("ok ", *output);
         return strlen(*output);
     }
 }
 
-size_t wcom_uncompress(const char * source, const char * target, char ** output) {
+size_t wcom_uncompress(const char* source, const char* target, char** output)
+{
     char final_source[PATH_MAX + 1];
     char final_target[PATH_MAX + 1];
     char buffer[4096];
     gzFile fsource;
-    FILE *ftarget;
+    FILE* ftarget;
     int length;
 
-    if (_jailfile(final_source, INCOMING_DIR, source) < 0) {
+    if (_jailfile(final_source, INCOMING_DIR, source) < 0)
+    {
         merror("At WCOM uncompress: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
-    if (_jailfile(final_target, INCOMING_DIR, target) < 0) {
+    if (_jailfile(final_target, INCOMING_DIR, target) < 0)
+    {
         merror("At WCOM uncompress: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
     // Not gzopen(): a symlink left at final_source would be followed, disclosing whatever it points to.
-    if (fsource = w_gzopen_nofollow(INCOMING_DIR, source, "rb"), !fsource) {
+    if (fsource = w_gzopen_nofollow(INCOMING_DIR, source, "rb"), !fsource)
+    {
         const int open_errno = errno;
-        if (open_errno == ELOOP) {
+        if (open_errno == ELOOP)
+        {
             merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link", final_source);
-        } else {
+        }
+        else
+        {
             merror("At WCOM uncompress: Unable to open '%s'", final_source);
         }
         os_strdup("err Unable to open source", *output);
@@ -165,20 +198,26 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
 
     // Not wfopen(): a symlink left under the incoming directory would be followed and its target
     // overwritten with the decompressed archive contents.
-    if (ftarget = w_fopen_nofollow(INCOMING_DIR, target, "wb"), !ftarget) {
+    if (ftarget = w_fopen_nofollow(INCOMING_DIR, target, "wb"), !ftarget)
+    {
         const int open_errno = errno;
         gzclose(fsource);
-        if (open_errno == ELOOP) {
+        if (open_errno == ELOOP)
+        {
             merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link.", final_target);
-        } else {
+        }
+        else
+        {
             merror("At WCOM uncompress: Unable to open '%s'", final_target);
         }
         os_strdup("err Unable to open target", *output);
         return strlen(*output);
     }
 
-    while (length = gzread(fsource, buffer, 4096), length > 0) {
-        if ((int)fwrite(buffer, 1, length, ftarget) != length) {
+    while (length = gzread(fsource, buffer, 4096), length > 0)
+    {
+        if ((int)fwrite(buffer, 1, length, ftarget) != length)
+        {
             gzclose(fsource);
             fclose(ftarget);
             merror("At WCOM uncompress: Unable to write '%s'", final_target);
@@ -187,10 +226,13 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         }
     }
 
-    if (length < 0) {
+    if (length < 0)
+    {
         merror("At WCOM uncompress: Unable to read '%s'", final_source);
         os_strdup("err Unable to read source", *output);
-    } else {
+    }
+    else
+    {
         unlink(final_source);
         os_strdup("ok ", *output);
     }
@@ -200,10 +242,11 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
     return strlen(*output);
 }
 
-size_t wcom_getallconfig(char ** output) {
+size_t wcom_getallconfig(char** output)
+{
 
-    cJSON *report = cJSON_CreateObject();
-    cJSON *body = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
+    cJSON* body = cJSON_CreateObject();
 
     /* No "cluster" section here: it is manager-only and reaching it depends on
      * a socket an agent never has. */
@@ -215,45 +258,62 @@ size_t wcom_getallconfig(char ** output) {
     return module_report_reply(report, output);
 }
 
-size_t wcom_getconfig(const char * section, char ** output) {
+size_t wcom_getconfig(const char* section, char** output)
+{
 
-    cJSON *cfg;
-    char *json_str;
+    cJSON* cfg;
+    char* json_str;
 
-    if (strcmp(section, "active-response") == 0) {
-        if (cfg = getARConfig(), cfg) {
+    if (strcmp(section, "active-response") == 0)
+    {
+        if (cfg = getARConfig(), cfg)
+        {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "logging") == 0) {
-        if (cfg = getLoggingConfig(), cfg) {
+    }
+    else if (strcmp(section, "logging") == 0)
+    {
+        if (cfg = getLoggingConfig(), cfg)
+        {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "internal") == 0) {
-        if (cfg = getExecdInternalOptions(), cfg) {
+    }
+    else if (strcmp(section, "internal") == 0)
+    {
+        if (cfg = getExecdInternalOptions(), cfg)
+        {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "cluster") == 0) {
+    }
+    else if (strcmp(section, "cluster") == 0)
+    {
 #ifndef WIN32
         /* Check socket connection with cluster first */
         int sock = -1;
@@ -261,26 +321,33 @@ size_t wcom_getconfig(const char * section, char ** output) {
 
         strcpy(sockname, CLUSTER_SOCK);
 
-        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0)
+        {
             os_strdup("err Unable to connect with socket. The component might be disabled", *output);
             return strlen(*output);
         }
-        else {
+        else
+        {
             close(sock);
 
-            if (cfg = getClusterConfig(), cfg) {
+            if (cfg = getClusterConfig(), cfg)
+            {
                 os_strdup("ok ", *output);
                 json_str = cJSON_PrintUnformatted(cfg);
                 wm_strcat(output, json_str, ' ');
                 free(json_str);
                 cJSON_Delete(cfg);
                 return strlen(*output);
-            } else {
+            }
+            else
+            {
                 goto error;
             }
         }
 #endif
-    }else {
+    }
+    else
+    {
         goto error;
     }
 error:
@@ -290,41 +357,47 @@ error:
 }
 
 #ifndef WIN32
-void * wcom_main(__attribute__((unused)) void * arg) {
+void* wcom_main(__attribute__((unused)) void* arg)
+{
     int sock;
     int peer;
-    char *buffer = NULL;
-    char *response = NULL;
+    char* buffer = NULL;
+    char* response = NULL;
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0)
+    {
         merror("Unable to bind to socket '%s': (%d) %s.", COM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
-    while (FOREVER()) {
+    while (FOREVER())
+    {
 
         // Wait for socket
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
-        case -1:
-            if (errno != EINTR) {
-                merror_exit("At wcom_main(): select(): %s", strerror(errno));
-            }
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL))
+        {
+            case -1:
+                if (errno != EINTR)
+                {
+                    merror_exit("At wcom_main(): select(): %s", strerror(errno));
+                }
 
-            continue;
+                continue;
 
-        case 0:
-            continue;
+            case 0: continue;
         }
 
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
+        if (peer = accept(sock, NULL, NULL), peer < 0)
+        {
+            if (errno != EINTR)
+            {
                 merror("At wcom_main(): accept(): %s", strerror(errno));
             }
 
@@ -333,23 +406,20 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
         // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
-        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            merror("At wcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
-            break;
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length)
+        {
+            case OS_SOCKTERR:
+                merror("At wcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
 
-        case -1:
-            merror("At wcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
-            break;
+            case -1: merror("At wcom_main(): OS_RecvSecureTCP(): %s", strerror(errno)); break;
 
-        case 0:
-            mdebug1("Empty message from local client.");
-            break;
+            case 0: mdebug1("Empty message from local client."); break;
 
-        default:
-            length = wcom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
-            os_free(response);
+            default:
+                length = wcom_dispatch(buffer, &response);
+                OS_SendSecureTCP(peer, length, response);
+                os_free(response);
         }
 
         // Every outcome above ends the exchange, including a failed receive.
@@ -365,12 +435,14 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
 #endif
 
-int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
+int _jailfile(char finalpath[PATH_MAX + 1], const char* basedir, const char* filename)
+{
 
     // A bare file name is all that is ever legitimate here. Rejecting separators also keeps the
     // directory-relative open in w_fopen_nofollow() confined to basedir, since a separator-containing
     // or absolute name would otherwise be resolved ignoring the directory descriptor.
-    if (!w_is_bare_filename(filename)) {
+    if (!w_is_bare_filename(filename))
+    {
         return -1;
     }
 
@@ -381,7 +453,8 @@ int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * f
 #endif
 }
 
-size_t lock_restart(int timeout) {
-    pending_upg = time(NULL) + (time_t) timeout;
+size_t lock_restart(int timeout)
+{
+    pending_upg = time(NULL) + (time_t)timeout;
     return 0;
 }

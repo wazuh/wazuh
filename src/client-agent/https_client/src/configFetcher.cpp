@@ -24,30 +24,37 @@ namespace
 
     std::string lowered(std::string value)
     {
-        std::transform(value.begin(), value.end(), value.begin(),
-                       [](unsigned char character)
-        {
-            return std::tolower(character);
-        });
+        std::transform(
+            value.begin(), value.end(), value.begin(), [](unsigned char character) { return std::tolower(character); });
         return value;
     }
 } // namespace
 
-ConfigFetcher::ConfigFetcher(const ModuleConfig& config, IHttpPerformer& performer,
-                             const ISigner& signer, IClock& clock, IRandom& random,
-                             ISpoolFileFactory& spoolFactory, AuthGate& authGate,
+ConfigFetcher::ConfigFetcher(const ModuleConfig& config,
+                             IHttpPerformer& performer,
+                             const ISigner& signer,
+                             IClock& clock,
+                             IRandom& random,
+                             ISpoolFileFactory& spoolFactory,
+                             AuthGate& authGate,
                              CompressionGate& compressionGate)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+    , m_sender(performer,
+               signer,
+               clock,
+               m_backoff,
+               config.httpsCompressionEnabled,
+               &compressionGate,
+               &authGate,
                config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
     , m_undecodableLimiter(clock)
 {
 }
 
-std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash, const std::string& configToken,
-                                                Waiter& waiter)
+std::shared_ptr<SpoolFile>
+ConfigFetcher::fetch(const std::string& expectedHash, const std::string& configToken, Waiter& waiter)
 {
     std::shared_ptr<SpoolFile> spool = m_spoolFactory.spool(nullptr, 0); // Empty target file.
 
@@ -81,8 +88,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     // actually attempted and for which resource, so a log reader can tell
     // "never attempted" from "attempted and failed" without source-level
     // reasoning.
-    LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config, resource_id='%s').",
-                 configToken.c_str());
+    LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config, resource_id='%s').", configToken.c_str());
 
     const auto result = m_sender.send(spec, waiter, m_config.downloadMaxAttempts);
 
@@ -99,8 +105,10 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
 
     if (!actualHash || lowered(*actualHash) != lowered(expectedHash))
     {
-        LOGFN_WARN(m_logFn, "Downloaded config hash %s does not match the advertised %s; "
-                   "discarding it.", actualHash ? actualHash->c_str() : "(unreadable)",
+        LOGFN_WARN(m_logFn,
+                   "Downloaded config hash %s does not match the advertised %s; "
+                   "discarding it.",
+                   actualHash ? actualHash->c_str() : "(unreadable)",
                    expectedHash.c_str());
         return nullptr; // RAII deletes the file.
     }
@@ -152,6 +160,8 @@ void ConfigFetcher::warnUndecodable(const HttpResponse& response)
         return;
     }
 
-    LOGFN_WARN(m_logFn, "Config download could not be decoded%s; the next notify retries it%s.",
-               transportReason(response.curlError).c_str(), m_undecodableLimiter.suppressedNote(decision).c_str());
+    LOGFN_WARN(m_logFn,
+               "Config download could not be decoded%s; the next notify retries it%s.",
+               transportReason(response.curlError).c_str(),
+               m_undecodableLimiter.suppressedNote(decision).c_str());
 }

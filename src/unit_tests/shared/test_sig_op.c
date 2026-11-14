@@ -33,7 +33,7 @@ extern volatile int sig_pipe_wr;
 extern volatile sig_atomic_t sig_received;
 extern void (*volatile sig_shutdown_func)(void);
 void SIGShutdown(void);
-void *SIGShutdownThread(void *arg);
+void* SIGShutdownThread(void* arg);
 
 void __real__exit(int status);
 
@@ -47,25 +47,39 @@ static char pid_file[PATH_MAX];
 static char work_dir[] = "/tmp/test_sig_op.XXXXXX";
 
 /* Logging is irrelevant here, and the real one reads the configuration file */
-void __wrap__minfo(__attribute__((unused)) const char *file, __attribute__((unused)) int line,
-                   __attribute__((unused)) const char *func, __attribute__((unused)) const char *msg, ...) {}
+void __wrap__minfo(__attribute__((unused)) const char* file,
+                   __attribute__((unused)) int line,
+                   __attribute__((unused)) const char* func,
+                   __attribute__((unused)) const char* msg,
+                   ...)
+{
+}
 
-void __wrap__merror(__attribute__((unused)) const char *file, __attribute__((unused)) int line,
-                    __attribute__((unused)) const char *func, __attribute__((unused)) const char *msg, ...) {}
+void __wrap__merror(__attribute__((unused)) const char* file,
+                    __attribute__((unused)) int line,
+                    __attribute__((unused)) const char* func,
+                    __attribute__((unused)) const char* msg,
+                    ...)
+{
+}
 
 /* The real one reads the internal options file for the stack size */
-int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+int __wrap_CreateThread(void* (*function_pointer)(void*), void* data)
+{
     pthread_t thread;
 
-    if (pthread_create(&thread, NULL, function_pointer, data) != 0) {
+    if (pthread_create(&thread, NULL, function_pointer, data) != 0)
+    {
         return 0;
     }
 
     return pthread_detach(thread) == 0;
 }
 
-void __wrap__exit(int status) {
-    if (real_exit) {
+void __wrap__exit(int status)
+{
+    if (real_exit)
+    {
         __real__exit(status);
     }
 
@@ -76,39 +90,48 @@ void __wrap__exit(int status) {
     longjmp(exit_jmp, 1);
 }
 
-static void shutdown_func(void) {
+static void shutdown_func(void)
+{
     shutdown_func_calls++;
     pid_file_present_in_func = (access(pid_file, F_OK) == 0);
 }
 
-static void touch(const char *file) {
+static void touch(const char* file)
+{
     int fd = open(file, O_CREAT | O_WRONLY, 0600);
 
-    if (fd >= 0) {
+    if (fd >= 0)
+    {
         close(fd);
     }
 }
 
-static void child_shutdown_func(void) {
+static void child_shutdown_func(void)
+{
     touch("work-ran");
 }
 
-static void child_atexit(void) {
+static void child_atexit(void)
+{
     touch("atexit-ran");
 }
 
-static bool pid_file_exists(void) {
+static bool pid_file_exists(void)
+{
     return access(pid_file, F_OK) == 0;
 }
 
-static int group_setup(void **state) {
-    (void) state;
+static int group_setup(void** state)
+{
+    (void)state;
 
-    if (mkdtemp(work_dir) == NULL) {
+    if (mkdtemp(work_dir) == NULL)
+    {
         return -1;
     }
 
-    if (chdir(work_dir) < 0 || mkdir("var", 0700) < 0 || mkdir("var/run", 0700) < 0) {
+    if (chdir(work_dir) < 0 || mkdir("var", 0700) < 0 || mkdir("var/run", 0700) < 0)
+    {
         return -1;
     }
 
@@ -120,18 +143,20 @@ static int group_setup(void **state) {
     return 0;
 }
 
-static int group_teardown(void **state) {
-    (void) state;
+static int group_teardown(void** state)
+{
+    (void)state;
     char cmd[PATH_MAX + 16];
 
     snprintf(cmd, sizeof(cmd), "rm -rf %s", work_dir);
     return system(cmd);
 }
 
-static int test_setup(void **state) {
+static int test_setup(void** state)
+{
     int fds[2];
 
-    (void) state;
+    (void)state;
     exit_calls = 0;
     exit_status = -1;
     shutdown_func_calls = 0;
@@ -142,7 +167,8 @@ static int test_setup(void **state) {
     /* HandleSIG() raises it, and nothing in the process lowers it */
     w_shutdown_requested_set(false);
 
-    if (pipe(fds) < 0) {
+    if (pipe(fds) < 0)
+    {
         return -1;
     }
 
@@ -150,15 +176,17 @@ static int test_setup(void **state) {
     sig_pipe_wr = fds[1];
     fcntl(sig_pipe_wr, F_SETFL, fcntl(sig_pipe_wr, F_GETFL, 0) | O_NONBLOCK);
 
-    if (CreatePID(TEST_DAEMON, (int)getpid()) < 0) {
+    if (CreatePID(TEST_DAEMON, (int)getpid()) < 0)
+    {
         return -1;
     }
 
     return 0;
 }
 
-static int test_teardown(void **state) {
-    (void) state;
+static int test_teardown(void** state)
+{
+    (void)state;
 
     close(sig_pipe_rd);
     close(sig_pipe_wr);
@@ -169,10 +197,11 @@ static int test_teardown(void **state) {
     return 0;
 }
 
-void test_handler_only_signals(void **state) {
+void test_handler_only_signals(void** state)
+{
     char buf[4];
 
-    (void) state;
+    (void)state;
     sig_shutdown_func = shutdown_func;
 
     HandleSIG(SIGTERM);
@@ -185,13 +214,16 @@ void test_handler_only_signals(void **state) {
     assert_true(pid_file_exists());
 }
 
-void test_handler_keeps_errno(void **state) {
+void test_handler_keeps_errno(void** state)
+{
     char fill[4096] = {0};
 
-    (void) state;
+    (void)state;
 
     /* A full pipe makes write() set errno to EAGAIN, which the handler must not leak */
-    while (write(sig_pipe_wr, fill, sizeof(fill)) > 0) {}
+    while (write(sig_pipe_wr, fill, sizeof(fill)) > 0)
+    {
+    }
     assert_int_equal(errno, EAGAIN);
 
     errno = ENOENT;
@@ -201,10 +233,11 @@ void test_handler_keeps_errno(void **state) {
     assert_int_equal(errno, ENOENT);
 }
 
-void test_handler_ignores_second_signal(void **state) {
+void test_handler_ignores_second_signal(void** state)
+{
     char buf[4];
 
-    (void) state;
+    (void)state;
 
     HandleSIG(SIGTERM);
     HandleSIG(SIGINT);
@@ -214,12 +247,14 @@ void test_handler_ignores_second_signal(void **state) {
     assert_int_equal(exit_calls, 0);
 }
 
-void test_shutdown_runs_work_then_removes_pid_file_and_exits(void **state) {
-    (void) state;
+void test_shutdown_runs_work_then_removes_pid_file_and_exits(void** state)
+{
+    (void)state;
     sig_received = SIGTERM;
     sig_shutdown_func = shutdown_func;
 
-    if (setjmp(exit_jmp) == 0) {
+    if (setjmp(exit_jmp) == 0)
+    {
         SIGShutdown();
     }
 
@@ -230,11 +265,13 @@ void test_shutdown_runs_work_then_removes_pid_file_and_exits(void **state) {
     assert_int_equal(exit_status, 1);
 }
 
-void test_shutdown_without_registered_work(void **state) {
-    (void) state;
+void test_shutdown_without_registered_work(void** state)
+{
+    (void)state;
     sig_received = SIGTERM;
 
-    if (setjmp(exit_jmp) == 0) {
+    if (setjmp(exit_jmp) == 0)
+    {
         SIGShutdown();
     }
 
@@ -244,15 +281,17 @@ void test_shutdown_without_registered_work(void **state) {
     assert_int_equal(exit_status, 1);
 }
 
-void test_thread_runs_shutdown_work_once(void **state) {
-    (void) state;
+void test_thread_runs_shutdown_work_once(void** state)
+{
+    (void)state;
     sig_shutdown_func = shutdown_func;
 
     /* Two wake-ups queued: the work must still run a single time */
     HandleSIG(SIGTERM);
     assert_int_equal(write(sig_pipe_wr, "", 1), 1);
 
-    if (setjmp(exit_jmp) == 0) {
+    if (setjmp(exit_jmp) == 0)
+    {
         SIGShutdownThread(NULL);
     }
 
@@ -262,10 +301,11 @@ void test_thread_runs_shutdown_work_once(void **state) {
 }
 
 /* An unusable pipe can never wake the thread, so it disarms the handler and the legacy exit() path takes over */
-void test_thread_disarms_handler_on_unusable_pipe(void **state) {
+void test_thread_disarms_handler_on_unusable_pipe(void** state)
+{
     int write_fd = sig_pipe_wr;
 
-    (void) state;
+    (void)state;
     close(sig_pipe_rd);
 
     assert_null(SIGShutdownThread(NULL));
@@ -276,9 +316,11 @@ void test_thread_disarms_handler_on_unusable_pipe(void **state) {
     close(write_fd);
 }
 
-/* The real thread, signal and _exit() in a child: the atexit handlers must not run, the registered work and the PID file removal must */
-void test_signal_ends_process_from_thread(void **state) {
-    (void) state;
+/* The real thread, signal and _exit() in a child: the atexit handlers must not run, the registered work and the PID
+ * file removal must */
+void test_signal_ends_process_from_thread(void** state)
+{
+    (void)state;
     int status = 0;
     pid_t pid;
     char child_pid_file[PATH_MAX];
@@ -287,7 +329,8 @@ void test_signal_ends_process_from_thread(void **state) {
     pid = fork();
     assert_true(pid >= 0);
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
         real_exit = true;
         sig_pipe_rd = -1;
         sig_pipe_wr = -1;
@@ -312,16 +355,17 @@ void test_signal_ends_process_from_thread(void **state) {
     unlink("work-ran");
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_handler_only_signals, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_handler_keeps_errno, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_handler_ignores_second_signal, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_shutdown_runs_work_then_removes_pid_file_and_exits, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(
+            test_shutdown_runs_work_then_removes_pid_file_and_exits, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_shutdown_without_registered_work, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_thread_runs_shutdown_work_once, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_thread_disarms_handler_on_unusable_pipe, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_signal_ends_process_from_thread, test_setup, test_teardown)
-    };
+        cmocka_unit_test_setup_teardown(test_signal_ends_process_from_thread, test_setup, test_teardown)};
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }

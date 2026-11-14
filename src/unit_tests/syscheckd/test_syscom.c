@@ -21,27 +21,24 @@
 #include "syscheck.h"
 #include "syscheck-config.h"
 
-
 /* redefinitons/wrapping */
 
-static int delete_string(void **state)
+static int delete_string(void** state)
 {
-    char *data = *state;
+    char* data = *state;
     free(data);
     return 0;
 }
 
-
 /* tests */
 
-
-void test_syscom_dispatch_getconfig_agent(void **state)
+void test_syscom_dispatch_getconfig_agent(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
     char command[] = "syscheck getconfig args";
-    char * output;
+    char* output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
 
@@ -52,13 +49,13 @@ void test_syscom_dispatch_getconfig_agent(void **state)
     assert_int_equal(ret, 35);
 }
 
-void test_syscom_dispatch_getconfig_manager(void **state)
+void test_syscom_dispatch_getconfig_manager(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
     char command[] = "getconfig args";
-    char * output;
+    char* output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
 
@@ -69,14 +66,13 @@ void test_syscom_dispatch_getconfig_manager(void **state)
     assert_int_equal(ret, 35);
 }
 
-
-void test_syscom_dispatch_getconfig_noargs(void **state)
+void test_syscom_dispatch_getconfig_noargs(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
     char command[] = "syscheck getconfig";
-    char * output;
+    char* output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
 
@@ -87,14 +83,13 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
     assert_int_equal(ret, 36);
 }
 
-
-void test_syscom_dispatch_getconfig_unrecognized(void **state)
+void test_syscom_dispatch_getconfig_unrecognized(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
     char command[] = "invalid";
-    char * output;
+    char* output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6282): SYSCOM Unrecognized command 'invalid'");
 
@@ -105,26 +100,26 @@ void test_syscom_dispatch_getconfig_unrecognized(void **state)
     assert_int_equal(ret, 24);
 }
 
-void test_syscom_dispatch_null_command(void **state)
+void test_syscom_dispatch_null_command(void** state)
 {
-    char * output;
+    char* output;
 
     expect_assert_failure(syscom_dispatch(NULL, 0, &output));
 }
 
-void test_syscom_dispatch_null_output(void **state)
+void test_syscom_dispatch_null_output(void** state)
 {
     char command[] = "invalid";
 
     expect_assert_failure(syscom_dispatch(command, strlen(command), NULL));
 }
 
-void test_syscom_dispatch_sync_success(void **state)
+void test_syscom_dispatch_sync_success(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
     char command[] = "fim_sync test-data";
-    char *output;
+    char* output;
 
     syscheck.enable_synchronization = 1;
     syscheck.sync_handle = (AgentSyncProtocolHandle*)0x1234;
@@ -139,12 +134,12 @@ void test_syscom_dispatch_sync_success(void **state)
     assert_int_equal(ret, 0);
 }
 
-void test_syscom_dispatch_sync_disabled(void **state)
+void test_syscom_dispatch_sync_disabled(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
     char command[] = "fim_sync something";
-    char *output;
+    char* output;
 
     syscheck.enable_synchronization = 0;
 
@@ -157,12 +152,12 @@ void test_syscom_dispatch_sync_disabled(void **state)
     assert_int_equal(ret, 35);
 }
 
-void test_syscom_dispatch_sync_error(void **state)
+void test_syscom_dispatch_sync_error(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
     char command[] = "fim_sync test-data";
-    char *output;
+    char* output;
 
     syscheck.enable_synchronization = 1;
     syscheck.sync_handle = (AgentSyncProtocolHandle*)0x1234;
@@ -181,12 +176,12 @@ void test_syscom_dispatch_sync_error(void **state)
     assert_int_equal(ret, 24);
 }
 
-void test_syscom_dispatch_sync_destroyed_handle(void **state)
+void test_syscom_dispatch_sync_destroyed_handle(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
     char command[] = "fim_sync test-data";
-    char *output;
+    char* output;
 
     syscheck.enable_synchronization = 1;
     // The shutdown teardown destroyed the handle: the response must be dropped
@@ -202,15 +197,15 @@ void test_syscom_dispatch_sync_destroyed_handle(void **state)
     assert_int_equal(ret, 24);
 }
 
-void test_syscom_getconfig_syscheck(void **state)
+void test_syscom_getconfig_syscheck(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
-    char * section = "syscheck";
-    char * output;
+    char* section = "syscheck";
+    char* output;
 
-    cJSON * root = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "test", "syscheck");
 
     will_return(__wrap_getSyscheckConfig, root);
@@ -221,14 +216,13 @@ void test_syscom_getconfig_syscheck(void **state)
     assert_int_equal(ret, 22);
 }
 
-
-void test_syscom_getconfig_syscheck_failure(void **state)
+void test_syscom_getconfig_syscheck_failure(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
-    char * section = "syscheck";
-    char * output;
+    char* section = "syscheck";
+    char* output;
 
     will_return(__wrap_getSyscheckConfig, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'syscheck' section.");
@@ -240,16 +234,15 @@ void test_syscom_getconfig_syscheck_failure(void **state)
     assert_int_equal(ret, 35);
 }
 
-
-void test_syscom_getconfig_rootcheck(void **state)
+void test_syscom_getconfig_rootcheck(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
-    char * section = "rootcheck";
-    char * output;
+    char* section = "rootcheck";
+    char* output;
 
-    cJSON * root = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "test", "rootcheck");
 
     will_return(__wrap_getRootcheckConfig, root);
@@ -260,14 +253,13 @@ void test_syscom_getconfig_rootcheck(void **state)
     assert_int_equal(ret, 23);
 }
 
-
-void test_syscom_getconfig_rootcheck_failure(void **state)
+void test_syscom_getconfig_rootcheck_failure(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
-    char * section = "rootcheck";
-    char * output;
+    char* section = "rootcheck";
+    char* output;
 
     will_return(__wrap_getRootcheckConfig, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'rootcheck' section.");
@@ -279,16 +271,15 @@ void test_syscom_getconfig_rootcheck_failure(void **state)
     assert_int_equal(ret, 35);
 }
 
-
-void test_syscom_getconfig_internal(void **state)
+void test_syscom_getconfig_internal(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
-    char * section = "internal";
-    char * output;
+    char* section = "internal";
+    char* output;
 
-    cJSON * root = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "test", "internal");
 
     will_return(__wrap_getSyscheckInternalOptions, root);
@@ -299,14 +290,13 @@ void test_syscom_getconfig_internal(void **state)
     assert_int_equal(ret, 22);
 }
 
-
-void test_syscom_getconfig_internal_failure(void **state)
+void test_syscom_getconfig_internal_failure(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
-    char * section = "internal";
-    char * output;
+    char* section = "internal";
+    char* output;
 
     will_return(__wrap_getSyscheckInternalOptions, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'internal' section.");
@@ -318,25 +308,23 @@ void test_syscom_getconfig_internal_failure(void **state)
     assert_int_equal(ret, 35);
 }
 
-void test_syscom_getconfig_null_section(void **state)
+void test_syscom_getconfig_null_section(void** state)
 {
-    char * output;
+    char* output;
 
     expect_assert_failure(syscom_getconfig(NULL, &output));
 }
 
-void test_syscom_getconfig_null_output(void **state)
+void test_syscom_getconfig_null_output(void** state)
 {
-    char * section = "internal";
+    char* section = "internal";
 
     expect_assert_failure(syscom_getconfig(section, NULL));
 }
 
-
-
-void test_syscom_dispatch_getallconfig(void **state)
+void test_syscom_dispatch_getallconfig(void** state)
 {
-    (void) state;
+    (void)state;
     size_t ret;
 
     /* "getallconfig" does not start with HC_GETCONFIG, so the outer prefix
@@ -344,7 +332,7 @@ void test_syscom_dispatch_getallconfig(void **state)
      * whole daemon answered "err Unrecognized command" and fim went missing
      * from every /config document the agent pushed (#37843). */
     char command[] = "getallconfig";
-    char * output = NULL;
+    char* output = NULL;
 
     will_return(__wrap_getSyscheckConfig, NULL);
     will_return(__wrap_getRootcheckConfig, NULL);
@@ -359,7 +347,8 @@ void test_syscom_dispatch_getallconfig(void **state)
     assert_int_equal(ret, strlen(output));
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_agent, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_manager, delete_string),

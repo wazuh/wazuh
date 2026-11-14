@@ -128,48 +128,48 @@ namespace
 
 class HcInterfaceTest : public ::testing::Test
 {
-    protected:
-        Recorder m_recorder;
-        hc_config_t m_config {makeConfig()};
-        hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
+protected:
+    Recorder m_recorder;
+    hc_config_t m_config {makeConfig()};
+    hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
 };
 
 class HcFatalTest : public HcInterfaceTest
 {
-    protected:
-        struct Counts
-        {
-            int critical;
-            int error;
-            int fatal;
-        };
+protected:
+    struct Counts
+    {
+        int critical;
+        int error;
+        int fatal;
+    };
 
-        void SetUp() override
-        {
-            m_callbacks.on_fatal = onFatal;
-        }
+    void SetUp() override
+    {
+        m_callbacks.on_fatal = onFatal;
+    }
 
-        static Counts counts()
-        {
-            std::lock_guard<std::mutex> lock(g_fatalMutex);
-            return {g_criticalLogs.load(), g_errorLogs.load(), g_fatalCalls};
-        }
+    static Counts counts()
+    {
+        std::lock_guard<std::mutex> lock(g_fatalMutex);
+        return {g_criticalLogs.load(), g_errorLogs.load(), g_fatalCalls};
+    }
 
-        // What one module CRITICAL turned into: the levels the agent received and on_fatal calls.
-        template<typename Action>
-        static Counts delta(Action action)
-        {
-            const Counts before = counts();
-            action();
-            const Counts after = counts();
-            return {after.critical - before.critical, after.error - before.error, after.fatal - before.fatal};
-        }
+    // What one module CRITICAL turned into: the levels the agent received and on_fatal calls.
+    template<typename Action>
+    static Counts delta(Action action)
+    {
+        const Counts before = counts();
+        action();
+        const Counts after = counts();
+        return {after.critical - before.critical, after.error - before.error, after.fatal - before.fatal};
+    }
 
-        static std::string fatalReason()
-        {
-            std::lock_guard<std::mutex> lock(g_fatalMutex);
-            return g_fatalReason;
-        }
+    static std::string fatalReason()
+    {
+        std::lock_guard<std::mutex> lock(g_fatalMutex);
+        return g_fatalReason;
+    }
 };
 
 TEST_F(HcFatalTest, CriticalBeforeStartReachesTheAgentUnchanged)
@@ -192,10 +192,7 @@ TEST_F(HcFatalTest, CriticalWhileRunningIsReportedOnceAndLoggedAsError)
     hc_handle* handle = hc_create(&failClosed, &m_callbacks);
     ASSERT_NE(nullptr, handle);
 
-    const Counts first = delta([handle]()
-    {
-        EXPECT_FALSE(hc_start(handle));
-    });
+    const Counts first = delta([handle]() { EXPECT_FALSE(hc_start(handle)); });
     const Counts second = delta(logCriticalThroughTheModule);
 
     EXPECT_EQ(0, first.critical);
@@ -231,10 +228,7 @@ TEST_F(HcFatalTest, WithoutOnFatalCriticalReachesTheAgentUnchanged)
     hc_handle* handle = hc_create(&failClosed, &m_callbacks);
     ASSERT_NE(nullptr, handle);
 
-    const Counts change = delta([handle]()
-    {
-        EXPECT_FALSE(hc_start(handle));
-    });
+    const Counts change = delta([handle]() { EXPECT_FALSE(hc_start(handle)); });
 
     EXPECT_EQ(1, change.critical);
     EXPECT_EQ(0, change.fatal);
@@ -418,15 +412,15 @@ TEST_F(HcInterfaceTest, LifecycleChurn)
         std::atomic<int> submitted {0};
         std::thread producer(
             [&]
-        {
-            const uint8_t frame[] = "1:/var/log/syslog:churn";
-
-            for (int n = 0; n < MAX_SUBMITS && submitting.load(); n++)
             {
-                hc_submit_event(handle, frame, sizeof(frame) - 1);
-                submitted.fetch_add(1, std::memory_order_relaxed);
-            }
-        });
+                const uint8_t frame[] = "1:/var/log/syslog:churn";
+
+                for (int n = 0; n < MAX_SUBMITS && submitting.load(); n++)
+                {
+                    hc_submit_event(handle, frame, sizeof(frame) - 1);
+                    submitted.fetch_add(1, std::memory_order_relaxed);
+                }
+            });
 
         // Stop only once submits are demonstrably in flight, so the race the
         // test exists for still happens without depending on the wall clock.

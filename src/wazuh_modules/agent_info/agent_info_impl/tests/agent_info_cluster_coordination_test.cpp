@@ -28,90 +28,88 @@ void mock_set_cluster_name(const std::string& name);
  */
 class AgentInfoClusterCoordinationTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
+        m_reportedEvents.clear();
+
+        m_reportDiffFunc = [this](const std::string& event)
         {
-            m_logOutput.clear();
-            m_reportedEvents.clear();
+            m_reportedEvents.push_back(nlohmann::json::parse(event));
+        };
 
-            m_reportDiffFunc = [this](const std::string & event)
-            {
-                m_reportedEvents.push_back(nlohmann::json::parse(event));
-            };
+        m_logFunc = [this](modules_log_level_t /* level */, const std::string& msg)
+        {
+            m_logOutput += msg + "\n";
+        };
 
-            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
+        m_queryModuleFunc =
+            [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+        {
+            if (response)
             {
-                m_logOutput += msg + "\n";
-            };
+                *response = nullptr;
+            }
 
-            m_queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
-            {
-                if (response)
+            return 0;
+        };
+
+        m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+        m_mockFileIO = std::make_shared<MockFileIOUtils>();
+        m_mockSysInfo = std::make_shared<MockSysInfo>();
+
+        // Reset mock cluster values to defaults
+        mock_set_cluster_name("test_cluster");
+    }
+
+    void TearDown() override
+    {
+        m_agentInfo.reset();
+        m_mockFileSystem.reset();
+        m_mockFileIO.reset();
+        m_mockSysInfo.reset();
+
+        // Reset mock cluster values
+        mock_set_cluster_name("test_cluster");
+    }
+
+    void setupDefaultMocks()
+    {
+        EXPECT_CALL(*m_mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
+
+        EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Invoke(
+                [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
                 {
-                    *response = nullptr;
-                }
+                    std::string pathStr = path.string();
 
-                return 0;
-            };
+                    if (pathStr.find("client.keys") != std::string::npos)
+                    {
+                        callback("001 test-agent 10.0.0.1 key");
+                    }
+                    else if (pathStr.find("merged.mg") != std::string::npos)
+                    {
+                        callback("#test-group");
+                    }
+                }));
+    }
 
-            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
-            m_mockFileIO = std::make_shared<MockFileIOUtils>();
-            m_mockSysInfo = std::make_shared<MockSysInfo>();
+    /// Run start() for a single iteration, capturing sync flag log messages
+    void runSingleIteration()
+    {
+        m_agentInfo->start(1, 86400, []() { return false; });
+    }
 
-            // Reset mock cluster values to defaults
-            mock_set_cluster_name("test_cluster");
-        }
-
-        void TearDown() override
-        {
-            m_agentInfo.reset();
-            m_mockFileSystem.reset();
-            m_mockFileIO.reset();
-            m_mockSysInfo.reset();
-
-            // Reset mock cluster values
-            mock_set_cluster_name("test_cluster");
-        }
-
-        void setupDefaultMocks()
-        {
-            EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-            .WillRepeatedly(::testing::Return(true));
-
-            EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-            .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-            {
-                std::string pathStr = path.string();
-
-                if (pathStr.find("client.keys") != std::string::npos)
-                {
-                    callback("001 test-agent 10.0.0.1 key");
-                }
-                else if (pathStr.find("merged.mg") != std::string::npos)
-                {
-                    callback("#test-group");
-                }
-            }));
-        }
-
-        /// Run start() for a single iteration, capturing sync flag log messages
-        void runSingleIteration()
-        {
-            m_agentInfo->start(1, 86400, []()
-            {
-                return false;
-            });
-        }
-
-        std::shared_ptr<AgentInfoImpl> m_agentInfo;
-        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
-        std::shared_ptr<MockFileIOUtils> m_mockFileIO;
-        std::shared_ptr<MockSysInfo> m_mockSysInfo;
-        std::function<void(const std::string&)> m_reportDiffFunc;
-        std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
-        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
-        std::vector<nlohmann::json> m_reportedEvents;
-        std::string m_logOutput;
+    std::shared_ptr<AgentInfoImpl> m_agentInfo;
+    std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+    std::shared_ptr<MockFileIOUtils> m_mockFileIO;
+    std::shared_ptr<MockSysInfo> m_mockSysInfo;
+    std::function<void(const std::string&)> m_reportDiffFunc;
+    std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+    std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
+    std::vector<nlohmann::json> m_reportedEvents;
+    std::string m_logOutput;
 };
 
 TEST_F(AgentInfoClusterCoordinationTest, ClusterNameChange_SetsGroupsSyncFlag)
@@ -119,29 +117,26 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameChange_SetsGroupsSyncFlag)
     setupDefaultMocks();
 
     // First iteration: initial insert with cluster_name = "test_cluster"
-    nlohmann::json osData1 =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
+    nlohmann::json osData1 = {{"os_name", "TestOS"},
+                              {"architecture", "x86_64"},
+                              {"os_type", "linux"},
+                              {"os_platform", "ubuntu"},
+                              {"os_version", "22.04"},
+                              {"hostname", "test-host"}};
 
     // Second iteration: cluster_name changes to "new_cluster"
     nlohmann::json osData2 = osData1;
 
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData1))
-    .WillOnce(::testing::Return(osData2));
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData1)).WillOnce(::testing::Return(osData2));
 
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,  // Real DBSync
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
+                                                  m_reportDiffFunc,
+                                                  m_logFunc,
+                                                  m_queryModuleFunc,
+                                                  nullptr, // Real DBSync
+                                                  m_mockSysInfo,
+                                                  m_mockFileIO,
+                                                  m_mockFileSystem);
 
     // First run: populates initial data (INSERTED event)
     runSingleIteration();
@@ -161,91 +156,91 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameChange_SetsGroupsSyncFlag)
 
 TEST_F(AgentInfoClusterCoordinationTest, ClusterNameAndOtherMetadata_OnlyMetadataFlagSet)
 {
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
-    nlohmann::json osData1 =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
+    nlohmann::json osData1 = {{"os_name", "TestOS"},
+                              {"architecture", "x86_64"},
+                              {"os_type", "linux"},
+                              {"os_platform", "ubuntu"},
+                              {"os_version", "22.04"},
+                              {"hostname", "test-host"}};
 
     // Change agent_name (via client.keys) AND cluster_name on second iteration
     nlohmann::json osData2 = osData1;
 
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData1))
-    .WillOnce(::testing::Return(osData2));
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData1)).WillOnce(::testing::Return(osData2));
 
     // Each iteration calls readLineByLine twice (client.keys + merged.mg), so 2 iterations = 4 calls
     EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    // Iteration 1: client.keys
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+        // Iteration 1: client.keys
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 test-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 1: merged.mg
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 test-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }))
+        // Iteration 1: merged.mg
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 test-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 2: client.keys (changed agent_name)
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 test-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }))
+        // Iteration 2: client.keys (changed agent_name)
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 renamed-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 2: merged.mg
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 renamed-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }))
+        // Iteration 2: merged.mg
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 renamed-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }));
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 renamed-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }));
 
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
+                                                  m_reportDiffFunc,
+                                                  m_logFunc,
+                                                  m_queryModuleFunc,
+                                                  nullptr,
+                                                  m_mockSysInfo,
+                                                  m_mockFileIO,
+                                                  m_mockFileSystem);
 
     // First run
     runSingleIteration();
@@ -264,89 +259,89 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameAndOtherMetadata_OnlyMetadat
 
 TEST_F(AgentInfoClusterCoordinationTest, OtherMetadataOnly_OnlyMetadataFlagSet)
 {
-    nlohmann::json osData =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
+    nlohmann::json osData = {{"os_name", "TestOS"},
+                             {"architecture", "x86_64"},
+                             {"os_type", "linux"},
+                             {"os_platform", "ubuntu"},
+                             {"os_version", "22.04"},
+                             {"hostname", "test-host"}};
 
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData))
-    .WillOnce(::testing::Return(osData));
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData)).WillOnce(::testing::Return(osData));
 
     // Second iteration returns a different agent_name via client.keys
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
     // Each iteration calls readLineByLine twice (client.keys + merged.mg), so 2 iterations = 4 calls
     EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    // Iteration 1: client.keys
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+        // Iteration 1: client.keys
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 test-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 1: merged.mg
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 test-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }))
+        // Iteration 1: merged.mg
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 test-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 2: client.keys (changed agent_name)
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 test-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }))
+        // Iteration 2: client.keys (changed agent_name)
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 renamed-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 2: merged.mg
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 renamed-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }))
+        // Iteration 2: merged.mg
+        .WillOnce(::testing::Invoke(
+            [](const std::filesystem::path& path, const std::function<bool(const std::string&)>& callback)
+            {
+                std::string pathStr = path.string();
 
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 renamed-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }));
+                if (pathStr.find("client.keys") != std::string::npos)
+                {
+                    callback("001 renamed-agent 10.0.0.1 key");
+                }
+                else if (pathStr.find("merged.mg") != std::string::npos)
+                {
+                    callback("#test-group");
+                }
+            }));
 
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
+                                                  m_reportDiffFunc,
+                                                  m_logFunc,
+                                                  m_queryModuleFunc,
+                                                  nullptr,
+                                                  m_mockSysInfo,
+                                                  m_mockFileIO,
+                                                  m_mockFileSystem);
 
     // First run
     runSingleIteration();
@@ -365,25 +360,23 @@ TEST_F(AgentInfoClusterCoordinationTest, FirstRun_InsertedEvent_SetsMetadataFlag
 {
     setupDefaultMocks();
 
-    nlohmann::json osData =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
+    nlohmann::json osData = {{"os_name", "TestOS"},
+                             {"architecture", "x86_64"},
+                             {"os_type", "linux"},
+                             {"os_platform", "ubuntu"},
+                             {"os_version", "22.04"},
+                             {"hostname", "test-host"}};
 
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData));
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
 
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
+                                                  m_reportDiffFunc,
+                                                  m_logFunc,
+                                                  m_queryModuleFunc,
+                                                  nullptr,
+                                                  m_mockSysInfo,
+                                                  m_mockFileIO,
+                                                  m_mockFileSystem);
 
     // First run: INSERTED event should set metadata sync flag (categorizeMetadataChanges returns true for INSERTED)
     runSingleIteration();

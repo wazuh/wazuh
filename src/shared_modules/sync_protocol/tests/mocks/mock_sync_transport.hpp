@@ -29,65 +29,65 @@
  */
 class MockSyncTransport : public ISyncSessionTransport
 {
-    public:
-        bool checkStatus() override
-        {
-            return m_available;
-        }
+public:
+    bool checkStatus() override
+    {
+        return m_available;
+    }
 
-        bool sendSession(uint64_t session, const std::vector<uint8_t>& message) override
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_session = session;
-            m_lastMessage = message;
-            m_sendCount++;
-            m_cv.notify_all();
-            return m_accept;
-        }
+    bool sendSession(uint64_t session, const std::vector<uint8_t>& message) override
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_session = session;
+        m_lastMessage = message;
+        m_sendCount++;
+        m_cv.notify_all();
+        return m_accept;
+    }
 
-        /// @brief Waits until the protocol has handed a session over.
-        bool waitForSession(std::chrono::milliseconds timeout = std::chrono::seconds {5})
-        {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            return m_cv.wait_for(lock, timeout, [this] { return m_sendCount > 0; });
-        }
+    /// @brief Waits until the protocol has handed a session over.
+    bool waitForSession(std::chrono::milliseconds timeout = std::chrono::seconds {5})
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_cv.wait_for(lock, timeout, [this] { return m_sendCount > 0; });
+    }
 
-        uint64_t session() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_session;
-        }
+    uint64_t session() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_session;
+    }
 
-        std::vector<uint8_t> lastMessage() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_lastMessage;
-        }
+    std::vector<uint8_t> lastMessage() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_lastMessage;
+    }
 
-        int sendCount() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_sendCount;
-        }
+    int sendCount() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_sendCount;
+    }
 
-        void setAccept(bool accept)
-        {
-            m_accept = accept;
-        }
-        void setAvailable(bool available)
-        {
-            m_available = available;
-        }
+    void setAccept(bool accept)
+    {
+        m_accept = accept;
+    }
+    void setAvailable(bool available)
+    {
+        m_available = available;
+    }
 
-    private:
-        mutable std::mutex m_mutex;
-        std::condition_variable m_cv;
-        uint64_t m_session {0};
-        std::vector<uint8_t> m_lastMessage;
-        int m_sendCount {0};
-        // Atomic: the test thread flips these while the protocol's worker reads them.
-        std::atomic<bool> m_accept {true};
-        std::atomic<bool> m_available {true};
+private:
+    mutable std::mutex m_mutex;
+    std::condition_variable m_cv;
+    uint64_t m_session {0};
+    std::vector<uint8_t> m_lastMessage;
+    int m_sendCount {0};
+    // Atomic: the test thread flips these while the protocol's worker reads them.
+    std::atomic<bool> m_accept {true};
+    std::atomic<bool> m_available {true};
 };
 
 /// @brief Answers the session the protocol is waiting on, the way the manager does:
@@ -97,7 +97,8 @@ class MockSyncTransport : public ISyncSessionTransport
 ///        protocol handed to the transport.
 inline void answerSession(const std::shared_ptr<MockSyncTransport>& transport,
                           const std::function<void(const uint8_t*, size_t)>& feed,
-                          int httpCode = 200, std::optional<uint64_t> forSession = std::nullopt)
+                          int httpCode = 200,
+                          std::optional<uint64_t> forSession = std::nullopt)
 {
     if (!transport->waitForSession())
     {
@@ -111,8 +112,8 @@ inline void answerSession(const std::shared_ptr<MockSyncTransport>& transport,
 
 /// @brief The FullSession the protocol handed over, for tests that assert on
 ///        what a session actually carried.
-inline const Wazuh::SyncSchema::FullSession* capturedSession(
-    const std::shared_ptr<MockSyncTransport>& transport, std::vector<uint8_t>& keepAlive)
+inline const Wazuh::SyncSchema::FullSession* capturedSession(const std::shared_ptr<MockSyncTransport>& transport,
+                                                             std::vector<uint8_t>& keepAlive)
 {
     keepAlive = transport->lastMessage();
 

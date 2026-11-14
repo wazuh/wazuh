@@ -15,25 +15,29 @@
 
 #include "shared.h"
 
-static w_linked_queue_t *queue_ptr = NULL; // Local ptr to queue
+static w_linked_queue_t* queue_ptr = NULL; // Local ptr to queue
 /****************SETUP/TEARDOWN******************/
-void callback_queue_push_ex() {
-    int *ptr = malloc(sizeof(int));
+void callback_queue_push_ex()
+{
+    int* ptr = malloc(sizeof(int));
     *ptr = 0;
-    linked_queue_push_ex(queue_ptr, ptr);   
+    linked_queue_push_ex(queue_ptr, ptr);
 }
 
-int setup_queue(void **state) {
-    w_linked_queue_t *queue = linked_queue_init();
+int setup_queue(void** state)
+{
+    w_linked_queue_t* queue = linked_queue_init();
     *state = queue;
     queue_ptr = queue;
     return 0;
 }
 
-int teardown_queue(void **state) {
-    w_linked_queue_t *queue = *state;
-    int *data = linked_queue_pop(queue);
-    while(data) {
+int teardown_queue(void** state)
+{
+    w_linked_queue_t* queue = *state;
+    int* data = linked_queue_pop(queue);
+    while (data)
+    {
         os_free(data);
         data = linked_queue_pop(queue);
     }
@@ -42,13 +46,14 @@ int teardown_queue(void **state) {
     return 0;
 }
 
-int setup_queue_with_values(void **state) {
-    w_linked_queue_t *queue = linked_queue_init();
+int setup_queue_with_values(void** state)
+{
+    w_linked_queue_t* queue = linked_queue_init();
     *state = queue;
-    int *ptr = malloc(sizeof(int));
+    int* ptr = malloc(sizeof(int));
     *ptr = 3;
     linked_queue_push(queue, ptr);
-    int *ptr2 = malloc(sizeof(int));
+    int* ptr2 = malloc(sizeof(int));
     *ptr2 = 5;
     linked_queue_push(queue, ptr2);
     queue_ptr = queue;
@@ -56,14 +61,15 @@ int setup_queue_with_values(void **state) {
 }
 
 /****************TESTS***************************/
-void test_linked_queue_push(void **state) {
-    w_linked_queue_t *queue = *state;
-    int *ptr = malloc(sizeof(int));
+void test_linked_queue_push(void** state)
+{
+    w_linked_queue_t* queue = *state;
+    int* ptr = malloc(sizeof(int));
     *ptr = 2;
     linked_queue_push(queue, ptr);
     assert_ptr_equal(queue->first->data, ptr);
     assert_ptr_equal(queue->last->data, ptr);
-    int *ptr2 = malloc(sizeof(int));
+    int* ptr2 = malloc(sizeof(int));
     *ptr2 = 5;
     linked_queue_push(queue, ptr2);
     assert_ptr_equal(queue->first->data, ptr);
@@ -71,9 +77,10 @@ void test_linked_queue_push(void **state) {
     assert_int_equal(queue->elements, 2);
 }
 
-void test_linked_queue_push_ex(void **state) {
-    w_linked_queue_t *queue = *state;
-    int *ptr = malloc(sizeof(int));
+void test_linked_queue_push_ex(void** state)
+{
+    w_linked_queue_t* queue = *state;
+    int* ptr = malloc(sizeof(int));
     *ptr = 2;
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -81,7 +88,7 @@ void test_linked_queue_push_ex(void **state) {
     linked_queue_push_ex(queue, ptr);
     assert_ptr_equal(queue->first->data, ptr);
     assert_ptr_equal(queue->last->data, ptr);
-    int *ptr2 = malloc(sizeof(int));
+    int* ptr2 = malloc(sizeof(int));
     *ptr2 = 5;
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -91,17 +98,18 @@ void test_linked_queue_push_ex(void **state) {
     assert_int_equal(queue->elements, 2);
 }
 
-
-void test_linked_pop_empty(void **state) {
-    w_linked_queue_t *queue = *state;
-    void *data = linked_queue_pop(queue);
+void test_linked_pop_empty(void** state)
+{
+    w_linked_queue_t* queue = *state;
+    void* data = linked_queue_pop(queue);
     assert_ptr_equal(data, NULL);
 }
 
-void test_linked_pop(void **state) {
-    w_linked_queue_t *queue = *state;
+void test_linked_pop(void** state)
+{
+    w_linked_queue_t* queue = *state;
     assert_int_equal(queue->elements, 2);
-    int *data = linked_queue_pop(queue);
+    int* data = linked_queue_pop(queue);
     assert_int_equal(queue->elements, 1);
     assert_ptr_not_equal(data, NULL);
     assert_int_equal(*data, 3);
@@ -116,12 +124,13 @@ void test_linked_pop(void **state) {
     os_free(data);
 }
 
-void test_linked_pop_ex(void **state) {
-    w_linked_queue_t *queue = *state;
+void test_linked_pop_ex(void** state)
+{
+    w_linked_queue_t* queue = *state;
     assert_int_equal(queue->elements, 2);
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    int *data = linked_queue_pop_ex(queue);
+    int* data = linked_queue_pop_ex(queue);
     assert_int_equal(queue->elements, 1);
     assert_ptr_not_equal(data, NULL);
     assert_int_equal(*data, 3);
@@ -146,23 +155,24 @@ void test_linked_pop_ex(void **state) {
     os_free(data);
 }
 
-void test_linked_queue_unlink_and_push_mid(void **state) {
-    w_linked_queue_t *queue = *state;
+void test_linked_queue_unlink_and_push_mid(void** state)
+{
+    w_linked_queue_t* queue = *state;
     int *ptr, *ptr2, *ptr3;
     ptr = malloc(sizeof(int));
     *ptr = 1;
-    w_linked_queue_node_t *node1 = linked_queue_push(queue, ptr);
+    w_linked_queue_node_t* node1 = linked_queue_push(queue, ptr);
     ptr2 = malloc(sizeof(int));
     *ptr2 = 2;
-    w_linked_queue_node_t *node2 = linked_queue_push(queue, ptr2);
+    w_linked_queue_node_t* node2 = linked_queue_push(queue, ptr2);
     ptr3 = malloc(sizeof(int));
     *ptr3 = 3;
-    w_linked_queue_node_t *node3 = linked_queue_push(queue, ptr3);
+    w_linked_queue_node_t* node3 = linked_queue_push(queue, ptr3);
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     linked_queue_unlink_and_push_node(queue, node2);
     assert_int_equal(3, queue->elements);
-    int *ret = linked_queue_pop(queue);
+    int* ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr, ret);
     ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr3, ret);
@@ -173,23 +183,24 @@ void test_linked_queue_unlink_and_push_mid(void **state) {
     os_free(ptr3);
 }
 
-void test_linked_queue_unlink_and_push_start(void **state) {
-    w_linked_queue_t *queue = *state;
+void test_linked_queue_unlink_and_push_start(void** state)
+{
+    w_linked_queue_t* queue = *state;
     int *ptr, *ptr2, *ptr3;
     ptr = malloc(sizeof(int));
     *ptr = 1;
-    w_linked_queue_node_t *node1 = linked_queue_push(queue, ptr);
+    w_linked_queue_node_t* node1 = linked_queue_push(queue, ptr);
     ptr2 = malloc(sizeof(int));
     *ptr2 = 2;
-    w_linked_queue_node_t *node2 = linked_queue_push(queue, ptr2);
+    w_linked_queue_node_t* node2 = linked_queue_push(queue, ptr2);
     ptr3 = malloc(sizeof(int));
     *ptr3 = 3;
-    w_linked_queue_node_t *node3 = linked_queue_push(queue, ptr3);
+    w_linked_queue_node_t* node3 = linked_queue_push(queue, ptr3);
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     linked_queue_unlink_and_push_node(queue, node1);
     assert_int_equal(3, queue->elements);
-    int *ret = linked_queue_pop(queue);
+    int* ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr2, ret);
     ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr3, ret);
@@ -200,23 +211,24 @@ void test_linked_queue_unlink_and_push_start(void **state) {
     os_free(ptr3);
 }
 
-void test_linked_queue_unlink_and_push_end(void **state) {
-    w_linked_queue_t *queue = *state;
+void test_linked_queue_unlink_and_push_end(void** state)
+{
+    w_linked_queue_t* queue = *state;
     int *ptr, *ptr2, *ptr3;
     ptr = malloc(sizeof(int));
     *ptr = 1;
-    w_linked_queue_node_t *node1 = linked_queue_push(queue, ptr);
+    w_linked_queue_node_t* node1 = linked_queue_push(queue, ptr);
     ptr2 = malloc(sizeof(int));
     *ptr2 = 2;
-    w_linked_queue_node_t *node2 = linked_queue_push(queue, ptr2);
+    w_linked_queue_node_t* node2 = linked_queue_push(queue, ptr2);
     ptr3 = malloc(sizeof(int));
     *ptr3 = 3;
-    w_linked_queue_node_t *node3 = linked_queue_push(queue, ptr3);
+    w_linked_queue_node_t* node3 = linked_queue_push(queue, ptr3);
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     linked_queue_unlink_and_push_node(queue, node3);
     assert_int_equal(3, queue->elements);
-    int *ret = linked_queue_pop(queue);
+    int* ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr, ret);
     ret = linked_queue_pop(queue);
     assert_ptr_equal(ptr2, ret);
@@ -227,7 +239,8 @@ void test_linked_queue_unlink_and_push_end(void **state) {
     os_free(ptr3);
 }
 /************************************************/
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_linked_queue_push, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_push_ex, setup_queue, teardown_queue),

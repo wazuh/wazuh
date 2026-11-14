@@ -15,7 +15,6 @@
 #include <tlhelp32.h>
 #include <psapi.h>
 
-
 /* Set Debug privilege
  * See: "How to obtain a handle to any process with SeDebugPrivilege"
  * http://support.microsoft.com/kb/131065/en-us
@@ -27,7 +26,8 @@ int os_win32_setdebugpriv(HANDLE h, int en)
     LUID luid;
     DWORD cbPrevious = sizeof(TOKEN_PRIVILEGES);
 
-    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
+    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid))
+    {
         return (0);
     }
 
@@ -35,10 +35,10 @@ int os_win32_setdebugpriv(HANDLE h, int en)
     tp.Privileges[0].Luid = luid;
     tp.Privileges[0].Attributes = 0;
 
-    AdjustTokenPrivileges(h, FALSE, &tp, sizeof(TOKEN_PRIVILEGES),
-                          &tpPrevious, &cbPrevious);
+    AdjustTokenPrivileges(h, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &tpPrevious, &cbPrevious);
 
-    if (GetLastError() != ERROR_SUCCESS) {
+    if (GetLastError() != ERROR_SUCCESS)
+    {
         return (0);
     }
 
@@ -46,15 +46,18 @@ int os_win32_setdebugpriv(HANDLE h, int en)
     tpPrevious.Privileges[0].Luid = luid;
 
     /* If en is set to true, we enable the privilege */
-    if (en) {
+    if (en)
+    {
         tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
-    } else {
-        tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED &
-                                                tpPrevious.Privileges[0].Attributes);
+    }
+    else
+    {
+        tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED & tpPrevious.Privileges[0].Attributes);
     }
 
     AdjustTokenPrivileges(h, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
-    if (GetLastError() != ERROR_SUCCESS) {
+    if (GetLastError() != ERROR_SUCCESS)
+    {
         return (0);
     }
 
@@ -62,40 +65,45 @@ int os_win32_setdebugpriv(HANDLE h, int en)
 }
 
 /* Get list of win32 processes */
-OSList *os_get_process_list()
+OSList* os_get_process_list()
 {
-    OSList *p_list = NULL;
+    OSList* p_list = NULL;
     HANDLE hsnap;
     HANDLE hpriv;
     PROCESSENTRY32 p_entry;
     p_entry.dwSize = sizeof(PROCESSENTRY32);
 
     /* Get token to enable Debug privilege */
-    if (!OpenThreadToken(GetCurrentThread(),
-                         TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hpriv)) {
-        if (GetLastError() == ERROR_NO_TOKEN) {
-            if (!ImpersonateSelf(SecurityImpersonation)) {
+    if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hpriv))
+    {
+        if (GetLastError() == ERROR_NO_TOKEN)
+        {
+            if (!ImpersonateSelf(SecurityImpersonation))
+            {
                 mterror(ARGV0, "os_get_win32_process_list -> ImpersonateSelf");
                 return (NULL);
             }
 
-            if (!OpenThreadToken(GetCurrentThread(),
-                                 TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-                                 FALSE, &hpriv)) {
+            if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hpriv))
+            {
                 mterror(ARGV0, "os_get_win32_process_list -> OpenThread");
-                return (NULL) ;
+                return (NULL);
             }
-        } else {
+        }
+        else
+        {
             mterror(ARGV0, "os_get_win32_process_list -> OpenThread");
             return (NULL);
         }
     }
 
     /* Enable debug privilege */
-    if (!os_win32_setdebugpriv(hpriv, 1)) {
+    if (!os_win32_setdebugpriv(hpriv, 1))
+    {
         mterror(ARGV0, "os_win32_setdebugpriv");
 
-        if(CloseHandle(hpriv) == 0) {
+        if (CloseHandle(hpriv) == 0)
+        {
             mdebug2("Can't close handle");
         }
 
@@ -104,10 +112,12 @@ OSList *os_get_process_list()
 
     /* Make a snapshot of every process */
     hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hsnap == INVALID_HANDLE_VALUE) {
+    if (hsnap == INVALID_HANDLE_VALUE)
+    {
         mterror(ARGV0, "CreateToolhelp32Snapshot");
 
-        if (CloseHandle(hpriv) == 0) {
+        if (CloseHandle(hpriv) == 0)
+        {
             mdebug2("Can't close handle");
         }
 
@@ -115,14 +125,17 @@ OSList *os_get_process_list()
     }
 
     /* Get first and second processes -- system entries */
-    if (!Process32First(hsnap, &p_entry) && !Process32Next(hsnap, &p_entry )) {
+    if (!Process32First(hsnap, &p_entry) && !Process32Next(hsnap, &p_entry))
+    {
         mterror(ARGV0, "Process32First");
 
-        if (CloseHandle(hsnap) == 0) {
+        if (CloseHandle(hsnap) == 0)
+        {
             mdebug2("Can't close handle");
         }
 
-        if (CloseHandle(hpriv) == 0) {
+        if (CloseHandle(hpriv) == 0)
+        {
             mdebug2("Can't close handle");
         }
 
@@ -131,13 +144,16 @@ OSList *os_get_process_list()
 
     /* Create process list */
     p_list = OSList_Create();
-    if (!p_list) {
+    if (!p_list)
+    {
 
-        if (CloseHandle(hsnap) == 0) {
+        if (CloseHandle(hsnap) == 0)
+        {
             mdebug2("Can't close handle");
         }
 
-        if (CloseHandle(hpriv) == 0) {
+        if (CloseHandle(hpriv) == 0)
+        {
             mdebug2("Can't close handle");
         }
 
@@ -146,10 +162,11 @@ OSList *os_get_process_list()
     }
 
     /* Get each process name and path */
-    while (Process32Next( hsnap, &p_entry)) {
-        char *p_name;
-        char *p_path;
-        Proc_Info *p_info;
+    while (Process32Next(hsnap, &p_entry))
+    {
+        char* p_name;
+        char* p_path;
+        Proc_Info* p_info;
 
         /* Set process name */
         os_strdup(p_entry.szExeFile, p_name);
@@ -162,21 +179,27 @@ OSList *os_get_process_list()
         /* Snapshot of the process */
         hmod = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, p_entry.th32ProcessID);
 
-        if (hmod == INVALID_HANDLE_VALUE) {
+        if (hmod == INVALID_HANDLE_VALUE)
+        {
             os_strdup(p_name, p_path);
-        } else if (!Module32First(hmod, &m_entry)) {
+        }
+        else if (!Module32First(hmod, &m_entry))
+        {
             /* Get executable path (first entry in the module list) */
 
-            if (CloseHandle(hmod) == 0){
+            if (CloseHandle(hmod) == 0)
+            {
                 mdebug2("Can't close handle");
             }
 
             os_strdup(p_name, p_path);
         }
-        else {
+        else
+        {
             os_strdup(m_entry.szExePath, p_path);
 
-            if (CloseHandle(hmod) == 0) {
+            if (CloseHandle(hmod) == 0)
+            {
                 mdebug2("Can't close handle");
             }
         }
@@ -190,11 +213,13 @@ OSList *os_get_process_list()
     /* Remove debug privileges */
     os_win32_setdebugpriv(hpriv, 0);
 
-    if (CloseHandle(hsnap) == 0) {
+    if (CloseHandle(hsnap) == 0)
+    {
         mdebug2("Can't close handle");
     }
 
-    if (CloseHandle(hpriv) == 0) {
+    if (CloseHandle(hpriv) == 0)
+    {
         mdebug2("Can't close handle");
     }
 

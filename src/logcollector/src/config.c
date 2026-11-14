@@ -21,21 +21,24 @@ int lc_debug_level;
 rlim_t nofile;
 #endif
 
-void _getLocalfilesListJSON(logreader *list, cJSON *array, const char *gpath);
+void _getLocalfilesListJSON(logreader* list, cJSON* array, const char* gpath);
 
 #ifndef WIN32
-void w_logcollector_check_max_files(long effective) {
-    if (effective >= 0 && maximum_files > effective - 100) {
+void w_logcollector_check_max_files(long effective)
+{
+    if (effective >= 0 && maximum_files > effective - 100)
+    {
         mwarn("Definition 'logcollector.max_files' (%d) leaves fewer than 100 spare descriptors under the file "
               "descriptor limit in force (%ld). Lower 'logcollector.max_files' or raise the limit the process is "
               "started with.",
-              maximum_files, effective);
+              maximum_files,
+              effective);
     }
 }
 #endif
 
 /* Read the config file (the localfiles) */
-int LogCollectorConfig(const char *cfgfile)
+int LogCollectorConfig(const char* cfgfile)
 {
     int modules = 0;
     logreader_config log_config;
@@ -68,33 +71,41 @@ int LogCollectorConfig(const char *cfgfile)
     total_files = 0;
     current_files = 0;
 
-    if (force_reload && reload_interval < vcheck_files) {
-        mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", reload_interval, vcheck_files);
+    if (force_reload && reload_interval < vcheck_files)
+    {
+        mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).",
+              reload_interval,
+              vcheck_files);
     }
 
 #ifndef WIN32
     nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
 #endif
 
-    if (maximum_lines > 0 && maximum_lines < 100) {
+    if (maximum_lines > 0 && maximum_lines < 100)
+    {
         merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
         return OS_INVALID;
     }
 
 #ifndef WIN32
-    if (maximum_files > (int)nofile - 100) {
+    if (maximum_files > (int)nofile - 100)
+    {
         merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
         return OS_SIZELIM;
     }
 #else
-    if (maximum_files > WIN32_MAX_FILES) {
+    if (maximum_files > WIN32_MAX_FILES)
+    {
         /* Limit files on Windows as file descriptors are shared */
         maximum_files = WIN32_MAX_FILES;
-        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.", WIN32_MAX_FILES);
+        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.",
+                WIN32_MAX_FILES);
     }
 #endif
 
-    if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0)
+    {
         return (OS_INVALID);
     }
 
@@ -110,14 +121,14 @@ int LogCollectorConfig(const char *cfgfile)
     return (1);
 }
 
-void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
+void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char* gpath)
 {
     cJSON* file = cJSON_CreateObject();
 
     if (gpath)
         cJSON_AddStringToObject(file, "file", gpath);
     else if (reader->ffile)
-       cJSON_AddStringToObject(file, "file", reader->ffile);
+        cJSON_AddStringToObject(file, "file", reader->ffile);
     else if (reader->file)
         cJSON_AddStringToObject(file, "file", reader->file);
     if (reader->channel_str != NULL)
@@ -171,8 +182,8 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
     if (reader->exclude)
         cJSON_AddStringToObject(file, "exclude", reader->exclude);
 
-    if (reader->logformat != NULL && strcmp(reader->logformat, EVENTLOG) != 0 && strcmp(reader->logformat, "command") != 0 &&
-        strcmp(reader->logformat, "full_command") != 0)
+    if (reader->logformat != NULL && strcmp(reader->logformat, EVENTLOG) != 0 &&
+        strcmp(reader->logformat, "command") != 0 && strcmp(reader->logformat, "full_command") != 0)
     {
 
         if (reader->future == 1)
@@ -304,100 +315,120 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
     cJSON_AddItemToArray(array, file);
 }
 
-cJSON *getLocalfileConfig(void) {
+cJSON* getLocalfileConfig(void)
+{
 
-    if (!logff) {
+    if (!logff)
+    {
         return NULL;
     }
 
-    cJSON *root = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
 
-    cJSON *localfiles = cJSON_CreateArray();
+    cJSON* localfiles = cJSON_CreateArray();
 
-    for (int i = 0; logff[i].target; i++) {
+    for (int i = 0; logff[i].target; i++)
+    {
         _getLocalfilesListJSON(&logff[i], localfiles, NULL);
     }
 
-    if (globs) {
-        for (int i = 0; globs[i].gfiles; i++) {
-            if (globs[i].gfiles) {
+    if (globs)
+    {
+        for (int i = 0; globs[i].gfiles; i++)
+        {
+            if (globs[i].gfiles)
+            {
                 _getLocalfilesListJSON(globs[i].gfiles, localfiles, globs[i].gpath);
             }
         }
     }
 
-    if (cJSON_GetArraySize(localfiles) > 0) {
-        cJSON_AddItemToObject(root,"localfile",localfiles);
-    } else {
+    if (cJSON_GetArraySize(localfiles) > 0)
+    {
+        cJSON_AddItemToObject(root, "localfile", localfiles);
+    }
+    else
+    {
         cJSON_free(localfiles);
     }
 
     return root;
 }
 
-cJSON *getSocketConfig(void) {
+cJSON* getSocketConfig(void)
+{
 
-    if (!logsk) {
+    if (!logsk)
+    {
         return NULL;
     }
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *sockets = cJSON_CreateArray();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* sockets = cJSON_CreateArray();
     int i;
 
-    for (i=0;logsk[i].name;i++) {
-        cJSON *socket = cJSON_CreateObject();
+    for (i = 0; logsk[i].name; i++)
+    {
+        cJSON* socket = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(socket,"name",logsk[i].name);
-        cJSON_AddStringToObject(socket,"location",logsk[i].location);
-        if (logsk[i].mode == IPPROTO_UDP) {
-            cJSON_AddStringToObject(socket,"mode","udp");
-        } else {
-            cJSON_AddStringToObject(socket,"mode","tcp");
+        cJSON_AddStringToObject(socket, "name", logsk[i].name);
+        cJSON_AddStringToObject(socket, "location", logsk[i].location);
+        if (logsk[i].mode == IPPROTO_UDP)
+        {
+            cJSON_AddStringToObject(socket, "mode", "udp");
         }
-        if (logsk[i].prefix) cJSON_AddStringToObject(socket,"prefix",logsk[i].prefix);
+        else
+        {
+            cJSON_AddStringToObject(socket, "mode", "tcp");
+        }
+        if (logsk[i].prefix)
+            cJSON_AddStringToObject(socket, "prefix", logsk[i].prefix);
 
         cJSON_AddItemToArray(sockets, socket);
     }
 
-    if (cJSON_GetArraySize(sockets) > 0) {
-        cJSON_AddItemToObject(root,"socket",sockets);
-    } else {
+    if (cJSON_GetArraySize(sockets) > 0)
+    {
+        cJSON_AddItemToObject(root, "socket", sockets);
+    }
+    else
+    {
         cJSON_free(sockets);
     }
 
     return root;
 }
 
-cJSON *getLogcollectorInternalOptions(void) {
+cJSON* getLogcollectorInternalOptions(void)
+{
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
-    cJSON *logcollector = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* internals = cJSON_CreateObject();
+    cJSON* logcollector = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(logcollector,"remote_commands",accept_remote);
-    cJSON_AddNumberToObject(logcollector,"loop_timeout",loop_timeout);
-    cJSON_AddNumberToObject(logcollector,"open_attempts",open_file_attempts);
-    cJSON_AddNumberToObject(logcollector,"vcheck_files",vcheck_files);
-    cJSON_AddNumberToObject(logcollector,"max_lines",maximum_lines);
-    cJSON_AddNumberToObject(logcollector,"max_files",maximum_files);
-    cJSON_AddNumberToObject(logcollector,"sock_fail_time",sock_fail_time);
-    cJSON_AddNumberToObject(logcollector,"debug",lc_debug_level);
-    cJSON_AddNumberToObject(logcollector,"sample_log_length",sample_log_length);
-    cJSON_AddNumberToObject(logcollector,"queue_size",OUTPUT_QUEUE_SIZE);
-    cJSON_AddNumberToObject(logcollector,"input_threads",N_INPUT_THREADS);
-    cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
-    cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
-    cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
+    cJSON_AddNumberToObject(logcollector, "remote_commands", accept_remote);
+    cJSON_AddNumberToObject(logcollector, "loop_timeout", loop_timeout);
+    cJSON_AddNumberToObject(logcollector, "open_attempts", open_file_attempts);
+    cJSON_AddNumberToObject(logcollector, "vcheck_files", vcheck_files);
+    cJSON_AddNumberToObject(logcollector, "max_lines", maximum_lines);
+    cJSON_AddNumberToObject(logcollector, "max_files", maximum_files);
+    cJSON_AddNumberToObject(logcollector, "sock_fail_time", sock_fail_time);
+    cJSON_AddNumberToObject(logcollector, "debug", lc_debug_level);
+    cJSON_AddNumberToObject(logcollector, "sample_log_length", sample_log_length);
+    cJSON_AddNumberToObject(logcollector, "queue_size", OUTPUT_QUEUE_SIZE);
+    cJSON_AddNumberToObject(logcollector, "input_threads", N_INPUT_THREADS);
+    cJSON_AddNumberToObject(logcollector, "force_reload", force_reload);
+    cJSON_AddNumberToObject(logcollector, "reload_interval", reload_interval);
+    cJSON_AddNumberToObject(logcollector, "reload_delay", reload_delay);
     cJSON_AddNumberToObject(logcollector, "exclude_files_interval", free_excluded_files_interval);
     cJSON_AddNumberToObject(logcollector, "state_interval", state_interval);
 
 #ifndef WIN32
-    cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
+    cJSON_AddNumberToObject(logcollector, "rlimit_nofile", nofile);
 #endif
 
-    cJSON_AddItemToObject(internals,"logcollector",logcollector);
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(internals, "logcollector", logcollector);
+    cJSON_AddItemToObject(root, "internal", internals);
 
     return root;
 }

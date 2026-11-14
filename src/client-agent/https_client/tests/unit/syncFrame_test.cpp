@@ -60,12 +60,12 @@ namespace
         }
     };
 
-    std::string roundTrip(const std::string& id, const std::string& body, SyncFrameResult& result,
-                          uint64_t& sizeOut, std::string& idOut)
+    std::string roundTrip(
+        const std::string& id, const std::string& body, SyncFrameResult& result, uint64_t& sizeOut, std::string& idOut)
     {
         MemPipe pipe;
-        EXPECT_TRUE(writeSyncSessionFrame(pipe.writer(), id,
-                                          reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+        EXPECT_TRUE(
+            writeSyncSessionFrame(pipe.writer(), id, reinterpret_cast<const uint8_t*>(body.data()), body.size()));
         const std::string path = ::testing::TempDir() + "hc_syncframe.tmp";
         std::FILE* out = std::fopen(path.c_str(), "wb");
         result = readSyncSessionFrame(pipe.reader(), out, idOut, sizeOut);
@@ -127,8 +127,7 @@ TEST(SyncFrameTest, TruncatedFrameIsDetected)
 {
     MemPipe pipe;
     const std::string body = "0123456789";
-    writeSyncSessionFrame(pipe.writer(), "sess", reinterpret_cast<const uint8_t*>(body.data()),
-                          body.size());
+    writeSyncSessionFrame(pipe.writer(), "sess", reinterpret_cast<const uint8_t*>(body.data()), body.size());
     pipe.data.resize(pipe.data.size() - 4); // Chop the tail of the body.
 
     std::string id;
@@ -154,8 +153,7 @@ TEST(SyncFrameTest, OversizedBodyLengthIsRejected)
 {
     MemPipe pipe;
     const std::string body = "x";
-    writeSyncSessionFrame(pipe.writer(), "s", reinterpret_cast<const uint8_t*>(body.data()),
-                          body.size());
+    writeSyncSessionFrame(pipe.writer(), "s", reinterpret_cast<const uint8_t*>(body.data()), body.size());
     std::string id;
     uint64_t size {0};
     std::FILE* out = std::tmpfile();
@@ -166,10 +164,12 @@ TEST(SyncFrameTest, OversizedBodyLengthIsRejected)
 
 TEST(SyncFrameTest, WriteErrorIsReported)
 {
-    const auto failingWrite = [](const void*, size_t) -> long { return -1; };
+    const auto failingWrite = [](const void*, size_t) -> long
+    {
+        return -1;
+    };
     const std::string body = "abc";
-    EXPECT_FALSE(writeSyncSessionFrame(failingWrite, "s",
-                                       reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+    EXPECT_FALSE(writeSyncSessionFrame(failingWrite, "s", reinterpret_cast<const uint8_t*>(body.data()), body.size()));
 }
 
 TEST(SyncFrameTest, ZeroLengthIdIsMalformed)
@@ -237,6 +237,9 @@ TEST(SyncFrameTest, AMissingStatusByteReadsAsARefusal)
     MemPipe empty;
     EXPECT_FALSE(readSyncSessionAck(empty.reader())); // EOF.
 
-    const auto failingRead = [](void*, size_t) -> long { return -1; };
+    const auto failingRead = [](void*, size_t) -> long
+    {
+        return -1;
+    };
     EXPECT_FALSE(readSyncSessionAck(failingRead));
 }

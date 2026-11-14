@@ -33,19 +33,20 @@ int main()
 
         for (int t = 0; t < kThreads; ++t)
         {
-            threads.emplace_back([&]()
-            {
-                while (!go.load())
+            threads.emplace_back(
+                [&]()
                 {
-                    // Align the start so all threads hit initialize() together.
-                    std::this_thread::yield();
-                }
+                    while (!go.load())
+                    {
+                        // Align the start so all threads hit initialize() together.
+                        std::this_thread::yield();
+                    }
 
-                if (!factory.isInitialized())
-                {
-                    factory.initialize();
-                }
-            });
+                    if (!factory.isInitialized())
+                    {
+                        factory.initialize();
+                    }
+                });
         }
 
         go.store(true);
@@ -64,8 +65,7 @@ int main()
         // Validate a sample message against the first available index. An empty
         // object is valid for these strict-mode templates (all fields optional,
         // no extra fields present).
-        const std::vector<std::string> candidates =
-        {
+        const std::vector<std::string> candidates = {
             "wazuh-states-inventory-hardware",
             "wazuh-states-inventory-system",
             "wazuh-states-fim-files",
@@ -79,8 +79,8 @@ int main()
             if (validator)
             {
                 auto result = validator->validate(std::string("{}"));
-                std::cout << "[Test schema_validator] validated against '" << index << "': "
-                          << (result.isValid ? "OK" : "FAIL") << std::endl;
+                std::cout << "[Test schema_validator] validated against '" << index
+                          << "': " << (result.isValid ? "OK" : "FAIL") << std::endl;
 
                 if (!result.isValid)
                 {

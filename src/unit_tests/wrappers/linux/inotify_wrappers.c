@@ -13,17 +13,19 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 int __wrap_inotify_add_watch(__attribute__((unused)) int fd,
-                             __attribute__((unused)) const char *pathname,
-                             __attribute__((unused)) uint32_t mask) {
+                             __attribute__((unused)) const char* pathname,
+                             __attribute__((unused)) uint32_t mask)
+{
     return mock();
 }
 
-int __wrap_inotify_init() {
+int __wrap_inotify_init()
+{
     return mock();
 }
 
-int __wrap_inotify_rm_watch() {
+int __wrap_inotify_rm_watch()
+{
     return mock();
 }

@@ -15,13 +15,16 @@
 #include <cmocka.h>
 #include <string.h>
 
-time_t __wrap_time(__attribute__ ((unused)) time_t *t) {
+time_t __wrap_time(__attribute__((unused)) time_t* t)
+{
     return mock_type(time_t);
 }
 
-void __wrap_gettimeofday(struct timeval *__restrict __tv, __attribute__((unused)) void *__restrict __tz) {
-        struct timeval *mocked_time = mock_ptr_type(struct timeval *);
-        if (mocked_time && __tv) {
-            *__tv = *mocked_time;
-        }
+void __wrap_gettimeofday(struct timeval* __restrict __tv, __attribute__((unused)) void* __restrict __tz)
+{
+    struct timeval* mocked_time = mock_ptr_type(struct timeval*);
+    if (mocked_time && __tv)
+    {
+        *__tv = *mocked_time;
+    }
 }

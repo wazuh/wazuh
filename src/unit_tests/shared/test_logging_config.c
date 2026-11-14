@@ -23,29 +23,33 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../external/cJSON/cJSON.h"
 
-static const char *s_logging_json = NULL;
+static const char* s_logging_json = NULL;
 
-static cJSON *test_provider(const char *section) {
+static cJSON* test_provider(const char* section)
+{
     assert_string_equal(section, "logging");
     return s_logging_json != NULL ? cJSON_Parse(s_logging_json) : NULL;
 }
 
-static int setup_provider(void **state) {
-    (void) state;
+static int setup_provider(void** state)
+{
+    (void)state;
     s_logging_json = NULL;
     w_mconf_hook_set(test_provider);
     return 0;
 }
 
-static int teardown_provider(void **state) {
-    (void) state;
+static int teardown_provider(void** state)
+{
+    (void)state;
     w_mconf_hook_set(NULL);
     return 0;
 }
 
-static void assert_format(const char *plain, const char *json) {
-    cJSON *root = getLoggingConfig();
-    cJSON *logging = cJSON_GetObjectItem(root, "logging");
+static void assert_format(const char* plain, const char* json)
+{
+    cJSON* root = getLoggingConfig();
+    cJSON* logging = cJSON_GetObjectItem(root, "logging");
 
     assert_non_null(logging);
     assert_string_equal(cJSON_GetObjectItem(logging, "plain")->valuestring, plain);
@@ -53,24 +57,27 @@ static void assert_format(const char *plain, const char *json) {
     cJSON_Delete(root);
 }
 
-static void test_os_logging_config_json_only(void **state) {
-    (void) state;
+static void test_os_logging_config_json_only(void** state)
+{
+    (void)state;
 
     s_logging_json = "{\"log_format\":[\"json\"]}";
     os_logging_config();
     assert_format("no", "yes");
 }
 
-static void test_os_logging_config_plain_and_json(void **state) {
-    (void) state;
+static void test_os_logging_config_plain_and_json(void** state)
+{
+    (void)state;
 
     s_logging_json = "{\"log_format\":[\"plain\",\"json\"]}";
     os_logging_config();
     assert_format("yes", "yes");
 }
 
-static void test_os_logging_config_defaults_to_plain(void **state) {
-    (void) state;
+static void test_os_logging_config_defaults_to_plain(void** state)
+{
+    (void)state;
 
     /* No document at all */
     s_logging_json = NULL;
@@ -83,7 +90,8 @@ static void test_os_logging_config_defaults_to_plain(void **state) {
     assert_format("yes", "no");
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_os_logging_config_json_only, setup_provider, teardown_provider),
         cmocka_unit_test_setup_teardown(test_os_logging_config_plain_and_json, setup_provider, teardown_provider),

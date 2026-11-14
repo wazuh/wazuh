@@ -24,11 +24,11 @@ namespace
 {
     class AuthGateTest : public ::testing::Test
     {
-        protected:
-            NiceMock<MockCallbackSink> m_sink;
-            int m_wakes {0};
-            AuthGate m_gate {m_sink, [this] { m_wakes++; }};
-            std::vector<uint64_t> m_seenAtCallback;
+    protected:
+        NiceMock<MockCallbackSink> m_sink;
+        int m_wakes {0};
+        AuthGate m_gate {m_sink, [this] { m_wakes++; }};
+        std::vector<uint64_t> m_seenAtCallback;
     };
 } // namespace
 
@@ -57,7 +57,7 @@ TEST_F(AuthGateTest, ReleaseUnpausesReArmsAndWakes)
     m_gate.reportAuthFailure(); // fire 1.
     m_gate.release();
     EXPECT_FALSE(m_gate.paused());
-    EXPECT_EQ(2, m_wakes); // report + release.
+    EXPECT_EQ(2, m_wakes);      // report + release.
     m_gate.reportAuthFailure(); // A later dead key fires again.
     EXPECT_TRUE(m_gate.paused());
     EXPECT_EQ(3, m_wakes);
@@ -68,8 +68,8 @@ TEST_F(AuthGateTest, IncidentsCountEachLatchOnceAndBeforeTheConsumerIsAsked)
     // Counted before onReenrollRequired(): a key renewed from inside it must never be seen
     // without its incident (#38329).
     EXPECT_CALL(m_sink, onReenrollRequired())
-    .Times(2)
-    .WillRepeatedly(::testing::Invoke([this] { m_seenAtCallback.push_back(m_gate.incidents()); }));
+        .Times(2)
+        .WillRepeatedly(::testing::Invoke([this] { m_seenAtCallback.push_back(m_gate.incidents()); }));
 
     EXPECT_EQ(0u, m_gate.incidents());
     m_gate.reportAuthFailure();
@@ -98,19 +98,20 @@ TEST_F(AuthGateTest, ConcurrentReportsAndReleasesNeverStrandUnpaused)
 
     for (int worker = 0; worker < 4; worker++)
     {
-        threads.emplace_back([&]
-        {
-            while (!go.load(std::memory_order_acquire))
+        threads.emplace_back(
+            [&]
             {
-                std::this_thread::yield(); // Barrier, not a busy-wait: see sysSeams_test.cpp.
-            }
+                while (!go.load(std::memory_order_acquire))
+                {
+                    std::this_thread::yield(); // Barrier, not a busy-wait: see sysSeams_test.cpp.
+                }
 
-            for (int n = 0; n < 2000; n++)
-            {
-                gate.reportAuthFailure();
-                gate.release();
-            }
-        });
+                for (int n = 0; n < 2000; n++)
+                {
+                    gate.reportAuthFailure();
+                    gate.release();
+                }
+            });
     }
 
     go.store(true, std::memory_order_release);

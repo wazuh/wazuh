@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_can_read() {
+int __wrap_can_read()
+{
     return mock_type(int);
 }

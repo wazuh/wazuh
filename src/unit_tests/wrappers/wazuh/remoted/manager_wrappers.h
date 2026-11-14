@@ -14,11 +14,16 @@
 #include <cJSON.h>
 #include "shared.h"
 
-cJSON *__wrap_assign_group_to_agent(const char *agent_id, const char *md5);
+cJSON* __wrap_assign_group_to_agent(const char* agent_id, const char* md5);
 
-void __wrap_save_controlmsg(const keyentry * key, char *r_msg, __attribute__((unused)) size_t msg_length, int *wdb_sock);
+void __wrap_save_controlmsg(const keyentry* key, char* r_msg, __attribute__((unused)) size_t msg_length, int* wdb_sock);
 
-int __wrap_validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown, bool *send_ack);
-
+int __wrap_validate_control_msg(const keyentry* key,
+                                char* r_msg,
+                                size_t msg_length,
+                                char** cleaned_msg,
+                                int* is_startup,
+                                int* is_shutdown,
+                                bool* send_ack);
 
 #endif /* REM_MANAGER_WRAPPERS_H */

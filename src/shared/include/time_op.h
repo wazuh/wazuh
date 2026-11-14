@@ -25,9 +25,9 @@
  * @param ts Pointer to a timespec structure
  */
 
-#define TIME_LENGTH     OS_SIZE_128
+#define TIME_LENGTH OS_SIZE_128
 
-void gettime(struct timespec *ts);
+void gettime(struct timespec* ts);
 
 /**
  * @brief Compute time substraction "a - b"
@@ -35,7 +35,7 @@ void gettime(struct timespec *ts);
  * @param a Minuend
  * @param b Subtrahend
  */
-void time_sub(struct timespec * a, const struct timespec * b);
+void time_sub(struct timespec* a, const struct timespec* b);
 
 /**
  * @brief Get the time difference
@@ -44,9 +44,9 @@ void time_sub(struct timespec * a, const struct timespec * b);
  * @param b Timestamp after
  * @return Time elapsed between a and b (in seconds)
  */
-double time_diff(const struct timespec * a, const struct timespec * b);
+double time_diff(const struct timespec* a, const struct timespec* b);
 
-char *w_get_timestamp(const time_t time);
+char* w_get_timestamp(const time_t time);
 
 /**
  * @brief Takes sleeps of 1 second until the input time is reached
@@ -56,10 +56,10 @@ char *w_get_timestamp(const time_t time);
 void w_sleep_until(time_t abs_time);
 
 /**
-* @brief Sleep function for Windows and Unix (milliseconds)
-*
-* @param ms sleep time in miliseconds
-*/
+ * @brief Sleep function for Windows and Unix (milliseconds)
+ *
+ * @param ms sleep time in miliseconds
+ */
 void w_time_delay(unsigned long int ms);
 
 #ifdef WIN32
@@ -95,7 +95,7 @@ bool is_leap_year(int year);
  * @param buffer Buffer to store the time.
  * @param size Size of the buffer.
  */
-void get_iso8601_utc_time(char *buffer, size_t size);
+void get_iso8601_utc_time(char* buffer, size_t size);
 
 /**
  * @brief Get monotonic elapsed seconds since an arbitrary fixed point.

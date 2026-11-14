@@ -39,40 +39,35 @@
 
 BOOL wrap_EvtRender(EVT_HANDLE Context,
                     EVT_HANDLE Fragment,
-                    DWORD      Flags,
-                    DWORD      BufferSize,
-                    PVOID      Buffer,
-                    PDWORD     BufferUsed,
-                    PDWORD     PropertyCount);
+                    DWORD Flags,
+                    DWORD BufferSize,
+                    PVOID Buffer,
+                    PDWORD BufferUsed,
+                    PDWORD PropertyCount);
 
-EVT_HANDLE wrap_EvtCreateRenderContext(DWORD   ValuePathsCount,
-                                       LPCWSTR *ValuePaths,
-                                       DWORD   Flags);
+EVT_HANDLE wrap_EvtCreateRenderContext(DWORD ValuePathsCount, LPCWSTR* ValuePaths, DWORD Flags);
 
-EVT_HANDLE wrap_EvtSubscribe(EVT_HANDLE             Session,
-                             HANDLE                 SignalEvent,
-                             LPCWSTR                ChannelPath,
-                             LPCWSTR                Query,
-                             EVT_HANDLE             Bookmark,
-                             PVOID                  Context,
+EVT_HANDLE wrap_EvtSubscribe(EVT_HANDLE Session,
+                             HANDLE SignalEvent,
+                             LPCWSTR ChannelPath,
+                             LPCWSTR Query,
+                             EVT_HANDLE Bookmark,
+                             PVOID Context,
                              EVT_SUBSCRIBE_CALLBACK Callback,
-                             DWORD                  Flags);
+                             DWORD Flags);
 
 BOOL wrap_EvtClose(EVT_HANDLE object);
 
-EVT_HANDLE wrap_EvtOpenPublisherMetadata(EVT_HANDLE Session,
-                                         LPCWSTR    PublisherId,
-                                         LPCWSTR    LogFilePath,
-                                         LCID       Locale,
-                                         DWORD      Flags);
+EVT_HANDLE
+wrap_EvtOpenPublisherMetadata(EVT_HANDLE Session, LPCWSTR PublisherId, LPCWSTR LogFilePath, LCID Locale, DWORD Flags);
 
-BOOL wrap_EvtFormatMessage(EVT_HANDLE   PublisherMetadata,
-                           EVT_HANDLE   Event,
-                           DWORD        MessageId,
-                           DWORD        ValueCount,
+BOOL wrap_EvtFormatMessage(EVT_HANDLE PublisherMetadata,
+                           EVT_HANDLE Event,
+                           DWORD MessageId,
+                           DWORD ValueCount,
                            PEVT_VARIANT Values,
-                           DWORD        Flags,
-                           DWORD        BufferSize,
-                           LPWSTR       Buffer,
-                           PDWORD       BufferUsed);
+                           DWORD Flags,
+                           DWORD BufferSize,
+                           LPWSTR Buffer,
+                           PDWORD BufferUsed);
 #endif

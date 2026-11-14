@@ -17,12 +17,12 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
-#define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
-#define PLUGINS_OLD_DIR_AUDISP      "/etc/audisp/plugins.d"
-#define PLUGINS_DIR_AUDIT           "/etc/audit/plugins.d"
-#define AUDIT_CONF_LINK             "af_wazuh.conf"
-#define BUF_SIZE OS_MAXSTR
+#define AUDIT_RULES_FILE       "etc/audit_rules_wazuh.rules"
+#define AUDIT_RULES_LINK       "/etc/audit/rules.d/audit_rules_wazuh.rules"
+#define PLUGINS_OLD_DIR_AUDISP "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT      "/etc/audit/plugins.d"
+#define AUDIT_CONF_LINK        "af_wazuh.conf"
+#define BUF_SIZE               OS_MAXSTR
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -32,23 +32,24 @@ pthread_cond_t audit_thread_started;
 
 unsigned int count_reload_retries;
 
-static const char *const AUDISP_CONFIGURATION_0 = "active = yes\ndirection = out\npath = builtin_af_unix\n"
+static const char* const AUDISP_CONFIGURATION_0 = "active = yes\ndirection = out\npath = builtin_af_unix\n"
                                                   "type = builtin\nargs = 0640 %s\nformat = string\n";
-static const char *const AUDISP_CONFIGURATION_1 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+static const char* const AUDISP_CONFIGURATION_1 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
                                                   "type = always\nargs = 0640 %s\nformat = string\n";
-static const char *const AUDISP_CONFIGURATION_2 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+static const char* const AUDISP_CONFIGURATION_2 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
                                                   "type = always\nargs = 0640 %s string\nformat = binary\n";
 
-w_queue_t * audit_queue;
+w_queue_t* audit_queue;
 
-//This variable controls if the the modification of the rule is made by syscheck.
+// This variable controls if the the modification of the rule is made by syscheck.
 
 volatile int audit_db_consistency_flag = 0;
 atomic_int_t audit_parse_thread_active = ATOMIC_INT_INITIALIZER(0);
 atomic_int_t audit_thread_active = ATOMIC_INT_INITIALIZER(0);
 
 #ifdef ENABLE_AUDIT
-typedef struct _audit_data_s {
+typedef struct _audit_data_s
+{
     int socket;
     audit_mode mode;
 } audit_data_t;
@@ -58,36 +59,45 @@ typedef struct _audit_data_s {
  *
  * @param [out] audit_data Struct that saves the audit socket to read the events from and the audit mode.
  */
-static void *audit_main(audit_data_t *audit_data);
+static void* audit_main(audit_data_t* audit_data);
 
-int get_audit_version_code(unsigned *out_code) {
-    if (!out_code) return -1;
+int get_audit_version_code(unsigned* out_code)
+{
+    if (!out_code)
+        return -1;
 
-    FILE *p = popen("auditctl -v 2>/dev/null", "r");
-    if (!p) return -1;
+    FILE* p = popen("auditctl -v 2>/dev/null", "r");
+    if (!p)
+        return -1;
 
     int M = 0, m = 0, pch = 0;
     int n = fscanf(p, "auditctl version %d.%d.%d", &M, &m, &pch);
     pclose(p);
 
-    if (n < 1) return -1;
-    if ((unsigned)M > 255 || (unsigned)m > 255 || (unsigned)pch > 255) return -1;
+    if (n < 1)
+        return -1;
+    if ((unsigned)M > 255 || (unsigned)m > 255 || (unsigned)pch > 255)
+        return -1;
 
     *out_code = VERCODE(M, m, pch);
     return 0;
 }
 
-int check_auditd_enabled(void) {
-    PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
-    proc_t *proc_info;
+int check_auditd_enabled(void)
+{
+    PROCTAB* proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM);
+    proc_t* proc_info;
     int auditd_pid = -1;
 
-    if (!proc) {
+    if (!proc)
+    {
         return -1;
     }
 
-    while (proc_info = readproc(proc, NULL), proc_info != NULL) {
-        if(strcmp(proc_info->cmd,"auditd") == 0) {
+    while (proc_info = readproc(proc, NULL), proc_info != NULL)
+    {
+        if (strcmp(proc_info->cmd, "auditd") == 0)
+        {
             auditd_pid = proc_info->tid;
             freeproc(proc_info);
             break;
@@ -100,22 +110,27 @@ int check_auditd_enabled(void) {
     return auditd_pid;
 }
 
-int configure_audisp(const char *audisp_path, const char *abs_path_socket, const char *audisp_config) {
-    FILE *fp;
+int configure_audisp(const char* audisp_path, const char* abs_path_socket, const char* audisp_config)
+{
+    FILE* fp;
     char tmp_file_path[PATH_MAX] = {'\0'};
     struct stat st;
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
-    if (unlink(audisp_path) < 0) {
-        if (errno != ENOENT) {
+    if (unlink(audisp_path) < 0)
+    {
+        if (errno != ENOENT)
+        {
             merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
             return -1;
         }
     }
 
-    if (unlink(abs_path_socket) < 0) {
-        if (errno != ENOENT) {
+    if (unlink(abs_path_socket) < 0)
+    {
+        if (errno != ENOENT)
+        {
             merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
             return -1;
         }
@@ -124,31 +139,38 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
     abspath(AUDIT_CONF_FILE, tmp_file_path, PATH_MAX);
 
     fp = wfopen(AUDIT_CONF_FILE, "w");
-    if (!fp) {
+    if (!fp)
+    {
         merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
-    if (fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp) < strlen(audisp_config)) {
+    if (fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp) < strlen(audisp_config))
+    {
         merror(FWRITE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         fclose(fp);
         return -1;
     }
 
-    if (fclose(fp)) {
+    if (fclose(fp))
+    {
         merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
-    if (OS_MoveFile(tmp_file_path, audisp_path) < 0) {
+    if (OS_MoveFile(tmp_file_path, audisp_path) < 0)
+    {
         merror("Failed to move '%s' to '%s'", tmp_file_path, audisp_path);
         return -1;
     }
 
-    if (syscheck.restart_audit) {
+    if (syscheck.restart_audit)
+    {
         minfo(FIM_AUDIT_RESTARTING, audisp_path);
         return audit_restart();
-    } else {
+    }
+    else
+    {
         mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
         return 1;
     }
@@ -169,46 +191,69 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
  * @param max Size of the templates array.
  * @return Number of candidates written to templates, 0 if no known plugins directory was found.
  */
-int audisp_get_candidates(const char **plugin_dir, const char **templates, int max) {
+int audisp_get_candidates(const char** plugin_dir, const char** templates, int max)
+{
     int count = 0;
 
-#define ADD_CANDIDATE(template) do { if (count < max) { templates[count++] = (template); } } while (0)
+#define ADD_CANDIDATE(template)                                                                                        \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (count < max)                                                                                               \
+        {                                                                                                              \
+            templates[count++] = (template);                                                                           \
+        }                                                                                                              \
+    } while (0)
 
-    if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
+    if (IsDir(PLUGINS_DIR_AUDIT) == 0)
+    {
         unsigned vcode;
         *plugin_dir = PLUGINS_DIR_AUDIT;
 
-        if (get_audit_version_code(&vcode) != 0) {
+        if (get_audit_version_code(&vcode) != 0)
+        {
             mdebug2("Could not get audit version code. Using default configuration.");
             ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
             ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
-        } else {
+        }
+        else
+        {
             mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
 
-            if (vcode < VERCODE(3, 1, 1)) {
+            if (vcode < VERCODE(3, 1, 1))
+            {
                 // Before audit version 3.1.1 af_unix is builtin into Auditd and /sbin/audisp-af_unix
                 // does not exist, so the standalone configurations are not offered as fallbacks:
                 // probing them would only cost a useless Auditd restart.
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_0);
-            } else if (vcode < VERCODE(3, 1, 5)) {
+            }
+            else if (vcode < VERCODE(3, 1, 5))
+            {
                 // Audit version 3.1.1 includes changes for audispd af_unix plugin to a standalone program
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
-            } else if (vcode < VERCODE(4, 0, 0)) {
+            }
+            else if (vcode < VERCODE(4, 0, 0))
+            {
                 // Audit version 3.1.5 includes changes to propagate event format to the audisp-af_unix plugin
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
-            } else if (vcode < VERCODE(4, 0, 3)) {
+            }
+            else if (vcode < VERCODE(4, 0, 3))
+            {
                 // From audit version 4.0.0 to 4.0.2 format changes are not included
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
-            } else {
+            }
+            else
+            {
                 // From audit version 4.0.3 format changes are included
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_2);
                 ADD_CANDIDATE(AUDISP_CONFIGURATION_1);
             }
         }
-    } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
+    }
+    else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0)
+    {
         *plugin_dir = PLUGINS_OLD_DIR_AUDISP;
         ADD_CANDIDATE(AUDISP_CONFIGURATION_0);
     }
@@ -226,14 +271,16 @@ int audisp_get_candidates(const char **plugin_dir, const char **templates, int m
  * @param sha1 Digest to compare the rendered configuration against.
  * @return 1 when the rendered configuration matches, 0 otherwise.
  */
-static int audisp_configuration_matches(const char *audisp_config, const char *abs_path_socket, const char *sha1) {
-    char *configuration = NULL;
+static int audisp_configuration_matches(const char* audisp_config, const char* abs_path_socket, const char* sha1)
+{
+    char* configuration = NULL;
     os_sha1 configuration_sha1;
     int configuration_length;
     int matches;
 
     configuration_length = snprintf(NULL, 0, audisp_config, abs_path_socket);
-    if (configuration_length <= 0) {
+    if (configuration_length <= 0)
+    {
         return 0; // LCOV_EXCL_LINE
     }
 
@@ -259,24 +306,29 @@ static int audisp_configuration_matches(const char *audisp_config, const char *a
  * @param count Number of templates.
  * @return 1 when the file on disk matches one of them, 0 otherwise.
  */
-int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count) {
+int audisp_configuration_is_known(const char* plugin_dir, const char** templates, int count)
+{
     char audisp_path[PATH_MAX] = {'\0'};
     char abs_path_socket[PATH_MAX] = {'\0'};
     os_sha1 file_sha1;
     int i;
 
-    if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path)) {
+    if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path))
+    {
         return 0; // LCOV_EXCL_LINE
     }
 
-    if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0) {
+    if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0)
+    {
         return 0;
     }
 
     abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
 
-    for (i = 0; i < count; i++) {
-        if (audisp_configuration_matches(templates[i], abs_path_socket, file_sha1)) {
+    for (i = 0; i < count; i++)
+    {
+        if (audisp_configuration_matches(templates[i], abs_path_socket, file_sha1))
+        {
             return 1;
         }
     }
@@ -285,16 +337,18 @@ int audisp_configuration_is_known(const char *plugin_dir, const char **templates
 }
 
 // Write the given audisp plugin configuration and restart Auditd if it changed
-int set_auditd_config_template(const char *plugin_dir, const char *audisp_config) {
+int set_auditd_config_template(const char* plugin_dir, const char* audisp_config)
+{
     char audisp_path[PATH_MAX] = {'\0'};
     char abs_path_socket[PATH_MAX] = {'\0'};
-    char *configuration = NULL;
+    char* configuration = NULL;
     int configuration_length;
     int retval = 1;
     os_sha1 file_sha1, configuration_sha1;
 
     // Build the config file path safely
-    if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path)) {
+    if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path))
+    {
         merror("audisp_path too long: base '%s', file '%s'", plugin_dir, AUDIT_CONF_LINK);
         return -1;
     }
@@ -304,7 +358,8 @@ int set_auditd_config_template(const char *plugin_dir, const char *audisp_config
 
     // Compute required size for the final configuration content (template expects the socket path)
     configuration_length = snprintf(NULL, 0, audisp_config, abs_path_socket);
-    if (configuration_length <= 0) {
+    if (configuration_length <= 0)
+    {
         return -1; // LCOV_EXCL_LINE
     }
 
@@ -315,25 +370,29 @@ int set_auditd_config_template(const char *plugin_dir, const char *audisp_config
     // Sanity check the configuration file
     OS_SHA1_Str(configuration, configuration_length, configuration_sha1);
 
-    if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0) {
+    if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0)
+    {
         // File does not exist or cannot be read; write it
         retval = configure_audisp(audisp_path, abs_path_socket, configuration);
         goto end;
     }
 
-    if (strcmp(file_sha1, configuration_sha1) != 0) {
+    if (strcmp(file_sha1, configuration_sha1) != 0)
+    {
         // Contents differ; update file
         retval = configure_audisp(audisp_path, abs_path_socket, configuration);
         goto end;
     }
 
     // Check that the socket exists
-    if (IsSocket(AUDIT_SOCKET) == 0) {
+    if (IsSocket(AUDIT_SOCKET) == 0)
+    {
         retval = 0;
         goto end;
     }
 
-    if (syscheck.restart_audit) {
+    if (syscheck.restart_audit)
+    {
         minfo(FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
         retval = audit_restart();
         goto end;
@@ -345,25 +404,32 @@ end:
     return retval;
 }
 
-void audit_remove_plugin_config(void) {
-    const char *plugin_paths[] = { PLUGINS_DIR_AUDIT "/" AUDIT_CONF_LINK, PLUGINS_OLD_DIR_AUDISP "/" AUDIT_CONF_LINK };
+void audit_remove_plugin_config(void)
+{
+    const char* plugin_paths[] = {PLUGINS_DIR_AUDIT "/" AUDIT_CONF_LINK, PLUGINS_OLD_DIR_AUDISP "/" AUDIT_CONF_LINK};
 
-    for (size_t i = 0; i < array_size(plugin_paths); i++) {
-        if (unlink(plugin_paths[i]) == 0) {
+    for (size_t i = 0; i < array_size(plugin_paths); i++)
+    {
+        if (unlink(plugin_paths[i]) == 0)
+        {
             minfo(FIM_AUDIT_PLUGIN_REMOVED, plugin_paths[i]);
-        } else if (errno != ENOENT) {
+        }
+        else if (errno != ENOENT)
+        {
             merror(UNLINK_ERROR, plugin_paths[i], errno, strerror(errno));
         }
     }
 }
 
-
 // Connect to the Audit events socket
-static int audit_socket_connect(int quiet) {
+static int audit_socket_connect(int quiet)
+{
     int sfd;
 
-    if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
-        if (!quiet) {
+    if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0)
+    {
+        if (!quiet)
+        {
             merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
         }
         return (-1);
@@ -373,26 +439,31 @@ static int audit_socket_connect(int quiet) {
 }
 
 // Init Audit events socket
-int init_auditd_socket(void) {
+int init_auditd_socket(void)
+{
     return audit_socket_connect(0);
 }
 
-void audit_create_rules_file() {
-    char *real_path = NULL;
-    directory_t *dir_it = NULL;
-    OSListNode *node_it;
-    FILE *fp;
+void audit_create_rules_file()
+{
+    char* real_path = NULL;
+    directory_t* dir_it = NULL;
+    OSListNode* node_it;
+    FILE* fp;
 
     fp = wfopen(AUDIT_RULES_FILE, "w");
-    if (!fp) {
+    if (!fp)
+    {
         merror(FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
         return;
     }
 
     w_rwlock_rdlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE)) {
+        if ((dir_it->options & WHODATA_ACTIVE))
+        {
             real_path = fim_get_real_path(dir_it);
 
             mdebug2(FIM_ADDED_RULE_TO_FILE, real_path);
@@ -403,7 +474,8 @@ void audit_create_rules_file() {
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    if (fclose(fp)) {
+    if (fclose(fp))
+    {
         merror(FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
         return;
     }
@@ -412,16 +484,20 @@ void audit_create_rules_file() {
     abspath(AUDIT_RULES_FILE, abs_rules_file_path, PATH_MAX);
 
     // Create symlink to audit rules file
-    if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
-        if (errno != EEXIST) {
+    if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0)
+    {
+        if (errno != EEXIST)
+        {
             merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
             return;
         }
-        if (unlink(AUDIT_RULES_LINK) < 0) {
+        if (unlink(AUDIT_RULES_LINK) < 0)
+        {
             merror(UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
             return;
         }
-        if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
+        if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0)
+        {
             merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
             return;
         }
@@ -430,10 +506,11 @@ void audit_create_rules_file() {
     minfo(FIM_AUDIT_CREATED_RULE_FILE);
 }
 
-void audit_rules_to_realtime() {
-    char *real_path = NULL;
-    directory_t *dir_it = NULL;
-    OSListNode *node_it;
+void audit_rules_to_realtime()
+{
+    char* real_path = NULL;
+    directory_t* dir_it = NULL;
+    OSListNode* node_it;
     int found;
     int realtime_check = 0;
 
@@ -442,31 +519,38 @@ void audit_rules_to_realtime() {
     int res = audit_get_rule_list(auditd_fd);
     audit_close(auditd_fd);
 
-    if (!res) {
+    if (!res)
+    {
         merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
     w_rwlock_wrlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
 
-        if ((dir_it->options & WHODATA_ACTIVE)) {
+        if ((dir_it->options & WHODATA_ACTIVE))
+        {
             found = 0;
             real_path = fim_get_real_path(dir_it);
 
-            if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
+            if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1)
+            {
                 free(real_path);
                 continue;
             }
 
-            for (int j = 0; syscheck.audit_key[j]; j++) {
-                if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
+            for (int j = 0; syscheck.audit_key[j]; j++)
+            {
+                if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1)
+                {
                     found = 1;
                     break;
                 }
             }
 
-            if (!found){
+            if (!found)
+            {
                 realtime_check = 1;
                 mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
                 dir_it->options &= ~WHODATA_ACTIVE;
@@ -478,15 +562,20 @@ void audit_rules_to_realtime() {
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    if (realtime_check) {
+    if (realtime_check)
+    {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime == NULL) {
-            if (realtime_start() < 0) {
+        if (syscheck.realtime == NULL)
+        {
+            if (realtime_start() < 0)
+            {
                 w_mutex_unlock(&syscheck.fim_realtime_mutex);
                 w_rwlock_wrlock(&syscheck.directories_lock);
-                OSList_foreach(node_it, syscheck.directories) {
+                OSList_foreach(node_it, syscheck.directories)
+                {
                     dir_it = node_it->data;
-                    if (dir_it->options & REALTIME_ACTIVE) {
+                    if (dir_it->options & REALTIME_ACTIVE)
+                    {
                         dir_it->options &= ~REALTIME_ACTIVE;
                         dir_it->options |= SCHEDULED_ACTIVE;
                     }
@@ -508,16 +597,20 @@ void audit_rules_to_realtime() {
  *
  * @return The connected socket descriptor, or -1 if every attempt failed.
  */
-static int audit_socket_connect_retry(void) {
+static int audit_socket_connect_retry(void)
+{
     int attempt;
     int sfd;
 
-    for (attempt = 0; attempt < AUDIT_SOCKET_CONNECT_RETRIES; attempt++) {
-        if (sfd = audit_socket_connect(1), sfd >= 0) {
+    for (attempt = 0; attempt < AUDIT_SOCKET_CONNECT_RETRIES; attempt++)
+    {
+        if (sfd = audit_socket_connect(1), sfd >= 0)
+        {
             return sfd;
         }
 
-        if (attempt + 1 < AUDIT_SOCKET_CONNECT_RETRIES) {
+        if (attempt + 1 < AUDIT_SOCKET_CONNECT_RETRIES)
+        {
             usleep(AUDIT_SOCKET_POLL_MS * 1000);
         }
     }
@@ -534,11 +627,14 @@ static int audit_socket_connect_retry(void) {
  *
  * @return 0 if the socket is present, -1 if it did not appear before the timeout.
  */
-static int wait_for_audit_socket(void) {
+static int wait_for_audit_socket(void)
+{
     int waited_ms;
 
-    for (waited_ms = 0; waited_ms < AUDIT_SOCKET_WAIT_MS; waited_ms += AUDIT_SOCKET_POLL_MS) {
-        if (IsSocket(AUDIT_SOCKET) == 0) {
+    for (waited_ms = 0; waited_ms < AUDIT_SOCKET_WAIT_MS; waited_ms += AUDIT_SOCKET_POLL_MS)
+    {
+        if (IsSocket(AUDIT_SOCKET) == 0)
+        {
             return 0;
         }
 
@@ -558,9 +654,10 @@ static int wait_for_audit_socket(void) {
  *
  * @return The connected socket descriptor, or -1 if no configuration worked.
  */
-int configure_and_connect_audit_socket(void) {
-    const char *templates[MAX_AUDISP_CANDIDATES] = {NULL};
-    const char *plugin_dir = NULL;
+int configure_and_connect_audit_socket(void)
+{
+    const char* templates[MAX_AUDISP_CANDIDATES] = {NULL};
+    const char* plugin_dir = NULL;
     int count;
     int sfd;
     int i;
@@ -568,38 +665,51 @@ int configure_and_connect_audit_socket(void) {
 
     count = audisp_get_candidates(&plugin_dir, templates, MAX_AUDISP_CANDIDATES);
 
-    if (count == 0) {
+    if (count == 0)
+    {
         // No known plugins directory found, so there is nothing to configure
         return init_auditd_socket();
     }
 
-    if (IsSocket(AUDIT_SOCKET) == 0) {
-        if (sfd = audit_socket_connect_retry(), sfd >= 0) {
+    if (IsSocket(AUDIT_SOCKET) == 0)
+    {
+        if (sfd = audit_socket_connect_retry(), sfd >= 0)
+        {
             // Auditd is already serving the socket. A configuration this agent could have written
             // is a working setup, and restarting Auditd to rewrite it would be gratuitous.
-            if (audisp_configuration_is_known(plugin_dir, templates, count)) {
+            if (audisp_configuration_is_known(plugin_dir, templates, count))
+            {
                 return sfd;
             }
 
             close(sfd);
             mdebug1("The audisp plugin configuration in place is not one of the known ones. Rewriting it.");
-        } else if (syscheck.restart_audit) {
+        }
+        else if (syscheck.restart_audit)
+        {
             // Nothing is listening: the socket was left behind by a plugin that is gone, and it
             // would otherwise make a candidate look like it took effect. It is only removed when
             // Auditd can be restarted to recreate it, so that a connection failure this agent
             // cannot recover from does not leave who-data permanently without a socket.
-            if (unlink(AUDIT_SOCKET) < 0 && errno != ENOENT) {
+            if (unlink(AUDIT_SOCKET) < 0 && errno != ENOENT)
+            {
                 merror(UNLINK_ERROR, AUDIT_SOCKET, errno, strerror(errno)); // LCOV_EXCL_LINE
             }
         }
     }
 
-    for (i = 0; i < count; i++) {
-        if (i > 0) {
-            if (previous_applied) {
+    for (i = 0; i < count; i++)
+    {
+        if (i > 0)
+        {
+            if (previous_applied)
+            {
                 mdebug1("Could not establish the who-data socket '%s' with the current audisp plugin "
-                        "configuration. Trying an alternative one.", AUDIT_SOCKET);
-            } else {
+                        "configuration. Trying an alternative one.",
+                        AUDIT_SOCKET);
+            }
+            else
+            {
                 mdebug1("The current audisp plugin configuration could not be applied. Trying an "
                         "alternative one.");
             }
@@ -607,30 +717,32 @@ int configure_and_connect_audit_socket(void) {
 
         previous_applied = 0;
 
-        switch (set_auditd_config_template(plugin_dir, templates[i])) {
-        case -1:
-            // This candidate could not be written or Auditd failed to restart with it. The next
-            // one may still work, which is the whole point of probing.
-            mdebug1(FIM_AUDIT_NOCONF);
-            continue;
-        case 0:
-            previous_applied = 1;
-            break;
-        case 1:
-        default:
-            // The configuration was written but Auditd was not restarted, because restart_audit is
-            // disabled, so no candidate can be probed.
-            return -1;
+        switch (set_auditd_config_template(plugin_dir, templates[i]))
+        {
+            case -1:
+                // This candidate could not be written or Auditd failed to restart with it. The next
+                // one may still work, which is the whole point of probing.
+                mdebug1(FIM_AUDIT_NOCONF);
+                continue;
+            case 0: previous_applied = 1; break;
+            case 1:
+            default:
+                // The configuration was written but Auditd was not restarted, because restart_audit is
+                // disabled, so no candidate can be probed.
+                return -1;
         }
 
-        if (wait_for_audit_socket() != 0) {
+        if (wait_for_audit_socket() != 0)
+        {
             continue;
         }
 
         // Retried for the same reason the stale socket check is: one refusal may be transient,
         // and discarding a working candidate here would settle on the wrong configuration.
-        if (sfd = audit_socket_connect_retry(), sfd >= 0) {
-            if (i > 0) {
+        if (sfd = audit_socket_connect_retry(), sfd >= 0)
+        {
+            if (i > 0)
+            {
                 minfo(FIM_AUDIT_FALLBACK_CONFIGURATION, AUDIT_SOCKET);
             }
             return sfd;
@@ -642,33 +754,38 @@ int configure_and_connect_audit_socket(void) {
 }
 
 // LCOV_EXCL_START
-int audit_init(void) {
-    static audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED };
+int audit_init(void)
+{
+    static audit_data_t audit_data = {.socket = -1, .mode = AUDIT_DISABLED};
 
     w_mutex_init(&audit_mutex, NULL);
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
 
-    if (aupid <= 0) {
+    if (aupid <= 0)
+    {
         mwarn(FIM_AUDIT_NORUNNING);
         return (-1);
     }
 
     // Check audit socket configuration and initialize the Audit socket
     audit_data.socket = configure_and_connect_audit_socket();
-    if (audit_data.socket < 0) {
+    if (audit_data.socket < 0)
+    {
         merror("Can't init auditd socket in 'init_auditd_socket()'");
         return -1;
     }
 
     int regex_comp = init_regex();
-    if (regex_comp < 0) {
+    if (regex_comp < 0)
+    {
         merror("Can't init regex in 'init_regex()'");
         return -1;
     }
 
-    if (fim_audit_rules_init() != 0) {
+    if (fim_audit_rules_init() != 0)
+    {
         return -1;
     }
 
@@ -682,20 +799,27 @@ int audit_init(void) {
 
     // Check for conflicting audit rules
     int auditd_check_fd = audit_open();
-    if (auditd_check_fd >= 0) {
+    if (auditd_check_fd >= 0)
+    {
         audit_get_rule_list(auditd_check_fd);
         audit_close(auditd_check_fd);
-    } else {
+    }
+    else
+    {
         mdebug1("Unable to open audit socket for conflicting rule check. Continuing without validation.");
     }
 
     // Perform Audit healthcheck
-    if (syscheck.audit_healthcheck) {
-        if(audit_health_check(&audit_data.socket)) {
+    if (syscheck.audit_healthcheck)
+    {
+        if (audit_health_check(&audit_data.socket))
+        {
             merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
             return -1;
         }
-    } else {
+    }
+    else
+    {
         minfo(FIM_AUDIT_HEALTHCHECK_DISABLE);
     }
 
@@ -704,21 +828,18 @@ int audit_init(void) {
     audit_data.mode = audit_is_enabled(auditd_fd);
     audit_close(auditd_fd);
 
-    switch (audit_data.mode) {
-    case AUDIT_IMMUTABLE:
-        audit_create_rules_file();
-        audit_rules_to_realtime();
-        break;
-    case AUDIT_ENABLED:
-        fim_rules_initial_load();
-        atexit(clean_rules);
-        break;
-    case AUDIT_DISABLED:
-        mwarn(FIM_AUDIT_DISABLED);
-        return -1;
-    default:
-        merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
-        return -1;
+    switch (audit_data.mode)
+    {
+        case AUDIT_IMMUTABLE:
+            audit_create_rules_file();
+            audit_rules_to_realtime();
+            break;
+        case AUDIT_ENABLED:
+            fim_rules_initial_load();
+            atexit(clean_rules);
+            break;
+        case AUDIT_DISABLED: mwarn(FIM_AUDIT_DISABLED); return -1;
+        default: merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno); return -1;
     }
 
     // Start audit thread
@@ -726,18 +847,18 @@ int audit_init(void) {
     w_cond_init(&audit_db_consistency, NULL);
     w_create_thread(audit_main, &audit_data);
     w_mutex_lock(&audit_mutex);
-    while (atomic_int_get(&audit_thread_active) == 0) {
+    while (atomic_int_get(&audit_thread_active) == 0)
+    {
         w_cond_wait(&audit_thread_started, &audit_mutex);
     }
     w_mutex_unlock(&audit_mutex);
     return 1;
-
 }
 // LCOV_EXCL_STOP
 
-
 // LCOV_EXCL_START
-void audit_set_db_consistency(void) {
+void audit_set_db_consistency(void)
+{
     w_mutex_lock(&audit_mutex);
     audit_db_consistency_flag = 1;
     w_cond_signal(&audit_db_consistency);
@@ -746,11 +867,13 @@ void audit_set_db_consistency(void) {
 // LCOV_EXCL_STOP
 
 // Reconnect to the Auditd socket, retrying up to MAX_CONN_RETRIES times.
-int audit_reconnect_with_retries(int *audit_sock) {
+int audit_reconnect_with_retries(int* audit_sock)
+{
     int conn_retries = 0;
 
     *audit_sock = init_auditd_socket();
-    while (*audit_sock < 0 && conn_retries < MAX_CONN_RETRIES) {
+    while (*audit_sock < 0 && conn_retries < MAX_CONN_RETRIES)
+    {
         sleep(1);
         minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
         *audit_sock = init_auditd_socket();
@@ -760,36 +883,41 @@ int audit_reconnect_with_retries(int *audit_sock) {
 }
 
 // LCOV_EXCL_START
-void *audit_main(audit_data_t *audit_data) {
-    char *path = NULL;
-    directory_t *dir_it = NULL;
-    OSListNode *node_it;
+void* audit_main(audit_data_t* audit_data)
+{
+    char* path = NULL;
+    directory_t* dir_it = NULL;
+    OSListNode* node_it;
     count_reload_retries = 0;
-    atomic_int_set(&audit_thread_active,0);
+    atomic_int_set(&audit_thread_active, 0);
 
     w_mutex_lock(&audit_mutex);
     atomic_int_set(&audit_thread_active, 1);
     w_cond_signal(&audit_thread_started);
 
-    if (audit_data->socket >= 0) {
+    if (audit_data->socket >= 0)
+    {
         close(audit_data->socket);
         audit_data->socket = -1;
     }
 
-    while (!audit_db_consistency_flag) {
+    while (!audit_db_consistency_flag)
+    {
         w_cond_wait(&audit_db_consistency, &audit_mutex);
     }
 
     w_mutex_unlock(&audit_mutex);
 
     // Reconnect once the gate is lifted
-    if (audit_reconnect_with_retries(&audit_data->socket) < 0) {
+    if (audit_reconnect_with_retries(&audit_data->socket) < 0)
+    {
         mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
         atomic_int_set(&audit_thread_active, 0);
         goto whodata_teardown;
     }
 
-    if (audit_data->mode == AUDIT_ENABLED) {
+    if (audit_data->mode == AUDIT_ENABLED)
+    {
         // Start rules reloading thread
         w_create_thread(audit_reload_thread, NULL);
     }
@@ -809,8 +937,10 @@ whodata_teardown:
 
     int realtime_started = 0;
     w_mutex_lock(&syscheck.fim_realtime_mutex);
-    if (syscheck.realtime == NULL) {
-        if (realtime_start() < 0) {
+    if (syscheck.realtime == NULL)
+    {
+        if (realtime_start() < 0)
+        {
             realtime_started = -1;
         }
     }
@@ -818,20 +948,26 @@ whodata_teardown:
 
     // Change Audit monitored folders to Inotify.
     w_rwlock_wrlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE)) {
+        if ((dir_it->options & WHODATA_ACTIVE))
+        {
             path = fim_get_real_path(dir_it);
             // Check if it's a broken link.
-            if (*path == '\0') {
+            if (*path == '\0')
+            {
                 free(path);
                 continue;
             }
-            dir_it->options &= ~ WHODATA_ACTIVE;
+            dir_it->options &= ~WHODATA_ACTIVE;
 
-            if (realtime_started < 0) {
+            if (realtime_started < 0)
+            {
                 dir_it->options |= SCHEDULED_ACTIVE;
-            } else {
+            }
+            else
+            {
                 dir_it->options |= REALTIME_ACTIVE;
                 realtime_adddir(path, dir_it);
             }
@@ -839,14 +975,19 @@ whodata_teardown:
         }
     }
 
-    OSList_foreach(node_it, syscheck.wildcards) {
+    OSList_foreach(node_it, syscheck.wildcards)
+    {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE)) {
-            dir_it->options &= ~ WHODATA_ACTIVE;
+        if ((dir_it->options & WHODATA_ACTIVE))
+        {
+            dir_it->options &= ~WHODATA_ACTIVE;
 
-            if (realtime_started < 0) {
+            if (realtime_started < 0)
+            {
                 dir_it->options |= SCHEDULED_ACTIVE;
-            } else {
+            }
+            else
+            {
                 dir_it->options |= REALTIME_ACTIVE;
             }
         }
@@ -857,7 +998,8 @@ whodata_teardown:
     atomic_int_set(&audit_parse_thread_active, 0);
 
     // Clean Audit added rules.
-    if (audit_data->mode == AUDIT_ENABLED) {
+    if (audit_data->mode == AUDIT_ENABLED)
+    {
         clean_rules();
     }
 
@@ -865,10 +1007,12 @@ whodata_teardown:
 }
 // LCOV_EXCL_STOP
 
-void *audit_parse_thread() {
-    char * audit_logs;
+void* audit_parse_thread()
+{
+    char* audit_logs;
 
-    while (atomic_int_get(&audit_parse_thread_active)) {
+    while (atomic_int_get(&audit_parse_thread_active))
+    {
         audit_logs = queue_pop_ex(audit_queue);
         audit_parse(audit_logs);
         os_free(audit_logs);
@@ -878,12 +1022,13 @@ void *audit_parse_thread() {
     return NULL;
 }
 
-void audit_read_events(int *audit_sock, atomic_int_t *running) {
+void audit_read_events(int* audit_sock, atomic_int_t* running)
+{
     ssize_t byteRead;
-    char * cache;
-    char * cache_id = NULL;
-    char * line;
-    char * endline;
+    char* cache;
+    char* cache_id = NULL;
+    char* line;
+    char* endline;
     size_t cache_i = 0;
     size_t buffer_i = 0; // Buffer offset
     size_t len;
@@ -891,52 +1036,59 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
-    char * eoe_found = NULL;
-    char * cache_dup = NULL;
+    char* eoe_found = NULL;
+    char* cache_dup = NULL;
     bool discard = false;
 
-    char *buffer;
+    char* buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
-    while (atomic_int_get(running)) {
+    while (atomic_int_get(running))
+    {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
-        switch (select(*audit_sock + 1, &fdset, NULL, NULL, &timeout)) {
-        case -1:
-            merror(SELECT_ERROR, errno, strerror(errno));
-            sleep(1);
-            continue;
-
-        case 0:
-            if (cache_i) {
-                // Flush cache
-                os_strdup(cache, cache_dup);
-                if (queue_push_ex(audit_queue, cache_dup)) {
-                    if (!audit_queue_full_reported) {
-                        mwarn(FIM_FULL_AUDIT_QUEUE);
-                        audit_queue_full_reported = 1;
-                    }
-                    os_free(cache_dup);
-                }
-                cache_i = 0;
-            }
-
-            continue;
-
-        default:
-            if (atomic_int_get(running) == 0) {
+        switch (select(*audit_sock + 1, &fdset, NULL, NULL, &timeout))
+        {
+            case -1:
+                merror(SELECT_ERROR, errno, strerror(errno));
+                sleep(1);
                 continue;
-            }
 
-            break;
+            case 0:
+                if (cache_i)
+                {
+                    // Flush cache
+                    os_strdup(cache, cache_dup);
+                    if (queue_push_ex(audit_queue, cache_dup))
+                    {
+                        if (!audit_queue_full_reported)
+                        {
+                            mwarn(FIM_FULL_AUDIT_QUEUE);
+                            audit_queue_full_reported = 1;
+                        }
+                        os_free(cache_dup);
+                    }
+                    cache_i = 0;
+                }
+
+                continue;
+
+            default:
+                if (atomic_int_get(running) == 0)
+                {
+                    continue;
+                }
+
+                break;
         }
 
-        if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), byteRead <= 0) {
+        if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), byteRead <= 0)
+        {
             // Connection closed
             mwarn(FIM_WARN_AUDIT_CONNECTION_CLOSED);
             close(*audit_sock);
@@ -948,12 +1100,14 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
             sleep(1);
             minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
             *audit_sock = init_auditd_socket();
-            while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0) {
+            while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0)
+            {
                 minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
                 sleep(1);
                 *audit_sock = init_auditd_socket();
             }
-            if (*audit_sock >= 0) {
+            if (*audit_sock >= 0)
+            {
                 minfo(FIM_AUDIT_CONNECT);
                 // Reload rules
                 fim_audit_reload_rules();
@@ -970,7 +1124,8 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
         // Find first endline
 
-        if (endline = strchr(buffer, '\n'), !endline) {
+        if (endline = strchr(buffer, '\n'), !endline)
+        {
             // No complete line yet.
             continue;
         }
@@ -978,19 +1133,25 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         // Get all the lines
         line = buffer;
 
-        char * id;
+        char* id;
 
-        do {
+        do
+        {
             *endline = '\0';
 
-            if (id = audit_get_id(line), id) {
+            if (id = audit_get_id(line), id)
+            {
                 // If there was cached data and the ID is different, parse cache first
 
-                if (cache_id && strcmp(cache_id, id)) {
-                    if (cache_i) {
+                if (cache_id && strcmp(cache_id, id))
+                {
+                    if (cache_i)
+                    {
                         os_strdup(cache, cache_dup);
-                        if (queue_push_ex(audit_queue, cache_dup)) {
-                            if (!audit_queue_full_reported) {
+                        if (queue_push_ex(audit_queue, cache_dup))
+                        {
+                            if (!audit_queue_full_reported)
+                            {
                                 mwarn(FIM_FULL_AUDIT_QUEUE);
                                 audit_queue_full_reported = 1;
                             }
@@ -1003,12 +1164,15 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 // Append to cache
                 len = endline - line;
-                if (!discard && cache_i + len + 1 < BUF_SIZE) {
+                if (!discard && cache_i + len + 1 < BUF_SIZE)
+                {
                     strncpy(cache + cache_i, line, len);
                     cache_i += len;
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
-                } else if (!discard) {
+                }
+                else if (!discard)
+                {
                     mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG, id);
                     discard = true;
                     cache_i = 0;
@@ -1017,7 +1181,9 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 free(cache_id);
                 cache_id = id;
-            } else {
+            }
+            else
+            {
                 mwarn(FIM_WARN_WHODATA_GETID, line);
             }
 
@@ -1025,10 +1191,13 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         } while (*line && (endline = strchr(line, '\n'), endline));
 
         // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
-        if (eoe_found && cache_i) {
+        if (eoe_found && cache_i)
+        {
             os_strdup(cache, cache_dup);
-            if (queue_push_ex(audit_queue, cache_dup)) {
-                if (!audit_queue_full_reported) {
+            if (queue_push_ex(audit_queue, cache_dup))
+            {
+                if (!audit_queue_full_reported)
+                {
                     mwarn(FIM_FULL_AUDIT_QUEUE);
                     audit_queue_full_reported = 1;
                 }
@@ -1038,10 +1207,13 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         }
 
         // If some data remains in the buffer, move it to the beginning
-        if (*line) {
+        if (*line)
+        {
             buffer_i = strlen(line);
             memmove(buffer, line, buffer_i);
-        } else {
+        }
+        else
+        {
             buffer_i = 0;
         }
     }

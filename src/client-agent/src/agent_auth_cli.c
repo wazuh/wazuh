@@ -20,10 +20,10 @@
 #include <openssl/crypto.h>
 
 #ifdef WAZUH_UNIT_TESTING
-    // Remove static qualifier when unit testing
-    #define STATIC
+// Remove static qualifier when unit testing
+#define STATIC
 #else
-    #define STATIC static
+#define STATIC static
 #endif
 
 /* Never ARGV0: that macro is set per-directory to "wazuh-agentd" (client-agent/CMakeLists.txt),
@@ -40,122 +40,127 @@
 #define AGENT_AUTH_EXAMPLE_TOKEN "/root/tok"
 #endif
 
-enum {
+enum
+{
     OPT_SHOW_TOKEN = 256,
     OPT_TOKEN_FILE,
     OPT_FORCE_ENROLL,
     OPT_CERTS_ONLY
 };
 
-const struct option agent_auth_long_opts[] = {
-    {"show-token",   no_argument,       NULL, OPT_SHOW_TOKEN},
-    {"token-file",   required_argument, NULL, OPT_TOKEN_FILE},
-    {"force-enroll", no_argument,       NULL, OPT_FORCE_ENROLL},
-    {"certs-only",   no_argument,       NULL, OPT_CERTS_ONLY},
-    {"dry-run",      no_argument,       NULL, 'n'},
-    {"help",         no_argument,       NULL, 'h'},
-    {NULL, 0, NULL, 0}
-};
+const struct option agent_auth_long_opts[] = {{"show-token", no_argument, NULL, OPT_SHOW_TOKEN},
+                                              {"token-file", required_argument, NULL, OPT_TOKEN_FILE},
+                                              {"force-enroll", no_argument, NULL, OPT_FORCE_ENROLL},
+                                              {"certs-only", no_argument, NULL, OPT_CERTS_ONLY},
+                                              {"dry-run", no_argument, NULL, 'n'},
+                                              {"help", no_argument, NULL, 'h'},
+                                              {NULL, 0, NULL, 0}};
 
-void w_agent_auth_opts_init(agent_auth_opts_t *opts) {
+void w_agent_auth_opts_init(agent_auth_opts_t* opts)
+{
     memset(opts, 0, sizeof(*opts));
     opts->action = AGENT_AUTH_ACTION_ENROLL;
     opts->source = AGENT_AUTH_SOURCE_STDIN;
 }
 
-void w_agent_auth_help(FILE *out, const char *progname) {
+void w_agent_auth_help(FILE* out, const char* progname)
+{
     fprintf(out,
-        "\n"
-        "%s: enroll, re-enroll or move an installed agent with a token.\n"
-        "\n",
-        progname);
+            "\n"
+            "%s: enroll, re-enroll or move an installed agent with a token.\n"
+            "\n",
+            progname);
 #ifndef WIN32
     /* cmd.exe's echo keeps the quotes, so this example only holds outside Windows */
     fprintf(out, "  echo '<TOKEN>' | %s                       enroll\n", progname);
 #endif
     fprintf(out,
-        "  %s --token-file %s                 enroll from a file\n"
-        "  %s --token-file %s --force-enroll  re-register, new id\n"
-        "  %s --token-file %s --certs-only    refresh CA + address\n"
-        "  %s --show-token < %s               decode a token\n"
-        "\n"
-        "  The token is read from --token-file or standard input, never from the\n"
-        "  command line. The file is never modified or deleted, whichever it is.\n"
-        "\n"
-        "  Actions\n"
-        "    --show-token     Decode the token and print what it carries. Nothing\n"
-        "                     is written.\n"
-        "    --certs-only     Point this agent at its manager without registering\n"
-        "                     again: installs the trust anchor, and the configured\n"
-        "                     address when the token names a different one. For a\n"
-        "                     manager that rotated its CA or changed its name. The\n"
-        "                     registration is left alone -- enrolling again would\n"
-        "                     mint a new id.\n"
-        "    -h, --help       This message.\n"
-        "\n"
-        "  Options\n"
-        "    --force-enroll   Required when this agent already has a key. It is\n"
-        "                     registered again and receives a NEW id.\n"
-        "    --token-file <path>\n"
-        "                     Read the token from <path> ('-' for standard input).\n"
-        "    -n, --dry-run    Report what would change. Contacts nothing, writes\n"
-        "                     nothing.\n"
-        "    -d               Debug output (repeatable).\n"
-        "\n"
-        "  Refuses while wazuh-agentd is running: stop it first, and start it after.\n"
-        "  A restart is needed either way -- the agent loads its identity once, at\n"
-        "  startup.\n"
-        "\n"
-        "  The agent name, groups and address come from <enrollment> in %s,\n"
-        "  so a later re-enrollment by the agent itself registers the same way.\n"
-        "\n"
-        "  Exit codes: 0 done  1 could not run  2 token rejected  3 CA not established\n"
-        "              4 enrollment refused  5 not committed  6 config not updated\n"
-        "\n",
-        progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN,
-        progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN, WAZUHCONF);
+            "  %s --token-file %s                 enroll from a file\n"
+            "  %s --token-file %s --force-enroll  re-register, new id\n"
+            "  %s --token-file %s --certs-only    refresh CA + address\n"
+            "  %s --show-token < %s               decode a token\n"
+            "\n"
+            "  The token is read from --token-file or standard input, never from the\n"
+            "  command line. The file is never modified or deleted, whichever it is.\n"
+            "\n"
+            "  Actions\n"
+            "    --show-token     Decode the token and print what it carries. Nothing\n"
+            "                     is written.\n"
+            "    --certs-only     Point this agent at its manager without registering\n"
+            "                     again: installs the trust anchor, and the configured\n"
+            "                     address when the token names a different one. For a\n"
+            "                     manager that rotated its CA or changed its name. The\n"
+            "                     registration is left alone -- enrolling again would\n"
+            "                     mint a new id.\n"
+            "    -h, --help       This message.\n"
+            "\n"
+            "  Options\n"
+            "    --force-enroll   Required when this agent already has a key. It is\n"
+            "                     registered again and receives a NEW id.\n"
+            "    --token-file <path>\n"
+            "                     Read the token from <path> ('-' for standard input).\n"
+            "    -n, --dry-run    Report what would change. Contacts nothing, writes\n"
+            "                     nothing.\n"
+            "    -d               Debug output (repeatable).\n"
+            "\n"
+            "  Refuses while wazuh-agentd is running: stop it first, and start it after.\n"
+            "  A restart is needed either way -- the agent loads its identity once, at\n"
+            "  startup.\n"
+            "\n"
+            "  The agent name, groups and address come from <enrollment> in %s,\n"
+            "  so a later re-enrollment by the agent itself registers the same way.\n"
+            "\n"
+            "  Exit codes: 0 done  1 could not run  2 token rejected  3 CA not established\n"
+            "              4 enrollment refused  5 not committed  6 config not updated\n"
+            "\n",
+            progname,
+            AGENT_AUTH_EXAMPLE_TOKEN,
+            progname,
+            AGENT_AUTH_EXAMPLE_TOKEN,
+            progname,
+            AGENT_AUTH_EXAMPLE_TOKEN,
+            progname,
+            AGENT_AUTH_EXAMPLE_TOKEN,
+            WAZUHCONF);
 }
 
-int w_agent_auth_parse_opt(agent_auth_opts_t *opts, int c, const char *arg, FILE *err) {
-    switch (c) {
-        case OPT_SHOW_TOKEN:
-            opts->action = AGENT_AUTH_ACTION_SHOW;
-            return 0;
+int w_agent_auth_parse_opt(agent_auth_opts_t* opts, int c, const char* arg, FILE* err)
+{
+    switch (c)
+    {
+        case OPT_SHOW_TOKEN: opts->action = AGENT_AUTH_ACTION_SHOW; return 0;
 
         case OPT_TOKEN_FILE:
-            if (opts->source != AGENT_AUTH_SOURCE_STDIN) {
+            if (opts->source != AGENT_AUTH_SOURCE_STDIN)
+            {
                 fprintf(err, "%s: give only one token source.\n", AGENT_AUTH_NAME);
                 return -1;
             }
             /* '-' is the conventional spelling for "standard input" and costs nothing to
              * honour; it keeps --token-file usable in a pipeline. */
-            if (arg != NULL && strcmp(arg, "-") != 0) {
+            if (arg != NULL && strcmp(arg, "-") != 0)
+            {
                 opts->source = AGENT_AUTH_SOURCE_FILE;
                 opts->token_file = arg;
             }
             return 0;
 
-        case OPT_FORCE_ENROLL:
-            opts->force_enroll = true;
-            return 0;
+        case OPT_FORCE_ENROLL: opts->force_enroll = true; return 0;
 
-        case OPT_CERTS_ONLY:
-            opts->certs_only = true;
-            return 0;
+        case OPT_CERTS_ONLY: opts->certs_only = true; return 0;
 
-        case 'n':
-            opts->dry_run = true;
-            return 0;
+        case 'n': opts->dry_run = true; return 0;
 
-        default:
-            return -1;
+        default: return -1;
     }
 }
 
-int w_agent_auth_reject_operands(int argc, char **argv, int optind, FILE *err) {
+int w_agent_auth_reject_operands(int argc, char** argv, int optind, FILE* err)
+{
     (void)argv;
 
-    if (optind >= argc) {
+    if (optind >= argc)
+    {
         return 0;
     }
 
@@ -163,16 +168,17 @@ int w_agent_auth_reject_operands(int argc, char **argv, int optind, FILE *err) {
      * on, and naming it would put the credential in stderr, in the terminal's scrollback and in
      * whatever captures them -- the exposure the command exists to avoid, reintroduced by its own
      * error message. Nothing here can tell a stray word from a token, so neither is printed. */
-    fprintf(err, "%s: unexpected argument. The token is never passed on the command line --\n",
-            AGENT_AUTH_NAME);
+    fprintf(err, "%s: unexpected argument. The token is never passed on the command line --\n", AGENT_AUTH_NAME);
     fprintf(err, "  use --token-file or standard input.\n");
 
     return -1;
 }
 
 /** Wipes a heap-allocated token before releasing it, then frees it. NULL-safe. */
-STATIC void w_agent_auth_forget(char *secret) {
-    if (secret == NULL) {
+STATIC void w_agent_auth_forget(char* secret)
+{
+    if (secret == NULL)
+    {
         return;
     }
 
@@ -189,7 +195,8 @@ STATIC void w_agent_auth_forget(char *secret) {
  * so the caller prints the service name instead -- which is what an operator needs to stop it
  * anyway.
  */
-STATIC pid_t w_agent_auth_agentd_pid(void) {
+STATIC pid_t w_agent_auth_agentd_pid(void)
+{
     return CheckServiceRunning() ? 1 : 0;
 }
 #else
@@ -201,43 +208,50 @@ STATIC pid_t w_agent_auth_agentd_pid(void) {
  * wazuh-control, a stale pid file is ignored rather than deleted -- removing one is touching
  * service state, which this command does not do.
  */
-STATIC pid_t w_agent_auth_agentd_pid(void) {
-    char **entries = wreaddir(OS_PIDFILE);
+STATIC pid_t w_agent_auth_agentd_pid(void)
+{
+    char** entries = wreaddir(OS_PIDFILE);
     pid_t running = 0;
 
-    if (entries == NULL) {
+    if (entries == NULL)
+    {
         return 0;
     }
 
-    for (int i = 0; entries[i] != NULL && running == 0; i++) {
-        const char *name = entries[i];
-        const char *prefix = "wazuh-agentd-";
+    for (int i = 0; entries[i] != NULL && running == 0; i++)
+    {
+        const char* name = entries[i];
+        const char* prefix = "wazuh-agentd-";
         size_t prefix_len = strlen(prefix);
         size_t name_len = strlen(name);
 
         if (strncmp(name, prefix, prefix_len) != 0 || name_len <= prefix_len + 4 ||
-            strcmp(name + name_len - 4, ".pid") != 0) {
+            strcmp(name + name_len - 4, ".pid") != 0)
+        {
             continue;
         }
 
         char digits[16] = {0};
         size_t digits_len = name_len - prefix_len - 4;
 
-        if (digits_len == 0 || digits_len >= sizeof(digits)) {
+        if (digits_len == 0 || digits_len >= sizeof(digits))
+        {
             continue;
         }
 
         memcpy(digits, name + prefix_len, digits_len);
 
-        char *end = NULL;
+        char* end = NULL;
         long pid = strtol(digits, &end, 10);
 
-        if (end == NULL || *end != '\0' || pid <= 0) {
+        if (end == NULL || *end != '\0' || pid <= 0)
+        {
             continue;
         }
 
         /* EPERM counts as running: a process we may not signal is still a process. */
-        if (kill((pid_t)pid, 0) == 0 || errno == EPERM) {
+        if (kill((pid_t)pid, 0) == 0 || errno == EPERM)
+        {
             running = (pid_t)pid;
         }
     }
@@ -250,60 +264,66 @@ STATIC pid_t w_agent_auth_agentd_pid(void) {
 #endif /* WIN32 */
 
 /** The agent id on the first line of client.keys, or NULL when it holds no entry. */
-STATIC char *w_agent_auth_current_id(void) {
-    FILE *fp = wfopen(KEYS_FILE, "r");
+STATIC char* w_agent_auth_current_id(void)
+{
+    FILE* fp = wfopen(KEYS_FILE, "r");
 
-    if (fp == NULL) {
+    if (fp == NULL)
+    {
         return NULL;
     }
 
     char line[OS_BUFFER_SIZE] = {0};
-    char *read_ok = fgets(line, sizeof(line) - 1, fp);
+    char* read_ok = fgets(line, sizeof(line) - 1, fp);
     fclose(fp);
 
-    if (read_ok == NULL) {
+    if (read_ok == NULL)
+    {
         return NULL;
     }
 
-    char *space = strchr(line, ' ');
+    char* space = strchr(line, ' ');
 
-    if (space == NULL) {
+    if (space == NULL)
+    {
         return NULL;
     }
 
     *space = '\0';
 
-    if (line[0] == '\0') {
+    if (line[0] == '\0')
+    {
         return NULL;
     }
 
-    char *id;
+    char* id;
     os_strdup(line, id);
 
     return id;
 }
 
-
 /**
  * @brief Reads the token from --token-file.
  * @return Newly allocated token text, or NULL (a reason is written to @p err).
  */
-static char *w_agent_auth_read_token_file(const char *path, FILE *err) {
+static char* w_agent_auth_read_token_file(const char* path, FILE* err)
+{
     /* The shared reader refuses a token too long to fit rather than truncating it, so the size is
      * checked here only to say why: it reports the same "could not read" as a file that is
      * missing or empty, and those want different responses. The stdin path below already names
      * this case; this gives the file path the same answer. */
     struct stat token_st;
 
-    if (stat(path, &token_st) == 0 && token_st.st_size >= W_ETOKEN_MAX_FILE_BYTES) {
-        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
-                W_ETOKEN_MAX_FILE_BYTES);
+    if (stat(path, &token_st) == 0 && token_st.st_size >= W_ETOKEN_MAX_FILE_BYTES)
+    {
+        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME, W_ETOKEN_MAX_FILE_BYTES);
         return NULL;
     }
 
-    char *text = w_agent_token_read_file(path);
+    char* text = w_agent_token_read_file(path);
 
-    if (text == NULL) {
+    if (text == NULL)
+    {
         fprintf(err, "%s: could not read an enrollment token from '%s'.\n", AGENT_AUTH_NAME, path);
     }
 
@@ -313,9 +333,9 @@ static char *w_agent_auth_read_token_file(const char *path, FILE *err) {
 /* Reading stdin from a terminal would block on input nobody is going to type, which reads as the
  * command having hung. Say what is wanted instead: a token only ever arrives here from a redirect
  * or a pipe. */
-static void w_agent_auth_explain_no_token(FILE *err) {
-    fprintf(err, "%s: no token given. Pass --token-file <path>, or pipe or redirect one in:\n",
-            AGENT_AUTH_NAME);
+static void w_agent_auth_explain_no_token(FILE* err)
+{
+    fprintf(err, "%s: no token given. Pass --token-file <path>, or pipe or redirect one in:\n", AGENT_AUTH_NAME);
     fprintf(err, "\n");
 #ifndef WIN32
     fprintf(err, "      echo '<TOKEN>' | %s\n", AGENT_AUTH_NAME);
@@ -330,28 +350,29 @@ static void w_agent_auth_explain_no_token(FILE *err) {
  * @brief Reads the token from standard input, through the reader --show-token shares.
  * @return Newly allocated token text, or NULL (a reason is written to @p err).
  */
-static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
-    char *text = NULL;
+static char* w_agent_auth_read_token_stdin(FILE* in, FILE* err)
+{
+    char* text = NULL;
 
-    switch (w_agent_token_read_stream(in, &text)) {
-        case W_TOKEN_READ_OK:
-            break;
-        case W_TOKEN_READ_TTY:
-            w_agent_auth_explain_no_token(err);
-            return NULL;
+    switch (w_agent_token_read_stream(in, &text))
+    {
+        case W_TOKEN_READ_OK: break;
+        case W_TOKEN_READ_TTY: w_agent_auth_explain_no_token(err); return NULL;
         case W_TOKEN_READ_TOO_BIG:
-            fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
-                    W_ETOKEN_MAX_FILE_BYTES);
+            fprintf(
+                err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME, W_ETOKEN_MAX_FILE_BYTES);
             return NULL;
         case W_TOKEN_READ_IO:
-            fprintf(err, "%s: could not read the enrollment token from standard input.\n",
-                    AGENT_AUTH_NAME);
+            fprintf(err, "%s: could not read the enrollment token from standard input.\n", AGENT_AUTH_NAME);
             return NULL;
     }
 
-    if (*text == '\0') {
-        fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
-                "  or pipe or redirect one in.\n", AGENT_AUTH_NAME);
+    if (*text == '\0')
+    {
+        fprintf(err,
+                "%s: the enrollment token is empty. Pass --token-file <path>,\n"
+                "  or pipe or redirect one in.\n",
+                AGENT_AUTH_NAME);
         os_free(text);
         return NULL;
     }
@@ -363,8 +384,10 @@ static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
  * @brief Reads the token for this run, from wherever the operator pointed us.
  * @return Newly allocated token text, or NULL (a reason is written to @p err).
  */
-STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FILE *err) {
-    if (opts->source == AGENT_AUTH_SOURCE_FILE) {
+STATIC char* w_agent_auth_read_token(const agent_auth_opts_t* opts, FILE* in, FILE* err)
+{
+    if (opts->source == AGENT_AUTH_SOURCE_FILE)
+    {
         return w_agent_auth_read_token_file(opts->token_file, err);
     }
 
@@ -383,12 +406,13 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
  *
  * @return 0 on success, -1 on failure (a reason is written to @p err).
  */
-STATIC int w_agent_auth_write_staged(const File *staged, const char **nodes, const char *configured,
-                                     const char *adr, FILE *err) {
-    if (OS_WriteXMLToStream(WAZUHCONF, staged->fp, nodes, configured, adr) != 0 ||
-        fflush(staged->fp) != 0 || ferror(staged->fp)) {
-        fprintf(err, "%s: could not rewrite <manager><endpoint> in '%s'.\n", AGENT_AUTH_NAME,
-                WAZUHCONF);
+STATIC int
+w_agent_auth_write_staged(const File* staged, const char** nodes, const char* configured, const char* adr, FILE* err)
+{
+    if (OS_WriteXMLToStream(WAZUHCONF, staged->fp, nodes, configured, adr) != 0 || fflush(staged->fp) != 0 ||
+        ferror(staged->fp))
+    {
+        fprintf(err, "%s: could not rewrite <manager><endpoint> in '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
         return -1;
     }
 
@@ -406,20 +430,23 @@ STATIC int w_agent_auth_write_staged(const File *staged, const char **nodes, con
  *
  * @return 0 on success, -1 on failure. @p xml can be cleared either way.
  */
-STATIC int w_agent_auth_parse_staged(const File *staged, OS_XML *xml) {
+STATIC int w_agent_auth_parse_staged(const File* staged, OS_XML* xml)
+{
 #ifdef WIN32
     return (OS_ReadXML(staged->name, xml) < 0) ? -1 : 0;
 #else
     int copy;
-    FILE *fp;
+    FILE* fp;
 
     memset(xml, 0, sizeof(*xml));
 
-    if ((copy = dup(fileno(staged->fp))) < 0) {
+    if ((copy = dup(fileno(staged->fp))) < 0)
+    {
         return -1;
     }
 
-    if (lseek(copy, 0, SEEK_SET) != 0 || (fp = fdopen(copy, "r")) == NULL) {
+    if (lseek(copy, 0, SEEK_SET) != 0 || (fp = fdopen(copy, "r")) == NULL)
+    {
         close(copy);
         return -1;
     }
@@ -441,13 +468,14 @@ STATIC int w_agent_auth_parse_staged(const File *staged, OS_XML *xml) {
  *
  * @return true when it does; false otherwise (a reason is written to @p err).
  */
-STATIC bool w_agent_auth_endpoint_written(const File *staged, const char **nodes, const char *adr,
-                                          FILE *err) {
+STATIC bool w_agent_auth_endpoint_written(const File* staged, const char** nodes, const char* adr, FILE* err)
+{
     OS_XML xml;
-    char *written;
+    char* written;
     bool matches;
 
-    if (w_agent_auth_parse_staged(staged, &xml) != 0) {
+    if (w_agent_auth_parse_staged(staged, &xml) != 0)
+    {
         OS_ClearXML(&xml);
         fprintf(err, "%s: could not re-read the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
         return false;
@@ -458,9 +486,9 @@ STATIC bool w_agent_auth_endpoint_written(const File *staged, const char **nodes
     matches = (written != NULL && strcmp(written, adr) == 0);
     os_free(written);
 
-    if (!matches) {
-        fprintf(err, "%s: '%s' has no <agent><manager><endpoint> to point at '%s'.\n",
-                AGENT_AUTH_NAME, WAZUHCONF, adr);
+    if (!matches)
+    {
+        fprintf(err, "%s: '%s' has no <agent><manager><endpoint> to point at '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF, adr);
         fprintf(err, "  The manager address is configured some other way there, so it was left\n");
         fprintf(err, "  alone rather than silently reported as changed.\n");
     }
@@ -470,9 +498,10 @@ STATIC bool w_agent_auth_endpoint_written(const File *staged, const char **nodes
 
 #ifndef WIN32
 /** Gives the file open on @p fd the mode and ownership of @p original, through the descriptor. */
-STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original) {
-    if (fchmod(fd, original->st_mode & 07777) != 0 ||
-        fchown(fd, original->st_uid, original->st_gid) != 0) {
+STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat* original)
+{
+    if (fchmod(fd, original->st_mode & 07777) != 0 || fchown(fd, original->st_uid, original->st_gid) != 0)
+    {
         return -1;
     }
 
@@ -495,20 +524,27 @@ STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original)
  *
  * @return 0 on success, -1 on failure (a reason is written to @p err).
  */
-STATIC int w_agent_auth_move_staged(const char *path, FILE *err) {
+STATIC int w_agent_auth_move_staged(const char* path, FILE* err)
+{
 #ifdef WIN32
-    if (OS_MoveFile(path, WAZUHCONF) == 0) {
+    if (OS_MoveFile(path, WAZUHCONF) == 0)
+    {
         return 0;
     }
 
     fprintf(err, "%s: could not install the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
 #else
-    if (w_move_file_nofollow(path, WAZUHCONF) == 0) {
+    if (w_move_file_nofollow(path, WAZUHCONF) == 0)
+    {
         return 0;
     }
 
-    fprintf(err, "%s: could not install the rewritten '%s': %s (%d).\n", AGENT_AUTH_NAME, WAZUHCONF,
-            strerror(errno), errno);
+    fprintf(err,
+            "%s: could not install the rewritten '%s': %s (%d).\n",
+            AGENT_AUTH_NAME,
+            WAZUHCONF,
+            strerror(errno),
+            errno);
 #endif
 
     return -1;
@@ -524,8 +560,9 @@ STATIC int w_agent_auth_move_staged(const char *path, FILE *err) {
  *
  * @return 0 on success, -1 on failure (a reason is written to @p err).
  */
-STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured, FILE *err) {
-    const char *nodes[] = {"ossec_config", "agent", "manager", "endpoint", NULL};
+STATIC int w_agent_auth_update_endpoint(const char* adr, const char* configured, FILE* err)
+{
+    const char* nodes[] = {"ossec_config", "agent", "manager", "endpoint", NULL};
     File staged = {NULL, NULL};
     struct stat original;
     int result = -1;
@@ -533,9 +570,9 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
     /* Whatever the live file is, that is what the rewritten one has to look like. Reading it
      * first means the mode and ownership are preserved rather than reset to whatever this
      * function believes the install default to be. */
-    if (stat(WAZUHCONF, &original) != 0) {
-        fprintf(err, "%s: could not read '%s': %s (%d).\n", AGENT_AUTH_NAME, WAZUHCONF,
-                strerror(errno), errno);
+    if (stat(WAZUHCONF, &original) != 0)
+    {
+        fprintf(err, "%s: could not read '%s': %s (%d).\n", AGENT_AUTH_NAME, WAZUHCONF, strerror(errno), errno);
         return -1;
     }
 
@@ -543,14 +580,20 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
      * by the account the agent runs as, and this runs as root. A predictable sibling name lets
      * that account pre-plant a symlink and have root write through it -- and then rename the
      * link itself onto ossec.conf. mkstemp() makes the name unpredictable and creates O_EXCL. */
-    if (TempFile(&staged, WAZUHCONF, 0) < 0) {
-        fprintf(err, "%s: could not stage a rewrite of '%s': %s (%d).\n", AGENT_AUTH_NAME,
-                WAZUHCONF, strerror(errno), errno);
+    if (TempFile(&staged, WAZUHCONF, 0) < 0)
+    {
+        fprintf(err,
+                "%s: could not stage a rewrite of '%s': %s (%d).\n",
+                AGENT_AUTH_NAME,
+                WAZUHCONF,
+                strerror(errno),
+                errno);
         return -1;
     }
 
     if (w_agent_auth_write_staged(&staged, nodes, configured, adr, err) != 0 ||
-        !w_agent_auth_endpoint_written(&staged, nodes, adr, err)) {
+        !w_agent_auth_endpoint_written(&staged, nodes, adr, err))
+    {
         goto done;
     }
 
@@ -562,9 +605,14 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
      * is the DACL mkstemp_ex() puts on it -- Administrators and SYSTEM only, set explicitly
      * rather than inherited from the directory (file_op.c) -- which MoveFileEx() then carries
      * onto ossec.conf. */
-    if (w_agent_auth_copy_mode_and_owner(fileno(staged.fp), &original) != 0) {
-        fprintf(err, "%s: could not preserve the permissions of '%s': %s (%d).\n",
-                AGENT_AUTH_NAME, WAZUHCONF, strerror(errno), errno);
+    if (w_agent_auth_copy_mode_and_owner(fileno(staged.fp), &original) != 0)
+    {
+        fprintf(err,
+                "%s: could not preserve the permissions of '%s': %s (%d).\n",
+                AGENT_AUTH_NAME,
+                WAZUHCONF,
+                strerror(errno),
+                errno);
         goto done;
     }
 
@@ -573,35 +621,47 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
      * there; that gives the account that can write etc/ nothing it can't do with mv. What matters
      * is that root never opens that name through a link: the write, the read-back, the mode and
      * the owner all go through the descriptor, and the move is w_move_file_nofollow(). */
-    if (!w_path_names_fd(staged.name, fileno(staged.fp))) {
-        fprintf(err, "%s: the staged copy of '%s' was replaced while it was being written; "
-                "refusing to install it.\n", AGENT_AUTH_NAME, WAZUHCONF);
+    if (!w_path_names_fd(staged.name, fileno(staged.fp)))
+    {
+        fprintf(err,
+                "%s: the staged copy of '%s' was replaced while it was being written; "
+                "refusing to install it.\n",
+                AGENT_AUTH_NAME,
+                WAZUHCONF);
         goto done;
     }
 #endif
 
     /* Closed before the move: Windows will not move a file that still has a handle open on it. */
-    if (fclose(staged.fp) != 0) {
+    if (fclose(staged.fp) != 0)
+    {
         staged.fp = NULL;
-        fprintf(err, "%s: could not finish writing the rewritten '%s': %s (%d).\n", AGENT_AUTH_NAME,
-                WAZUHCONF, strerror(errno), errno);
+        fprintf(err,
+                "%s: could not finish writing the rewritten '%s': %s (%d).\n",
+                AGENT_AUTH_NAME,
+                WAZUHCONF,
+                strerror(errno),
+                errno);
         goto done;
     }
 
     staged.fp = NULL;
 
-    if (w_agent_auth_move_staged(staged.name, err) != 0) {
+    if (w_agent_auth_move_staged(staged.name, err) != 0)
+    {
         goto done;
     }
 
     result = 0;
 
 done:
-    if (staged.fp != NULL) {
+    if (staged.fp != NULL)
+    {
         fclose(staged.fp);
     }
 
-    if (result != 0) {
+    if (result != 0)
+    {
         unlink(staged.name);
     }
 
@@ -624,19 +684,22 @@ done:
  *
  * @return true when the configuration would have to change, false when it already matches.
  */
-STATIC bool w_agent_auth_endpoint_differs(const char *adr, const agent_server *configured) {
+STATIC bool w_agent_auth_endpoint_differs(const char* adr, const agent_server* configured)
+{
     char host[HC_MAX_HOST] = {0};
     char endpoint[HC_MAX_ENDPOINT] = {0};
     int port = 0;
     bool port_present = false;
     uint32_t scope_id = 0;
 
-    if (configured == NULL || configured->rip == NULL) {
+    if (configured == NULL || configured->rip == NULL)
+    {
         return false;
     }
 
-    if (w_parse_agent_endpoint(adr, host, sizeof(host), &port, &port_present, endpoint,
-                               sizeof(endpoint), &scope_id) != 0) {
+    if (w_parse_agent_endpoint(adr, host, sizeof(host), &port, &port_present, endpoint, sizeof(endpoint), &scope_id) !=
+        0)
+    {
         /* The core rejects this address too, so the enrollment will not get far enough for the
          * configuration to matter. */
         return false;
@@ -651,11 +714,12 @@ STATIC bool w_agent_auth_endpoint_differs(const char *adr, const agent_server *c
     strncpy(expanded, host, sizeof(expanded) - 1);
     OS_ExpandIPv6(expanded, sizeof(expanded));
 
-    if (strcmp(expanded, configured->rip) != 0 || port != configured->port) {
+    if (strcmp(expanded, configured->rip) != 0 || port != configured->port)
+    {
         return true;
     }
 
-    const char *configured_prefix = (configured->endpoint != NULL) ? configured->endpoint : "";
+    const char* configured_prefix = (configured->endpoint != NULL) ? configured->endpoint : "";
 
     return strcmp(endpoint, configured_prefix) != 0;
 }
@@ -670,24 +734,27 @@ STATIC bool w_agent_auth_endpoint_differs(const char *adr, const agent_server *c
  *        knows the part that worked is not in doubt -- only the pointer to it.
  * @return 0, or AGENT_AUTH_ERR_CONFIG when the rewrite was needed and failed.
  */
-STATIC int w_agent_auth_point_config(const char *adr, const agent_server *server,
-                                     const char *configured, const char *succeeded, FILE *err) {
-    if (server == NULL || server->rip == NULL) {
+STATIC int w_agent_auth_point_config(
+    const char* adr, const agent_server* server, const char* configured, const char* succeeded, FILE* err)
+{
+    if (server == NULL || server->rip == NULL)
+    {
         /* No <manager><endpoint> to replace. OS_WriteXMLToStream() cannot insert one -- it appends
          * the node after </ossec_config> and still reports success -- so this says so instead of
          * returning 0 and leaving an enrolled agent with no address to dial, which is the
          * half-done move this whole path exists to prevent. */
-        fprintf(err, "  %s, but %s has no <agent><manager><endpoint> to point\n", succeeded,
-                WAZUHCONF);
+        fprintf(err, "  %s, but %s has no <agent><manager><endpoint> to point\n", succeeded, WAZUHCONF);
         fprintf(err, "  at '%s'. Add it by hand before restarting.\n", adr);
         return AGENT_AUTH_ERR_CONFIG;
     }
 
-    if (!w_agent_auth_endpoint_differs(adr, server)) {
+    if (!w_agent_auth_endpoint_differs(adr, server))
+    {
         return 0;
     }
 
-    if (w_agent_auth_update_endpoint(adr, configured, err) == 0) {
+    if (w_agent_auth_update_endpoint(adr, configured, err) == 0)
+    {
         fprintf(err, "%s now points <manager><endpoint> at '%s'.\n", WAZUHCONF, adr);
         return 0;
     }
@@ -704,32 +771,28 @@ STATIC int w_agent_auth_point_config(const char *adr, const agent_server *server
 }
 
 /** Maps a core status onto this command's exit code. */
-STATIC int w_agent_auth_exit_code(w_token_enroll_status_t status) {
-    switch (status) {
-        case W_TOKEN_ENROLL_OK:
-            return AGENT_AUTH_OK;
-        case W_TOKEN_ENROLL_ERR_TOKEN:
-            return AGENT_AUTH_ERR_TOKEN;
-        case W_TOKEN_ENROLL_ERR_ANCHOR:
-            return AGENT_AUTH_ERR_ANCHOR;
+STATIC int w_agent_auth_exit_code(w_token_enroll_status_t status)
+{
+    switch (status)
+    {
+        case W_TOKEN_ENROLL_OK: return AGENT_AUTH_OK;
+        case W_TOKEN_ENROLL_ERR_TOKEN: return AGENT_AUTH_ERR_TOKEN;
+        case W_TOKEN_ENROLL_ERR_ANCHOR: return AGENT_AUTH_ERR_ANCHOR;
         /* Local failures, both of them before anything reached the network -- reporting them as
          * "the manager refused" would send an operator to the wrong machine. */
         case W_TOKEN_ENROLL_ERR_CREDENTIAL:
-        case W_TOKEN_ENROLL_ERR_REQUEST:
-            return AGENT_AUTH_ERR_USAGE;
-        case W_TOKEN_ENROLL_ERR_ENROLL:
-            return AGENT_AUTH_ERR_ENROLL;
+        case W_TOKEN_ENROLL_ERR_REQUEST: return AGENT_AUTH_ERR_USAGE;
+        case W_TOKEN_ENROLL_ERR_ENROLL: return AGENT_AUTH_ERR_ENROLL;
         case W_TOKEN_ENROLL_ERR_STORE:
-        case W_TOKEN_ENROLL_ERR_COMMIT:
-            return AGENT_AUTH_ERR_COMMIT;
-        default:
-            return AGENT_AUTH_ERR_ENROLL;
+        case W_TOKEN_ENROLL_ERR_COMMIT: return AGENT_AUTH_ERR_COMMIT;
+        default: return AGENT_AUTH_ERR_ENROLL;
     }
 }
 
-STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *out, FILE *err) {
-    char *token_text = NULL;
-    char *current_id = NULL;
+STATIC int w_agent_auth_enroll(const agent_auth_opts_t* opts, FILE* in, FILE* out, FILE* err)
+{
+    char* token_text = NULL;
+    char* current_id = NULL;
     w_etoken_t token;
     w_etoken_error_t decode_err;
     w_token_enroll_opts_t enroll_opts = {0};
@@ -739,21 +802,22 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
      * token-only install has not been pointed anywhere yet. */
     /* No <manager><endpoint> at all is a legitimate configuration to enroll from -- a token-only
      * install has not been pointed anywhere yet. */
-    const agent_server *server = (agt != NULL && agt->server != NULL) ? &agt->server[0] : NULL;
-    const char *configured = (server != NULL) ? server->rip : NULL;
+    const agent_server* server = (agt != NULL && agt->server != NULL) ? &agt->server[0] : NULL;
+    const char* configured = (server != NULL) ? server->rip : NULL;
     bool registered;
     pid_t agentd_pid;
     int result;
 
-    if ((token_text = w_agent_auth_read_token(opts, in, err)) == NULL) {
+    if ((token_text = w_agent_auth_read_token(opts, in, err)) == NULL)
+    {
         return AGENT_AUTH_ERR_USAGE;
     }
 
     /* Decoded here as well as inside the core, because the guards below have to tell the
      * operator which manager the token names before anything is contacted. */
-    if ((decode_err = w_etoken_decode(token_text, &token)) != ETOKEN_OK) {
-        fprintf(err, "%s: invalid enrollment token: %s.\n", AGENT_AUTH_NAME,
-                w_etoken_strerror(decode_err));
+    if ((decode_err = w_etoken_decode(token_text, &token)) != ETOKEN_OK)
+    {
+        fprintf(err, "%s: invalid enrollment token: %s.\n", AGENT_AUTH_NAME, w_etoken_strerror(decode_err));
         /* Cleansed, not merely freed: a token that fails to decode is still the credential in
          * transit, and this is the one exit that used to skip the wipe every other one does. */
         w_agent_auth_forget(token_text);
@@ -773,51 +837,65 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
      * deciding whether to authorise is the wrong way round. It still names each guard the real
      * run would stop at over the flags given or a running agent, so a clean preview is not read
      * as a run that will go through. */
-    if (opts->dry_run) {
+    if (opts->dry_run)
+    {
         /* The whole preview on one stream. Split across out and err it came out in the wrong
          * order the moment stdout stopped being a terminal: stdout block-buffers and flushes at
          * exit, stderr does not, so the first line arrived last under `> file` or `| less`. The
          * preview is what the operator asked this run to produce, which is what stdout carries
          * here -- on a real run that is the outcome line, and a dry run has no outcome. */
-        if (opts->certs_only) {
+        if (opts->certs_only)
+        {
             fprintf(out, "would install anchor manager=%s\n", token.adr);
 
-            if (!registered) {
-                fprintf(out, "  run without --certs-only to enroll this agent, or the real run "
+            if (!registered)
+            {
+                fprintf(out,
+                        "  run without --certs-only to enroll this agent, or the real run "
                         "will refuse: there is no trust to refresh\n");
             }
-        } else {
+        }
+        else
+        {
             fprintf(out, "would enroll with manager=%s\n", token.adr);
 
-            if (registered) {
-                fprintf(out, "would REPLACE the registration id=%s with a new one\n",
+            if (registered)
+            {
+                fprintf(out,
+                        "would REPLACE the registration id=%s with a new one\n",
                         current_id != NULL ? current_id : "unknown");
 
-                if (!opts->force_enroll) {
-                    fprintf(out, "  use --force-enroll in the real run, or it will refuse to "
+                if (!opts->force_enroll)
+                {
+                    fprintf(out,
+                            "  use --force-enroll in the real run, or it will refuse to "
                             "register\n");
                 }
             }
         }
 
         /* Outside the branch above: both modes re-point the address, so both have to preview it. */
-        if (w_agent_auth_endpoint_differs(token.adr, server)) {
+        if (w_agent_auth_endpoint_differs(token.adr, server))
+        {
             fprintf(out, "would point <manager><endpoint> at '%s' in %s\n", token.adr, WAZUHCONF);
         }
 
-        fprintf(out, "would %s the trust anchor at %s\n",
-                IsFile(AGENT_ANCHOR_CA) == 0 ? "REPLACE" : "install", AGENT_ANCHOR_CA);
+        fprintf(out,
+                "would %s the trust anchor at %s\n",
+                IsFile(AGENT_ANCHOR_CA) == 0 ? "REPLACE" : "install",
+                AGENT_ANCHOR_CA);
 #ifndef WIN32
-        if (IsFile(AGENT_DELIVERED_CA) == 0 || IsLink(AGENT_DELIVERED_CA) == 0) {
+        if (IsFile(AGENT_DELIVERED_CA) == 0 || IsLink(AGENT_DELIVERED_CA) == 0)
+        {
             fprintf(out, "would remove the CA a remote upgrade left at %s\n", AGENT_DELIVERED_CA);
         }
 #endif
-        if (agentd_pid > 0) {
+        if (agentd_pid > 0)
+        {
 #ifdef WIN32
             fprintf(out, "stop the Wazuh service before the real run, or it will refuse\n");
 #else
-            fprintf(out, "stop wazuh-agentd (pid %d) before the real run, or it will refuse\n",
-                    (int)agentd_pid);
+            fprintf(out, "stop wazuh-agentd (pid %d) before the real run, or it will refuse\n", (int)agentd_pid);
 #endif
         }
 
@@ -829,24 +907,30 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
     }
 
     /* --certs-only refreshes trust material, so it needs something to refresh. */
-    if (opts->certs_only && !registered) {
-        fprintf(err, "%s: this agent is not enrolled, so there is no trust to refresh.\n",
-                AGENT_AUTH_NAME);
+    if (opts->certs_only && !registered)
+    {
+        fprintf(err, "%s: this agent is not enrolled, so there is no trust to refresh.\n", AGENT_AUTH_NAME);
         fprintf(err, "  To enroll it, run without --certs-only.\n");
         goto refuse;
     }
 
     /* Only the enrolling path replaces a registration; --certs-only leaves it alone, so asking
      * permission for something that is not happening would be noise. */
-    if (registered && !opts->certs_only && !opts->force_enroll) {
-        fprintf(err, "%s: this agent already has a key (id=%s); nothing was contacted.\n",
-                AGENT_AUTH_NAME, current_id != NULL ? current_id : "unknown");
+    if (registered && !opts->certs_only && !opts->force_enroll)
+    {
+        fprintf(err,
+                "%s: this agent already has a key (id=%s); nothing was contacted.\n",
+                AGENT_AUTH_NAME,
+                current_id != NULL ? current_id : "unknown");
 
         /* Only worth a line when it carries information. Printing "current: 127.0.0.1 / token:
          * 127.0.0.1" is two lines that say the addresses match, which is the uninteresting case. */
-        if (w_agent_auth_endpoint_differs(token.adr, server)) {
-            fprintf(err, "  The token points at a different manager: %s -> %s\n",
-                    configured != NULL ? configured : "(none configured)", token.adr);
+        if (w_agent_auth_endpoint_differs(token.adr, server))
+        {
+            fprintf(err,
+                    "  The token points at a different manager: %s -> %s\n",
+                    configured != NULL ? configured : "(none configured)",
+                    token.adr);
         }
 
         fprintf(err, "\n");
@@ -864,25 +948,24 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
      * every handshake, so a restart is needed whatever happens here and replacing the anchor
      * under a live agent breaks it at once. There is nothing worth forcing, and this command
      * never touches service state itself. */
-    if (agentd_pid > 0) {
+    if (agentd_pid > 0)
+    {
         char install_dir[PATH_MAX] = {0};
 
-        if (getcwd(install_dir, sizeof(install_dir)) == NULL) {
+        if (getcwd(install_dir, sizeof(install_dir)) == NULL)
+        {
             install_dir[0] = '\0';
         }
 
 #ifdef WIN32
         (void)install_dir;
-        fprintf(err, "%s: stop the agent first (the Wazuh service is running):\n",
-                AGENT_AUTH_NAME);
+        fprintf(err, "%s: stop the agent first (the Wazuh service is running):\n", AGENT_AUTH_NAME);
         fprintf(err, "\n");
         fprintf(err, "      net stop WazuhSvc\n");
 #else
-        fprintf(err, "%s: stop the agent first (wazuh-agentd is running, pid %d):\n",
-                AGENT_AUTH_NAME, (int)agentd_pid);
+        fprintf(err, "%s: stop the agent first (wazuh-agentd is running, pid %d):\n", AGENT_AUTH_NAME, (int)agentd_pid);
         fprintf(err, "\n");
-        fprintf(err, "      %s%sbin/wazuh-control stop\n", install_dir,
-                install_dir[0] != '\0' ? "/" : "");
+        fprintf(err, "      %s%sbin/wazuh-control stop\n", install_dir, install_dir[0] != '\0' ? "/" : "");
 #endif
         goto refuse;
     }
@@ -908,9 +991,9 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
     enroll_opts.transactional = !opts->certs_only && (registered || IsFile(AGENT_ANCHOR_CA) == 0);
 
 #ifndef WIN32
-    if (enroll_opts.uid == (int)-1 || enroll_opts.gid == (int)-1) {
-        fprintf(err, "%s: no such user '%s' or group '%s'.\n", AGENT_AUTH_NAME, USER,
-                GROUPGLOBAL);
+    if (enroll_opts.uid == (int)-1 || enroll_opts.gid == (int)-1)
+    {
+        fprintf(err, "%s: no such user '%s' or group '%s'.\n", AGENT_AUTH_NAME, USER, GROUPGLOBAL);
         goto refuse;
     }
 #endif
@@ -918,7 +1001,8 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
     status = w_agent_token_enroll(&enroll_opts, &report);
     result = w_agent_auth_exit_code(status);
 
-    if (status != W_TOKEN_ENROLL_OK) {
+    if (status != W_TOKEN_ENROLL_OK)
+    {
         /* Exit code 4 is a published contract and stays, but under it sit two different answers: a
          * refusal, and one that may clear by itself -- no answer, a 429 or a 5xx (often from a load
          * balancer in front of the manager), a node that does not know the token (on a cluster a
@@ -926,32 +1010,40 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
          * the second kind "refused" sends the operator to fix a token that may be fine, so the
          * words carry the difference. A 404 is classed as transient too but is a wrong path, not a busy manager,
          * hence the explicit status codes rather than report.transient alone. */
-        const bool may_clear = (status == W_TOKEN_ENROLL_ERR_ENROLL) &&
-                               (report.pending ||
-                                (report.transient && (report.http_code == 0 || report.http_code == 429 ||
-                                                      report.http_code >= 500)));
+        const bool may_clear =
+            (status == W_TOKEN_ENROLL_ERR_ENROLL) &&
+            (report.pending ||
+             (report.transient && (report.http_code == 0 || report.http_code == 429 || report.http_code >= 500)));
 
-        fprintf(err, "%s: %s.\n", AGENT_AUTH_NAME,
+        fprintf(err,
+                "%s: %s.\n",
+                AGENT_AUTH_NAME,
                 may_clear ? "the enrollment did not go through" : w_agent_token_enroll_strerror(status));
 
         /* The class alone is not actionable: "the CA could not be established" is the same
          * sentence for an address that does not resolve and a pin that does not match, and those
          * want opposite responses. The core names the cause; without this it reaches only
          * logs/ossec.log, because this command silences the log's stderr echo. */
-        if (report.detail[0] != '\0') {
+        if (report.detail[0] != '\0')
+        {
             fprintf(err, "  %s\n", report.detail);
         }
 
-        if (status == W_TOKEN_ENROLL_ERR_COMMIT || status == W_TOKEN_ENROLL_ERR_STORE) {
-            if (report.keys_backup[0] != '\0') {
+        if (status == W_TOKEN_ENROLL_ERR_COMMIT || status == W_TOKEN_ENROLL_ERR_STORE)
+        {
+            if (report.keys_backup[0] != '\0')
+            {
                 fprintf(err, "  Neither the commit nor the rollback completed. A copy of the\n");
-                fprintf(err, "  previous agent key is at '%s'. Do not restart the agent until\n",
-                        report.keys_backup);
+                fprintf(err, "  previous agent key is at '%s'. Do not restart the agent until\n", report.keys_backup);
                 fprintf(err, "  it has been restored.\n");
-            } else if (report.rolled_back) {
+            }
+            else if (report.rolled_back)
+            {
                 fprintf(err, "  The previous agent key was restored; this agent still talks to\n");
                 fprintf(err, "  its former manager.\n");
-            } else {
+            }
+            else
+            {
                 /* The loudest case gets the most words: enrolled, the key on disk was replaced,
                  * and nothing was put back. Saying only "could not be committed" here would hide
                  * the fact that this agent can now reach no manager at all.
@@ -961,35 +1053,46 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
                  * empty client.keys still enrolls transactionally, yet has nothing to snapshot,
                  * so it arrives here with `registered` false and no backup -- the one shape
                  * where every branch above is false and this warning is the only one left. */
-                if (registered) {
+                if (registered)
+                {
                     fprintf(err, "  The previous agent key was NOT restored and no backup exists.\n");
                 }
 
-                fprintf(err, "  This agent now holds a key for %s while still trusting its\n",
+                fprintf(err,
+                        "  This agent now holds a key for %s while still trusting its\n",
                         report.host[0] != '\0' ? report.host : token.adr);
                 fprintf(err, "  former manager, and can reach neither until it is re-enrolled.\n");
             }
-        } else {
-            if (report.token_refusal[0] != '\0') {
+        }
+        else
+        {
+            if (report.token_refusal[0] != '\0')
+            {
                 fprintf(err, "  " AGENT_AUTH_TOKEN_REFUSED "%s\n", report.token_refusal);
             }
 
-            if (report.manager_message[0] != '\0') {
+            if (report.manager_message[0] != '\0')
+            {
                 fprintf(err, "  " AGENT_AUTH_MANAGER_SAID "%s\n", report.manager_message);
             }
 
             /* token_unknown cannot tell a token still on its way to this node from one that is not
              * there at all -- purged, from an earlier install, or another manager's -- so the hint
              * names both. stale_token is about the clock, not the token. */
-            if (may_clear && report.pending && report.clock_skew) {
+            if (may_clear && report.pending && report.clock_skew)
+            {
                 fprintf(err, "  The manager refused the request's timestamp: this host's clock and\n");
                 fprintf(err, "  the manager's disagree. Correct the clock, then try again.\n");
-            } else if (may_clear && report.pending) {
+            }
+            else if (may_clear && report.pending)
+            {
                 fprintf(err, "  The manager does not know this token. If it was just created, it can\n");
                 fprintf(err, "  take some seconds to reach every cluster node: try again in a minute.\n");
                 fprintf(err, "  If it keeps failing, the token is wrong or no longer exists on the\n");
                 fprintf(err, "  manager; mint a new one.\n");
-            } else if (may_clear) {
+            }
+            else if (may_clear)
+            {
                 fprintf(err, "  This may clear on its own. Try again in a minute.\n");
             }
 
@@ -999,13 +1102,16 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
         goto done;
     }
 
-    if (opts->certs_only) {
+    if (opts->certs_only)
+    {
         int config_result;
 
         /* One line, and only what happened. The tool cannot tell "same manager, new address or
          * rotated CA" from "a different manager" -- neither address nor pin identifies one -- so
          * it reports the change and leaves that judgement where it belongs. */
-        fprintf(out, "anchor %s manager=%s\n", report.anchor_changed ? "installed" : "unchanged",
+        fprintf(out,
+                "anchor %s manager=%s\n",
+                report.anchor_changed ? "installed" : "unchanged",
                 report.host[0] != '\0' ? report.host : token.adr);
         fflush(out);
 
@@ -1014,26 +1120,28 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
          * the mode an operator reaches for -- and the line above names the address in the TOKEN,
          * which without this would be an address the agent is not going to dial. The registration
          * is still never touched; that is the whole distinction from the default path. */
-        config_result = w_agent_auth_point_config(token.adr, server, configured,
-                                                  "The trust anchor is in place", err);
+        config_result = w_agent_auth_point_config(token.adr, server, configured, "The trust anchor is in place", err);
 
-        if (config_result != 0) {
+        if (config_result != 0)
+        {
             result = config_result;
         }
 
         goto done;
     }
 
-    fprintf(out, "enrolled id=%s name=%s manager=%s:%d\n", report.agent_id, report.agent_name,
-            report.host, report.port);
+    fprintf(
+        out, "enrolled id=%s name=%s manager=%s:%d\n", report.agent_id, report.agent_name, report.host, report.port);
     /* The narrative below goes to err, which is unbuffered; without this the outcome line lands
      * after it whenever stdout is redirected. */
     fflush(out);
 
-    if (report.had_anchor) {
-        fprintf(err, "The previous trust anchor was %s.\n",
-                report.anchor_changed ? "replaced" : "already current");
-    } else {
+    if (report.had_anchor)
+    {
+        fprintf(err, "The previous trust anchor was %s.\n", report.anchor_changed ? "replaced" : "already current");
+    }
+    else
+    {
         fprintf(err, "Trust anchor installed at %s.\n", AGENT_ANCHOR_CA);
     }
 
@@ -1042,15 +1150,16 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
      * replacement window it deletes the old one, keeps it, or refuses the enrollment outright as
      * a duplicate. Skipped entirely when the id could not be read -- "id=unknown" is not a fact
      * worth a line. */
-    if (registered && current_id != NULL) {
+    if (registered && current_id != NULL)
+    {
         fprintf(err, "The previous registration was id=%s.\n", current_id);
     }
 
     {
-        int config_result = w_agent_auth_point_config(token.adr, server, configured,
-                                                      "The agent is enrolled", err);
+        int config_result = w_agent_auth_point_config(token.adr, server, configured, "The agent is enrolled", err);
 
-        if (config_result != 0) {
+        if (config_result != 0)
+        {
             result = config_result;
         }
     }
@@ -1072,15 +1181,23 @@ refuse:
     return AGENT_AUTH_ERR_USAGE;
 }
 
-int w_agent_auth_run(const agent_auth_opts_t *opts, FILE *in, FILE *out, FILE *err) {
-    if (opts->action == AGENT_AUTH_ACTION_SHOW) {
-        if (opts->source == AGENT_AUTH_SOURCE_FILE) {
-            FILE *fp = wfopen(opts->token_file, "r");
+int w_agent_auth_run(const agent_auth_opts_t* opts, FILE* in, FILE* out, FILE* err)
+{
+    if (opts->action == AGENT_AUTH_ACTION_SHOW)
+    {
+        if (opts->source == AGENT_AUTH_SOURCE_FILE)
+        {
+            FILE* fp = wfopen(opts->token_file, "r");
             int result;
 
-            if (fp == NULL) {
-                fprintf(err, "%s: could not read '%s': %s (%d).\n", AGENT_AUTH_NAME,
-                        opts->token_file, strerror(errno), errno);
+            if (fp == NULL)
+            {
+                fprintf(err,
+                        "%s: could not read '%s': %s (%d).\n",
+                        AGENT_AUTH_NAME,
+                        opts->token_file,
+                        strerror(errno),
+                        errno);
                 return AGENT_AUTH_ERR_USAGE;
             }
 
@@ -1095,4 +1212,3 @@ int w_agent_auth_run(const agent_auth_opts_t *opts, FILE *in, FILE *out, FILE *e
 
     return w_agent_auth_enroll(opts, in, out, err);
 }
-

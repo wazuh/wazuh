@@ -18,22 +18,26 @@
 #include <io.h>
 #include <direct.h>
 
-wchar_t *auto_to_wide(const char *input) {
-    if (!input) {
+wchar_t* auto_to_wide(const char* input)
+{
+    if (!input)
+    {
         return NULL;
     }
 
     UINT codepage = w_utf8_valid(input) ? CP_UTF8 : CP_ACP;
 
     int len = MultiByteToWideChar(codepage, 0, input, -1, NULL, 0);
-    if (len == 0) {
+    if (len == 0)
+    {
         return NULL;
     }
 
-    wchar_t *output = NULL;
+    wchar_t* output = NULL;
     os_calloc(len, sizeof(wchar_t), output);
 
-    if (!MultiByteToWideChar(codepage, 0, input, -1, output, len)) {
+    if (!MultiByteToWideChar(codepage, 0, input, -1, output, len))
+    {
         os_free(output);
         return NULL;
     }
@@ -41,20 +45,24 @@ wchar_t *auto_to_wide(const char *input) {
     return output;
 }
 
-char *wide_to_utf8(const wchar_t *input) {
-    if (!input) {
+char* wide_to_utf8(const wchar_t* input)
+{
+    if (!input)
+    {
         return NULL;
     }
 
     int len = WideCharToMultiByte(CP_UTF8, 0, input, -1, NULL, 0, NULL, NULL);
-    if (len == 0) {
+    if (len == 0)
+    {
         return NULL;
     }
 
-    char *output = NULL;
+    char* output = NULL;
     os_calloc(len, sizeof(char), output);
 
-    if (!WideCharToMultiByte(CP_UTF8, 0, input, -1, output, len, NULL, NULL)) {
+    if (!WideCharToMultiByte(CP_UTF8, 0, input, -1, output, len, NULL, NULL))
+    {
         os_free(output);
         return NULL;
     }
@@ -62,20 +70,24 @@ char *wide_to_utf8(const wchar_t *input) {
     return output;
 }
 
-char *wide_to_ansi(const wchar_t *input) {
-    if (!input) {
+char* wide_to_ansi(const wchar_t* input)
+{
+    if (!input)
+    {
         return NULL;
     }
 
     int len = WideCharToMultiByte(CP_ACP, 0, input, -1, NULL, 0, NULL, NULL);
-    if (len == 0) {
+    if (len == 0)
+    {
         return NULL;
     }
 
-    char *output = NULL;
+    char* output = NULL;
     os_calloc(len, sizeof(char), output);
 
-    if (!WideCharToMultiByte(CP_ACP, 0, input, -1, output, len, NULL, NULL)) {
+    if (!WideCharToMultiByte(CP_ACP, 0, input, -1, output, len, NULL, NULL))
+    {
         os_free(output);
         return NULL;
     }
@@ -83,33 +95,39 @@ char *wide_to_ansi(const wchar_t *input) {
     return output;
 }
 
-char *auto_to_utf8(const char *input) {
-    wchar_t *wstr = auto_to_wide(input);
-    if (!wstr) {
+char* auto_to_utf8(const char* input)
+{
+    wchar_t* wstr = auto_to_wide(input);
+    if (!wstr)
+    {
         return NULL;
     }
 
-    char *utf8 = wide_to_utf8(wstr);
+    char* utf8 = wide_to_utf8(wstr);
 
     os_free(wstr);
     return utf8;
 }
 
-char *auto_to_ansi(const char *input) {
-    wchar_t *wstr = auto_to_wide(input);
-    if (!wstr) {
+char* auto_to_ansi(const char* input)
+{
+    wchar_t* wstr = auto_to_wide(input);
+    if (!wstr)
+    {
         return NULL;
     }
 
-    char *ansi = wide_to_ansi(wstr);
+    char* ansi = wide_to_ansi(wstr);
 
     os_free(wstr);
     return ansi;
 }
 
-int utf8_stat64(const char * pathname, struct _stat64 * statbuf) {
-    wchar_t *wpath = auto_to_wide(pathname);
-    if (!wpath) {
+int utf8_stat64(const char* pathname, struct _stat64* statbuf)
+{
+    wchar_t* wpath = auto_to_wide(pathname);
+    if (!wpath)
+    {
         errno = ENOMEM;
         return -1;
     }
@@ -120,9 +138,17 @@ int utf8_stat64(const char * pathname, struct _stat64 * statbuf) {
     return result;
 }
 
-HANDLE utf8_CreateFile(const char *utf8_path, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa, DWORD creation, DWORD flags, HANDLE h_template) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+HANDLE utf8_CreateFile(const char* utf8_path,
+                       DWORD access,
+                       DWORD share,
+                       LPSECURITY_ATTRIBUTES sa,
+                       DWORD creation,
+                       DWORD flags,
+                       HANDLE h_template)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return INVALID_HANDLE_VALUE;
     }
 
@@ -132,11 +158,13 @@ HANDLE utf8_CreateFile(const char *utf8_path, DWORD access, DWORD share, LPSECUR
     return h;
 }
 
-BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags) {
-    wchar_t *wold_name = auto_to_wide(old_name);
-    wchar_t *wnew_name = auto_to_wide(new_name);
-    wchar_t *wbackup_name = auto_to_wide(backup_name);
-    if (!wold_name || !wnew_name) {
+BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags)
+{
+    wchar_t* wold_name = auto_to_wide(old_name);
+    wchar_t* wnew_name = auto_to_wide(new_name);
+    wchar_t* wbackup_name = auto_to_wide(backup_name);
+    if (!wold_name || !wnew_name)
+    {
         os_free(wold_name);
         os_free(wnew_name);
         os_free(wbackup_name);
@@ -151,11 +179,13 @@ BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* ba
     return ok;
 }
 
-BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags) {
-    wchar_t *wold_name = auto_to_wide(old_name);
-    wchar_t *wnew_name = auto_to_wide(new_name);
+BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags)
+{
+    wchar_t* wold_name = auto_to_wide(old_name);
+    wchar_t* wnew_name = auto_to_wide(new_name);
 
-    if (!wold_name || !wnew_name) {
+    if (!wold_name || !wnew_name)
+    {
         os_free(wold_name);
         os_free(wnew_name);
         return FALSE;
@@ -168,9 +198,11 @@ BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags) {
     return ok;
 }
 
-BOOL utf8_DeleteFile(const char* utf8_path) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+BOOL utf8_DeleteFile(const char* utf8_path)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return FALSE;
     }
 
@@ -183,9 +215,11 @@ BOOL utf8_DeleteFile(const char* utf8_path) {
     return ok;
 }
 
-BOOL utf8_RemoveDirectory(const char* utf8_path) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+BOOL utf8_RemoveDirectory(const char* utf8_path)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return FALSE;
     }
 
@@ -198,9 +232,11 @@ BOOL utf8_RemoveDirectory(const char* utf8_path) {
     return ok;
 }
 
-DWORD utf8_GetFileAttributes(const char *utf8_path) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+DWORD utf8_GetFileAttributes(const char* utf8_path)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return INVALID_FILE_ATTRIBUTES;
     }
 
@@ -210,9 +246,11 @@ DWORD utf8_GetFileAttributes(const char *utf8_path) {
     return attr;
 }
 
-char *utf8_GetShortPathName(const char* utf8_path) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+char* utf8_GetShortPathName(const char* utf8_path)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return NULL;
     }
 
@@ -220,16 +258,20 @@ char *utf8_GetShortPathName(const char* utf8_path) {
     DWORD len = GetShortPathNameW(wpath, short_path, MAX_PATH);
     os_free(wpath);
 
-    if (len == 0 || len >= MAX_PATH) {
+    if (len == 0 || len >= MAX_PATH)
+    {
         return NULL;
     }
 
     return wide_to_utf8(short_path);
 }
 
-BOOL utf8_GetFileSecurity(const char *utf8_path, SECURITY_INFORMATION si, PSECURITY_DESCRIPTOR psd, DWORD len, LPDWORD needed) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+BOOL utf8_GetFileSecurity(
+    const char* utf8_path, SECURITY_INFORMATION si, PSECURITY_DESCRIPTOR psd, DWORD len, LPDWORD needed)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return FALSE;
     }
 
@@ -239,9 +281,18 @@ BOOL utf8_GetFileSecurity(const char *utf8_path, SECURITY_INFORMATION si, PSECUR
     return ok;
 }
 
-DWORD utf8_GetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, SECURITY_INFORMATION si, PSID *owner, PSID *group, PACL *dacl, PACL *sacl, PSECURITY_DESCRIPTOR *psd) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+DWORD utf8_GetNamedSecurityInfo(const char* utf8_path,
+                                SE_OBJECT_TYPE obj_type,
+                                SECURITY_INFORMATION si,
+                                PSID* owner,
+                                PSID* group,
+                                PACL* dacl,
+                                PACL* sacl,
+                                PSECURITY_DESCRIPTOR* psd)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return ERROR_INVALID_PARAMETER;
     }
 
@@ -251,9 +302,17 @@ DWORD utf8_GetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, 
     return res;
 }
 
-DWORD utf8_SetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, SECURITY_INFORMATION si, PSID owner, PSID group, PACL dacl, PACL sacl) {
-    wchar_t *wpath = auto_to_wide(utf8_path);
-    if (!wpath) {
+DWORD utf8_SetNamedSecurityInfo(const char* utf8_path,
+                                SE_OBJECT_TYPE obj_type,
+                                SECURITY_INFORMATION si,
+                                PSID owner,
+                                PSID group,
+                                PACL dacl,
+                                PACL sacl)
+{
+    wchar_t* wpath = auto_to_wide(utf8_path);
+    if (!wpath)
+    {
         return ERROR_INVALID_PARAMETER;
     }
 
@@ -263,29 +322,41 @@ DWORD utf8_SetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, 
     return res;
 }
 
-BOOL utf8_LookupAccountSid(LPCSTR lpSystemName, PSID lpSid, char **lpName, LPDWORD cchName, char **lpReferencedDomainName, LPDWORD cchReferencedDomainName, PSID_NAME_USE peUse) {
-    wchar_t *wsystemname = NULL;
+BOOL utf8_LookupAccountSid(LPCSTR lpSystemName,
+                           PSID lpSid,
+                           char** lpName,
+                           LPDWORD cchName,
+                           char** lpReferencedDomainName,
+                           LPDWORD cchReferencedDomainName,
+                           PSID_NAME_USE peUse)
+{
+    wchar_t* wsystemname = NULL;
     wchar_t wname[256];
     wchar_t wdomain[256];
     DWORD wname_size = 256;
     DWORD wdomain_size = 256;
     BOOL result;
 
-    if (lpSystemName) {
+    if (lpSystemName)
+    {
         wsystemname = auto_to_wide(lpSystemName);
-        if (!wsystemname) {
+        if (!wsystemname)
+        {
             return FALSE;
         }
     }
 
     result = LookupAccountSidW(wsystemname, lpSid, wname, &wname_size, wdomain, &wdomain_size, peUse);
 
-    if (result) {
+    if (result)
+    {
         *lpName = wide_to_utf8(wname);
         *lpReferencedDomainName = wide_to_utf8(wdomain);
 
-        if (cchName) *cchName = *lpName ? strlen(*lpName) + 1 : 0;
-        if (cchReferencedDomainName) *cchReferencedDomainName = *lpReferencedDomainName ? strlen(*lpReferencedDomainName) + 1 : 0;
+        if (cchName)
+            *cchName = *lpName ? strlen(*lpName) + 1 : 0;
+        if (cchReferencedDomainName)
+            *cchReferencedDomainName = *lpReferencedDomainName ? strlen(*lpReferencedDomainName) + 1 : 0;
     }
 
     os_free(wsystemname);

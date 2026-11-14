@@ -15,9 +15,9 @@
 #include "sha512_op.h"
 #include "defs.h"
 
-int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
+int OS_SHA512_File(const char* fname, os_sha512 output, int mode)
 {
-    FILE *fp;
+    FILE* fp;
     unsigned char buf[2048 + 2];
     unsigned char md[SHA512_DIGEST_LENGTH];
     size_t n;
@@ -25,20 +25,23 @@ int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
     buf[2049] = '\0';
 
     fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
-    if (!fp) {
+    if (!fp)
+    {
         return (-1);
     }
 
-    EVP_MD_CTX *sha512_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* sha512_ctx = EVP_MD_CTX_new();
 
-    if (!sha512_ctx) {
+    if (!sha512_ctx)
+    {
         fclose(fp);
         return (-1);
     }
 
     EVP_DigestInit(sha512_ctx, EVP_sha512());
 
-    while ((n = fread(buf, 1, 2048, fp)) > 0) {
+    while ((n = fread(buf, 1, 2048, fp)) > 0)
+    {
         buf[n] = '\0';
         EVP_DigestUpdate(sha512_ctx, buf, n);
     }
@@ -52,11 +55,11 @@ int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
     return (0);
 }
 
-int OS_SHA512_String(const char *str, os_sha512 output)
+int OS_SHA512_String(const char* str, os_sha512 output)
 {
     unsigned char md[SHA512_DIGEST_LENGTH];
 
-    EVP_MD_CTX *sha512_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* sha512_ctx = EVP_MD_CTX_new();
     EVP_DigestInit(sha512_ctx, EVP_sha512());
     EVP_DigestUpdate(sha512_ctx, str, strlen(str));
     EVP_DigestFinal(sha512_ctx, md, NULL);
@@ -71,7 +74,8 @@ void OS_SHA512_Hex(const unsigned char md[SHA512_DIGEST_LENGTH], os_sha512 outpu
 {
     size_t n;
 
-    for (n = 0; n < SHA512_DIGEST_LENGTH; n++) {
+    for (n = 0; n < SHA512_DIGEST_LENGTH; n++)
+    {
         snprintf(output, 3, "%02x", md[n]);
         output += 2;
     }

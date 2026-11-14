@@ -11,8 +11,9 @@
 #ifndef REQUEST_WRAPPERS_H
 #define REQUEST_WRAPPERS_H
 
-int __wrap_req_save(const char * counter, const char * buffer, size_t length);
+int __wrap_req_save(const char* counter, const char* buffer, size_t length);
 
-int __wrap_req_send_and_wait(const char * agent_id, const char * payload, size_t length, char ** response, int timeout_sec);
+int __wrap_req_send_and_wait(
+    const char* agent_id, const char* payload, size_t length, char** response, int timeout_sec);
 
 #endif /* REQUEST_WRAPPERS_H */

@@ -8,10 +8,11 @@ extern volatile bool event_received;
 time_t fake_time_now = 0;
 extern time_t (*w_time)(time_t*);
 
-class EbpfWhodataTest : public ::testing::Test {
+class EbpfWhodataTest : public ::testing::Test
+{
 protected:
-
-    virtual void SetUp() {
+    virtual void SetUp()
+    {
         event_received = false;
         fake_time_now = 0;
         w_time = time;
@@ -28,7 +29,8 @@ protected:
         bpf_helpers->init_bpfobj = (init_bpfobj_t)mock_init_bpfobj;
     }
 
-    virtual void TearDown() {
+    virtual void TearDown()
+    {
         std::remove("/tmp/ebpf_hc");
         event_received = false;
         w_time = time;
@@ -36,8 +38,10 @@ protected:
     }
 };
 
-time_t mock_time(time_t* t) {
-    if (t) {
+time_t mock_time(time_t* t)
+{
+    if (t)
+    {
         *t = fake_time_now;
     }
     return fake_time_now;
@@ -45,7 +49,8 @@ time_t mock_time(time_t* t) {
 
 int ebpf_whodata();
 
-TEST_F(EbpfWhodataTest, SuccessfulRun) {
+TEST_F(EbpfWhodataTest, SuccessfulRun)
+{
 
     bpf_helpers->init_ring_buffer = (init_ring_buffer_t)mock_init_ring_buffer_success;
     bpf_helpers->ring_buffer_poll = (ring_buffer__poll_t)mock_ring_buffer_poll_success;
@@ -59,7 +64,8 @@ TEST_F(EbpfWhodataTest, SuccessfulRun) {
     EXPECT_EQ(result, 0);
 }
 
-TEST_F(EbpfWhodataTest, RingBufferInitError) {
+TEST_F(EbpfWhodataTest, RingBufferInitError)
+{
 
     bpf_helpers->init_ring_buffer = (init_ring_buffer_t)mock_init_ring_buffer_failure;
 
@@ -68,26 +74,28 @@ TEST_F(EbpfWhodataTest, RingBufferInitError) {
     EXPECT_EQ(result, 1);
 }
 
-TEST_F(EbpfWhodataTest, RingBufferPollError) {
+TEST_F(EbpfWhodataTest, RingBufferPollError)
+{
 
     bpf_helpers->ring_buffer_poll = (ring_buffer__poll_t)mock_ring_buffer_poll_failure;
 
-    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
-        .WillOnce(::testing::Return(false));
+    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on()).WillOnce(::testing::Return(false));
 
     int result = ebpf_whodata();
 
     EXPECT_EQ(result, 0);
 }
 
-TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestSuccess) {
+TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestSuccess)
+{
 
     bpf_helpers->ring_buffer_poll = (ring_buffer__poll_t)mock_ring_buffer_poll_healthcheck_success;
 
     EXPECT_FALSE(ebpf_whodata_healthcheck());
 }
 
-TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestFailInitRingBuffer) {
+TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestFailInitRingBuffer)
+{
 
     bpf_helpers->init_ring_buffer = (init_ring_buffer_t)mock_init_ring_buffer_failure;
 
@@ -95,17 +103,22 @@ TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestFailInitRingBuffer) {
     EXPECT_EQ(bpf_helpers->init_bpfobj, nullptr);
 }
 
-TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestFailNoEventReceived) {
+TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestFailNoEventReceived)
+{
 
     event_received = false;
     w_time = mock_time;
-    bpf_helpers->ring_buffer_poll = [](ring_buffer*, int) {
+    bpf_helpers->ring_buffer_poll = [](ring_buffer*, int)
+    {
         fake_time_now += 5;
         return 0;
     };
     static int close_calls;
     close_calls = 0;
-    bpf_helpers->bpf_object_close = [](bpf_object*) { close_calls++; };
+    bpf_helpers->bpf_object_close = [](bpf_object*)
+    {
+        close_calls++;
+    };
 
     EXPECT_TRUE(ebpf_whodata_healthcheck());
     EXPECT_EQ(close_calls, 1);
@@ -115,7 +128,8 @@ TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestFailNoEventReceived) {
 void SetUpModule() {}
 void TearDownModule() {}
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     ::testing::InitGoogleTest(&argc, argv);
     SetUpModule();
     int result = RUN_ALL_TESTS();

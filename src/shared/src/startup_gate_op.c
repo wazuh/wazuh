@@ -15,37 +15,45 @@
 #include "agentd.h"
 #endif
 
-#define STARTUP_GATE_COMMAND "getstartupgate"
+#define STARTUP_GATE_COMMAND       "getstartupgate"
 #define STARTUP_GATE_POLL_INTERVAL 1
-#define STARTUP_GATE_LOG_INTERVAL 30
+#define STARTUP_GATE_LOG_INTERVAL  30
 
 #if defined(CLIENT) && !defined(WIN32)
-static bool startup_gate_parse_status(const char *response, bool *ready, char *reason, size_t reason_size) {
+static bool startup_gate_parse_status(const char* response, bool* ready, char* reason, size_t reason_size)
+{
     bool parsed = false;
-    cJSON *root = NULL;
-    cJSON *ready_field = NULL;
-    cJSON *reason_field = NULL;
+    cJSON* root = NULL;
+    cJSON* ready_field = NULL;
+    cJSON* reason_field = NULL;
 
-    if (!response || !ready || strncmp(response, "ok ", 3) != 0) {
+    if (!response || !ready || strncmp(response, "ok ", 3) != 0)
+    {
         return false;
     }
 
     root = cJSON_Parse(response + 3);
-    if (!root) {
+    if (!root)
+    {
         return false;
     }
 
     ready_field = cJSON_GetObjectItem(root, "ready");
-    if (ready_field && cJSON_IsBool(ready_field)) {
+    if (ready_field && cJSON_IsBool(ready_field))
+    {
         *ready = cJSON_IsTrue(ready_field);
         parsed = true;
     }
 
-    if (parsed && reason && reason_size > 0) {
+    if (parsed && reason && reason_size > 0)
+    {
         reason_field = cJSON_GetObjectItem(root, "reason");
-        if (reason_field && cJSON_IsString(reason_field) && reason_field->valuestring) {
+        if (reason_field && cJSON_IsString(reason_field) && reason_field->valuestring)
+        {
             snprintf(reason, reason_size, "%s", reason_field->valuestring);
-        } else {
+        }
+        else
+        {
             snprintf(reason, reason_size, "unknown");
         }
     }
@@ -56,7 +64,8 @@ static bool startup_gate_parse_status(const char *response, bool *ready, char *r
 #endif
 
 #if defined(CLIENT)
-static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_size) {
+static bool startup_gate_query_status(bool* ready, char* reason, size_t reason_size)
+{
 #if !defined(WIN32)
     bool parsed = false;
     int sock = -1;
@@ -67,7 +76,8 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
     char reason_value[OS_SIZE_128] = {0};
 #endif
 
-    if (!ready) {
+    if (!ready)
+    {
         return false;
     }
 
@@ -75,18 +85,21 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
     startup_gate_get_status(&ready_value, reason_value, sizeof(reason_value));
     *ready = ready_value;
 
-    if (reason && reason_size > 0) {
+    if (reason && reason_size > 0)
+    {
         snprintf(reason, reason_size, "%s", reason_value[0] ? reason_value : "unknown");
     }
 
     return true;
 #else
     sock = OS_ConnectUnixDomain(AG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
-    if (sock < 0) {
+    if (sock < 0)
+    {
         return false;
     }
 
-    if (OS_SendSecureTCP(sock, strlen(STARTUP_GATE_COMMAND), STARTUP_GATE_COMMAND) != 0) {
+    if (OS_SendSecureTCP(sock, strlen(STARTUP_GATE_COMMAND), STARTUP_GATE_COMMAND) != 0)
+    {
         close(sock);
         return false;
     }
@@ -94,7 +107,8 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
     recv_len = OS_RecvSecureTCP(sock, response, OS_MAXSTR);
     close(sock);
 
-    if (recv_len <= 0 || recv_len > OS_MAXSTR) {
+    if (recv_len <= 0 || recv_len > OS_MAXSTR)
+    {
         return false;
     }
 
@@ -111,26 +125,31 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
 // wazuh_modules/ - the type must match the original declaration exactly.
 extern volatile sig_atomic_t wm_shutdown_requested;
 
-startup_gate_wait_result_t startup_gate_wait_for_ready(const char *module_name) {
+startup_gate_wait_result_t startup_gate_wait_for_ready(const char* module_name)
+{
 #if defined(CLIENT)
     bool waiting_logged = false;
     unsigned int waiting_loops = 0;
     char last_reason[OS_SIZE_128] = {0};
-    const char *name = module_name && module_name[0] ? module_name : "module";
+    const char* name = module_name && module_name[0] ? module_name : "module";
 
-    while (FOREVER()) {
+    while (FOREVER())
+    {
         bool ready = false;
         bool got_status = false;
         bool should_log = false;
         char reason[OS_SIZE_128] = {0};
 
-        if (wm_shutdown_requested) {
-            mdebug1("Startup hash gate: shutdown requested, aborting startup for '%s' without waiting for handshake.", name);
+        if (wm_shutdown_requested)
+        {
+            mdebug1("Startup hash gate: shutdown requested, aborting startup for '%s' without waiting for handshake.",
+                    name);
             return STARTUP_GATE_SHUTDOWN_REQUESTED;
         }
 
         got_status = startup_gate_query_status(&ready, reason, sizeof(reason));
-        if (got_status && ready) {
+        if (got_status && ready)
+        {
             /* Log unconditionally, not just when a prior "blocking" line was
              * logged: a hash-match release can beat this module's very first
              * poll, in which case waiting_logged is still false here even
@@ -142,15 +161,20 @@ startup_gate_wait_result_t startup_gate_wait_for_ready(const char *module_name) 
         }
 
         should_log = !waiting_logged || (waiting_loops % STARTUP_GATE_LOG_INTERVAL == 0);
-        if (got_status && strncmp(last_reason, reason, sizeof(last_reason)) != 0) {
+        if (got_status && strncmp(last_reason, reason, sizeof(last_reason)) != 0)
+        {
             should_log = true;
         }
 
-        if (should_log) {
-            if (got_status) {
+        if (should_log)
+        {
+            if (got_status)
+            {
                 mdebug1("Startup hash gate is blocking '%s' (%s).", name, reason[0] ? reason : "unknown");
                 snprintf(last_reason, sizeof(last_reason), "%s", reason);
-            } else {
+            }
+            else
+            {
                 mdebug1("Startup hash gate is blocking '%s' (waiting for agentd startup gate status).", name);
                 last_reason[0] = '\0';
             }

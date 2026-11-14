@@ -19,12 +19,12 @@
 #include "agentd.h"
 
 /* --- Stub controls --- */
-static cJSON *g_client_cfg = NULL;
-static cJSON *g_internal_cfg = NULL;
+static cJSON* g_client_cfg = NULL;
+static cJSON* g_internal_cfg = NULL;
 #ifndef WIN32
-static cJSON *g_anti_tampering_cfg = NULL;
+static cJSON* g_anti_tampering_cfg = NULL;
 #endif
-static cJSON *g_state_body = NULL;
+static cJSON* g_state_body = NULL;
 
 /* --- Stub implementations --- */
 cJSON* __wrap_getAgentConfig(void)
@@ -124,9 +124,7 @@ static void test_agcom_dispatch_getstate_wraps_the_body_in_the_envelope(void** s
     cJSON* parsed = cJSON_Parse(output);
     assert_non_null(parsed);
     assert_int_equal(cJSON_GetObjectItem(parsed, "error")->valueint, 0);
-    assert_string_equal(
-        cJSON_GetObjectItem(cJSON_GetObjectItem(parsed, "data"), "status")->valuestring,
-        "connected");
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(parsed, "data"), "status")->valuestring, "connected");
 
     cJSON_Delete(parsed);
     free(output);
@@ -310,8 +308,7 @@ static void test_agcom_getallstats_reports_the_grouped_message_counters(void** s
     assert_non_null(out_messages);
     assert_int_equal(cJSON_GetObjectItem(out_messages, "count")->valueint, 602);
     assert_int_equal(cJSON_GetObjectItem(out_messages, "buffered")->valueint, 0);
-    assert_int_equal(
-        cJSON_GetObjectItem(cJSON_GetObjectItem(out_messages, "sent"), "total")->valueint, 689);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(out_messages, "sent"), "total")->valueint, 689);
 
     cJSON_Delete(parsed);
     free(output);

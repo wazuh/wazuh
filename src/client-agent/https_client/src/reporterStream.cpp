@@ -19,14 +19,8 @@ namespace
     // Reporters never retry in the loop: a fresh snapshot is collected next
     // cycle, so a failed send just reschedules.
     constexpr uint32_t REPORTER_MAX_ATTEMPTS = 1;
-    constexpr auto MIN_SLEEP = std::chrono::milliseconds
-    {
-        100
-    };
-    constexpr auto MAX_SLEEP = std::chrono::milliseconds
-    {
-        60000
-    };
+    constexpr auto MIN_SLEEP = std::chrono::milliseconds {100};
+    constexpr auto MAX_SLEEP = std::chrono::milliseconds {60000};
 
     // Path::nextDue stores steady_clock::rep (see reporterStream.hpp for why), not time_point
     // itself; these convert at the read/write edges so the rest of this file reads in terms of
@@ -69,8 +63,6 @@ ReporterStream::ReporterStream(const ModuleConfig& config,
     , m_statsBackoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_configBackoff(config.backoffBaseMs, config.backoffCapMs, random)
 {
-    // Set in the body (not the init list) to keep the brace-nested aggregate
-    // init from confusing astyle's indentation for the rest of the file.
     m_stats.target = "/stats";
     m_stats.enabled = config.statsEnabled;
     m_stats.interval = std::chrono::seconds {config.statsIntervalS};
@@ -191,8 +183,7 @@ void ReporterStream::runPath(Path& path,
     {
         const auto serverDelay = std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
         commitNextDue(
-            path,
-            now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next()));
+            path, now + std::max(std::chrono::duration_cast<std::chrono::milliseconds>(serverDelay), backoff.next()));
     }
     else
     {
@@ -333,16 +324,14 @@ std::chrono::milliseconds ReporterStream::sleepHint() const
 
     if (m_stats.enabled)
     {
-        soonest = std::min(
-                      soonest,
-                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_stats)) - now));
+        soonest = std::min(soonest,
+                           std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_stats)) - now));
     }
 
     if (m_config_.enabled)
     {
         soonest = std::min(
-                      soonest,
-                      std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_config_)) - now));
+            soonest, std::chrono::duration_cast<std::chrono::milliseconds>(fromRep(loadNextDue(m_config_)) - now));
     }
 
     return std::clamp(soonest, MIN_SLEEP, MAX_SLEEP);

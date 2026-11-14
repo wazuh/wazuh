@@ -23,7 +23,7 @@
  * Shared by every entry point that answers --show-token, so they cannot drift over which tokens
  * are acceptable. Streams are parameters because wazuh-agent-auth also reads from --token-file.
  * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
-int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname);
+int w_agent_show_token(FILE* in, FILE* out, FILE* err, const char* progname);
 
 /* The stdin form the two agent entry points use. */
 int w_agent_show_enrollment_token(void);
@@ -35,33 +35,33 @@ int w_agent_show_enrollment_token(void);
 int w_agent_shred_enrollment_password(void);
 
 /* Client configuration */
-int ClientConf(const char *cfgfile);
+int ClientConf(const char* cfgfile);
 
 /* Resolve the effective <ssl> posture once ossec.conf has been parsed: settle an unset
  * <verification_mode>, apply the trust-anchor latch, and default <certificate_authorities>
  * to the anchor. Called by ClientConf(); exposed for the unit tests. */
-void w_agent_resolve_ssl_posture(agent *cfg);
+void w_agent_resolve_ssl_posture(agent* cfg);
 
 /* Check <ssl><certificate_authorities> against the configured verification mode.
  * Returns false when the agent must not start. */
-bool w_agent_validate_ssl_ca(const agent *cfg);
+bool w_agent_validate_ssl_ca(const agent* cfg);
 
 /* Warn, naming the anchor, when verification was left unset and resolved to 'none' because no
  * trust anchor is readable. Call it once the enrollment-token bootstrap has had its chance to
  * install the anchor, so a first boot that is about to get one is not warned about it. */
-void w_agent_warn_unverified_without_anchor(const agent *cfg);
+void w_agent_warn_unverified_without_anchor(const agent* cfg);
 
 /* Check that <manager><endpoint> names a manager rather than a placeholder, logging why not and,
  * on an agent that was never enrolled, how to enroll it. @home_path is the installation
  * directory the POSIX hint builds the command's path from; Windows passes NULL, its hint points
  * at the agent GUI. Returns false when the agent must not start. */
-bool w_agent_validate_manager_address(const agent *cfg, const char *home_path);
+bool w_agent_validate_manager_address(const agent* cfg, const char* home_path);
 
 /* Parse read config into JSON format */
-cJSON *getAgentConfig(void);
-cJSON *getAgentInternalOptions(void);
+cJSON* getAgentConfig(void);
+cJSON* getAgentInternalOptions(void);
 #ifndef WIN32
-cJSON *getAntiTamperingConfig(void);
+cJSON* getAntiTamperingConfig(void);
 #endif
 
 #ifndef WIN32
@@ -70,10 +70,10 @@ void agentd_shutdown(int sig);
 #endif
 
 /* Agentd init function */
-void AgentdStart(int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
+void AgentdStart(int uid, int gid, const char* user, const char* group) __attribute__((noreturn));
 
 /* Event Forwarder */
-void *EventForward(void);
+void* EventForward(void);
 
 /* Arm the startup gate and block until the agent has a valid key (enrolling
  * if needed). Must run before the HTTPS client is ever started: it validates
@@ -106,7 +106,7 @@ w_enroll_status_t try_enroll_to_server(void);
  * @param host host and port used for the request
  * @param ssl_verify Enable SSL verification
  * */
-bool check_uninstall_permission(const char *token, const char *host, bool ssl_verify);
+bool check_uninstall_permission(const char* token, const char* host, bool ssl_verify);
 
 /**
  * Function to get the API token using a username and password
@@ -115,7 +115,7 @@ bool check_uninstall_permission(const char *token, const char *host, bool ssl_ve
  * @param host host and port used for the request
  * @param ssl_verify Enable SSL verification
  * */
-char* authenticate_and_get_token(const char *userpass, const char *host, bool ssl_verify);
+char* authenticate_and_get_token(const char* userpass, const char* host, bool ssl_verify);
 
 /**
  * Function with all the necessary functionality to process the uninstallation validation of the Wazuh agent package.
@@ -125,13 +125,16 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
  * @param ssl_verify Enable SSL verification
  * @return true if validation is granted, false if denied
  * */
-bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify);
+bool package_uninstall_validation(const char* uninstall_auth_token,
+                                  const char* uninstall_auth_login,
+                                  const char* uninstall_auth_host,
+                                  bool ssl_verify);
 
 // Thread to rotate internal log
 #ifdef WIN32
 DWORD WINAPI w_rotate_log_thread(LPVOID arg);
 #else
-void * w_rotate_log_thread(void * arg);
+void* w_rotate_log_thread(void* arg);
 #endif
 
 // Max connect() retries in controlAgent() (reload_agent.c); defined here so the
@@ -172,7 +175,7 @@ void startup_gate_release_from_https_apply(void);
 // Suppressed while a download-driven apply is pending (see
 // startup_gate_mark_download_pending()) so it cannot race ahead of that
 // apply's own release.
-void startup_gate_check_manager_config_hash(const char *manager_sha256);
+void startup_gate_check_manager_config_hash(const char* manager_sha256);
 
 // Mark that bridge_on_config_downloaded() has validated a downloaded config
 // in place and is about to write SHAREDCFG_FILE and drive a reload. Call
@@ -189,7 +192,7 @@ void startup_gate_mark_download_pending(void);
 void startup_gate_clear_download_pending(void);
 
 // Read current startup gate state.
-void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
+void startup_gate_get_status(bool* ready, char* reason, size_t reason_size);
 
 // Query startup gate state.
 bool startup_gate_is_ready(void);
@@ -207,17 +210,17 @@ bool startup_gate_is_settled(unsigned int margin_seconds);
 // settled" timestamp without duplicating the number.
 #define REPORT_STARTUP_SETTLE_SECONDS 5
 
-size_t agcom_dispatch(char * command, char ** output);
-size_t agcom_getconfig(const char * section, char ** output);
-size_t agcom_getallconfig(char ** output);
-size_t agcom_getallstats(char ** output);
+size_t agcom_dispatch(char* command, char** output);
+size_t agcom_getconfig(const char* section, char** output);
+size_t agcom_getallconfig(char** output);
+size_t agcom_getallstats(char** output);
 
 /**
  * @brief Answer "getstate" with the agent state wrapped in the socket envelope.
  * @param output Pointer to store the allocated response string.
  * @return Length of the response string.
  */
-size_t agcom_getstate(char ** output);
+size_t agcom_getstate(char** output);
 
 /**
  * @brief Collect every module's configuration into one /config document.
@@ -227,7 +230,7 @@ size_t agcom_getstate(char ** output);
  * @return Allocated JSON document the caller frees, or NULL when no component
  *         answered and the cycle should be skipped.
  */
-char *w_agent_collect_config(void);
+char* w_agent_collect_config(void);
 
 /**
  * @brief Collect every module's statistics into one /stats document.
@@ -235,19 +238,19 @@ char *w_agent_collect_config(void);
  * @return Allocated JSON document the caller frees, or NULL when no component
  *         answered and the cycle should be skipped.
  */
-char *w_agent_collect_stats(void);
+char* w_agent_collect_stats(void);
 
 #ifdef WIN32
-size_t control_dispatch(char *command, char **output);
+size_t control_dispatch(char* command, char** output);
 int os_start_service();
 int os_stop_service();
 #endif
-size_t agcom_gethandshake(char ** output);
-size_t agcom_getstartupgate(char **output);
-cJSON *getDocumentLimits(const char *module);
+size_t agcom_gethandshake(char** output);
+size_t agcom_getstartupgate(char** output);
+cJSON* getDocumentLimits(const char* module);
 
 #ifndef WIN32
-void * agcom_main(void * arg);
+void* agcom_main(void* arg);
 #endif
 
 /*** Global variables ***/
@@ -262,13 +265,12 @@ extern int size_rotate_read;
 extern int interval;
 extern int remote_conf;
 
-
 /* Global variables. Only modified during startup. */
 
 extern int run_foreground;
 extern keystore keys;
-extern agent *agt;
-extern anti_tampering *atc;
+extern agent* agt;
+extern anti_tampering* atc;
 
 extern module_limits_t agent_module_limits;
 extern char agent_cluster_name[256];

@@ -13,10 +13,11 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_OS_SHA256_String(const char *str, os_sha256 output) {
+int __wrap_OS_SHA256_String(const char* str, os_sha256 output)
+{
     check_expected(str);
 
-    snprintf(output, 65, "%s", mock_type(char *));
+    snprintf(output, 65, "%s", mock_type(char*));
 
     return 0;
 }

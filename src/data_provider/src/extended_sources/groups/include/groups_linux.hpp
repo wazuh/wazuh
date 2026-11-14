@@ -22,22 +22,22 @@
 /// in JSON format.
 class GroupsProvider
 {
-    public:
-        explicit GroupsProvider(std::shared_ptr<IGroupWrapperLinux> groupWrapper);
+public:
+    explicit GroupsProvider(std::shared_ptr<IGroupWrapperLinux> groupWrapper);
 
-        /// @brief Default destructor.
-        GroupsProvider();
+    /// @brief Default destructor.
+    GroupsProvider();
 
-        /// @brief Collects group information based on provided group IDs.
-        /// @param gids A set of group IDs to collect information for.
-        /// @return A JSON array containing group information.
-        nlohmann::json collect(const std::set<gid_t>& gids = {});
+    /// @brief Collects group information based on provided group IDs.
+    /// @param gids A set of group IDs to collect information for.
+    /// @return A JSON array containing group information.
+    nlohmann::json collect(const std::set<gid_t>& gids = {});
 
-    private:
-        std::shared_ptr<IGroupWrapperLinux> m_groupWrapper;
+private:
+    std::shared_ptr<IGroupWrapperLinux> m_groupWrapper;
 
-        /// @brief Adds a group to the results JSON array.
-        /// @param results A reference to the JSON array where the group information will be added.
-        /// @param group A pointer to the group structure containing the group information.
-        void addGroupToResults(nlohmann::json& results, const struct group* group);
+    /// @brief Adds a group to the results JSON array.
+    /// @param results A reference to the JSON array where the group information will be added.
+    /// @param group A pointer to the group structure containing the group information.
+    void addGroupToResults(nlohmann::json& results, const struct group* group);
 };

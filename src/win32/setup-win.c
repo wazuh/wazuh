@@ -10,21 +10,22 @@
 
 #include "setup-shared.h"
 
-
 /* Set up Windows after installation */
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     /* Set the name */
     OS_SetName(ARGV0);
 
-    if (argc < 2) {
+    if (argc < 2)
+    {
         printf("%s: Invalid syntax.\n", argv[0]);
         printf("Try: '%s directory'\n\n", argv[0]);
         return (0);
     }
 
     /* Try to chdir to the OSSEC directory */
-    if (chdir(argv[1]) != 0) {
+    if (chdir(argv[1]) != 0)
+    {
         printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
         return (0);
     }

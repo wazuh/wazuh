@@ -11,7 +11,7 @@
 #ifndef AUTH_CONFIG_H
 #define AUTH_CONFIG_H
 
-#define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false    ///< Default allow_higher_versions value (false)
+#define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false ///< Default allow_higher_versions value (false)
 
 #include <stdbool.h>
 #include <time.h>
@@ -19,35 +19,38 @@
 /**
  * @brief Structure that defines the force options for agent replacement.
  **/
-typedef struct authd_force_options_t {
-    bool enabled;                    ///< Sets to enabled or disabled the force options for agent replacement
-    bool key_mismatch;               ///< Sets to enabled or disabled the key_mismatch auth setting
-    bool disconnected_time_enabled;  ///< Sets to enabled or disabled the disconnected_time auth setting
-    time_t disconnected_time;        ///< Sets the time to be used by the disconnected_time auth setting if enabled
-    time_t after_registration_time;  ///< Sets the time to be used by the after_registration_time auth setting
+typedef struct authd_force_options_t
+{
+    bool enabled;                   ///< Sets to enabled or disabled the force options for agent replacement
+    bool key_mismatch;              ///< Sets to enabled or disabled the key_mismatch auth setting
+    bool disconnected_time_enabled; ///< Sets to enabled or disabled the disconnected_time auth setting
+    time_t disconnected_time;       ///< Sets the time to be used by the disconnected_time auth setting if enabled
+    time_t after_registration_time; ///< Sets the time to be used by the after_registration_time auth setting
 } authd_force_options_t;
 
-typedef struct authd_flags_t {
-    unsigned short disabled:3;
-    unsigned short use_source_ip:1;
-    unsigned short clear_removed:1;
-    unsigned short use_password:1;
-    unsigned short verify_host:1;
-    unsigned short remote_enrollment:1;
-    unsigned short legacy_enrollment:1;  ///< Gates only the legacy TCP/TLS listener (port 1515);
+typedef struct authd_flags_t
+{
+    unsigned short disabled : 3;
+    unsigned short use_source_ip : 1;
+    unsigned short clear_removed : 1;
+    unsigned short use_password : 1;
+    unsigned short verify_host : 1;
+    unsigned short remote_enrollment : 1;
+    unsigned short legacy_enrollment : 1; ///< Gates only the legacy TCP/TLS listener (port 1515);
                                           ///< remote_enrollment is the master switch for all remote
                                           ///< self-enrollment. Unset, it follows remote.legacy.enabled
                                           ///< (w_authd_resolve_legacy_enrollment()).
 } authd_flags_t;
 
-typedef struct authd_config_t {
+typedef struct authd_config_t
+{
     unsigned short port;
     authd_flags_t flags;
     authd_force_options_t force_options;
-    char *ciphers;
-    char *agent_ca;
-    char *manager_cert;
-    char *manager_key;
+    char* ciphers;
+    char* agent_ca;
+    char* manager_cert;
+    char* manager_key;
     long timeout_sec;
     long timeout_usec;
     bool worker_node;
@@ -92,7 +95,7 @@ typedef struct authd_config_t {
  * @param interval The variable to save the time conversion.
  * @retval OS_INVALID in case of error. OS_SUCCES otherways.
  */
-int get_time_interval(char *source, time_t *interval);
+int get_time_interval(char* source, time_t* interval);
 
 /**
  * @brief Validates that a colon-separated string only contains TLS 1.3 ciphersuite names
@@ -101,7 +104,7 @@ int get_time_interval(char *source, time_t *interval);
  * @param ciphers Colon-separated list of TLS 1.3 ciphersuite names.
  * @retval OS_INVALID if any token is not a recognized TLS 1.3 ciphersuite name. 0 otherwise.
  */
-int w_authd_validate_ciphers(const char *ciphers);
+int w_authd_validate_ciphers(const char* ciphers);
 
 struct cJSON;
 
@@ -115,6 +118,6 @@ struct cJSON;
  * @param auth   Effective `auth` section (may be NULL).
  * @param remote Effective `remote` section (may be NULL).
  */
-void w_authd_resolve_legacy_enrollment(authd_config_t *config, const struct cJSON *auth, const struct cJSON *remote);
+void w_authd_resolve_legacy_enrollment(authd_config_t* config, const struct cJSON* auth, const struct cJSON* remote);
 
 #endif

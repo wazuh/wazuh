@@ -32,25 +32,26 @@ namespace DbSync
 
     class PipelineFactory final
     {
-        public:
-            static PipelineFactory& instance() noexcept;
-            void release() noexcept;
-            PipelineCtxHandle create(const DBSYNC_HANDLE    handle,
-                                     const nlohmann::json&  tables,
-                                     const unsigned int     threadNumber,
-                                     const unsigned int     maxQueueSize,
-                                     const ResultCallback   callback);
-            const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
-            void destroy(const PipelineCtxHandle handle, const bool keepRows = false);
-        private:
-            PipelineFactory(const PipelineFactory&) = delete;
-            PipelineFactory& operator=(const PipelineFactory&) = delete;
-            PipelineFactory() = default;
-            ~PipelineFactory() = default;
-            std::map<PipelineCtxHandle, std::shared_ptr<IPipeline>> m_contexts;
-            std::mutex m_contextsMutex;
+    public:
+        static PipelineFactory& instance() noexcept;
+        void release() noexcept;
+        PipelineCtxHandle create(const DBSYNC_HANDLE handle,
+                                 const nlohmann::json& tables,
+                                 const unsigned int threadNumber,
+                                 const unsigned int maxQueueSize,
+                                 const ResultCallback callback);
+        const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
+        void destroy(const PipelineCtxHandle handle, const bool keepRows = false);
+
+    private:
+        PipelineFactory(const PipelineFactory&) = delete;
+        PipelineFactory& operator=(const PipelineFactory&) = delete;
+        PipelineFactory() = default;
+        ~PipelineFactory() = default;
+        std::map<PipelineCtxHandle, std::shared_ptr<IPipeline>> m_contexts;
+        std::mutex m_contextsMutex;
     };
 
-}// namespace DbSync
+} // namespace DbSync
 
-#endif //PIPE_LINE_FACTORY_H
+#endif // PIPE_LINE_FACTORY_H

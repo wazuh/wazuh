@@ -20,7 +20,8 @@
  * it as both the staleness threshold and its own interval -- so it is shared configuration rather
  * than either module's own.
  */
-typedef struct __Config {
+typedef struct __Config
+{
     long agents_disconnection_time;
 } _Config;
 

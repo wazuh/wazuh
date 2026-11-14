@@ -15,13 +15,15 @@
 #include <string.h>
 #include "kernel32_wrappers.h"
 
-DWORD wrap_WaitForSingleObject(HANDLE hMutex, long value) {
+DWORD wrap_WaitForSingleObject(HANDLE hMutex, long value)
+{
     check_expected(hMutex);
     check_expected(value);
     return mock();
 }
 
-bool wrap_ReleaseMutex(HANDLE hMutex) {
+bool wrap_ReleaseMutex(HANDLE hMutex)
+{
     check_expected(hMutex);
     return mock();
 }

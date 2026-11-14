@@ -33,18 +33,23 @@ static bool startup_gate_download_pending = false;
  * startup_gate_is_settled(). */
 static time_t startup_gate_ready_since = 0;
 
-static void startup_gate_set_locked(bool ready, const char *reason) {
+static void startup_gate_set_locked(bool ready, const char* reason)
+{
     startup_gate_ready = ready;
     startup_gate_ready_since = ready ? time(NULL) : 0;
 
-    if (reason && reason[0]) {
+    if (reason && reason[0])
+    {
         snprintf(startup_gate_reason, sizeof(startup_gate_reason), "%s", reason);
-    } else {
+    }
+    else
+    {
         snprintf(startup_gate_reason, sizeof(startup_gate_reason), "unknown");
     }
 }
 
-void startup_gate_initialize(void) {
+void startup_gate_initialize(void)
+{
     const bool enabled = agt->flags.remote_conf;
 
     w_mutex_lock(&startup_gate_mutex);
@@ -52,28 +57,34 @@ void startup_gate_initialize(void) {
     startup_gate_enabled = enabled;
     startup_gate_download_pending = false;
 
-    if (enabled) {
+    if (enabled)
+    {
         startup_gate_set_locked(false, "waiting_config_hash");
-    } else {
+    }
+    else
+    {
         startup_gate_set_locked(true, "disabled");
     }
 
     w_mutex_unlock(&startup_gate_mutex);
 }
 
-void startup_gate_mark_download_pending(void) {
+void startup_gate_mark_download_pending(void)
+{
     w_mutex_lock(&startup_gate_mutex);
     startup_gate_download_pending = true;
     w_mutex_unlock(&startup_gate_mutex);
 }
 
-void startup_gate_clear_download_pending(void) {
+void startup_gate_clear_download_pending(void)
+{
     w_mutex_lock(&startup_gate_mutex);
     startup_gate_download_pending = false;
     w_mutex_unlock(&startup_gate_mutex);
 }
 
-void startup_gate_release_from_https_apply(void) {
+void startup_gate_release_from_https_apply(void)
+{
     // /download already verified the bytes' SHA-256 against the manager's
     // config_hash before the callback fired, and bridge_on_config_downloaded()
     // has since validated, published and written those exact bytes. That is
@@ -86,7 +97,8 @@ void startup_gate_release_from_https_apply(void) {
     const bool pending = startup_gate_download_pending;
     startup_gate_download_pending = false;
 
-    if (startup_gate_enabled && !startup_gate_ready && pending) {
+    if (startup_gate_enabled && !startup_gate_ready && pending)
+    {
         startup_gate_set_locked(true, "https_config_applied");
         w_mutex_unlock(&startup_gate_mutex);
         mdebug1("Startup hash gate released via HTTPS configuration apply (https_config_applied).");
@@ -96,7 +108,8 @@ void startup_gate_release_from_https_apply(void) {
     w_mutex_unlock(&startup_gate_mutex);
 }
 
-void startup_gate_check_manager_config_hash(const char *manager_sha256) {
+void startup_gate_check_manager_config_hash(const char* manager_sha256)
+{
     bool should_check = false;
     os_sha256 local_sha256;
 
@@ -104,11 +117,13 @@ void startup_gate_check_manager_config_hash(const char *manager_sha256) {
     should_check = startup_gate_enabled && !startup_gate_ready && !startup_gate_download_pending;
     w_mutex_unlock(&startup_gate_mutex);
 
-    if (!should_check) {
+    if (!should_check)
+    {
         return;
     }
 
-    if (!manager_sha256 || !manager_sha256[0]) {
+    if (!manager_sha256 || !manager_sha256[0])
+    {
         // An empty config_hash is contract-legal ("Empty when the manager
         // reported none", hc_callbacks_t): the manager has no configuration for
         // this agent's groups, so nothing will be downloaded and there is
@@ -123,11 +138,13 @@ void startup_gate_check_manager_config_hash(const char *manager_sha256) {
         return;
     }
 
-    if (OS_SHA256_File(SHAREDCFG_FILE, local_sha256, OS_BINARY) != 0) {
+    if (OS_SHA256_File(SHAREDCFG_FILE, local_sha256, OS_BINARY) != 0)
+    {
         return; // No local merged.mg yet (nothing downloaded so far): nothing to compare.
     }
 
-    if (strcmp(local_sha256, manager_sha256) == 0) {
+    if (strcmp(local_sha256, manager_sha256) == 0)
+    {
         w_mutex_lock(&startup_gate_mutex);
         startup_gate_set_locked(true, "https_hash_match");
         w_mutex_unlock(&startup_gate_mutex);
@@ -135,21 +152,25 @@ void startup_gate_check_manager_config_hash(const char *manager_sha256) {
     }
 }
 
-void startup_gate_get_status(bool *ready, char *reason, size_t reason_size) {
+void startup_gate_get_status(bool* ready, char* reason, size_t reason_size)
+{
     w_mutex_lock(&startup_gate_mutex);
 
-    if (ready) {
+    if (ready)
+    {
         *ready = startup_gate_ready;
     }
 
-    if (reason && reason_size > 0) {
+    if (reason && reason_size > 0)
+    {
         snprintf(reason, reason_size, "%s", startup_gate_reason);
     }
 
     w_mutex_unlock(&startup_gate_mutex);
 }
 
-bool startup_gate_is_ready(void) {
+bool startup_gate_is_ready(void)
+{
     bool ready = false;
 
     startup_gate_get_status(&ready, NULL, 0);

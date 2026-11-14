@@ -130,15 +130,15 @@ typedef int sock2len_t;
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
-#define sleep(x) Sleep((x) * 1000)
-#define srandom(x) srand(x)
-#define lstat(x,y) w_stat(x,y)
+#define sleep(x)    Sleep((x) * 1000)
+#define srandom(x)  srand(x)
+#define lstat(x, y) w_stat(x, y)
 void WinSetError();
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 
-#define MSG_DONTWAIT    0
+#define MSG_DONTWAIT 0
 
 #ifndef PROCESSOR_ARCHITECTURE_AMD64
 #define PROCESSOR_ARCHITECTURE_AMD64 9
@@ -146,41 +146,79 @@ typedef uint8_t u_int8_t;
 #endif /* WIN32 */
 
 #if defined(__GNUC__) && __GNUC__ >= 7
-#define WFALLTHROUGH __attribute__ ((fallthrough))
+#define WFALLTHROUGH __attribute__((fallthrough))
 #else
-#define WFALLTHROUGH ((void) 0)
+#define WFALLTHROUGH ((void)0)
 #endif
 
 #include "socket_forwarder.h"
 
-extern const char *__local_name;
+extern const char* __local_name;
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
 
 /* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
-#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+#define os_calloc(x, y, z)                                                                                             \
+    ((z = (__typeof__(z))calloc(x, y))) ? (void)1 : merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_strdup(x,y) ((y = strdup(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+#define os_strdup(x, y) ((y = strdup(x))) ? (void)1 : merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+#define os_malloc(x, y) ((y = (__typeof__(y))malloc(x))) ? (void)1 : merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_free(x) if(x){free(x);x=NULL;}
+#define os_free(x)                                                                                                     \
+    if (x)                                                                                                             \
+    {                                                                                                                  \
+        free(x);                                                                                                       \
+        x = NULL;                                                                                                      \
+    }
 
-#define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+#define os_realloc(x, y, z)                                                                                            \
+    ((z = (__typeof__(z))realloc(x, y))) ? (void)1 : merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
+#define os_clearnl(x, p)                                                                                               \
+    if ((p = strrchr(x, '\n')))                                                                                        \
+        *p = '\0';
 
-#define w_fclose(x) if (x) { fclose(x); x=NULL; }
+#define w_fclose(x)                                                                                                    \
+    if (x)                                                                                                             \
+    {                                                                                                                  \
+        fclose(x);                                                                                                     \
+        x = NULL;                                                                                                      \
+    }
 
-#define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
+#define w_strdup(x, y)                                                                                                 \
+    ({                                                                                                                 \
+        int retstr = 0;                                                                                                \
+        if (x)                                                                                                         \
+        {                                                                                                              \
+            os_strdup(x, y);                                                                                           \
+        }                                                                                                              \
+        else                                                                                                           \
+            retstr = 1;                                                                                                \
+        retstr;                                                                                                        \
+    })
 
-#define sqlite_strdup(x,y) ({ if (x) { os_strdup(x, y); } else (void)0; })
+#define sqlite_strdup(x, y)                                                                                            \
+    ({                                                                                                                 \
+        if (x)                                                                                                         \
+        {                                                                                                              \
+            os_strdup(x, y);                                                                                           \
+        }                                                                                                              \
+        else                                                                                                           \
+            (void)0;                                                                                                   \
+    })
 
-#define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
+#define w_strlen(x)                                                                                                    \
+    ({                                                                                                                 \
+        size_t ret = 0;                                                                                                \
+        if (x)                                                                                                         \
+            ret = strlen(x);                                                                                           \
+        ret;                                                                                                           \
+    })
 
 // Calculate the number of elements within an array.
 // Only static arrays allowed.
-#define array_size(array) (sizeof(array)/sizeof(array[0]))
+#define array_size(array) (sizeof(array) / sizeof(array[0]))
 
 #ifdef CLIENT
 #define isAgent 1

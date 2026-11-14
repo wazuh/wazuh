@@ -18,27 +18,26 @@
 
 #include "shared.h"
 
-
 /* tests */
 
-void test_w_get_monotonic_time_is_positive(void **state)
+void test_w_get_monotonic_time_is_positive(void** state)
 {
-    (void) state;
+    (void)state;
     time_t t = w_get_monotonic_time();
     assert_true(t > 0);
 }
 
-void test_w_get_monotonic_time_is_nondecreasing(void **state)
+void test_w_get_monotonic_time_is_nondecreasing(void** state)
 {
-    (void) state;
+    (void)state;
     time_t t1 = w_get_monotonic_time();
     time_t t2 = w_get_monotonic_time();
     assert_true(t2 >= t1);
 }
 
-void test_is_leap_year_two(void **state)
+void test_is_leap_year_two(void** state)
 {
-    (void) state;
+    (void)state;
     bool ret;
     int year = 2;
     ret = is_leap_year(year);
@@ -46,9 +45,9 @@ void test_is_leap_year_two(void **state)
     assert_false(ret);
 }
 
-void test_is_leap_year_four(void **state)
+void test_is_leap_year_four(void** state)
 {
-    (void) state;
+    (void)state;
     bool ret;
     int year = 4;
     ret = is_leap_year(year);
@@ -56,9 +55,9 @@ void test_is_leap_year_four(void **state)
     assert_true(ret);
 }
 
-void test_is_leap_year_one_hundred(void **state)
+void test_is_leap_year_one_hundred(void** state)
 {
-    (void) state;
+    (void)state;
     bool ret;
     int year = 100;
     ret = is_leap_year(year);
@@ -66,9 +65,9 @@ void test_is_leap_year_one_hundred(void **state)
     assert_false(ret);
 }
 
-void test_is_leap_year_two_hundred(void **state)
+void test_is_leap_year_two_hundred(void** state)
 {
-    (void) state;
+    (void)state;
     bool ret;
     int year = 200;
     ret = is_leap_year(year);
@@ -76,9 +75,9 @@ void test_is_leap_year_two_hundred(void **state)
     assert_false(ret);
 }
 
-void test_is_leap_year_three_hundred(void **state)
+void test_is_leap_year_three_hundred(void** state)
 {
-    (void) state;
+    (void)state;
     bool ret;
     int year = 300;
     ret = is_leap_year(year);
@@ -86,9 +85,9 @@ void test_is_leap_year_three_hundred(void **state)
     assert_false(ret);
 }
 
-void test_is_leap_year_four_hundred(void **state)
+void test_is_leap_year_four_hundred(void** state)
 {
-    (void) state;
+    (void)state;
     bool ret;
     int year = 400;
     ret = is_leap_year(year);
@@ -96,17 +95,15 @@ void test_is_leap_year_four_hundred(void **state)
     assert_true(ret);
 }
 
-
-int main(void) {
-    const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_w_get_monotonic_time_is_positive),
-        cmocka_unit_test(test_w_get_monotonic_time_is_nondecreasing),
-        cmocka_unit_test(test_is_leap_year_two),
-        cmocka_unit_test(test_is_leap_year_four),
-        cmocka_unit_test(test_is_leap_year_one_hundred),
-        cmocka_unit_test(test_is_leap_year_two_hundred),
-        cmocka_unit_test(test_is_leap_year_three_hundred),
-        cmocka_unit_test(test_is_leap_year_four_hundred)
-    };
+int main(void)
+{
+    const struct CMUnitTest tests[] = {cmocka_unit_test(test_w_get_monotonic_time_is_positive),
+                                       cmocka_unit_test(test_w_get_monotonic_time_is_nondecreasing),
+                                       cmocka_unit_test(test_is_leap_year_two),
+                                       cmocka_unit_test(test_is_leap_year_four),
+                                       cmocka_unit_test(test_is_leap_year_one_hundred),
+                                       cmocka_unit_test(test_is_leap_year_two_hundred),
+                                       cmocka_unit_test(test_is_leap_year_three_hundred),
+                                       cmocka_unit_test(test_is_leap_year_four_hundred)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

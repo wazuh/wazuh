@@ -20,7 +20,7 @@ namespace
     {
         std::vector<User> cachedLocalUsers;
         std::vector<User> cachedRoamingUsers;
-        std::chrono::steady_clock::time_point cacheTimestamp{};
+        std::chrono::steady_clock::time_point cacheTimestamp {};
         bool cacheValid = false;
     };
 
@@ -29,7 +29,7 @@ namespace
         thread_local auto* state = new UsersCacheState();
         return *state;
     }
-}
+} // namespace
 
 UsersHelper::UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
     : m_winapiWrapper(std::move(winapiWrapper))
@@ -37,7 +37,9 @@ UsersHelper::UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
 }
 
 UsersHelper::UsersHelper()
-    : m_winapiWrapper(std::make_shared<WindowsApiWrapper>()) {}
+    : m_winapiWrapper(std::make_shared<WindowsApiWrapper>())
+{
+}
 
 std::string UsersHelper::getUserHomeDir(const std::string& sid)
 {
@@ -46,8 +48,7 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
     profile_key_path += Utils::EncodingWindowsHelper::stringToWStringUTF8(sid);
 
     HKEY hkey;
-    auto ret = m_winapiWrapper->RegOpenKeyExWWrapper(
-                   HKEY_LOCAL_MACHINE, profile_key_path.c_str(), 0, KEY_READ, &hkey);
+    auto ret = m_winapiWrapper->RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, profile_key_path.c_str(), 0, KEY_READ, &hkey);
 
     if (ret != ERROR_SUCCESS)
     {
@@ -79,7 +80,8 @@ std::string UsersHelper::getUserHomeDir(const std::string& sid)
 
     if (ret != ERROR_SUCCESS)
     {
-        // std::cout << "Failed to query key info " << Utils::EncodingWindowsHelper::wstringToStringUTF8(profile_key_path))
+        // std::cout << "Failed to query key info " <<
+        // Utils::EncodingWindowsHelper::wstringToStringUTF8(profile_key_path))
         //     << " with error " << ret;
         return {};
     }
@@ -142,15 +144,14 @@ std::optional<std::uint32_t> UsersHelper::getGidFromUsername(LPCWSTR username)
     std::unique_ptr<BYTE[]> sid_smart_ptr = nullptr;
     localgroup_users_info_0_ptr user_groups_buff;
 
-    auto ret = m_winapiWrapper->NetUserGetLocalGroupsWrapper(
-                   nullptr,
-                   username,
-                   level,
-                   flags,
-                   reinterpret_cast<LPBYTE*>(user_groups_buff.get_new_ptr()),
-                   pref_max_len,
-                   &entries_read,
-                   &total_entries);
+    auto ret = m_winapiWrapper->NetUserGetLocalGroupsWrapper(nullptr,
+                                                             username,
+                                                             level,
+                                                             flags,
+                                                             reinterpret_cast<LPBYTE*>(user_groups_buff.get_new_ptr()),
+                                                             pref_max_len,
+                                                             &entries_read,
+                                                             &total_entries);
 
     std::optional<std::uint32_t> gid;
 
@@ -175,10 +176,8 @@ std::optional<std::uint32_t> UsersHelper::getGidFromUsername(LPCWSTR username)
     /* If none of the above worked, the user may not have a Local Group.
        Fallback to using the primary group id from its USER_INFO_3 struct */
     DWORD user_info_level = 3;
-    ret = m_winapiWrapper->NetUserGetInfoWrapper(nullptr,
-                                                 username,
-                                                 user_info_level,
-                                                 reinterpret_cast<LPBYTE*>(user_buff.get_new_ptr()));
+    ret = m_winapiWrapper->NetUserGetInfoWrapper(
+        nullptr, username, user_info_level, reinterpret_cast<LPBYTE*>(user_buff.get_new_ptr()));
 
     if (ret == NERR_Success)
     {
@@ -191,8 +190,7 @@ std::optional<std::uint32_t> UsersHelper::getGidFromUsername(LPCWSTR username)
 std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
 {
     HKEY hkey;
-    auto ret = m_winapiWrapper->RegOpenKeyExWWrapper(
-                   HKEY_LOCAL_MACHINE, kRegProfileKey.c_str(), 0, KEY_READ, &hkey);
+    auto ret = m_winapiWrapper->RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, kRegProfileKey.c_str(), 0, KEY_READ, &hkey);
 
     if (ret != ERROR_SUCCESS)
     {
@@ -237,8 +235,7 @@ std::optional<std::vector<std::string>> UsersHelper::getRoamingProfileSids()
     // Process registry subkeys
     for (DWORD i = 0; i < subkeys_count; i++)
     {
-        ret_code =
-            m_winapiWrapper->RegEnumKeyWWrapper(registry_handle.get(), i, key_name.data(), max_key_length);
+        ret_code = m_winapiWrapper->RegEnumKeyWWrapper(registry_handle.get(), i, key_name.data(), max_key_length);
 
         if (ret_code != ERROR_SUCCESS)
         {
@@ -308,15 +305,14 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
 
     do
     {
-        ret =
-            m_winapiWrapper->NetUserEnumWrapper(nullptr,
-                                                user_info_level,
-                                                FILTER_NORMAL_ACCOUNT,
-                                                reinterpret_cast<LPBYTE*>(users_info_buffer.get_new_ptr()),
-                                                MAX_PREFERRED_LENGTH,
-                                                &num_users_read,
-                                                &total_users,
-                                                &resume_handle);
+        ret = m_winapiWrapper->NetUserEnumWrapper(nullptr,
+                                                  user_info_level,
+                                                  FILTER_NORMAL_ACCOUNT,
+                                                  reinterpret_cast<LPBYTE*>(users_info_buffer.get_new_ptr()),
+                                                  MAX_PREFERRED_LENGTH,
+                                                  &num_users_read,
+                                                  &total_users,
+                                                  &resume_handle);
 
         if (ret != NERR_Success && ret != ERROR_MORE_DATA)
         {
@@ -335,11 +331,10 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             const auto& user_info_lvl0 = users_info_buffer.get()[i];
 
             user_info_4_ptr user_info_lvl4;
-            ret = m_winapiWrapper->NetUserGetInfoWrapper(
-                      nullptr,
-                      user_info_lvl0.usri0_name,
-                      detailed_user_info_level,
-                      reinterpret_cast<LPBYTE*>(user_info_lvl4.get_new_ptr()));
+            ret = m_winapiWrapper->NetUserGetInfoWrapper(nullptr,
+                                                         user_info_lvl0.usri0_name,
+                                                         detailed_user_info_level,
+                                                         reinterpret_cast<LPBYTE*>(user_info_lvl4.get_new_ptr()));
 
             if (ret != NERR_Success || user_info_lvl4 == nullptr)
             {
@@ -376,8 +371,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             }
         }
 
-    }
-    while (ret == ERROR_MORE_DATA);
+    } while (ret == ERROR_MORE_DATA);
 
     // Cache local users
     cache.cachedLocalUsers = users;
@@ -405,9 +399,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
         User new_user;
 
         new_user.sid = profile_sid;
-        new_user.type = kWellKnownSids.find(profile_sid) == kWellKnownSids.end()
-                        ? "roaming"
-                        : "special";
+        new_user.type = kWellKnownSids.find(profile_sid) == kWellKnownSids.end() ? "roaming" : "special";
 
         PSID sid;
         auto sidRet = m_winapiWrapper->ConvertStringSidToSidAWrapper(profile_sid.c_str(), &sid);
@@ -427,13 +419,8 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             DWORD account_name_length = UNLEN;
             DWORD domain_name_length = DNLEN;
             SID_NAME_USE e_use;
-            auto lookupRet = m_winapiWrapper->LookupAccountSidWWrapper(nullptr,
-                                                                       sid,
-                                                                       account_name,
-                                                                       &account_name_length,
-                                                                       domain_name,
-                                                                       &domain_name_length,
-                                                                       &e_use);
+            auto lookupRet = m_winapiWrapper->LookupAccountSidWWrapper(
+                nullptr, sid, account_name, &account_name_length, domain_name, &domain_name_length, &e_use);
 
             m_winapiWrapper->FreeSidWrapper(sid);
 
@@ -455,10 +442,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             DWORD basic_user_info_level = 2;
             user_info_2_ptr user_info_lvl2;
             auto infoRet = m_winapiWrapper->NetUserGetInfoWrapper(
-                               nullptr,
-                               account_name,
-                               basic_user_info_level,
-                               reinterpret_cast<LPBYTE*>(user_info_lvl2.get_new_ptr()));
+                nullptr, account_name, basic_user_info_level, reinterpret_cast<LPBYTE*>(user_info_lvl2.get_new_ptr()));
 
             if (infoRet == NERR_Success && user_info_lvl2 != nullptr)
             {
@@ -510,13 +494,8 @@ std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(const std::wstring& a
     DWORD sidBufferSize = 0;
     DWORD domainNameSize = 0;
     auto eSidType = SidTypeUnknown;
-    auto ret = m_winapiWrapper->LookupAccountNameWWrapper(nullptr,
-                                                          accountName,
-                                                          nullptr,
-                                                          &sidBufferSize,
-                                                          nullptr,
-                                                          &domainNameSize,
-                                                          &eSidType);
+    auto ret = m_winapiWrapper->LookupAccountNameWWrapper(
+        nullptr, accountName, nullptr, &sidBufferSize, nullptr, &domainNameSize, &eSidType);
 
     if (ret == 0 && m_winapiWrapper->GetLastErrorWrapper() != ERROR_INSUFFICIENT_BUFFER)
     {
@@ -531,13 +510,8 @@ std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(const std::wstring& a
 
     // Call LookupAccountNameW() a second time to actually obtain the SID for
     // the given account name:
-    ret = m_winapiWrapper->LookupAccountNameWWrapper(nullptr,
-                                                     accountName,
-                                                     sidBuffer.get(),
-                                                     &sidBufferSize,
-                                                     domainName.data(),
-                                                     &domainNameSize,
-                                                     &eSidType);
+    ret = m_winapiWrapper->LookupAccountNameWWrapper(
+        nullptr, accountName, sidBuffer.get(), &sidBufferSize, domainName.data(), &domainNameSize, &eSidType);
 
     if (ret == 0)
     {
@@ -547,8 +521,8 @@ std::unique_ptr<BYTE[]> UsersHelper::getSidFromAccountName(const std::wstring& a
     }
     else if (m_winapiWrapper->IsValidSidWrapper(sidBuffer.get()) == FALSE)
     {
-        std::cerr << "The SID for " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName)
-                  << " is invalid." << std::endl;
+        std::cerr << "The SID for " << Utils::EncodingWindowsHelper::wstringToStringUTF8(accountName) << " is invalid."
+                  << std::endl;
     }
 
     // Implicit move operation. Caller "owns" returned pointer:
@@ -559,9 +533,10 @@ std::string UsersHelper::psidToString(PSID sid)
 {
     LPWSTR sidOut = nullptr;
     // Custom deleter to free the allocated memory for sidOut.
-    auto deleter = [](LPWSTR * p)
+    auto deleter = [](LPWSTR* p)
     {
-        if (p && *p) LocalFree(*p);
+        if (p && *p)
+            LocalFree(*p);
     };
     std::unique_ptr<LPWSTR, decltype(deleter)> sidGuard(&sidOut, deleter);
 

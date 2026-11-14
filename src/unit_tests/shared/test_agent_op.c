@@ -36,19 +36,38 @@
 
 /* redefinitons/wrapping */
 
-extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id, const char *reenroll_kid, const char *reenroll_bearer, const char *source);
-extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
-extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
-extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code);
-extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
-extern char *w_get_agent_profile_from_config(OS_XML *xml);
+extern cJSON* w_create_agent_add_payload(const char* name,
+                                         const char* ip,
+                                         const char* groups,
+                                         const char* key_hash,
+                                         const char* key,
+                                         const char* id,
+                                         authd_force_options_t* force_options,
+                                         const char* token_id,
+                                         const char* reenroll_kid,
+                                         const char* reenroll_bearer,
+                                         const char* source);
+extern cJSON* w_create_agent_remove_payload(const char* id, const int purge);
+extern cJSON* w_create_sendsync_payload(const char* daemon_name, cJSON* message);
+extern int w_parse_agent_add_response(const char* buffer,
+                                      char* err_response,
+                                      char* id,
+                                      char* key,
+                                      char* reenroll_secret,
+                                      const int json_format,
+                                      const int exit_on_error,
+                                      int* error_code);
+extern int
+w_parse_agent_remove_response(const char* buffer, char* err_response, const int json_format, const int exit_on_error);
+extern char* w_get_agent_profile_from_config(OS_XML* xml);
 
 #ifndef WIN32
 extern sysinfo_networks_func sysinfo_network_ptr;
 extern sysinfo_free_result_func sysinfo_free_result_ptr;
 #endif
 
-static void test_create_agent_add_payload(void **state) {
+static void test_create_agent_add_payload(void** state)
+{
     char* agent = "agent1";
     char* ip = "192.0.0.0";
     char* groups = "Group1,Group2";
@@ -112,9 +131,11 @@ static void test_create_agent_add_payload(void **state) {
 // An enrollment presented with a token (#38993): the worker forwards the token id so the master can
 // count the use; the master's local_dispatch reads it back as `arguments.token_id`. Built on every
 // target, like test_create_agent_add_payload: the payload builder is plain cJSON.
-static void test_create_agent_add_payload_carries_token_id(void **state) {
+static void test_create_agent_add_payload_carries_token_id(void** state)
+{
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL, NULL);
+    cJSON* payload = w_create_agent_add_payload(
+        "agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL, NULL);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -129,9 +150,11 @@ static void test_create_agent_add_payload_carries_token_id(void **state) {
 // A re-enrollment (#38993): the worker forwards the agent id the bearer names and the bearer itself,
 // verbatim and unverified -- the master, which holds the agent's secret, reads them back as
 // `arguments.reenroll.{kid,bearer}`. A kid without a bearer (or the reverse) travels as nothing.
-static void test_create_agent_add_payload_carries_reenroll_credential(void **state) {
+static void test_create_agent_add_payload_carries_reenroll_credential(void** state)
+{
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", "eyJ.claims.sig", NULL);
+    cJSON* payload =
+        w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", "eyJ.claims.sig", NULL);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -150,9 +173,11 @@ static void test_create_agent_add_payload_carries_reenroll_credential(void **sta
 
 // An enrollment that arrived over the network: the worker forwards the agent's peer address so the
 // master's log names it, and the master reads it back as `arguments.source`. It never replaces `ip`.
-static void test_create_agent_add_payload_carries_source(void **state) {
+static void test_create_agent_add_payload_carries_source(void** state)
+{
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "192.168.60.71");
+    cJSON* payload =
+        w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "192.168.60.71");
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -162,7 +187,8 @@ static void test_create_agent_add_payload_carries_source(void **state) {
 }
 
 #ifndef WIN32
-static void test_create_agent_remove_payload(void **state) {
+static void test_create_agent_remove_payload(void** state)
+{
     char* id = "001";
     int purge = 1;
     cJSON* payload = NULL;
@@ -181,7 +207,6 @@ static void test_create_agent_remove_payload(void **state) {
     assert_non_null(item);
     assert_string_equal(item->valuestring, id);
 
-
     item = cJSON_GetObjectItem(arguments, "purge");
     assert_non_null(item);
     assert_int_equal(item->valueint, purge);
@@ -189,7 +214,8 @@ static void test_create_agent_remove_payload(void **state) {
     cJSON_Delete(payload);
 }
 
-static void test_create_sendsync_payload(void **state) {
+static void test_create_sendsync_payload(void** state)
+{
     char* daemon = "daemon_test";
     char* id = "001";
     int purge = 1;
@@ -211,7 +237,7 @@ static void test_create_sendsync_payload(void **state) {
     cJSON_Delete(payload);
 
     /* non NULL message */
-    message = w_create_agent_remove_payload(id,purge);
+    message = w_create_agent_remove_payload(id, purge);
     payload = w_create_sendsync_payload(daemon, message);
 
     assert_non_null(payload);
@@ -226,7 +252,8 @@ static void test_create_sendsync_payload(void **state) {
     cJSON_Delete(payload);
 }
 
-static void test_parse_agent_remove_response(void **state) {
+static void test_parse_agent_remove_response(void** state)
+{
     char* success_response = "{\"error\":0}";
     char* error_response = "{\"error\":9009,\"message\":\"ERROR_MESSAGE\"}";
     char* unknown_response = "{\"message \":\"any_message\"}";
@@ -253,14 +280,18 @@ static void test_parse_agent_remove_response(void **state) {
 
 /* Tests w_send_clustered_message */
 
-void test_w_send_clustered_message_connection_error(void **state) {
+void test_w_send_clustered_message_connection_error(void** state)
+{
     char response[OS_MAXSTR + 1];
 
-    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+    for (int i = 0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i)
+    {
         will_return(__wrap_external_socket_connect, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
+        expect_string(__wrap__mdebug1,
+                      formatted_msg,
+                      "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
@@ -269,14 +300,16 @@ void test_w_send_clustered_message_connection_error(void **state) {
     assert_int_equal(w_send_clustered_message("command", "payload", response), -2);
 }
 
-void test_w_send_clustered_message_send_error(void **state) {
+void test_w_send_clustered_message_send_error(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
+    char* command = "command";
+    char* payload = "payload";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+    for (int i = 0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i)
+    {
         will_return(__wrap_external_socket_connect, sock_num);
 
         expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
@@ -295,15 +328,17 @@ void test_w_send_clustered_message_send_error(void **state) {
     assert_int_equal(w_send_clustered_message(command, payload, response), -2);
 }
 
-void test_w_send_clustered_message_recv_cluster_error_detected(void **state) {
+void test_w_send_clustered_message_recv_cluster_error_detected(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+    for (int i = 0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i)
+    {
         will_return(__wrap_external_socket_connect, sock_num);
 
         expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
@@ -326,15 +361,17 @@ void test_w_send_clustered_message_recv_cluster_error_detected(void **state) {
     assert_int_equal(w_send_clustered_message(command, payload, response), -1);
 }
 
-void test_w_send_clustered_message_recv_error(void **state) {
+void test_w_send_clustered_message_recv_error(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+    for (int i = 0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i)
+    {
         will_return(__wrap_external_socket_connect, sock_num);
 
         expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
@@ -358,11 +395,12 @@ void test_w_send_clustered_message_recv_error(void **state) {
     assert_int_equal(w_send_clustered_message(command, payload, response), -1);
 }
 
-void test_w_send_clustered_message_recv_empty_message(void **state) {
+void test_w_send_clustered_message_recv_empty_message(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
@@ -384,11 +422,12 @@ void test_w_send_clustered_message_recv_empty_message(void **state) {
     assert_int_equal(w_send_clustered_message(command, payload, response), -1);
 }
 
-void test_w_send_clustered_message_recv_max_len(void **state) {
+void test_w_send_clustered_message_recv_max_len(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
@@ -410,11 +449,12 @@ void test_w_send_clustered_message_recv_max_len(void **state) {
     assert_int_equal(w_send_clustered_message(command, payload, response), -1);
 }
 
-void test_w_send_clustered_message_success(void **state) {
+void test_w_send_clustered_message_success(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
@@ -435,18 +475,21 @@ void test_w_send_clustered_message_success(void **state) {
     assert_string_equal(recv_response, response);
 }
 
-void test_w_send_clustered_message_success_after_connection_error(void **state) {
+void test_w_send_clustered_message_success_after_connection_error(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
     will_return(__wrap_external_socket_connect, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
     expect_value(__wrap_sleep, seconds, 1);
 
     will_return(__wrap_external_socket_connect, sock_num);
@@ -466,11 +509,12 @@ void test_w_send_clustered_message_success_after_connection_error(void **state) 
     assert_string_equal(recv_response, response);
 }
 
-void test_w_send_clustered_message_success_after_send_error(void **state) {
+void test_w_send_clustered_message_success_after_send_error(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
@@ -504,11 +548,12 @@ void test_w_send_clustered_message_success_after_send_error(void **state) {
     assert_string_equal(recv_response, response);
 }
 
-void test_w_send_clustered_message_success_after_cluster_error(void **state) {
+void test_w_send_clustered_message_success_after_cluster_error(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
@@ -545,11 +590,12 @@ void test_w_send_clustered_message_success_after_cluster_error(void **state) {
     assert_string_equal(recv_response, response);
 }
 
-void test_w_send_clustered_message_success_after_recv_error(void **state) {
+void test_w_send_clustered_message_success_after_recv_error(void** state)
+{
     char response[OS_MAXSTR + 1];
-    char *command = "command";
-    char *payload = "payload";
-    char *recv_response = "response";
+    char* command = "command";
+    char* payload = "payload";
+    char* recv_response = "response";
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
@@ -589,15 +635,18 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
 
 #endif
 
-static void test_parse_agent_add_response(void **state) {
-    char* success_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
+static void test_parse_agent_add_response(void** state)
+{
+    char* success_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":"
+                             "\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
     char* missingdata_response = "{\"error\":0}";
     char* missingkey_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\"}}";
-    char* missingid_response = "{\"error\":0,\"data\":{\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
+    char* missingid_response = "{\"error\":0,\"data\":{\"name\":\"agent1\",\"ip\":\"any\",\"key\":"
+                               "\"347e2dc688148aec8544c9777ff291b8868b885\"}}";
     char* error_response = "{\"error\":9009,\"message\":\"ERROR_MESSAGE\"}";
     char* unknown_response = "{\"message \":\"any_message\"}";
-    char new_id[FILE_SIZE+1] = { '\0' };
-    char new_key[KEYSIZE+1] = { '\0' };
+    char new_id[FILE_SIZE + 1] = {'\0'};
+    char new_key[KEYSIZE + 1] = {'\0'};
     int err = 0;
     char err_response[OS_MAXSTR + 1];
     int error_code = 0;
@@ -658,7 +707,8 @@ static void test_parse_agent_add_response(void **state) {
     assert_string_equal(err_response, "ERROR: Invalid message format");
 
     /* Re-enrollment secret (#38993): copied when the master sends it, empty (not an error) when it does not */
-    char* secret_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\",\
+    char* secret_response =
+        "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\",\
 \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}}";
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = "stale";
     err = w_parse_agent_add_response(secret_response, err_response, new_id, new_key, new_secret, FALSE, FALSE, NULL);
@@ -676,8 +726,9 @@ static void test_parse_agent_add_response(void **state) {
     assert_int_equal(err, 0);
 }
 
-static void test_parse_agent_add_response_logs_only_without_error_code(void **state) {
-    (void) state;
+static void test_parse_agent_add_response_logs_only_without_error_code(void** state)
+{
+    (void)state;
     char* error_response = "{\"error\":9026,\"message\":\"Unknown agent or no re-enrollment credential\"}";
     char err_response[OS_MAXSTR + 1];
     int error_code = 0;
@@ -696,8 +747,9 @@ static void test_parse_agent_add_response_logs_only_without_error_code(void **st
     assert_string_equal(err_response, "ERROR: Unknown agent or no re-enrollment credential");
 }
 
-static void test_os_write_agent_info_success(void **state) {
-    FILE *fp = (FILE*)0x1234;
+static void test_os_write_agent_info_success(void** state)
+{
+    FILE* fp = (FILE*)0x1234;
 
     test_mode = 1;
 
@@ -718,9 +770,10 @@ static void test_os_write_agent_info_success(void **state) {
 
 /* os_read_agent_profile */
 
-static char *get_profile_from_string(const char *config) {
+static char* get_profile_from_string(const char* config)
+{
     OS_XML xml;
-    char *profile;
+    char* profile;
 
     assert_int_equal(OS_ReadXMLString(config, &xml), 0);
     profile = w_get_agent_profile_from_config(&xml);
@@ -729,63 +782,68 @@ static char *get_profile_from_string(const char *config) {
     return profile;
 }
 
-static void test_w_get_agent_profile_from_config_set(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager>"
-        "<config-profile>profA,profB</config-profile></agent></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_set(void** state)
+{
+    char* profile = get_profile_from_string("<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager>"
+                                            "<config-profile>profA,profB</config-profile></agent></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "profA,profB");
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_not_set(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager></agent>"
-        "<labels><label key=\"config-profile\">profA</label></labels></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_not_set(void** state)
+{
+    char* profile =
+        get_profile_from_string("<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager></agent>"
+                                "<labels><label key=\"config-profile\">profA</label></labels></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "-");
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_empty(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><agent><config-profile></config-profile></agent></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_empty(void** state)
+{
+    char* profile =
+        get_profile_from_string("<" WAZUHCONFIG "><agent><config-profile></config-profile></agent></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "");
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_last_wins(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile></agent></" WAZUHCONFIG ">"
-        "<" WAZUHCONFIG "><agent><config-profile>profB</config-profile></agent>"
-        "<agent><notify_time>10</notify_time></agent></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_last_wins(void** state)
+{
+    char* profile = get_profile_from_string("<" WAZUHCONFIG
+                                            "><agent><config-profile>profA</config-profile></agent></" WAZUHCONFIG ">"
+                                            "<" WAZUHCONFIG "><agent><config-profile>profB</config-profile></agent>"
+                                            "<agent><notify_time>10</notify_time></agent></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "profB");
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_later_agent_block(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager></agent>"
-        "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_later_agent_block(void** state)
+{
+    char* profile =
+        get_profile_from_string("<" WAZUHCONFIG "><agent><manager><endpoint>1.1.1.1</endpoint></manager></agent>"
+                                "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "profB");
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_agent_blocks_split_by_section(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><agent><notify_time>10</notify_time></agent>"
-        "<logging><log_format>plain</log_format></logging>"
-        "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_agent_blocks_split_by_section(void** state)
+{
+    char* profile = get_profile_from_string("<" WAZUHCONFIG "><agent><notify_time>10</notify_time></agent>"
+                                            "<logging><log_format>plain</log_format></logging>"
+                                            "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "profB");
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_last_wins_across_agent_blocks(void **state) {
-    char *profile = get_profile_from_string(
+static void test_w_get_agent_profile_from_config_last_wins_across_agent_blocks(void** state)
+{
+    char* profile = get_profile_from_string(
         "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile><notify_time>10</notify_time></agent>"
         "<agent><config-profile>profB</config-profile></agent></" WAZUHCONFIG ">");
 
@@ -793,16 +851,17 @@ static void test_w_get_agent_profile_from_config_last_wins_across_agent_blocks(v
     free(profile);
 }
 
-static void test_w_get_agent_profile_from_config_legacy_client_ignored(void **state) {
-    char *profile = get_profile_from_string(
-        "<" WAZUHCONFIG "><client><server><address>1.1.1.1</address></server>"
-        "<config-profile>profA</config-profile></client></" WAZUHCONFIG ">");
+static void test_w_get_agent_profile_from_config_legacy_client_ignored(void** state)
+{
+    char* profile = get_profile_from_string("<" WAZUHCONFIG "><client><server><address>1.1.1.1</address></server>"
+                                            "<config-profile>profA</config-profile></client></" WAZUHCONFIG ">");
 
     assert_string_equal(profile, "-");
     free(profile);
 }
 
-static void test_os_read_agent_profile_no_config(void **state) {
+static void test_os_read_agent_profile_no_config(void** state)
+{
     char message[OS_MAXSTR];
 
     test_mode = 1;
@@ -812,23 +871,27 @@ static void test_os_read_agent_profile_no_config(void **state) {
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
 
-    snprintf(message, sizeof(message), "(1226): Error reading XML file '%s': XMLERR: File '%s' not found. (line 0).",
-             WAZUHCONF, WAZUHCONF);
+    snprintf(message,
+             sizeof(message),
+             "(1226): Error reading XML file '%s': XMLERR: File '%s' not found. (line 0).",
+             WAZUHCONF,
+             WAZUHCONF);
     expect_string(__wrap__merror, formatted_msg, message);
 
-    char *profile = os_read_agent_profile();
+    char* profile = os_read_agent_profile();
 
     test_mode = 0;
     assert_null(profile);
 }
 
-static void test_os_read_agent_profile_success(void **state) {
-    const char *config = "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile></agent></" WAZUHCONFIG ">";
+static void test_os_read_agent_profile_success(void** state)
+{
+    const char* config = "<" WAZUHCONFIG "><agent><config-profile>profA</config-profile></agent></" WAZUHCONFIG ">";
     /* fgetc() and fclose() are mocked; only fileno() in w_file_cloexec() needs a real stream */
 #ifdef WIN32
-    FILE *fp = (FILE *)0x1234;
+    FILE* fp = (FILE*)0x1234;
 #else
-    FILE *fp = tmpfile();
+    FILE* fp = tmpfile();
     assert_non_null(fp);
 #endif
 
@@ -839,7 +902,8 @@ static void test_os_read_agent_profile_success(void **state) {
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, fp);
 
-    for (const char *c = config; *c; c++) {
+    for (const char* c = config; *c; c++)
+    {
         will_return(__wrap_fgetc, (int)*c);
     }
     will_return(__wrap_fgetc, EOF);
@@ -849,7 +913,7 @@ static void test_os_read_agent_profile_success(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "os_read_agent_profile() = [profA]");
 
-    char *profile = os_read_agent_profile();
+    char* profile = os_read_agent_profile();
 
     test_mode = 0;
 #ifndef WIN32
@@ -860,157 +924,168 @@ static void test_os_read_agent_profile_success(void **state) {
 }
 
 #ifndef WIN32
-static void test_getPrimaryIP_no_sysinfo_network(void ** state) {
+static void test_getPrimaryIP_no_sysinfo_network(void** state)
+{
     sysinfo_network_ptr = NULL;
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 }
 
-static void test_getPrimaryIP_no_sysinfo_free(void ** state) {
-    sysinfo_network_ptr = (int (*)(cJSON **)) 1;
+static void test_getPrimaryIP_no_sysinfo_free(void** state)
+{
+    sysinfo_network_ptr = (int (*)(cJSON**))1;
     sysinfo_free_result_ptr = NULL;
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 }
 
-static void test_getPrimaryIP_sysinfo_network_return_error(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_return_error(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = NULL;
+    cJSON* networks = NULL;
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 1234);
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to get system network information. Error code: 1234.");
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 }
 
-static void test_getPrimaryIP_sysinfo_network_no_object(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_no_object(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = NULL;
+    cJSON* networks = NULL;
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 }
 
-static void test_getPrimaryIP_sysinfo_network_no_iface(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_no_iface(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{}");
+    cJSON* networks = cJSON_Parse("{}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_no_iface_array(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_no_iface_array(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":{}}");
+    cJSON* networks = cJSON_Parse("{\"iface\":{}}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_empty_array(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_empty_array(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_no_gateway(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_no_gateway(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\"}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\"}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_invalid_gateway_type(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_invalid_gateway_type(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":1234}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":1234}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_empty_gateway(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_empty_gateway(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\" \"}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\" \"}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv6\":[{\"address\":"
-                                   "\"fe80::a00:27ff:fee0:d046\"}]}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv6\":[{\"address\":"
+                                  "\"fe80::a00:27ff:fee0:d046\"}]}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_string_equal(ip, "FE80:0000:0000:0000:0A00:27FF:FEE0:D046");
 
@@ -1018,17 +1093,18 @@ static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address(vo
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse(
+    cJSON* networks = cJSON_Parse(
         "{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv4\":[{\"address\":\"192.168.1.10\"}]}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_string_equal(ip, "192.168.1.10");
 
@@ -1036,17 +1112,18 @@ static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address(vo
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv6\":[{\"address\":"
-                                   "\"fe80::a00:27ff:fee0:d046\"}]}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv6\":[{\"address\":"
+                                  "\"fe80::a00:27ff:fee0:d046\"}]}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_string_equal(ip, "FE80:0000:0000:0000:0A00:27FF:FEE0:D046");
 
@@ -1054,17 +1131,18 @@ static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address(vo
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse(
+    cJSON* networks = cJSON_Parse(
         "{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":\"192.168.1.10\"}]}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_string_equal(ip, "192.168.1.10");
 
@@ -1072,50 +1150,53 @@ static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address(vo
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\"}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\"}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks =
+    cJSON* networks =
         cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":1234}]}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_null(ip);
 
     cJSON_Delete(networks);
 }
 
-static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array(void ** state) {
+static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array(void** state)
+{
     sysinfo_network_ptr = __wrap_sysinfo_networks;
     sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
-    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":"
-                                   "\"192.168.1.10\"},{\"address\":\"192.168.1.11\"}]}]}");
+    cJSON* networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":"
+                                  "\"192.168.1.10\"},{\"address\":\"192.168.1.11\"}]}]}");
 
     will_return(__wrap_sysinfo_networks, networks);
     will_return(__wrap_sysinfo_networks, 0);
     will_return(__wrap_sysinfo_free_result, networks);
 
-    char * ip = getPrimaryIP();
+    char* ip = getPrimaryIP();
 
     assert_string_equal(ip, "192.168.1.10");
 
@@ -1136,40 +1217,47 @@ static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_addre
 #define GROUP_DBG_MULTI     "At w_validate_group_name(): Multigroup length is over 65536 characters"
 
 /* Returns prefix + n chars cycling over pattern + suffix. */
-static char *build_group(const char *prefix, const char *pattern, size_t n, const char *suffix) {
+static char* build_group(const char* prefix, const char* pattern, size_t n, const char* suffix)
+{
     size_t plen = strlen(prefix);
     size_t pat_len = strlen(pattern);
-    char *group = calloc(plen + n + strlen(suffix) + 1, 1);
+    char* group = calloc(plen + n + strlen(suffix) + 1, 1);
 
     strcpy(group, prefix);
-    for (size_t i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++)
+    {
         group[plen + i] = pattern[i % pat_len];
     }
     strcpy(group + plen + n, suffix);
     return group;
 }
 
-static void fill_group_sentinel(char *response) {
+static void fill_group_sentinel(char* response)
+{
     memset(response, GROUP_SENTINEL, GROUP_RESPONSE_SIZE - 1);
     response[GROUP_RESPONSE_SIZE - 1] = '\0';
 }
 
-static void assert_group_sentinel_from(const char *response, size_t from) {
-    for (size_t i = from; i < GROUP_RESPONSE_SIZE - 1; i++) {
+static void assert_group_sentinel_from(const char* response, size_t from)
+{
+    for (size_t i = from; i < GROUP_RESPONSE_SIZE - 1; i++)
+    {
         assert_int_equal(response[i], GROUP_SENTINEL);
     }
 }
 
 /* Checks return and full response for quoted (first 255 chars of quoted, as the source formats it), then the
  * same call with a NULL response. dbg is the mdebug1 message the branch logs, or NULL. */
-static void check_group_error(const char *group, int expected_ret, const char *quoted, const char *suffix,
-                              const char *dbg) {
+static void
+check_group_error(const char* group, int expected_ret, const char* quoted, const char* suffix, const char* dbg)
+{
     char response[GROUP_RESPONSE_SIZE];
     char expected[GROUP_RESPONSE_SIZE];
 
     snprintf(expected, sizeof(expected), "%s%.255s%s", GROUP_ERR_PREFIX, quoted, suffix);
 
-    if (dbg) {
+    if (dbg)
+    {
         expect_string(__wrap__mdebug1, formatted_msg, dbg);
     }
     fill_group_sentinel(response);
@@ -1177,13 +1265,15 @@ static void check_group_error(const char *group, int expected_ret, const char *q
     assert_string_equal(response, expected);
     assert_group_sentinel_from(response, strlen(expected) + 1);
 
-    if (dbg) {
+    if (dbg)
+    {
         expect_string(__wrap__mdebug1, formatted_msg, dbg);
     }
     assert_int_equal(w_validate_group_name(group, NULL), expected_ret);
 }
 
-static void check_group_valid(const char *group) {
+static void check_group_valid(const char* group)
+{
     char response[GROUP_RESPONSE_SIZE];
 
     fill_group_sentinel(response);
@@ -1193,26 +1283,31 @@ static void check_group_valid(const char *group) {
     assert_int_equal(w_validate_group_name(group, NULL), 0);
 }
 
-static void test_w_validate_group_name_valid_single(void **state) {
+static void test_w_validate_group_name_valid_single(void** state)
+{
     check_group_valid("group1");
 }
 
-static void test_w_validate_group_name_valid_multi(void **state) {
+static void test_w_validate_group_name_valid_multi(void** state)
+{
     check_group_valid("g1,g2");
     check_group_valid("g1,g2,g3");
 }
 
-static void test_w_validate_group_name_allowed_punctuation(void **state) {
+static void test_w_validate_group_name_allowed_punctuation(void** state)
+{
     check_group_valid("a.:;_-=+!@()b");
 }
 
-static void test_w_validate_group_name_single_max_length(void **state) {
-    char *group = build_group("", "a", MAX_GROUP_NAME, "");
+static void test_w_validate_group_name_single_max_length(void** state)
+{
+    char* group = build_group("", "a", MAX_GROUP_NAME, "");
     check_group_valid(group);
     free(group);
 }
 
-static void test_w_validate_group_name_multi_three_max_length(void **state) {
+static void test_w_validate_group_name_multi_three_max_length(void** state)
+{
     char group[3 * (MAX_GROUP_NAME + 1)];
 
     memset(group, 'a', sizeof(group) - 1);
@@ -1223,9 +1318,10 @@ static void test_w_validate_group_name_multi_three_max_length(void **state) {
     check_group_valid(group);
 }
 
-static void test_w_validate_group_name_empty(void **state) {
+static void test_w_validate_group_name_empty(void** state)
+{
     char response[GROUP_RESPONSE_SIZE];
-    const char *expected = GROUP_ERR_PREFIX "Empty Group";
+    const char* expected = GROUP_ERR_PREFIX "Empty Group";
 
     expect_string(__wrap__mdebug1, formatted_msg, GROUP_DBG_EMPTY);
     fill_group_sentinel(response);
@@ -1237,93 +1333,108 @@ static void test_w_validate_group_name_empty(void **state) {
     assert_int_equal(w_validate_group_name("", NULL), -8);
 }
 
-static void test_w_validate_group_name_single_too_large(void **state) {
-    char *group = build_group("", "a", MAX_GROUP_NAME + 1, "");
+static void test_w_validate_group_name_single_too_large(void** state)
+{
+    char* group = build_group("", "a", MAX_GROUP_NAME + 1, "");
     check_group_error(group, -2, group, GROUP_TOO_LARGE, GROUP_DBG_TOO_LARGE);
     free(group);
 }
 
-static void test_w_validate_group_name_multigroup_too_large(void **state) {
-    char *group = build_group("", "a,", OS_SIZE_65536, "");
+static void test_w_validate_group_name_multigroup_too_large(void** state)
+{
+    char* group = build_group("", "a,", OS_SIZE_65536, "");
     check_group_error(group, -3, group, "... multigroup is too large", GROUP_DBG_MULTI);
     free(group);
 }
 
-static void test_w_validate_group_name_white_space(void **state) {
+static void test_w_validate_group_name_white_space(void** state)
+{
     check_group_error("a b,c", -4, "a b,c", "... white spaces are not allowed", NULL);
     check_group_error("a,b c,d", -4, "a,b c,d", "... white spaces are not allowed", NULL);
     check_group_error("a,b c", -4, "a,b c", "... white spaces are not allowed", NULL);
 }
 
-static void test_w_validate_group_name_white_space_before_oversized(void **state) {
-    char *group = build_group("a b,", "a", MAX_GROUP_NAME + 1, "");
+static void test_w_validate_group_name_white_space_before_oversized(void** state)
+{
+    char* group = build_group("a b,", "a", MAX_GROUP_NAME + 1, "");
     check_group_error(group, -4, group, "... white spaces are not allowed", NULL);
     free(group);
 }
 
-static void test_w_validate_group_name_consecutive_commas(void **state) {
+static void test_w_validate_group_name_consecutive_commas(void** state)
+{
     check_group_error("a,,b", -5, "a,,b", "... consecutive ',' are not allowed", NULL);
 }
 
-static void test_w_validate_group_name_only_commas_multi(void **state) {
+static void test_w_validate_group_name_only_commas_multi(void** state)
+{
     check_group_error(",,,", -5, ",,,", "... consecutive ',' are not allowed", NULL);
 }
 
-static void test_w_validate_group_name_only_one_comma(void **state) {
+static void test_w_validate_group_name_only_one_comma(void** state)
+{
     check_group_error(",", -1, ",", GROUP_PROHIBITED, NULL);
 }
 
-static void test_w_validate_group_name_leading_trailing_comma(void **state) {
+static void test_w_validate_group_name_leading_trailing_comma(void** state)
+{
     check_group_error(",a", -6, ",a", "... cannot start or end with ','", NULL);
     check_group_error("a,b,", -6, "a,b,", "... cannot start or end with ','", NULL);
 }
 
-static void test_w_validate_group_name_invalid_char_single(void **state) {
+static void test_w_validate_group_name_invalid_char_single(void** state)
+{
     check_group_error("a/b", -1, "a/b", GROUP_PROHIBITED, NULL);
     check_group_error("a*b", -1, "a*b", GROUP_PROHIBITED, NULL);
     check_group_error("a\"b", -1, "a\"b", GROUP_PROHIBITED, NULL);
     check_group_error("a\\b", -1, "a\\b", GROUP_PROHIBITED, NULL);
 }
 
-static void test_w_validate_group_name_invalid_char_multi(void **state) {
+static void test_w_validate_group_name_invalid_char_multi(void** state)
+{
     check_group_error("a,b/c", -1, "a,b/c", GROUP_PROHIBITED, NULL);
 }
 
-static void test_w_validate_group_name_max_length_in_multigroup(void **state) {
-    char *group = build_group("", "a", MAX_GROUP_NAME, ",b");
+static void test_w_validate_group_name_max_length_in_multigroup(void** state)
+{
+    char* group = build_group("", "a", MAX_GROUP_NAME, ",b");
     check_group_valid(group);
     free(group);
 }
 
 /* Oversized group inside a multigroup: the response quotes that group's own token. */
 
-static void test_w_validate_group_name_oversized_null_response(void **state) {
-    char *group = build_group("", "a", MAX_GROUP_NAME + 1, ",b");
+static void test_w_validate_group_name_oversized_null_response(void** state)
+{
+    char* group = build_group("", "a", MAX_GROUP_NAME + 1, ",b");
     assert_int_equal(w_validate_group_name(group, NULL), -7);
     free(group);
 }
 
-static void test_w_validate_group_name_oversized_first(void **state) {
-    char *token = build_group("", "a", MAX_GROUP_NAME + 1, "");
-    char *group = build_group("", "a", MAX_GROUP_NAME + 1, ",b");
+static void test_w_validate_group_name_oversized_first(void** state)
+{
+    char* token = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    char* group = build_group("", "a", MAX_GROUP_NAME + 1, ",b");
 
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
     free(group);
     free(token);
 }
 
-static void test_w_validate_group_name_oversized_middle(void **state) {
-    char *token = build_group("", "a", MAX_GROUP_NAME + 1, "");
-    char *group = build_group("a,", "a", MAX_GROUP_NAME + 1, ",c");
+static void test_w_validate_group_name_oversized_middle(void** state)
+{
+    char* token = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    char* group = build_group("a,", "a", MAX_GROUP_NAME + 1, ",c");
 
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
     free(group);
     free(token);
 }
 
-static void test_w_validate_group_name_oversized_last(void **state) {
-    char *token = build_group("", "a", MAX_GROUP_NAME + 1, "");
-    char *group = build_group("a,b,", "a", MAX_GROUP_NAME + 1, "");
+static void test_w_validate_group_name_oversized_last(void** state)
+{
+    char* token = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    char* group = build_group("a,b,", "a", MAX_GROUP_NAME + 1, "");
 
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
     free(group);
@@ -1331,18 +1442,20 @@ static void test_w_validate_group_name_oversized_last(void **state) {
 }
 
 /* The 256th char differs, so it must not appear in the response. */
-static void test_w_validate_group_name_oversized_one_past_limit(void **state) {
-    char *token = build_group("", "a", MAX_GROUP_NAME, "b");
-    char *group = build_group("", "a", MAX_GROUP_NAME, "b,c");
+static void test_w_validate_group_name_oversized_one_past_limit(void** state)
+{
+    char* token = build_group("", "a", MAX_GROUP_NAME, "b");
+    char* group = build_group("", "a", MAX_GROUP_NAME, "b,c");
 
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
     free(group);
     free(token);
 }
 
-static void test_w_validate_group_name_oversized_far_over_limit(void **state) {
-    char *token = build_group("", "a", 4000, "");
-    char *group = build_group("", "a", 4000, ",b");
+static void test_w_validate_group_name_oversized_far_over_limit(void** state)
+{
+    char* token = build_group("", "a", 4000, "");
+    char* group = build_group("", "a", 4000, ",b");
 
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
     free(group);
@@ -1350,9 +1463,10 @@ static void test_w_validate_group_name_oversized_far_over_limit(void **state) {
 }
 
 /* Non-uniform bytes, so a corrupted read shows as a wrong character. */
-static void test_w_validate_group_name_oversized_distinct_bytes(void **state) {
-    char *token = build_group("", "0123456789", 300, "");
-    char *group = build_group("", "0123456789", 300, ",b");
+static void test_w_validate_group_name_oversized_distinct_bytes(void** state)
+{
+    char* token = build_group("", "0123456789", 300, "");
+    char* group = build_group("", "0123456789", 300, ",b");
 
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
     free(group);
@@ -1360,12 +1474,13 @@ static void test_w_validate_group_name_oversized_distinct_bytes(void **state) {
 }
 
 /* Total length OS_SIZE_65536 - 1: the multigroup size check passes and the group check fires. */
-static void test_w_validate_group_name_oversized_near_multigroup_cap(void **state) {
+static void test_w_validate_group_name_oversized_near_multigroup_cap(void** state)
+{
     const size_t token_len = MAX_GROUP_NAME + 2;
     const size_t filler = (OS_SIZE_65536 - 1 - token_len) / 2;
-    char *token = build_group("", "a", token_len, "");
-    char *fill = build_group("", ",b", 2 * filler, "");
-    char *group = build_group(token, "", 0, fill);
+    char* token = build_group("", "a", token_len, "");
+    char* fill = build_group("", ",b", 2 * filler, "");
+    char* group = build_group(token, "", 0, fill);
 
     assert_int_equal(strlen(group), OS_SIZE_65536 - 1);
     check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
@@ -1374,7 +1489,8 @@ static void test_w_validate_group_name_oversized_near_multigroup_cap(void **stat
     free(token);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_create_agent_add_payload_carries_token_id),
@@ -1393,7 +1509,7 @@ int main(void) {
         cmocka_unit_test(test_w_get_agent_profile_from_config_legacy_client_ignored),
         cmocka_unit_test(test_os_read_agent_profile_no_config),
         cmocka_unit_test(test_os_read_agent_profile_success),
-        #ifndef WIN32
+#ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),
         cmocka_unit_test(test_parse_agent_remove_response),
@@ -1427,7 +1543,7 @@ int main(void) {
         cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array),
         cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type),
         cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array),
-        #endif
+#endif
         // Tests w_validate_group_name
         cmocka_unit_test(test_w_validate_group_name_valid_single),
         cmocka_unit_test(test_w_validate_group_name_valid_multi),

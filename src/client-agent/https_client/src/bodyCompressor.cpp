@@ -22,8 +22,7 @@ namespace
 std::optional<std::vector<uint8_t>> compressBody(const uint8_t* body, size_t bodyLength)
 {
     std::vector<uint8_t> compressed(ZSTD_compressBound(bodyLength));
-    const size_t written =
-        ZSTD_compress(compressed.data(), compressed.size(), body, bodyLength, kCompressionLevel);
+    const size_t written = ZSTD_compress(compressed.data(), compressed.size(), body, bodyLength, kCompressionLevel);
 
     if (ZSTD_isError(written))
     {

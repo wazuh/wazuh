@@ -20,30 +20,32 @@
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
-const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
-const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type);
-unsigned int w_get_attr_timeout(xml_node * node);
-w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
-w_multiline_match_type_t w_get_attr_match(xml_node * node);
-int w_logcollector_get_macos_log_type(const char * content);
+const char* multiline_attr_match_str(w_multiline_match_type_t match_type);
+const char* multiline_attr_replace_str(w_multiline_replace_type_t replace_type);
+unsigned int w_get_attr_timeout(xml_node* node);
+w_multiline_replace_type_t w_get_attr_replace(xml_node* node);
+w_multiline_match_type_t w_get_attr_match(xml_node* node);
+int w_logcollector_get_macos_log_type(const char* content);
 
 // Journal
-#define VALID_PCRE2_REGEX "valid regex \\w+"
+#define VALID_PCRE2_REGEX   "valid regex \\w+"
 #define INVALID_PCRE2_REGEX "invalid regex [a \\w+{-1"
 
-_w_journal_filter_unit_t * create_unit_filter(const char * field, char * expression, bool ignore_if_missing);
-void free_unit_filter(_w_journal_filter_unit_t * unit);
-cJSON * unit_filter_as_json(_w_journal_filter_unit_t * unit);
-cJSON * filter_as_json(w_journal_filter_t * filter);
+_w_journal_filter_unit_t* create_unit_filter(const char* field, char* expression, bool ignore_if_missing);
+void free_unit_filter(_w_journal_filter_unit_t* unit);
+cJSON* unit_filter_as_json(_w_journal_filter_unit_t* unit);
+cJSON* filter_as_json(w_journal_filter_t* filter);
 
 // Functions under test
-bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index);
-int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globs);
+bool w_logreader_journald_merge(logreader** logf_ptr, size_t src_index);
+int Remove_Localfile(logreader** logf, int i, int gl, int fr, logreader_glob* globs);
 
 // Mock for Remove_Localfile
-int __wrap_Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globs) {
+int __wrap_Remove_Localfile(logreader** logf, int i, int gl, int fr, logreader_glob* globs)
+{
     // Simple mock: just free the source entry
-    if (logf && *logf && (*logf)[i].file) {
+    if (logf && *logf && (*logf)[i].file)
+    {
         free((*logf)[i].file);
         (*logf)[i].file = NULL;
     }
@@ -51,20 +53,23 @@ int __wrap_Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_g
 }
 
 // Mock for w_journal_add_filter_to_list
-bool __wrap_w_journal_add_filter_to_list(w_journal_filter_t *** list, w_journal_filter_t ** filter) {
+bool __wrap_w_journal_add_filter_to_list(w_journal_filter_t*** list, w_journal_filter_t** filter)
+{
     check_expected(list);
     check_expected(filter);
     return mock();
 }
 
 /* setup/teardown */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
     w_test_pcre2_wrappers(false);
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
     w_test_pcre2_wrappers(true);
     return 0;
@@ -75,58 +80,66 @@ static int teardown_group(void **state) {
 /* tests */
 
 /* multiline_attr_replace_str */
-void test_multiline_attr_replace_str_no_replace(void ** state) {
+void test_multiline_attr_replace_str_no_replace(void** state)
+{
     w_multiline_replace_type_t replace_type = ML_REPLACE_NO_REPLACE;
     const char expected_retval[] = "no-replace";
-    const char * retval = multiline_attr_replace_str(replace_type);
+    const char* retval = multiline_attr_replace_str(replace_type);
     assert_string_equal(retval, expected_retval);
 }
 
-void test_multiline_attr_replace_str_none(void ** state) {
+void test_multiline_attr_replace_str_none(void** state)
+{
     w_multiline_replace_type_t replace_type = ML_REPLACE_NONE;
     const char expected_retval[] = "none";
-    const char * retval = multiline_attr_replace_str(replace_type);
+    const char* retval = multiline_attr_replace_str(replace_type);
     assert_string_equal(retval, expected_retval);
 }
 
-void test_multiline_attr_replace_str_ws(void ** state) {
+void test_multiline_attr_replace_str_ws(void** state)
+{
     w_multiline_replace_type_t replace_type = ML_REPLACE_WSPACE;
     const char expected_retval[] = "wspace";
-    const char * retval = multiline_attr_replace_str(replace_type);
+    const char* retval = multiline_attr_replace_str(replace_type);
     assert_string_equal(retval, expected_retval);
 }
 
-void test_multiline_attr_replace_str_tab(void ** state) {
+void test_multiline_attr_replace_str_tab(void** state)
+{
     w_multiline_replace_type_t replace_type = ML_REPLACE_TAB;
     const char expected_retval[] = "tab";
-    const char * retval = multiline_attr_replace_str(replace_type);
+    const char* retval = multiline_attr_replace_str(replace_type);
     assert_string_equal(retval, expected_retval);
 }
 
 /* multiline_attr_match_str */
-void test_multiline_attr_match_str_start(void ** state) {
+void test_multiline_attr_match_str_start(void** state)
+{
     w_multiline_match_type_t match_type = ML_MATCH_START;
     const char expected_retval[] = "start";
-    const char * retval = multiline_attr_match_str(match_type);
+    const char* retval = multiline_attr_match_str(match_type);
     assert_string_equal(retval, expected_retval);
 }
 
-void test_multiline_attr_match_str_all(void ** state) {
+void test_multiline_attr_match_str_all(void** state)
+{
     w_multiline_match_type_t match_type = ML_MATCH_ALL;
     const char expected_retval[] = "all";
-    const char * retval = multiline_attr_match_str(match_type);
+    const char* retval = multiline_attr_match_str(match_type);
     assert_string_equal(retval, expected_retval);
 }
 
-void test_multiline_attr_match_str_end(void ** state) {
+void test_multiline_attr_match_str_end(void** state)
+{
     w_multiline_match_type_t match_type = ML_MATCH_END;
     const char expected_retval[] = "end";
-    const char * retval = multiline_attr_match_str(match_type);
+    const char* retval = multiline_attr_match_str(match_type);
     assert_string_equal(retval, expected_retval);
 }
 
 /* w_get_attr_timeout */
-void test_w_get_attr_timeout_missing(void ** state) {
+void test_w_get_attr_timeout_missing(void** state)
+{
 
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
@@ -137,13 +150,15 @@ void test_w_get_attr_timeout_missing(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_timeout_empty(void ** state) {
+void test_w_get_attr_timeout_empty(void** state)
+{
 
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
 
     will_return(__wrap_w_get_attr_val_by_name, "");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8000): Invalid value '' for attribute 'timeout' in "
                   "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
@@ -151,13 +166,15 @@ void test_w_get_attr_timeout_empty(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_timeout_not_number(void ** state) {
+void test_w_get_attr_timeout_not_number(void** state)
+{
 
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
 
     will_return(__wrap_w_get_attr_val_by_name, "test");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8000): Invalid value 'test' for attribute 'timeout' in "
                   "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
@@ -165,13 +182,15 @@ void test_w_get_attr_timeout_not_number(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_timeout_mixed(void ** state) {
+void test_w_get_attr_timeout_mixed(void** state)
+{
 
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
 
     will_return(__wrap_w_get_attr_val_by_name, "11test11");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8000): Invalid value '11test11' for attribute 'timeout' in "
                   "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
@@ -179,13 +198,15 @@ void test_w_get_attr_timeout_mixed(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_timeout_zero(void ** state) {
+void test_w_get_attr_timeout_zero(void** state)
+{
 
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
 
     will_return(__wrap_w_get_attr_val_by_name, "0");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8000): Invalid value '0' for attribute 'timeout' in "
                   "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
@@ -193,7 +214,8 @@ void test_w_get_attr_timeout_zero(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_timeout_out_range(void ** state) {
+void test_w_get_attr_timeout_out_range(void** state)
+{
 
     unsigned int expect_retval = MULTI_LINE_REGEX_TIMEOUT;
     unsigned int retval;
@@ -201,8 +223,10 @@ void test_w_get_attr_timeout_out_range(void ** state) {
     char str_msg[300] = {0};
 
     sprintf(str_timeout, "%i", MULTI_LINE_REGEX_MAX_TIMEOUT + 4);
-    sprintf(str_msg, "(8000): Invalid value '%s' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be used.", str_timeout);
+    sprintf(str_msg,
+            "(8000): Invalid value '%s' for attribute 'timeout' in "
+            "'multiline_regex' option. Default value will be used.",
+            str_timeout);
 
     will_return(__wrap_w_get_attr_val_by_name, str_timeout);
     expect_string(__wrap__mwarn, formatted_msg, str_msg);
@@ -212,7 +236,8 @@ void test_w_get_attr_timeout_out_range(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_timeout_out_ok(void ** state) {
+void test_w_get_attr_timeout_out_ok(void** state)
+{
 
     unsigned int expect_retval = 30;
     unsigned int retval;
@@ -224,7 +249,8 @@ void test_w_get_attr_timeout_out_ok(void ** state) {
 }
 
 // Test w_get_attr_replace
-void test_w_get_attr_replace_missing(void ** state) {
+void test_w_get_attr_replace_missing(void** state)
+{
 
     w_multiline_replace_type_t expect_retval = ML_REPLACE_NO_REPLACE;
     w_multiline_replace_type_t retval;
@@ -235,7 +261,8 @@ void test_w_get_attr_replace_missing(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_replace_no_replace(void ** state) {
+void test_w_get_attr_replace_no_replace(void** state)
+{
 
     w_multiline_replace_type_t expect_retval = ML_REPLACE_NO_REPLACE;
     w_multiline_replace_type_t retval;
@@ -246,7 +273,8 @@ void test_w_get_attr_replace_no_replace(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_replace_ws(void ** state) {
+void test_w_get_attr_replace_ws(void** state)
+{
 
     w_multiline_replace_type_t expect_retval = ML_REPLACE_WSPACE;
     w_multiline_replace_type_t retval;
@@ -257,7 +285,8 @@ void test_w_get_attr_replace_ws(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_replace_tab(void ** state) {
+void test_w_get_attr_replace_tab(void** state)
+{
 
     w_multiline_replace_type_t expect_retval = ML_REPLACE_TAB;
     w_multiline_replace_type_t retval;
@@ -268,7 +297,8 @@ void test_w_get_attr_replace_tab(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_replace_none(void ** state) {
+void test_w_get_attr_replace_none(void** state)
+{
 
     w_multiline_replace_type_t expect_retval = ML_REPLACE_NONE;
     w_multiline_replace_type_t retval;
@@ -279,13 +309,15 @@ void test_w_get_attr_replace_none(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_replace_invalid(void ** state) {
+void test_w_get_attr_replace_invalid(void** state)
+{
 
     w_multiline_replace_type_t expect_retval = ML_REPLACE_NO_REPLACE;
     w_multiline_replace_type_t retval;
 
     will_return(__wrap_w_get_attr_val_by_name, "invalid_attr");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8000): Invalid value 'invalid_attr' for attribute 'replace' in "
                   "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_replace(NULL);
@@ -294,13 +326,15 @@ void test_w_get_attr_replace_invalid(void ** state) {
 }
 
 /* w_get_attr_match */
-void test_w_get_attr_match_invalid(void ** state) {
+void test_w_get_attr_match_invalid(void** state)
+{
 
     w_multiline_match_type_t expect_retval = ML_MATCH_START;
     w_multiline_match_type_t retval;
 
     will_return(__wrap_w_get_attr_val_by_name, "invalid_attr");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8000): Invalid value 'invalid_attr' for attribute 'match' in "
                   "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_match(NULL);
@@ -308,7 +342,8 @@ void test_w_get_attr_match_invalid(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_match_missing(void ** state) {
+void test_w_get_attr_match_missing(void** state)
+{
 
     w_multiline_match_type_t expect_retval = ML_MATCH_START;
     w_multiline_match_type_t retval;
@@ -319,7 +354,8 @@ void test_w_get_attr_match_missing(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_match_start(void ** state) {
+void test_w_get_attr_match_start(void** state)
+{
 
     w_multiline_match_type_t expect_retval = ML_MATCH_START;
     w_multiline_match_type_t retval;
@@ -330,7 +366,8 @@ void test_w_get_attr_match_start(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_match_all(void ** state) {
+void test_w_get_attr_match_all(void** state)
+{
 
     w_multiline_match_type_t expect_retval = ML_MATCH_ALL;
     w_multiline_match_type_t retval;
@@ -341,7 +378,8 @@ void test_w_get_attr_match_all(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-void test_w_get_attr_match_end(void ** state) {
+void test_w_get_attr_match_end(void** state)
+{
 
     w_multiline_match_type_t expect_retval = ML_MATCH_END;
     w_multiline_match_type_t retval;
@@ -353,72 +391,86 @@ void test_w_get_attr_match_end(void ** state) {
 }
 
 /*  w_logcollector_get_macos_log_type  */
-void test_w_logcollector_get_macos_log_type_content_NULL(void ** state) {
-    const char * content = NULL;
+void test_w_logcollector_get_macos_log_type_content_NULL(void** state)
+{
+    const char* content = NULL;
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, 0);
 }
 
-void test_w_logcollector_get_macos_log_type_content_empty(void ** state) {
-    const char * content = "";
+void test_w_logcollector_get_macos_log_type_content_empty(void** state)
+{
+    const char* content = "";
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, 0);
 }
 
-void test_w_logcollector_get_macos_log_type_content_ignore_values(void ** state) {
-    const char * content = "  hello, ,world  ";
+void test_w_logcollector_get_macos_log_type_content_ignore_values(void** state)
+{
+    const char* content = "  hello, ,world  ";
 
-    expect_string(__wrap__mwarn, formatted_msg, "(8003): Invalid value 'hello' for attribute 'type' in 'query' option."\
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(8003): Invalid value 'hello' for attribute 'type' in 'query' option."
                   " Attribute will be ignored.");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(8003): Invalid value 'world' for attribute 'type' in 'query' option."\
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(8003): Invalid value 'world' for attribute 'type' in 'query' option."
                   " Attribute will be ignored.");
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, 0);
 }
 
-void test_w_logcollector_get_macos_log_type_content_activity(void ** state) {
-    const char * content = " activity ";
+void test_w_logcollector_get_macos_log_type_content_activity(void** state)
+{
+    const char* content = " activity ";
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_ACTIVITY);
 }
 
-void test_w_logcollector_get_macos_log_type_content_log(void ** state) {
-    const char * content = "log ";
+void test_w_logcollector_get_macos_log_type_content_log(void** state)
+{
+    const char* content = "log ";
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_LOG);
 }
 
-void test_w_logcollector_get_macos_log_type_content_trace(void ** state) {
-    const char * content = " trace, ";
+void test_w_logcollector_get_macos_log_type_content_trace(void** state)
+{
+    const char* content = " trace, ";
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_TRACE);
 }
 
-void test_w_logcollector_get_macos_log_type_content_trace_activity(void ** state) {
-    const char * content = " trace, activity,,";
+void test_w_logcollector_get_macos_log_type_content_trace_activity(void** state)
+{
+    const char* content = " trace, activity,,";
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_TRACE | MACOS_LOG_TYPE_ACTIVITY);
 }
 
-void test_w_logcollector_get_macos_log_type_content_trace_log_activity(void ** state) {
-    const char * content = " trace, ,activity,,log ";
+void test_w_logcollector_get_macos_log_type_content_trace_log_activity(void** state)
+{
+    const char* content = " trace, ,activity,,log ";
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_TRACE | MACOS_LOG_TYPE_ACTIVITY | MACOS_LOG_TYPE_LOG);
 }
 
-void test_w_logcollector_get_macos_log_type_content_log_multiword_invalid(void ** state) {
-    const char * content = "log, trace  activity";
+void test_w_logcollector_get_macos_log_type_content_log_multiword_invalid(void** state)
+{
+    const char* content = "log, trace  activity";
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(8003): Invalid value 'trace  activity' for attribute 'type' in 'query' option."
                   " Attribute will be ignored.");
 
@@ -427,8 +479,9 @@ void test_w_logcollector_get_macos_log_type_content_log_multiword_invalid(void *
 }
 
 /* init_w_journal_log_config_t */
-void test_init_w_journal_log_config_t_ok(void ** state) {
-    w_journal_log_config_t * config = NULL;
+void test_init_w_journal_log_config_t_ok(void** state)
+{
+    w_journal_log_config_t* config = NULL;
     bool ret = init_w_journal_log_config_t(&config);
     assert_true(ret);
     assert_non_null(config);
@@ -437,37 +490,42 @@ void test_init_w_journal_log_config_t_ok(void ** state) {
     os_free(config);
 }
 
-void test_init_w_journal_log_config_t_fail(void ** state) {
-    w_journal_log_config_t * config = (w_journal_log_config_t *) 0x1;
+void test_init_w_journal_log_config_t_fail(void** state)
+{
+    w_journal_log_config_t* config = (w_journal_log_config_t*)0x1;
     bool ret = init_w_journal_log_config_t(&config);
     assert_false(ret);
     assert_non_null(config);
 }
 
 /* w_journal_log_config_free */
-void test_w_journal_log_config_free_null(void ** state) {
-    w_journal_log_config_t * config = NULL;
+void test_w_journal_log_config_free_null(void** state)
+{
+    w_journal_log_config_t* config = NULL;
 
     w_journal_log_config_free(NULL);
     w_journal_log_config_free(&config);
 }
 
-void test_w_journal_log_config_free_ok(void ** state) {
+void test_w_journal_log_config_free_ok(void** state)
+{
 
-    w_journal_log_config_t * config = NULL;
+    w_journal_log_config_t* config = NULL;
 
     assert_true(init_w_journal_log_config_t(&config));
     w_journal_log_config_free(&config);
 }
 
 /* free_unit_filter */
-void test_free_unit_filter_null(void ** state) {
-    _w_journal_filter_unit_t * ufilter = NULL;
+void test_free_unit_filter_null(void** state)
+{
+    _w_journal_filter_unit_t* ufilter = NULL;
     free_unit_filter(ufilter);
 }
 
-void test_free_unit_filter_ok(void ** state) {
-    _w_journal_filter_unit_t * ufilter = calloc(1, sizeof(_w_journal_filter_unit_t));
+void test_free_unit_filter_ok(void** state)
+{
+    _w_journal_filter_unit_t* ufilter = calloc(1, sizeof(_w_journal_filter_unit_t));
     ufilter->field = strdup("test");
     w_calloc_expression_t(&ufilter->exp, EXP_TYPE_PCRE2);
     w_expression_compile(ufilter->exp, VALID_PCRE2_REGEX, 0);
@@ -476,19 +534,22 @@ void test_free_unit_filter_ok(void ** state) {
 }
 
 /* create_unit_filter */
-void test_create_unit_filter_null_param(void ** state) {
+void test_create_unit_filter_null_param(void** state)
+{
 
     assert_null(create_unit_filter("field", NULL, false));
     assert_null(create_unit_filter(NULL, VALID_PCRE2_REGEX, false));
 }
 
-void test_create_unit_filter_inv_expresion(void ** state) {
+void test_create_unit_filter_inv_expresion(void** state)
+{
 
     assert_null(create_unit_filter("fied", INVALID_PCRE2_REGEX, false));
 }
 
-void test_create_unit_filter_ok(void ** state) {
-    _w_journal_filter_unit_t * ufilter = create_unit_filter("fied_test", VALID_PCRE2_REGEX, true);
+void test_create_unit_filter_ok(void** state)
+{
+    _w_journal_filter_unit_t* ufilter = create_unit_filter("fied_test", VALID_PCRE2_REGEX, true);
 
     assert_non_null(ufilter);
     assert_true(ufilter->ignore_if_missing);
@@ -499,7 +560,8 @@ void test_create_unit_filter_ok(void ** state) {
 }
 
 /* unit_filter_as_json */
-void test_unit_filter_as_json_null_params(void ** state) {
+void test_unit_filter_as_json_null_params(void** state)
+{
 
     _w_journal_filter_unit_t unit = {.exp = NULL, .field = NULL, .ignore_if_missing = false};
 
@@ -511,24 +573,25 @@ void test_unit_filter_as_json_null_params(void ** state) {
     assert_null(unit_filter_as_json(&unit));
 }
 
-void test_unit_filter_as_json_ok(void ** state) {
+void test_unit_filter_as_json_ok(void** state)
+{
 
     _w_journal_filter_unit_t unit = {.exp = NULL, .field = "test field", .ignore_if_missing = true};
 
     w_calloc_expression_t(&unit.exp, EXP_TYPE_PCRE2);
     w_expression_compile(unit.exp, VALID_PCRE2_REGEX, 0);
 
-    will_return(__wrap_cJSON_CreateObject, (void *) 0x1);
+    will_return(__wrap_cJSON_CreateObject, (void*)0x1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "field");
     expect_string(__wrap_cJSON_AddStringToObject, string, "test field");
-    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON*)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "expression");
     expect_string(__wrap_cJSON_AddStringToObject, string, VALID_PCRE2_REGEX);
-    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON*)1);
 
-    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON*)1);
 
     assert_non_null(unit_filter_as_json(&unit));
 
@@ -536,20 +599,23 @@ void test_unit_filter_as_json_ok(void ** state) {
 }
 
 /* w_journal_filter_add_condition */
-void test_w_journal_filter_add_condition_null_params(void ** state) {
-    w_journal_filter_t * filters = NULL;
+void test_w_journal_filter_add_condition_null_params(void** state)
+{
+    w_journal_filter_t* filters = NULL;
     assert_int_not_equal(0, w_journal_filter_add_condition(&filters, "field", NULL, false));
     assert_int_not_equal(0, w_journal_filter_add_condition(&filters, NULL, VALID_PCRE2_REGEX, false));
     assert_int_not_equal(0, w_journal_filter_add_condition(NULL, "field", VALID_PCRE2_REGEX, false));
 }
 
-void test_w_journal_filter_add_condition_bad_exp(void ** state) {
-    w_journal_filter_t * filters = NULL;
+void test_w_journal_filter_add_condition_bad_exp(void** state)
+{
+    w_journal_filter_t* filters = NULL;
     assert_int_not_equal(0, w_journal_filter_add_condition(&filters, "field", INVALID_PCRE2_REGEX, false));
 }
 
-void test_w_journal_filter_add_condition_ok_first_cond(void ** state) {
-    w_journal_filter_t * filters = NULL;
+void test_w_journal_filter_add_condition_ok_first_cond(void** state)
+{
+    w_journal_filter_t* filters = NULL;
 
     assert_int_equal(0, w_journal_filter_add_condition(&filters, "field", VALID_PCRE2_REGEX, false));
 
@@ -563,9 +629,10 @@ void test_w_journal_filter_add_condition_ok_first_cond(void ** state) {
     w_journal_filter_free(filters); // test w_journal_filter_free
 }
 
-void test_w_journal_filter_add_condition_ok_other_cond(void ** state) {
+void test_w_journal_filter_add_condition_ok_other_cond(void** state)
+{
 
-    w_journal_filter_t * filters = NULL;
+    w_journal_filter_t* filters = NULL;
 
     assert_int_equal(0, w_journal_filter_add_condition(&filters, "field", VALID_PCRE2_REGEX, false));
 
@@ -596,10 +663,14 @@ void test_w_journal_filter_add_condition_ok_other_cond(void ** state) {
 }
 
 /* w_journal_filter_free */
-void test_w_journal_filter_free_null(void ** state) { w_journal_filter_free(NULL); }
+void test_w_journal_filter_free_null(void** state)
+{
+    w_journal_filter_free(NULL);
+}
 
 /* Test filter_as_json */
-void test_filter_as_json_null_params(void ** state) {
+void test_filter_as_json_null_params(void** state)
+{
 
     w_journal_filter_t filter = {0};
 
@@ -607,39 +678,41 @@ void test_filter_as_json_null_params(void ** state) {
     assert_null(filter_as_json(&filter));
 }
 
-void test_filter_as_json_fail_array(void ** state) {
+void test_filter_as_json_fail_array(void** state)
+{
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
 
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) NULL);
+    will_return(__wrap_cJSON_CreateArray, (cJSON*)NULL);
 
     assert_null(filter_as_json(filter));
 
     w_journal_filter_free(filter);
 }
 
-void test_filter_as_json_one_unit(void ** state) {
+void test_filter_as_json_one_unit(void** state)
+{
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
 
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_CreateArray, (cJSON*)0x1);
 
     // start: unit filter as json
-    will_return(__wrap_cJSON_CreateObject, (void *) 0x1);
+    will_return(__wrap_cJSON_CreateObject, (void*)0x1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "field");
     expect_string(__wrap_cJSON_AddStringToObject, string, "test field");
-    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON*)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "expression");
     expect_string(__wrap_cJSON_AddStringToObject, string, VALID_PCRE2_REGEX);
-    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON*)1);
 
-    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON*)1);
     // end: unit filter as json
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
@@ -651,7 +724,8 @@ void test_filter_as_json_one_unit(void ** state) {
 }
 
 /* w_journal_add_filter_to_list */
-void test_w_journal_add_filter_to_list_null_params(void ** state) {
+void test_w_journal_add_filter_to_list_null_params(void** state)
+{
 
     w_journal_filters_list_t list = NULL;
     w_journal_filter_t filter;
@@ -659,7 +733,8 @@ void test_w_journal_add_filter_to_list_null_params(void ** state) {
     assert_false(w_journal_add_filter_to_list(NULL, &filter));
 }
 
-void test_w_journal_add_filter_to_list_new_list(void ** state) {
+void test_w_journal_add_filter_to_list_new_list(void** state)
+{
 
     w_journal_filters_list_t list = NULL;
     w_journal_filter_t filter = {0};
@@ -674,7 +749,8 @@ void test_w_journal_add_filter_to_list_new_list(void ** state) {
     os_free(list);
 }
 
-void test_w_journal_add_filter_to_list_exist_list(void ** state) {
+void test_w_journal_add_filter_to_list_exist_list(void** state)
+{
 
     w_journal_filters_list_t list = NULL;
     w_journal_filter_t filter = {0};
@@ -700,32 +776,37 @@ void test_w_journal_add_filter_to_list_exist_list(void ** state) {
 }
 
 // Test w_journal_filter_list_as_json
-void test_w_journal_filter_list_as_json_null_params(void ** state) { assert_null(w_journal_filter_list_as_json(NULL)); }
+void test_w_journal_filter_list_as_json_null_params(void** state)
+{
+    assert_null(w_journal_filter_list_as_json(NULL));
+}
 
-void test_w_journal_filter_list_as_json_fail_array(void ** state) {
+void test_w_journal_filter_list_as_json_fail_array(void** state)
+{
 
     w_journal_filters_list_t list = NULL;
 
     // Prepare the filter
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
     assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
     // Add filter to the list
     assert_true(w_journal_add_filter_to_list(&list, filter));
 
     // Print the list
     // start: Print as json
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) NULL);
+    will_return(__wrap_cJSON_CreateArray, (cJSON*)NULL);
     assert_null(w_journal_filter_list_as_json(list));
 
     w_journal_filters_list_free(list); // Test w_journal_filters_list_free
 }
 
-void test_w_journal_filter_list_as_json_success(void ** state) {
+void test_w_journal_filter_list_as_json_success(void** state)
+{
 
     w_journal_filters_list_t list = NULL;
 
     // Prepare the filter
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
     assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
     // Add filter to the list
     assert_true(w_journal_add_filter_to_list(&list, filter));
@@ -733,19 +814,19 @@ void test_w_journal_filter_list_as_json_success(void ** state) {
     // Print the list
 
     // start: Print as json
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_CreateArray, (cJSON*)0x1);
 
     // - filter_as_json
-    will_return(__wrap_cJSON_CreateArray, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_CreateArray, (cJSON*)0x1);
     // - - unit_filter_as_json
-    will_return(__wrap_cJSON_CreateObject, (void *) 0x1);
+    will_return(__wrap_cJSON_CreateObject, (void*)0x1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "field");
     expect_string(__wrap_cJSON_AddStringToObject, string, "test field");
-    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON*)1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "expression");
     expect_string(__wrap_cJSON_AddStringToObject, string, VALID_PCRE2_REGEX);
-    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
-    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON*)1);
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON*)1);
     // - end: filter_as_json
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
@@ -760,20 +841,22 @@ void test_w_journal_filter_list_as_json_success(void ** state) {
 
 // ------------------------------------------------
 /* journald_add_condition_to_filter */
-void test_journald_add_condition_to_filter_invalid_params(void ** state) {
+void test_journald_add_condition_to_filter_invalid_params(void** state)
+{
 
     assert_false(journald_add_condition_to_filter(NULL, NULL));
-    assert_false(journald_add_condition_to_filter(NULL, (w_journal_filter_t **) 0x1));
-    assert_false(journald_add_condition_to_filter((xml_node *) 0x1, NULL));
+    assert_false(journald_add_condition_to_filter(NULL, (w_journal_filter_t**)0x1));
+    assert_false(journald_add_condition_to_filter((xml_node*)0x1, NULL));
 }
 
-void test_journald_add_condition_to_filter_non_field(void ** state) {
+void test_journald_add_condition_to_filter_non_field(void** state)
+{
 
     xml_node node = {0};
-    char * node_content = "regex xml content";
+    char* node_content = "regex xml content";
     node.content = node_content;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     // Null field
     will_return(__wrap_w_get_attr_val_by_name, NULL);
@@ -782,13 +865,14 @@ void test_journald_add_condition_to_filter_non_field(void ** state) {
     assert_false(journald_add_condition_to_filter(&node, &filter));
 }
 
-void test_journald_add_condition_to_filter_empty_field(void ** state) {
+void test_journald_add_condition_to_filter_empty_field(void** state)
+{
 
     xml_node node = {0};
-    char * node_content = "regex xml content";
+    char* node_content = "regex xml content";
     node.content = node_content;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     // Null field
     will_return(__wrap_w_get_attr_val_by_name, "");
@@ -797,13 +881,14 @@ void test_journald_add_condition_to_filter_empty_field(void ** state) {
     assert_false(journald_add_condition_to_filter(&node, &filter));
 }
 
-void test_journald_add_condition_to_filter_empty_regex(void ** state) {
+void test_journald_add_condition_to_filter_empty_regex(void** state)
+{
 
     xml_node node = {0};
-    char * node_content = "";
+    char* node_content = "";
     node.content = node_content;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     // Null field
     will_return(__wrap_w_get_attr_val_by_name, "field");
@@ -812,12 +897,13 @@ void test_journald_add_condition_to_filter_empty_regex(void ** state) {
     assert_false(journald_add_condition_to_filter(&node, &filter));
 }
 
-void test_journald_add_condition_to_filter_null_regex(void ** state) {
+void test_journald_add_condition_to_filter_null_regex(void** state)
+{
 
     xml_node node = {0};
     node.content = NULL;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     // Null field
     will_return(__wrap_w_get_attr_val_by_name, "field");
@@ -826,12 +912,13 @@ void test_journald_add_condition_to_filter_null_regex(void ** state) {
     assert_false(journald_add_condition_to_filter(&node, &filter));
 }
 
-void test_journald_add_condition_to_filter_ingore_no(void ** state) {
+void test_journald_add_condition_to_filter_ingore_no(void** state)
+{
 
     xml_node node = {0};
     node.content = VALID_PCRE2_REGEX;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     will_return(__wrap_w_get_attr_val_by_name, "field");
     will_return(__wrap_w_get_attr_val_by_name, "no");
@@ -851,12 +938,13 @@ void test_journald_add_condition_to_filter_ingore_no(void ** state) {
     w_journal_filter_free(filter);
 }
 
-void test_journald_add_condition_to_filter_ingore_missing(void ** state) {
+void test_journald_add_condition_to_filter_ingore_missing(void** state)
+{
 
     xml_node node = {0};
     node.content = VALID_PCRE2_REGEX;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     will_return(__wrap_w_get_attr_val_by_name, "field");
     will_return(__wrap_w_get_attr_val_by_name, NULL);
@@ -876,12 +964,13 @@ void test_journald_add_condition_to_filter_ingore_missing(void ** state) {
     w_journal_filter_free(filter);
 }
 
-void test_journald_add_condition_to_filter_ingore_wrong(void ** state) {
+void test_journald_add_condition_to_filter_ingore_wrong(void** state)
+{
 
     xml_node node = {0};
     node.content = VALID_PCRE2_REGEX;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     will_return(__wrap_w_get_attr_val_by_name, "field");
     will_return(__wrap_w_get_attr_val_by_name, "bad attribute");
@@ -905,12 +994,13 @@ void test_journald_add_condition_to_filter_ingore_wrong(void ** state) {
     w_journal_filter_free(filter);
 }
 
-void test_journald_add_condition_to_filter_ingore_yes(void ** state) {
+void test_journald_add_condition_to_filter_ingore_yes(void** state)
+{
 
     xml_node node = {0};
     node.content = VALID_PCRE2_REGEX;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     will_return(__wrap_w_get_attr_val_by_name, "field");
     will_return(__wrap_w_get_attr_val_by_name, "yes");
@@ -930,12 +1020,13 @@ void test_journald_add_condition_to_filter_ingore_yes(void ** state) {
     w_journal_filter_free(filter);
 }
 
-void test_journald_add_condition_to_filter_fail_regex(void ** state) {
+void test_journald_add_condition_to_filter_fail_regex(void** state)
+{
 
     xml_node node = {0};
     node.content = INVALID_PCRE2_REGEX;
 
-    w_journal_filter_t * filter = NULL;
+    w_journal_filter_t* filter = NULL;
 
     will_return(__wrap_w_get_attr_val_by_name, "field");
     will_return(__wrap_w_get_attr_val_by_name, "no");
@@ -949,16 +1040,17 @@ void test_journald_add_condition_to_filter_fail_regex(void ** state) {
 }
 
 /* w_multiline_log_config_free */
-void test_w_multiline_log_config_free_null(void **state)
+void test_w_multiline_log_config_free_null(void** state)
 {
     w_multiline_log_config_free(NULL);
 
-    w_multiline_config_t *config = NULL;
+    w_multiline_config_t* config = NULL;
     w_multiline_log_config_free(&config);
 }
 
-void test_w_multiline_log_config_free_success(void ** state) {
-    w_multiline_config_t * config = NULL;
+void test_w_multiline_log_config_free_success(void** state)
+{
+    w_multiline_config_t* config = NULL;
     os_calloc(1, sizeof(w_multiline_config_t), config);
 
     // Set a valid config
@@ -981,14 +1073,15 @@ void test_w_multiline_log_config_free_success(void ** state) {
 }
 
 // Test w_multiline_log_config_clone
-void test_w_multiline_log_config_clone_null(void ** state) {
+void test_w_multiline_log_config_clone_null(void** state)
+{
     assert_null(w_multiline_log_config_clone(NULL));
 }
 
-void test_w_multiline_log_config_clone_success(void ** state) {
+void test_w_multiline_log_config_clone_success(void** state)
+{
 
-
-    w_multiline_config_t * config = NULL;
+    w_multiline_config_t* config = NULL;
     os_calloc(1, sizeof(w_multiline_config_t), config);
 
     // Set a valid config
@@ -1004,9 +1097,8 @@ void test_w_multiline_log_config_clone_success(void ** state) {
     os_calloc(1, sizeof(w_multiline_ctxt_t), config->ctxt);
     os_calloc(100, sizeof(char), config->ctxt->buffer);
 
-
     // Test clone
-    w_multiline_config_t * cloned_config = w_multiline_log_config_clone(config);
+    w_multiline_config_t* cloned_config = w_multiline_log_config_clone(config);
     w_multiline_log_config_free(&config);
 
     // Checks
@@ -1021,16 +1113,16 @@ void test_w_multiline_log_config_clone_success(void ** state) {
     assert_null(cloned_config->ctxt); // Should be a empty context
 
     w_multiline_log_config_free(&cloned_config);
-
 }
 
 /* Test w_logreader_journald_merge */
 
-void test_w_logreader_journald_merge_both_no_filters(void ** state) {
+void test_w_logreader_journald_merge_both_no_filters(void** state)
+{
     // Test case: Both source and destination have no filters
     // Expected: disable_filters should be true (collect everything)
 
-    logreader *logr = NULL;
+    logreader* logr = NULL;
     os_calloc(3, sizeof(logreader), logr);
 
     // Setup destination journald (index 0)
@@ -1044,15 +1136,17 @@ void test_w_logreader_journald_merge_both_no_filters(void ** state) {
     logr[1].journal_log->filters = NULL; // No filters
 
     // Expect warning message when both blocks have no filters
-    expect_string(__wrap__mwarn, formatted_msg, 
-                  "(8022): The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters.");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(8022): The filters of the journald log will be disabled in the merge, because one of the "
+                  "configuration does not have filters.");
 
     // Perform merge
     bool result = w_logreader_journald_merge(&logr, 1);
 
     assert_true(result);
     assert_true(logr[0].journal_log->disable_filters); // Should be disabled (collect everything)
-    assert_null(logr[1].file); // Source should be removed
+    assert_null(logr[1].file);                         // Source should be removed
 
     // Cleanup
     free(logr[0].file);
@@ -1060,11 +1154,12 @@ void test_w_logreader_journald_merge_both_no_filters(void ** state) {
     free(logr);
 }
 
-void test_w_logreader_journald_merge_dst_has_filters_src_no_filters(void ** state) {
+void test_w_logreader_journald_merge_dst_has_filters_src_no_filters(void** state)
+{
     // Test case: Destination has filters, source has no filters
     // Expected: Keep destination filters, don't disable filters
 
-    logreader *logr = NULL;
+    logreader* logr = NULL;
     os_calloc(3, sizeof(logreader), logr);
 
     // Setup destination journald with filters (index 0)
@@ -1083,8 +1178,8 @@ void test_w_logreader_journald_merge_dst_has_filters_src_no_filters(void ** stat
 
     assert_true(result);
     assert_false(logr[0].journal_log->disable_filters); // Should NOT be disabled
-    assert_non_null(logr[0].journal_log->filters); // Destination filters preserved
-    assert_null(logr[1].file); // Source should be removed
+    assert_non_null(logr[0].journal_log->filters);      // Destination filters preserved
+    assert_null(logr[1].file);                          // Source should be removed
 
     // Cleanup
     free(logr[0].file);
@@ -1094,11 +1189,12 @@ void test_w_logreader_journald_merge_dst_has_filters_src_no_filters(void ** stat
     free(logr);
 }
 
-void test_w_logreader_journald_merge_src_has_filters_dst_no_filters(void ** state) {
+void test_w_logreader_journald_merge_src_has_filters_dst_no_filters(void** state)
+{
     // Test case: Source has filters, destination has no filters
     // Expected: Use source filters only, don't disable filters
 
-    logreader *logr = NULL;
+    logreader* logr = NULL;
     os_calloc(3, sizeof(logreader), logr);
 
     // Setup destination journald without filters (index 0)
@@ -1117,14 +1213,16 @@ void test_w_logreader_journald_merge_src_has_filters_dst_no_filters(void ** stat
 
     assert_true(result);
     assert_false(logr[0].journal_log->disable_filters); // Should NOT be disabled
-    assert_null(logr[1].file); // Source should be removed after merge
+    assert_null(logr[1].file);                          // Source should be removed after merge
 
     // Cleanup (note: w_logreader_journald_merge moves filters and calls Remove_Localfile)
     // The real Remove_Localfile frees journal_log, but our mock doesn't
     // So we need to clean up what remains
     free(logr[0].file);
-    if (logr[0].journal_log) {
-        if (logr[0].journal_log->filters) {
+    if (logr[0].journal_log)
+    {
+        if (logr[0].journal_log->filters)
+        {
             // The filter was moved from source, need to free it
             free(logr[0].journal_log->filters[0]);
             free(logr[0].journal_log->filters);
@@ -1135,11 +1233,12 @@ void test_w_logreader_journald_merge_src_has_filters_dst_no_filters(void ** stat
     free(logr);
 }
 
-void test_w_logreader_journald_merge_both_have_filters(void ** state) {
+void test_w_logreader_journald_merge_both_have_filters(void** state)
+{
     // Test case: Both source and destination have filters
     // Expected: Union of filters, don't disable filters
 
-    logreader *logr = NULL;
+    logreader* logr = NULL;
     os_calloc(3, sizeof(logreader), logr);
 
     // Setup destination journald with filters (index 0)
@@ -1159,17 +1258,20 @@ void test_w_logreader_journald_merge_both_have_filters(void ** state) {
 
     assert_true(result);
     assert_false(logr[0].journal_log->disable_filters); // Should NOT be disabled
-    assert_non_null(logr[0].journal_log->filters); // Filters preserved
-    assert_null(logr[1].file); // Source should be removed
+    assert_non_null(logr[0].journal_log->filters);      // Filters preserved
+    assert_null(logr[1].file);                          // Source should be removed
 
     // Cleanup (note: w_logreader_journald_merge moves filters and calls Remove_Localfile)
     free(logr[0].file);
-    if (logr[0].journal_log) {
-        if (logr[0].journal_log->filters) {
+    if (logr[0].journal_log)
+    {
+        if (logr[0].journal_log->filters)
+        {
             // Free the original destination filter
             free(logr[0].journal_log->filters[0]);
             // The source filter was moved, need to free it too
-            if (logr[0].journal_log->filters[1]) {
+            if (logr[0].journal_log->filters[1])
+            {
                 free(logr[0].journal_log->filters[1]);
             }
             free(logr[0].journal_log->filters);
@@ -1182,8 +1284,10 @@ void test_w_logreader_journald_merge_both_have_filters(void ** state) {
 
 /* Remote configuration (agent.conf) socket and target restrictions */
 
-static void free_test_nodes(xml_node ** nodes) {
-    for (int i = 0; nodes[i]; i++) {
+static void free_test_nodes(xml_node** nodes)
+{
+    for (int i = 0; nodes[i]; i++)
+    {
         os_free(nodes[i]->element);
         os_free(nodes[i]->content);
         os_free(nodes[i]);
@@ -1191,12 +1295,14 @@ static void free_test_nodes(xml_node ** nodes) {
     os_free(nodes);
 }
 
-static xml_node ** build_test_nodes(const char * const * pairs) {
-    xml_node ** nodes = NULL;
+static xml_node** build_test_nodes(const char* const* pairs)
+{
+    xml_node** nodes = NULL;
     int n = 0;
 
-    for (int i = 0; pairs[i]; i += 2) {
-        os_realloc(nodes, (n + 2) * sizeof(xml_node *), nodes);
+    for (int i = 0; pairs[i]; i += 2)
+    {
+        os_realloc(nodes, (n + 2) * sizeof(xml_node*), nodes);
         os_calloc(1, sizeof(xml_node), nodes[n]);
         os_strdup(pairs[i], nodes[n]->element);
         os_strdup(pairs[i + 1], nodes[n]->content);
@@ -1206,20 +1312,24 @@ static xml_node ** build_test_nodes(const char * const * pairs) {
     return nodes;
 }
 
-static void add_local_socket(logreader_config * config, const char * name) {
+static void add_local_socket(logreader_config* config, const char* name)
+{
     os_calloc(2, sizeof(socket_forwarder), config->socket_list);
     os_strdup(name, config->socket_list[0].name);
     os_strdup("/var/run/local.sock", config->socket_list[0].location);
     config->socket_list[0].socket = -1;
 }
 
-void test_Read_LogCollecSocket_remote_rejected(void ** state) {
-    const char * const pairs[] = {"name", "custom", "location", "/var/run/docker.sock", "mode", "tcp", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_LogCollecSocket_remote_rejected(void** state)
+{
+    const char* const pairs[] = {"name", "custom", "location", "/var/run/docker.sock", "mode", "tcp", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Remote sockets are not accepted from the manager. Ignoring socket 'custom' (/var/run/docker.sock) on the agent.conf");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Remote sockets are not accepted from the manager. Ignoring socket 'custom' (/var/run/docker.sock) "
+                  "on the agent.conf");
 
     assert_int_equal(Read_LogCollecSocket(nodes, &config, NULL), 0);
     assert_null(config.socket_list);
@@ -1227,10 +1337,11 @@ void test_Read_LogCollecSocket_remote_rejected(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_LogCollecSocket_remote_accepted(void ** state) {
-    const char * const pairs[] = {"name", "custom", "location", "/var/run/custom.sock", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 1 };
+void test_Read_LogCollecSocket_remote_accepted(void** state)
+{
+    const char* const pairs[] = {"name", "custom", "location", "/var/run/custom.sock", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 1};
 
     assert_int_equal(Read_LogCollecSocket(nodes, &config, NULL), 0);
     assert_non_null(config.socket_list);
@@ -1241,10 +1352,11 @@ void test_Read_LogCollecSocket_remote_accepted(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_LogCollecSocket_local(void ** state) {
-    const char * const pairs[] = {"name", "custom", "location", "/var/run/custom.sock", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 0, .accept_remote = 0 };
+void test_Read_LogCollecSocket_local(void** state)
+{
+    const char* const pairs[] = {"name", "custom", "location", "/var/run/custom.sock", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 0, .accept_remote = 0};
 
     assert_int_equal(Read_LogCollecSocket(nodes, &config, NULL), 0);
     assert_non_null(config.socket_list);
@@ -1254,13 +1366,15 @@ void test_Read_LogCollecSocket_local(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_Localfile_remote_undefined_target(void ** state) {
-    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
-                                  "target", "custom", "out_format", "$(log)", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_Localfile_remote_undefined_target(void** state)
+{
+    const char* const pairs[] = {
+        "location", "/var/log/test.log", "log_format", "syslog", "target", "custom", "out_format", "$(log)", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Socket 'custom' is not defined in the local configuration. "
                   "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
 
@@ -1273,15 +1387,17 @@ void test_Read_Localfile_remote_undefined_target(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_Localfile_remote_undefined_target_keeps_others(void ** state) {
-    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
-                                  "target", "agent,custom,local", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_Localfile_remote_undefined_target_keeps_others(void** state)
+{
+    const char* const pairs[] = {
+        "location", "/var/log/test.log", "log_format", "syslog", "target", "agent,custom,local", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
     add_local_socket(&config, "local");
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Socket 'custom' is not defined in the local configuration. "
                   "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
 
@@ -1295,20 +1411,30 @@ void test_Read_Localfile_remote_undefined_target_keeps_others(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_Localfile_remote_undefined_target_drops_out_format(void ** state) {
-    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
-                                  "target", "agent,custom", "out_format", "custom: $(log)",
-                                  "out_format", "all: $(log)", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_Localfile_remote_undefined_target_drops_out_format(void** state)
+{
+    const char* const pairs[] = {"location",
+                                 "/var/log/test.log",
+                                 "log_format",
+                                 "syslog",
+                                 "target",
+                                 "agent,custom",
+                                 "out_format",
+                                 "custom: $(log)",
+                                 "out_format",
+                                 "all: $(log)",
+                                 NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
     // Bind the first output format to the 'custom' target
-    os_calloc(2, sizeof(char *), nodes[3]->attributes);
-    os_calloc(2, sizeof(char *), nodes[3]->values);
+    os_calloc(2, sizeof(char*), nodes[3]->attributes);
+    os_calloc(2, sizeof(char*), nodes[3]->values);
     os_strdup("target", nodes[3]->attributes[0]);
     os_strdup("custom", nodes[3]->values[0]);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Socket 'custom' is not defined in the local configuration. "
                   "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
 
@@ -1328,19 +1454,23 @@ void test_Read_Localfile_remote_undefined_target_drops_out_format(void ** state)
     free_test_nodes(nodes);
 }
 
-void test_Read_Localfile_remote_socket_then_target(void ** state) {
-    const char * const socket_pairs[] = {"name", "custom", "location", "/var/run/docker.sock", NULL};
-    const char * const localfile_pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
-                                            "target", "custom", NULL};
-    xml_node ** socket_nodes = build_test_nodes(socket_pairs);
-    xml_node ** localfile_nodes = build_test_nodes(localfile_pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_Localfile_remote_socket_then_target(void** state)
+{
+    const char* const socket_pairs[] = {"name", "custom", "location", "/var/run/docker.sock", NULL};
+    const char* const localfile_pairs[] = {
+        "location", "/var/log/test.log", "log_format", "syslog", "target", "custom", NULL};
+    xml_node** socket_nodes = build_test_nodes(socket_pairs);
+    xml_node** localfile_nodes = build_test_nodes(localfile_pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
     add_local_socket(&config, "local");
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Remote sockets are not accepted from the manager. Ignoring socket 'custom' (/var/run/docker.sock) on the agent.conf");
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Remote sockets are not accepted from the manager. Ignoring socket 'custom' (/var/run/docker.sock) "
+                  "on the agent.conf");
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Socket 'custom' is not defined in the local configuration. "
                   "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
 
@@ -1356,11 +1486,12 @@ void test_Read_Localfile_remote_socket_then_target(void ** state) {
     free_test_nodes(localfile_nodes);
 }
 
-void test_Read_Localfile_remote_local_socket_target(void ** state) {
-    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
-                                  "target", "agent,local", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_Localfile_remote_local_socket_target(void** state)
+{
+    const char* const pairs[] = {
+        "location", "/var/log/test.log", "log_format", "syslog", "target", "agent,local", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
     add_local_socket(&config, "local");
 
@@ -1373,10 +1504,11 @@ void test_Read_Localfile_remote_local_socket_target(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_Localfile_remote_default_target(void ** state) {
-    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+void test_Read_Localfile_remote_default_target(void** state)
+{
+    const char* const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 0};
 
     assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
     assert_string_equal(config.config[0].file, "/var/log/test.log");
@@ -1386,11 +1518,11 @@ void test_Read_Localfile_remote_default_target(void ** state) {
     free_test_nodes(nodes);
 }
 
-void test_Read_Localfile_remote_accepted_undefined_target(void ** state) {
-    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
-                                  "target", "custom", NULL};
-    xml_node ** nodes = build_test_nodes(pairs);
-    logreader_config config = { .agent_cfg = 1, .accept_remote = 1 };
+void test_Read_Localfile_remote_accepted_undefined_target(void** state)
+{
+    const char* const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog", "target", "custom", NULL};
+    xml_node** nodes = build_test_nodes(pairs);
+    logreader_config config = {.agent_cfg = 1, .accept_remote = 1};
 
     assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
     assert_string_equal(config.config[0].file, "/var/log/test.log");
@@ -1402,7 +1534,8 @@ void test_Read_Localfile_remote_accepted_undefined_target(void ** state) {
 
 /* main */
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         // Tests replace_char
         cmocka_unit_test(test_multiline_attr_match_str_start),
@@ -1515,5 +1648,5 @@ int main(void) {
 
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
-    //return cmocka_run_group_tests(tests, NULL, NULL);
+    // return cmocka_run_group_tests(tests, NULL, NULL);
 }

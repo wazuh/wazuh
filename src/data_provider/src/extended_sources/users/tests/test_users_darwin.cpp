@@ -18,61 +18,49 @@
 
 class MockUUIDWrapper : public IUUIDWrapper
 {
-    public:
-        MOCK_METHOD(void, uidToUUID, (uid_t uid, uuid_t& uuid), (override));
-        MOCK_METHOD(void, gidToUUID, (gid_t gid, uuid_t& uuid), (override));
-        MOCK_METHOD(void, uuidToString, (const uuid_t& uuid, uuid_string_t& str), (override));
+public:
+    MOCK_METHOD(void, uidToUUID, (uid_t uid, uuid_t& uuid), (override));
+    MOCK_METHOD(void, gidToUUID, (gid_t gid, uuid_t& uuid), (override));
+    MOCK_METHOD(void, uuidToString, (const uuid_t& uuid, uuid_string_t& str), (override));
 };
 
 class MockPasswdWrapper : public IPasswdWrapperDarwin
 {
-    public:
-        MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (override));
-        MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (override));
-        MOCK_METHOD(void, setpwent, (), (override));
-        MOCK_METHOD(struct passwd*, getpwent, (), (override));
-        MOCK_METHOD(void, endpwent, (), (override));
+public:
+    MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (override));
+    MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (override));
+    MOCK_METHOD(void, setpwent, (), (override));
+    MOCK_METHOD(struct passwd*, getpwent, (), (override));
+    MOCK_METHOD(void, endpwent, (), (override));
 };
 
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
-        using StringBoolMap = std::map<std::string, bool>;
-        using StringJsonMap = std::map<std::string, nlohmann::json>;
-    public:
-        MOCK_METHOD(void, genEntries,
-                    (const std::string& recordType,
-                     const std::string* record,
-                     StringBoolMap& names),
-                    (override));
-        MOCK_METHOD(void, genAccountPolicyData,
-                    (const std::string& uid,
-                     nlohmann::json& policyData),
-                    (override));
-        MOCK_METHOD(void, genPasswordData,
-                    (StringJsonMap& passwordData),
-                    (override));
-        MOCK_METHOD(bool, genDisabledUsers,
-                    (std::set<std::string>& disabledUsers),
-                    (override));
+    using StringBoolMap = std::map<std::string, bool>;
+    using StringJsonMap = std::map<std::string, nlohmann::json>;
+
+public:
+    MOCK_METHOD(void,
+                genEntries,
+                (const std::string& recordType, const std::string* record, StringBoolMap& names),
+                (override));
+    MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
+    MOCK_METHOD(void, genPasswordData, (StringJsonMap & passwordData), (override));
+    MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string> & disabledUsers), (override));
 };
 
 /// Sets up the OpenDirectory password lookups with an account that has a password set and no
 /// disabled flag, for the tests that are not about the password data itself.
 static void expectPasswordData(const std::shared_ptr<MockODUtilsWrapper>& mockOD)
 {
-    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
-    {
-        return true;
-    });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&) { return true; });
     EXPECT_CALL(*mockOD, genPasswordData(testing::_))
-    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
-    {
-        passwordData["testuser"] =
-        {
-            {"password_status", "active"},
-            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
-        };
-    });
+        .WillOnce(
+            [](std::map<std::string, nlohmann::json>& passwordData)
+            {
+                passwordData["testuser"] = {{"password_status", "active"},
+                                            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}};
+            });
 }
 
 TEST(UsersProviderTest, CollectWithConstraintsSingleUser)
@@ -81,40 +69,30 @@ TEST(UsersProviderTest, CollectWithConstraintsSingleUser)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
-    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t& uuid)
-    {
-        std::fill(std::begin(uuid), std::end(uuid), 0xAB);
-    });
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_))
+        .WillOnce([](uid_t, uuid_t& uuid) { std::fill(std::begin(uuid), std::end(uuid), 0xAB); });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData =
-        {
-            {"creation_time", 1735576566.727},
-            {"failed_login_count", 0},
-            {"failed_login_timestamp", 0},
-            {"password_last_set_time", 1735576569.186}
-        };
-    });
+        .WillOnce(
+            [](const std::string&, nlohmann::json& policyData)
+            {
+                policyData = {{"creation_time", 1735576566.727},
+                              {"failed_login_count", 0},
+                              {"failed_login_timestamp", 0},
+                              {"password_last_set_time", 1735576569.186}};
+            });
 
     expectPasswordData(mockOD);
 
@@ -142,40 +120,32 @@ TEST(UsersProviderTest, CollectDerivesAgingFieldsFromExpiresEveryNDays)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     // A pwpolicy/MDM-imposed change interval, as read from the nested
     // policyCategoryPasswordChange/policyParameters entry.
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData =
-        {
-            {"creation_time", 1735576566.727},
-            {"failed_login_count", 0},
-            {"failed_login_timestamp", 0},
-            {"password_last_set_time", 1735576569.0},
-            {"expires_every_n_days", 90}
-        };
-    });
+        .WillOnce(
+            [](const std::string&, nlohmann::json& policyData)
+            {
+                policyData = {{"creation_time", 1735576566.727},
+                              {"failed_login_count", 0},
+                              {"failed_login_timestamp", 0},
+                              {"password_last_set_time", 1735576569.0},
+                              {"expires_every_n_days", 90}};
+            });
 
     expectPasswordData(mockOD);
 
@@ -194,42 +164,34 @@ TEST(UsersProviderTest, CollectOmitsAgingFieldsWithoutLastSetTime)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     // A policy interval with no recorded last-set time. od_wrapper.mm always defaults
     // password_last_set_time to 0.0 rather than omitting the key when OpenDirectory never
     // reported it, so this must be treated the same as the key being absent: there is nothing
     // to derive an expiration date from, and neither aging field should be reported.
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData =
-        {
-            {"creation_time", 1735576566.727},
-            {"failed_login_count", 0},
-            {"failed_login_timestamp", 0},
-            {"password_last_set_time", 0.0},
-            {"expires_every_n_days", 90}
-        };
-    });
+        .WillOnce(
+            [](const std::string&, nlohmann::json& policyData)
+            {
+                policyData = {{"creation_time", 1735576566.727},
+                              {"failed_login_count", 0},
+                              {"failed_login_timestamp", 0},
+                              {"password_last_set_time", 0.0},
+                              {"expires_every_n_days", 90}};
+            });
 
     expectPasswordData(mockOD);
 
@@ -248,42 +210,34 @@ TEST(UsersProviderTest, CollectCapsExpirationDateAtInt32WireLimit)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     // 24855 days is within the day-count-only bound (INT32_MAX/secondsPerDay) a prior version
     // of this guard used, but lastSetTime + 24855*secondsPerDay still overflows the int wire
     // field given how recent this last-set time is: the guard must weigh the full sum, not the
     // day count in isolation.
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData =
-        {
-            {"creation_time", 1735576566.727},
-            {"failed_login_count", 0},
-            {"failed_login_timestamp", 0},
-            {"password_last_set_time", 1735576569.0},
-            {"expires_every_n_days", 24855}
-        };
-    });
+        .WillOnce(
+            [](const std::string&, nlohmann::json& policyData)
+            {
+                policyData = {{"creation_time", 1735576566.727},
+                              {"failed_login_count", 0},
+                              {"failed_login_timestamp", 0},
+                              {"password_last_set_time", 1735576569.0},
+                              {"expires_every_n_days", 24855}};
+            });
 
     expectPasswordData(mockOD);
 
@@ -302,41 +256,33 @@ TEST(UsersProviderTest, CollectCapsMaxDaysBetweenChangesAtInt32WireLimit)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     // password_max_days_between_changes is the raw day count and shares the same int wire field
     // as password_expiration_date, but has no arithmetic of its own to overflow -- it needs its
     // own explicit cap rather than relying on the expiration-date guard.
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData =
-        {
-            {"creation_time", 1735576566.727},
-            {"failed_login_count", 0},
-            {"failed_login_timestamp", 0},
-            {"password_last_set_time", 1735576569.0},
-            {"expires_every_n_days", 5000000000LL}
-        };
-    });
+        .WillOnce(
+            [](const std::string&, nlohmann::json& policyData)
+            {
+                policyData = {{"creation_time", 1735576566.727},
+                              {"failed_login_count", 0},
+                              {"failed_login_timestamp", 0},
+                              {"password_last_set_time", 1735576569.0},
+                              {"expires_every_n_days", 5000000000LL}};
+            });
 
     expectPasswordData(mockOD);
 
@@ -355,41 +301,31 @@ TEST(UsersProviderTest, CollectInvokesCollectAccountPolicyData)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
 
     EXPECT_CALL(*mockPasswd, getpwnam(testing::_)).WillOnce(testing::Return(&fakePasswd));
-    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t& uuid)
-    {
-        std::fill(std::begin(uuid), std::end(uuid), 0xAB);
-    });
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
+    EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_))
+        .WillOnce([](uid_t, uuid_t& uuid) { std::fill(std::begin(uuid), std::end(uuid), 0xAB); });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData =
-        {
-            {"creation_time", 1735576566.727},
-            {"failed_login_count", 0},
-            {"failed_login_timestamp", 0},
-            {"password_last_set_time", 1735576569.186}
-        };
-    });
+        .WillOnce(
+            [](const std::string&, nlohmann::json& policyData)
+            {
+                policyData = {{"creation_time", 1735576566.727},
+                              {"failed_login_count", 0},
+                              {"failed_login_timestamp", 0},
+                              {"password_last_set_time", 1735576569.186}};
+            });
 
     expectPasswordData(mockOD);
 
@@ -416,45 +352,27 @@ TEST(UsersProviderTest, CollectReportsAccountWithoutPasswordAsNotSet)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"_amavisd",
-        .pw_uid = 83,
-        .pw_gid = 83,
-        .pw_gecos = (char*)"AMaViS Daemon",
-        .pw_dir = (char*)"/var/virusmails",
-        .pw_shell = (char*)"/usr/bin/false"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"_amavisd",
+                                     .pw_uid = 83,
+                                     .pw_gid = 83,
+                                     .pw_gecos = (char*)"AMaViS Daemon",
+                                     .pw_dir = (char*)"/var/virusmails",
+                                     .pw_shell = (char*)"/usr/bin/false"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(83)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(83, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "ffffeeee-dddd-cccc-bbbb-aaaa00000053");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["_amavisd"] = true;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "ffffeeee-dddd-cccc-bbbb-aaaa00000053"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["_amavisd"] = true; });
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData = nlohmann::json::object();
-    });
-    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
-    {
-        return true;
-    });
+        .WillOnce([](const std::string&, nlohmann::json& policyData) { policyData = nlohmann::json::object(); });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&) { return true; });
     // Service accounts carry no ShadowHash authority, so no hash algorithm is reported either.
     EXPECT_CALL(*mockOD, genPasswordData(testing::_))
-    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
-    {
-        passwordData["_amavisd"] =
-        {
-            {"password_status", "not_set"},
-            {"password_hash_algorithm", ""}
-        };
-    });
+        .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
+                  { passwordData["_amavisd"] = {{"password_status", "not_set"}, {"password_hash_algorithm", ""}}; });
 
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 
@@ -471,46 +389,37 @@ TEST(UsersProviderTest, CollectReportsDisabledAccountAsLocked)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData = nlohmann::json::object();
-    });
-    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>& disabledUsers)
-    {
-        disabledUsers.insert("testuser");
-        return true;
-    });
+        .WillOnce([](const std::string&, nlohmann::json& policyData) { policyData = nlohmann::json::object(); });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_))
+        .WillOnce(
+            [](std::set<std::string>& disabledUsers)
+            {
+                disabledUsers.insert("testuser");
+                return true;
+            });
     // A disabled account keeps its hash, so the group membership has to win over "active".
     EXPECT_CALL(*mockOD, genPasswordData(testing::_))
-    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
-    {
-        passwordData["testuser"] =
-        {
-            {"password_status", "active"},
-            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
-        };
-    });
+        .WillOnce(
+            [](std::map<std::string, nlohmann::json>& passwordData)
+            {
+                passwordData["testuser"] = {{"password_status", "active"},
+                                            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}};
+            });
 
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 
@@ -527,38 +436,25 @@ TEST(UsersProviderTest, CollectReportsUserMissingFromDirectoryAsNotCollected)
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData = nlohmann::json::object();
-    });
-    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
-    {
-        return true;
-    });
+        .WillOnce([](const std::string&, nlohmann::json& policyData) { policyData = nlohmann::json::object(); });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&) { return true; });
     // The record was unreadable, so it is absent from the map entirely.
-    EXPECT_CALL(*mockOD, genPasswordData(testing::_))
-    .WillOnce([](std::map<std::string, nlohmann::json>&) {});
+    EXPECT_CALL(*mockOD, genPasswordData(testing::_)).WillOnce([](std::map<std::string, nlohmann::json>&) {});
 
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 
@@ -576,29 +472,20 @@ TEST(UsersProviderTest, CollectResolvesPasswordDataForUserAbsentFromPasswd)
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
     // The account exists in OpenDirectory but not in the local passwd database.
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["odonly"] = false;
-    });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["odonly"] = false; });
     EXPECT_CALL(*mockPasswd, getpwnam(testing::_)).WillOnce(testing::Return(nullptr));
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData = nlohmann::json::object();
-    });
-    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
-    {
-        return true;
-    });
+        .WillOnce([](const std::string&, nlohmann::json& policyData) { policyData = nlohmann::json::object(); });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&) { return true; });
     EXPECT_CALL(*mockOD, genPasswordData(testing::_))
-    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
-    {
-        passwordData["odonly"] =
-        {
-            {"password_status", "active"},
-            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
-        };
-    });
+        .WillOnce(
+            [](std::map<std::string, nlohmann::json>& passwordData)
+            {
+                passwordData["odonly"] = {{"password_status", "active"},
+                                          {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}};
+            });
 
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 
@@ -616,45 +503,31 @@ TEST(UsersProviderTest, CollectReportsNoStatusWhenTheDisabledAccountsCannotBeRea
     auto mockUUID = std::make_shared<MockUUIDWrapper>();
     auto mockOD = std::make_shared<MockODUtilsWrapper>();
 
-    static struct passwd fakePasswd
-    {
-        .pw_name = (char*)"testuser",
-        .pw_uid = 101,
-        .pw_gid = 20,
-        .pw_gecos = (char*)"Test User",
-        .pw_dir = (char*)"/Users/testuser",
-        .pw_shell = (char*)"/bin/bash"
-    };
+    static struct passwd fakePasswd {.pw_name = (char*)"testuser",
+                                     .pw_uid = 101,
+                                     .pw_gid = 20,
+                                     .pw_gecos = (char*)"Test User",
+                                     .pw_dir = (char*)"/Users/testuser",
+                                     .pw_shell = (char*)"/bin/bash"};
 
     EXPECT_CALL(*mockPasswd, getpwuid(101)).WillOnce(testing::Return(&fakePasswd));
     EXPECT_CALL(*mockUUID, uidToUUID(101, testing::_)).WillOnce([](uid_t, uuid_t&) {});
-    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_)).WillOnce([](const uuid_t&, uuid_string_t& str)
-    {
-        strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12");
-    });
-    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_)).WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
-    {
-        names["testuser"] = false;
-    });
+    EXPECT_CALL(*mockUUID, uuidToString(testing::_, testing::_))
+        .WillOnce([](const uuid_t&, uuid_string_t& str) { strcpy(str, "abcdef00-1234-5678-90ab-cdefabcdef12"); });
+    EXPECT_CALL(*mockOD, genEntries(testing::_, testing::_, testing::_))
+        .WillOnce([](const std::string&, const std::string*, std::map<std::string, bool>& names)
+                  { names["testuser"] = false; });
     EXPECT_CALL(*mockOD, genAccountPolicyData(testing::_, testing::_))
-    .WillOnce([](const std::string&, nlohmann::json & policyData)
-    {
-        policyData = nlohmann::json::object();
-    });
+        .WillOnce([](const std::string&, nlohmann::json& policyData) { policyData = nlohmann::json::object(); });
     // The directory could not be read, so an empty set does not mean nobody is disabled.
-    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&)
-    {
-        return false;
-    });
+    EXPECT_CALL(*mockOD, genDisabledUsers(testing::_)).WillOnce([](std::set<std::string>&) { return false; });
     EXPECT_CALL(*mockOD, genPasswordData(testing::_))
-    .WillOnce([](std::map<std::string, nlohmann::json>& passwordData)
-    {
-        passwordData["testuser"] =
-        {
-            {"password_status", "active"},
-            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}
-        };
-    });
+        .WillOnce(
+            [](std::map<std::string, nlohmann::json>& passwordData)
+            {
+                passwordData["testuser"] = {{"password_status", "active"},
+                                            {"password_hash_algorithm", "SALTED-SHA512-PBKDF2"}};
+            });
 
     UsersProvider provider(mockPasswd, mockUUID, mockOD);
 

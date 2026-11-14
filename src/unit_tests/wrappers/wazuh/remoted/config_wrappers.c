@@ -7,13 +7,13 @@
  * Foundation
  */
 
-
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include "config_wrappers.h"
 
-cJSON *__wrap_getRemoteConfig() {
-    return mock_type(cJSON *);
+cJSON* __wrap_getRemoteConfig()
+{
+    return mock_type(cJSON*);
 }

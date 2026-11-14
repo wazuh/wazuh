@@ -13,7 +13,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-bool __wrap_HasFilesystem(__attribute__((unused))const char * path, __attribute__((unused))fs_set set) {
+bool __wrap_HasFilesystem(__attribute__((unused)) const char* path, __attribute__((unused)) fs_set set)
+{
     check_expected(path);
 
     return mock();

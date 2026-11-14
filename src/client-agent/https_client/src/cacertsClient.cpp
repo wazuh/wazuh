@@ -14,8 +14,11 @@
 
 #include <utility>
 
-CacertsClient::CacertsClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe,
-                             LogFn logFn, bool unverifiedByDesign)
+CacertsClient::CacertsClient(const ModuleConfig& config,
+                             IHttpPerformer& performer,
+                             const IFsProbe& fsProbe,
+                             LogFn logFn,
+                             bool unverifiedByDesign)
     : m_config(config)
     , m_performer(performer)
     , m_fsProbe(fsProbe)

@@ -23,7 +23,7 @@ namespace
     // handler registered before the provider existed.
     void readMetadataAtExit()
     {
-        agent_metadata_t metadata{};
+        agent_metadata_t metadata {};
         metadata_provider_get(&metadata);
         metadata_provider_free_metadata(&metadata);
     }
@@ -39,7 +39,7 @@ namespace
             return 2;
         }
 
-        agent_metadata_t metadata{};
+        agent_metadata_t metadata {};
         std::strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
 
         if (metadata_provider_update(&metadata) != 0)
@@ -49,7 +49,7 @@ namespace
 
         return 0;
     }
-}
+} // namespace
 #endif
 
 int main(int argc, char** argv)

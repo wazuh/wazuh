@@ -49,11 +49,12 @@ TEST(TaskBatchTest, AllFourTypesShuffledComeOutInCanonicalOrder)
     // Terminal-last over the four contract types: quick work first, then the
     // tasks that end the process. No upgrade/restart interplay here beyond
     // the reload subsumption, so use distinct batches.
-    auto plan = planTaskBatch({task("t1", "agent_restart"), task("t2", "active_response"),
-                               task("t3", "remote_upgrade"), task("t4", "agent_reload")});
+    auto plan = planTaskBatch({task("t1", "agent_restart"),
+                               task("t2", "active_response"),
+                               task("t3", "remote_upgrade"),
+                               task("t4", "agent_reload")});
     // upgrade present: restart and reload are covered.
-    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade"}),
-              typesOf(plan.ordered));
+    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade"}), typesOf(plan.ordered));
     ASSERT_EQ(2u, plan.dropped.size());
 }
 
@@ -61,15 +62,14 @@ TEST(TaskBatchTest, FullOrderWithoutSubsumers)
 {
     // Without upgrade/restart present, reload survives and slots into rank.
     auto plan = planTaskBatch({task("t1", "agent_reload"), task("t2", "active_response")});
-    EXPECT_EQ((std::vector<std::string> {"active_response", "agent_reload"}),
-              typesOf(plan.ordered));
+    EXPECT_EQ((std::vector<std::string> {"active_response", "agent_reload"}), typesOf(plan.ordered));
     EXPECT_TRUE(plan.dropped.empty());
 }
 
 TEST(TaskBatchTest, SameTypeKeepsArrivalOrder)
 {
-    auto plan = planTaskBatch({task("ar-1", "active_response"), task("ar-2", "active_response"),
-                               task("ar-3", "active_response")});
+    auto plan = planTaskBatch(
+        {task("ar-1", "active_response"), task("ar-2", "active_response"), task("ar-3", "active_response")});
     EXPECT_EQ((std::vector<std::string> {"ar-1", "ar-2", "ar-3"}), idsOf(plan.ordered));
 }
 
@@ -112,8 +112,7 @@ TEST(TaskBatchTest, PresenceIsEvaluatedPreDrop)
     // The restart is itself dropped by the upgrade, but it was present in the
     // delivered batch, so the reload is still covered (attributed to the
     // upgrade, the stronger subsumer).
-    auto plan = planTaskBatch({task("t1", "agent_reload"), task("t2", "agent_restart"),
-                               task("t3", "remote_upgrade")});
+    auto plan = planTaskBatch({task("t1", "agent_reload"), task("t2", "agent_restart"), task("t3", "remote_upgrade")});
     EXPECT_EQ((std::vector<std::string> {"remote_upgrade"}), typesOf(plan.ordered));
     ASSERT_EQ(2u, plan.dropped.size());
     EXPECT_EQ("agent_reload", plan.dropped[0].first.type);
@@ -125,10 +124,9 @@ TEST(TaskBatchTest, PresenceIsEvaluatedPreDrop)
 TEST(TaskBatchTest, TheUserScenarioRestartPlusUpgrade)
 {
     // "If there's a restart and an upgrade, just the upgrade would do."
-    auto plan = planTaskBatch({task("t1", "active_response"), task("t2", "agent_restart"),
-                               task("t3", "remote_upgrade")});
-    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade"}),
-              typesOf(plan.ordered));
+    auto plan =
+        planTaskBatch({task("t1", "active_response"), task("t2", "agent_restart"), task("t3", "remote_upgrade")});
+    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade"}), typesOf(plan.ordered));
     ASSERT_EQ(1u, plan.dropped.size());
     EXPECT_EQ("agent_restart", plan.dropped[0].first.type);
 }
@@ -137,11 +135,11 @@ TEST(TaskBatchTest, LegacyReconnectAndInfoRequestRankLastAndStillDispatch)
 {
     // Removed from the contract (#37733 2026-07-21): they are unknown types
     // now -- tolerated, dispatched last in arrival order, never subsumed.
-    auto plan = planTaskBatch({task("t1", "agent_reconnect"), task("t2", "info_request"),
-                               task("t3", "active_response"), task("t4", "remote_upgrade")});
-    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade",
-                                         "agent_reconnect", "info_request"
-                                        }),
+    auto plan = planTaskBatch({task("t1", "agent_reconnect"),
+                               task("t2", "info_request"),
+                               task("t3", "active_response"),
+                               task("t4", "remote_upgrade")});
+    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade", "agent_reconnect", "info_request"}),
               typesOf(plan.ordered));
     EXPECT_TRUE(plan.dropped.empty());
 }
@@ -151,11 +149,11 @@ TEST(TaskBatchTest, UnknownTypesRankLastInArrivalOrderAndNeverInteract)
     // Forward compatibility: an unknown type is dispatched (the consumer
     // decides what to do), after everything known, and no subsumption rule
     // touches it.
-    auto plan = planTaskBatch({task("t1", "future_thing"), task("t2", "another_future"),
-                               task("t3", "active_response"), task("t4", "remote_upgrade")});
-    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade", "future_thing",
-                                         "another_future"
-                                        }),
+    auto plan = planTaskBatch({task("t1", "future_thing"),
+                               task("t2", "another_future"),
+                               task("t3", "active_response"),
+                               task("t4", "remote_upgrade")});
+    EXPECT_EQ((std::vector<std::string> {"active_response", "remote_upgrade", "future_thing", "another_future"}),
               typesOf(plan.ordered));
     EXPECT_TRUE(plan.dropped.empty());
 }

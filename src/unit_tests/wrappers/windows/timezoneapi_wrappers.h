@@ -15,8 +15,6 @@
 
 #define FileTimeToSystemTime wrap_FileTimeToSystemTime
 
-WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME *lpFileTime,
-                                  LPSYSTEMTIME lpSystemTime);
-
+WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME* lpFileTime, LPSYSTEMTIME lpSystemTime);
 
 #endif

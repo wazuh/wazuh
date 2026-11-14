@@ -17,23 +17,25 @@
 #include "../../wrappers/common.h"
 
 /* setups/teardowns */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
     return 0;
 }
 
 // Tests
 
-void test_hmac_string(void **state)
+void test_hmac_string(void** state)
 {
-    const char *key = "test_key";
-    const char *string = "test string";
-    const char *string_hmac = "bcbf151b282a23e0849453f2b5732bfd8226e16a";
+    const char* key = "test_key";
+    const char* string = "test string";
+    const char* string_hmac = "bcbf151b282a23e0849453f2b5732bfd8226e16a";
 
     os_sha1 buffer;
 
@@ -42,11 +44,11 @@ void test_hmac_string(void **state)
     assert_string_equal(buffer, string_hmac);
 }
 
-void test_hmac_file(void **state)
+void test_hmac_file(void** state)
 {
-    const char *key = "test_key";
-    const char *string = "test string";
-    const char *string_hmac = "bcbf151b282a23e0849453f2b5732bfd8226e16a";
+    const char* key = "test_key";
+    const char* string = "test string";
+    const char* string_hmac = "bcbf151b282a23e0849453f2b5732bfd8226e16a";
 
     os_sha1 buffer;
 
@@ -63,11 +65,11 @@ void test_hmac_file(void **state)
     assert_string_equal(buffer, string_hmac);
 }
 
-void test_hmac_string_length_key(void **state)
+void test_hmac_string_length_key(void** state)
 {
-    const char *key = "test_key_abcdefghijklmnopqrstvwxzabcdefghijklmnopqrstvwxzabcdefgh";
-    const char *string = "test string";
-    const char *string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
+    const char* key = "test_key_abcdefghijklmnopqrstvwxzabcdefghijklmnopqrstvwxzabcdefgh";
+    const char* string = "test string";
+    const char* string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
 
     os_sha1 buffer;
 
@@ -76,11 +78,11 @@ void test_hmac_string_length_key(void **state)
     assert_string_equal(buffer, string_hmac);
 }
 
-void test_hmac_file_length_key(void **state)
+void test_hmac_file_length_key(void** state)
 {
-    const char *key = "test_key_abcdefghijklmnopqrstvwxzabcdefghijklmnopqrstvwxzabcdefgh";
-    const char *string = "test string";
-    const char *string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
+    const char* key = "test_key_abcdefghijklmnopqrstvwxzabcdefghijklmnopqrstvwxzabcdefgh";
+    const char* string = "test string";
+    const char* string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
 
     os_sha1 buffer;
 
@@ -97,10 +99,10 @@ void test_hmac_file_length_key(void **state)
     assert_string_equal(buffer, string_hmac);
 }
 
-void test_hmac_file_popen_fail(void **state)
+void test_hmac_file_popen_fail(void** state)
 {
-    const char *key = "test_key";
-    const char *string = "test string";
+    const char* key = "test_key";
+    const char* string = "test string";
 
     os_sha1 buffer;
 
@@ -119,7 +121,8 @@ void test_hmac_file_popen_fail(void **state)
     assert_int_equal(OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT), -1);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_hmac_string),
         cmocka_unit_test(test_hmac_string_length_key),

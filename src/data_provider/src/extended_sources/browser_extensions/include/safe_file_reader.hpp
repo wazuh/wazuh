@@ -108,7 +108,7 @@ namespace browser_extensions
         struct stat st;
 
         if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || !isOwnedBy(st, ownerUid) ||
-                static_cast<size_t>(st.st_size) > MAX_PROFILE_FILE_SIZE)
+            static_cast<size_t>(st.st_size) > MAX_PROFILE_FILE_SIZE)
         {
             ::close(fd);
             return false;
@@ -231,6 +231,6 @@ namespace browser_extensions
 
         return true;
     }
-}
+} // namespace browser_extensions
 
 #endif // _BROWSER_EXTENSIONS_SAFE_FILE_READER_HPP

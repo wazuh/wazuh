@@ -22,7 +22,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../external/cJSON/cJSON.h"
 
-static const char *TEST_CONF_PATH = "test_config-elements.conf";
+static const char* TEST_CONF_PATH = "test_config-elements.conf";
 
 /* The root element depends on whether the config library under test was built
  * for an agent, and the test cannot ask CLIENT: the unit-test build never defines it, while the library it links does
@@ -39,10 +39,12 @@ static const char *TEST_CONF_PATH = "test_config-elements.conf";
 #define CONF_OPEN  "<" CONF_ROOT ">"
 #define CONF_CLOSE "</" CONF_ROOT ">"
 
-static int write_conf(const char *body) {
-    FILE *fp = fopen(TEST_CONF_PATH, "w");
+static int write_conf(const char* body)
+{
+    FILE* fp = fopen(TEST_CONF_PATH, "w");
 
-    if (!fp) {
+    if (!fp)
+    {
         return -1;
     }
 
@@ -54,7 +56,8 @@ static int write_conf(const char *body) {
     return 0;
 }
 
-static int teardown_conf_file(void **state) {
+static int teardown_conf_file(void** state)
+{
     unlink(TEST_CONF_PATH);
     return 0;
 }
@@ -62,15 +65,18 @@ static int teardown_conf_file(void **state) {
 /* A top-level element that was valid in 4.x and has no parser left must be
  * ignored with a warning. Rejecting it is fatal, which is what took the whole
  * daemon down when a configuration file was carried over from 4.x. */
-static void test_obsolete_element_is_ignored(void **state) {
+static void test_obsolete_element_is_ignored(void** state)
+{
     if (write_conf("<command>"
                    "<name>ar-test</name>"
                    "<executable>block-ip</executable>"
-                   "</command>") != 0) {
+                   "</command>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(1223): 'command' is no longer supported and will be ignored. "
                   "Active Response commands are not defined in the configuration file.");
 
@@ -79,20 +85,25 @@ static void test_obsolete_element_is_ignored(void **state) {
 
 /* Every entry of the table warns with its own explanation, and one obsolete
  * element does not stop the rest of the file from being read. */
-static void test_several_obsolete_elements_are_ignored(void **state) {
+static void test_several_obsolete_elements_are_ignored(void** state)
+{
     if (write_conf("<labels><label key=\"test\">value</label></labels>"
                    "<ruleset><rule_dir>etc/rules</rule_dir></ruleset>"
-                   "<syslog_output><server>192.0.2.1</server></syslog_output>") != 0) {
+                   "<syslog_output><server>192.0.2.1</server></syslog_output>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(1223): 'labels' is no longer supported and will be ignored. "
                   "Agent labels were removed in 5.0.0.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(1223): 'ruleset' is no longer supported and will be ignored. "
                   "Rules and decoders are managed by the engine.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(1223): 'syslog_output' is no longer supported and will be ignored. "
                   "The wazuh-csyslogd daemon was removed in 5.0.0.");
 
@@ -101,12 +112,15 @@ static void test_several_obsolete_elements_are_ignored(void **state) {
 
 /* An empty obsolete element has no children, so it takes a different path
  * through the reader than the ones above. It must be ignored just the same. */
-static void test_empty_obsolete_element_is_ignored(void **state) {
-    if (write_conf("<agentless></agentless>") != 0) {
+static void test_empty_obsolete_element_is_ignored(void** state)
+{
+    if (write_conf("<agentless></agentless>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(1223): 'agentless' is no longer supported and will be ignored. "
                   "The wazuh-agentlessd daemon was removed in 5.0.0.");
 
@@ -115,16 +129,19 @@ static void test_empty_obsolete_element_is_ignored(void **state) {
 
 /* <client_buffer> was removed in 5.0.0, but to preserve smooth upgrades from
  * 4.x it is ignored with an info log rather than warned or rejected. */
-static void test_client_buffer_is_ignored_with_info(void **state) {
+static void test_client_buffer_is_ignored_with_info(void** state)
+{
     if (write_conf("<client_buffer>"
                    "<disabled>no</disabled>"
                    "<queue_size>5000</queue_size>"
                    "<events_per_second>500</events_per_second>"
-                   "</client_buffer>") != 0) {
+                   "</client_buffer>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "'client_buffer' is no longer used and will be ignored. "
                   "Event batching is configured under <agent><batch>.");
 
@@ -133,15 +150,16 @@ static void test_client_buffer_is_ignored_with_info(void **state) {
 
 /* Leniency is limited to the elements that were removed on purpose. An element
  * nobody ever supported is still an error, so typos keep being caught. */
-static void test_unknown_element_is_still_fatal(void **state) {
-    if (write_conf("<not_a_wazuh_element>x</not_a_wazuh_element>") != 0) {
+static void test_unknown_element_is_still_fatal(void** state)
+{
+    if (write_conf("<not_a_wazuh_element>x</not_a_wazuh_element>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'not_a_wazuh_element'.");
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1202): Configuration error at 'test_config-elements.conf'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'not_a_wazuh_element'.");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_config-elements.conf'.");
 
     assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
 }
@@ -149,11 +167,13 @@ static void test_unknown_element_is_still_fatal(void **state) {
 /* <active-response> is live configuration on an agent -- execd reads it from the
  * file itself -- and the manager parses agent.conf on the agents' behalf, so both
  * builds accept it without a word. */
-static void test_active_response_is_valid(void **state) {
+static void test_active_response_is_valid(void** state)
+{
     if (write_conf("<active-response>"
                    "<disabled>no</disabled>"
                    "<ca_verification>yes</ca_verification>"
-                   "</active-response>") != 0) {
+                   "</active-response>") != 0)
+    {
         fail();
     }
 
@@ -162,13 +182,15 @@ static void test_active_response_is_valid(void **state) {
 
 /* The manager's own sections have no XML reader anymore (/etc/wazuh-manager/wazuh-manager.conf):
  * an agent file that still carries one is told so and the block is ignored. */
-static void test_manager_section_is_ignored_with_warning(void **state) {
+static void test_manager_section_is_ignored_with_warning(void** state)
+{
     if (write_conf("<global>"
                    "<agents_disconnection_time>10m</agents_disconnection_time>"
                    "</global>"
                    "<remote>"
                    "<legacy><enabled>yes</enabled></legacy>"
-                   "</remote>") != 0) {
+                   "</remote>") != 0)
+    {
         fail();
     }
 
@@ -179,11 +201,13 @@ static void test_manager_section_is_ignored_with_warning(void **state) {
 }
 
 #ifdef TEST_AGENT_TARGET
-static int read_syscheck(void) {
+static int read_syscheck(void)
+{
     syscheck_config syscheck;
     int ret;
 
-    if (initialize_syscheck_configuration(&syscheck) == OS_INVALID) {
+    if (initialize_syscheck_configuration(&syscheck) == OS_INVALID)
+    {
         return OS_INVALID;
     }
 
@@ -193,8 +217,9 @@ static int read_syscheck(void) {
     return ret;
 }
 
-static int read_wmodules(void) {
-    wmodule *wmodules = NULL;
+static int read_wmodules(void)
+{
+    wmodule* wmodules = NULL;
     int ret = ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL);
 
     wm_free(wmodules);
@@ -204,7 +229,8 @@ static int read_wmodules(void) {
 
 /* The SCA reader first tries to load the default ruleset, a path relative to the
  * installation directory that does not exist where the tests run. */
-static void expect_sca_ruleset_not_found(void) {
+static void expect_sca_ruleset_not_found(void)
+{
     expect_any(__wrap__mtinfo, tag);
     expect_any(__wrap__mtinfo, formatted_msg);
 }
@@ -212,46 +238,56 @@ static void expect_sca_ruleset_not_found(void) {
 /* A 4.x default ossec.conf sets these deprecated options, and an upgrade keeps
  * that file, so every upgraded agent reports them: they must log at INFO, not
  * WARNING, like the other harmless 4.x leftovers. */
-static void test_syscheck_deprecated_defaults_are_info(void **state) {
+static void test_syscheck_deprecated_defaults_are_info(void** state)
+{
     if (write_conf("<syscheck>"
                    "<scan_on_start>yes</scan_on_start>"
                    "<synchronization>"
                    "<max_interval>1h</max_interval>"
                    "<max_eps>10</max_eps>"
                    "</synchronization>"
-                   "</syscheck>") != 0) {
+                   "</syscheck>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
-    expect_string(__wrap__minfo, formatted_msg, "The <max_interval> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__minfo, formatted_msg, "The <max_interval> option is deprecated and no longer has any effect.");
     expect_string(__wrap__minfo, formatted_msg, "The <max_eps> option is deprecated and no longer has any effect.");
 
     assert_int_equal(read_syscheck(), 0);
 }
 
 /* Options only a user sets, some of which did something in 4.x, keep the warning. */
-static void test_syscheck_deprecated_user_options_are_warning(void **state) {
+static void test_syscheck_deprecated_user_options_are_warning(void** state)
+{
     if (write_conf("<syscheck>"
                    "<synchronization><queue_size>16384</queue_size></synchronization>"
                    "<prefilter_cmd>/usr/sbin/prelink -y</prefilter_cmd>"
-                   "</syscheck>") != 0) {
+                   "</syscheck>") != 0)
+    {
         fail();
     }
 
     expect_string(__wrap__mwarn, formatted_msg, "The <queue_size> option is deprecated and no longer has any effect.");
-    expect_string(__wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
 
     assert_int_equal(read_syscheck(), 0);
 }
 
 /* The top-level <restart_audit> is still applied, only spelled the older way. */
-static void test_syscheck_top_level_restart_audit_is_info(void **state) {
-    if (write_conf("<syscheck><restart_audit>no</restart_audit></syscheck>") != 0) {
+static void test_syscheck_top_level_restart_audit_is_info(void** state)
+{
+    if (write_conf("<syscheck><restart_audit>no</restart_audit></syscheck>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "The <restart_audit> tag is deprecated, please use <whodata><restart_audit> instead.");
 
     assert_int_equal(read_syscheck(), 0);
@@ -260,22 +296,25 @@ static void test_syscheck_top_level_restart_audit_is_info(void **state) {
 /* An element <syscheck> does not know is rejected, as the other agent modules
  * reject theirs, so wazuh-syscheckd -t fails instead of the agent starting with
  * a setting that silently does nothing. */
-static void test_syscheck_unknown_element_is_error(void **state) {
-    if (write_conf("<syscheck><not_a_syscheck_option>1</not_a_syscheck_option></syscheck>") != 0) {
+static void test_syscheck_unknown_element_is_error(void** state)
+{
+    if (write_conf("<syscheck><not_a_syscheck_option>1</not_a_syscheck_option></syscheck>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'not_a_syscheck_option'.");
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'test_config-elements.conf'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'not_a_syscheck_option'.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "(1230): Invalid element in the configuration: 'test_config-elements.conf'.");
 
     assert_int_equal(read_syscheck(), OS_INVALID);
 }
 
 /* Every top-level <syscheck> option 4.14.9 accepted and 5.0 dropped is still
  * recognized, so a configuration kept by an upgrade loads as before. */
-static void test_syscheck_removed_4x_options_still_load(void **state) {
+static void test_syscheck_removed_4x_options_still_load(void** state)
+{
     if (write_conf("<syscheck>"
                    "<alert_new_files>yes</alert_new_files>"
                    "<auto_ignore frequency=\"10\" timeframe=\"3600\">no</auto_ignore>"
@@ -284,26 +323,34 @@ static void test_syscheck_removed_4x_options_still_load(void **state) {
                    "<allow_remote_prefilter_cmd>no</allow_remote_prefilter_cmd>"
                    "<remove_old_diff>yes</remove_old_diff>"
                    "<scan_on_start>yes</scan_on_start>"
-                   "</syscheck>") != 0) {
+                   "</syscheck>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__mwarn, formatted_msg, "The <alert_new_files> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "The <alert_new_files> option is deprecated and no longer has any effect.");
     expect_string(__wrap__mwarn, formatted_msg, "The <auto_ignore> option is deprecated and no longer has any effect.");
     expect_string(__wrap__mwarn, formatted_msg, "The <database> option is deprecated and no longer has any effect.");
-    expect_string(__wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(
+        __wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "The <allow_remote_prefilter_cmd> option is deprecated and no longer has any effect.");
-    expect_string(__wrap__mwarn, formatted_msg, "The <remove_old_diff> option is deprecated and no longer has any effect.");
-    expect_string(__wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "The <remove_old_diff> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
 
     assert_int_equal(read_syscheck(), 0);
 }
 
-static void test_syscollector_deprecated_default_is_info(void **state) {
+static void test_syscollector_deprecated_default_is_info(void** state)
+{
     if (write_conf("<wodle name=\"syscollector\">"
                    "<synchronization><max_eps>10</max_eps></synchronization>"
-                   "</wodle>") != 0) {
+                   "</wodle>") != 0)
+    {
         fail();
     }
 
@@ -312,8 +359,10 @@ static void test_syscollector_deprecated_default_is_info(void **state) {
     assert_int_equal(read_wmodules(), 0);
 }
 
-static void test_sca_deprecated_default_is_info(void **state) {
-    if (write_conf("<sca><skip_nfs>yes</skip_nfs></sca>") != 0) {
+static void test_sca_deprecated_default_is_info(void** state)
+{
+    if (write_conf("<sca><skip_nfs>yes</skip_nfs></sca>") != 0)
+    {
         fail();
     }
 
@@ -326,8 +375,10 @@ static void test_sca_deprecated_default_is_info(void **state) {
 
 /* Only a user sets <day>, <wday> or <time>, and they changed when SCA scanned:
  * losing them still deserves a warning. */
-static void test_sca_deprecated_schedule_is_warning(void **state) {
-    if (write_conf("<sca><day>1</day></sca>") != 0) {
+static void test_sca_deprecated_schedule_is_warning(void** state)
+{
+    if (write_conf("<sca><day>1</day></sca>") != 0)
+    {
         fail();
     }
 
@@ -343,10 +394,12 @@ static void test_sca_deprecated_schedule_is_warning(void **state) {
 
 /* A group's agent.conf as the manager validates it: the root is <agent_config>,
  * never the configuration root write_conf() adds. */
-static int write_agent_conf(const char *body) {
-    FILE *fp = fopen(TEST_CONF_PATH, "w");
+static int write_agent_conf(const char* body)
+{
+    FILE* fp = fopen(TEST_CONF_PATH, "w");
 
-    if (!fp) {
+    if (!fp)
+    {
         return -1;
     }
 
@@ -359,34 +412,42 @@ static int write_agent_conf(const char *body) {
 /* On the manager an unknown <agent_config> attribute fails the read, so
  * verify-agent-conf (and PUT /groups/{group_id}/configuration behind it) refuses
  * the file instead of storing a block the agents would apply to every host. */
-static void test_agent_config_unknown_attribute_is_fatal(void **state) {
+static void test_agent_config_unknown_attribute_is_fatal(void** state)
+{
     if (write_agent_conf("<agent_config bogus=\"1\"><localfile><log_format>syslog</log_format>"
-                         "<location>/var/log/test.log</location></localfile></agent_config>") != 0) {
+                         "<location>/var/log/test.log</location></localfile></agent_config>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(1233): Invalid attribute 'bogus' in the configuration: 'test_config-elements.conf'.");
 
     assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
 }
 
 /* The rejection is per attribute: a known one in front of the unknown one does not hide it. */
-static void test_agent_config_unknown_attribute_after_known_is_fatal(void **state) {
-    if (write_agent_conf("<agent_config name=\"web\" nmae=\"db\"></agent_config>") != 0) {
+static void test_agent_config_unknown_attribute_after_known_is_fatal(void** state)
+{
+    if (write_agent_conf("<agent_config name=\"web\" nmae=\"db\"></agent_config>") != 0)
+    {
         fail();
     }
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(1233): Invalid attribute 'nmae' in the configuration: 'test_config-elements.conf'.");
 
     assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
 }
 
 /* The four documented attributes stay accepted. */
-static void test_agent_config_known_attributes_are_valid(void **state) {
+static void test_agent_config_known_attributes_are_valid(void** state)
+{
     if (write_agent_conf("<agent_config name=\"web\" os=\"Linux\" profile=\"p1\" overwrite=\"yes\">"
-                         "</agent_config>") != 0) {
+                         "</agent_config>") != 0)
+    {
         fail();
     }
 
@@ -394,9 +455,10 @@ static void test_agent_config_known_attributes_are_valid(void **state) {
 }
 
 /* Read_Global_JSON(): the `global` section of the effective document (manager only). */
-static void test_Read_Global_JSON_accepts_int_and_duration(void **state) {
-    _Config config = { .agents_disconnection_time = 900 };
-    cJSON *global = cJSON_Parse("{\"agents_disconnection_time\":\"15m\"}");
+static void test_Read_Global_JSON_accepts_int_and_duration(void** state)
+{
+    _Config config = {.agents_disconnection_time = 900};
+    cJSON* global = cJSON_Parse("{\"agents_disconnection_time\":\"15m\"}");
     assert_non_null(global);
 
     assert_int_equal(Read_Global_JSON(global, &config), 0);
@@ -405,9 +467,10 @@ static void test_Read_Global_JSON_accepts_int_and_duration(void **state) {
     cJSON_Delete(global);
 }
 
-static void test_Read_Global_JSON_absent_keeps_defaults(void **state) {
-    _Config config = { .agents_disconnection_time = 600 };
-    cJSON *global = cJSON_Parse("{}");
+static void test_Read_Global_JSON_absent_keeps_defaults(void** state)
+{
+    _Config config = {.agents_disconnection_time = 600};
+    cJSON* global = cJSON_Parse("{}");
     assert_non_null(global);
 
     assert_int_equal(Read_Global_JSON(global, &config), 0);
@@ -416,9 +479,10 @@ static void test_Read_Global_JSON_absent_keeps_defaults(void **state) {
     cJSON_Delete(global);
 }
 
-static void test_Read_Global_JSON_rejects_zero_disconnection_time(void **state) {
-    _Config config = { .agents_disconnection_time = 900 };
-    cJSON *global = cJSON_Parse("{\"agents_disconnection_time\":0}");
+static void test_Read_Global_JSON_rejects_zero_disconnection_time(void** state)
+{
+    _Config config = {.agents_disconnection_time = 900};
+    cJSON* global = cJSON_Parse("{\"agents_disconnection_time\":0}");
     assert_non_null(global);
 
     expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'agents_disconnection_time': 0.");
@@ -430,7 +494,8 @@ static void test_Read_Global_JSON_rejects_zero_disconnection_time(void **state) 
 
 #endif
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_obsolete_element_is_ignored, teardown_conf_file),
         cmocka_unit_test_teardown(test_several_obsolete_elements_are_ignored, teardown_conf_file),

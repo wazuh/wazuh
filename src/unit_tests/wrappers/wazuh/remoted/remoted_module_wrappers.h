@@ -53,7 +53,6 @@ int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
  */
 int __wrap_remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
 
-
 /**
  * @brief Mock of the export remoted calls before its privilege drop to load the OpenSSL configuration.
  *

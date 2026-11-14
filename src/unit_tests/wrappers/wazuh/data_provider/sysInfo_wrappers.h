@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef SYSINFO_WRAPPERS_H
 #define SYSINFO_WRAPPERS_H
 

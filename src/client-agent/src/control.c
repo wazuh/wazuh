@@ -26,7 +26,7 @@
  * @param output  Allocated response string set by this function.
  * @return size_t Length of *output.
  */
-static size_t control_run_detached(const char *action, char **output)
+static size_t control_run_detached(const char* action, char** output)
 {
     STARTUPINFOA si;
     PROCESS_INFORMATION pi;
@@ -39,7 +39,8 @@ static size_t control_run_detached(const char *action, char **output)
      * starts it again — mirroring the old restart-wazuh.exe pattern.  The
      * caller returns "ok" immediately so the req-protocol response reaches
      * remoted before the service goes down. */
-    if (!GetModuleFileNameA(NULL, exe, MAX_PATH)) {
+    if (!GetModuleFileNameA(NULL, exe, MAX_PATH))
+    {
         mdebug1("CONTROL: GetModuleFileName failed for '%s' (error %lu).", action, GetLastError());
         os_strdup("err GetModuleFileName failed", *output);
         return strlen(*output);
@@ -47,7 +48,8 @@ static size_t control_run_detached(const char *action, char **output)
 
     int ret = snprintf(cmd, sizeof(cmd), "\"%s\" service-restart", exe);
 
-    if (ret < 0 || ret >= (int)sizeof(cmd)) {
+    if (ret < 0 || ret >= (int)sizeof(cmd))
+    {
         os_strdup("err command line too long", *output);
         return strlen(*output);
     }
@@ -56,7 +58,8 @@ static size_t control_run_detached(const char *action, char **output)
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
-    if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW | DETACHED_PROCESS, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW | DETACHED_PROCESS, NULL, NULL, &si, &pi))
+    {
         mdebug1("CONTROL: CreateProcess failed for '%s' (error %lu).", action, GetLastError());
         os_strdup("err CreateProcess failed", *output);
         return strlen(*output);
@@ -70,25 +73,29 @@ static size_t control_run_detached(const char *action, char **output)
     return strlen(*output);
 }
 
-size_t control_dispatch(char *command, char **output)
+size_t control_dispatch(char* command, char** output)
 {
-    char *args = strchr(command, ' ');
-    if (args) {
+    char* args = strchr(command, ' ');
+    if (args)
+    {
         *args = '\0';
         args++;
     }
 
-    if (strcmp(command, "restart") == 0) {
+    if (strcmp(command, "restart") == 0)
+    {
         minfo("Agent control: restart command received.");
         return control_run_detached("restart", output);
-
-    } else if (strcmp(command, "reload") == 0) {
+    }
+    else if (strcmp(command, "reload") == 0)
+    {
         /* Windows has no SIGHUP equivalent; reload is a full stop + start,
          * consistent with the old wcom_reload behaviour on Windows. */
         minfo("Agent control: reload command received.");
         return control_run_detached("reload", output);
-
-    } else {
+    }
+    else
+    {
         mdebug1("CONTROL: Unrecognized command '%s'.", command);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);

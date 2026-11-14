@@ -14,7 +14,8 @@
 
 #include "test_fim.h"
 
-void expect_fim_diff_delete_compress_folder(struct dirent *dir) {
+void expect_fim_diff_delete_compress_folder(struct dirent* dir)
+{
     expect_any(__wrap_IsDir, file);
     will_return(__wrap_IsDir, 0);
 

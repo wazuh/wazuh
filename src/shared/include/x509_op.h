@@ -25,7 +25,7 @@
  * @param path Path of the PEM file.
  * @return The certificate, which the caller must X509_free(), or NULL on error.
  */
-X509 *w_x509_load_pem(const char *path);
+X509* w_x509_load_pem(const char* path);
 
 /**
  * @brief Load EVERY certificate of a PEM file, in file order.
@@ -40,12 +40,12 @@ X509 *w_x509_load_pem(const char *path);
  * @return Array of certificates the caller must free with w_x509_free_all(), or NULL when there
  *         is none.
  */
-X509 **w_x509_load_all_pem(const char *path, size_t *count);
+X509** w_x509_load_all_pem(const char* path, size_t* count);
 
 /**
  * @brief Free an array returned by w_x509_load_all_pem().
  */
-void w_x509_free_all(X509 **certs, size_t count);
+void w_x509_free_all(X509** certs, size_t count);
 
 /**
  * @brief PEM text with @p count certificates and nothing else.
@@ -55,7 +55,7 @@ void w_x509_free_all(X509 **certs, size_t count);
  *
  * @return Heap string the caller must free, or NULL on error.
  */
-char *w_x509_certificates_pem(X509 **certs, size_t count);
+char* w_x509_certificates_pem(X509** certs, size_t count);
 
 /**
  * @brief SHA-256 of the DER SubjectPublicKeyInfo of a certificate.
@@ -67,7 +67,7 @@ char *w_x509_certificates_pem(X509 **certs, size_t count);
  * @param out Receives the 32 bytes of the digest.
  * @return 0 on success, -1 on error.
  */
-int w_x509_spki_sha256(X509 *cert, uint8_t out[32]);
+int w_x509_spki_sha256(X509* cert, uint8_t out[32]);
 
 /**
  * @brief Whether the signature of a certificate verifies against the public key of another.
@@ -79,7 +79,7 @@ int w_x509_spki_sha256(X509 *cert, uint8_t out[32]);
  * @param ca Certificate holding the issuer public key.
  * @return 1 when @p ca signed @p leaf, 0 otherwise (NULL arguments included).
  */
-int w_x509_signed_by(X509 *leaf, X509 *ca);
+int w_x509_signed_by(X509* leaf, X509* ca);
 
 /**
  * @brief Whether a host matches a subject alternative name of a certificate.
@@ -92,7 +92,7 @@ int w_x509_signed_by(X509 *leaf, X509 *ca);
  * @param host DNS name or IP literal.
  * @return 1 on match, 0 otherwise.
  */
-int w_x509_san_matches(X509 *cert, const char *host);
+int w_x509_san_matches(X509* cert, const char* host);
 
 /**
  * @brief Whether a certificate only names the loopback interface.
@@ -104,6 +104,6 @@ int w_x509_san_matches(X509 *cert, const char *host);
  * @param cert Certificate to check.
  * @return 1 when the certificate is loopback only, 0 otherwise.
  */
-int w_x509_san_is_loopback_only(X509 *cert);
+int w_x509_san_is_loopback_only(X509* cert);
 
 #endif /* X509_OP_H */

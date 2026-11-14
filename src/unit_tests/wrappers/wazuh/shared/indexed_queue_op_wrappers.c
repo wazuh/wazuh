@@ -14,7 +14,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void *__wrap_indexed_queue_pop_ex(w_indexed_queue_t *queue) {
+void* __wrap_indexed_queue_pop_ex(w_indexed_queue_t* queue)
+{
     check_expected_ptr(queue);
-    return mock_type(void *);
+    return mock_type(void*);
 }

@@ -17,52 +17,63 @@
 #include <string.h>
 #include <time.h>
 
-#include "../wrappers/posix/pthread_wrappers.h"  // <- mocks estrictos de Wazuh
+#include "../wrappers/posix/pthread_wrappers.h" // <- mocks estrictos de Wazuh
 
 #include "shared.h"
 #include "batch_queue_op.h"
 
 /* =============================== Test Helpers =============================== */
 
-typedef struct { int v; } payload_t;
+typedef struct
+{
+    int v;
+} payload_t;
 
-static payload_t *make_payload(int v) {
-    payload_t *p = (payload_t *)malloc(sizeof(payload_t));
+static payload_t* make_payload(int v)
+{
+    payload_t* p = (payload_t*)malloc(sizeof(payload_t));
     assert_non_null(p);
     p->v = v;
     return p;
 }
 
-
 /* Dispose hook that counts frees */
 static int g_disposed = 0;
-static void test_dispose(void *x) {
-    if (x) { ++g_disposed; free(x); }
+static void test_dispose(void* x)
+{
+    if (x)
+    {
+        ++g_disposed;
+        free(x);
+    }
 }
 
 /* Consumer that accumulates values */
 #define MAX_CONSUMED 128
 static int consumed_vals[MAX_CONSUMED];
 static size_t consumed_n;
-static void reset_consumed(void) {
+static void reset_consumed(void)
+{
     consumed_n = 0;
     memset(consumed_vals, 0, sizeof(consumed_vals));
 }
-static void consumer_append(void *data, void *user) {
+static void consumer_append(void* data, void* user)
+{
     (void)user;
     assert_true(consumed_n < MAX_CONSUMED);
-    payload_t *p = (payload_t *)data;
+    payload_t* p = (payload_t*)data;
     consumed_vals[consumed_n++] = p->v;
     free(p);
 }
 
 /* To “wake up” from the wrapper in cond_wait */
 extern void (*pthread_callback_ptr)(void);
-static w_rr_queue_t *g_sched = NULL;
+static w_rr_queue_t* g_sched = NULL;
 
-static void callback_enqueue_A(void) {
+static void callback_enqueue_A(void)
+{
     assert_non_null(g_sched);
-    payload_t *p = make_payload(42);
+    payload_t* p = make_payload(42);
     /* first enqueue must signal */
     expect_value(__wrap_pthread_cond_signal, cond, &g_sched->any_available);
     assert_int_equal(0, batch_queue_enqueue_ex(g_sched, "agent/A", p));
@@ -70,8 +81,9 @@ static void callback_enqueue_A(void) {
 
 /* ============================ Setup / Teardown ============================= */
 
-static int setup_sched(void **state) {
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/0);
+static int setup_sched(void** state)
+{
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/0);
     assert_non_null(q);
     *state = q;
     g_sched = q;
@@ -81,8 +93,9 @@ static int setup_sched(void **state) {
     return 0;
 }
 
-static int teardown_sched(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static int teardown_sched(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
     batch_queue_free(q);
     g_sched = NULL;
     return 0;
@@ -96,8 +109,9 @@ static int teardown_sched(void **state) {
  * - global size is 0
  * - ring slot count is 0
  */
-static void test_init_free_basic(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_init_free_basic(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
     assert_int_equal(1, batch_queue_empty(q));
     assert_int_equal(0, (int)batch_queue_size(q));
     assert_int_equal(0, (int)batch_queue_ring_size(q));
@@ -109,8 +123,9 @@ static void test_init_free_basic(void **state) {
  * - creates a slot and inserts it into the ring
  * - per-agent and global sizes become 1
  */
-static void test_enqueue_creates_slot_and_ring(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_enqueue_creates_slot_and_ring(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
 
     /* first insert for the agent → signal */
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
@@ -128,8 +143,9 @@ static void test_enqueue_creates_slot_and_ring(void **state) {
  * - draining twice processes one item per agent in round-robin
  * - after draining both, the scheduler is empty (ring size and global size are 0)
  */
-static void test_enqueue_two_agents_round_robin_and_drain(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_enqueue_two_agents_round_robin_and_drain(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
 
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/A", make_payload(1)));
@@ -139,7 +155,7 @@ static void test_enqueue_two_agents_round_robin_and_drain(void **state) {
 
     assert_int_equal(2, (int)batch_queue_ring_size(q));
 
-    const char *agent = NULL;
+    const char* agent = NULL;
     reset_consumed();
 
     size_t n1 = batch_queue_drain_next_ex(q, NULL, consumer_append, NULL, &agent);
@@ -162,8 +178,9 @@ static void test_enqueue_two_agents_round_robin_and_drain(void **state) {
  * - second enqueue is rejected with -ENOSPC; caller retains ownership and frees it
  * - draining consumes the single allowed item
  */
-static void test_per_agent_cap_and_dispose(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_per_agent_cap_and_dispose(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
     g_disposed = 0;
     batch_queue_set_dispose(q, test_dispose);
     batch_queue_set_agent_max(q, 1);
@@ -173,13 +190,13 @@ static void test_per_agent_cap_and_dispose(void **state) {
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/C", make_payload(10)));
 
     /* this one is rejected due to per-agent cap → no signal, caller owns it */
-    payload_t *rejected = make_payload(11);
+    payload_t* rejected = make_payload(11);
     int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
     assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
     free(rejected);                  /* caller retains ownership → free manually */
 
-    const char *agent = NULL;
+    const char* agent = NULL;
     size_t n = batch_queue_drain_next_ex(q, NULL, consumer_append, NULL, &agent);
     assert_int_equal(1, (int)n);
     assert_string_equal(agent, "agent/C");
@@ -191,9 +208,10 @@ static void test_per_agent_cap_and_dispose(void **state) {
  * - first two enqueues succeed and signal
  * - third enqueue is rejected with -ENOSPC (no signal expected)
  */
-static void test_global_cap_rejects_extra(void **state) {
+static void test_global_cap_rejects_extra(void** state)
+{
     (void)state;
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/2);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/2);
     assert_non_null(q);
     batch_queue_set_dispose(q, test_dispose);
 
@@ -204,7 +222,7 @@ static void test_global_cap_rejects_extra(void **state) {
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/B", make_payload(2)));
 
     /* exceeds global cap → no signal, returns -ENOSPC; caller retains ownership */
-    payload_t *rejected = make_payload(3);
+    payload_t* rejected = make_payload(3);
     int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
     free(rejected);
@@ -218,8 +236,9 @@ static void test_global_cap_rejects_extra(void **state) {
  * - drop removes its slot, disposes pending item
  * - ring and per-agent sizes go back to 0
  */
-static void test_drop_agent_removes_and_frees(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_drop_agent_removes_and_frees(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
     g_disposed = 0;
 
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
@@ -242,16 +261,17 @@ static void test_drop_agent_removes_and_frees(void **state) {
  * - NULL agent key returns -EINVAL (test frees the payload)
  * - NULL data returns -EINVAL (no allocation to free)
  */
-static void test_enqueue_invalid_args(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_enqueue_invalid_args(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
 
-    payload_t *p1 = make_payload(1);
+    payload_t* p1 = make_payload(1);
     assert_int_equal(-EINVAL, batch_queue_enqueue_ex(NULL, "x", p1));
-    free(p1);   // free because the function returned -EINVAL
+    free(p1); // free because the function returned -EINVAL
 
-    payload_t *p2 = make_payload(1);
+    payload_t* p2 = make_payload(1);
     assert_int_equal(-EINVAL, batch_queue_enqueue_ex(q, NULL, p2));
-    free(p2);   // idem
+    free(p2); // idem
 
     // this one allocates nothing: data == NULL
     assert_int_equal(-EINVAL, batch_queue_enqueue_ex(q, "x", NULL));
@@ -261,8 +281,9 @@ static void test_enqueue_invalid_args(void **state) {
  * Regression check: after draining the last remaining slot,
  * the ring slot counter should be 0 (i.e., ring truly empty).
  */
-static void test_ring_slots_zero_after_last_removal(void **state) {
-    w_rr_queue_t *q = (w_rr_queue_t *)*state;
+static void test_ring_slots_zero_after_last_removal(void** state)
+{
+    w_rr_queue_t* q = (w_rr_queue_t*)*state;
 
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/solo", make_payload(1)));
@@ -275,32 +296,41 @@ static void test_ring_slots_zero_after_last_removal(void **state) {
 
 /* ====================== Byte-limit helpers ====================== */
 
-typedef struct {
-    int  v;
+typedef struct
+{
+    int v;
     size_t sz; ///< Byte size reported to the scheduler
 } sized_payload_t;
 
-static sized_payload_t *make_sized(int v, size_t sz) {
-    sized_payload_t *p = (sized_payload_t *)malloc(sizeof(sized_payload_t));
+static sized_payload_t* make_sized(int v, size_t sz)
+{
+    sized_payload_t* p = (sized_payload_t*)malloc(sizeof(sized_payload_t));
     assert_non_null(p);
-    p->v  = v;
+    p->v = v;
     p->sz = sz;
     return p;
 }
 
-static size_t get_bytes_cb(const void *data) {
-    const sized_payload_t *p = (const sized_payload_t *)data;
+static size_t get_bytes_cb(const void* data)
+{
+    const sized_payload_t* p = (const sized_payload_t*)data;
     return p ? p->sz : 0;
 }
 
-static void dispose_sized(void *x) {
-    if (x) { ++g_disposed; free(x); }
+static void dispose_sized(void* x)
+{
+    if (x)
+    {
+        ++g_disposed;
+        free(x);
+    }
 }
 
-static void consumer_sized(void *data, void *user) {
+static void consumer_sized(void* data, void* user)
+{
     (void)user;
     assert_true(consumed_n < MAX_CONSUMED);
-    sized_payload_t *p = (sized_payload_t *)data;
+    sized_payload_t* p = (sized_payload_t*)data;
     consumed_vals[consumed_n++] = p->v;
     free(p);
 }
@@ -314,10 +344,11 @@ static void consumer_sized(void *data, void *user) {
  * - third item is rejected with -ENOSPC; caller retains ownership and frees it
  * - batch_queue_bytes() reflects the accumulated usage
  */
-static void test_byte_limit_global_rejects_extra(void **state) {
+static void test_byte_limit_global_rejects_extra(void** state)
+{
     (void)state;
 
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/0);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/0);
     assert_non_null(q);
     batch_queue_set_dispose(q, dispose_sized);
     batch_queue_set_get_item_bytes(q, get_bytes_cb);
@@ -334,10 +365,10 @@ static void test_byte_limit_global_rejects_extra(void **state) {
     assert_int_equal(100, (int)batch_queue_bytes(q));
 
     /* Third item exceeds byte quota → rejected, no signal; caller retains ownership */
-    sized_payload_t *rejected = make_sized(3, 1);
+    sized_payload_t* rejected = make_sized(3, 1);
     int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
+    assert_int_equal(0, g_disposed);                  /* queue must NOT call dispose on rejection */
     assert_int_equal(100, (int)batch_queue_bytes(q)); /* unchanged */
     free(rejected);
 
@@ -349,10 +380,11 @@ static void test_byte_limit_global_rejects_extra(void **state) {
  * - single item whose byte size exceeds the configured limit is rejected
  * - byte counter remains 0 after rejection
  */
-static void test_byte_limit_oversized_item_rejected(void **state) {
+static void test_byte_limit_oversized_item_rejected(void** state)
+{
     (void)state;
 
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/0);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/0);
     assert_non_null(q);
     batch_queue_set_dispose(q, dispose_sized);
     batch_queue_set_get_item_bytes(q, get_bytes_cb);
@@ -361,7 +393,7 @@ static void test_byte_limit_oversized_item_rejected(void **state) {
     g_disposed = 0;
 
     /* Item of 51 bytes is larger than the limit (50) → rejected; caller retains ownership */
-    sized_payload_t *rejected = make_sized(1, 51);
+    sized_payload_t* rejected = make_sized(1, 51);
     int rc = batch_queue_enqueue_ex(q, "agent/A", rejected);
     assert_int_equal(-ENOSPC, rc);
     assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
@@ -377,10 +409,11 @@ static void test_byte_limit_oversized_item_rejected(void **state) {
  * - drain one item to free its bytes
  * - a previously-rejected item can now be enqueued
  */
-static void test_byte_limit_recovers_after_drain(void **state) {
+static void test_byte_limit_recovers_after_drain(void** state)
+{
     (void)state;
 
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/0);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/0);
     assert_non_null(q);
     batch_queue_set_dispose(q, dispose_sized);
     batch_queue_set_get_item_bytes(q, get_bytes_cb);
@@ -397,14 +430,14 @@ static void test_byte_limit_recovers_after_drain(void **state) {
     assert_int_equal(100, (int)batch_queue_bytes(q));
 
     /* Byte quota full — 41-byte item cannot fit; caller retains ownership */
-    sized_payload_t *rejected = make_sized(3, 41);
+    sized_payload_t* rejected = make_sized(3, 41);
     int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
     assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
     free(rejected);
 
     /* Drain agent/A (60 bytes) */
-    const char *agent = NULL;
+    const char* agent = NULL;
     (void)batch_queue_drain_next_ex(q, NULL, consumer_sized, NULL, &agent);
     assert_int_equal(40, (int)batch_queue_bytes(q)); /* 100 - 60 */
 
@@ -421,10 +454,11 @@ static void test_byte_limit_recovers_after_drain(void **state) {
  * - enqueue one item for an agent
  * - drop the agent; bytes_global must return to 0
  */
-static void test_byte_limit_drop_agent_releases_bytes(void **state) {
+static void test_byte_limit_drop_agent_releases_bytes(void** state)
+{
     (void)state;
 
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/0);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/0);
     assert_non_null(q);
     batch_queue_set_dispose(q, dispose_sized);
     batch_queue_set_get_item_bytes(q, get_bytes_cb);
@@ -448,10 +482,11 @@ static void test_byte_limit_drop_agent_releases_bytes(void **state) {
  * - scheduler created with max_items_global = 2 AND max_bytes = 100
  * - item-count limit triggers before byte limit is exhausted
  */
-static void test_byte_limit_and_item_count_limit_coexist(void **state) {
+static void test_byte_limit_and_item_count_limit_coexist(void** state)
+{
     (void)state;
 
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/2);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/2);
     assert_non_null(q);
     batch_queue_set_dispose(q, dispose_sized);
     batch_queue_set_get_item_bytes(q, get_bytes_cb);
@@ -465,10 +500,10 @@ static void test_byte_limit_and_item_count_limit_coexist(void **state) {
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/B", make_sized(2, 10)));
 
     /* Item count (2) is reached; byte quota (20/100) is NOT exhausted; caller retains ownership */
-    sized_payload_t *rejected = make_sized(3, 5);
+    sized_payload_t* rejected = make_sized(3, 5);
     int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
+    assert_int_equal(0, g_disposed);                 /* queue must NOT call dispose on rejection */
     assert_int_equal(20, (int)batch_queue_bytes(q)); /* unchanged */
     free(rejected);
 
@@ -485,10 +520,11 @@ static void test_byte_limit_and_item_count_limit_coexist(void **state) {
  * so real multi-threaded tests cannot be conducted here.  The interleaving
  * below exercises the atomic byte accounting paths without spawning threads.
  */
-static void test_byte_counter_consistent_enqueue_drop_drain(void **state) {
+static void test_byte_counter_consistent_enqueue_drop_drain(void** state)
+{
     (void)state;
 
-    w_rr_queue_t *q = batch_queue_init(/*max_items_global=*/0);
+    w_rr_queue_t* q = batch_queue_init(/*max_items_global=*/0);
     assert_non_null(q);
     batch_queue_set_dispose(q, dispose_sized);
     batch_queue_set_get_item_bytes(q, get_bytes_cb);
@@ -526,7 +562,8 @@ static void test_byte_counter_consistent_enqueue_drop_drain(void **state) {
 
 /* ================================ Test Suite ================================ */
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_init_free_basic, setup_sched, teardown_sched),
         cmocka_unit_test_setup_teardown(test_enqueue_creates_slot_and_ring, setup_sched, teardown_sched),

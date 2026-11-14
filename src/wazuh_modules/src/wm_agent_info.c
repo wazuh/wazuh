@@ -384,7 +384,8 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     // the four /control task types, since the registry must outlast whichever task type
     // needs the longest at-least-once redelivery window). Cleanup runs on the module's own
     // <interval> cycle (AgentInfoImpl::start()'s loop) -- no separate cadence to configure.
-    agent_info->task_registry.max_entries = (uint32_t)getDefine_Int_default("agent_info", "max_entries", 1, 1000000, 4096);
+    agent_info->task_registry.max_entries =
+        (uint32_t)getDefine_Int_default("agent_info", "max_entries", 1, 1000000, 4096);
     agent_info->task_registry.ttl_s = (uint32_t)getDefine_Int_default("agent_info", "ttl", 1, 31536000, 86400);
 
     module->context = &WM_AGENT_INFO_CONTEXT;
@@ -499,8 +500,7 @@ size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char*
     {
         cJSON* task_id_item = cJSON_GetObjectItem(request, "task_id");
 
-        if (!task_id_item || !cJSON_IsString(task_id_item) || !task_id_item->valuestring ||
-            !*task_id_item->valuestring)
+        if (!task_id_item || !cJSON_IsString(task_id_item) || !task_id_item->valuestring || !*task_id_item->valuestring)
         {
             cJSON_Delete(request);
             wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
@@ -628,7 +628,8 @@ size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char*
         uint64_t out_offset = 0;
         int out_pending = 0;
         uint64_t out_pending_offset = 0;
-        int result = agent_info_vd_offset_get_state_ptr(&out_has_offset, &out_offset, &out_pending, &out_pending_offset);
+        int result =
+            agent_info_vd_offset_get_state_ptr(&out_has_offset, &out_offset, &out_pending, &out_pending_offset);
 
         if (result < 0)
         {
@@ -765,8 +766,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
         agent_info_cleanup_ptr = so_get_function_sym(agent_info_module, "agent_info_cleanup");
-        agent_info_release_resources_ptr =
-            so_get_function_sym(agent_info_module, "agent_info_release_resources");
+        agent_info_release_resources_ptr = so_get_function_sym(agent_info_module, "agent_info_release_resources");
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
@@ -842,8 +842,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     // -- no separate thread spawned here anymore.
     if (agent_info_task_registry_init_ptr)
     {
-        agent_info_task_registry_init_ptr(agent_info->task_registry.max_entries,
-                                          agent_info->task_registry.ttl_s);
+        agent_info_task_registry_init_ptr(agent_info->task_registry.max_entries, agent_info->task_registry.ttl_s);
     }
     else
     {
@@ -876,10 +875,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     while (!handshake_success && !wm_agent_info_is_shutting_down())
     {
-        if (wm_agent_info_query_agentd_handshake(cluster_name,
-                                                 sizeof(cluster_name),
-                                                 agent_groups,
-                                                 sizeof(agent_groups)))
+        if (wm_agent_info_query_agentd_handshake(
+                cluster_name, sizeof(cluster_name), agent_groups, sizeof(agent_groups)))
         {
             handshake_success = true;
             if (cluster_name[0] != '\0' && agent_info_set_cluster_name_ptr)

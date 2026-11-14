@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef GRP_WRAPPERS_H
 #define GRP_WRAPPERS_H
 
@@ -17,8 +16,7 @@
 #include <grp.h>
 #include <errno.h>
 
-
-int __wrap_getgrnam_r(const char *name, struct group *grp, char *buf, size_t buflen, struct group **result);
+int __wrap_getgrnam_r(const char* name, struct group* grp, char* buf, size_t buflen, struct group** result);
 
 #endif
 #endif

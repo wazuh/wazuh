@@ -47,7 +47,8 @@ extern int sock_fail_time;
  *  UNIX -> int(rc) file descriptor of initialized queue
  *  WIN32 -> 0
  */
-int StartMQWithSpecificOwnerAndPerms(const char *key, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
+int StartMQWithSpecificOwnerAndPerms(
+    const char* key, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
 
 /**
  *  Starts a Message Queue.
@@ -59,7 +60,7 @@ int StartMQWithSpecificOwnerAndPerms(const char *key, short int type, short int 
  *  UNIX -> int(rc) file descriptor of initialized queue
  *  WIN32 -> 0
  */
-int StartMQ(const char *key, short int type, short int n_attempts) __attribute__((nonnull));
+int StartMQ(const char* key, short int type, short int n_attempts) __attribute__((nonnull));
 
 /**
  *  Starts a Message Queue with predicated.
@@ -72,7 +73,7 @@ int StartMQ(const char *key, short int type, short int n_attempts) __attribute__
  *  UNIX -> int(rc) file descriptor of initialized queue
  *  WIN32 -> 0
  */
-int StartMQPredicated(const char *key, short int type, short int n_attempts, bool (*fn_ptr)()) __attribute__((nonnull));
+int StartMQPredicated(const char* key, short int type, short int n_attempts, bool (*fn_ptr)()) __attribute__((nonnull));
 
 /**
  * Sends a message string through a message queue
@@ -83,15 +84,15 @@ int StartMQPredicated(const char *key, short int type, short int n_attempts, boo
  * @param fn_ptr function pointer to the function that will check if the process is shutting down
  * @return
  * UNIX -> 0 if file descriptor is still available
- * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
- * WIN32 -> 0 on success
- * WIN32 -> -1 on error
- * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called
+ * to restore queue) WIN32 -> 0 on success WIN32 -> -1 on error Notes: (UNIX) If the socket is busy when trying to send
+ * a message a DEBUG2 message will be loggeed but the return code will be 0
  */
 
 /* message (arg 2) is excluded on purpose: SendMSGAction() guards it, and declaring it
  * non-null lets the optimizer propagate that through and delete the guard. */
-int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) __attribute__((nonnull(3, 5)));
+int SendMSGPredicated(int queue, const char* message, const char* locmsg, char loc, bool (*fn_ptr)())
+    __attribute__((nonnull(3, 5)));
 
 /**
  * Sends a message string through a message queue
@@ -101,15 +102,14 @@ int SendMSGPredicated(int queue, const char *message, const char *locmsg, char l
  * @param loc  queue location (WIN32)
  * @return
  * UNIX -> 0 if file descriptor is still available
- * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
- * WIN32 -> 0 on success
- * WIN32 -> -1 on error
- * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called
+ * to restore queue) WIN32 -> 0 on success WIN32 -> -1 on error Notes: (UNIX) If the socket is busy when trying to send
+ * a message a DEBUG2 message will be loggeed but the return code will be 0
  */
 
 /* message (arg 2) is excluded on purpose: SendMSGAction() guards it, and declaring it
  * non-null lets the optimizer propagate that through and delete the guard. */
-int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull(3)));
+int SendMSG(int queue, const char* message, const char* locmsg, char loc) __attribute__((nonnull(3)));
 
 /**
  * Sends a message binary through a message queue
@@ -120,12 +120,11 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attr
  * @param loc  queue location (WIN32)
  * @return
  * UNIX -> 0 if file descriptor is still available
- * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
- * WIN32 -> 0 on success
- * WIN32 -> -1 on error
- * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called
+ * to restore queue) WIN32 -> 0 on success WIN32 -> -1 on error Notes: (UNIX) If the socket is busy when trying to send
+ * a message a DEBUG2 message will be loggeed but the return code will be 0
  */
-int SendBinaryMSG(int queue, const void *message, size_t message_len, const char *locmsg, char loc);
+int SendBinaryMSG(int queue, const void* message, size_t message_len, const char* locmsg, char loc);
 
 /**
  * Sends a message binary through a message queue, breaking out of the
@@ -138,16 +137,18 @@ int SendBinaryMSG(int queue, const void *message, size_t message_len, const char
  * @param fn_ptr function pointer to the function that will check if the process is shutting down
  * @return
  * UNIX -> 0 if file descriptor is still available
- * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
- * WIN32 -> 0 on success
- * WIN32 -> -1 on error
- * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called
+ * to restore queue) WIN32 -> 0 on success WIN32 -> -1 on error Notes: (UNIX) If the socket is busy when trying to send
+ * a message a DEBUG2 message will be loggeed but the return code will be 0
  */
-int SendBinaryMSGPredicated(int queue, const void *message, size_t message_len, const char *locmsg, char loc, bool (*fn_ptr)()) __attribute__((nonnull));
+int SendBinaryMSGPredicated(
+    int queue, const void* message, size_t message_len, const char* locmsg, char loc, bool (*fn_ptr)())
+    __attribute__((nonnull));
 
 /**
  * Sends a message to a socket. If the socket has not been created yet it will be created based on
- * the target information. If a message fails to be sent the method will not try to send it again until *sock_fail_time* has passed
+ * the target information. If a message fails to be sent the method will not try to send it again until *sock_fail_time*
+ * has passed
  * @param queue file descriptor of the queue where the error message will be sent (UNIX)
  * @param message string containing the message that will be sent
  * @param locmsg path to the queue file
@@ -161,7 +162,8 @@ int SendBinaryMSGPredicated(int queue, const void *message, size_t message_len, 
  * WIN32 -> 0 valid target
  * Notes: (UNIX) If the message is not sent because the socket is busy, the return code will be 0
  */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target) __attribute__((nonnull (2, 3, 5)));
+int SendMSGtoSCK(int queue, const char* message, const char* locmsg, char loc, logtarget* target)
+    __attribute__((nonnull(2, 3, 5)));
 
 void mq_log_builder_init();
 
@@ -176,7 +178,6 @@ int mq_log_builder_update();
  *  UNIX -> int(rc) file descriptor of initialized queue
  *  WIN32 -> 0
  */
-int MQReconnectPredicated(const char *key, bool (*fn_ptr)()) __attribute__((nonnull));
-
+int MQReconnectPredicated(const char* key, bool (*fn_ptr)()) __attribute__((nonnull));
 
 #endif /* MQ_H */

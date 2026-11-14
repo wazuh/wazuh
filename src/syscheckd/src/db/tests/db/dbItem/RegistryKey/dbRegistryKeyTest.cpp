@@ -38,8 +38,7 @@ void RegistryKeyTest::TearDown()
 
 TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM)
 {
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto key = new RegistryKey(fimEntryTest);
         delete key;
     });
@@ -48,8 +47,7 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM)
 TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON)
 {
 
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto keyTest = new RegistryKey(inputJson);
         delete keyTest;
     });

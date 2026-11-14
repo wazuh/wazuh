@@ -92,8 +92,8 @@ TEST(TempSpoolFactoryTest, SpooledFileIsCreatedOwnerOnly)
 
     struct stat info {};
     ASSERT_EQ(0, ::lstat(spool->path().c_str(), &info));
-    EXPECT_TRUE(S_ISREG(info.st_mode));                       // A real file, not a symlink.
-    EXPECT_EQ(0, info.st_mode & (S_IRWXG | S_IRWXO));         // No group/other access.
+    EXPECT_TRUE(S_ISREG(info.st_mode));               // A real file, not a symlink.
+    EXPECT_EQ(0, info.st_mode & (S_IRWXG | S_IRWXO)); // No group/other access.
 }
 
 TEST(TempSpoolFactoryTest, ExistingPathIsNeverFollowedOrClobbered)
@@ -126,8 +126,7 @@ TEST(TempSpoolFactoryTest, ExistingPathIsNeverFollowedOrClobbered)
     EXPECT_EQ(EEXIST, errno);
 
     std::ifstream check {victim, std::ios::binary};
-    const std::string content {std::istreambuf_iterator<char> {check},
-                               std::istreambuf_iterator<char> {}};
+    const std::string content {std::istreambuf_iterator<char> {check}, std::istreambuf_iterator<char> {}};
     EXPECT_EQ("precious", content); // Untouched.
 
     ::unlink(target.c_str());
@@ -157,10 +156,7 @@ TEST(SpoolFileTest, MoveAssignmentDeletesThePreviousFile)
     const std::string pathA = ::testing::TempDir() + "hc_spool_a.tmp";
     const std::string pathB = ::testing::TempDir() + "hc_spool_b.tmp";
 
-    for (const auto& path :
-            {
-                pathA, pathB
-            })
+    for (const auto& path : {pathA, pathB})
     {
         std::ofstream file {path, std::ios::binary};
         file << "data";

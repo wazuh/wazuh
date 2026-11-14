@@ -29,19 +29,19 @@ using ::testing::SaveArg;
 
 class MockPersistentQueueStorage : public IPersistentQueueStorage
 {
-    public:
-        MOCK_METHOD(void, submitOrCoalesce, (const PersistedData& data), (override));
-        MOCK_METHOD(void, submitBatch, (const std::vector<PersistedData>& batch), (override));
-        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxItems), (override));
-        MOCK_METHOD(std::vector<PersistedData>, fetchPending, (bool onlyDataValues), (override));
-        MOCK_METHOD(void, removeAllSynced, (), (override));
-        MOCK_METHOD(void, resetAllSyncing, (), (override));
-        MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
-        MOCK_METHOD(void, removeAllDataContext, (), (override));
-        MOCK_METHOD(void, deleteDatabase, (), (override));
-        MOCK_METHOD(std::optional<IntegrityProgress>, getIntegrityProgress, (const std::string& index), (override));
-        MOCK_METHOD(void, setIntegrityProgress, (const std::string& index, const IntegrityProgress& progress), (override));
-        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
+public:
+    MOCK_METHOD(void, submitOrCoalesce, (const PersistedData& data), (override));
+    MOCK_METHOD(void, submitBatch, (const std::vector<PersistedData>& batch), (override));
+    MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxItems), (override));
+    MOCK_METHOD(std::vector<PersistedData>, fetchPending, (bool onlyDataValues), (override));
+    MOCK_METHOD(void, removeAllSynced, (), (override));
+    MOCK_METHOD(void, resetAllSyncing, (), (override));
+    MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
+    MOCK_METHOD(void, removeAllDataContext, (), (override));
+    MOCK_METHOD(void, deleteDatabase, (), (override));
+    MOCK_METHOD(std::optional<IntegrityProgress>, getIntegrityProgress, (const std::string& index), (override));
+    MOCK_METHOD(void, setIntegrityProgress, (const std::string& index, const IntegrityProgress& progress), (override));
+    MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
@@ -59,10 +59,7 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenLoggerIsNull)
     // Pass null logger function
     LoggerFunc nullLogger = nullptr;
 
-    EXPECT_THROW(
-    {
-        PersistentQueue queue(":memory:", nullLogger, mockStorage);
-    }, std::invalid_argument);
+    EXPECT_THROW({ PersistentQueue queue(":memory:", nullLogger, mockStorage); }, std::invalid_argument);
 }
 
 TEST(PersistentQueueTest, ConstructorThrowsWhenResetAllSyncingFails)
@@ -70,15 +67,11 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenResetAllSyncingFails)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     // Make resetAllSyncing throw an exception
-    EXPECT_CALL(*mockStorage, resetAllSyncing())
-    .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")));
+    EXPECT_CALL(*mockStorage, resetAllSyncing()).WillOnce(testing::Throw(std::runtime_error("Simulated DB error")));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
-    EXPECT_THROW(
-    {
-        PersistentQueue queue(":memory:", testLogger, mockStorage);
-    }, std::runtime_error);
+    EXPECT_THROW({ PersistentQueue queue(":memory:", testLogger, mockStorage); }, std::runtime_error);
 }
 
 TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
@@ -86,9 +79,7 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     std::vector<PersistedData> flushedBatch;
-    EXPECT_CALL(*mockStorage, submitBatch(_))
-    .Times(1)
-    .WillOnce(SaveArg<0>(&flushedBatch));
+    EXPECT_CALL(*mockStorage, submitBatch(_)).Times(1).WillOnce(SaveArg<0>(&flushedBatch));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     {
@@ -105,13 +96,11 @@ TEST(PersistentQueueTest, ConstructorHonorsCustomFlushBatchSizeOverride)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     std::vector<PersistedData> flushedBatch;
-    std::atomic<bool> flushed{false};
+    std::atomic<bool> flushed {false};
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .Times(1)
-    .WillOnce(DoAll(SaveArg<0>(&flushedBatch), InvokeWithoutArgs([&flushed]
-    {
-        flushed.store(true, std::memory_order_release);
-    })));
+        .Times(1)
+        .WillOnce(DoAll(SaveArg<0>(&flushedBatch),
+                        InvokeWithoutArgs([&flushed] { flushed.store(true, std::memory_order_release); })));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
@@ -137,13 +126,11 @@ TEST(PersistentQueueTest, DefaultFlushBatchSizeIs100WhenOnlyIntervalIsOverridden
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     std::vector<PersistedData> flushedBatch;
-    std::atomic<bool> flushed{false};
+    std::atomic<bool> flushed {false};
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .Times(1)
-    .WillOnce(DoAll(SaveArg<0>(&flushedBatch), InvokeWithoutArgs([&flushed]
-    {
-        flushed.store(true, std::memory_order_release);
-    })));
+        .Times(1)
+        .WillOnce(DoAll(SaveArg<0>(&flushedBatch),
+                        InvokeWithoutArgs([&flushed] { flushed.store(true, std::memory_order_release); })));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
@@ -175,13 +162,10 @@ TEST(PersistentQueueTest, DefaultFlushIntervalIsAbout500msWhenNotOverridden)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    std::atomic<bool> flushed{false};
+    std::atomic<bool> flushed {false};
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .Times(1)
-    .WillOnce(InvokeWithoutArgs([&flushed]
-    {
-        flushed.store(true, std::memory_order_release);
-    }));
+        .Times(1)
+        .WillOnce(InvokeWithoutArgs([&flushed] { flushed.store(true, std::memory_order_release); }));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
 
@@ -210,8 +194,8 @@ TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
     // With double-buffer design, submitBatch errors are caught in flushActiveBuffer().
     // submit() itself never throws — events are buffered and flushed asynchronously.
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")))
-    .WillRepeatedly(testing::Return());
+        .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")))
+        .WillRepeatedly(testing::Return());
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -225,12 +209,13 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .WillOnce(testing::Throw(std::runtime_error("Simulated persistence error")));
+        .WillOnce(testing::Throw(std::runtime_error("Simulated persistence error")));
 
     // Capture the log message
     std::string capturedLogMessage;
     modules_log_level_t capturedLogLevel;
-    LoggerFunc testLogger = [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string & message)
+    LoggerFunc testLogger =
+        [&capturedLogMessage, &capturedLogLevel](modules_log_level_t level, const std::string& message)
     {
         capturedLogLevel = level;
         capturedLogMessage = message;
@@ -262,12 +247,11 @@ TEST(PersistentQueueTest, FailedBatchIsRetainedAndRetriedOnNextFlushCycle)
     std::vector<PersistedData> retryBatch;
 
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error")))
-    .WillOnce(Return())
-    .WillOnce(SaveArg<0>(&retryBatch));
+        .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error")))
+        .WillOnce(Return())
+        .WillOnce(SaveArg<0>(&retryBatch));
 
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_) )
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_)).WillRepeatedly(Return(std::vector<PersistedData> {}));
 
     {
         PersistentQueue queue(":memory:", logger, mockStorage);
@@ -294,14 +278,10 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    std::vector<PersistedData> fakeData =
-    {
-        {0, "id1", "idx", "{}", Operation::CREATE, 0},
-        {0, "id2", "idx", "{}", Operation::MODIFY, 0}
-    };
+    std::vector<PersistedData> fakeData = {{0, "id1", "idx", "{}", Operation::CREATE, 0},
+                                           {0, "id2", "idx", "{}", Operation::MODIFY, 0}};
 
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_) )
-    .WillOnce(testing::Return(fakeData));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_)).WillOnce(testing::Return(fakeData));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -314,8 +294,8 @@ TEST(PersistentQueueTest, FetchAndMarkForSyncThrowsOnStorageError)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_) )
-    .WillOnce(testing::Throw(std::runtime_error("Simulated error obtaining items for sync")));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_))
+        .WillOnce(testing::Throw(std::runtime_error("Simulated error obtaining items for sync")));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -328,9 +308,7 @@ TEST(PersistentQueueTest, ClearItemsByIndexCallsStorageRemoveByIndex)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     std::string capturedIndex;
-    EXPECT_CALL(*mockStorage, removeByIndex(_))
-    .Times(1)
-    .WillOnce(SaveArg<0>(&capturedIndex));
+    EXPECT_CALL(*mockStorage, removeByIndex(_)).Times(1).WillOnce(SaveArg<0>(&capturedIndex));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -430,8 +408,7 @@ TEST(PersistentQueueTest, ClearItemsByIndexThrowsOnStorageError)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    EXPECT_CALL(*mockStorage, removeByIndex(_))
-    .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")));
+    EXPECT_CALL(*mockStorage, removeByIndex(_)).WillOnce(testing::Throw(std::runtime_error("Simulated DB error")));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -443,8 +420,7 @@ TEST(PersistentQueueTest, DeleteDatabaseCallsStorageDeleteDatabase)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    EXPECT_CALL(*mockStorage, deleteDatabase())
-    .Times(1);
+    EXPECT_CALL(*mockStorage, deleteDatabase()).Times(1);
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -457,7 +433,7 @@ TEST(PersistentQueueTest, DeleteDatabaseThrowsOnStorageError)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     EXPECT_CALL(*mockStorage, deleteDatabase())
-    .WillOnce(testing::Throw(std::runtime_error("Simulated DB deletion error")));
+        .WillOnce(testing::Throw(std::runtime_error("Simulated DB deletion error")));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -469,8 +445,7 @@ TEST(PersistentQueueTest, ClearSyncedItemsCallsStorageRemoveAllSynced)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    EXPECT_CALL(*mockStorage, removeAllSynced())
-    .Times(1);
+    EXPECT_CALL(*mockStorage, removeAllSynced()).Times(1);
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -483,7 +458,7 @@ TEST(PersistentQueueTest, ClearSyncedItemsThrowsOnStorageError)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     EXPECT_CALL(*mockStorage, removeAllSynced())
-    .WillOnce(testing::Throw(std::runtime_error("Simulated error clearing synchronized items")));
+        .WillOnce(testing::Throw(std::runtime_error("Simulated error clearing synchronized items")));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -496,8 +471,7 @@ TEST(PersistentQueueTest, ResetSyncingItemsCallsStorageResetAllSyncing)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
     // resetAllSyncing() is called twice: once during construction and once during the method call
-    EXPECT_CALL(*mockStorage, resetAllSyncing())
-    .Times(2);
+    EXPECT_CALL(*mockStorage, resetAllSyncing()).Times(2);
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -535,8 +509,8 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
 
     // Make the first call (constructor) succeed, but the second call (method) fail
     EXPECT_CALL(*mockStorage, resetAllSyncing())
-    .WillOnce(testing::Return()) // Constructor call succeeds
-    .WillOnce(testing::Throw(std::runtime_error("Simulated error resetting items"))); // Method call fails
+        .WillOnce(testing::Return())                                                      // Constructor call succeeds
+        .WillOnce(testing::Throw(std::runtime_error("Simulated error resetting items"))); // Method call fails
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     PersistentQueue queue(":memory:", testLogger, mockStorage);
@@ -586,9 +560,7 @@ TEST(PersistentQueueTest, fetchPendingItems_OnlyDataValues_True)
     expectedData.push_back(item1);
 
     // Expect fetchPending to be called with onlyDataValues=true
-    EXPECT_CALL(*mockStorage, fetchPending(true))
-    .Times(1)
-    .WillOnce(Return(expectedData));
+    EXPECT_CALL(*mockStorage, fetchPending(true)).Times(1).WillOnce(Return(expectedData));
 
     auto result = queue.fetchPendingItems(true);
 
@@ -629,9 +601,7 @@ TEST(PersistentQueueTest, fetchPendingItems_OnlyDataValues_False)
     expectedData.push_back(dataContext);
 
     // Expect fetchPending to be called with onlyDataValues=false
-    EXPECT_CALL(*mockStorage, fetchPending(false))
-    .Times(1)
-    .WillOnce(Return(expectedData));
+    EXPECT_CALL(*mockStorage, fetchPending(false)).Times(1).WillOnce(Return(expectedData));
 
     auto result = queue.fetchPendingItems(false);
 
@@ -652,9 +622,7 @@ TEST(PersistentQueueTest, fetchPendingItems_EmptyResult)
 
     std::vector<PersistedData> emptyData;
 
-    EXPECT_CALL(*mockStorage, fetchPending(true))
-    .Times(1)
-    .WillOnce(Return(emptyData));
+    EXPECT_CALL(*mockStorage, fetchPending(true)).Times(1).WillOnce(Return(emptyData));
 
     auto result = queue.fetchPendingItems(true);
 
@@ -673,8 +641,8 @@ TEST(PersistentQueueTest, fetchPendingItems_ExceptionHandling)
 
     // Make storage throw an exception
     EXPECT_CALL(*mockStorage, fetchPending(true))
-    .Times(1)
-    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+        .Times(1)
+        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should throw the exception
     EXPECT_THROW(queue.fetchPendingItems(true), std::runtime_error);
@@ -695,8 +663,7 @@ TEST(PersistentQueueTest, clearAllDataContext_Success)
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
     // Expect removeAllDataContext to be called once
-    EXPECT_CALL(*mockStorage, removeAllDataContext())
-    .Times(1);
+    EXPECT_CALL(*mockStorage, removeAllDataContext()).Times(1);
 
     EXPECT_NO_THROW(queue.clearAllDataContext());
 }
@@ -713,8 +680,8 @@ TEST(PersistentQueueTest, clearAllDataContext_ExceptionHandling)
 
     // Make storage throw an exception
     EXPECT_CALL(*mockStorage, removeAllDataContext())
-    .Times(1)
-    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+        .Times(1)
+        .WillOnce(::testing::Throw(std::runtime_error("Database error")));
 
     // Should throw the exception
     EXPECT_THROW(queue.clearAllDataContext(), std::runtime_error);
@@ -730,9 +697,7 @@ TEST(PersistentQueueTest, DestructorFlushesBufferedEventsOnGracefulShutdown)
     LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
 
     std::vector<PersistedData> flushedBatch;
-    EXPECT_CALL(*mockStorage, submitBatch(_))
-    .Times(1)
-    .WillOnce(SaveArg<0>(&flushedBatch));
+    EXPECT_CALL(*mockStorage, submitBatch(_)).Times(1).WillOnce(SaveArg<0>(&flushedBatch));
 
     {
         PersistentQueue queue(":memory:", logger, mockStorage);
@@ -765,70 +730,74 @@ namespace
     /// Calls from the other flusher are recorded and pass through.
     class BlockingBatchRecorder
     {
-        public:
-            enum class Flusher { Background, Sync };
+    public:
+        enum class Flusher
+        {
+            Background,
+            Sync
+        };
 
-            explicit BlockingBatchRecorder(Flusher blockOn)
-                : m_blockOn(blockOn)
+        explicit BlockingBatchRecorder(Flusher blockOn)
+            : m_blockOn(blockOn)
+        {
+        }
+
+        void onBatch(const std::vector<PersistedData>& batch)
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            for (const auto& item : batch)
             {
+                m_ids.push_back(item.id);
             }
 
-            void onBatch(const std::vector<PersistedData>& batch)
+            if (!m_blocked && t_isSyncThread == (m_blockOn == Flusher::Sync))
             {
-                std::unique_lock<std::mutex> lock(m_mutex);
-
-                for (const auto& item : batch)
-                {
-                    m_ids.push_back(item.id);
-                }
-
-                if (!m_blocked && t_isSyncThread == (m_blockOn == Flusher::Sync))
-                {
-                    m_blocked = true;
-                    m_cv.notify_all();
-                    m_cv.wait(lock, [this] { return m_released; });
-                }
-            }
-
-            /// Called by a sync thread once fetchAndMarkForSync() has returned.
-            void syncReturned()
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_syncReturned = true;
+                m_blocked = true;
                 m_cv.notify_all();
+                m_cv.wait(lock, [this] { return m_released; });
             }
+        }
 
-            /// Waits until the chosen flusher is held inside submitBatch() or a sync has returned.
-            /// @return true if the flusher is held, false if a sync returned first or on timeout.
-            bool waitBlocked(std::chrono::milliseconds timeout)
-            {
-                std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait_for(lock, timeout, [this] { return m_blocked || m_syncReturned; });
-                m_syncReturned = false;
-                return m_blocked;
-            }
+        /// Called by a sync thread once fetchAndMarkForSync() has returned.
+        void syncReturned()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_syncReturned = true;
+            m_cv.notify_all();
+        }
 
-            void release()
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_released = true;
-                m_cv.notify_all();
-            }
+        /// Waits until the chosen flusher is held inside submitBatch() or a sync has returned.
+        /// @return true if the flusher is held, false if a sync returned first or on timeout.
+        bool waitBlocked(std::chrono::milliseconds timeout)
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait_for(lock, timeout, [this] { return m_blocked || m_syncReturned; });
+            m_syncReturned = false;
+            return m_blocked;
+        }
 
-            std::vector<std::string> ids()
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                return m_ids;
-            }
+        void release()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_released = true;
+            m_cv.notify_all();
+        }
 
-        private:
-            const Flusher m_blockOn;
-            std::mutex m_mutex;
-            std::condition_variable m_cv;
-            bool m_blocked {false};
-            bool m_syncReturned {false};
-            bool m_released {false};
-            std::vector<std::string> m_ids;
+        std::vector<std::string> ids()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_ids;
+        }
+
+    private:
+        const Flusher m_blockOn;
+        std::mutex m_mutex;
+        std::condition_variable m_cv;
+        bool m_blocked {false};
+        bool m_syncReturned {false};
+        bool m_released {false};
+        std::vector<std::string> m_ids;
     };
 
     /// Releases the recorder when a test scope unwinds, so an early ASSERT_* return cannot leave
@@ -836,19 +805,19 @@ namespace
     /// Declare it after the queue and the futures so it is destroyed first.
     class ReleaseOnExit
     {
-        public:
-            explicit ReleaseOnExit(BlockingBatchRecorder& recorder)
-                : m_recorder(recorder)
-            {
-            }
+    public:
+        explicit ReleaseOnExit(BlockingBatchRecorder& recorder)
+            : m_recorder(recorder)
+        {
+        }
 
-            ~ReleaseOnExit()
-            {
-                m_recorder.release();
-            }
+        ~ReleaseOnExit()
+        {
+            m_recorder.release();
+        }
 
-        private:
-            BlockingBatchRecorder& m_recorder;
+    private:
+        BlockingBatchRecorder& m_recorder;
     };
 
     // Longer than the queue's 500 ms flush interval, so the background thread has woken up.
@@ -862,7 +831,7 @@ namespace
 
     // Attempts at getting the sync, not the background thread, to write the first batch.
     constexpr int MAX_SYNC_ATTEMPTS {10};
-}
+} // namespace
 
 TEST(PersistentQueueTest, SyncFlushWhileBackgroundFlushIsWritingKeepsNewSubmits)
 {
@@ -874,12 +843,8 @@ TEST(PersistentQueueTest, SyncFlushWhileBackgroundFlushIsWritingKeepsNewSubmits)
     BlockingBatchRecorder recorder(BlockingBatchRecorder::Flusher::Background);
 
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .WillRepeatedly(Invoke([&recorder](const std::vector<PersistedData>& batch)
-    {
-        recorder.onBatch(batch);
-    }));
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_))
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+        .WillRepeatedly(Invoke([&recorder](const std::vector<PersistedData>& batch) { recorder.onBatch(batch); }));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_)).WillRepeatedly(Return(std::vector<PersistedData> {}));
 
     {
         PersistentQueue queue(":memory:", logger, mockStorage);
@@ -890,11 +855,12 @@ TEST(PersistentQueueTest, SyncFlushWhileBackgroundFlushIsWritingKeepsNewSubmits)
         ASSERT_TRUE(recorder.waitBlocked(FLUSH_START_TIMEOUT)) << "The background thread never wrote.";
 
         queue.submit("b1", "idx", "{}", Operation::CREATE, 1);
-        sync = std::async(std::launch::async, [&queue]
-        {
-            t_isSyncThread = true;
-            queue.fetchAndMarkForSync();
-        });
+        sync = std::async(std::launch::async,
+                          [&queue]
+                          {
+                              t_isSyncThread = true;
+                              queue.fetchAndMarkForSync();
+                          });
         std::this_thread::sleep_for(CONCURRENT_FLUSH_WAIT);
 
         queue.submit("c1", "idx", "{}", Operation::CREATE, 1);
@@ -915,12 +881,8 @@ TEST(PersistentQueueTest, BackgroundFlushWhileSyncFlushIsWritingKeepsNewSubmits)
     BlockingBatchRecorder recorder(BlockingBatchRecorder::Flusher::Sync);
 
     EXPECT_CALL(*mockStorage, submitBatch(_))
-    .WillRepeatedly(Invoke([&recorder](const std::vector<PersistedData>& batch)
-    {
-        recorder.onBatch(batch);
-    }));
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_))
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+        .WillRepeatedly(Invoke([&recorder](const std::vector<PersistedData>& batch) { recorder.onBatch(batch); }));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_)).WillRepeatedly(Return(std::vector<PersistedData> {}));
 
     std::vector<std::string> submitted;
     {
@@ -938,12 +900,13 @@ TEST(PersistentQueueTest, BackgroundFlushWhileSyncFlushIsWritingKeepsNewSubmits)
             submitted.push_back("a" + std::to_string(attempt));
             queue.submit(submitted.back(), "idx", "{}", Operation::CREATE, 1);
 
-            sync = std::async(std::launch::async, [&queue, &recorder]
-            {
-                t_isSyncThread = true;
-                queue.fetchAndMarkForSync();
-                recorder.syncReturned();
-            });
+            sync = std::async(std::launch::async,
+                              [&queue, &recorder]
+                              {
+                                  t_isSyncThread = true;
+                                  queue.fetchAndMarkForSync();
+                                  recorder.syncReturned();
+                              });
 
             syncIsWriting = recorder.waitBlocked(FLUSH_START_TIMEOUT);
 
@@ -951,7 +914,7 @@ TEST(PersistentQueueTest, BackgroundFlushWhileSyncFlushIsWritingKeepsNewSubmits)
             {
                 // Not held inside a write, so the sync must have returned; anything else is a hang.
                 ASSERT_EQ(sync.wait_for(std::chrono::seconds(0)), std::future_status::ready)
-                        << "The sync neither wrote nor returned within " << FLUSH_START_TIMEOUT.count() << " s.";
+                    << "The sync neither wrote nor returned within " << FLUSH_START_TIMEOUT.count() << " s.";
                 sync.get();
             }
         }

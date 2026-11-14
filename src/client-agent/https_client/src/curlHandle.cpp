@@ -64,9 +64,7 @@ namespace
         // Never destroyed, like the global curl init above: the shutdown drain reads
         // this from an atexit handler registered before the lazy init, so LIFO
         // teardown would free the tree first and the drain would fault.
-        static const std::map<CurlOption, CURLoption>* const map =
-            new const std::map<CurlOption, CURLoption>
-        {
+        static const std::map<CurlOption, CURLoption>* const map = new const std::map<CurlOption, CURLoption> {
             {CurlOption::Url, CURLOPT_URL},
             {CurlOption::Post, CURLOPT_POST},
             {CurlOption::PostFields, CURLOPT_POSTFIELDS},
@@ -88,8 +86,7 @@ namespace
             {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
             {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS},
             {CurlOption::AcceptEncoding, CURLOPT_ACCEPT_ENCODING},
-            {CurlOption::HttpVersion, CURLOPT_HTTP_VERSION}
-        };
+            {CurlOption::HttpVersion, CURLOPT_HTTP_VERSION}};
         return *map;
     }
 
@@ -131,10 +128,10 @@ namespace
     /// Whether this libcurl was built with curl's decoder for `coding` (content_encoding.c).
     bool libcurlDecodes(const std::string& coding)
     {
-        static const std::map<std::string, int> featureOf
-        {
-            {"zstd", CURL_VERSION_ZSTD}, {"br", CURL_VERSION_BROTLI}, {"gzip", CURL_VERSION_LIBZ}, {"deflate", CURL_VERSION_LIBZ}
-        };
+        static const std::map<std::string, int> featureOf {{"zstd", CURL_VERSION_ZSTD},
+                                                           {"br", CURL_VERSION_BROTLI},
+                                                           {"gzip", CURL_VERSION_LIBZ},
+                                                           {"deflate", CURL_VERSION_LIBZ}};
         const auto feature = featureOf.find(coding);
         return feature != featureOf.end() && (curl_version_info(CURLVERSION_NOW)->features & feature->second) != 0;
     }
@@ -232,8 +229,7 @@ namespace
             // Certificate policy problems: the leaf or an intermediate names constraints
             // this verification cannot satisfy, independent of chain-of-trust discovery.
             case X509_V_ERR_INVALID_POLICY_EXTENSION:
-            case X509_V_ERR_NO_EXPLICIT_POLICY:
-                return false;
+            case X509_V_ERR_NO_EXPLICIT_POLICY: return false;
 
             default:
                 // Deliberately permissive: every date/hostname cause is already classified
@@ -265,11 +261,9 @@ namespace
             case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
             case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
             case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
-            case X509_V_ERR_CERT_UNTRUSTED:
-                return true;
+            case X509_V_ERR_CERT_UNTRUSTED: return true;
 
-            default:
-                return false;
+            default: return false;
         }
     }
 
@@ -277,16 +271,13 @@ namespace
     {
         switch (code)
         {
-            case CURLE_OK:
-                return TransportStatus::Ok;
+            case CURLE_OK: return TransportStatus::Ok;
 
-            case CURLE_OPERATION_TIMEDOUT:
-                return TransportStatus::Timeout;
+            case CURLE_OPERATION_TIMEDOUT: return TransportStatus::Timeout;
 
             case CURLE_COULDNT_RESOLVE_HOST:
             case CURLE_COULDNT_RESOLVE_PROXY:
-            case CURLE_COULDNT_CONNECT:
-                return TransportStatus::ConnectFail;
+            case CURLE_COULDNT_CONNECT: return TransportStatus::ConnectFail;
 
             // CURLE_SSL_CACERT is libcurl's older name for CURLE_PEER_FAILED_VERIFICATION
             // (an alias since 7.62.0), so it is not a separate case here. perform() below
@@ -300,355 +291,347 @@ namespace
             case CURLE_SSL_CERTPROBLEM:
             case CURLE_SSL_CIPHER:
             case CURLE_SSL_CACERT_BADFILE:
-            case CURLE_SSL_ISSUER_ERROR:
-                return TransportStatus::TlsFail;
+            case CURLE_SSL_ISSUER_ERROR: return TransportStatus::TlsFail;
 
-            case CURLE_ABORTED_BY_CALLBACK:
-                return TransportStatus::Aborted;
+            case CURLE_ABORTED_BY_CALLBACK: return TransportStatus::Aborted;
 
-            default:
-                return TransportStatus::OtherError;
+            default: return TransportStatus::OtherError;
         }
     }
 
     class CurlHandle final : public ICurlHandle
     {
-        public:
-            CurlHandle()
+    public:
+        CurlHandle()
+        {
+            ensureCurlGlobalInit();
+            m_handle = curl_easy_init();
+        }
+
+        ~CurlHandle() override
+        {
+            if (m_headers != nullptr)
             {
-                ensureCurlGlobalInit();
-                m_handle = curl_easy_init();
+                curl_slist_free_all(m_headers);
             }
 
-            ~CurlHandle() override
+            if (m_handle != nullptr)
             {
-                if (m_headers != nullptr)
+                curl_easy_cleanup(m_handle);
+            }
+        }
+
+        CurlHandle(const CurlHandle&) = delete;
+        CurlHandle& operator=(const CurlHandle&) = delete;
+
+        bool valid() const
+        {
+            return m_handle != nullptr;
+        }
+
+        bool setOptionLong(CurlOption option, long value) override
+        {
+            return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
+        }
+
+        bool setOptionString(CurlOption option, const std::string& value) override
+        {
+            return curl_easy_setopt(m_handle, optionMap().at(option), value.c_str()) == CURLE_OK;
+        }
+
+        bool setOptionPtr(CurlOption option, const void* value) override
+        {
+            return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
+        }
+
+        bool trustSelfSignedRoot() override
+        {
+            m_wantsPartialChain = true;
+            return installSslCtxSetup();
+        }
+
+        void appendHeader(const std::string& header) override
+        {
+            m_headers = curl_slist_append(m_headers, header.c_str());
+        }
+
+        bool captureResponseBody(std::string* output, uint64_t maxBytes) override
+        {
+            m_bodySink = BodySink {output, maxBytes};
+            return limitDownload(maxBytes) &&
+                   curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeToBodySink) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_bodySink) == CURLE_OK;
+        }
+
+        bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
+        {
+            // curl undoes the chunked transfer and any Content-Encoding before the
+            // sink, so both caps count the bytes that reach the file.
+            m_fileSink = FileSink {file, 0, maxBytes};
+            return limitDownload(maxBytes) &&
+                   curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeToFileSink) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
+        }
+
+        bool captureResponseHeaders(HeaderCapture capture) override
+        {
+            m_headerCapture = capture;
+            return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, &m_headerCapture) == CURLE_OK;
+        }
+
+        bool streamBodyFromFile(std::FILE* file, uint64_t size) override
+        {
+            // UPLOAD + INFILESIZE_LARGE streams from the read callback with a
+            // fixed Content-Length (no chunked encoding); CUSTOMREQUEST keeps
+            // it a POST.
+            return curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST") == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_READDATA, file) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size)) == CURLE_OK;
+        }
+
+        bool wireAbort(const std::atomic<bool>* abortFlag) override
+        {
+            return curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L) == CURLE_OK;
+        }
+
+        TransportStatus perform() override
+        {
+            m_lastError.clear();
+            m_tlsCapture = TlsVerifyCapture {};
+            m_tlsFailureDetail = TlsFailureDetail {};
+            m_caFileLoadFailed = false;
+            m_contentDecodingFailed = false;
+
+            // Installed unconditionally, not just when trustSelfSignedRoot() is called
+            // (verify_mode=system's applyTrustAnchors() never calls it): the diagnostics
+            // capture below must run for every request that verifies the peer, not only
+            // when a configured CA additionally needs the partial-chain relaxation. A no-op
+            // re-set when trustSelfSignedRoot() already installed it for this same handle.
+            if (!installSslCtxSetup())
+            {
+                return TransportStatus::OtherError; // LCOV_EXCL_LINE: a function-pointer/userptr option cannot fail in
+                                                    // practice.
+            }
+
+            if (m_headers != nullptr && curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers) != CURLE_OK)
+            {
+                return TransportStatus::OtherError;
+            }
+
+            // The CURLcode collapses into a coarse TransportStatus, so this is
+            // the only place the real cause exists: keep libcurl's own message.
+            char errorBuffer[CURL_ERROR_SIZE] {};
+            const bool errorBufferSet = curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK;
+
+            const CURLcode code = curl_easy_perform(m_handle);
+
+            // A shutdown tripping the abort flag is not a transport failure, and
+            // Interrupted already says so: reporting "(42) Operation was aborted
+            // by callback" would only add libcurl's wording for what the caller
+            // asked for.
+            if (code != CURLE_OK && code != CURLE_ABORTED_BY_CALLBACK)
+            {
+                // strerror() names the error class and is always available; the
+                // error buffer carries the TLS/OpenSSL detail, but libcurl only
+                // fills it for some errors, so it cannot be the sole reason.
+                m_lastError = "(" + std::to_string(static_cast<int>(code)) + ") " + curl_easy_strerror(code);
+
+                if (errorBufferSet && errorBuffer[0] != '\0')
                 {
-                    curl_slist_free_all(m_headers);
+                    m_lastError += ": ";
+                    m_lastError += errorBuffer;
                 }
 
-                if (m_handle != nullptr)
+                char* url = nullptr;
+
+                if (curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url) != CURLE_OK)
                 {
-                    curl_easy_cleanup(m_handle);
+                    url = nullptr;
+                }
+
+                LOGFN_DEBUG1(handleLogFn(),
+                             "libcurl failed on %s: %s",
+                             url != nullptr ? url : "unknown URL",
+                             m_lastError.c_str());
+
+                // The CA file itself (CURLOPT_CAINFO) could not be loaded -- missing,
+                // unreadable, or not a certificate libcurl can parse. Distinct from every
+                // other TlsFail cause below: OpenSSL's verify callback never runs in this
+                // case (there is no chain to build yet), so m_tlsCapture.sawDepth0 stays
+                // false, which on its own is indistinguishable from a pure transport
+                // failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
+                // needs its own signal rather than folding into that classification.
+                m_caFileLoadFailed = (code == CURLE_SSL_CACERT_BADFILE);
+                m_contentDecodingFailed = (code == CURLE_BAD_CONTENT_ENCODING);
+
+                // Narrowed from the generic TlsFail above: a hostname mismatch or a
+                // certificate-date problem is reported at normal level, unlike every other
+                // transport failure here (ordinary chain/CA-trust TlsFail included), which
+                // stays DEBUG1-only above -- see tlsCertDiagnostics.hpp's
+                // classifyTlsVerifyFailure() for why the other causes are left alone.
+                const auto kind = classifyTlsVerifyFailure(
+                    m_tlsCapture.sawDepth0, m_tlsCapture.depth0Error, code == CURLE_PEER_FAILED_VERIFICATION);
+
+                // Populated regardless of kind: sawDepth0/depth0VerificationFailed are
+                // meaningful precisely when kind stays None (see TlsFailureDetail's own
+                // doc comments), which is also the one case verify_mode=system's
+                // local-anchor fallback (curlPerformer.cpp, #39123) acts on -- and only
+                // when the depth-0 certificate's OWN verification actually failed, not
+                // merely whenever one was inspected (a certificate can verify cleanly and
+                // the attempt still end in TlsFail for an unrelated reason). The
+                // date/hostname detail fields, and the log line, stay conditional -- both
+                // are only ever shown for the two classified kinds, unchanged from #39062.
+                m_tlsFailureDetail.kind = kind;
+                m_tlsFailureDetail.sawDepth0 = m_tlsCapture.sawDepth0;
+                m_tlsFailureDetail.depth0VerificationFailed =
+                    m_tlsCapture.sawDepth0 && m_tlsCapture.depth0Error != X509_V_OK;
+                // Meaningless (left at its default true) unless depth0VerificationFailed is
+                // also true -- computed unconditionally anyway, same as the other two above,
+                // since guarding it on depth0VerificationFailed here would just repeat that
+                // condition for no benefit.
+                m_tlsFailureDetail.depth0ErrorIsChainTrustRelated =
+                    classifyDepth0ErrorAsChainTrustRelated(m_tlsCapture.depth0Error);
+                m_tlsFailureDetail.chainTrustRejectedAboveDepth0 = m_tlsCapture.chainTrustRejectedAboveDepth0;
+
+                if (kind != TlsFailureKind::None)
+                {
+                    m_tlsFailureDetail.certNames = m_tlsCapture.certNames;
+                    m_tlsFailureDetail.notBefore = m_tlsCapture.notBefore;
+                    m_tlsFailureDetail.notAfter = m_tlsCapture.notAfter;
+                    logTlsFailure(kind, url != nullptr ? url : "unknown URL", m_tlsFailureDetail);
                 }
             }
 
-            CurlHandle(const CurlHandle&) = delete;
-            CurlHandle& operator=(const CurlHandle&) = delete;
-
-            bool valid() const
+            // libcurl kept the pointer rather than copying it, so drop it
+            // before the buffer goes out of scope. If it cannot be dropped the
+            // handle still points at a dead stack buffer, so retire the handle
+            // instead of letting a later perform() write there: libcurl rejects
+            // a null handle, so every subsequent call on it fails cleanly.
+            if (errorBufferSet && curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr) != CURLE_OK)
             {
-                return m_handle != nullptr;
+                // LCOV_EXCL_START: setting CURLOPT_ERRORBUFFER to null cannot be made to fail.
+                LOGFN_DEBUG1(handleLogFn(), "Could not reset CURLOPT_ERRORBUFFER, retiring handle");
+                curl_easy_cleanup(m_handle);
+                m_handle = nullptr;
+                m_lastError = "CURLOPT_ERRORBUFFER could not be reset";
+                return TransportStatus::OtherError;
+                // LCOV_EXCL_STOP
             }
 
-            bool setOptionLong(CurlOption option, long value) override
+            return statusFromCurlCode(code);
+        }
+
+        long responseCode() override
+        {
+            long code = 0;
+
+            if (curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &code) != CURLE_OK)
             {
-                return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
+                code = 0;
             }
 
-            bool setOptionString(CurlOption option, const std::string& value) override
+            return code;
+        }
+
+        std::string localIp() override
+        {
+            char* ip = nullptr;
+
+            if (curl_easy_getinfo(m_handle, CURLINFO_LOCAL_IP, &ip) != CURLE_OK)
             {
-                return curl_easy_setopt(m_handle, optionMap().at(option), value.c_str()) == CURLE_OK;
+                ip = nullptr;
             }
 
-            bool setOptionPtr(CurlOption option, const void* value) override
-            {
-                return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
-            }
+            return ip != nullptr ? std::string(ip) : std::string();
+        }
 
-            bool trustSelfSignedRoot() override
-            {
-                m_wantsPartialChain = true;
-                return installSslCtxSetup();
-            }
+        std::string curlError() override
+        {
+            return m_lastError;
+        }
 
-            void appendHeader(const std::string& header) override
-            {
-                m_headers = curl_slist_append(m_headers, header.c_str());
-            }
+        TlsFailureDetail tlsFailureDetail() override
+        {
+            return m_tlsFailureDetail;
+        }
 
-            bool captureResponseBody(std::string* output, uint64_t maxBytes) override
-            {
-                m_bodySink = BodySink {output, maxBytes};
-                return limitDownload(maxBytes) &&
-                       curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeToBodySink) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_bodySink) == CURLE_OK;
-            }
+        bool caFileLoadFailed() override
+        {
+            return m_caFileLoadFailed;
+        }
 
-            bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
-            {
-                // curl undoes the chunked transfer and any Content-Encoding before the
-                // sink, so both caps count the bytes that reach the file.
-                m_fileSink = FileSink {file, 0, maxBytes};
-                return limitDownload(maxBytes) &&
-                       curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeToFileSink) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
-            }
+        bool contentDecodingFailed() override
+        {
+            return m_contentDecodingFailed;
+        }
 
-            bool captureResponseHeaders(HeaderCapture capture) override
-            {
-                m_headerCapture = capture;
-                return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, &m_headerCapture) == CURLE_OK;
-            }
+        bool decodes(const std::string& coding) override
+        {
+            return libcurlDecodes(coding);
+        }
 
-            bool streamBodyFromFile(std::FILE* file, uint64_t size) override
-            {
-                // UPLOAD + INFILESIZE_LARGE streams from the read callback with a
-                // fixed Content-Length (no chunked encoding); CUSTOMREQUEST keeps
-                // it a POST.
-                return curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST") == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_READDATA, file) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size)) == CURLE_OK;
-            }
+    private:
+        /// curl's own cap on the response, alongside the sinks' (which stay as the backstop):
+        /// it turns away a reply whose Content-Length is already over the cap before reading
+        /// any of it, and since 8.20 it counts decoded bytes too, so a small zstd frame that
+        /// expands past the cap stops there. curl_off_t, not long: 32 bits on the Windows agent.
+        bool limitDownload(uint64_t maxBytes)
+        {
+            return maxBytes == 0 || // 0 = unlimited, as for the sinks.
+                   curl_easy_setopt(m_handle, CURLOPT_MAXFILESIZE_LARGE, static_cast<curl_off_t>(maxBytes)) == CURLE_OK;
+        }
 
-            bool wireAbort(const std::atomic<bool>* abortFlag) override
-            {
-                return curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L) == CURLE_OK;
-            }
+        /// Installs the combined CURLOPT_SSL_CTX_FUNCTION (sslCtxSetupTrampoline) and its
+        /// CURLOPT_SSL_CTX_DATA (this), idempotently -- both trustSelfSignedRoot() and
+        /// perform() call this, and setting the same function pointer and userptr twice on
+        /// one handle is a no-op the second time.
+        bool installSslCtxSetup()
+        {
+            return curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_FUNCTION, sslCtxSetupTrampoline) == CURLE_OK &&
+                   curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_DATA, this) == CURLE_OK;
+        }
 
-            TransportStatus perform() override
-            {
-                m_lastError.clear();
-                m_tlsCapture = TlsVerifyCapture {};
-                m_tlsFailureDetail = TlsFailureDetail {};
-                m_caFileLoadFailed = false;
-                m_contentDecodingFailed = false;
+        /// CURLOPT_SSL_CTX_FUNCTION callback: sets X509_V_FLAG_PARTIAL_CHAIN on the SSL_CTX's
+        /// own verification store when trustSelfSignedRoot() requested it (see that method for
+        /// why), and always installs tlsVerifyCaptureTrampoline as the OpenSSL verify callback
+        /// so perform() can classify a TlsFail afterward. Defined after the class body: it
+        /// reaches into a CurlHandle instance via userptr, so needs the full definition.
+        static CURLcode sslCtxSetupTrampoline(CURL* curl, void* sslCtx, void* userptr);
 
-                // Installed unconditionally, not just when trustSelfSignedRoot() is called
-                // (verify_mode=system's applyTrustAnchors() never calls it): the diagnostics
-                // capture below must run for every request that verifies the peer, not only
-                // when a configured CA additionally needs the partial-chain relaxation. A no-op
-                // re-set when trustSelfSignedRoot() already installed it for this same handle.
-                if (!installSslCtxSetup())
-                {
-                    return TransportStatus::OtherError; // LCOV_EXCL_LINE: a function-pointer/userptr option cannot fail in practice.
-                }
+        /// The OpenSSL verify callback itself: observes the leaf (depth 0) certificate into
+        /// whichever CurlHandle's m_tlsCapture the SSL_CTX's ex_data names, and ALWAYS returns
+        /// preverifyOk unchanged -- it never overrides curl/OpenSSL's own accept/reject
+        /// decision. Defined after the class body, same reason as above.
+        static int tlsVerifyCaptureTrampoline(int preverifyOk, X509_STORE_CTX* storeCtx);
 
-                if (m_headers != nullptr &&
-                        curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers) != CURLE_OK)
-                {
-                    return TransportStatus::OtherError;
-                }
+        /// Builds and emits the normal-level log line for a classified TlsFail (issue #39062,
+        /// objective requirement 6 and its notBefore/notAfter counterpart) -- pulled out of
+        /// perform() only because the two message shapes (hostname vs. date) are each a few
+        /// lines on their own.
+        static void logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl, const TlsFailureDetail& detail);
 
-                // The CURLcode collapses into a coarse TransportStatus, so this is
-                // the only place the real cause exists: keep libcurl's own message.
-                char errorBuffer[CURL_ERROR_SIZE] {};
-                const bool errorBufferSet =
-                    curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK;
-
-                const CURLcode code = curl_easy_perform(m_handle);
-
-                // A shutdown tripping the abort flag is not a transport failure, and
-                // Interrupted already says so: reporting "(42) Operation was aborted
-                // by callback" would only add libcurl's wording for what the caller
-                // asked for.
-                if (code != CURLE_OK && code != CURLE_ABORTED_BY_CALLBACK)
-                {
-                    // strerror() names the error class and is always available; the
-                    // error buffer carries the TLS/OpenSSL detail, but libcurl only
-                    // fills it for some errors, so it cannot be the sole reason.
-                    m_lastError = "(" + std::to_string(static_cast<int>(code)) + ") " +
-                                  curl_easy_strerror(code);
-
-                    if (errorBufferSet && errorBuffer[0] != '\0')
-                    {
-                        m_lastError += ": ";
-                        m_lastError += errorBuffer;
-                    }
-
-                    char* url = nullptr;
-
-                    if (curl_easy_getinfo(m_handle, CURLINFO_EFFECTIVE_URL, &url) != CURLE_OK)
-                    {
-                        url = nullptr;
-                    }
-
-                    LOGFN_DEBUG1(handleLogFn(),
-                                 "libcurl failed on %s: %s",
-                                 url != nullptr ? url : "unknown URL",
-                                 m_lastError.c_str());
-
-                    // The CA file itself (CURLOPT_CAINFO) could not be loaded -- missing,
-                    // unreadable, or not a certificate libcurl can parse. Distinct from every
-                    // other TlsFail cause below: OpenSSL's verify callback never runs in this
-                    // case (there is no chain to build yet), so m_tlsCapture.sawDepth0 stays
-                    // false, which on its own is indistinguishable from a pure transport
-                    // failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
-                    // needs its own signal rather than folding into that classification.
-                    m_caFileLoadFailed = (code == CURLE_SSL_CACERT_BADFILE);
-                    m_contentDecodingFailed = (code == CURLE_BAD_CONTENT_ENCODING);
-
-                    // Narrowed from the generic TlsFail above: a hostname mismatch or a
-                    // certificate-date problem is reported at normal level, unlike every other
-                    // transport failure here (ordinary chain/CA-trust TlsFail included), which
-                    // stays DEBUG1-only above -- see tlsCertDiagnostics.hpp's
-                    // classifyTlsVerifyFailure() for why the other causes are left alone.
-                    const auto kind = classifyTlsVerifyFailure(m_tlsCapture.sawDepth0, m_tlsCapture.depth0Error,
-                                                               code == CURLE_PEER_FAILED_VERIFICATION);
-
-                    // Populated regardless of kind: sawDepth0/depth0VerificationFailed are
-                    // meaningful precisely when kind stays None (see TlsFailureDetail's own
-                    // doc comments), which is also the one case verify_mode=system's
-                    // local-anchor fallback (curlPerformer.cpp, #39123) acts on -- and only
-                    // when the depth-0 certificate's OWN verification actually failed, not
-                    // merely whenever one was inspected (a certificate can verify cleanly and
-                    // the attempt still end in TlsFail for an unrelated reason). The
-                    // date/hostname detail fields, and the log line, stay conditional -- both
-                    // are only ever shown for the two classified kinds, unchanged from #39062.
-                    m_tlsFailureDetail.kind = kind;
-                    m_tlsFailureDetail.sawDepth0 = m_tlsCapture.sawDepth0;
-                    m_tlsFailureDetail.depth0VerificationFailed =
-                        m_tlsCapture.sawDepth0 && m_tlsCapture.depth0Error != X509_V_OK;
-                    // Meaningless (left at its default true) unless depth0VerificationFailed is
-                    // also true -- computed unconditionally anyway, same as the other two above,
-                    // since guarding it on depth0VerificationFailed here would just repeat that
-                    // condition for no benefit.
-                    m_tlsFailureDetail.depth0ErrorIsChainTrustRelated =
-                        classifyDepth0ErrorAsChainTrustRelated(m_tlsCapture.depth0Error);
-                    m_tlsFailureDetail.chainTrustRejectedAboveDepth0 =
-                        m_tlsCapture.chainTrustRejectedAboveDepth0;
-
-                    if (kind != TlsFailureKind::None)
-                    {
-                        m_tlsFailureDetail.certNames = m_tlsCapture.certNames;
-                        m_tlsFailureDetail.notBefore = m_tlsCapture.notBefore;
-                        m_tlsFailureDetail.notAfter = m_tlsCapture.notAfter;
-                        logTlsFailure(kind, url != nullptr ? url : "unknown URL", m_tlsFailureDetail);
-                    }
-                }
-
-                // libcurl kept the pointer rather than copying it, so drop it
-                // before the buffer goes out of scope. If it cannot be dropped the
-                // handle still points at a dead stack buffer, so retire the handle
-                // instead of letting a later perform() write there: libcurl rejects
-                // a null handle, so every subsequent call on it fails cleanly.
-                if (errorBufferSet &&
-                        curl_easy_setopt(m_handle, CURLOPT_ERRORBUFFER, nullptr) != CURLE_OK)
-                {
-                    // LCOV_EXCL_START: setting CURLOPT_ERRORBUFFER to null cannot be made to fail.
-                    LOGFN_DEBUG1(handleLogFn(), "Could not reset CURLOPT_ERRORBUFFER, retiring handle");
-                    curl_easy_cleanup(m_handle);
-                    m_handle = nullptr;
-                    m_lastError = "CURLOPT_ERRORBUFFER could not be reset";
-                    return TransportStatus::OtherError;
-                    // LCOV_EXCL_STOP
-                }
-
-                return statusFromCurlCode(code);
-            }
-
-            long responseCode() override
-            {
-                long code = 0;
-
-                if (curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &code) != CURLE_OK)
-                {
-                    code = 0;
-                }
-
-                return code;
-            }
-
-            std::string localIp() override
-            {
-                char* ip = nullptr;
-
-                if (curl_easy_getinfo(m_handle, CURLINFO_LOCAL_IP, &ip) != CURLE_OK)
-                {
-                    ip = nullptr;
-                }
-
-                return ip != nullptr ? std::string(ip) : std::string();
-            }
-
-            std::string curlError() override
-            {
-                return m_lastError;
-            }
-
-            TlsFailureDetail tlsFailureDetail() override
-            {
-                return m_tlsFailureDetail;
-            }
-
-            bool caFileLoadFailed() override
-            {
-                return m_caFileLoadFailed;
-            }
-
-            bool contentDecodingFailed() override
-            {
-                return m_contentDecodingFailed;
-            }
-
-            bool decodes(const std::string& coding) override
-            {
-                return libcurlDecodes(coding);
-            }
-
-        private:
-            /// curl's own cap on the response, alongside the sinks' (which stay as the backstop):
-            /// it turns away a reply whose Content-Length is already over the cap before reading
-            /// any of it, and since 8.20 it counts decoded bytes too, so a small zstd frame that
-            /// expands past the cap stops there. curl_off_t, not long: 32 bits on the Windows agent.
-            bool limitDownload(uint64_t maxBytes)
-            {
-                return maxBytes == 0 || // 0 = unlimited, as for the sinks.
-                       curl_easy_setopt(m_handle, CURLOPT_MAXFILESIZE_LARGE, static_cast<curl_off_t>(maxBytes)) == CURLE_OK;
-            }
-
-            /// Installs the combined CURLOPT_SSL_CTX_FUNCTION (sslCtxSetupTrampoline) and its
-            /// CURLOPT_SSL_CTX_DATA (this), idempotently -- both trustSelfSignedRoot() and
-            /// perform() call this, and setting the same function pointer and userptr twice on
-            /// one handle is a no-op the second time.
-            bool installSslCtxSetup()
-            {
-                return curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_FUNCTION, sslCtxSetupTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_DATA, this) == CURLE_OK;
-            }
-
-            /// CURLOPT_SSL_CTX_FUNCTION callback: sets X509_V_FLAG_PARTIAL_CHAIN on the SSL_CTX's
-            /// own verification store when trustSelfSignedRoot() requested it (see that method for
-            /// why), and always installs tlsVerifyCaptureTrampoline as the OpenSSL verify callback
-            /// so perform() can classify a TlsFail afterward. Defined after the class body: it
-            /// reaches into a CurlHandle instance via userptr, so needs the full definition.
-            static CURLcode sslCtxSetupTrampoline(CURL* curl, void* sslCtx, void* userptr);
-
-            /// The OpenSSL verify callback itself: observes the leaf (depth 0) certificate into
-            /// whichever CurlHandle's m_tlsCapture the SSL_CTX's ex_data names, and ALWAYS returns
-            /// preverifyOk unchanged -- it never overrides curl/OpenSSL's own accept/reject
-            /// decision. Defined after the class body, same reason as above.
-            static int tlsVerifyCaptureTrampoline(int preverifyOk, X509_STORE_CTX* storeCtx);
-
-            /// Builds and emits the normal-level log line for a classified TlsFail (issue #39062,
-            /// objective requirement 6 and its notBefore/notAfter counterpart) -- pulled out of
-            /// perform() only because the two message shapes (hostname vs. date) are each a few
-            /// lines on their own.
-            static void logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl,
-                                      const TlsFailureDetail& detail);
-
-            CURL* m_handle {nullptr};
-            curl_slist* m_headers {nullptr};
-            FileSink m_fileSink {};
-            BodySink m_bodySink {};
-            HeaderCapture m_headerCapture {};
-            std::string m_lastError {}; ///< Last perform()'s reason, empty when it succeeded.
-            bool m_wantsPartialChain {false}; ///< Set by trustSelfSignedRoot(); consumed by
-            ///< sslCtxSetupTrampoline().
-            bool m_caFileLoadFailed {false}; ///< Set in perform() on CURLE_SSL_CACERT_BADFILE;
-            ///< reset at the top of every perform() like the other per-attempt state below.
-            bool m_contentDecodingFailed {false}; ///< Set in perform() on CURLE_BAD_CONTENT_ENCODING;
-            ///< reset at the top of every perform() like m_caFileLoadFailed.
-            TlsVerifyCapture m_tlsCapture {}; ///< Filled by tlsVerifyCaptureTrampoline() during
-            ///< perform(); reset at the top of every perform() (one CurlHandle is never reused
-            ///< across requests, but resetting costs nothing and removes the assumption).
-            TlsFailureDetail m_tlsFailureDetail {}; ///< classifyTlsVerifyFailure()'s verdict on
-            ///< m_tlsCapture, computed once per perform(); returned by tlsFailureDetail().
+        CURL* m_handle {nullptr};
+        curl_slist* m_headers {nullptr};
+        FileSink m_fileSink {};
+        BodySink m_bodySink {};
+        HeaderCapture m_headerCapture {};
+        std::string m_lastError {};       ///< Last perform()'s reason, empty when it succeeded.
+        bool m_wantsPartialChain {false}; ///< Set by trustSelfSignedRoot(); consumed by
+        ///< sslCtxSetupTrampoline().
+        bool m_caFileLoadFailed {false}; ///< Set in perform() on CURLE_SSL_CACERT_BADFILE;
+        ///< reset at the top of every perform() like the other per-attempt state below.
+        bool m_contentDecodingFailed {false}; ///< Set in perform() on CURLE_BAD_CONTENT_ENCODING;
+        ///< reset at the top of every perform() like m_caFileLoadFailed.
+        TlsVerifyCapture m_tlsCapture {}; ///< Filled by tlsVerifyCaptureTrampoline() during
+        ///< perform(); reset at the top of every perform() (one CurlHandle is never reused
+        ///< across requests, but resetting costs nothing and removes the assumption).
+        TlsFailureDetail m_tlsFailureDetail {}; ///< classifyTlsVerifyFailure()'s verdict on
+        ///< m_tlsCapture, computed once per perform(); returned by tlsFailureDetail().
     };
 
     CURLcode CurlHandle::sslCtxSetupTrampoline(CURL* /*curl*/, void* sslCtx, void* userptr)
@@ -690,8 +673,7 @@ namespace
             return preverifyOk; // LCOV_EXCL_LINE: curl always wires this; unreachable in practice.
         }
 
-        auto* capture = static_cast<TlsVerifyCapture*>(
-                            SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), tlsCaptureExIndex()));
+        auto* capture = static_cast<TlsVerifyCapture*>(SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), tlsCaptureExIndex()));
 
         if (capture == nullptr)
         {
@@ -731,8 +713,7 @@ namespace
         return preverifyOk; // Never overridden: this hook only observes.
     }
 
-    void CurlHandle::logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl,
-                                   const TlsFailureDetail& detail)
+    void CurlHandle::logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl, const TlsFailureDetail& detail)
     {
         if (kind == TlsFailureKind::HostnameMismatch)
         {
@@ -751,7 +732,8 @@ namespace
             LOGFN_ERROR(handleLogFn(),
                         "TLS verification failed connecting to %s: the certificate does not include "
                         "that name (subject alternative names: %s).",
-                        dialedUrl.c_str(), names.empty() ? "none" : names.c_str());
+                        dialedUrl.c_str(),
+                        names.empty() ? "none" : names.c_str());
             return;
         }
 
@@ -760,7 +742,8 @@ namespace
                     "TLS verification failed connecting to %s: the certificate %s (%s %s); no "
                     "clock-skew tolerance applies to this check (remoted.jwt_clock_skew covers only "
                     "the post-enrollment JWT).",
-                    dialedUrl.c_str(), notYetValid ? "is not valid yet" : "has expired",
+                    dialedUrl.c_str(),
+                    notYetValid ? "is not valid yet" : "has expired",
                     notYetValid ? "not valid before" : "not valid after",
                     (notYetValid ? detail.notBefore : detail.notAfter).c_str());
     }

@@ -17,9 +17,13 @@
 #include <stdbool.h>
 #include "agent_sync_protocol_c_interface.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger,
-                                           uint64_t flush_batch_size, uint64_t flush_interval_ms,
-                                           uint64_t wal_autocheckpoint_pages, uint64_t cache_size_kib);
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module,
+                                           const char* db_path,
+                                           asp_logger_t logger,
+                                           uint64_t flush_batch_size,
+                                           uint64_t flush_interval_ms,
+                                           uint64_t wal_autocheckpoint_pages,
+                                           uint64_t cache_size_kib);
 
 void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,
@@ -28,14 +32,11 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* data,
                              uint64_t version);
 
-SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
-                                          int mode);
+SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle, int mode);
 
 /// @brief Wrapper for asp_sync_module_bounded(). Scripted like __wrap_asp_sync_module(), and
 /// follows the same __wrap_asp_sync_module_use_full_result() switch.
-SyncModuleResult_t __wrap_asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
-                                                  int mode,
-                                                  uint32_t max_blocks);
+SyncModuleResult_t __wrap_asp_sync_module_bounded(AgentSyncProtocolHandle* handle, int mode, uint32_t max_blocks);
 
 /**
  * @brief Wrapper for asp_get_agent_id. Scripted with will_return(): 0 means "the provider has
@@ -51,15 +52,12 @@ long __wrap_asp_get_agent_id(void);
 void __wrap_asp_sync_module_use_full_result(bool enable);
 
 /// will_return(IntegrityCheckResult_t*) supplies the whole result.
-IntegrityCheckResult_t __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                                     const char* index,
-                                                     const char* checksum);
+IntegrityCheckResult_t
+__wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle, const char* index, const char* checksum);
 
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
 
-bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
-                                  const char** indices,
-                                  size_t indices_count);
+bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle, const char** indices, size_t indices_count);
 
 void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle);
 

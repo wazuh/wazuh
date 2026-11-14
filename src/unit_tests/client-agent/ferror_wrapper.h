@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 
-int __wrap_ferror(FILE *_File);
-void expect_ferror(FILE *_File, int ret);
+int __wrap_ferror(FILE* _File);
+void expect_ferror(FILE* _File, int ret);
 
 #endif /* FERROR_WRAPPER_H */

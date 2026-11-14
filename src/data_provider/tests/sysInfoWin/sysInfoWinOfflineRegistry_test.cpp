@@ -24,213 +24,213 @@
  */
 class FakeOffregApi
 {
-    public:
-        struct Value
-        {
-            DWORD type;
-            std::vector<BYTE> data;
-        };
+public:
+    struct Value
+    {
+        DWORD type;
+        std::vector<BYTE> data;
+    };
 
-        struct Key
-        {
-            std::map<std::wstring, Key> subKeys;
-            std::map<std::wstring, Value> values;
-            FILETIME lastWriteTime {};
-        };
+    struct Key
+    {
+        std::map<std::wstring, Key> subKeys;
+        std::map<std::wstring, Value> values;
+        FILETIME lastWriteTime {};
+    };
 
-        static FakeOffregApi& instance()
+    static FakeOffregApi& instance()
+    {
+        static FakeOffregApi s_instance;
+        return s_instance;
+    }
+
+    void reset()
+    {
+        root = Key {};
+        openHiveResult = ERROR_SUCCESS;
+        openHandles = 0;
+        openedHandle = nullptr;
+        closeFileOnOpen = false;
+    }
+
+    Key& key(const std::wstring& path)
+    {
+        auto current {&root};
+
+        for (const auto& name : split(path))
         {
-            static FakeOffregApi s_instance;
-            return s_instance;
+            current = &current->subKeys[name];
         }
 
-        void reset()
+        return *current;
+    }
+
+    void setString(const std::wstring& path, const std::wstring& name, const std::wstring& value)
+    {
+        const auto bytes {reinterpret_cast<const BYTE*>(value.c_str())};
+        key(path).values[name] = Value {REG_SZ, std::vector<BYTE>(bytes, bytes + (value.size() + 1) * sizeof(wchar_t))};
+    }
+
+    template<typename T>
+    void setNumber(const std::wstring& path, const std::wstring& name, const DWORD type, const T value)
+    {
+        const auto bytes {reinterpret_cast<const BYTE*>(&value)};
+        key(path).values[name] = Value {type, std::vector<BYTE>(bytes, bytes + sizeof(T))};
+    }
+
+    DWORD openHive(const std::wstring&, ORHKEY* hive) const
+    {
+        if (openHiveResult != ERROR_SUCCESS)
         {
-            root = Key {};
-            openHiveResult = ERROR_SUCCESS;
-            openHandles = 0;
-            openedHandle = nullptr;
-            closeFileOnOpen = false;
+            return openHiveResult;
         }
 
-        Key& key(const std::wstring& path)
+        ++openHandles;
+        *hive = const_cast<Key*>(&root);
+        return ERROR_SUCCESS;
+    }
+
+    DWORD openHive(const HANDLE file, ORHKEY* hive) const
+    {
+        openedHandle = file;
+
+        if (closeFileOnOpen)
         {
-            auto current {&root};
-
-            for (const auto& name : split(path))
-            {
-                current = &current->subKeys[name];
-            }
-
-            return *current;
+            CloseHandle(file);
         }
 
-        void setString(const std::wstring& path, const std::wstring& name, const std::wstring& value)
+        return openHive(std::wstring {}, hive);
+    }
+
+    DWORD closeHive(const ORHKEY) const
+    {
+        --openHandles;
+        return ERROR_SUCCESS;
+    }
+
+    DWORD openKey(const ORHKEY key, const std::wstring& subKey, ORHKEY* result) const
+    {
+        auto current {static_cast<Key*>(key)};
+
+        for (const auto& name : split(subKey))
         {
-            const auto bytes {reinterpret_cast<const BYTE*>(value.c_str())};
-            key(path).values[name] = Value {REG_SZ, std::vector<BYTE>(bytes, bytes + (value.size() + 1) * sizeof(wchar_t))};
-        }
+            const auto it {current->subKeys.find(name)};
 
-        template <typename T>
-        void setNumber(const std::wstring& path, const std::wstring& name, const DWORD type, const T value)
-        {
-            const auto bytes {reinterpret_cast<const BYTE*>(&value)};
-            key(path).values[name] = Value {type, std::vector<BYTE>(bytes, bytes + sizeof(T))};
-        }
-
-        DWORD openHive(const std::wstring&, ORHKEY* hive) const
-        {
-            if (openHiveResult != ERROR_SUCCESS)
-            {
-                return openHiveResult;
-            }
-
-            ++openHandles;
-            *hive = const_cast<Key*>(&root);
-            return ERROR_SUCCESS;
-        }
-
-        DWORD openHive(const HANDLE file, ORHKEY* hive) const
-        {
-            openedHandle = file;
-
-            if (closeFileOnOpen)
-            {
-                CloseHandle(file);
-            }
-
-            return openHive(std::wstring {}, hive);
-        }
-
-        DWORD closeHive(const ORHKEY) const
-        {
-            --openHandles;
-            return ERROR_SUCCESS;
-        }
-
-        DWORD openKey(const ORHKEY key, const std::wstring& subKey, ORHKEY* result) const
-        {
-            auto current {static_cast<Key*>(key)};
-
-            for (const auto& name : split(subKey))
-            {
-                const auto it {current->subKeys.find(name)};
-
-                if (it == current->subKeys.end())
-                {
-                    return ERROR_FILE_NOT_FOUND;
-                }
-
-                current = &it->second;
-            }
-
-            ++openHandles;
-            *result = current;
-            return ERROR_SUCCESS;
-        }
-
-        DWORD closeKey(const ORHKEY) const
-        {
-            --openHandles;
-            return ERROR_SUCCESS;
-        }
-
-        DWORD enumKey(const ORHKEY key, const DWORD index, PWSTR name, PDWORD nameSize) const
-        {
-            const auto& subKeys {static_cast<Key*>(key)->subKeys};
-
-            if (index >= subKeys.size())
-            {
-                return ERROR_NO_MORE_ITEMS;
-            }
-
-            return copyName(std::next(subKeys.begin(), index)->first, name, nameSize);
-        }
-
-        DWORD enumValue(const ORHKEY key, const DWORD index, PWSTR name, PDWORD nameSize) const
-        {
-            const auto& values {static_cast<Key*>(key)->values};
-
-            if (index >= values.size())
-            {
-                return ERROR_NO_MORE_ITEMS;
-            }
-
-            return copyName(std::next(values.begin(), index)->first, name, nameSize);
-        }
-
-        DWORD getValue(const ORHKEY key, const std::wstring& valueName, PDWORD type, PVOID data, PDWORD dataSize) const
-        {
-            const auto& values {static_cast<Key*>(key)->values};
-            const auto it {values.find(valueName)};
-
-            if (it == values.end())
+            if (it == current->subKeys.end())
             {
                 return ERROR_FILE_NOT_FOUND;
             }
 
-            if (type)
-            {
-                *type = it->second.type;
-            }
+            current = &it->second;
+        }
 
-            const auto size {static_cast<DWORD>(it->second.data.size())};
+        ++openHandles;
+        *result = current;
+        return ERROR_SUCCESS;
+    }
 
-            if (data && *dataSize < size)
-            {
-                *dataSize = size;
-                return ERROR_MORE_DATA;
-            }
+    DWORD closeKey(const ORHKEY) const
+    {
+        --openHandles;
+        return ERROR_SUCCESS;
+    }
 
-            if (data)
-            {
-                std::copy(it->second.data.begin(), it->second.data.end(), static_cast<BYTE*>(data));
-            }
+    DWORD enumKey(const ORHKEY key, const DWORD index, PWSTR name, PDWORD nameSize) const
+    {
+        const auto& subKeys {static_cast<Key*>(key)->subKeys};
 
+        if (index >= subKeys.size())
+        {
+            return ERROR_NO_MORE_ITEMS;
+        }
+
+        return copyName(std::next(subKeys.begin(), index)->first, name, nameSize);
+    }
+
+    DWORD enumValue(const ORHKEY key, const DWORD index, PWSTR name, PDWORD nameSize) const
+    {
+        const auto& values {static_cast<Key*>(key)->values};
+
+        if (index >= values.size())
+        {
+            return ERROR_NO_MORE_ITEMS;
+        }
+
+        return copyName(std::next(values.begin(), index)->first, name, nameSize);
+    }
+
+    DWORD getValue(const ORHKEY key, const std::wstring& valueName, PDWORD type, PVOID data, PDWORD dataSize) const
+    {
+        const auto& values {static_cast<Key*>(key)->values};
+        const auto it {values.find(valueName)};
+
+        if (it == values.end())
+        {
+            return ERROR_FILE_NOT_FOUND;
+        }
+
+        if (type)
+        {
+            *type = it->second.type;
+        }
+
+        const auto size {static_cast<DWORD>(it->second.data.size())};
+
+        if (data && *dataSize < size)
+        {
             *dataSize = size;
-            return ERROR_SUCCESS;
+            return ERROR_MORE_DATA;
         }
 
-        DWORD lastWriteTime(const ORHKEY key, PFILETIME time) const
+        if (data)
         {
-            *time = static_cast<Key*>(key)->lastWriteTime;
-            return ERROR_SUCCESS;
+            std::copy(it->second.data.begin(), it->second.data.end(), static_cast<BYTE*>(data));
         }
 
-        Key root;
-        DWORD openHiveResult {ERROR_SUCCESS};
-        mutable int openHandles {0};
-        mutable HANDLE openedHandle {nullptr};
-        bool closeFileOnOpen {false};
+        *dataSize = size;
+        return ERROR_SUCCESS;
+    }
 
-    private:
-        static std::vector<std::wstring> split(const std::wstring& path)
+    DWORD lastWriteTime(const ORHKEY key, PFILETIME time) const
+    {
+        *time = static_cast<Key*>(key)->lastWriteTime;
+        return ERROR_SUCCESS;
+    }
+
+    Key root;
+    DWORD openHiveResult {ERROR_SUCCESS};
+    mutable int openHandles {0};
+    mutable HANDLE openedHandle {nullptr};
+    bool closeFileOnOpen {false};
+
+private:
+    static std::vector<std::wstring> split(const std::wstring& path)
+    {
+        std::vector<std::wstring> names;
+        size_t start {0};
+
+        while (start < path.size())
         {
-            std::vector<std::wstring> names;
-            size_t start {0};
-
-            while (start < path.size())
-            {
-                const auto end {path.find(L'\\', start)};
-                names.push_back(path.substr(start, end == std::wstring::npos ? std::wstring::npos : end - start));
-                start = end == std::wstring::npos ? path.size() : end + 1;
-            }
-
-            return names;
+            const auto end {path.find(L'\\', start)};
+            names.push_back(path.substr(start, end == std::wstring::npos ? std::wstring::npos : end - start));
+            start = end == std::wstring::npos ? path.size() : end + 1;
         }
 
-        static DWORD copyName(const std::wstring& source, PWSTR name, PDWORD nameSize)
+        return names;
+    }
+
+    static DWORD copyName(const std::wstring& source, PWSTR name, PDWORD nameSize)
+    {
+        if (source.size() + 1 > *nameSize)
         {
-            if (source.size() + 1 > *nameSize)
-            {
-                return ERROR_MORE_DATA;
-            }
-
-            std::copy(source.begin(), source.end(), name);
-            name[source.size()] = L'\0';
-            *nameSize = static_cast<DWORD>(source.size());
-            return ERROR_SUCCESS;
+            return ERROR_MORE_DATA;
         }
+
+        std::copy(source.begin(), source.end(), name);
+        name[source.size()] = L'\0';
+        *nameSize = static_cast<DWORD>(source.size());
+        return ERROR_SUCCESS;
+    }
 };
 
 using TestOfflineHive = TOfflineHive<FakeOffregApi>;
@@ -240,16 +240,16 @@ constexpr auto UNINSTALL_KEY = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\U
 
 class SysInfoWinOfflineRegistryTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            FakeOffregApi::instance().reset();
-        }
+protected:
+    void SetUp() override
+    {
+        FakeOffregApi::instance().reset();
+    }
 
-        FakeOffregApi& api()
-        {
-            return FakeOffregApi::instance();
-        }
+    FakeOffregApi& api()
+    {
+        return FakeOffregApi::instance();
+    }
 };
 
 TEST_F(SysInfoWinOfflineRegistryTest, EnumeratesSubKeysAndReadsStrings)
@@ -264,7 +264,8 @@ TEST_F(SysInfoWinOfflineRegistryTest, EnumeratesSubKeysAndReadsStrings)
     const TestOfflineRegistry uninstall {hive.key(), "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
     EXPECT_EQ((std::vector<std::string> {"OneDriveSetup.exe", "Other"}), uninstall.enumerate());
 
-    const TestOfflineRegistry package {hive.key(), "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OneDriveSetup.exe"};
+    const TestOfflineRegistry package {hive.key(),
+                                       "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OneDriveSetup.exe"};
     std::string value;
     EXPECT_TRUE(package.string("DisplayName", value));
     EXPECT_EQ("Microsoft OneDrive", value);
@@ -420,16 +421,20 @@ struct UnmeasuredDirectorySize
 
 TEST_F(SysInfoWinOfflineRegistryTest, StorePackageReadFromAClassesHiveFile)
 {
-    constexpr auto calculatorPackage { "Microsoft.WindowsCalculator_11.2401.0.0_x64__8wekyb3d8bbwe" };
-    const auto root { Utils::EncodingWindowsHelper::stringToWStringAnsi(std::string{ APPLICATION_STORE_REGISTRY } + "\\" + calculatorPackage) };
+    constexpr auto calculatorPackage {"Microsoft.WindowsCalculator_11.2401.0.0_x64__8wekyb3d8bbwe"};
+    const auto root {Utils::EncodingWindowsHelper::stringToWStringAnsi(std::string {APPLICATION_STORE_REGISTRY} + "\\" +
+                                                                       calculatorPackage)};
 
-    api().setString(root, L"PackageRootFolder", L"C:\\Program Files\\WindowsApps\\Microsoft.WindowsCalculator_11.2401.0.0_x64__8wekyb3d8bbwe");
+    api().setString(root,
+                    L"PackageRootFolder",
+                    L"C:\\Program Files\\WindowsApps\\Microsoft.WindowsCalculator_11.2401.0.0_x64__8wekyb3d8bbwe");
     api().setString(root, L"DisplayName", L"Calculator");
     api().setString(root + L"\\App\\Capabilities\\FileAssociations", L".calc", L"AppX.calculator");
     api().setString(L"AppX.calculator\\Application", L"ApplicationCompany", L"Microsoft Corporation");
 
     const TestOfflineHive hive {L"UsrClass.dat"};
-    const TAppxWindowsWrapper<TestOfflineRegistry, AppxExeVersionReader, UnmeasuredDirectorySize> wrapper(hive.key(), "", calculatorPackage, {});
+    const TAppxWindowsWrapper<TestOfflineRegistry, AppxExeVersionReader, UnmeasuredDirectorySize> wrapper(
+        hive.key(), "", calculatorPackage, {});
 
     EXPECT_EQ("Calculator", wrapper.name());
     EXPECT_EQ("11.2401.0.0", wrapper.version());

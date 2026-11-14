@@ -19,9 +19,7 @@
  * dst_size: the size of the destination buffer
  * Returns 0 on failure, else the length of the compressed string
  */
-unsigned long int os_zlib_compress(const char *src, char *dst,
-                                   unsigned long int src_size,
-                                   unsigned long int dst_size);
+unsigned long int os_zlib_compress(const char* src, char* dst, unsigned long int src_size, unsigned long int dst_size);
 
 /* Uncompress a string with zlib
  * src: the source string to uncompress
@@ -31,8 +29,7 @@ unsigned long int os_zlib_compress(const char *src, char *dst,
  * dst_size: the size of the destination buffer
  * Returns 0 on failure, else the length of the uncompressed string
  */
-unsigned long int os_zlib_uncompress(const char *src, char *dst,
-                                     unsigned long int src_size,
-                                     unsigned long int dst_size);
+unsigned long int
+os_zlib_uncompress(const char* src, char* dst, unsigned long int src_size, unsigned long int dst_size);
 
 #endif /* OS_ZLIB_H */

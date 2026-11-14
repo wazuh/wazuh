@@ -10,22 +10,27 @@
 
 #include <shared.h>
 
-cJSON * json_fread(const char * path, char retry) {
-    cJSON * item = NULL;
-    char * buffer = NULL;
-    const char *jsonErrPtr;
+cJSON* json_fread(const char* path, char retry)
+{
+    cJSON* item = NULL;
+    char* buffer = NULL;
+    const char* jsonErrPtr;
 
-    if (buffer = w_get_file_content(path, JSON_MAX_FSIZE), !buffer) {
+    if (buffer = w_get_file_content(path, JSON_MAX_FSIZE), !buffer)
+    {
         mdebug1("Cannot get the content of the file: %s", path);
         return NULL;
     }
 
-    if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
-        if (retry) {
+    if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item)
+    {
+        if (retry)
+        {
             mdebug1("Couldn't parse JSON file '%s'. Trying to clear comments.", path);
             json_strip(buffer);
 
-            if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
+            if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item)
+            {
                 mdebug1("Couldn't parse JSON file '%s'.", path);
             }
         }
@@ -35,25 +40,29 @@ cJSON * json_fread(const char * path, char retry) {
     return item;
 }
 
-int json_fwrite(const char * path, const cJSON * item) {
-    FILE * fp = NULL;
-    char * buffer;
+int json_fwrite(const char* path, const cJSON* item)
+{
+    FILE* fp = NULL;
+    char* buffer;
     size_t size;
     int retval = -1;
 
-    if (buffer = cJSON_PrintUnformatted(item), !buffer) {
+    if (buffer = cJSON_PrintUnformatted(item), !buffer)
+    {
         mdebug1("Internal error dumping JSON into file '%s'", path);
         return -1;
     }
 
     size = strlen(buffer);
 
-    if (fp = wfopen(path, "w"), !fp) {
+    if (fp = wfopen(path, "w"), !fp)
+    {
         mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
         goto end;
     }
 
-    if (fwrite(buffer, 1, size, fp) != size) {
+    if (fwrite(buffer, 1, size, fp) != size)
+    {
         mdebug1("Couldn't write JSON into '%s': %s (%d)", path, strerror(errno), errno);
         goto end;
     }
@@ -63,54 +72,68 @@ int json_fwrite(const char * path, const cJSON * item) {
 end:
     free(buffer);
 
-    if (fp) {
+    if (fp)
+    {
         fclose(fp);
     }
 
     return retval;
 }
 
-void json_strip(char * json) {
-    char * line;
-    char * cursor;
-    char * next;
+void json_strip(char* json)
+{
+    char* line;
+    char* cursor;
+    char* next;
 
-    for (line = json; line; line = next) {
-        if (next = strchr(line, '\n'), next) {
+    for (line = json; line; line = next)
+    {
+        if (next = strchr(line, '\n'), next)
+        {
             *next = '\0';
         }
 
         // Skip whitespaces
         cursor = line + strspn(line, " \t");
 
-        if (!strncmp(cursor, "//", 2)) {
-            if (next) {
+        if (!strncmp(cursor, "//", 2))
+        {
+            if (next)
+            {
                 // If there are more lines, copy all of them
                 *next = '\n';
                 memmove(cursor, next, strlen(next) + 1);
                 next = cursor + 1;
-            } else {
+            }
+            else
+            {
                 // Otherwise end string here
                 *cursor = '\0';
                 break;
             }
-        } else if (!strncmp(cursor, "/*", 2)) {
-            if (next) {
+        }
+        else if (!strncmp(cursor, "/*", 2))
+        {
+            if (next)
+            {
                 *next = '\n';
             }
 
-            if (next = strstr(cursor + 2, "*/"), next) {
+            if (next = strstr(cursor + 2, "*/"), next)
+            {
                 memmove(cursor, next + 2, strlen(next + 2) + 1);
                 next = cursor;
-            } else {
+            }
+            else
+            {
                 // This is a syntax error - unterminated comment
                 break;
             }
-        } else if (next) {
+        }
+        else if (next)
+        {
             // Restore newline and move forward
             *next++ = '\n';
         }
     }
-
 }
-

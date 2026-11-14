@@ -13,8 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_RAND_bytes(unsigned char *buf, int num) {
-    if (mock()) {
+int __wrap_RAND_bytes(unsigned char* buf, int num)
+{
+    if (mock())
+    {
         return __real_RAND_bytes(buf, num);
     }
     return mock_type(int);

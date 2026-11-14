@@ -35,40 +35,42 @@ extern "C" const GUID IID_IUpdateSearcher;
 
 class EXPORTED IComHelper
 {
-    public:
-        virtual ~IComHelper() = default;
+public:
+    virtual ~IComHelper() = default;
 
-        // Abstracted methods for WMI functions
-        virtual HRESULT CreateWmiLocator(IWbemLocator*& pLoc) = 0;
-        virtual HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs) = 0;
-        virtual HRESULT SetProxyBlanket(IWbemServices* pSvc) = 0;
-        virtual HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) = 0;
+    // Abstracted methods for WMI functions
+    virtual HRESULT CreateWmiLocator(IWbemLocator*& pLoc) = 0;
+    virtual HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs) = 0;
+    virtual HRESULT SetProxyBlanket(IWbemServices* pSvc) = 0;
+    virtual HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) = 0;
 
-        // Abstracted methods for Windows Update API functions
-        virtual HRESULT CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher) = 0;
-        virtual HRESULT GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count) = 0;
-        virtual HRESULT QueryHistory(IUpdateSearcher* pUpdateSearcher, IUpdateHistoryEntryCollection*& pHistory, LONG& count) = 0;
-        virtual HRESULT GetCount(IUpdateHistoryEntryCollection* pHistory, LONG& count) = 0;
-        virtual HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) = 0;
-        virtual HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) = 0;
+    // Abstracted methods for Windows Update API functions
+    virtual HRESULT CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher) = 0;
+    virtual HRESULT GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count) = 0;
+    virtual HRESULT
+    QueryHistory(IUpdateSearcher* pUpdateSearcher, IUpdateHistoryEntryCollection*& pHistory, LONG& count) = 0;
+    virtual HRESULT GetCount(IUpdateHistoryEntryCollection* pHistory, LONG& count) = 0;
+    virtual HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) = 0;
+    virtual HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) = 0;
 };
 
 class EXPORTED ComHelper : public IComHelper
 {
-    public:
-        // Implement WMI functions
-        HRESULT CreateWmiLocator(IWbemLocator*& pLoc) override;
-        HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs) override;
-        HRESULT SetProxyBlanket(IWbemServices* pSvc) override;
-        HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) override;
+public:
+    // Implement WMI functions
+    HRESULT CreateWmiLocator(IWbemLocator*& pLoc) override;
+    HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs) override;
+    HRESULT SetProxyBlanket(IWbemServices* pSvc) override;
+    HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) override;
 
-        // Implement Windows Update API functions
-        HRESULT CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher) override;
-        HRESULT GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count) override;
-        HRESULT QueryHistory(IUpdateSearcher* pUpdateSearcher, IUpdateHistoryEntryCollection*& pHistory, LONG& count) override;
-        HRESULT GetCount(IUpdateHistoryEntryCollection* pHistory, LONG& count) override;
-        HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) override;
-        HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) override;
+    // Implement Windows Update API functions
+    HRESULT CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher) override;
+    HRESULT GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count) override;
+    HRESULT
+    QueryHistory(IUpdateSearcher* pUpdateSearcher, IUpdateHistoryEntryCollection*& pHistory, LONG& count) override;
+    HRESULT GetCount(IUpdateHistoryEntryCollection* pHistory, LONG& count) override;
+    HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) override;
+    HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) override;
 };
 
 // Bounds ComHelper::ConnectToWmiServer's IWbemLocator::ConnectServer() call, which has
@@ -109,13 +111,15 @@ constexpr long WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS = 9000;
 // stay a whitebox test seam (the unit test target compiles this translation unit
 // directly, see tests/sysInfoWin/CMakeLists.txt) rather than a permanent public knob.
 // Production code should call QueryWMIHotFixes() below instead.
-void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHelper,
-                             long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs);
+void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet,
+                             IComHelper& comHelper,
+                             long perCallTimeoutMs,
+                             long overallTimeoutMs,
+                             long connectMaxWaitMs);
 
 // Production entry point: same as QueryWMIHotFixesBounded() above, fixed to the
 // production timeout constants.
 EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
-
 
 // Queries Windows Update Agent (WUA) for installed update history,
 // extracts hotfixes, and adds them to the provided set.

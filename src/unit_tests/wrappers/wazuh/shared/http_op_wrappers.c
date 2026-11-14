@@ -21,14 +21,16 @@
 /* The buffer the client under test installed, remembered so __wrap_uhttp_post() can deliver the
  * body through it rather than inventing one. A single slot is enough: these clients are used one
  * request at a time, on one thread. */
-static char *response_buffer = NULL;
+static char* response_buffer = NULL;
 static size_t response_capacity = 0;
 
 /* What the last uhttp_client_new() was asked for. See the header for why it is a copy. */
 static uhttp_captured_options_t captured = {0};
 
-static void capture_string(char *destination, size_t capacity, const char *source) {
-    if (source == NULL) {
+static void capture_string(char* destination, size_t capacity, const char* source)
+{
+    if (source == NULL)
+    {
         destination[0] = '\0';
         return;
     }
@@ -37,16 +39,20 @@ static void capture_string(char *destination, size_t capacity, const char *sourc
     destination[capacity - 1] = '\0';
 }
 
-const uhttp_captured_options_t* uhttp_wrappers_last_options(void) {
+const uhttp_captured_options_t* uhttp_wrappers_last_options(void)
+{
     return &captured;
 }
 
-void uhttp_wrappers_reset(void) {
+void uhttp_wrappers_reset(void)
+{
     memset(&captured, 0, sizeof(captured));
 }
 
-uhttp_client_t* __wrap_uhttp_client_new(const uhttp_options_t* opt) {
-    if (opt != NULL) {
+uhttp_client_t* __wrap_uhttp_client_new(const uhttp_options_t* opt)
+{
+    if (opt != NULL)
+    {
         capture_string(captured.url, sizeof(captured.url), opt->url);
         capture_string(captured.unix_socket_path, sizeof(captured.unix_socket_path), opt->unix_socket_path);
         capture_string(captured.content_type, sizeof(captured.content_type), opt->content_type);
@@ -59,26 +65,30 @@ uhttp_client_t* __wrap_uhttp_client_new(const uhttp_options_t* opt) {
     return (uhttp_client_t*)mock_ptr_type(void*);
 }
 
-void __wrap_uhttp_client_free(uhttp_client_t* c) {
+void __wrap_uhttp_client_free(uhttp_client_t* c)
+{
     (void)c;
     response_buffer = NULL;
     response_capacity = 0;
 }
 
-void __wrap_uhttp_client_set_response_buffer(uhttp_client_t* c, char* buf, size_t cap) {
+void __wrap_uhttp_client_set_response_buffer(uhttp_client_t* c, char* buf, size_t cap)
+{
     (void)c;
     response_buffer = buf;
     response_capacity = cap;
 }
 
-int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* out) {
+int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* out)
+{
     (void)c;
     (void)data;
     (void)len;
 
-    const char *body = mock_ptr_type(char*);
+    const char* body = mock_ptr_type(char*);
 
-    if (body != NULL && response_buffer != NULL && response_capacity > 0) {
+    if (body != NULL && response_buffer != NULL && response_capacity > 0)
+    {
         /* Truncates rather than overflowing, which is what the real write callback does once the
          * caller's buffer is full. */
         const size_t copied = strnlen(body, response_capacity - 1);
@@ -88,7 +98,8 @@ int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_res
 
     const int retval = mock_type(int);
 
-    if (out != NULL) {
+    if (out != NULL)
+    {
         out->http_status = mock_type(long);
         out->curl_code = 0;
     }
@@ -96,13 +107,15 @@ int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_res
     return retval;
 }
 
-int __wrap_uhttp_client_reset_headers(uhttp_client_t* c) {
+int __wrap_uhttp_client_reset_headers(uhttp_client_t* c)
+{
     (void)c;
     function_called();
     return mock_type(int);
 }
 
-int __wrap_uhttp_client_add_header(uhttp_client_t* c, const char* header_line) {
+int __wrap_uhttp_client_add_header(uhttp_client_t* c, const char* header_line)
+{
     (void)c;
     function_called();
     check_expected(header_line);

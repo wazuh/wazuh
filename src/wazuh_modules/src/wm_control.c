@@ -22,8 +22,8 @@
 #include <stdint.h>
 #include <sys/wait.h>
 
-#define MANAGER_SERVICE_CONTROL_BIN "bin/wazuh-manager-service-control"
-#define MANAGER_SERVICE_CONTROL_STATUS_FD 3
+#define MANAGER_SERVICE_CONTROL_BIN        "bin/wazuh-manager-service-control"
+#define MANAGER_SERVICE_CONTROL_STATUS_FD  3
 #define MANAGER_SERVICE_CONTROL_TIMEOUT_MS 5000
 /* The control socket serves one client at a time: a client that connects and sends nothing must not
  * hold it (and every restart or reload behind it) for longer than this. */
@@ -35,18 +35,20 @@
 /* Worst case: every byte becomes "\xHH", plus the truncation mark and the terminator. */
 #define WM_CONTROL_LOG_INPUT_SIZE (WM_CONTROL_LOG_INPUT_MAX * 4 + sizeof(WM_CONTROL_LOG_TRUNCATED))
 
-static void *wm_control_main();
+static void* wm_control_main();
 static void wm_control_destroy();
 static void wm_control_stop();
-cJSON *wm_control_dump();
-static void *process_control();
+cJSON* wm_control_dump();
+static void* process_control();
 
 #if !defined(CLIENT) && defined(__linux__)
-static void *wm_control_reap_service_control(void *data) {
+static void* wm_control_reap_service_control(void* data)
+{
     const pid_t pid = (pid_t)(intptr_t)data;
 
     int status;
-    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+    {
     }
 
     return NULL;
@@ -56,14 +58,15 @@ static void *wm_control_reap_service_control(void *data) {
 const wm_context WM_CONTROL_CONTEXT = {
     .name = "control",
     .start = (wm_routine)wm_control_main,
-    .destroy = (void(*)(void *))wm_control_destroy,
-    .dump = (cJSON * (*)(const void *))wm_control_dump,
+    .destroy = (void (*)(void*))wm_control_destroy,
+    .dump = (cJSON * (*)(const void*)) wm_control_dump,
     .sync = NULL,
-    .stop = (void(*)(void *))wm_control_stop,
+    .stop = (void (*)(void*))wm_control_stop,
     .query = NULL,
 };
 
-static void *wm_control_main() {
+static void* wm_control_main()
+{
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
 #ifdef CLIENT
     w_create_thread(process_control, NULL);
@@ -73,15 +76,16 @@ static void *wm_control_main() {
     return NULL;
 }
 
-static void wm_control_destroy() {
-}
+static void wm_control_destroy() {}
 
-static void wm_control_stop() {
+static void wm_control_stop()
+{
     wm_shutdown_requested = 1;
 }
 
-wmodule *wm_control_read() {
-    wmodule *module;
+wmodule* wm_control_read()
+{
+    wmodule* module;
 
     os_calloc(1, sizeof(wmodule), module);
     module->context = &WM_CONTROL_CONTEXT;
@@ -90,25 +94,31 @@ wmodule *wm_control_read() {
     return module;
 }
 
-cJSON *wm_control_dump() {
-    cJSON *root = cJSON_CreateObject();
-    cJSON *wm_wd = cJSON_CreateObject();
+cJSON* wm_control_dump()
+{
+    cJSON* root = cJSON_CreateObject();
+    cJSON* wm_wd = cJSON_CreateObject();
     cJSON_AddStringToObject(wm_wd, "enabled", "yes");
     cJSON_AddItemToObject(root, "wazuh_control", wm_wd);
     return root;
 }
 
-bool wm_control_check_systemd() {
-    if (access("/run/systemd/system", F_OK) != 0) {
+bool wm_control_check_systemd()
+{
+    if (access("/run/systemd/system", F_OK) != 0)
+    {
         return false;
     }
 
-    FILE *fp = fopen("/proc/1/comm", "r");
-    if (fp) {
+    FILE* fp = fopen("/proc/1/comm", "r");
+    if (fp)
+    {
         char init_name[256];
-        if (fgets(init_name, sizeof(init_name), fp)) {
+        if (fgets(init_name, sizeof(init_name), fp))
+        {
             init_name[strcspn(init_name, "\n")] = 0;
-            if (strcmp(init_name, "systemd") == 0) {
+            if (strcmp(init_name, "systemd") == 0)
+            {
                 fclose(fp);
                 return true;
             }
@@ -119,27 +129,33 @@ bool wm_control_check_systemd() {
     return false;
 }
 
-bool wm_control_wait_for_service_active(const char *service) {
+bool wm_control_wait_for_service_active(const char* service)
+{
     const int timeout = 60;
     int elapsed = 0;
     char cmd[256];
 
     snprintf(cmd, sizeof(cmd), "systemctl is-active %s 2>/dev/null", service);
 
-    while (elapsed < timeout) {
-        FILE *fp = popen(cmd, "r");
-        if (fp) {
+    while (elapsed < timeout)
+    {
+        FILE* fp = popen(cmd, "r");
+        if (fp)
+        {
             char state[256];
-            if (fgets(state, sizeof(state), fp)) {
+            if (fgets(state, sizeof(state), fp))
+            {
                 state[strcspn(state, "\n")] = 0;
 
-                if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0) {
+                if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0)
+                {
                     pclose(fp);
                     mtwarn(WM_CONTROL_LOGTAG, "Service %s is in state '%s', systemctl cannot reload", service, state);
                     return false;
                 }
 
-                if (strcmp(state, "active") == 0) {
+                if (strcmp(state, "active") == 0)
+                {
                     pclose(fp);
                     return true;
                 }
@@ -155,7 +171,8 @@ bool wm_control_wait_for_service_active(const char *service) {
     return false;
 }
 
-const char *wm_control_get_bin(void) {
+const char* wm_control_get_bin(void)
+{
     /* 5.0 rename: manager ships wazuh-manager-control, agent ships wazuh-control. */
 #ifdef CLIENT
     return "bin/wazuh-control";
@@ -164,7 +181,8 @@ const char *wm_control_get_bin(void) {
 #endif
 }
 
-size_t wm_control_execute_action(const char *action, const char *service, char **output) {
+size_t wm_control_execute_action(const char* action, const char* service, char** output)
+{
 #ifdef __APPLE__
     /* On macOS, do not run wazuh-control directly from here. Forking it from
      * wazuh-modulesd makes modulesd the TCC "responsible process" of the
@@ -181,32 +199,43 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
          * and rename() it onto the final flag so the launcher (the reader)
          * never observes a partially written request: rename(2) is atomic
          * within the same directory. */
-        const char *flag = "var/run/wazuh-control.request";
-        const char *flag_tmp = "var/run/wazuh-control.request.tmp";
+        const char* flag = "var/run/wazuh-control.request";
+        const char* flag_tmp = "var/run/wazuh-control.request.tmp";
 
-        FILE *fp = fopen(flag_tmp, "w");
-        if (fp == NULL) {
-            mterror(WM_CONTROL_LOGTAG, "Cannot create control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
+        FILE* fp = fopen(flag_tmp, "w");
+        if (fp == NULL)
+        {
+            mterror(WM_CONTROL_LOGTAG,
+                    "Cannot create control request flag '%s': %s (%d)",
+                    flag_tmp,
+                    strerror(errno),
+                    errno);
             os_strdup("err Cannot write control flag", *output);
             return strlen(*output);
         }
-        if (fprintf(fp, "%s\n", action) < 0) {
-            mterror(WM_CONTROL_LOGTAG, "Cannot write control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
+        if (fprintf(fp, "%s\n", action) < 0)
+        {
+            mterror(
+                WM_CONTROL_LOGTAG, "Cannot write control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
             fclose(fp);
             unlink(flag_tmp);
             os_strdup("err Cannot write control flag", *output);
             return strlen(*output);
         }
 
-        if (fclose(fp) != 0) {
-            mterror(WM_CONTROL_LOGTAG, "Cannot flush control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
+        if (fclose(fp) != 0)
+        {
+            mterror(
+                WM_CONTROL_LOGTAG, "Cannot flush control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
             unlink(flag_tmp);
             os_strdup("err Cannot write control flag", *output);
             return strlen(*output);
         }
 
-        if (rename(flag_tmp, flag) != 0) {
-            mterror(WM_CONTROL_LOGTAG, "Cannot commit control request flag '%s': %s (%d)", flag, strerror(errno), errno);
+        if (rename(flag_tmp, flag) != 0)
+        {
+            mterror(
+                WM_CONTROL_LOGTAG, "Cannot commit control request flag '%s': %s (%d)", flag, strerror(errno), errno);
             unlink(flag_tmp);
             os_strdup("err Cannot write control flag", *output);
             return strlen(*output);
@@ -220,14 +249,20 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
 #if !defined(CLIENT) && defined(__linux__)
     (void)service;
     int status_pipe[2];
-    if (pipe(status_pipe) < 0) {
-        mterror(WM_CONTROL_LOGTAG, "Cannot create service control status pipe for %s: %s (%d)", action, strerror(errno), errno);
+    if (pipe(status_pipe) < 0)
+    {
+        mterror(WM_CONTROL_LOGTAG,
+                "Cannot create service control status pipe for %s: %s (%d)",
+                action,
+                strerror(errno),
+                errno);
         os_strdup("err Cannot create service control pipe", *output);
         return strlen(*output);
     }
 
     const pid_t pid = fork();
-    if (pid < 0) {
+    if (pid < 0)
+    {
         close(status_pipe[0]);
         close(status_pipe[1]);
         mterror(WM_CONTROL_LOGTAG, "Cannot fork service control for %s: %s (%d)", action, strerror(errno), errno);
@@ -235,10 +270,13 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
         return strlen(*output);
     }
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
         close(status_pipe[0]);
-        if (status_pipe[1] != MANAGER_SERVICE_CONTROL_STATUS_FD) {
-            if (dup2(status_pipe[1], MANAGER_SERVICE_CONTROL_STATUS_FD) < 0) {
+        if (status_pipe[1] != MANAGER_SERVICE_CONTROL_STATUS_FD)
+        {
+            if (dup2(status_pipe[1], MANAGER_SERVICE_CONTROL_STATUS_FD) < 0)
+            {
                 _exit(EXIT_FAILURE);
             }
             close(status_pipe[1]);
@@ -255,16 +293,21 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
     const ssize_t length = poll_result > 0 ? read(status_pipe[0], &accepted, sizeof(accepted)) : -1;
     close(status_pipe[0]);
 
-    if (length == 1 && accepted == '1') {
+    if (length == 1 && accepted == '1')
+    {
         os_strdup("ok accepted", *output);
-        if (!CreateThread(wm_control_reap_service_control, (void *)(intptr_t)pid)) {
+        if (!CreateThread(wm_control_reap_service_control, (void*)(intptr_t)pid))
+        {
             mtwarn(WM_CONTROL_LOGTAG, "Cannot create service control reaper thread for PID '%d'", pid);
             int status;
             waitpid(pid, &status, WNOHANG);
         }
-    } else {
+    }
+    else
+    {
         int status;
-        if (poll_result <= 0) {
+        if (poll_result <= 0)
+        {
             kill(pid, SIGKILL);
         }
         waitpid(pid, &status, 0);
@@ -275,79 +318,118 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
     return strlen(*output);
 #else
     bool use_systemd = wm_control_check_systemd();
-    const char *control_bin = wm_control_get_bin();
-    char *exec_cmd[4] = {NULL};
+    const char* control_bin = wm_control_get_bin();
+    char* exec_cmd[4] = {NULL};
 
-    if (use_systemd) {
+    if (use_systemd)
+    {
         exec_cmd[0] = "systemctl";
-        exec_cmd[1] = (char *)action;
-        exec_cmd[2] = (char *)service;
+        exec_cmd[1] = (char*)action;
+        exec_cmd[2] = (char*)service;
         mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using systemctl", action, service);
-    } else {
-        exec_cmd[0] = (char *)control_bin;
-        exec_cmd[1] = (char *)action;
+    }
+    else
+    {
+        exec_cmd[0] = (char*)control_bin;
+        exec_cmd[1] = (char*)action;
         mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using %s", action, service, control_bin);
     }
 
-    switch (fork()) {
+    switch (fork())
+    {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "Cannot fork for %s", action);
             os_strdup("err Cannot fork", *output);
             return strlen(*output);
         case 0:
-            if (use_systemd && strcmp(action, "reload") == 0) {
-                if (!wm_control_wait_for_service_active(service)) {
-                    mtwarn(WM_CONTROL_LOGTAG, "Service %s not active for systemctl, falling back to %s", service, control_bin);
-                    char *fallback_cmd[] = {(char *)control_bin, (char *)action, NULL};
-                    if (execvp(fallback_cmd[0], fallback_cmd) < 0) {
-                        mterror(WM_CONTROL_LOGTAG, "Error executing %s command via %s: %s (%d)", action, control_bin, strerror(errno), errno);
+            if (use_systemd && strcmp(action, "reload") == 0)
+            {
+                if (!wm_control_wait_for_service_active(service))
+                {
+                    mtwarn(WM_CONTROL_LOGTAG,
+                           "Service %s not active for systemctl, falling back to %s",
+                           service,
+                           control_bin);
+                    char* fallback_cmd[] = {(char*)control_bin, (char*)action, NULL};
+                    if (execvp(fallback_cmd[0], fallback_cmd) < 0)
+                    {
+                        mterror(WM_CONTROL_LOGTAG,
+                                "Error executing %s command via %s: %s (%d)",
+                                action,
+                                control_bin,
+                                strerror(errno),
+                                errno);
                     }
                     _exit(1);
                 }
             }
-            if (execvp(exec_cmd[0], exec_cmd) < 0) {
-                mterror(WM_CONTROL_LOGTAG, "Error executing %s command (%s): %s (%d)", action, exec_cmd[0], strerror(errno), errno);
+            if (execvp(exec_cmd[0], exec_cmd) < 0)
+            {
+                mterror(WM_CONTROL_LOGTAG,
+                        "Error executing %s command (%s): %s (%d)",
+                        action,
+                        exec_cmd[0],
+                        strerror(errno),
+                        errno);
             }
             _exit(1);
-        default:
-            os_strdup("ok ", *output);
-            return strlen(*output);
+        default: os_strdup("ok ", *output); return strlen(*output);
     }
 #endif
 #endif
 }
 
-const char *wm_control_log_input(const char *input, char *dst, size_t dst_size) {
+const char* wm_control_log_input(const char* input, char* dst, size_t dst_size)
+{
     static const char hex[] = "0123456789abcdef";
     size_t in = 0;
     size_t out = 0;
 
-    if (dst == NULL || dst_size == 0) {
+    if (dst == NULL || dst_size == 0)
+    {
         return "";
     }
 
-    for (; input != NULL && input[in] != '\0' && in < WM_CONTROL_LOG_INPUT_MAX; in++) {
+    for (; input != NULL && input[in] != '\0' && in < WM_CONTROL_LOG_INPUT_MAX; in++)
+    {
         const unsigned char c = (unsigned char)input[in];
         char esc[5] = {0};
 
-        switch (c) {
-        case '\n': esc[0] = '\\'; esc[1] = 'n'; break;
-        case '\r': esc[0] = '\\'; esc[1] = 'r'; break;
-        case '\t': esc[0] = '\\'; esc[1] = 't'; break;
-        case '\\': esc[0] = '\\'; esc[1] = '\\'; break;
-        default:
-            if (c < 0x20 || c >= 0x7f) {
+        switch (c)
+        {
+            case '\n':
                 esc[0] = '\\';
-                esc[1] = 'x';
-                esc[2] = hex[c >> 4];
-                esc[3] = hex[c & 0x0f];
-            } else {
-                esc[0] = (char)c;
-            }
+                esc[1] = 'n';
+                break;
+            case '\r':
+                esc[0] = '\\';
+                esc[1] = 'r';
+                break;
+            case '\t':
+                esc[0] = '\\';
+                esc[1] = 't';
+                break;
+            case '\\':
+                esc[0] = '\\';
+                esc[1] = '\\';
+                break;
+            default:
+                if (c < 0x20 || c >= 0x7f)
+                {
+                    esc[0] = '\\';
+                    esc[1] = 'x';
+                    esc[2] = hex[c >> 4];
+                    esc[3] = hex[c & 0x0f];
+                }
+                else
+                {
+                    esc[0] = (char)c;
+                }
         }
 
         const size_t esc_len = strlen(esc);
-        if (out + esc_len >= dst_size) {
+        if (out + esc_len >= dst_size)
+        {
             break;
         }
         memcpy(dst + out, esc, esc_len);
@@ -356,20 +438,24 @@ const char *wm_control_log_input(const char *input, char *dst, size_t dst_size) 
 
     dst[out] = '\0';
 
-    if (input != NULL && input[in] != '\0' && out + sizeof(WM_CONTROL_LOG_TRUNCATED) <= dst_size) {
+    if (input != NULL && input[in] != '\0' && out + sizeof(WM_CONTROL_LOG_TRUNCATED) <= dst_size)
+    {
         memcpy(dst + out, WM_CONTROL_LOG_TRUNCATED, sizeof(WM_CONTROL_LOG_TRUNCATED));
     }
 
     return dst;
 }
 
-size_t wm_control_dispatch(char *command, char **output) {
+size_t wm_control_dispatch(char* command, char** output)
+{
     char safe_command[WM_CONTROL_LOG_INPUT_SIZE];
-    char *args = strchr(command, ' ');
-    if (args) {
+    char* args = strchr(command, ' ');
+    if (args)
+    {
         *args = '\0';
 #ifndef CLIENT
-        mtwarn(WM_CONTROL_LOGTAG, "Unexpected arguments for command: '%s'",
+        mtwarn(WM_CONTROL_LOGTAG,
+               "Unexpected arguments for command: '%s'",
                wm_control_log_input(command, safe_command, sizeof(safe_command)));
         os_strdup("err Unexpected arguments", *output);
         return strlen(*output);
@@ -378,56 +464,64 @@ size_t wm_control_dispatch(char *command, char **output) {
 #endif
     }
 
-    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'",
+    mtdebug2(WM_CONTROL_LOGTAG,
+             "Dispatching command: '%s'",
              wm_control_log_input(command, safe_command, sizeof(safe_command)));
 
 #ifdef CLIENT
-    const char *service = "wazuh-agent";
+    const char* service = "wazuh-agent";
 #else
-    const char *service = "wazuh-manager";
+    const char* service = "wazuh-manager";
 #endif
 
-    if (strcmp(command, "restart") == 0) {
+    if (strcmp(command, "restart") == 0)
+    {
         return wm_control_execute_action("restart", service, output);
-
-    } else if (strcmp(command, "reload") == 0) {
+    }
+    else if (strcmp(command, "reload") == 0)
+    {
         return wm_control_execute_action("reload", service, output);
-
-    } else {
-        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'",
+    }
+    else
+    {
+        mterror(WM_CONTROL_LOGTAG,
+                "Unknown command: '%s'",
                 wm_control_log_input(command, safe_command, sizeof(safe_command)));
         os_strdup("Err", *output);
         return strlen(*output);
     }
 }
 
-static void *process_control() {
+static void* process_control()
+{
     int sock;
     int peer;
-    char *buffer = NULL;
-    char *response = NULL;
+    char* buffer = NULL;
+    char* response = NULL;
     ssize_t length;
     fd_set fdset;
 
-    if (sock = OS_BindUnixDomainWithPerms(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
+    if (sock = OS_BindUnixDomainWithPerms(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660),
+        sock < 0)
+    {
         mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
-    while (!wm_shutdown_requested) {
+    while (!wm_shutdown_requested)
+    {
 
-        switch (wm_select_interruptible(sock, &fdset)) {
-        case -1:
-            mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno));
-            break;
-        case 0:
-            continue;
-        default:
-            break;
+        switch (wm_select_interruptible(sock, &fdset))
+        {
+            case -1: mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno)); break;
+            case 0: continue;
+            default: break;
         }
 
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
+        if (peer = accept(sock, NULL, NULL), peer < 0)
+        {
+            if (errno != EINTR)
+            {
                 mterror(WM_CONTROL_LOGTAG, "At process_control(): accept(): %s", strerror(errno));
             }
             continue;
@@ -437,7 +531,8 @@ static void *process_control() {
         struct ucred credentials;
         socklen_t credentials_size = sizeof(credentials);
         if (getsockopt(peer, SOL_SOCKET, SO_PEERCRED, &credentials, &credentials_size) < 0 ||
-            (credentials.uid != 0 && credentials.uid != getuid())) {
+            (credentials.uid != 0 && credentials.uid != getuid()))
+        {
             mtwarn(WM_CONTROL_LOGTAG, "Rejected unauthorized control socket peer.");
             close(peer);
             continue;
@@ -446,7 +541,8 @@ static void *process_control() {
 
 #ifndef CLIENT
         /* The agent's only client is agentd, which sends its command and closes at once. */
-        if (OS_SetRecvTimeout(peer, WM_CONTROL_RECV_TIMEOUT_S, 0) < 0) {
+        if (OS_SetRecvTimeout(peer, WM_CONTROL_RECV_TIMEOUT_S, 0) < 0)
+        {
             mtwarn(WM_CONTROL_LOGTAG, "Cannot set a receive timeout on a control socket client: %s", strerror(errno));
         }
 #endif
@@ -454,52 +550,54 @@ static void *process_control() {
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
 #ifdef CLIENT
-        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
-        case -1:
-            mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvSecureTCP(): %s", strerror(errno));
-            break;
-        case 0:
-            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
-            break;
-        case OS_SOCKTERR:
-            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
-            break;
-        default:
-            buffer[length] = '\0';
-            wm_control_dispatch(buffer, &response);
-            if (response) {
-                OS_SendSecureTCP(peer, strlen(response), response);
-                free(response);
-            } else {
-                OS_SendSecureTCP(peer, 3, "Err");
-            }
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length)
+        {
+            case -1: mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvSecureTCP(): %s", strerror(errno)); break;
+            case 0: mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client."); break;
+            case OS_SOCKTERR: mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR); break;
+            default:
+                buffer[length] = '\0';
+                wm_control_dispatch(buffer, &response);
+                if (response)
+                {
+                    OS_SendSecureTCP(peer, strlen(response), response);
+                    free(response);
+                }
+                else
+                {
+                    OS_SendSecureTCP(peer, 3, "Err");
+                }
         }
 #else
         errno = 0;
-        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
-        case -1:
-            mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno));
-            break;
-        case 0:
-            /* OS_RecvUnix() returns 0 for a receive error too; a timeout leaves EAGAIN. */
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                mtwarn(WM_CONTROL_LOGTAG, "A local client sent no command within %d seconds; connection closed.",
-                       WM_CONTROL_RECV_TIMEOUT_S);
-            } else {
-                mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
-            }
-            break;
-        case OS_MAXLEN:
-            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
-            break;
-        default:
-            wm_control_dispatch(buffer, &response);
-            if (response) {
-                OS_SendUnix(peer, response, 0);
-                free(response);
-            } else {
-                OS_SendUnix(peer, "Err", 4);
-            }
+        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length)
+        {
+            case -1: mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno)); break;
+            case 0:
+                /* OS_RecvUnix() returns 0 for a receive error too; a timeout leaves EAGAIN. */
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    mtwarn(WM_CONTROL_LOGTAG,
+                           "A local client sent no command within %d seconds; connection closed.",
+                           WM_CONTROL_RECV_TIMEOUT_S);
+                }
+                else
+                {
+                    mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+                }
+                break;
+            case OS_MAXLEN: mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR); break;
+            default:
+                wm_control_dispatch(buffer, &response);
+                if (response)
+                {
+                    OS_SendUnix(peer, response, 0);
+                    free(response);
+                }
+                else
+                {
+                    OS_SendUnix(peer, "Err", 4);
+                }
         }
 #endif
 

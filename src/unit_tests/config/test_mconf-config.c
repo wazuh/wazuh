@@ -33,23 +33,25 @@
 #define LOCAL_DEFAULT_DIR  "etc"
 #define LOCAL_DEFAULT_CONF LOCAL_DEFAULT_DIR "/wazuh-manager.conf"
 
-int __real_mconf_load_ex(const char *path, const char *home, int check_files, mconf_t **out, char *err,
-                         size_t errlen);
+int __real_mconf_load_ex(const char* path, const char* home, int check_files, mconf_t** out, char* err, size_t errlen);
 
-int __wrap_mconf_load_ex(const char *path, const char *home, int check_files, mconf_t **out, char *err,
-                         size_t errlen) {
-    if (path != NULL && strcmp(path, WAZUHCONF) == 0) {
+int __wrap_mconf_load_ex(const char* path, const char* home, int check_files, mconf_t** out, char* err, size_t errlen)
+{
+    if (path != NULL && strcmp(path, WAZUHCONF) == 0)
+    {
         path = LOCAL_DEFAULT_CONF;
     }
     return __real_mconf_load_ex(path, home, check_files, out, err, errlen);
 }
 
-static const char *TEST_CONF = "test_mconf-config.conf";
+static const char* TEST_CONF = "test_mconf-config.conf";
 
-static int write_conf(const char *body) {
-    FILE *fp = fopen(TEST_CONF, "w");
+static int write_conf(const char* body)
+{
+    FILE* fp = fopen(TEST_CONF, "w");
 
-    if (!fp) {
+    if (!fp)
+    {
         return -1;
     }
 
@@ -58,10 +60,11 @@ static int write_conf(const char *body) {
     return 0;
 }
 
-static const char *TEST_CONF_B = "test_mconf-config-b.conf";
+static const char* TEST_CONF_B = "test_mconf-config-b.conf";
 
-static int teardown_conf(void **state) {
-    (void) state;
+static int teardown_conf(void** state)
+{
+    (void)state;
     unlink(TEST_CONF);
     unlink(TEST_CONF_B);
     unlink(LOCAL_DEFAULT_CONF);
@@ -70,16 +73,18 @@ static int teardown_conf(void **state) {
     return 0;
 }
 
-static void test_w_mconf_section_before_load_is_null(void **state) {
-    (void) state;
+static void test_w_mconf_section_before_load_is_null(void** state)
+{
+    (void)state;
 
     w_mconf_free();
     assert_null(w_mconf_section("remote"));
     assert_null(w_mconf_file());
 }
 
-static void test_w_mconf_load_and_section_from_xml_file(void **state) {
-    (void) state;
+static void test_w_mconf_load_and_section_from_xml_file(void** state)
+{
+    (void)state;
 
     /* Only schema defaults: the certificate files they name do not exist here, and the loader must not
      * care (start-up path) -- w_mconf_validate() is the one that checks them. */
@@ -87,20 +92,22 @@ static void test_w_mconf_load_and_section_from_xml_file(void **state) {
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
                    "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
                    "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
+                   "</wazuh_config>\n") != 0)
+    {
         fail();
     }
 
     assert_int_equal(w_mconf_load(TEST_CONF), 0);
     assert_string_equal(w_mconf_file(), TEST_CONF);
 
-    cJSON *remote = w_mconf_section("remote");
+    cJSON* remote = w_mconf_section("remote");
     assert_non_null(remote);
-    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(remote, "https"), "port")->valueint, 1517); // schema default
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(remote, "https"), "port")->valueint,
+                     1517);                                                                            // schema default
     assert_true(cJSON_IsFalse(cJSON_GetObjectItem(cJSON_GetObjectItem(remote, "legacy"), "enabled"))); // absent block
     cJSON_Delete(remote);
 
-    cJSON *global = w_mconf_section("global");
+    cJSON* global = w_mconf_section("global");
     assert_non_null(global);
     assert_string_equal(cJSON_GetObjectItem(global, "agents_disconnection_time")->valuestring, "10m");
     cJSON_Delete(global);
@@ -113,8 +120,9 @@ static void test_w_mconf_load_and_section_from_xml_file(void **state) {
     assert_string_equal(w_mconf_file(), TEST_CONF);
 }
 
-static void test_w_mconf_validate_checks_files(void **state) {
-    (void) state;
+static void test_w_mconf_validate_checks_files(void** state)
+{
+    (void)state;
     const char prefix[] = "(1244): Invalid configuration at 'test_mconf-config.conf': /remote/https/certificate";
 
     /* Valid document whose default certificate does not exist in the working directory: the loader
@@ -123,7 +131,8 @@ static void test_w_mconf_validate_checks_files(void **state) {
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
                    "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
                    "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
+                   "</wazuh_config>\n") != 0)
+    {
         fail();
     }
 
@@ -145,21 +154,24 @@ static void test_w_mconf_validate_checks_files(void **state) {
                    "  </auth>\n"
                    "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
                    "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
+                   "</wazuh_config>\n") != 0)
+    {
         fail();
     }
     assert_int_equal(w_mconf_validate(TEST_CONF), 0);
 }
 
-static void test_w_mconf_load_invalid_logs_1244(void **state) {
-    (void) state;
+static void test_w_mconf_load_invalid_logs_1244(void** state)
+{
+    (void)state;
     const char prefix[] = "(1244): Invalid configuration at 'test_mconf-config.conf': /auth/disabled";
 
     /* Booleans are yes/no in the XML dialect: true is a plain string and fails the schema type. */
     if (write_conf("<wazuh_config><auth><disabled>true</disabled></auth>\n"
                    "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
                    "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
+                   "</wazuh_config>\n") != 0)
+    {
         fail();
     }
 
@@ -172,12 +184,13 @@ static void test_w_mconf_load_invalid_logs_1244(void **state) {
 
 /* The provider libconfig registers in libwazuh's hook (constructor): when nothing is loaded it loads the
  * default file silently, so cluster_utils.c/debug_op.c work even before the daemon called w_mconf_load(). */
-static void test_w_mconf_hook_provider_loads_default_file_silently(void **state) {
-    (void) state;
+static void test_w_mconf_hook_provider_loads_default_file_silently(void** state)
+{
+    (void)state;
 
     w_mconf_free();
     mkdir(LOCAL_DEFAULT_DIR, 0755);
-    FILE *fp = fopen(LOCAL_DEFAULT_CONF, "w");
+    FILE* fp = fopen(LOCAL_DEFAULT_CONF, "w");
     assert_non_null(fp);
     fputs("<wazuh_config><cluster>\n"
           "  <key>0123456789abcdef0123456789abcdef</key>\n"
@@ -188,7 +201,7 @@ static void test_w_mconf_hook_provider_loads_default_file_silently(void **state)
           fp);
     fclose(fp);
 
-    cJSON *cluster = w_mconf_hook_section("cluster");
+    cJSON* cluster = w_mconf_hook_section("cluster");
     assert_non_null(cluster);
     assert_string_equal(cJSON_GetObjectItem(cluster, "node_type")->valuestring, "worker");
     assert_string_equal(cJSON_GetObjectItem(cluster, "name")->valuestring, "wazuh"); // schema default
@@ -204,17 +217,19 @@ static void test_w_mconf_hook_provider_loads_default_file_silently(void **state)
     assert_null(w_mconf_file());
 }
 
-static void test_w_mconf_load_reloads_when_the_path_changes(void **state) {
-    (void) state;
+static void test_w_mconf_load_reloads_when_the_path_changes(void** state)
+{
+    (void)state;
 
     if (write_conf("<wazuh_config>\n"
                    "  <global><agents_disconnection_time>10m</agents_disconnection_time></global>\n"
                    "  <cluster><key>0123456789abcdef0123456789abcdef</key></cluster>\n"
                    "  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>\n"
-                   "</wazuh_config>\n") != 0) {
+                   "</wazuh_config>\n") != 0)
+    {
         fail();
     }
-    FILE *fp = fopen(TEST_CONF_B, "w");
+    FILE* fp = fopen(TEST_CONF_B, "w");
     assert_non_null(fp);
     fputs("<wazuh_config>\n"
           "  <global><agents_disconnection_time>20m</agents_disconnection_time></global>\n"
@@ -227,12 +242,14 @@ static void test_w_mconf_load_reloads_when_the_path_changes(void **state) {
     assert_int_equal(w_mconf_load(TEST_CONF), 0);
     assert_string_equal(w_mconf_file(), TEST_CONF);
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "Replacing the manager configuration loaded from 'test_mconf-config.conf' with 'test_mconf-config-b.conf'.");
+    expect_string(
+        __wrap__mdebug1,
+        formatted_msg,
+        "Replacing the manager configuration loaded from 'test_mconf-config.conf' with 'test_mconf-config-b.conf'.");
     assert_int_equal(w_mconf_load(TEST_CONF_B), 0);
     assert_string_equal(w_mconf_file(), TEST_CONF_B);
 
-    cJSON *global = w_mconf_section("global");
+    cJSON* global = w_mconf_section("global");
     assert_string_equal(cJSON_GetObjectItem(global, "agents_disconnection_time")->valuestring, "20m");
     cJSON_Delete(global);
 
@@ -241,7 +258,8 @@ static void test_w_mconf_load_reloads_when_the_path_changes(void **state) {
     assert_string_equal(w_mconf_file(), TEST_CONF_B);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_mconf_section_before_load_is_null),
         cmocka_unit_test_teardown(test_w_mconf_load_and_section_from_xml_file, teardown_conf),

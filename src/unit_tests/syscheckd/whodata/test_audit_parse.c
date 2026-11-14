@@ -26,7 +26,6 @@
 #include "wrappers/wazuh/shared/file_op_wrappers.h"
 #include "wrappers/wazuh/syscheckd/audit_rule_handling_wrappers.h"
 
-
 #ifndef AT_EMPTY_PATH
 #define AT_EMPTY_PATH 0x1000
 #endif
@@ -40,13 +39,15 @@
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
 extern unsigned int count_reload_retries;
-audit_key_type filterkey_audit_events(char *buffer);
+audit_key_type filterkey_audit_events(char* buffer);
 
-extern int __real_open(const char *path, int flags, ...);
+extern int __real_open(const char* path, int flags, ...);
 static bool open_mocked;
 
-int __wrap_open(const char *path, int flags, ...) {
-    if (!open_mocked) {
+int __wrap_open(const char* path, int flags, ...)
+{
+    if (!open_mocked)
+    {
         va_list args;
         va_start(args, flags);
         const mode_t mode = (flags & O_CREAT) ? va_arg(args, mode_t) : 0;
@@ -59,16 +60,18 @@ int __wrap_open(const char *path, int flags, ...) {
 }
 
 /* setup/teardown */
-static int setup_group(void **state) {
-    (void) state;
+static int setup_group(void** state)
+{
+    (void)state;
     test_mode = 1;
     init_regex();
 
     return 0;
 }
 
-static int teardown_group(void **state) {
-    (void) state;
+static int teardown_group(void** state)
+{
+    (void)state;
     memset(&syscheck, 0, sizeof(syscheck_config));
     Free_Syscheck(&syscheck);
     clean_regex();
@@ -76,17 +79,19 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int setup_config(void **state) {
+static int setup_config(void** state)
+{
     open_mocked = true;
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    directory_t *directory0 = fim_create_directory("/var/test", WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+    directory_t* directory0 = fim_create_directory("/var/test", WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
 
     syscheck.directories = OSList_Create();
-    if (syscheck.directories == NULL) {
+    if (syscheck.directories == NULL)
+    {
         return -1;
     }
 
@@ -95,9 +100,10 @@ static int setup_config(void **state) {
     return 0;
 }
 
-static int teardown_config(void **state) {
+static int teardown_config(void** state)
+{
     open_mocked = false;
-    OSListNode *node_it;
+    OSListNode* node_it;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -105,8 +111,10 @@ static int teardown_config(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    if (syscheck.directories) {
-        OSList_foreach(node_it, syscheck.directories) {
+    if (syscheck.directories)
+    {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             free_directory(node_it->data);
             node_it->data = NULL;
         }
@@ -117,38 +125,44 @@ static int teardown_config(void **state) {
     return 0;
 }
 
-static int free_string(void **state) {
-    char * string = *state;
+static int free_string(void** state)
+{
+    char* string = *state;
     free(string);
     return 0;
 }
 
-static int setup_custom_key(void **state) {
-    syscheck.audit_key = calloc(2, sizeof(char *));
-    if (syscheck.audit_key == NULL) {
+static int setup_custom_key(void** state)
+{
+    syscheck.audit_key = calloc(2, sizeof(char*));
+    if (syscheck.audit_key == NULL)
+    {
         return 1;
     }
 
     syscheck.audit_key[0] = calloc(OS_SIZE_64, sizeof(char));
-    if (syscheck.audit_key[0] == NULL) {
+    if (syscheck.audit_key[0] == NULL)
+    {
         return 1;
     }
     return 0;
 }
 
-static int teardown_custom_key(void **state) {
+static int teardown_custom_key(void** state)
+{
     free(syscheck.audit_key[0]);
     free(syscheck.audit_key);
     syscheck.audit_key = NULL;
     return 0;
 }
 
-
-void test_filterkey_audit_events_custom(void **state) {
-    (void) state;
+void test_filterkey_audit_events_custom(void** state)
+{
+    (void)state;
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"test_key\"";
-    char *key = "test_key";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=\"test_key\"";
+    char* key = "test_key";
     char buff[OS_SIZE_128] = {0};
 
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
@@ -161,15 +175,16 @@ void test_filterkey_audit_events_custom(void **state) {
     assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
 
+void test_filterkey_audit_events_discard(void** state)
+{
+    (void)state;
 
-void test_filterkey_audit_events_discard(void **state) {
-    (void) state;
-
-    char *key = "test_key";
+    char* key = "test_key";
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"test_invalid_key\"";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=\"test_invalid_key\"";
 
-    syscheck.audit_key = calloc(2, sizeof(char *));
+    syscheck.audit_key = calloc(2, sizeof(char*));
     syscheck.audit_key[0] = calloc(strlen(key) + 2, sizeof(char));
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
 
@@ -181,12 +196,13 @@ void test_filterkey_audit_events_discard(void **state) {
     assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
 }
 
-
-void test_filterkey_audit_events_hc(void **state) {
-    (void) state;
+void test_filterkey_audit_events_hc(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_hc\"";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=\"wazuh_hc\"";
     char buff[OS_SIZE_128] = {0};
 
     snprintf(buff, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_hc");
@@ -197,12 +213,13 @@ void test_filterkey_audit_events_hc(void **state) {
     assert_int_equal(ret, FIM_AUDIT_HC_KEY);
 }
 
-
-void test_filterkey_audit_events_fim(void **state) {
-    (void) state;
+void test_filterkey_audit_events_fim(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=\"wazuh_fim\"";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=\"wazuh_fim\"";
     char audit_key_msg[OS_SIZE_128] = {0};
 
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
@@ -213,44 +230,52 @@ void test_filterkey_audit_events_fim(void **state) {
     assert_int_equal(ret, FIM_AUDIT_KEY);
 }
 
-void test_filterkey_audit_events_missing_whitespace(void **state) {
-    (void) state;
+void test_filterkey_audit_events_missing_whitespace(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57key=\"wazuh_fim\"";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57key=\"wazuh_fim\"";
 
     ret = filterkey_audit_events(event);
 
     assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
 }
 
-void test_filterkey_audit_events_missing_equal_sign(void **state) {
-    (void) state;
+void test_filterkey_audit_events_missing_equal_sign(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key\"wazuh_fim\"";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key\"wazuh_fim\"";
 
     ret = filterkey_audit_events(event);
 
     assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
 }
 
-void test_filterkey_audit_events_no_key(void **state) {
-    (void) state;
+void test_filterkey_audit_events_no_key(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57";
 
     ret = filterkey_audit_events(event);
 
     assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
 }
 
-void test_filterkey_audit_events_key_at_the_beggining(void **state) {
-    (void) state;
+void test_filterkey_audit_events_key_at_the_beggining(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "key=\"wazuh_fim\" type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57";
+    char* event = "key=\"wazuh_fim\" type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 "
+                  "auid=0 tty=(none) old-ses=4294967295 ses=57";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
@@ -261,11 +286,13 @@ void test_filterkey_audit_events_key_at_the_beggining(void **state) {
     assert_int_equal(ret, FIM_AUDIT_KEY);
 }
 
-void test_filterkey_audit_events_key_end_line(void **state) {
-    (void) state;
+void test_filterkey_audit_events_key_end_line(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 \nkey=\"wazuh_fim\"";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 \nkey=\"wazuh_fim\"";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
@@ -276,14 +303,16 @@ void test_filterkey_audit_events_key_end_line(void **state) {
     assert_int_equal(ret, FIM_AUDIT_KEY);
 }
 
-void test_filterkey_audit_events_hex_coded_key_no_fim(void **state) {
-    (void) state;
+void test_filterkey_audit_events_hex_coded_key_no_fim(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
     snprintf(syscheck.audit_key[0], OS_SIZE_64, "key_1");
 
     // The decoded key in the event is "key_1\001key_2"
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "key_1");
@@ -294,13 +323,15 @@ void test_filterkey_audit_events_hex_coded_key_no_fim(void **state) {
     assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
 
-void test_filterkey_audit_events_hex_coded_key_no_fim_second_key(void **state) {
-    (void) state;
+void test_filterkey_audit_events_hex_coded_key_no_fim_second_key(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
     snprintf(syscheck.audit_key[0], OS_SIZE_64, "key_2");
     // The decoded key in the event is "key_1\001key_2"
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "key_2");
@@ -311,12 +342,14 @@ void test_filterkey_audit_events_hex_coded_key_no_fim_second_key(void **state) {
     assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
 
-void test_filterkey_audit_events_hex_coded_key_fim(void **state) {
-    (void) state;
+void test_filterkey_audit_events_hex_coded_key_fim(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
     // The decoded key of the event is "wazuh_fim\001key_2\001key_1"
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=77617A75685F66696D016B65795F32016B65795F31 ";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=77617A75685F66696D016B65795F32016B65795F31 ";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
@@ -327,13 +360,15 @@ void test_filterkey_audit_events_hex_coded_key_fim(void **state) {
     assert_int_equal(ret, FIM_AUDIT_KEY);
 }
 
-void test_filterkey_audit_events_path_named_key(void **state) {
-    (void) state;
+void test_filterkey_audit_events_path_named_key(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
     snprintf(syscheck.audit_key[0], OS_SIZE_64, "key_1");
     // The decoded key in the event is "key_1\001key_2"
-    char * event = "path=\"key\" type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
+    char* event = "path=\"key\" type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 "
+                  "tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "key_1");
@@ -344,12 +379,14 @@ void test_filterkey_audit_events_path_named_key(void **state) {
     assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
 
-void test_filterkey_audit_events_separator(void **state) {
-    (void) state;
+void test_filterkey_audit_events_separator(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
     // The decoded key of the event is "wazuh_fim\001key_2\001key_1"
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=77617A75685F66696D016B65795F32016B65795F31\035ARCH= ";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=77617A75685F66696D016B65795F32016B65795F31\035ARCH= ";
 
     char audit_key_msg[OS_SIZE_128] = {0};
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
@@ -360,12 +397,14 @@ void test_filterkey_audit_events_separator(void **state) {
     assert_int_equal(ret, FIM_AUDIT_KEY);
 }
 
-void test_filterkey_audit_events_separator_in_key(void **state) {
-    (void) state;
+void test_filterkey_audit_events_separator_in_key(void** state)
+{
+    (void)state;
 
     audit_key_type ret;
     // The decoded key of the event is "wazuh_f`5\001key_2\001key_1"
-    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=77617A75685F666035016B65795F32016B65795F31\035ARCH= ";
+    char* event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) "
+                  "old-ses=4294967295 ses=57 key=77617A75685F666035016B65795F32016B65795F31\035ARCH= ";
     snprintf(syscheck.audit_key[0], OS_SIZE_64, "wazuh_f`5");
 
     char audit_key_msg[OS_SIZE_128] = {0};
@@ -377,158 +416,164 @@ void test_filterkey_audit_events_separator_in_key(void **state) {
     assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
 
+void test_gen_audit_path(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path(void **state) {
-    (void) state;
+    char* cwd = "/root";
+    char* path0 = "/root/test/";
+    char* path1 = "/root/test/file";
 
-    char * cwd = "/root";
-    char * path0 = "/root/test/";
-    char * path1 = "/root/test/file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, path1);
     *state = ret;
 
     assert_string_equal(ret, "/root/test/file");
 }
 
+void test_gen_audit_path2(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path2(void **state) {
-    (void) state;
+    char* cwd = "/root";
+    char* path0 = "./test/";
+    char* path1 = "./test/file";
 
-    char * cwd = "/root";
-    char * path0 = "./test/";
-    char * path1 = "./test/file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, path1);
     *state = ret;
 
     assert_string_equal(ret, "/root/test/file");
 }
 
+void test_gen_audit_path3(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path3(void **state) {
-    (void) state;
+    char* cwd = "/";
+    char* path0 = "root/test/";
+    char* path1 = "root/test/file";
 
-    char * cwd = "/";
-    char * path0 = "root/test/";
-    char * path1 = "root/test/file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, path1);
     *state = ret;
 
     assert_string_equal(ret, "/root/test/file");
 }
 
+void test_gen_audit_path4(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path4(void **state) {
-    (void) state;
+    char* cwd = "/";
+    char* path0 = "/file";
 
-    char * cwd = "/";
-    char * path0 = "/file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, NULL);
     *state = ret;
 
     assert_string_equal(ret, "/file");
 }
 
+void test_gen_audit_path5(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path5(void **state) {
-    (void) state;
+    char* cwd = "/root/test";
+    char* path0 = "../test/";
+    char* path1 = "../test/file";
 
-    char * cwd = "/root/test";
-    char * path0 = "../test/";
-    char * path1 = "../test/file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, path1);
     *state = ret;
 
     assert_string_equal(ret, "/root/test/file");
 }
 
+void test_gen_audit_path6(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path6(void **state) {
-    (void) state;
+    char* cwd = "/root";
+    char* path0 = "./file";
 
-    char * cwd = "/root";
-    char * path0 = "./file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, NULL);
     *state = ret;
 
     assert_string_equal(ret, "/root/file");
 }
 
+void test_gen_audit_path7(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path7(void **state) {
-    (void) state;
+    char* cwd = "/root";
+    char* path0 = "../file";
 
-    char * cwd = "/root";
-    char * path0 = "../file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, NULL);
     *state = ret;
 
     assert_string_equal(ret, "/file");
 }
 
+void test_gen_audit_path8(void** state)
+{
+    (void)state;
 
-void test_gen_audit_path8(void **state) {
-    (void) state;
+    char* cwd = "/root";
+    char* path0 = "file";
 
-    char * cwd = "/root";
-    char * path0 = "file";
-
-    char * ret;
+    char* ret;
     ret = gen_audit_path(cwd, path0, NULL);
     *state = ret;
 
     assert_string_equal(ret, "/root/file");
 }
 
-void test_get_process_parent_info_failed(void **state) {
-    (void) state;
+void test_get_process_parent_info_failed(void** state)
+{
+    (void)state;
 
-    char *parent_name;
-    char *parent_cwd;
+    char* parent_name;
+    char* parent_cwd;
 
     parent_name = malloc(10);
     parent_cwd = malloc(10);
     errno = 17;
     will_return(__wrap_readlink, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Failure to obtain the name of the process: '1515'. Error: File exists");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "Failure to obtain the name of the process: '1515'. Error: File exists");
 
     will_return(__wrap_readlink, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Failure to obtain the cwd of the process: '1515'. Error: File exists");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "Failure to obtain the cwd of the process: '1515'. Error: File exists");
     get_parent_process_info("1515", &parent_name, &parent_cwd);
     errno = 0;
 
     assert_string_equal(parent_name, "");
     assert_string_equal(parent_cwd, "");
 
-    if (parent_name != NULL) {
+    if (parent_name != NULL)
+    {
         free(parent_name);
         parent_name = NULL;
     }
 
-    if (parent_cwd != NULL) {
+    if (parent_cwd != NULL)
+    {
         free(parent_cwd);
         parent_cwd = NULL;
     }
 }
 
-void test_get_process_parent_info_long_path(void **state) {
-    (void) state;
+void test_get_process_parent_info_long_path(void** state)
+{
+    (void)state;
 
-    char *parent_name;
-    char *parent_cwd;
+    char* parent_name;
+    char* parent_cwd;
 
     // One extra byte to detect a terminator written past OS_FLSIZE
     parent_name = malloc(OS_FLSIZE + 1);
@@ -550,11 +595,12 @@ void test_get_process_parent_info_long_path(void **state) {
     free(parent_cwd);
 }
 
-void test_get_process_parent_info_passsed(void **state) {
-    (void) state;
+void test_get_process_parent_info_passsed(void** state)
+{
+    (void)state;
 
-    char *parent_name;
-    char *parent_cwd;
+    char* parent_name;
+    char* parent_cwd;
 
     parent_name = malloc(10);
     parent_cwd = malloc(10);
@@ -567,21 +613,24 @@ void test_get_process_parent_info_passsed(void **state) {
     assert_string_equal(parent_name, "");
     assert_string_equal(parent_cwd, "");
 
-    if (parent_name != NULL) {
+    if (parent_name != NULL)
+    {
         free(parent_name);
         parent_name = NULL;
     }
 
-    if (parent_cwd != NULL) {
+    if (parent_cwd != NULL)
+    {
         free(parent_cwd);
         parent_cwd = NULL;
     }
 }
 
-void test_audit_parse(void **state) {
-    (void) state;
+void test_audit_parse(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571914029.306:3004254): cwd=\"/root/test\" \
         type=PATH msg=audit(1571914029.306:3004254): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -605,8 +654,10 @@ void test_audit_parse(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, "
+                  "path=/root/test/test, pname=74657374C3B1");
 
     expect_string(__wrap_realpath, path, "/root/test/test");
     will_return(__wrap_realpath, strdup("/root/test/test"));
@@ -623,11 +674,11 @@ void test_audit_parse(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse3(void **state) {
-    (void) state;
+void test_audit_parse3(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=3 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571914029.306:3004254): cwd=\"/root/test\" \
         type=PATH msg=audit(1571925844.299:3004308): item=0 name=\"./\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -650,8 +701,10 @@ void test_audit_parse3(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=28, path=/root/test/test, pname=74657374C3B1");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=28, "
+                  "path=/root/test/test, pname=74657374C3B1");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -665,11 +718,11 @@ void test_audit_parse3(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse4(void **state) {
-    (void) state;
+void test_audit_parse4(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571923546.947:3004294): arch=c000003e syscall=316 success=yes exit=0 a0=ffffff9c a1=7ffe425fc770 a2=ffffff9c a3=7ffe425fc778 items=4 ppid=3212 pid=51452 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"mv\" exe=66696C655FC3B1 key=\"wazuh_fim\" \
         type=CWD msg=audit(1571923546.947:3004294): cwd=2F726F6F742F746573742F74657374C3B1 \
         type=PATH msg=audit(1571923546.947:3004294): item=0 name=\"./\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -694,10 +747,14 @@ void test_audit_parse4(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=19, path=/root/test/testñ/test, pname=file_ñ");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6249): audit_event_2/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=19, path=/root/test/testñ/folder/test, pname=file_ñ");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=19, "
+                  "path=/root/test/testñ/test, pname=file_ñ");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6249): audit_event_2/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=19, "
+                  "path=/root/test/testñ/folder/test, pname=file_ñ");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 51452);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -722,11 +779,11 @@ void test_audit_parse4(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_hex(void **state) {
-    (void) state;
+void test_audit_parse_hex(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571923546.947:3004294): arch=c000003e syscall=316 success=yes exit=0 a0=ffffff9c a1=7ffe425fc770 a2=ffffff9c a3=7ffe425fc778 items=4 ppid=3212 pid=51452 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"mv\" exe=66696C655FC3B1 key=\"wazuh_fim\" \
         type=CWD msg=audit(1571923546.947:3004294): cwd=2F726F6F742F746573742F74657374C3B1 \
         type=PATH msg=audit(1571923546.947:3004294): item=0 name=2F726F6F742F746573742F74657374C3B1 inode=19 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -752,10 +809,14 @@ void test_audit_parse_hex(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, path=/root/test/testñ/file_ñ, pname=file_ñ");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6249): audit_event_2/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, path=/root/test/testñ2/file_ñc, pname=file_ñ");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6248): audit_event_1/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, "
+                  "path=/root/test/testñ/file_ñ, pname=file_ñ");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6249): audit_event_2/2: uid=root, auid=root, euid=root, gid=root, pid=51452, ppid=3212, inode=29, "
+                  "path=/root/test/testñ2/file_ñc, pname=file_ñ");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 51452);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -780,11 +841,11 @@ void test_audit_parse_hex(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_empty_fields(void **state) {
-    (void) state;
+void test_audit_parse_empty_fields(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" key=\"wazuh_fim\" \
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374 \
     ";
@@ -795,13 +856,13 @@ void test_audit_parse_empty_fields(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete(void **state) {
-    (void) state;
+void test_audit_parse_delete(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
 
-
-    char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=\"remove_rule\" key=\"wazuh_fim\" list=4 res=1";
+    char* buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=\"remove_rule\" "
+                   "key=\"wazuh_fim\" list=4 res=1";
 
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
     expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
@@ -818,9 +879,10 @@ void test_audit_parse_delete(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete_recursive(void **state) {
-    char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
+void test_audit_parse_delete_recursive(void** state)
+{
+    char* buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule "
+                   "key=\"wazuh_fim\" list=4 res=1";
 
     syscheck.max_audit_entries = 100;
     char audit_key_msg[OS_SIZE_128] = {0};
@@ -844,19 +906,20 @@ void test_audit_parse_delete_recursive(void **state) {
 
     expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
     int i;
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 5; i++)
+    {
         audit_parse(buffer);
     }
 
     count_reload_retries = 0;
 }
 
-
-void test_audit_parse_mv(void **state) {
-    (void) state;
+void test_audit_parse_mv(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571925844.299:3004308): arch=c000003e syscall=82 success=yes exit=0 a0=7ffdbb76377e a1=556c16f6c2e0 a2=0 a3=100 items=5 ppid=3210 pid=52277 auid=20 uid=30 gid=40 euid=50 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"mv\" exe=\"/usr/bin/mv\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571925844.299:3004308): cwd=\"/root/test\" \
         type=PATH msg=audit(1571925844.299:3004308): item=0 name=\"./\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -883,8 +946,10 @@ void test_audit_parse_mv(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, "
+                  "path=/root/test/folder/test, pname=/usr/bin/mv");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -899,12 +964,12 @@ void test_audit_parse_mv(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_mv_hex(void **state) {
-    (void) state;
+void test_audit_parse_mv_hex(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571925844.299:3004308): arch=c000003e syscall=82 success=yes exit=0 a0=7ffdbb76377e a1=556c16f6c2e0 a2=0 a3=100 items=5 ppid=3210 pid=52277 auid=20 uid=30 gid=40 euid=50 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"mv\" exe=\"/usr/bin/mv\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571925844.299:3004308): cwd=\"/root/test\" \
         type=PATH msg=audit(1571925844.299:3004308): item=0 name=\"./\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -931,8 +996,10 @@ void test_audit_parse_mv_hex(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, path=/root/test/folder/test, pname=/usr/bin/mv");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user30, auid=user20, euid=user50, gid=src, pid=52277, ppid=3210, inode=28, "
+                  "path=/root/test/folder/test, pname=/usr/bin/mv");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 52277);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -947,12 +1014,12 @@ void test_audit_parse_mv_hex(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_rm(void **state) {
-    (void) state;
+void test_audit_parse_rm(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"rm\" exe=\"/usr/bin/rm\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
         type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -977,8 +1044,10 @@ void test_audit_parse_rm(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user30, auid=daemon, euid=daemon, gid=tty, pid=56650, ppid=3211, inode=24, path=/root/test/, pname=/usr/bin/rm");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user30, auid=daemon, euid=daemon, gid=tty, pid=56650, ppid=3211, inode=24, "
+                  "path=/root/test/, pname=/usr/bin/rm");
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 56650);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "30");
@@ -993,20 +1062,23 @@ void test_audit_parse_rm(void **state) {
     audit_parse(buffer);
 }
 
-
-static void expect_open(const char *path, int flags, int fd) {
+static void expect_open(const char* path, int flags, int fd)
+{
     expect_string(__wrap_open, path, path);
     expect_value(__wrap_open, flags, flags);
     will_return(__wrap_open, fd);
 }
 
-static void expect_fd_path(const char *proc_path, const char *target) {
+static void expect_fd_path(const char* proc_path, const char* target)
+{
     expect_string(__wrap_readlinkat, path, proc_path);
     will_return(__wrap_readlinkat, target);
 }
 
-// The object audit_parse resolves for the stored path: open the path without following it, then fstatat on that descriptor.
-static void expect_stored_path_object(const char *path, int fd, mode_t mode, ino_t inode) {
+// The object audit_parse resolves for the stored path: open the path without following it, then fstatat on that
+// descriptor.
+static void expect_stored_path_object(const char* path, int fd, mode_t mode, ino_t inode)
+{
     static struct stat st;
 
     memset(&st, 0, sizeof(st));
@@ -1020,12 +1092,12 @@ static void expect_stored_path_object(const char *path, int fd, mode_t mode, ino
     will_return(__wrap_fstatat, 0);
 }
 
-
-void test_audit_parse_chmod(void **state) {
-    (void) state;
+void test_audit_parse_chmod(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/var/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/var/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1048,8 +1120,10 @@ void test_audit_parse_chmod(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/var/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/var/test/file, pname=/usr/bin/chmod");
 
     // /var/test is reached through a symbolic link above it: the path is spelled from the configured directory.
     expect_stored_path_object("/var/test/file", 98, S_IFREG, 55);
@@ -1075,12 +1149,12 @@ void test_audit_parse_chmod(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_chmod_link_directory(void **state) {
-    (void) state;
+void test_audit_parse_chmod_link_directory(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/var/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/var/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1103,8 +1177,10 @@ void test_audit_parse_chmod_link_directory(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/var/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/var/test/file, pname=/usr/bin/chmod");
 
     // /var/test is itself a symbolic link: it cannot be opened, so the resolved path is used.
     expect_stored_path_object("/var/test/file", 98, S_IFREG, 55);
@@ -1129,12 +1205,12 @@ void test_audit_parse_chmod_link_directory(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_chmod_regular_directory(void **state) {
-    (void) state;
+void test_audit_parse_chmod_regular_directory(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/var/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/var/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1157,8 +1233,10 @@ void test_audit_parse_chmod_regular_directory(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/var/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/var/test/file, pname=/usr/bin/chmod");
 
     // /var/test is a regular directory: the resolved path is already inside it.
     expect_stored_path_object("/var/test/file", 98, S_IFREG, 55);
@@ -1182,12 +1260,12 @@ void test_audit_parse_chmod_regular_directory(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_chmod_followed_link(void **state) {
-    (void) state;
+void test_audit_parse_chmod_followed_link(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1210,8 +1288,10 @@ void test_audit_parse_chmod_followed_link(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/root/test/file, pname=/usr/bin/chmod");
 
     // /root/test/file is a symbolic link that is not the audited inode: it is followed to /var/test/file.
     expect_stored_path_object("/root/test/file", 98, S_IFLNK, 77);
@@ -1236,11 +1316,12 @@ void test_audit_parse_chmod_followed_link(void **state) {
     audit_parse(buffer);
 }
 
-void test_audit_parse_chmod_deleted_object(void **state) {
-    (void) state;
+void test_audit_parse_chmod_deleted_object(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1263,8 +1344,10 @@ void test_audit_parse_chmod_deleted_object(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/root/test/file, pname=/usr/bin/chmod");
 
     // The object was unlinked after the syscall: the kernel reports its path as deleted, so the audited path is kept.
     expect_stored_path_object("/root/test/file", 98, S_IFREG, 19);
@@ -1284,11 +1367,12 @@ void test_audit_parse_chmod_deleted_object(void **state) {
     audit_parse(buffer);
 }
 
-void test_audit_parse_chmod_followed_link_reopen_failure(void **state) {
-    (void) state;
+void test_audit_parse_chmod_followed_link_reopen_failure(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1311,8 +1395,10 @@ void test_audit_parse_chmod_followed_link_reopen_failure(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/root/test/file, pname=/usr/bin/chmod");
 
     // Reopening the link by name to follow it fails: the event keeps the audited path.
     expect_stored_path_object("/root/test/file", 98, S_IFLNK, 77);
@@ -1332,11 +1418,12 @@ void test_audit_parse_chmod_followed_link_reopen_failure(void **state) {
     audit_parse(buffer);
 }
 
-void test_audit_parse_chown_link_itself(void **state) {
-    (void) state;
+void test_audit_parse_chown_link_itself(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=260 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1359,8 +1446,10 @@ void test_audit_parse_chown_link_itself(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/root/test/file, pname=/usr/bin/chmod");
 
     // /root/test/file is the symbolic link the syscall acted on (inode 19): FIM stores the link itself.
     expect_stored_path_object("/root/test/file", 98, S_IFLNK, 19);
@@ -1378,12 +1467,12 @@ void test_audit_parse_chown_link_itself(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_chmod_open_failure(void **state) {
-    (void) state;
+void test_audit_parse_chmod_open_failure(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571992092.822:3004348): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=5648a8ab74c0 a2=1ff a3=fff items=1 ppid=3211 pid=58280 auid=4 uid=99 gid=78 euid=29 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_fim\" \
         type=CWD msg=audit(1571992092.822:3004348): cwd=\"/root/test\" \
         type=PATH msg=audit(1571992092.822:3004348): item=0 name=\"/root/test/file\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1406,8 +1495,10 @@ void test_audit_parse_chmod_open_failure(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, "
+                  "path=/root/test/file, pname=/usr/bin/chmod");
 
     // /root/test/file cannot be opened (e.g. deleted): the audited path is kept.
     expect_open("/root/test/file", EXPECTED_OPEN_FLAGS | O_NOFOLLOW, -1);
@@ -1426,12 +1517,12 @@ void test_audit_parse_chmod_open_failure(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_rm_hc(void **state) {
-    (void) state;
+void test_audit_parse_rm_hc(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"rm\" exe=\"/usr/bin/rm\" key=\"wazuh_hc\" \
         type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
         type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1447,13 +1538,13 @@ void test_audit_parse_rm_hc(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_add_hc(void **state) {
-    (void) state;
+void test_audit_parse_add_hc(void** state)
+{
+    (void)state;
     extern atomic_int_t audit_health_check_creation;
     char audit_key_msg[OS_SIZE_128] = {0};
 
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=257 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"touch\" exe=\"/usr/bin/touch\" key=\"wazuh_hc\" \
         type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
         type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1472,12 +1563,12 @@ void test_audit_parse_add_hc(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_unknown_hc(void **state) {
-    (void) state;
+void test_audit_parse_unknown_hc(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=90 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"chmod\" exe=\"/usr/bin/chmod\" key=\"wazuh_hc\" \
         type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
         type=PATH msg=audit(1571988027.797:3004340): item=0 name=\"/root/test\" inode=110 dev=08:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 \
@@ -1493,12 +1584,12 @@ void test_audit_parse_unknown_hc(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete_folder(void **state) {
-    (void) state;
+void test_audit_parse_delete_folder(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=\"/root/test\" key=\"wazuh_fim\" list=4 res=1 \
         type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=2 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=\"/usr/bin/rm\" key=(null) \
         type=CWD msg=audit(1572878838.610:220): cwd=\"/root\" \
@@ -1509,7 +1600,8 @@ void test_audit_parse_delete_folder(void **state) {
 
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
     expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
-    expect_string(__wrap__minfo, formatted_msg, "(6027): Monitored directory '/root/test' was removed: Audit rule removed.");
+    expect_string(
+        __wrap__minfo, formatted_msg, "(6027): Monitored directory '/root/test' was removed: Audit rule removed.");
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -1524,7 +1616,10 @@ void test_audit_parse_delete_folder(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, "
+                  "path=/root/test, pname=/usr/bin/rm");
 
     expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, strdup("/root/test"));
@@ -1547,12 +1642,12 @@ void test_audit_parse_delete_folder(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete_folder_hex(void **state) {
-    (void) state;
+void test_audit_parse_delete_folder_hex(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=2F726F6F742F746573742F74657374C3B1 key=\"wazuh_fim\" list=4 res=1 \
         type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=2 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=\"/usr/bin/rm\" key=(null) \
         type=CWD msg=audit(1572878838.610:220): cwd=\"/root\" \
@@ -1563,7 +1658,9 @@ void test_audit_parse_delete_folder_hex(void **state) {
 
     snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
     expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
-    expect_string(__wrap__minfo, formatted_msg, "(6027): Monitored directory '/root/test/testñ' was removed: Audit rule removed.");
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "(6027): Monitored directory '/root/test/testñ' was removed: Audit rule removed.");
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -1578,11 +1675,13 @@ void test_audit_parse_delete_folder_hex(void **state) {
     will_return(__wrap_readlink, 0);
     will_return(__wrap_readlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, "
+                  "path=/root/test, pname=/usr/bin/rm");
 
     expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, strdup("/root/test"));
-
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -1602,12 +1701,12 @@ void test_audit_parse_delete_folder_hex(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete_folder_hex3_error(void **state) {
-    (void) state;
+void test_audit_parse_delete_folder_hex3_error(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=0 key=\"wazuh_fim\" list=4 res=1 \
         type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=3 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=1 key=(null) \
         type=CWD msg=audit(1572878838.610:220): cwd=2 \
@@ -1652,12 +1751,12 @@ void test_audit_parse_delete_folder_hex3_error(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete_folder_hex4_error(void **state) {
-    (void) state;
+void test_audit_parse_delete_folder_hex4_error(void** state)
+{
+    (void)state;
     char audit_key_msg[OS_SIZE_128] = {0};
 
-    char * buffer = " \
+    char* buffer = " \
         type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=0 key=\"wazuh_fim\" list=4 res=1 \
         type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=4 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=1 key=(null) \
         type=CWD msg=audit(1572878838.610:220): cwd=2 \
@@ -1704,12 +1803,12 @@ void test_audit_parse_delete_folder_hex4_error(void **state) {
     audit_parse(buffer);
 }
 
-
-void test_audit_parse_delete_folder_hex5_error(void **state) {
-    (void) state;
+void test_audit_parse_delete_folder_hex5_error(void** state)
+{
+    (void)state;
 
     char audit_key_msg[OS_SIZE_128] = {0};
-    char * buffer = " \
+    char* buffer = " \
         type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=0 key=\"wazuh_fim\" list=4 res=1 \
         type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=5 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=1 key=(null) \
         type=CWD msg=audit(1572878838.610:220): cwd=2 \
@@ -1756,7 +1855,8 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
 
     audit_parse(buffer);
 }
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_filterkey_audit_events_custom, setup_custom_key, teardown_custom_key),
         cmocka_unit_test(test_filterkey_audit_events_discard),
@@ -1769,10 +1869,14 @@ int main(void) {
         cmocka_unit_test(test_filterkey_audit_events_key_end_line),
         cmocka_unit_test(test_filterkey_audit_events_hex_coded_key_fim),
         cmocka_unit_test(test_filterkey_audit_events_separator),
-        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_separator_in_key, setup_custom_key, teardown_custom_key),
-        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_hex_coded_key_no_fim, setup_custom_key, teardown_custom_key),
-        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_hex_coded_key_no_fim_second_key, setup_custom_key, teardown_custom_key),
-        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_path_named_key, setup_custom_key, teardown_custom_key),
+        cmocka_unit_test_setup_teardown(
+            test_filterkey_audit_events_separator_in_key, setup_custom_key, teardown_custom_key),
+        cmocka_unit_test_setup_teardown(
+            test_filterkey_audit_events_hex_coded_key_no_fim, setup_custom_key, teardown_custom_key),
+        cmocka_unit_test_setup_teardown(
+            test_filterkey_audit_events_hex_coded_key_no_fim_second_key, setup_custom_key, teardown_custom_key),
+        cmocka_unit_test_setup_teardown(
+            test_filterkey_audit_events_path_named_key, setup_custom_key, teardown_custom_key),
         cmocka_unit_test_teardown(test_gen_audit_path, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path2, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path3, free_string),
@@ -1799,7 +1903,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_regular_directory, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_followed_link, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_deleted_object, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_audit_parse_chmod_followed_link_reopen_failure, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(
+            test_audit_parse_chmod_followed_link_reopen_failure, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chown_link_itself, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_audit_parse_chmod_open_failure, setup_config, teardown_config),
         cmocka_unit_test(test_audit_parse_rm_hc),
@@ -1810,7 +1915,7 @@ int main(void) {
         cmocka_unit_test(test_audit_parse_delete_folder_hex3_error),
         cmocka_unit_test(test_audit_parse_delete_folder_hex4_error),
         cmocka_unit_test(test_audit_parse_delete_folder_hex5_error),
-        };
+    };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

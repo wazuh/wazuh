@@ -13,32 +13,33 @@
 
 class ProcessRuleEvaluatorTest : public ::testing::Test
 {
-    protected:
-        PolicyEvaluationContext m_ctx;
-        std::unique_ptr<MockFileSystemWrapper> m_fsMock;
-        MockFileSystemWrapper* m_rawFsMock = nullptr;
-        std::unique_ptr<MockSysInfo> m_sysInfoMock;
-        MockSysInfo* m_rawSysInfoMock = nullptr;
-        std::function<std::vector<std::string>()> m_processesMock;
+protected:
+    PolicyEvaluationContext m_ctx;
+    std::unique_ptr<MockFileSystemWrapper> m_fsMock;
+    MockFileSystemWrapper* m_rawFsMock = nullptr;
+    std::unique_ptr<MockSysInfo> m_sysInfoMock;
+    MockSysInfo* m_rawSysInfoMock = nullptr;
+    std::function<std::vector<std::string>()> m_processesMock;
 
-        void SetUp() override
-        {
-            // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback(
+            [](const modules_log_level_t /* level */, const char* /* log */)
             {
                 // Mock logging callback that does nothing
             });
 
-            m_fsMock = std::make_unique<MockFileSystemWrapper>();
-            m_rawFsMock = m_fsMock.get();
-            m_sysInfoMock = std::make_unique<MockSysInfo>();
-            m_rawSysInfoMock = m_sysInfoMock.get();
-        }
+        m_fsMock = std::make_unique<MockFileSystemWrapper>();
+        m_rawFsMock = m_fsMock.get();
+        m_sysInfoMock = std::make_unique<MockSysInfo>();
+        m_rawSysInfoMock = m_sysInfoMock.get();
+    }
 
-        ProcessRuleEvaluator CreateEvaluator()
-        {
-            return ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock), m_processesMock};
-        }
+    ProcessRuleEvaluator CreateEvaluator()
+    {
+        return ProcessRuleEvaluator {m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock), m_processesMock};
+    }
 };
 
 TEST_F(ProcessRuleEvaluatorTest, ProcessFoundReturnsFound)
@@ -128,7 +129,7 @@ TEST_F(ProcessRuleEvaluatorTest, FullPathMatchReturnsFound)
 
     m_processesMock = []
     {
-        return std::vector<std::string>{"init", "/usr/sbin/httpd", "sshd"};
+        return std::vector<std::string> {"init", "/usr/sbin/httpd", "sshd"};
     };
 
     auto evaluator = CreateEvaluator();
@@ -142,7 +143,8 @@ TEST_F(ProcessRuleEvaluatorTest, NegatedFullPathPresentReturnsNotFound)
 
     m_processesMock = []
     {
-        return std::vector<std::string>{"ARDAgent", "/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"};
+        return std::vector<std::string> {
+            "ARDAgent", "/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"};
     };
 
     auto evaluator = CreateEvaluator();
@@ -156,7 +158,7 @@ TEST_F(ProcessRuleEvaluatorTest, NegatedFullPathAbsentReturnsFound)
 
     m_processesMock = []
     {
-        return std::vector<std::string>{"launchd", "WindowServer"};
+        return std::vector<std::string> {"launchd", "WindowServer"};
     };
 
     auto evaluator = CreateEvaluator();
@@ -167,39 +169,40 @@ TEST_F(ProcessRuleEvaluatorTest, NegatedFullPathAbsentReturnsFound)
 // names a platform reports through ISysInfo::processNames().
 class MockSysInfoWithNames : public MockSysInfo
 {
-    public:
-        MOCK_METHOD(void, processNames, (std::function<void(const ProcessNames&)>), (override));
+public:
+    MOCK_METHOD(void, processNames, (std::function<void(const ProcessNames&)>), (override));
 };
 
 class ProcessRuleEvaluatorNamesTest : public ProcessRuleEvaluatorTest
 {
-    protected:
-        ProcessRuleEvaluator CreateEvaluatorWithNames(std::vector<ProcessNames> names)
-        {
-            auto sysInfo = std::make_unique<MockSysInfoWithNames>();
+protected:
+    ProcessRuleEvaluator CreateEvaluatorWithNames(std::vector<ProcessNames> names)
+    {
+        auto sysInfo = std::make_unique<MockSysInfoWithNames>();
 
-            EXPECT_CALL(*sysInfo, processNames(::testing::_))
-            .WillOnce([names = std::move(names)](const std::function<void(const ProcessNames&)>& callback)
-            {
-                for (const auto& process : names)
+        EXPECT_CALL(*sysInfo, processNames(::testing::_))
+            .WillOnce(
+                [names = std::move(names)](const std::function<void(const ProcessNames&)>& callback)
                 {
-                    callback(process);
-                }
-            });
+                    for (const auto& process : names)
+                    {
+                        callback(process);
+                    }
+                });
 
-            return ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(sysInfo)};
-        }
+        return ProcessRuleEvaluator {m_ctx, std::move(m_fsMock), std::move(sysInfo)};
+    }
 };
 
 TEST_F(ProcessRuleEvaluatorNamesTest, ProcessThatRewritesArgv0IsFoundByComm)
 {
     m_ctx.rule = "nginx";
 
-    auto evaluator = CreateEvaluatorWithNames(
-    {
-        {"nginx -g daemon on; master_process on;", "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;", "nginx"},
-        {"nginx: worker process", "nginx: worker process", "nginx"}
-    });
+    auto evaluator =
+        CreateEvaluatorWithNames({{"nginx -g daemon on; master_process on;",
+                                   "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;",
+                                   "nginx"},
+                                  {"nginx: worker process", "nginx: worker process", "nginx"}});
 
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
@@ -248,17 +251,19 @@ TEST_F(ProcessRuleEvaluatorTest, DefaultProcessNamesUsesTheProcessInventory)
     m_ctx.rule = "sshd.exe";
 
     EXPECT_CALL(*m_rawSysInfoMock, processes(::testing::An<std::function<void(nlohmann::json&)>>()))
-    .WillOnce([](const std::function<void(nlohmann::json&)>& callback)
-    {
-        auto system = nlohmann::json {{"name", "System"}, {"command_line", "none"}};
-        auto sshd = nlohmann::json {{"name", "sshd.exe"}, {"command_line", "C:\\Windows\\System32\\OpenSSH\\sshd.exe"}};
-        auto noName = nlohmann::json {{"pid", "4"}};
-        callback(system);
-        callback(sshd);
-        callback(noName);
-    });
+        .WillOnce(
+            [](const std::function<void(nlohmann::json&)>& callback)
+            {
+                auto system = nlohmann::json {{"name", "System"}, {"command_line", "none"}};
+                auto sshd =
+                    nlohmann::json {{"name", "sshd.exe"}, {"command_line", "C:\\Windows\\System32\\OpenSSH\\sshd.exe"}};
+                auto noName = nlohmann::json {{"pid", "4"}};
+                callback(system);
+                callback(sshd);
+                callback(noName);
+            });
 
-    auto evaluator = ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock)};
+    auto evaluator = ProcessRuleEvaluator {m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock)};
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
 

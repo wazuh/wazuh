@@ -7,21 +7,22 @@
  * Foundation
  */
 
-
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include "manager_wrappers.h"
 
-cJSON *__wrap_assign_group_to_agent(const char *agent_id, const char *md5) {
+cJSON* __wrap_assign_group_to_agent(const char* agent_id, const char* md5)
+{
     check_expected(agent_id);
     check_expected(md5);
 
-    return mock_type(cJSON *);
+    return mock_type(cJSON*);
 }
 
-void __wrap_save_controlmsg(const keyentry * key, char *r_msg, __attribute__((unused)) size_t msg_length, int *wdb_sock) {
+void __wrap_save_controlmsg(const keyentry* key, char* r_msg, __attribute__((unused)) size_t msg_length, int* wdb_sock)
+{
     check_expected(key);
     check_expected(r_msg);
     check_expected(wdb_sock);
@@ -30,7 +31,14 @@ void __wrap_save_controlmsg(const keyentry * key, char *r_msg, __attribute__((un
 }
 
 /* Leaves *send_ack as the caller set it, so no ACK is sent: send_control_ack() is tested on its own. */
-int __wrap_validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length,  __attribute__((unused)) char **cleaned_msg,  __attribute__((unused)) int *is_startup,  __attribute__((unused)) int *is_shutdown,  __attribute__((unused)) bool *send_ack) {
+int __wrap_validate_control_msg(const keyentry* key,
+                                char* r_msg,
+                                size_t msg_length,
+                                __attribute__((unused)) char** cleaned_msg,
+                                __attribute__((unused)) int* is_startup,
+                                __attribute__((unused)) int* is_shutdown,
+                                __attribute__((unused)) bool* send_ack)
+{
     check_expected(key);
     check_expected(r_msg);
     check_expected(msg_length);

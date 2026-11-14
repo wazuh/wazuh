@@ -7,12 +7,11 @@
  * Foundation
  */
 
-
 #ifndef SYSCOM_WRAPPERS_H
 #define SYSCOM_WRAPPERS_H
 
 #include <stddef.h>
 
-size_t __wrap_syscom_dispatch(char * command, size_t length, char ** output);
+size_t __wrap_syscom_dispatch(char* command, size_t length, char** output);
 
 #endif

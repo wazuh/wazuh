@@ -13,7 +13,8 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-int wrap_gethostname(char *name, int len) {
-    snprintf(name, len, "%s", mock_type(char *));
+int wrap_gethostname(char* name, int len)
+{
+    snprintf(name, len, "%s", mock_type(char*));
     return mock_type(int);
 }

@@ -30,30 +30,33 @@
  * is not on PATH. The Windows hint names the GUI first and has no use for it. */
 #ifndef WIN32
 #define HOME_PATH "/var/ossec"
-#define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it as root before " \
-                          "starting it: echo '<TOKEN>' | /var/ossec/bin/wazuh-agent-auth"
+#define NOT_ENROLLED_HINT                                                                                              \
+    "(4128): This agent is not enrolled yet. Enroll it as root before "                                                \
+    "starting it: echo '<TOKEN>' | /var/ossec/bin/wazuh-agent-auth"
 #else
 #define HOME_PATH NULL
-#define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it with Manage > " \
-                          "Enroll in the agent GUI, or as an administrator with " \
-                          "'wazuh-agent-auth.exe --token-file <path>' from the agent's " \
-                          "installation folder, then start the agent."
+#define NOT_ENROLLED_HINT                                                                                              \
+    "(4128): This agent is not enrolled yet. Enroll it with Manage > "                                                 \
+    "Enroll in the agent GUI, or as an administrator with "                                                            \
+    "'wazuh-agent-auth.exe --token-file <path>' from the agent's "                                                     \
+    "installation folder, then start the agent."
 #endif
 
 /* Leaves client.keys holding @p content, or absent when it is NULL. */
-static void set_client_keys(const char *content)
+static void set_client_keys(const char* content)
 {
     remove(KEYS_FILE);
 
-    if (content != NULL) {
-        FILE *fp = fopen(KEYS_FILE, "w");
+    if (content != NULL)
+    {
+        FILE* fp = fopen(KEYS_FILE, "w");
         assert_non_null(fp);
         fputs(content, fp);
         fclose(fp);
     }
 }
 
-static int setup_group(void **state)
+static int setup_group(void** state)
 {
     (void)state;
 #ifndef WIN32
@@ -62,14 +65,14 @@ static int setup_group(void **state)
     return 0;
 }
 
-static int teardown(void **state)
+static int teardown(void** state)
 {
     (void)state;
     remove(KEYS_FILE);
     return 0;
 }
 
-static void test_no_manager_block_refuses_to_start(void **state)
+static void test_no_manager_block_refuses_to_start(void** state)
 {
     (void)state;
     agent cfg = {0};
@@ -80,7 +83,7 @@ static void test_no_manager_block_refuses_to_start(void **state)
     assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
-static void test_real_address_starts(void **state)
+static void test_real_address_starts(void** state)
 {
     (void)state;
     agent_server servers[] = {{.rip = "192.168.1.10"}, {0}};
@@ -92,7 +95,7 @@ static void test_real_address_starts(void **state)
 }
 
 /* Validate_Address() asks for one usable address, not for all of them to be usable. */
-static void test_one_real_address_among_placeholders_starts(void **state)
+static void test_one_real_address_among_placeholders_starts(void** state)
 {
     (void)state;
     agent_server servers[] = {{.rip = "MANAGER_IP"}, {.rip = "192.168.1.10"}, {0}};
@@ -104,7 +107,7 @@ static void test_one_real_address_among_placeholders_starts(void **state)
 }
 
 /* The case the hint exists for: a package installed without a token and started as it is. */
-static void test_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth(void **state)
+static void test_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth(void** state)
 {
     (void)state;
     agent_server servers[] = {{.rip = "MANAGER_IP"}, {0}};
@@ -118,7 +121,7 @@ static void test_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth(void 
 }
 
 /* No client.keys at all is just as unenrolled. */
-static void test_placeholder_without_client_keys_names_wazuh_agent_auth(void **state)
+static void test_placeholder_without_client_keys_names_wazuh_agent_auth(void** state)
 {
     (void)state;
     agent_server servers[] = {{.rip = "MANAGER_IP"}, {0}};
@@ -132,7 +135,7 @@ static void test_placeholder_without_client_keys_names_wazuh_agent_auth(void **s
 }
 
 /* The Windows package ships 0.0.0.0 instead of MANAGER_IP; it is the same unenrolled agent. */
-static void test_windows_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth(void **state)
+static void test_windows_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth(void** state)
 {
     (void)state;
     agent_server servers[] = {{.rip = "0.0.0.0"}, {0}};
@@ -147,7 +150,7 @@ static void test_windows_placeholder_on_an_unenrolled_agent_names_wazuh_agent_au
 
 /* An enrolled agent whose address was put back to the placeholder by hand: telling it to enroll
  * would be wrong, since wazuh-agent-auth refuses an agent that already has a key. */
-static void test_placeholder_on_an_enrolled_agent_names_only_the_address(void **state)
+static void test_placeholder_on_an_enrolled_agent_names_only_the_address(void** state)
 {
     (void)state;
     agent_server servers[] = {{.rip = "MANAGER_IP"}, {0}};

@@ -23,10 +23,11 @@
  * This structure holds the pattern values that change rarely.
  *
  */
-typedef struct {
-    char host_name[LOG_BUILDER_HOSTNAME_LEN];   ///< Host name
-    char host_ip[IPSIZE];                       ///< Host's primary IP
-    rwlock_t rwlock;                            ///< Read-write lock
+typedef struct
+{
+    char host_name[LOG_BUILDER_HOSTNAME_LEN]; ///< Host name
+    char host_ip[IPSIZE];                     ///< Host's primary IP
+    rwlock_t rwlock;                          ///< Read-write lock
 } log_builder_t;
 
 /**
@@ -35,14 +36,14 @@ typedef struct {
  * @param update Selects if the initializer should populate the data.
  * @return Pointer to an initialized log builder structure.
  */
-log_builder_t * log_builder_init(bool update);
+log_builder_t* log_builder_init(bool update);
 
 /**
  * @brief Free a log builder structure.
  *
  * @param builder Pointer to a log builder structure.
  */
-void log_builder_destroy(log_builder_t * builder);
+void log_builder_destroy(log_builder_t* builder);
 
 /**
  * @brief Update the pattern values
@@ -51,7 +52,7 @@ void log_builder_destroy(log_builder_t * builder);
  * @retval 0 All the values were updated successfully.
  * @retval -1 Any of the values failed to update.
  */
-int log_builder_update(log_builder_t * builder);
+int log_builder_update(log_builder_t* builder);
 
 /**
  * @brief Build a log string
@@ -71,6 +72,6 @@ int log_builder_update(log_builder_t * builder);
  * @param location String representing the log location.
  * @return Pointer to a new string holding the output log. It will never be NULL.
  */
-char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location);
+char* log_builder_build(log_builder_t* builder, const char* pattern, const char* logmsg, const char* location);
 
 #endif // LOG_BUILDER_H

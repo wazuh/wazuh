@@ -23,13 +23,13 @@ int __wrap_ebpf_whodata_healthcheck(void);
 
 // Declare the wrap version of fimebpf_initialize
 void __wrap_fimebpf_initialize(FunctionPtr fim_conf,
-                                FunctionPtr get_user,
-                                FunctionPtr get_group,
-                                FunctionPtr whodata_event,
-                                FunctionPtr free_whodata_event,
-                                FunctionPtr loggingFunction,
-                                FunctionPtr abspath,
-                                FunctionPtr is_shutdown,
-                                unsigned int queue_size);
+                               FunctionPtr get_user,
+                               FunctionPtr get_group,
+                               FunctionPtr whodata_event,
+                               FunctionPtr free_whodata_event,
+                               FunctionPtr loggingFunction,
+                               FunctionPtr abspath,
+                               FunctionPtr is_shutdown,
+                               unsigned int queue_size);
 
 #endif // WRAP_EBPF_FUNCTIONS_H

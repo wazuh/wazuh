@@ -15,21 +15,21 @@
 #include <tlhelp32.h>
 #endif
 /* Process struct */
-typedef struct W_Proc_Info {
-    char *p_name;
-    char *p_path;
+typedef struct W_Proc_Info
+{
+    char* p_name;
+    char* p_path;
 } W_Proc_Info;
 
-
-char *w_os_get_runps(const char *ps, int mpid);
+char* w_os_get_runps(const char* ps, int mpid);
 /* Get list of Unix processes */
-OSList *w_os_get_process_list();
+OSList* w_os_get_process_list();
 /* Check if a file exists */
-int w_is_file(const char * const file);
+int w_is_file(const char* const file);
 
 #ifdef WIN32
 /* Executes Wow64DisableWow64FsRedirection if the OS version supports it */
-void SafeWow64DisableWow64FsRedirection(PVOID *oldValue);
+void SafeWow64DisableWow64FsRedirection(PVOID* oldValue);
 #endif
 
 #endif /* OS_UTILS_OP_H */

@@ -20,40 +20,37 @@ namespace
 
 class FileSystemWrapperTest : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_root;
-        file_system::FileSystemWrapper m_fs;
+protected:
+    std::filesystem::path m_root;
+    file_system::FileSystemWrapper m_fs;
 
-        void SetUp() override
+    void SetUp() override
+    {
+        // std::filesystem rather than mkdtemp: the suite is also built for the Windows
+        // agent, where mkdtemp does not exist and /tmp is not a path.
+        const auto base {std::filesystem::temp_directory_path()};
+        std::error_code ec;
+
+        for (int attempt = 0; attempt < 100; ++attempt)
         {
-            // std::filesystem rather than mkdtemp: the suite is also built for the Windows
-            // agent, where mkdtemp does not exist and /tmp is not a path.
-            const auto base {std::filesystem::temp_directory_path()};
-            std::error_code ec;
+            const auto unique {std::chrono::steady_clock::now().time_since_epoch().count() + attempt};
+            const auto candidate {base / ("fswraptest_" + std::to_string(unique))};
 
-            for (int attempt = 0; attempt < 100; ++attempt)
+            if (std::filesystem::create_directory(candidate, ec) && !ec)
             {
-                const auto unique
-                {
-                    std::chrono::steady_clock::now().time_since_epoch().count() + attempt
-                };
-                const auto candidate {base / ("fswraptest_" + std::to_string(unique))};
-
-                if (std::filesystem::create_directory(candidate, ec) && !ec)
-                {
-                    m_root = candidate;
-                    return;
-                }
+                m_root = candidate;
+                return;
             }
-
-            FAIL() << "could not create a unique temporary directory under " << base;
         }
 
-        void TearDown() override
-        {
-            std::error_code ec;
-            std::filesystem::remove_all(m_root, ec);
-        }
+        FAIL() << "could not create a unique temporary directory under " << base;
+    }
+
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(m_root, ec);
+    }
 };
 
 TEST_F(FileSystemWrapperTest, FileSizeReturnsRealSize)

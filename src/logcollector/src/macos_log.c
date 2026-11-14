@@ -20,28 +20,31 @@
 #define INLINE inline
 #endif
 
-STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "",
-                                               .settings = NULL, .is_valid_data = false };
+STATIC w_macos_log_vault_t macos_log_vault = {
+    .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL, .is_valid_data = false};
 
-STATIC char * macos_codename = NULL;
+STATIC char* macos_codename = NULL;
 
 STATIC bool macos_log_ndjson = false;
 
-STATIC w_sysinfo_helpers_t * sysinfo = NULL;
+STATIC w_sysinfo_helpers_t* sysinfo = NULL;
 /**
  * @brief Check if agent is running on macOS Sierra
  *
  * @return true if agent is running in macOS Sierra. false otherwise
  */
-bool w_is_macos_sierra() {
+bool w_is_macos_sierra()
+{
 
-    if (macos_codename != NULL && strcmp(macos_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
+    if (macos_codename != NULL && strcmp(macos_codename, MACOS_SIERRA_CODENAME_STR) == 0)
+    {
         return true;
     }
     return false;
 }
 
-bool w_macos_log_is_ndjson(void) {
+bool w_macos_log_is_ndjson(void)
+{
 
     return macos_log_ndjson;
 }
@@ -51,7 +54,8 @@ bool w_macos_log_is_ndjson(void) {
  *
  * @return true if the Darwin release is the oldest validated one or newer. false otherwise
  */
-STATIC bool w_macos_is_ndjson_supported(void) {
+STATIC bool w_macos_is_ndjson_supported(void)
+{
 
     struct utsname name;
 
@@ -64,7 +68,8 @@ STATIC bool w_macos_is_ndjson_supported(void) {
  * @param log_cmd_array array of arguments
  * @param log_cmd_array_idx index of the array
  */
-STATIC INLINE void w_macos_add_sierra_support(char ** log_cmd_array, size_t * log_cmd_array_idx) {
+STATIC INLINE void w_macos_add_sierra_support(char** log_cmd_array, size_t* log_cmd_array_idx)
+{
 
     w_strdup(SCRIPT_CMD_STR, log_cmd_array[(*log_cmd_array_idx)++]);
     w_strdup(SCRIPT_CMD_ARGS, log_cmd_array[(*log_cmd_array_idx)++]);
@@ -76,9 +81,11 @@ STATIC INLINE void w_macos_add_sierra_support(char ** log_cmd_array, size_t * lo
  * @param predicate Contains the `log`'s predicate filter to be used as a string
  * @return true if valid, otherwise false
  */
-STATIC INLINE bool w_macos_is_log_predicate_valid(char * predicate) {
+STATIC INLINE bool w_macos_is_log_predicate_valid(char* predicate)
+{
 
-    if (strlen(predicate) > 0) {
+    if (strlen(predicate) > 0)
+    {
         return true;
     }
     return false;
@@ -91,15 +98,18 @@ STATIC INLINE bool w_macos_is_log_predicate_valid(char * predicate) {
  * @param log_cmd_array_idx Index of the `log show` array
  * @param level String that contains the `log show` levels
  */
-STATIC INLINE void w_macos_log_show_array_add_level(char ** log_cmd_array, size_t * log_cmd_array_idx, char * level) {
+STATIC INLINE void w_macos_log_show_array_add_level(char** log_cmd_array, size_t* log_cmd_array_idx, char* level)
+{
 
     /* Log Show's Level section: adds, or not, `--debug` and/or `--info`. This that assumes `debug` contains `info` */
-    if (level != NULL && strcmp(level, MACOS_LOG_LEVEL_DEFAULT_STR) != 0) {
+    if (level != NULL && strcmp(level, MACOS_LOG_LEVEL_DEFAULT_STR) != 0)
+    {
 
         /* If the level is not `default`, because it is set to `info` or `debug`, then the info logs are acquired */
         w_strdup(SHOW_INFO_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
 
-        if (strcmp(level, MACOS_LOG_LEVEL_DEBUG_STR) == 0) {
+        if (strcmp(level, MACOS_LOG_LEVEL_DEBUG_STR) == 0)
+        {
             /* Only when the level is set to `debug` the debug logs are acquired */
             w_strdup(SHOW_DEBUG_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         }
@@ -112,24 +122,34 @@ STATIC INLINE void w_macos_log_show_array_add_level(char ** log_cmd_array, size_
  * @param type Contains the `log show`'s type filters to be used (as combined bit flags)
  * @return char * containing a string with the predicate fragment related to the type or NULL if no type filter was set
  */
-STATIC INLINE char * w_macos_log_show_create_type_predicate(int type) {
+STATIC INLINE char* w_macos_log_show_create_type_predicate(int type)
+{
 
-    char * type_predicate = NULL;
+    char* type_predicate = NULL;
 
-    if (type & MACOS_LOG_TYPE_ACTIVITY) {
+    if (type & MACOS_LOG_TYPE_ACTIVITY)
+    {
         w_strdup(SHOW_TYPE_ACTIVITY_STR, type_predicate);
     }
-    if (type & MACOS_LOG_TYPE_LOG) {
-        if (type_predicate == NULL) {
+    if (type & MACOS_LOG_TYPE_LOG)
+    {
+        if (type_predicate == NULL)
+        {
             w_strdup(SHOW_TYPE_LOG_STR, type_predicate);
-        } else {
+        }
+        else
+        {
             type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_LOG_STR, strlen(SHOW_OR_TYPE_LOG_STR));
         }
     }
-    if (type & MACOS_LOG_TYPE_TRACE) {
-        if (type_predicate == NULL) {
+    if (type & MACOS_LOG_TYPE_TRACE)
+    {
+        if (type_predicate == NULL)
+        {
             w_strdup(SHOW_TYPE_TRACE_STR, type_predicate);
-        } else {
+        }
+        else
+        {
             type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_TRACE_STR, strlen(SHOW_OR_TYPE_TRACE_STR));
         }
     }
@@ -145,31 +165,39 @@ STATIC INLINE char * w_macos_log_show_create_type_predicate(int type) {
  * @param query String containing the user's raw predicate
  * @param type_predicate String containing the predicate's type fragment
  */
-STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array, size_t * log_cmd_array_idx, char * query,
-                                                        char * type_predicate) {
+STATIC INLINE void
+w_macos_log_show_array_add_predicate(char** log_cmd_array, size_t* log_cmd_array_idx, char* query, char* type_predicate)
+{
 
-    char * predicate = NULL;
+    char* predicate = NULL;
 
-    if (query != NULL) {
-        if (w_macos_is_log_predicate_valid(query)) {
+    if (query != NULL)
+    {
+        if (w_macos_is_log_predicate_valid(query))
+        {
             w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
 
-            if (type_predicate != NULL) {
+            if (type_predicate != NULL)
+            {
                 const int PREDICATE_SIZE = strlen(query) + strlen(type_predicate) + strlen(QUERY_AND_TYPE_PREDICATE);
                 os_calloc(PREDICATE_SIZE, sizeof(char), predicate);
                 snprintf(predicate, PREDICATE_SIZE, QUERY_AND_TYPE_PREDICATE, query, type_predicate);
-
-            } else {
+            }
+            else
+            {
                 w_strdup(query, predicate);
             }
             w_strdup(predicate, log_cmd_array[(*log_cmd_array_idx)++]);
             os_free(predicate);
-
-        } else if (type_predicate != NULL) {
+        }
+        else if (type_predicate != NULL)
+        {
             w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
             w_strdup(type_predicate, log_cmd_array[(*log_cmd_array_idx)++]);
         }
-    } else if (type_predicate != NULL) {
+    }
+    else if (type_predicate != NULL)
+    {
         w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         w_strdup(type_predicate, log_cmd_array[(*log_cmd_array_idx)++]);
     }
@@ -183,16 +211,18 @@ STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array, s
  * @param type Contains the `log show`'s type filters to be used (as combined bit flags)
  * @return A pointer to an array containing the executable arguments
  */
-STATIC INLINE char ** w_macos_create_log_show_array(char * start_date, char * query, char * level, int type) {
+STATIC INLINE char** w_macos_create_log_show_array(char* start_date, char* query, char* level, int type)
+{
 
     size_t log_cmd_array_idx = 0;
-    char ** log_cmd_array = NULL;
+    char** log_cmd_array = NULL;
 
-    char * type_predicate = NULL;
+    char* type_predicate = NULL;
 
-    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char*), log_cmd_array);
 
-    if (w_is_macos_sierra()) {
+    if (w_is_macos_sierra())
+    {
         w_macos_add_sierra_support(log_cmd_array, &log_cmd_array_idx);
     }
 
@@ -226,9 +256,11 @@ STATIC INLINE char ** w_macos_create_log_show_array(char * start_date, char * qu
  * @param log_cmd_array_idx index of the `log stream` array
  * @param level string that contains the `log stream` levels
  */
-STATIC INLINE void w_macos_log_stream_array_add_level(char ** log_cmd_array, size_t * log_cmd_array_idx, char * level) {
+STATIC INLINE void w_macos_log_stream_array_add_level(char** log_cmd_array, size_t* log_cmd_array_idx, char* level)
+{
 
-    if (level != NULL) {
+    if (level != NULL)
+    {
         w_strdup(LEVEL_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         w_strdup(level, log_cmd_array[(*log_cmd_array_idx)++]);
     }
@@ -241,18 +273,23 @@ STATIC INLINE void w_macos_log_stream_array_add_level(char ** log_cmd_array, siz
  * @param log_cmd_array_idx index of the `log stream` array
  * @param type Contains the `log stream`'s type filters to be used (as combined bit flags)
  */
-STATIC INLINE void w_macos_log_stream_array_add_type(char ** log_cmd_array, size_t * log_cmd_array_idx, int type) {
+STATIC INLINE void w_macos_log_stream_array_add_type(char** log_cmd_array, size_t* log_cmd_array_idx, int type)
+{
 
-    if (type != 0) {
-        if (type & MACOS_LOG_TYPE_ACTIVITY) {
+    if (type != 0)
+    {
+        if (type & MACOS_LOG_TYPE_ACTIVITY)
+        {
             w_strdup(TYPE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
             w_strdup(MACOS_LOG_TYPE_ACTIVITY_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         }
-        if (type & MACOS_LOG_TYPE_LOG) {
+        if (type & MACOS_LOG_TYPE_LOG)
+        {
             w_strdup(TYPE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
             w_strdup(MACOS_LOG_TYPE_LOG_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         }
-        if (type & MACOS_LOG_TYPE_TRACE) {
+        if (type & MACOS_LOG_TYPE_TRACE)
+        {
             w_strdup(TYPE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
             w_strdup(MACOS_LOG_TYPE_TRACE_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         }
@@ -266,10 +303,12 @@ STATIC INLINE void w_macos_log_stream_array_add_type(char ** log_cmd_array, size
  * @param log_cmd_array_idx index of the `log stream` array
  * @param predicate string that contains the `log stream` predicate
  */
-STATIC INLINE void w_macos_log_stream_array_add_predicate(char ** log_cmd_array, size_t * log_cmd_array_idx,
-                                                          char * predicate) {
+STATIC INLINE void
+w_macos_log_stream_array_add_predicate(char** log_cmd_array, size_t* log_cmd_array_idx, char* predicate)
+{
 
-    if (predicate != NULL && w_macos_is_log_predicate_valid(predicate)) {
+    if (predicate != NULL && w_macos_is_log_predicate_valid(predicate))
+    {
         w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
 
         w_strdup(predicate, log_cmd_array[(*log_cmd_array_idx)++]);
@@ -284,14 +323,16 @@ STATIC INLINE void w_macos_log_stream_array_add_predicate(char ** log_cmd_array,
  * @param type Contains the `log stream`'s type filters to be used (as combined bit flags)
  * @return A pointer to an array containing the executable arguments
  */
-STATIC char ** w_macos_create_log_stream_array(char * predicate, char * level, int type) {
+STATIC char** w_macos_create_log_stream_array(char* predicate, char* level, int type)
+{
 
     size_t log_cmd_array_idx = 0;
-    char ** log_cmd_array = NULL;
+    char** log_cmd_array = NULL;
 
-    os_calloc(MAX_LOG_STREAM_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+    os_calloc(MAX_LOG_STREAM_CMD_ARGS + 1, sizeof(char*), log_cmd_array);
 
-    if (w_is_macos_sierra()) {
+    if (w_is_macos_sierra())
+    {
         w_macos_add_sierra_support(log_cmd_array, &log_cmd_array_idx);
     }
 
@@ -319,34 +360,45 @@ STATIC char ** w_macos_create_log_stream_array(char * predicate, char * level, i
  * @param flags Are the flags to be used along with wpopenv()
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
  */
-STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
+STATIC wfd_t* w_macos_log_exec(char** log_cmd_array, u_int32_t flags)
+{
 
     int log_pipe_fd = -1;
     int log_pipe_fd_flags = 0;
-    wfd_t * macos_log_wfd = wpopenv(*log_cmd_array, log_cmd_array, flags);
+    wfd_t* macos_log_wfd = wpopenv(*log_cmd_array, log_cmd_array, flags);
 
-    if (macos_log_wfd == NULL) {
+    if (macos_log_wfd == NULL)
+    {
         merror(WPOPENV_ERROR, strerror(errno), errno);
-    } else {
+    }
+    else
+    {
         /* The file descriptor, from which the output of `log stream` will be read, is set to non-blocking */
         log_pipe_fd = fileno(macos_log_wfd->file_out); // Gets the file descriptor from a file pointer
 
-        if (log_pipe_fd <= 0) {
+        if (log_pipe_fd <= 0)
+        {
             merror(FP_TO_FD_ERROR, strerror(errno), errno);
             wpclose(macos_log_wfd);
             macos_log_wfd = NULL;
-        } else {
+        }
+        else
+        {
             log_pipe_fd_flags = fcntl(log_pipe_fd, F_GETFL, 0); // Gets current flags
 
-            if (log_pipe_fd_flags < 0) {
+            if (log_pipe_fd_flags < 0)
+            {
                 merror(GET_FLAGS_ERROR, strerror(errno), errno);
                 wpclose(macos_log_wfd);
                 macos_log_wfd = NULL;
-            } else {
+            }
+            else
+            {
                 log_pipe_fd_flags |= O_NONBLOCK; // Adds the NON-BLOCKING flag to current flags
                 const int set_flags_retval = fcntl(log_pipe_fd, F_SETFL, log_pipe_fd_flags); // Sets the new Flags
 
-                if (set_flags_retval < 0) {
+                if (set_flags_retval < 0)
+                {
                     merror(SET_FLAGS_ERROR, strerror(errno), errno);
                     wpclose(macos_log_wfd);
                     macos_log_wfd = NULL;
@@ -363,15 +415,18 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
  * @warning if macOS Sierra is beeing used, also `script` command will be checked.
  * @return true when `log` command can be executed, false otherwise.
  */
-STATIC INLINE bool w_macos_is_log_executable(void) {
+STATIC INLINE bool w_macos_is_log_executable(void)
+{
 
-    if (w_is_macos_sierra() && waccess(SCRIPT_CMD_STR, X_OK) != 0) {
+    if (w_is_macos_sierra() && waccess(SCRIPT_CMD_STR, X_OK) != 0)
+    {
         merror(ACCESS_ERROR, SCRIPT_CMD_STR, strerror(errno), errno);
         return false;
     }
 
     const int retval = waccess(LOG_CMD_STR, X_OK);
-    if (retval == 0) {
+    if (retval == 0)
+    {
         return true;
     }
     merror(ACCESS_ERROR, LOG_CMD_STR, strerror(errno), errno);
@@ -383,15 +438,17 @@ STATIC INLINE bool w_macos_is_log_executable(void) {
  *
  * @param lf localfile's logreader structure with `log show`'s arguments and its configuration structure to be set
  */
-STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
+STATIC INLINE void w_macos_create_log_show_env(logreader* lf)
+{
 
-    char ** log_show_array = NULL;
+    char** log_show_array = NULL;
 
-    char * timestamp = w_macos_get_last_log_timestamp();
+    char* timestamp = w_macos_get_last_log_timestamp();
 
     lf->macos_log->processes.show.wfd = NULL;
 
-    if (timestamp[0] == '\0') {
+    if (timestamp[0] == '\0')
+    {
         os_free(timestamp);
         return;
     }
@@ -400,12 +457,15 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     lf->macos_log->processes.show.wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-    char * log_show_str = w_strcat_list(log_show_array, ' ');
+    char* log_show_str = w_strcat_list(log_show_array, ' ');
 
-    if (lf->macos_log->processes.show.wfd != NULL) {
+    if (lf->macos_log->processes.show.wfd != NULL)
+    {
         lf->macos_log->state = LOG_RUNNING_SHOW;
         minfo(LOGCOLLECTOR_MACOS_LOG_SHOW_INFO, log_show_str);
-    } else {
+    }
+    else
+    {
         merror(LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR, log_show_str);
     }
 
@@ -419,9 +479,10 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
  *
  * @param lf localfile's logreader structure with `log stream`'s arguments and its configuration structure to be set
  */
-STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
+STATIC INLINE void w_macos_create_log_stream_env(logreader* lf)
+{
 
-    char ** log_stream_array = NULL;
+    char** log_stream_array = NULL;
 
     lf->macos_log->processes.stream.wfd = NULL;
 
@@ -429,14 +490,18 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
 
     lf->macos_log->processes.stream.wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-    char * log_stream_str = w_strcat_list(log_stream_array, ' ');
+    char* log_stream_str = w_strcat_list(log_stream_array, ' ');
 
-    if (lf->macos_log->processes.stream.wfd != NULL) {
-        if (lf->macos_log->state == LOG_NOT_RUNNING) {
+    if (lf->macos_log->processes.stream.wfd != NULL)
+    {
+        if (lf->macos_log->state == LOG_NOT_RUNNING)
+        {
             lf->macos_log->state = LOG_RUNNING_STREAM;
         }
         minfo(LOGCOLLECTOR_MACOS_LOG_STREAM_INFO, log_stream_str);
-    } else {
+    }
+    else
+    {
         merror(LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR, log_stream_str);
     }
 
@@ -444,7 +509,8 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
     free_strarray(log_stream_array);
 }
 
-void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo) {
+void w_macos_create_log_env(logreader* lf, w_sysinfo_helpers_t* global_sysinfo)
+{
 
     lf->macos_log->state = LOG_NOT_RUNNING;
 
@@ -452,29 +518,36 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
 
     macos_codename = w_get_os_codename(sysinfo);
 
-    if (w_macos_is_log_executable()) {
+    if (w_macos_is_log_executable())
+    {
 
         /* `log stream` command parameters are stored to keep track of the settings changes that may occur,
             and to determine whether past events should be retrieved or not */
-        char ** current_settings_list = w_macos_create_log_stream_array(lf->query, lf->query_level, lf->query_type);
+        char** current_settings_list = w_macos_create_log_stream_array(lf->query, lf->query_level, lf->query_type);
         lf->macos_log->current_settings = w_strcat_list(current_settings_list, ' ');
         free_strarray(current_settings_list);
 
         /* Set after the stored settings, so they keep `--style syslog` and match those of previous versions */
         macos_log_ndjson = w_macos_is_ndjson_supported();
 
-        if (macos_codename != NULL) {
+        if (macos_codename != NULL)
+        {
             mdebug1("macOS ULS: Creating environment for macOS %s.", macos_codename);
         }
 
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
-        if (!lf->future) {
-            char * previous_settings = w_macos_get_log_settings();
+        if (!lf->future)
+        {
+            char* previous_settings = w_macos_get_log_settings();
 
-            if (previous_settings != NULL) {
-                if (strcmp(lf->macos_log->current_settings, previous_settings) == 0) {
+            if (previous_settings != NULL)
+            {
+                if (strcmp(lf->macos_log->current_settings, previous_settings) == 0)
+                {
                     w_macos_create_log_show_env(lf);
-                } else {
+                }
+                else
+                {
                     mdebug1("macOS ULS: Current predicate differs from the stored one. Discarding old events.");
                 }
                 os_free(previous_settings);
@@ -487,11 +560,13 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
     lf->fp = NULL;
 }
 
-pid_t w_get_first_child(pid_t parent_pid) {
+pid_t w_get_first_child(pid_t parent_pid)
+{
 
     pid_t first_child = 0;
-    pid_t * childs = w_get_process_childs(sysinfo, parent_pid, 1);
-    if (childs != NULL && *childs != 0) {
+    pid_t* childs = w_get_process_childs(sysinfo, parent_pid, 1);
+    if (childs != NULL && *childs != 0)
+    {
         first_child = *childs;
     }
     os_free(childs);
@@ -499,23 +574,26 @@ pid_t w_get_first_child(pid_t parent_pid) {
     return first_child;
 }
 
-void w_macos_set_last_log_timestamp(char * timestamp) {
+void w_macos_set_last_log_timestamp(char* timestamp)
+{
 
     w_rwlock_wrlock(&macos_log_vault.mutex);
     strncpy(macos_log_vault.timestamp, timestamp, OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN);
     w_rwlock_unlock(&macos_log_vault.mutex);
 }
 
-char * w_macos_get_last_log_timestamp(void) {
+char* w_macos_get_last_log_timestamp(void)
+{
 
-    char * short_timestamp = NULL;
+    char* short_timestamp = NULL;
     w_rwlock_rdlock(&macos_log_vault.mutex);
     w_strdup(macos_log_vault.timestamp, short_timestamp);
     w_rwlock_unlock(&macos_log_vault.mutex);
     return short_timestamp;
 }
 
-void w_macos_set_log_settings(char * settings) {
+void w_macos_set_log_settings(char* settings)
+{
 
     w_rwlock_wrlock(&macos_log_vault.mutex);
     os_free(macos_log_vault.settings);
@@ -523,17 +601,18 @@ void w_macos_set_log_settings(char * settings) {
     w_rwlock_unlock(&macos_log_vault.mutex);
 }
 
-char * w_macos_get_log_settings(void) {
+char* w_macos_get_log_settings(void)
+{
 
-    char * settings = NULL;
+    char* settings = NULL;
     w_rwlock_rdlock(&macos_log_vault.mutex);
     w_strdup(macos_log_vault.settings, settings);
     w_rwlock_unlock(&macos_log_vault.mutex);
     return settings;
 }
 
-
-bool w_macos_get_is_valid_data() {
+bool w_macos_get_is_valid_data()
+{
 
     w_rwlock_rdlock(&macos_log_vault.mutex);
     bool retval = macos_log_vault.is_valid_data;
@@ -542,24 +621,28 @@ bool w_macos_get_is_valid_data() {
     return retval;
 }
 
-void w_macos_set_is_valid_data(bool is_valid) {
+void w_macos_set_is_valid_data(bool is_valid)
+{
 
     w_rwlock_wrlock(&macos_log_vault.mutex);
     macos_log_vault.is_valid_data = is_valid;
     w_rwlock_unlock(&macos_log_vault.mutex);
 }
 
-cJSON * w_macos_get_status_as_JSON(void) {
+cJSON* w_macos_get_status_as_JSON(void)
+{
 
-    if (!w_macos_get_is_valid_data()) {
+    if (!w_macos_get_is_valid_data())
+    {
         return NULL;
     }
 
-    cJSON * macos_log = NULL;
-    char * timestamp = w_macos_get_last_log_timestamp();
-    char * settings = w_macos_get_log_settings();
+    cJSON* macos_log = NULL;
+    char* timestamp = w_macos_get_last_log_timestamp();
+    char* settings = w_macos_get_log_settings();
 
-    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
+    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL)
+    {
         macos_log = cJSON_CreateObject();
         cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
         cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
@@ -570,11 +653,13 @@ cJSON * w_macos_get_status_as_JSON(void) {
     return macos_log;
 }
 
-void w_macos_set_status_from_JSON(cJSON * global_json) {
-    cJSON * macos_log = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_MACOS);
-    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
-    char * settings = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS));
-    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
+void w_macos_set_status_from_JSON(cJSON* global_json)
+{
+    cJSON* macos_log = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_MACOS);
+    char* timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
+    char* settings = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS));
+    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL)
+    {
         w_macos_set_last_log_timestamp(timestamp);
         w_macos_set_log_settings(settings);
         w_macos_set_is_valid_data(true);

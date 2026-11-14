@@ -35,43 +35,46 @@ using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
 /// data into JSON for further use.
 class PolicyParser
 {
-    public:
-        /// @brief Constructs a PolicyParser and loads the YAML file.
-        /// @param filename Path to the YAML policy file.
-        /// @param commandsTimeout Timeout for command execution.
-        /// @param commandsEnabled Flag indicating whether commands are enabled.
-        /// @param yamlToJsonFunc Function to convert YAML files to JSON strings.
-        explicit PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, YamlToJsonFunc yamlToJsonFunc);
+public:
+    /// @brief Constructs a PolicyParser and loads the YAML file.
+    /// @param filename Path to the YAML policy file.
+    /// @param commandsTimeout Timeout for command execution.
+    /// @param commandsEnabled Flag indicating whether commands are enabled.
+    /// @param yamlToJsonFunc Function to convert YAML files to JSON strings.
+    explicit PolicyParser(const std::filesystem::path& filename,
+                          const int commandsTimeout,
+                          const bool commandsEnabled,
+                          YamlToJsonFunc yamlToJsonFunc);
 
-        /// @brief Parses the loaded policy file and extracts a SCAPolicy object.
-        ///
-        /// The method also populates the given JSON object with detailed
-        /// information on policies and checks for reporting usage.
-        ///
-        /// @param policiesAndChecks JSON object to be filled with extracted data.
-        /// @return A populated SCAPolicy object.
-        std::unique_ptr<ISCAPolicy> ParsePolicy(nlohmann::json& policiesAndChecks);
+    /// @brief Parses the loaded policy file and extracts a SCAPolicy object.
+    ///
+    /// The method also populates the given JSON object with detailed
+    /// information on policies and checks for reporting usage.
+    ///
+    /// @param policiesAndChecks JSON object to be filled with extracted data.
+    /// @return A populated SCAPolicy object.
+    std::unique_ptr<ISCAPolicy> ParsePolicy(nlohmann::json& policiesAndChecks);
 
-    private:
-        /// @brief Replaces variables in the JSON document with their values.
-        /// @param jsonNode The JSON object to process.
-        void ReplaceVariablesInJson(nlohmann::json& jsonNode);
+private:
+    /// @brief Replaces variables in the JSON document with their values.
+    /// @param jsonNode The JSON object to process.
+    void ReplaceVariablesInJson(nlohmann::json& jsonNode);
 
-        /// @brief Document loaded and converted from the YAML file.
-        nlohmann::json m_jsonDocument;
+    /// @brief Document loaded and converted from the YAML file.
+    nlohmann::json m_jsonDocument;
 
-        /// @brief Path to the original YAML file.
-        std::filesystem::path m_filename;
+    /// @brief Path to the original YAML file.
+    std::filesystem::path m_filename;
 
-        /// @brief Timeout for commands execution
-        int m_commandsTimeout;
+    /// @brief Timeout for commands execution
+    int m_commandsTimeout;
 
-        /// @brief Flag indicating whether remote is enabled
-        bool m_commandsEnabled;
+    /// @brief Flag indicating whether remote is enabled
+    bool m_commandsEnabled;
 
-        /// @brief Map of variables found in the YAML file, used for substitution.
-        PolicyVariables m_variablesMap;
+    /// @brief Map of variables found in the YAML file, used for substitution.
+    PolicyVariables m_variablesMap;
 
-        /// @brief Function to convert YAML files to JSON strings.
-        YamlToJsonFunc m_yamlToJsonFunc;
+    /// @brief Function to convert YAML files to JSON strings.
+    YamlToJsonFunc m_yamlToJsonFunc;
 };

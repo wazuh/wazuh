@@ -71,8 +71,7 @@ namespace fake_download
         do
         {
             left = ZSTD_compressStream2(cctx.get(), &out, &in, ZSTD_e_continue);
-        }
-        while (!ZSTD_isError(left) && in.pos < in.size);
+        } while (!ZSTD_isError(left) && in.pos < in.size);
 
         if (ZSTD_isError(left))
         {
@@ -87,17 +86,17 @@ namespace fake_download
     inline std::string trimmed(const std::string& text)
     {
         const auto begin = text.find_first_not_of(" \t");
-        return begin == std::string::npos ? std::string {} :
-               text.substr(begin, text.find_last_not_of(" \t") - begin + 1);
+        return begin == std::string::npos ? std::string {}
+                                          : text.substr(begin, text.find_last_not_of(" \t") - begin + 1);
     }
 
     inline bool isZstdCoding(std::string coding)
     {
         coding = trimmed(coding.substr(0, coding.find(';')));
-        std::transform(coding.begin(), coding.end(), coding.begin(), [](unsigned char c)
-        {
-            return static_cast<char>(std::tolower(c));
-        });
+        std::transform(coding.begin(),
+                       coding.end(),
+                       coding.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         return coding == "zstd";
     }
 } // namespace fake_download

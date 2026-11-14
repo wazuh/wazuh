@@ -14,20 +14,26 @@
 
 class MockGroupWrapper : public IGroupWrapperLinux
 {
-    public:
-        MOCK_METHOD(int, getgrgid_r, (gid_t gid, struct group* grp, char* buf, size_t buflen, struct group** result), (const, override));
-        MOCK_METHOD(int, getgrent_r, (struct group* grp, char* buf, size_t buflen, struct group** result), (const, override));
-        MOCK_METHOD(struct group*, getgrent, (), (const, override));
-        MOCK_METHOD(void, setgrent, (), (const, override));
-        MOCK_METHOD(void, endgrent, (), (const, override));
-        MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
+public:
+    MOCK_METHOD(int,
+                getgrgid_r,
+                (gid_t gid, struct group* grp, char* buf, size_t buflen, struct group** result),
+                (const, override));
+    MOCK_METHOD(int,
+                getgrent_r,
+                (struct group * grp, char* buf, size_t buflen, struct group** result),
+                (const, override));
+    MOCK_METHOD(struct group*, getgrent, (), (const, override));
+    MOCK_METHOD(void, setgrent, (), (const, override));
+    MOCK_METHOD(void, endgrent, (), (const, override));
+    MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
 };
 
 using ::testing::_;
-using ::testing::Return;
 using ::testing::DoAll;
-using ::testing::SetArgPointee;
 using ::testing::Invoke;
+using ::testing::Return;
+using ::testing::SetArgPointee;
 
 TEST(GroupsProviderTest, CollectWithSpecificGids)
 {
@@ -35,22 +41,16 @@ TEST(GroupsProviderTest, CollectWithSpecificGids)
     GroupsProvider provider(mockWrapper);
 
     gid_t testGid = 1000;
-    struct group mockGroup =
-    {
-        .gr_name = const_cast<char*>("testgroup"),
-        .gr_passwd = const_cast<char*>("x"),
-        .gr_gid = testGid,
-        .gr_mem = nullptr
-    };
+    struct group mockGroup = {.gr_name = const_cast<char*>("testgroup"),
+                              .gr_passwd = const_cast<char*>("x"),
+                              .gr_gid = testGid,
+                              .gr_mem = nullptr};
     struct group* groupResult = &mockGroup;
 
     EXPECT_CALL(*mockWrapper, getgrgid_r(testGid, _, _, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<4>(groupResult),
-                  Return(0)
-              ));
+        .WillOnce(DoAll(SetArgPointee<4>(groupResult), Return(0)));
 
-    std::set<gid_t> gids = { testGid };
+    std::set<gid_t> gids = {testGid};
     auto result = provider.collect(gids);
 
     ASSERT_EQ(result.size(), 1u);
@@ -63,30 +63,20 @@ TEST(GroupsProviderTest, CollectAllGroups)
     auto mockWrapper = std::make_shared<MockGroupWrapper>();
     GroupsProvider provider(mockWrapper);
 
-    struct group group1 =
-    {
-        .gr_name = const_cast<char*>("group1"),
-        .gr_passwd = const_cast<char*>("x"),
-        .gr_gid = 1001,
-        .gr_mem = nullptr
-    };
+    struct group group1 = {
+        .gr_name = const_cast<char*>("group1"), .gr_passwd = const_cast<char*>("x"), .gr_gid = 1001, .gr_mem = nullptr};
 
-    struct group group2 =
-    {
-        .gr_name = const_cast<char*>("group2"),
-        .gr_passwd = const_cast<char*>("x"),
-        .gr_gid = 1002,
-        .gr_mem = nullptr
-    };
+    struct group group2 = {
+        .gr_name = const_cast<char*>("group2"), .gr_passwd = const_cast<char*>("x"), .gr_gid = 1002, .gr_mem = nullptr};
 
     struct group* result1 = &group1;
     struct group* result2 = &group2;
 
     EXPECT_CALL(*mockWrapper, setgrent()).Times(1);
     EXPECT_CALL(*mockWrapper, getgrent_r(_, _, _, _))
-    .WillOnce(DoAll(SetArgPointee<3>(result1), Return(0)))
-    .WillOnce(DoAll(SetArgPointee<3>(result2), Return(0)))
-    .WillOnce(DoAll(SetArgPointee<3>(nullptr), Return(0)));
+        .WillOnce(DoAll(SetArgPointee<3>(result1), Return(0)))
+        .WillOnce(DoAll(SetArgPointee<3>(result2), Return(0)))
+        .WillOnce(DoAll(SetArgPointee<3>(nullptr), Return(0)));
 
     EXPECT_CALL(*mockWrapper, endgrent()).Times(1);
 

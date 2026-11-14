@@ -21,8 +21,7 @@ namespace sca::win
         if (requiredSize == 0)
         {
             LoggingHelper::getInstance().log(
-                LOG_DEBUG,
-                "Error while getting length of expanded path in SCA rule: '" + input + "'");
+                LOG_DEBUG, "Error while getting length of expanded path in SCA rule: '" + input + "'");
             return input;
         }
 
@@ -31,9 +30,8 @@ namespace sca::win
 
         if (writtenSize == 0 || writtenSize > requiredSize)
         {
-            LoggingHelper::getInstance().log(
-                LOG_DEBUG,
-                "Error while getting expanded path in SCA rule: '" + input + "'");
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "Error while getting expanded path in SCA rule: '" + input + "'");
             return input;
         }
 
@@ -42,7 +40,7 @@ namespace sca::win
         expanded.resize(writtenSize - 1);
         return expanded;
     }
-}
+} // namespace sca::win
 
 // LCOV_EXCL_START
 namespace
@@ -83,7 +81,8 @@ namespace
         }
         catch (const std::exception& e)
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::IsValidKey: Exception: ") + e.what());
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             std::string("RegistryRuleEvaluator::IsValidKey: Exception: ") + e.what());
             return false;
         }
     };
@@ -138,10 +137,10 @@ namespace
                                                   a.end(),
                                                   b.begin(),
                                                   [](char str_a, char str_b)
-        {
-            return std::tolower(static_cast<unsigned char>(str_a)) ==
-                   std::tolower(static_cast<unsigned char>(str_b));
-        });
+                                                  {
+                                                      return std::tolower(static_cast<unsigned char>(str_a)) ==
+                                                             std::tolower(static_cast<unsigned char>(str_b));
+                                                  });
     }
 
     RuleResult CheckMatch(const std::string& candidate, const std::string& pattern, bool isRegex)
@@ -195,7 +194,9 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
 {
     const auto pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "") + m_ctx.rule + " -> " + pattern);
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "") +
+                                         m_ctx.rule + " -> " + pattern);
 
     // First check that the key exists
     try
@@ -209,7 +210,8 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
         m_lastUnresolvedReason = "Exception accessing registry key '" + m_ctx.rule + "': " + e.what();
         return RuleResult::Invalid;
     }
@@ -267,7 +269,8 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
     const RuleResult retVal =
         m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Registry rule evaluation ") + (retVal == RuleResult::Found ? "passed" : "failed"));
+    LoggingHelper::getInstance().log(
+        LOG_DEBUG, std::string("Registry rule evaluation ") + (retVal == RuleResult::Found ? "passed" : "failed"));
     return retVal;
 }
 
@@ -275,23 +278,27 @@ RuleResult RegistryRuleEvaluator::CheckKeyExistence()
 {
     auto result = RuleResult::NotFound;
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "" + m_ctx.rule));
+    LoggingHelper::getInstance().log(
+        LOG_DEBUG, std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "" + m_ctx.rule));
 
     try
     {
         if (!m_isValidKey(m_ctx.rule))
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Key does not exist. Rule ") + (m_ctx.isNegated ? "passed" : "failed"));
+            LoggingHelper::getInstance().log(
+                LOG_DEBUG, std::string("Key does not exist. Rule ") + (m_ctx.isNegated ? "passed" : "failed"));
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Key exists.  Rule ") + (m_ctx.isNegated ? "failed" : "passed"));
+            LoggingHelper::getInstance().log(
+                LOG_DEBUG, std::string("Key exists.  Rule ") + (m_ctx.isNegated ? "failed" : "passed"));
             result = RuleResult::Found;
         }
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
         m_lastUnresolvedReason = "Exception checking registry key existence '" + m_ctx.rule + "': " + e.what();
         return RuleResult::Invalid;
     }

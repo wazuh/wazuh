@@ -15,12 +15,11 @@
 
 #include "shared.h"
 
-#if defined(SUN_MAJOR_VERSION) && defined(SUN_MINOR_VERSION)  && \
-    (SUN_MAJOR_VERSION < 11) || \
+#if defined(SUN_MAJOR_VERSION) && defined(SUN_MINOR_VERSION) && (SUN_MAJOR_VERSION < 11) ||                            \
     ((SUN_MAJOR_VERSION == 11) && (SUN_MINOR_VERSION < 4))
-#define w_ctime(x,y,z) ctime_r(x,y,z)
+#define w_ctime(x, y, z) ctime_r(x, y, z)
 #else
-#define w_ctime(x,y,z) ctime_r(x,y)
+#define w_ctime(x, y, z) ctime_r(x, y)
 #endif
 
 /**
@@ -36,7 +35,7 @@
  * @retval NULL on failure.
  * @post errno is set on failure.
  */
-struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_t buflen);
+struct passwd* w_getpwnam(const char* name, struct passwd* pwd, char* buf, size_t buflen);
 
 /**
  * @brief Find a user by UID
@@ -51,7 +50,7 @@ struct passwd *w_getpwnam(const char *name, struct passwd *pwd, char *buf, size_
  * @retval NULL on failure.
  * @post errno is set on failure.
  */
-struct passwd *w_getpwuid(uid_t  uid, struct  passwd  *pwd, char *buf, int  buflen);
+struct passwd* w_getpwuid(uid_t uid, struct passwd* pwd, char* buf, int buflen);
 
 /**
  * @brief Find a group by name
@@ -66,7 +65,7 @@ struct passwd *w_getpwuid(uid_t  uid, struct  passwd  *pwd, char *buf, int  bufl
  * @retval NULL on failure.
  * @post errno is set on failure.
  */
-struct group  *w_getgrnam(const char *name, struct group *grp, char *buf, int buflen);
+struct group* w_getgrnam(const char* name, struct group* grp, char* buf, int buflen);
 
 /**
  * @brief Find a group by GID
@@ -81,7 +80,7 @@ struct group  *w_getgrnam(const char *name, struct group *grp, char *buf, int bu
  * @retval NULL on failure.
  * @post errno is set on failure.
  */
-struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen);
+struct group* w_getgrgid(gid_t gid, struct group* grp, char* buf, int buflen);
 
 /**
  * @brief Find a UID by user name
@@ -89,7 +88,7 @@ struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen);
  * @return UID of the user, if found.
  * @retval -1 user not found.
  */
-uid_t Privsep_GetUser(const char *name) __attribute__((nonnull));
+uid_t Privsep_GetUser(const char* name) __attribute__((nonnull));
 
 /**
  * @brief Find a GID by group name
@@ -97,13 +96,13 @@ uid_t Privsep_GetUser(const char *name) __attribute__((nonnull));
  * @return GID of the group, if found.
  * @retval -1 group not found.
  */
-gid_t Privsep_GetGroup(const char *name) __attribute__((nonnull));
+gid_t Privsep_GetGroup(const char* name) __attribute__((nonnull));
 
 int Privsep_SetUser(uid_t uid);
 
 int Privsep_SetGroup(gid_t gid);
 
-int Privsep_Chroot(const char *path) __attribute__((nonnull));
+int Privsep_Chroot(const char* path) __attribute__((nonnull));
 
 /**
  * @brief Raise the soft file descriptor limit up to `target`, never above the hard limit.
@@ -120,6 +119,6 @@ int Privsep_Chroot(const char *path) __attribute__((nonnull));
  *         its value, so what a daemon reports does not depend on how it was started.
  * @retval -1 getrlimit() or setrlimit() failed; the inherited limit is kept.
  */
-long w_raise_nofile_limit(long target, const char *option_name) __attribute__((nonnull));
+long w_raise_nofile_limit(long target, const char* option_name) __attribute__((nonnull));
 
 #endif /* PRIV_H */

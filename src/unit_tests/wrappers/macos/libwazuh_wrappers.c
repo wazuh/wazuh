@@ -14,7 +14,8 @@
 #include "../common.h"
 #include "defs.h"
 
-void wrap_mterror(const char *tag, const char *msg, ...) {
+void wrap_mterror(const char* tag, const char* msg, ...)
+{
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -27,7 +28,8 @@ void wrap_mterror(const char *tag, const char *msg, ...) {
     check_expected(formatted_msg);
 }
 
-void wrap_mtwarn(const char *tag, const char *msg, ...) {
+void wrap_mtwarn(const char* tag, const char* msg, ...)
+{
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -40,7 +42,8 @@ void wrap_mtwarn(const char *tag, const char *msg, ...) {
     check_expected(formatted_msg);
 }
 
-void wrap_mtdebug1(const char *tag, const char *msg, ...) {
+void wrap_mtdebug1(const char* tag, const char* msg, ...)
+{
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -53,7 +56,8 @@ void wrap_mtdebug1(const char *tag, const char *msg, ...) {
     check_expected(formatted_msg);
 }
 
-void wrap_mtdebug2(const char *tag, const char *msg, ...) {
+void wrap_mtdebug2(const char* tag, const char* msg, ...)
+{
     char formatted_msg[OS_MAXSTR];
     va_list args;
 
@@ -68,8 +72,9 @@ void wrap_mtdebug2(const char *tag, const char *msg, ...) {
 
 int wrap_wm_sendmsg(__attribute__((unused)) int usec,
                     __attribute__((unused)) int queue,
-                    __attribute__((unused)) const char *message,
-                    __attribute__((unused)) const char *locmsg,
-                    __attribute__((unused)) char loc) {
+                    __attribute__((unused)) const char* message,
+                    __attribute__((unused)) const char* locmsg,
+                    __attribute__((unused)) char loc)
+{
     return mock();
 }

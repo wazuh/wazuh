@@ -43,7 +43,8 @@
 #define MANAGER_TASK_STATUS_CLAIMED "claimed"
 
 /// What a creation did. Every value except FAILED means the row exists.
-typedef enum {
+typedef enum
+{
     MANAGER_TASK_CREATE_FAILED = -1, ///< The request did not complete; nothing can be assumed.
     MANAGER_TASK_CREATED = 0,
     /// A pending row for this agent and type already existed and was returned instead. Only
@@ -57,7 +58,8 @@ typedef enum {
 } manager_task_create_result;
 
 /// What an agent still owes for one task type.
-typedef enum {
+typedef enum
+{
     MANAGER_TASK_STATUS_FAILED = -1, ///< Could not be determined. Callers must fail safe.
     MANAGER_TASK_STATUS_NONE = 0,    ///< No row for this agent and type at all.
     MANAGER_TASK_STATUS_OUTSTANDING, ///< A row exists and has not reached a terminal status.
@@ -72,11 +74,12 @@ typedef enum {
  * body-construction hook anywhere in the Task Manager, by design -- module knowledge lives in the
  * producer, not in the queue.
  */
-typedef struct manager_task_request_t {
-    const char *task_id;   ///< 64 hex characters; see the id helpers below.
-    const char *task_type;
-    const char *agent_id;  ///< Optional: agent-subject types only.
-    const char *payload;   ///< JSON. The Task Manager enforces its own size cap and answers 413.
+typedef struct manager_task_request_t
+{
+    const char* task_id; ///< 64 hex characters; see the id helpers below.
+    const char* task_type;
+    const char* agent_id; ///< Optional: agent-subject types only.
+    const char* payload;  ///< JSON. The Task Manager enforces its own size cap and answers 413.
     long long create_time;
     /// When the dispatcher may first attempt it. 0 defers to CREATE_TIME.
     long long next_attempt_at;
@@ -99,7 +102,7 @@ typedef struct manager_task_request_t {
  *
  * @return 64 lowercase hex characters, caller-owned, or NULL on a bad argument.
  */
-char* manager_task_id_agent_delete(const char *agent_id, long long journal_seq);
+char* manager_task_id_agent_delete(const char* agent_id, long long journal_seq);
 
 /**
  * @brief The task id of one scheduled run: SHA-256("mt:sched:" schedule_id ":" scheduled_run_at).
@@ -115,7 +118,7 @@ char* manager_task_id_agent_delete(const char *agent_id, long long journal_seq);
  *
  * @return 64 lowercase hex characters, caller-owned, or NULL on a bad argument.
  */
-char* manager_task_id_schedule(const char *schedule_id, long long scheduled_run_at);
+char* manager_task_id_schedule(const char* schedule_id, long long scheduled_run_at);
 
 /**
  * @brief A random task id: SHA-256("mt:" tag ":" <128 random bits>).
@@ -127,7 +130,7 @@ char* manager_task_id_schedule(const char *schedule_id, long long scheduled_run_
  * @param tag Short type tag, e.g. "scan".
  * @return 64 lowercase hex characters, caller-owned, or NULL on failure.
  */
-char* manager_task_id_random(const char *tag);
+char* manager_task_id_random(const char* tag);
 
 /**
  * @brief Create one manager task.
@@ -138,7 +141,7 @@ char* manager_task_id_random(const char *tag);
  *                               coalesce is NOT the one that was asked for. Caller frees.
  * @return A manager_task_create_result.
  */
-int manager_task_create(const manager_task_request_t *request, int timeout, char **surviving_task_id);
+int manager_task_create(const manager_task_request_t* request, int timeout, char** surviving_task_id);
 
 /**
  * @brief Count the rows of one type in one status.
@@ -147,13 +150,13 @@ int manager_task_create(const manager_task_request_t *request, int timeout, char
  *         as a bound must keep their previous value rather than treating a failure as an empty
  *         queue.
  */
-int manager_task_count(const char *task_type, const char *status, int timeout);
+int manager_task_count(const char* task_type, const char* status, int timeout);
 
 /**
  * @brief What the newest row of this type says about one agent.
  *
  * @return A manager_task_status.
  */
-int manager_task_agent_status(const char *agent_id, const char *task_type, int timeout);
+int manager_task_agent_status(const char* agent_id, const char* task_type, int timeout);
 
 #endif /* MANAGER_TASK_OP_H */

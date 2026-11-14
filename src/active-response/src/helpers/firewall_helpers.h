@@ -15,17 +15,19 @@
 /**
  * Enumeration of firewall operation results
  */
-typedef enum {
-    FIREWALL_SUCCESS = 0,           // Operation completed successfully
-    FIREWALL_NOT_AVAILABLE,         // Binary/tool not found on system
-    FIREWALL_EXECUTION_FAILED,      // Command execution failed
-    FIREWALL_INVALID_STATE          // Service/firewall in invalid state
+typedef enum
+{
+    FIREWALL_SUCCESS = 0,      // Operation completed successfully
+    FIREWALL_NOT_AVAILABLE,    // Binary/tool not found on system
+    FIREWALL_EXECUTION_FAILED, // Command execution failed
+    FIREWALL_INVALID_STATE     // Service/firewall in invalid state
 } firewall_result_t;
 
 /**
  * Log levels for firewall operations
  */
-typedef enum {
+typedef enum
+{
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
     LOG_LEVEL_ERROR,
@@ -35,20 +37,22 @@ typedef enum {
 /**
  * Configuration for retry logic
  */
-typedef struct {
-    int max_retries;                // Maximum number of retry attempts
-    int backoff_base_seconds;       // Base seconds for backoff
-    bool exponential_backoff;       // Use exponential vs linear backoff
+typedef struct
+{
+    int max_retries;          // Maximum number of retry attempts
+    int backoff_base_seconds; // Base seconds for backoff
+    bool exponential_backoff; // Use exponential vs linear backoff
 } retry_config_t;
 
 /**
  * Lock context for managing concurrent execution
  */
-typedef struct {
-    const char *lock_path;          // Path to lock directory
-    const char *lock_pid_path;      // Path to lock PID file
-    const char *log_prefix;         // Prefix for log messages
-    bool acquired;                  // Lock acquisition status
+typedef struct
+{
+    const char* lock_path;     // Path to lock directory
+    const char* lock_pid_path; // Path to lock PID file
+    const char* log_prefix;    // Prefix for log messages
+    bool acquired;             // Lock acquisition status
 } lock_context_t;
 
 /**
@@ -59,18 +63,14 @@ typedef struct {
  * @param argv0 Program name for logging
  * @return firewall_result_t indicating operation result
  */
-typedef firewall_result_t (*firewall_method_func_t)(
-    const char *srcip,
-    int action,
-    int ip_version,
-    const char *argv0
-);
+typedef firewall_result_t (*firewall_method_func_t)(const char* srcip, int action, int ip_version, const char* argv0);
 
 /**
  * Firewall method descriptor
  */
-typedef struct {
-    const char *name;               // Method name (e.g., "firewalld", "iptables")
+typedef struct
+{
+    const char* name;               // Method name (e.g., "firewalld", "iptables")
     firewall_method_func_t execute; // Function to execute this method
     bool requires_lock;             // Whether this method needs locking
 } firewall_method_t;
@@ -82,11 +82,7 @@ typedef struct {
  * @param log_prefix Prefix for log messages
  * @return FIREWALL_SUCCESS if found, FIREWALL_NOT_AVAILABLE otherwise
  */
-firewall_result_t check_binary_available(
-    const char *binary_name,
-    char **path_out,
-    const char *log_prefix
-);
+firewall_result_t check_binary_available(const char* binary_name, char** path_out, const char* log_prefix);
 
 /**
  * @brief Execute a command with retry logic and exponential backoff
@@ -98,25 +94,20 @@ firewall_result_t check_binary_available(
  * @return FIREWALL_SUCCESS if command succeeded, FIREWALL_EXECUTION_FAILED otherwise
  */
 firewall_result_t execute_with_retry(
-    const char *binary_path,
-    char **args,
-    int bind_flags,
-    const retry_config_t *config,
-    const char *log_prefix
-);
+    const char* binary_path, char** args, int bind_flags, const retry_config_t* config, const char* log_prefix);
 
 /**
  * @brief Acquire a lock for concurrent execution control
  * @param ctx Lock context structure
  * @return OS_SUCCESS if lock acquired, OS_INVALID otherwise
  */
-int acquire_ar_lock(lock_context_t *ctx);
+int acquire_ar_lock(lock_context_t* ctx);
 
 /**
  * @brief Release a previously acquired lock
  * @param ctx Lock context structure
  */
-void release_ar_lock(lock_context_t *ctx);
+void release_ar_lock(lock_context_t* ctx);
 
 /**
  * @brief Log a firewall action with structured format
@@ -127,12 +118,7 @@ void release_ar_lock(lock_context_t *ctx);
  * @param details Additional details about the action
  */
 void log_firewall_action(
-    const char *ar_name,
-    log_level_t level,
-    const char *method,
-    const char *action,
-    const char *details
-);
+    const char* ar_name, log_level_t level, const char* method, const char* action, const char* details);
 
 /**
  * @brief Convert firewall_result_t to string for logging
@@ -152,11 +138,6 @@ const char* firewall_result_to_string(firewall_result_t result);
  *         was unavailable or failed
  */
 int execute_firewall_chain(
-    const firewall_method_t *methods,
-    const char *srcip,
-    int action,
-    int ip_version,
-    const char *argv0
-);
+    const firewall_method_t* methods, const char* srcip, int action, int ip_version, const char* argv0);
 
 #endif /* FIREWALL_HELPERS_H */

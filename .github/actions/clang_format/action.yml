@@ -22,6 +22,10 @@ inputs:
   id:
     required: true
     description: "Module identifier, used to name the artifact"
+  pathspec:
+    required: false
+    description: "Git pathspecs, one per line, of the files to check. Replaces the *.cpp and *.hpp files under path"
+    default: ""
 
 runs:
   using: "composite"
@@ -100,11 +104,18 @@ runs:
 
       - name: Check Coding style
         shell: bash
+        env:
+          PATHSPEC: ${{ inputs.pathspec }}
         run: |
           set -euo pipefail
 
           readonly ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
-          mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
+          if [ -n "${PATHSPEC}" ]; then
+            mapfile -t SPECS < <(sed '/^\s*$/d' <<< "${PATHSPEC}")
+            mapfile -t SOURCE_FILES < <(git ls-files -- "${SPECS[@]}")
+          else
+            mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
+          fi
 
           "${CLANG_FORMAT_BIN}" --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
 

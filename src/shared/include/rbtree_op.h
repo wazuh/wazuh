@@ -16,16 +16,21 @@
 #define RBTREE_H
 
 /// Possible colors of a red-black tree
-typedef enum rb_color { RB_RED, RB_BLACK } rb_color;
+typedef enum rb_color
+{
+    RB_RED,
+    RB_BLACK
+} rb_color;
 
 /// Red-black tree node
-typedef struct rb_node {
-    char * key;                 ///< Node key
-    void * value;               ///< Pointer to value
-    rb_color color;             ///< Node color
-    struct rb_node * parent;    ///< Pointer to parent node
-    struct rb_node * left;      ///< Pointer to left child
-    struct rb_node * right;     ///< Pointer to right child
+typedef struct rb_node
+{
+    char* key;              ///< Node key
+    void* value;            ///< Pointer to value
+    rb_color color;         ///< Node color
+    struct rb_node* parent; ///< Pointer to parent node
+    struct rb_node* left;   ///< Pointer to left child
+    struct rb_node* right;  ///< Pointer to right child
 } rb_node;
 
 /**
@@ -35,9 +40,10 @@ typedef struct rb_node {
  *
  * It supports O(log n) insertion, deletion and search.
  */
-typedef struct rb_tree {
-    rb_node * root;             ///< Pointer to root node
-    void (*dispose)(void *);    ///< Pointer to function to dispose an element
+typedef struct rb_tree
+{
+    rb_node* root;          ///< Pointer to root node
+    void (*dispose)(void*); ///< Pointer to function to dispose an element
 } rb_tree;
 
 /**
@@ -46,7 +52,7 @@ typedef struct rb_tree {
  * @return Pointer to an empty tree.
  */
 
-rb_tree * rbtree_init();
+rb_tree* rbtree_init();
 
 /**
  * @brief Free a red-black tree
@@ -57,7 +63,7 @@ rb_tree * rbtree_init();
  * @param tree Pointer to a red-black tree.
  */
 
-void rbtree_destroy(rb_tree * tree);
+void rbtree_destroy(rb_tree* tree);
 
 /**
  * @brief Set free function to dispose elements
@@ -69,7 +75,7 @@ void rbtree_destroy(rb_tree * tree);
  * @param dispose Pointer to function to dispose an element.
  */
 
-void rbtree_set_dispose(rb_tree * tree, void (*dispose)(void *));
+void rbtree_set_dispose(rb_tree* tree, void (*dispose)(void*));
 
 /**
  * @brief Insert a key-value in the tree
@@ -81,7 +87,7 @@ void rbtree_set_dispose(rb_tree * tree, void (*dispose)(void *));
  * @retval NULL Key already exists in the tree.
  */
 
-rb_node * rbtree_insert(rb_tree * tree, const char * key, void * value);
+rb_node* rbtree_insert(rb_tree* tree, const char* key, void* value);
 
 /**
  * @brief Update the value of an existing key
@@ -94,7 +100,7 @@ rb_node * rbtree_insert(rb_tree * tree, const char * key, void * value);
  * @retval NULL Key not found.
  */
 
-void * rbtree_replace(rb_tree * tree, const char * key, void * value);
+void* rbtree_replace(rb_tree* tree, const char* key, void* value);
 
 /**
  * @brief Retrieve a value from the tree
@@ -105,7 +111,7 @@ void * rbtree_replace(rb_tree * tree, const char * key, void * value);
  * @retval NULL Key not found.
  */
 
-void * rbtree_get(const rb_tree * tree, const char * key);
+void* rbtree_get(const rb_tree* tree, const char* key);
 
 /**
  * @brief Remove a value from the tree
@@ -116,7 +122,7 @@ void * rbtree_get(const rb_tree * tree, const char * key);
  * @retval 0 Key not in the tree.
  */
 
-int rbtree_delete(rb_tree * tree, const char * key);
+int rbtree_delete(rb_tree* tree, const char* key);
 
 /**
  * @brief Get the minimum key in the tree
@@ -126,7 +132,7 @@ int rbtree_delete(rb_tree * tree, const char * key);
  * @retval NULL The tree is empty.
  */
 
-const char * rbtree_minimum(const rb_tree * tree);
+const char* rbtree_minimum(const rb_tree* tree);
 
 /**
  * @brief Get the maximum key in the tree
@@ -136,7 +142,7 @@ const char * rbtree_minimum(const rb_tree * tree);
  * @retval NULL The tree is empty.
  */
 
-const char * rbtree_maximum(const rb_tree * tree);
+const char* rbtree_maximum(const rb_tree* tree);
 
 /**
  * @brief Get all the keys in the tree
@@ -147,7 +153,7 @@ const char * rbtree_maximum(const rb_tree * tree);
  * @return Null-terminated array of keys.
  */
 
-char ** rbtree_keys(const rb_tree * tree);
+char** rbtree_keys(const rb_tree* tree);
 
 /**
  * @brief Get all the keys from the tree within a range
@@ -161,7 +167,7 @@ char ** rbtree_keys(const rb_tree * tree);
  * @return Null-terminated array of keys.
  */
 
-char ** rbtree_range(const rb_tree * tree, const char * min, const char * max);
+char** rbtree_range(const rb_tree* tree, const char* min, const char* max);
 
 /**
  * @brief Get the black depth of a tree
@@ -176,7 +182,7 @@ char ** rbtree_range(const rb_tree * tree, const char * min, const char * max);
  * @retval -1 The tree is unbalanced. This would mean a bug.
  */
 
-int rbtree_black_depth(const rb_tree * tree);
+int rbtree_black_depth(const rb_tree* tree);
 
 /**
  * @brief Get the size of the tree
@@ -185,7 +191,7 @@ int rbtree_black_depth(const rb_tree * tree);
  * @return unsigned Number of elements in the tree.
  */
 
-unsigned rbtree_size(const rb_tree * tree);
+unsigned rbtree_size(const rb_tree* tree);
 
 /**
  * @brief Check whether the tree is empty.
@@ -194,6 +200,6 @@ unsigned rbtree_size(const rb_tree * tree);
  * @retval 1 The tree is empty.
  * @retval 0 The tree is not empty.
  */
-int rbtree_empty(const rb_tree * tree);
+int rbtree_empty(const rb_tree* tree);
 
 #endif

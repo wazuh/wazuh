@@ -27,7 +27,8 @@
 
 // Get the current calendar time
 
-void gettime(struct timespec *ts) {
+void gettime(struct timespec* ts)
+{
 #ifdef __MACH__
     clock_serv_t cclock;
     mach_timespec_t mts;
@@ -48,7 +49,8 @@ void gettime(struct timespec *ts) {
 
 // Get the epoch time
 
-long long int get_windows_time_epoch() {
+long long int get_windows_time_epoch()
+{
     FILETIME ft = {0};
 
     GetSystemTimeAsFileTime(&ft);
@@ -57,7 +59,8 @@ long long int get_windows_time_epoch() {
 
 // Get the epoch time from a FILETIME object
 
-long long int get_windows_file_time_epoch(FILETIME ft) {
+long long int get_windows_file_time_epoch(FILETIME ft)
+{
     LARGE_INTEGER li = {0};
 
     li.LowPart = ft.dwLowDateTime;
@@ -68,7 +71,8 @@ long long int get_windows_file_time_epoch(FILETIME ft) {
     return file_time_epoch;
 }
 
-void gettime(struct timespec * ts) {
+void gettime(struct timespec* ts)
+{
     FILETIME ft;
     GetSystemTimeAsFileTime(&ft);
 
@@ -82,7 +86,8 @@ void gettime(struct timespec * ts) {
 
 #endif
 
-time_t w_get_monotonic_time(void) {
+time_t w_get_monotonic_time(void)
+{
 #ifdef WIN32
     return (time_t)(GetTickCount64() / 1000);
 #elif defined(__MACH__)
@@ -102,44 +107,55 @@ time_t w_get_monotonic_time(void) {
 #endif
 }
 
-char *w_get_timestamp(time_t time) {
+char* w_get_timestamp(time_t time)
+{
     struct tm localtm;
-    char *timestamp;
+    char* timestamp;
 
     localtime_r(&time, &localtm);
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp, TIME_LENGTH, "%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    snprintf(timestamp,
+             TIME_LENGTH,
+             "%d/%02d/%02d %02d:%02d:%02d",
+             localtm.tm_year + 1900,
+             localtm.tm_mon + 1,
+             localtm.tm_mday,
+             localtm.tm_hour,
+             localtm.tm_min,
+             localtm.tm_sec);
 
     return timestamp;
 }
 
-
-void w_sleep_until(const time_t abs_time) {
-    while( time(NULL) < abs_time ) {
+void w_sleep_until(const time_t abs_time)
+{
+    while (time(NULL) < abs_time)
+    {
         w_time_delay(1000);
     }
 }
 
-void w_time_delay(unsigned long int ms) {
+void w_time_delay(unsigned long int ms)
+{
 #ifdef WIN32
     Sleep(ms);
 #else
-    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    struct timeval timeout = {ms / 1000, (ms % 1000) * 1000};
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 }
 
 // Compute time substraction "a - b"
 
-void time_sub(struct timespec * a, const struct timespec * b) {
+void time_sub(struct timespec* a, const struct timespec* b)
+{
     a->tv_sec -= b->tv_sec;
     a->tv_nsec -= b->tv_nsec;
 
-    if (a->tv_nsec < 0) {
+    if (a->tv_nsec < 0)
+    {
         a->tv_nsec += 1000000000;
         a->tv_sec--;
     }
@@ -147,16 +163,19 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 
 // Get the time elapsed between a and b (in seconds)
 
-double time_diff(const struct timespec * a, const struct timespec * b) {
+double time_diff(const struct timespec* a, const struct timespec* b)
+{
     return b->tv_sec - a->tv_sec + (b->tv_nsec - a->tv_nsec) / 1e9;
 }
 
 // Function to check if a year is a leap year or not.
 
-bool is_leap_year(int year) {
+bool is_leap_year(int year)
+{
     bool result = false;
 
-    if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) {
+    if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0)
+    {
         result = true;
     }
 
@@ -165,11 +184,12 @@ bool is_leap_year(int year) {
 
 // Get the current ISO 8601 UTC time
 
-void get_iso8601_utc_time(char *buffer, size_t size) {
+void get_iso8601_utc_time(char* buffer, size_t size)
+{
     struct timeval tv;
     gettimeofday(&tv, NULL);
 
-    struct tm *tm_info = gmtime(&tv.tv_sec);
+    struct tm* tm_info = gmtime(&tv.tv_sec);
 
     char datetime[24];
     strftime(datetime, sizeof(datetime), "%Y-%m-%dT%H:%M:%S", tm_info);

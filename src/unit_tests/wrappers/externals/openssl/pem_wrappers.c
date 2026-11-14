@@ -13,17 +13,18 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_PEM_write_PrivateKey(FILE *out,
-                                const EVP_PKEY *x,
-                                const EVP_CIPHER *enc,
-                                const unsigned char *kstr,
+int __wrap_PEM_write_PrivateKey(FILE* out,
+                                const EVP_PKEY* x,
+                                const EVP_CIPHER* enc,
+                                const unsigned char* kstr,
                                 int klen,
-                                pem_password_cb *cb,
-                                void *u) {
+                                pem_password_cb* cb,
+                                void* u)
+{
     return mock_type(int);
-
 }
 
-int __wrap_PEM_write_X509(FILE *out, const X509 *x) {
+int __wrap_PEM_write_X509(FILE* out, const X509* x)
+{
     return mock_type(int);
 }

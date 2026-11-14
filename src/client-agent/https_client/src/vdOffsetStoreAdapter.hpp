@@ -25,51 +25,51 @@
  */
 class VdOffsetStoreAdapter final : public IVdOffsetStore
 {
-    public:
-        VdOffsetStoreAdapter(hc_vd_offset_observe_fn observeCallback,
-                             hc_vd_offset_clear_pending_fn clearPendingCallback,
-                             void* userData)
-            : m_observeCallback(observeCallback)
-            , m_clearPendingCallback(clearPendingCallback)
-            , m_userData(userData)
+public:
+    VdOffsetStoreAdapter(hc_vd_offset_observe_fn observeCallback,
+                         hc_vd_offset_clear_pending_fn clearPendingCallback,
+                         void* userData)
+        : m_observeCallback(observeCallback)
+        , m_clearPendingCallback(clearPendingCallback)
+        , m_userData(userData)
+    {
+    }
+
+    VdOffsetObservation observe(uint64_t offset) override
+    {
+        VdOffsetObservation observation;
+
+        if (m_observeCallback == nullptr)
         {
-        }
-
-        VdOffsetObservation observe(uint64_t offset) override
-        {
-            VdOffsetObservation observation;
-
-            if (m_observeCallback == nullptr)
-            {
-                // No bridge wired (e.g. a test double harness): report no change,
-                // nothing pending -- never invent a re-scan request out of thin air.
-                return observation;
-            }
-
-            int changed = 0;
-            int pending = 0;
-            uint64_t pendingOffset = 0;
-            m_observeCallback(offset, &changed, &pending, &pendingOffset, m_userData);
-            observation.changed = (changed != 0);
-            observation.pending = (pending != 0);
-            observation.pendingOffset = pendingOffset;
+            // No bridge wired (e.g. a test double harness): report no change,
+            // nothing pending -- never invent a re-scan request out of thin air.
             return observation;
         }
 
-        bool clearPending(uint64_t offset) override
-        {
-            if (m_clearPendingCallback == nullptr)
-            {
-                return false;
-            }
+        int changed = 0;
+        int pending = 0;
+        uint64_t pendingOffset = 0;
+        m_observeCallback(offset, &changed, &pending, &pendingOffset, m_userData);
+        observation.changed = (changed != 0);
+        observation.pending = (pending != 0);
+        observation.pendingOffset = pendingOffset;
+        return observation;
+    }
 
-            return m_clearPendingCallback(offset, m_userData) == 1;
+    bool clearPending(uint64_t offset) override
+    {
+        if (m_clearPendingCallback == nullptr)
+        {
+            return false;
         }
 
-    private:
-        hc_vd_offset_observe_fn m_observeCallback;
-        hc_vd_offset_clear_pending_fn m_clearPendingCallback;
-        void* m_userData;
+        return m_clearPendingCallback(offset, m_userData) == 1;
+    }
+
+private:
+    hc_vd_offset_observe_fn m_observeCallback;
+    hc_vd_offset_clear_pending_fn m_clearPendingCallback;
+    void* m_userData;
 };
 
 #endif // _HC_VD_OFFSET_STORE_ADAPTER_HPP

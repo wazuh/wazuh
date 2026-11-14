@@ -29,7 +29,7 @@
  * @param max_len maximum accepted length (buffer size minus 1, for the NUL terminator)
  * @return OS_SUCCESS if content fits, OS_INVALID (with a merror already logged) otherwise
  */
-STATIC int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len);
+STATIC int w_remoted_https_check_max_len(const char* element, const char* content, size_t max_len);
 
 /**
  * @brief validates remote.https.ciphers as a TLS 1.3 suite list, so 'remoted -t' rejects a
@@ -38,7 +38,7 @@ STATIC int w_remoted_https_check_max_len(const char * element, const char * cont
  * @param ciphers raw ciphers value
  * @return OS_SUCCESS when every element is a known suite, OS_INVALID otherwise
  */
-STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers);
+STATIC int w_remoted_validate_tls13_ciphers(const char* ciphers);
 
 /**
  * @brief validates remote.https.global_prefix as a URL path prefix, so 'remoted -t'
@@ -55,10 +55,12 @@ STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers);
  * @param prefix raw global_prefix value
  * @return OS_SUCCESS when the value is a usable prefix, OS_INVALID otherwise
  */
-STATIC int w_remoted_validate_global_prefix(const char * prefix);
+STATIC int w_remoted_validate_global_prefix(const char* prefix);
 
-STATIC int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len) {
-    if (strlen(content) > max_len) {
+STATIC int w_remoted_https_check_max_len(const char* element, const char* content, size_t max_len)
+{
+    if (strlen(content) > max_len)
+    {
         merror("Value for 'remote.https.%s' exceeds the maximum length of %zu characters.", element, max_len);
         return (OS_INVALID);
     }
@@ -66,49 +68,55 @@ STATIC int w_remoted_https_check_max_len(const char * element, const char * cont
     return OS_SUCCESS;
 }
 
-STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers) {
+STATIC int w_remoted_validate_tls13_ciphers(const char* ciphers)
+{
     // Same TLS 1.3 suite names OpenSSL's SSL_CTX_set_ciphersuites() accepts (RFC 8446 section B.4).
-    static const char * VALID_TLS13_CIPHERSUITES[] = {
-        "TLS_AES_128_GCM_SHA256",
-        "TLS_AES_256_GCM_SHA384",
-        "TLS_CHACHA20_POLY1305_SHA256",
-        "TLS_AES_128_CCM_SHA256",
-        "TLS_AES_128_CCM_8_SHA256",
-        NULL
-    };
+    static const char* VALID_TLS13_CIPHERSUITES[] = {"TLS_AES_128_GCM_SHA256",
+                                                     "TLS_AES_256_GCM_SHA384",
+                                                     "TLS_CHACHA20_POLY1305_SHA256",
+                                                     "TLS_AES_128_CCM_SHA256",
+                                                     "TLS_AES_128_CCM_8_SHA256",
+                                                     NULL};
 
-    if (ciphers == NULL || *ciphers == '\0') {
+    if (ciphers == NULL || *ciphers == '\0')
+    {
         merror("Invalid 'remote.https.ciphers' option: expected TLS 1.3 cipher suite names.");
         return (OS_INVALID);
     }
 
     // Hand-walked, not strtok: strtok collapses separators, so ':X' and 'X::Y' would wrongly pass.
-    const char * element = ciphers;
+    const char* element = ciphers;
 
-    for (;;) {
-        const char * separator = strchr(element, ':');
+    for (;;)
+    {
+        const char* separator = strchr(element, ':');
         const size_t length = separator ? (size_t)(separator - element) : strlen(element);
 
-        if (length == 0) {
+        if (length == 0)
+        {
             merror("Invalid 'remote.https.ciphers' option: '%s' has an empty cipher suite name.", ciphers);
             return (OS_INVALID);
         }
 
         int valid = 0;
-        for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
+        for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++)
+        {
             if (strlen(VALID_TLS13_CIPHERSUITES[i]) == length &&
-                strncmp(element, VALID_TLS13_CIPHERSUITES[i], length) == 0) {
+                strncmp(element, VALID_TLS13_CIPHERSUITES[i], length) == 0)
+            {
                 valid = 1;
                 break;
             }
         }
 
-        if (!valid) {
+        if (!valid)
+        {
             merror("Invalid TLS 1.3 cipher suite '%.*s' in the 'remote.https.ciphers' option.", (int)length, element);
             return (OS_INVALID);
         }
 
-        if (!separator) {
+        if (!separator)
+        {
             return OS_SUCCESS;
         }
 
@@ -116,30 +124,37 @@ STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers) {
     }
 }
 
-STATIC int w_remoted_validate_global_prefix(const char * prefix) {
-    if (prefix == NULL || *prefix == '\0') {
+STATIC int w_remoted_validate_global_prefix(const char* prefix)
+{
+    if (prefix == NULL || *prefix == '\0')
+    {
         merror("Invalid 'remote.https.global_prefix' option: the value cannot be empty.");
         return (OS_INVALID);
     }
 
-    if (prefix[0] != '/') {
+    if (prefix[0] != '/')
+    {
         merror("Invalid 'remote.https.global_prefix' option: '%s' must start with '/'.", prefix);
         return (OS_INVALID);
     }
 
-    for (const char * p = prefix; *p; p++) {
+    for (const char* p = prefix; *p; p++)
+    {
         const char c = *p;
-        const int allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                            c == '.' || c == '_' || c == '~' || c == '-' || c == '/';
+        const int allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' ||
+                            c == '_' || c == '~' || c == '-' || c == '/';
 
-        if (!allowed) {
+        if (!allowed)
+        {
             merror("Invalid character '%c' in the 'remote.https.global_prefix' option: allowed characters are "
-                   "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.", c);
+                   "A-Z, a-z, 0-9, '.', '_', '~', '-' and '/'.",
+                   c);
             return (OS_INVALID);
         }
     }
 
-    if (strstr(prefix, "//") != NULL) {
+    if (strstr(prefix, "//") != NULL)
+    {
         merror("Invalid 'remote.https.global_prefix' option: '%s' contains an empty path segment ('//').", prefix);
         return (OS_INVALID);
     }
@@ -147,18 +162,21 @@ STATIC int w_remoted_validate_global_prefix(const char * prefix) {
     // Walk the segments rejecting '.' and '..': proxies dot-normalize request paths, so a
     // dot-segment prefix could never match consistently. Hand-walked like the ciphers
     // validator above; the '//' rejection guarantees every segment here is non-empty.
-    const char * segment = prefix + 1; // skip the leading '/'
+    const char* segment = prefix + 1; // skip the leading '/'
 
-    while (*segment) {
-        const char * separator = strchr(segment, '/');
+    while (*segment)
+    {
+        const char* separator = strchr(segment, '/');
         const size_t length = separator ? (size_t)(separator - segment) : strlen(segment);
 
-        if ((length == 1 && segment[0] == '.') || (length == 2 && segment[0] == '.' && segment[1] == '.')) {
+        if ((length == 1 && segment[0] == '.') || (length == 2 && segment[0] == '.' && segment[1] == '.'))
+        {
             merror("Invalid 'remote.https.global_prefix' option: '%s' contains a '.' or '..' path segment.", prefix);
             return (OS_INVALID);
         }
 
-        if (!separator) {
+        if (!separator)
+        {
             break;
         }
 
@@ -174,19 +192,23 @@ STATIC int w_remoted_validate_global_prefix(const char * prefix) {
 /* String option of remote.https from the effective document: absent or empty keeps the module
  * default (NULL) and returns 0; otherwise the same length limit the XML reader enforces, then the
  * optional per-option validator, then the copy. Returns 1 when a value was stored, OS_INVALID on error. */
-static int w_remoted_json_https_string(const cJSON *https, const char *key, size_t max_len,
-                                       int (*validate)(const char *), char **dest) {
-    const cJSON *item = cJSON_GetObjectItem(https, key);
+static int w_remoted_json_https_string(
+    const cJSON* https, const char* key, size_t max_len, int (*validate)(const char*), char** dest)
+{
+    const cJSON* item = cJSON_GetObjectItem(https, key);
 
-    if (!cJSON_IsString(item) || item->valuestring == NULL || item->valuestring[0] == '\0') {
+    if (!cJSON_IsString(item) || item->valuestring == NULL || item->valuestring[0] == '\0')
+    {
         return 0;
     }
 
-    if (w_remoted_https_check_max_len(key, item->valuestring, max_len) == OS_INVALID) {
+    if (w_remoted_https_check_max_len(key, item->valuestring, max_len) == OS_INVALID)
+    {
         return (OS_INVALID);
     }
 
-    if (validate != NULL && validate(item->valuestring) == OS_INVALID) {
+    if (validate != NULL && validate(item->valuestring) == OS_INVALID)
+    {
         return (OS_INVALID);
     }
 
@@ -200,14 +222,17 @@ static int w_remoted_json_https_string(const cJSON *https, const char *key, size
  * default. The schema bounds these already; the range is re-checked here both for a document that
  * reached the reader without it and because a negative value would otherwise arrive at the module
  * as the very sentinel that means "unset". Returns 0 on success, OS_INVALID on a bad value. */
-static int w_remoted_json_https_rate(const cJSON *https, const char *key, int max_value, int *dest) {
-    const cJSON *item = cJSON_GetObjectItem(https, key);
+static int w_remoted_json_https_rate(const cJSON* https, const char* key, int max_value, int* dest)
+{
+    const cJSON* item = cJSON_GetObjectItem(https, key);
 
-    if (item == NULL) {
+    if (item == NULL)
+    {
         return 0;
     }
 
-    if (!cJSON_IsNumber(item) || item->valuedouble < 0 || item->valuedouble > max_value) {
+    if (!cJSON_IsNumber(item) || item->valuedouble < 0 || item->valuedouble > max_value)
+    {
         w_mconf_json_invalid(key, item);
         return (OS_INVALID);
     }
@@ -217,8 +242,10 @@ static int w_remoted_json_https_rate(const cJSON *https, const char *key, int ma
 }
 
 /* OS_IsValidIP() as a plain string validator for w_remoted_json_https_string(). */
-static int w_remoted_json_valid_ip(const char *address) {
-    if (OS_IsValidIP(address, NULL) != 1) {
+static int w_remoted_json_valid_ip(const char* address)
+{
+    if (OS_IsValidIP(address, NULL) != 1)
+    {
         merror(INVALID_IP, address);
         return (OS_INVALID);
     }
@@ -226,21 +253,23 @@ static int w_remoted_json_valid_ip(const char *address) {
 }
 
 /* Reader of the `remote` section of the effective document (mconf-config.h): same struct, same
- * defaults and the same inferences the XML reader used to apply; types and ranges come guaranteed by the schema, so only
- * the checks the schema cannot express (lengths, IPs, prefix segments, cipher names) are repeated. */
-int Read_Remote_JSON(const struct cJSON *remote, void *d1)
+ * defaults and the same inferences the XML reader used to apply; types and ranges come guaranteed by the schema, so
+ * only the checks the schema cannot express (lengths, IPs, prefix segments, cipher names) are repeated. */
+int Read_Remote_JSON(const struct cJSON* remote, void* d1)
 {
-    remoted *logr = (remoted *)d1;
-    const cJSON *legacy = NULL;
-    const cJSON *https = NULL;
-    const cJSON *agents = NULL;
-    const cJSON *item = NULL;
+    remoted* logr = (remoted*)d1;
+    const cJSON* legacy = NULL;
+    const cJSON* https = NULL;
+    const cJSON* agents = NULL;
+    const cJSON* item = NULL;
 
-    if (logr == NULL) {
+    if (logr == NULL)
+    {
         return (OS_INVALID);
     }
 
-    if (remote != NULL) {
+    if (remote != NULL)
+    {
         legacy = cJSON_GetObjectItem(remote, "legacy");
         https = cJSON_GetObjectItem(remote, "https");
         agents = cJSON_GetObjectItem(remote, "agents");
@@ -254,39 +283,51 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
      * struct anyway (the unit tests do) must not see an uninitialised bool. */
     logr->legacy_ca_delivery = true;
 
-    if (cJSON_IsObject(legacy)) {
+    if (cJSON_IsObject(legacy))
+    {
         logr->legacy_enabled = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "enabled"), 1) != 0;
         logr->legacy_ca_delivery = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "ca_delivery"), 1) != 0;
         os_free(logr->lip);
         logr->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
 
-        if (item = cJSON_GetObjectItem(legacy, "port"), cJSON_IsNumber(item)) {
+        if (item = cJSON_GetObjectItem(legacy, "port"), cJSON_IsNumber(item))
+        {
             logr->port = item->valueint;
 
-            if (logr->port <= 0 || logr->port > 65535) {
+            if (logr->port <= 0 || logr->port > 65535)
+            {
                 merror(PORT_ERROR, logr->port);
                 return (OS_INVALID);
             }
         }
 
-        if (item = cJSON_GetObjectItem(legacy, "protocol"), cJSON_IsArray(item)) {
-            const cJSON *word = NULL;
+        if (item = cJSON_GetObjectItem(legacy, "protocol"), cJSON_IsArray(item))
+        {
+            const cJSON* word = NULL;
             int proto = 0;
 
-            cJSON_ArrayForEach(word, item) {
-                if (!cJSON_IsString(word) || word->valuestring == NULL) {
+            cJSON_ArrayForEach(word, item)
+            {
+                if (!cJSON_IsString(word) || word->valuestring == NULL)
+                {
                     continue;
                 }
-                if (strcasecmp(word->valuestring, REMOTED_NET_PROTOCOL_TCP_STR) == 0) {
+                if (strcasecmp(word->valuestring, REMOTED_NET_PROTOCOL_TCP_STR) == 0)
+                {
                     proto |= REMOTED_NET_PROTOCOL_TCP;
-                } else if (strcasecmp(word->valuestring, REMOTED_NET_PROTOCOL_UDP_STR) == 0) {
+                }
+                else if (strcasecmp(word->valuestring, REMOTED_NET_PROTOCOL_UDP_STR) == 0)
+                {
                     proto |= REMOTED_NET_PROTOCOL_UDP;
-                } else {
+                }
+                else
+                {
                     mwarn(REMOTED_INV_VALUE_IGNORE, word->valuestring, "protocol");
                 }
             }
 
-            if (proto == 0) {
+            if (proto == 0)
+            {
                 mwarn(REMOTED_NET_PROTOCOL_ERROR, REMOTED_NET_PROTOCOL_DEFAULT_STR);
                 proto = REMOTED_NET_PROTOCOL_DEFAULT;
             }
@@ -296,95 +337,141 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
         logr->ipv6 = w_mconf_json_bool(cJSON_GetObjectItem(legacy, "ipv6"), logr->ipv6);
 
         if (item = cJSON_GetObjectItem(legacy, "local_ip"),
-            cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0') {
+            cJSON_IsString(item) && item->valuestring != NULL && item->valuestring[0] != '\0')
+        {
             os_strdup(item->valuestring, logr->lip);
 
-            if (OS_IsValidIP(logr->lip, NULL) != 1) {
+            if (OS_IsValidIP(logr->lip, NULL) != 1)
+            {
                 merror(INVALID_IP, item->valuestring);
                 return (OS_INVALID);
-            } else if (strchr(logr->lip, ':') != NULL) {
+            }
+            else if (strchr(logr->lip, ':') != NULL)
+            {
                 os_realloc(logr->lip, IPSIZE + 1, logr->lip);
                 OS_ExpandIPv6(logr->lip, IPSIZE);
             }
         }
 
-        if (item = cJSON_GetObjectItem(legacy, "queue_size"), cJSON_IsNumber(item)) {
-            if (item->valuedouble < 1) {
+        if (item = cJSON_GetObjectItem(legacy, "queue_size"), cJSON_IsNumber(item))
+        {
+            if (item->valuedouble < 1)
+            {
                 merror("Invalid value for option 'queue_size'");
                 return (OS_INVALID);
             }
-            logr->queue_size = (long) item->valuedouble;
+            logr->queue_size = (long)item->valuedouble;
         }
 
-        if (item = cJSON_GetObjectItem(legacy, "rids_closing_time"), item != NULL) {
+        if (item = cJSON_GetObjectItem(legacy, "rids_closing_time"), item != NULL)
+        {
             long rids_closing_time = w_mconf_json_time(item);
 
-            if (rids_closing_time <= 0 || rids_closing_time > INT_MAX) {
-                char *text = cJSON_PrintUnformatted(item);
+            if (rids_closing_time <= 0 || rids_closing_time > INT_MAX)
+            {
+                char* text = cJSON_PrintUnformatted(item);
                 mwarn(REMOTED_INV_VALUE_DEFAULT, text != NULL ? text : "", "rids_closing_time");
                 free(text);
                 rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
             }
-            logr->rids_closing_time = (int) rids_closing_time;
+            logr->rids_closing_time = (int)rids_closing_time;
         }
 
-        if (item = cJSON_GetObjectItem(legacy, "connection_overtake_time"), cJSON_IsNumber(item)) {
-            if (item->valueint < 0 || item->valueint > 3600) {
+        if (item = cJSON_GetObjectItem(legacy, "connection_overtake_time"), cJSON_IsNumber(item))
+        {
+            if (item->valueint < 0 || item->valueint > 3600)
+            {
                 mwarn("Invalid value for element '%s':'%d'. Setting to default value: '%d'.",
-                      "connection_overtake_time", item->valueint, logr->connection_overtake_time);
-            } else {
+                      "connection_overtake_time",
+                      item->valueint,
+                      logr->connection_overtake_time);
+            }
+            else
+            {
                 logr->connection_overtake_time = item->valueint;
             }
         }
     }
 
     /* https */
-    if (cJSON_IsObject(https)) {
-        if (item = cJSON_GetObjectItem(https, "port"), cJSON_IsNumber(item)) {
+    if (cJSON_IsObject(https))
+    {
+        if (item = cJSON_GetObjectItem(https, "port"), cJSON_IsNumber(item))
+        {
             logr->https.port = item->valueint;
 
-            if (logr->https.port <= 0 || logr->https.port > 65535) {
+            if (logr->https.port <= 0 || logr->https.port > 65535)
+            {
                 merror(PORT_ERROR, logr->https.port);
                 return (OS_INVALID);
             }
         }
 
-        if (w_remoted_json_https_string(https, "bind_addr", REMOTED_HTTPS_BIND_ADDR_MAX_LEN, w_remoted_json_valid_ip, &logr->https.bind_addr) == OS_INVALID ||
-            w_remoted_json_https_string(https, "global_prefix", REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN, w_remoted_validate_global_prefix, &logr->https.global_prefix) == OS_INVALID ||
-            w_remoted_json_https_string(https, "certificate", REMOTED_HTTPS_CERTIFICATE_MAX_LEN, NULL, &logr->https.certificate) == OS_INVALID ||
-            w_remoted_json_https_string(https, "key", REMOTED_HTTPS_KEY_MAX_LEN, NULL, &logr->https.key) == OS_INVALID ||
+        if (w_remoted_json_https_string(
+                https, "bind_addr", REMOTED_HTTPS_BIND_ADDR_MAX_LEN, w_remoted_json_valid_ip, &logr->https.bind_addr) ==
+                OS_INVALID ||
+            w_remoted_json_https_string(https,
+                                        "global_prefix",
+                                        REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN,
+                                        w_remoted_validate_global_prefix,
+                                        &logr->https.global_prefix) == OS_INVALID ||
+            w_remoted_json_https_string(
+                https, "certificate", REMOTED_HTTPS_CERTIFICATE_MAX_LEN, NULL, &logr->https.certificate) ==
+                OS_INVALID ||
+            w_remoted_json_https_string(https, "key", REMOTED_HTTPS_KEY_MAX_LEN, NULL, &logr->https.key) ==
+                OS_INVALID ||
             w_remoted_json_https_string(https, "ca", REMOTED_HTTPS_CA_MAX_LEN, NULL, &logr->https.ca) == OS_INVALID ||
-            w_remoted_json_https_string(https, "ca_certificate", REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN, NULL, &logr->https.ca_certificate) == OS_INVALID) {
+            w_remoted_json_https_string(
+                https, "ca_certificate", REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN, NULL, &logr->https.ca_certificate) ==
+                OS_INVALID)
+        {
             return (OS_INVALID);
         }
 
-        if (item = cJSON_GetObjectItem(https, "verification_mode"), cJSON_IsString(item) && item->valuestring != NULL) {
-            if (strcasecmp(item->valuestring, "none") == 0) {
+        if (item = cJSON_GetObjectItem(https, "verification_mode"), cJSON_IsString(item) && item->valuestring != NULL)
+        {
+            if (strcasecmp(item->valuestring, "none") == 0)
+            {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
-            } else if (strcasecmp(item->valuestring, "certificate") == 0) {
+            }
+            else if (strcasecmp(item->valuestring, "certificate") == 0)
+            {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
-            } else if (strcasecmp(item->valuestring, "full") == 0) {
+            }
+            else if (strcasecmp(item->valuestring, "full") == 0)
+            {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
-            } else {
+            }
+            else
+            {
                 // Reject, don't fall back: a typo must not silently disable certificate verification.
                 w_mconf_json_invalid("verification_mode", item);
                 return (OS_INVALID);
             }
         }
 
-        if (w_remoted_json_https_string(https, "ciphers", REMOTED_HTTPS_CIPHERS_MAX_LEN, w_remoted_validate_tls13_ciphers, &logr->https.ciphers) == OS_INVALID) {
+        if (w_remoted_json_https_string(https,
+                                        "ciphers",
+                                        REMOTED_HTTPS_CIPHERS_MAX_LEN,
+                                        w_remoted_validate_tls13_ciphers,
+                                        &logr->https.ciphers) == OS_INVALID)
+        {
             return (OS_INVALID);
         }
 
         // The names are the schema's to check; the module's TLS context refuses one its OpenSSL lacks, at '-t' too.
-        if (w_remoted_json_https_string(https, "groups", REMOTED_HTTPS_GROUPS_MAX_LEN, NULL, &logr->https.groups) == OS_INVALID) {
+        if (w_remoted_json_https_string(https, "groups", REMOTED_HTTPS_GROUPS_MAX_LEN, NULL, &logr->https.groups) ==
+            OS_INVALID)
+        {
             return (OS_INVALID);
         }
 
-        if (item = cJSON_GetObjectItem(https, "max_body_size"), item != NULL) {
+        if (item = cJSON_GetObjectItem(https, "max_body_size"), item != NULL)
+        {
             long max_body_size = w_mconf_json_size(item);
 
-            if (max_body_size <= 0) {
+            if (max_body_size <= 0)
+            {
                 w_mconf_json_invalid("max_body_size", item);
                 return (OS_INVALID);
             }
@@ -394,36 +481,49 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
         /* The schema defaults dual_stack to false, so an explicit `no` and an absent option are the same value
          * here. Both keep the module default (IPv6-only, the same socket option _NO would set) and stay UNSET,
          * so the "only applies to an IPv6 bind_addr" warning below fires only for a `yes` that has no effect. */
-        if (item = cJSON_GetObjectItem(https, "dual_stack"), cJSON_IsBool(item)) {
+        if (item = cJSON_GetObjectItem(https, "dual_stack"), cJSON_IsBool(item))
+        {
             logr->https.dual_stack = cJSON_IsTrue(item) ? REMOTED_HTTPS_DUAL_STACK_YES : REMOTED_HTTPS_DUAL_STACK_UNSET;
         }
 
         /* Rate limits of the two unauthenticated routes (POST /enroll, GET /cacerts). */
-        if (w_remoted_json_https_rate(https, "enroll_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.enroll_rate_limit) == OS_INVALID ||
-            w_remoted_json_https_rate(https, "cacerts_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.cacerts_rate_limit) == OS_INVALID) {
+        if (w_remoted_json_https_rate(
+                https, "enroll_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.enroll_rate_limit) ==
+                OS_INVALID ||
+            w_remoted_json_https_rate(
+                https, "cacerts_rate_limit", REMOTED_HTTPS_RATE_LIMIT_MAX, &logr->https.cacerts_rate_limit) ==
+                OS_INVALID)
+        {
             return (OS_INVALID);
         }
     }
 
     /* agents */
-    if (cJSON_IsObject(agents)) {
+    if (cJSON_IsObject(agents))
+    {
         logr->allow_higher_versions =
             w_mconf_json_bool(cJSON_GetObjectItem(agents, "allow_higher_versions"), logr->allow_higher_versions) != 0;
     }
 
     /* Closing rules: the classic listener keeps its disabled state (0/NULL)
      * unless legacy.enabled is true. */
-    if (logr->legacy_enabled) {
-        if (logr->port == 0) {
+    if (logr->legacy_enabled)
+    {
+        if (logr->port == 0)
+        {
             logr->port = DEFAULT_REMOTE_PORT;
         }
-        if (logr->proto == 0) {
+        if (logr->proto == 0)
+        {
             logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
         }
-        if (logr->lip == NULL && !logr->ipv6) {
+        if (logr->lip == NULL && !logr->ipv6)
+        {
             os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
         }
-    } else {
+    }
+    else
+    {
         logr->port = 0;
         logr->proto = 0;
         os_free(logr->lip);
@@ -431,7 +531,8 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
 
     // Inferences: a configured CA without a verification mode means
     // certificate-chain verification; dual_stack only applies to an IPv6 bind_addr.
-    if (logr->https.ca != NULL && logr->https.verification_mode == REMOTED_HTTPS_VERIFY_UNSET) {
+    if (logr->https.ca != NULL && logr->https.verification_mode == REMOTED_HTTPS_VERIFY_UNSET)
+    {
         mwarn("The 'remote.https.ca' option is configured but 'verification_mode' is not; "
               "defaulting 'verification_mode' to 'certificate'.");
         logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
@@ -440,14 +541,16 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
     // Surface the upgrade/mTLS interaction at config time rather than only when an upgrade
     // request later fails: see task_manager's checkRemotedDelivery() (deliveryGate.hpp).
     if (logr->https.verification_mode != REMOTED_HTTPS_VERIFY_UNSET &&
-        logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE) {
+        logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE)
+    {
         mwarn("The 'remote.https.verification_mode' is not 'none'; remote upgrades to v5.0.0 or newer "
               "will be rejected unless the upgrade request sets 'force_upgrade' (repository path only "
               "-- the custom-WPK path cannot be forced).");
     }
 
     if (logr->https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET &&
-        (logr->https.bind_addr == NULL || strchr(logr->https.bind_addr, ':') == NULL)) {
+        (logr->https.bind_addr == NULL || strchr(logr->https.bind_addr, ':') == NULL))
+    {
         mwarn("The 'remote.https.dual_stack' option only applies to an IPv6 'bind_addr'; ignoring it.");
     }
 

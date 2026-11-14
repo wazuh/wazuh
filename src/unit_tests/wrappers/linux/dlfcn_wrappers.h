@@ -12,12 +12,12 @@
 
 #include <dlfcn.h>
 
-void * __wrap_dlopen(const char *filename, int flag);
+void* __wrap_dlopen(const char* filename, int flag);
 
-int __wrap_dlclose(void *handle);
+int __wrap_dlclose(void* handle);
 
-void * __wrap_dlsym(void *handle, const char *symbol);
+void* __wrap_dlsym(void* handle, const char* symbol);
 
-char * __wrap_dlerror(void);
+char* __wrap_dlerror(void);
 
 #endif

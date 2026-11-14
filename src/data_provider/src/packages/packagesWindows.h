@@ -27,13 +27,13 @@ using AppxSizeCache = std::map<std::string, std::optional<int64_t>>;
 
 class WindowsPackageImpl final : public IPackage
 {
-    private:
-        const std::shared_ptr<IPackageWrapper> m_packageWrapper;
-    public:
-        explicit WindowsPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper);
+private:
+    const std::shared_ptr<IPackageWrapper> m_packageWrapper;
 
-        void buildPackageData(nlohmann::json& package) override;
+public:
+    explicit WindowsPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper);
+
+    void buildPackageData(nlohmann::json& package) override;
 };
 
 #endif // _PACKAGE_WINDOWS_H
-

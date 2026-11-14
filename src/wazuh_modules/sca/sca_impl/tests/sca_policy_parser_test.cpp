@@ -12,16 +12,16 @@ using namespace testing;
 
 class PolicyParserTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+protected:
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback(
+            [](const modules_log_level_t /* level */, const char* /* log */)
             {
                 // Mock logging callback that does nothing
             });
-
-        }
+    }
 };
 
 // NOLINTBEGIN(bugprone-exception-escape)
@@ -30,7 +30,7 @@ TEST_F(PolicyParserTest, InvalidYamlFileDoesNotThrow)
 {
     auto mockYamlToJson = [](const std::string&) -> nlohmann::json
     {
-        return nlohmann::json{}; // Empty JSON to simulate conversion failure
+        return nlohmann::json {}; // Empty JSON to simulate conversion failure
     };
 
     EXPECT_NO_THROW({ const PolicyParser parser("dummy.yaml", 30, false, mockYamlToJson); });
@@ -247,13 +247,14 @@ namespace
     void CaptureErrorLogs()
     {
         ErrorLogs().clear();
-        LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* log)
-        {
-            if (level == LOG_ERROR)
+        LoggingHelper::setLogCallback(
+            [](const modules_log_level_t level, const char* log)
             {
-                ErrorLogs().emplace_back(log);
-            }
-        });
+                if (level == LOG_ERROR)
+                {
+                    ErrorLogs().emplace_back(log);
+                }
+            });
     }
 
     nlohmann::json PolicyWithChecks(const std::string& checksJson)

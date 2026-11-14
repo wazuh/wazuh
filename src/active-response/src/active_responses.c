@@ -15,20 +15,20 @@
  * @param keys Array of keys
  * @return char * with the JSON message in string format
  */
-static char* build_json_keys_message(const char *ar_name, char **keys);
+static char* build_json_keys_message(const char* ar_name, char** keys);
 
-
-
-void write_debug_file(const char *ar_name, const char *msg) {
-    char *timestamp = w_get_timestamp(time(NULL));
+void write_debug_file(const char* ar_name, const char* msg)
+{
+    char* timestamp = w_get_timestamp(time(NULL));
 
 #ifndef WIN32
-    FILE *ar_log_file = w_fopen_nofollow(AR_LOG_DIR, AR_LOG_FILE_NAME, "a");
+    FILE* ar_log_file = w_fopen_nofollow(AR_LOG_DIR, AR_LOG_FILE_NAME, "a");
 #else
-    FILE *ar_log_file = wfopen(LOG_FILE, "a");
+    FILE* ar_log_file = wfopen(LOG_FILE, "a");
 #endif
 
-    if (ar_log_file) {
+    if (ar_log_file)
+    {
         fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
         fclose(ar_log_file);
     }
@@ -36,19 +36,21 @@ void write_debug_file(const char *ar_name, const char *msg) {
     os_free(timestamp);
 }
 
-int setup_and_check_message(char **argv, cJSON **message) {
+int setup_and_check_message(char** argv, cJSON** message)
+{
     int ret = OS_INVALID;
     char input[OS_MAXSTR];
-    cJSON *input_json = NULL;
+    cJSON* input_json = NULL;
 
 #ifndef WIN32
-    char *home_path = w_homedir(argv[0]);
+    char* home_path = w_homedir(argv[0]);
 
     /* Trim absolute path to get Wazuh's installation directory */
     home_path = w_strtok_r_str_delim("/active-response", &home_path);
 
     /* Change working directory */
-    if (chdir(home_path) == -1) {
+    if (chdir(home_path) == -1)
+    {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     os_free(home_path);
@@ -57,7 +59,8 @@ int setup_and_check_message(char **argv, cJSON **message) {
     write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', OS_MAXSTR);
-    if (fgets(input, OS_MAXSTR, stdin) == NULL) {
+    if (fgets(input, OS_MAXSTR, stdin) == NULL)
+    {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
@@ -65,40 +68,49 @@ int setup_and_check_message(char **argv, cJSON **message) {
     write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
-    if (!input_json) {
+    if (!input_json)
+    {
         write_debug_file(argv[0], "Invalid input format");
         return OS_INVALID;
     }
 
-    const char *action = get_command_from_json(input_json);
-    if (!action) {
+    const char* action = get_command_from_json(input_json);
+    if (!action)
+    {
         write_debug_file(argv[0], "Cannot read 'command' from json");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    if (!strcmp("enable", action)) {
+    if (!strcmp("enable", action))
+    {
         ret = ENABLE_COMMAND;
-    } else if (!strcmp("disable", action)) {
+    }
+    else if (!strcmp("disable", action))
+    {
         ret = DISABLE_COMMAND;
-    } else {
+    }
+    else
+    {
         write_debug_file(argv[0], "Invalid value of 'command'");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    if (message) {
+    if (message)
+    {
         *message = input_json;
     }
 
     return ret;
 }
 
-int send_keys_and_check_message(char **argv, char **keys) {
+int send_keys_and_check_message(char** argv, char** keys)
+{
     int ret = OS_INVALID;
-    char *keys_msg;
+    char* keys_msg;
     char input[OS_MAXSTR];
-    cJSON *input_json = NULL;
+    cJSON* input_json = NULL;
 
     // Build and send message with keys
     keys_msg = build_json_keys_message(basename_ex(argv[0]), keys);
@@ -112,7 +124,8 @@ int send_keys_and_check_message(char **argv, char **keys) {
 
     // Read the response of previous message
     memset(input, '\0', OS_MAXSTR);
-    if (fgets(input, OS_MAXSTR, stdin) == NULL) {
+    if (fgets(input, OS_MAXSTR, stdin) == NULL)
+    {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
@@ -120,23 +133,30 @@ int send_keys_and_check_message(char **argv, char **keys) {
     write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
-    if (!input_json) {
+    if (!input_json)
+    {
         write_debug_file(argv[0], "Invalid input format");
         return OS_INVALID;
     }
 
-    const char *action = get_command_from_json(input_json);
-    if (!action) {
+    const char* action = get_command_from_json(input_json);
+    if (!action)
+    {
         write_debug_file(argv[0], "Cannot read 'command' from json");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    if (!strcmp("continue", action)) {
+    if (!strcmp("continue", action))
+    {
         ret = CONTINUE_COMMAND;
-    } else if (!strcmp("abort", action)) {
+    }
+    else if (!strcmp("abort", action))
+    {
         ret = ABORT_COMMAND;
-    } else {
+    }
+    else
+    {
         ret = OS_INVALID;
         write_debug_file(argv[0], "Invalid value of 'command'");
     }
@@ -146,27 +166,31 @@ int send_keys_and_check_message(char **argv, char **keys) {
     return ret;
 }
 
-cJSON* get_json_from_input(const char *input) {
-    cJSON *input_json = NULL;
-    cJSON *wazuh_json = NULL;
-    cJSON *command_json = NULL;
-    const char *json_err;
+cJSON* get_json_from_input(const char* input)
+{
+    cJSON* input_json = NULL;
+    cJSON* wazuh_json = NULL;
+    cJSON* command_json = NULL;
+    const char* json_err;
 
     // Parsing input
-    if (input_json = cJSON_ParseWithOpts(input, &json_err, 0), !input_json) {
+    if (input_json = cJSON_ParseWithOpts(input, &json_err, 0), !input_json)
+    {
         return NULL;
     }
 
     // Detect command (added by execd)
     command_json = cJSON_GetObjectItem(input_json, "command");
-    if (!cJSON_IsString(command_json)) {
+    if (!cJSON_IsString(command_json))
+    {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect wazuh metadata (WCS format)
     wazuh_json = cJSON_GetObjectItem(input_json, "wazuh");
-    if (!cJSON_IsObject(wazuh_json)) {
+    if (!cJSON_IsObject(wazuh_json))
+    {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -174,80 +198,93 @@ cJSON* get_json_from_input(const char *input) {
     return input_json;
 }
 
-const char* get_command_from_json(const cJSON *input) {
-    cJSON *command_json = NULL;
+const char* get_command_from_json(const cJSON* input)
+{
+    cJSON* command_json = NULL;
 
     // Detect command
     command_json = cJSON_GetObjectItem(input, "command");
-    if (cJSON_IsString(command_json)) {
+    if (cJSON_IsString(command_json))
+    {
         return command_json->valuestring;
     }
 
     return NULL;
 }
 
-const cJSON* get_alert_from_json(const cJSON *input) {
+const cJSON* get_alert_from_json(const cJSON* input)
+{
     // WCS format: the entire root JSON contains the alert data
     // This includes wazuh, event, source, user, etc. at the root level
-    if (!cJSON_IsObject(input)) {
+    if (!cJSON_IsObject(input))
+    {
         return NULL;
     }
 
     return input;
 }
 
-const char* get_srcip_from_json(const cJSON *input) {
-    cJSON *source_json = NULL;
-    cJSON *srcip_json = NULL;
+const char* get_srcip_from_json(const cJSON* input)
+{
+    cJSON* source_json = NULL;
+    cJSON* srcip_json = NULL;
 
     // Extract source IP from WCS path: source.ip (at root level)
     // This follows the ECS (Elastic Common Schema) standard for network source fields
     source_json = cJSON_GetObjectItem(input, "source");
-    if (!cJSON_IsObject(source_json)) {
+    if (!cJSON_IsObject(source_json))
+    {
         return NULL;
     }
 
     srcip_json = cJSON_GetObjectItem(source_json, "ip");
-    if (cJSON_IsString(srcip_json)) {
+    if (cJSON_IsString(srcip_json))
+    {
         return srcip_json->valuestring;
     }
 
     return NULL;
 }
 
-
 // Accepts only the portable username character set, plus '$' anywhere for machine
 // accounts. Anything outside it is rejected, so no separator, quote, whitespace,
 // control or non-ASCII byte reaches the argument vector the username is placed in.
 // '@' is deliberately excluded: passwd and chuser act on local accounts, which
 // cannot carry a realm suffix, so a qualified name could never be locked anyway.
-int is_valid_username(const char *username) {
-    if (!username || !*username) {
+int is_valid_username(const char* username)
+{
+    if (!username || !*username)
+    {
         return 0;
     }
 
     // Reject reserved names
-    if (strcmp(username, "root") == 0) {
+    if (strcmp(username, "root") == 0)
+    {
         return 0;
     }
 
     size_t len = strlen(username);
 
     // Maximum username length (typical limit is 32, but we allow up to 256 for compatibility)
-    if (len > 256) {
+    if (len > 256)
+    {
         return 0;
     }
 
     // A leading dash would be read as an option by the command the name is passed to
-    if (username[0] == '-') {
+    if (username[0] == '-')
+    {
         return 0;
     }
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++)
+    {
         char c = username[i];
 
-        if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9') &&
-            c != '.' && c != '_' && c != '-' && c != '$') {
+        if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9') && c != '.' && c != '_' &&
+            c != '-' && c != '$')
+        {
             return 0;
         }
     }
@@ -255,23 +292,27 @@ int is_valid_username(const char *username) {
     return 1;
 }
 
-const char* get_username_from_json(const cJSON *input) {
-    cJSON *user_json = NULL;
-    cJSON *username_json = NULL;
+const char* get_username_from_json(const cJSON* input)
+{
+    cJSON* user_json = NULL;
+    cJSON* username_json = NULL;
 
     // Extract username from WCS path: user.name (at root level)
     // This follows the ECS (Elastic Common Schema) standard for user fields
     user_json = cJSON_GetObjectItem(input, "user");
-    if (!cJSON_IsObject(user_json)) {
+    if (!cJSON_IsObject(user_json))
+    {
         return NULL;
     }
 
     username_json = cJSON_GetObjectItem(user_json, "name");
-    if (cJSON_IsString(username_json)) {
-        const char *username = username_json->valuestring;
+    if (cJSON_IsString(username_json))
+    {
+        const char* username = username_json->valuestring;
 
         // Validate username format
-        if (!is_valid_username(username)) {
+        if (!is_valid_username(username))
+        {
             return NULL;
         }
 
@@ -281,68 +322,82 @@ const char* get_username_from_json(const cJSON *input) {
     return NULL;
 }
 
-char* get_extra_args_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *extra_args_json = NULL;
+char* get_extra_args_from_json(const cJSON* input)
+{
+    cJSON* parameters_json = NULL;
+    cJSON* extra_args_json = NULL;
     char args[COMMANDSIZE_4096];
-    char *extra_args = NULL;
+    char* extra_args = NULL;
 
     // Detect parameters
     parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    if (!cJSON_IsObject(parameters_json))
+    {
         return NULL;
     }
 
     // Detect extra_args
     extra_args_json = cJSON_GetObjectItem(parameters_json, "extra_args");
-    if (!cJSON_IsArray(extra_args_json)) {
+    if (!cJSON_IsArray(extra_args_json))
+    {
         return NULL;
     }
 
     memset(args, '\0', COMMANDSIZE_4096);
-    for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
-        cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
-        if (cJSON_IsString(subitem)) {
-            if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096) {
+    for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++)
+    {
+        cJSON* subitem = cJSON_GetArrayItem(extra_args_json, i);
+        if (cJSON_IsString(subitem))
+        {
+            if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096)
+            {
                 break;
             }
-            if (args[0] != '\0') {
+            if (args[0] != '\0')
+            {
                 strcat(args, " ");
             }
             strcat(args, subitem->valuestring);
         }
     }
 
-    if (args[0] != '\0') {
+    if (args[0] != '\0')
+    {
         os_strdup(args, extra_args);
     }
 
     return extra_args;
 }
 
-char* get_keys_from_json(const cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *keys_json = NULL;
+char* get_keys_from_json(const cJSON* input)
+{
+    cJSON* parameters_json = NULL;
+    cJSON* keys_json = NULL;
     char args[COMMANDSIZE_4096];
-    char *keys = NULL;
+    char* keys = NULL;
 
     // Detect parameters
     parameters_json = cJSON_GetObjectItem(input, "parameters");
-    if (!cJSON_IsObject(parameters_json)) {
+    if (!cJSON_IsObject(parameters_json))
+    {
         return NULL;
     }
 
     // Detect keys
     keys_json = cJSON_GetObjectItem(parameters_json, "keys");
-    if (!cJSON_IsArray(keys_json)) {
+    if (!cJSON_IsArray(keys_json))
+    {
         return NULL;
     }
 
     memset(args, '\0', COMMANDSIZE_4096);
-    for (int i = 0; i < cJSON_GetArraySize(keys_json); i++) {
-        cJSON *subitem = cJSON_GetArrayItem(keys_json, i);
-        if (cJSON_IsString(subitem)) {
-            if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096) {
+    for (int i = 0; i < cJSON_GetArraySize(keys_json); i++)
+    {
+        cJSON* subitem = cJSON_GetArrayItem(keys_json, i);
+        if (cJSON_IsString(subitem))
+        {
+            if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096)
+            {
                 break;
             }
             strcat(args, "-");
@@ -350,20 +405,22 @@ char* get_keys_from_json(const cJSON *input) {
         }
     }
 
-    if (args[0] != '\0') {
+    if (args[0] != '\0')
+    {
         os_strdup(args, keys);
     }
 
     return keys;
 }
 
-static char* build_json_keys_message(const char *ar_name, char **keys) {
-    cJSON *_object = NULL;
-    cJSON *_array = NULL;
-    char *msg = NULL;
+static char* build_json_keys_message(const char* ar_name, char** keys)
+{
+    cJSON* _object = NULL;
+    cJSON* _array = NULL;
+    char* msg = NULL;
     int keys_size;
 
-    cJSON *message = cJSON_CreateObject();
+    cJSON* message = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(message, "version", AR_VERSION);
 
@@ -381,7 +438,8 @@ static char* build_json_keys_message(const char *ar_name, char **keys) {
     _array = cJSON_CreateArray();
     cJSON_AddItemToObject(_object, "keys", _array);
 
-    for (keys_size = 0; (keys != NULL) && (keys[keys_size] != NULL); keys_size++) {
+    for (keys_size = 0; (keys != NULL) && (keys[keys_size] != NULL); keys_size++)
+    {
         cJSON_AddItemToArray(_array, cJSON_CreateString(keys[keys_size]));
     }
 
@@ -392,45 +450,60 @@ static char* build_json_keys_message(const char *ar_name, char **keys) {
     return msg;
 }
 
-void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, char * strBefore, char * strAfter){
-    const char *pos = NULL;
+void splitStrFromCharDelimiter(const char* output_buf, const char delimiter, char* strBefore, char* strAfter)
+{
+    const char* pos = NULL;
 
-    if (output_buf != NULL) {
+    if (output_buf != NULL)
+    {
         pos = strchr(output_buf, delimiter);
 
-        if (pos != NULL) {
-            if (strBefore != NULL) {
+        if (pos != NULL)
+        {
+            if (strBefore != NULL)
+            {
                 strncpy(strBefore, output_buf, pos - output_buf);
             }
-            if (strAfter != NULL) {
+            if (strAfter != NULL)
+            {
                 strncpy(strAfter, pos + 1, strlen(pos));
             }
         }
     }
 }
 
-int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2) {
+int isEnabledFromPattern(const char* output_buf, const char* str_pattern_1, const char* str_pattern_2)
+{
     int retVal = 0;
-    const char *pos = NULL;
+    const char* pos = NULL;
 
-    if (str_pattern_1 != NULL) {
+    if (str_pattern_1 != NULL)
+    {
         pos = strstr(output_buf, str_pattern_1);
     }
 
-    if (pos != NULL) {
+    if (pos != NULL)
+    {
         char state[OS_MAXSTR];
         char buffer[OS_MAXSTR];
 
-        if (str_pattern_2 != NULL) {
-            snprintf(buffer, OS_MAXSTR -1, "%%*s %%%lds", strlen(str_pattern_2));
-            if (sscanf(pos, buffer /*"%*s %7s"*/, state) == 1) {
-                if (strcmp(state, str_pattern_2) == 0) {
+        if (str_pattern_2 != NULL)
+        {
+            snprintf(buffer, OS_MAXSTR - 1, "%%*s %%%lds", strlen(str_pattern_2));
+            if (sscanf(pos, buffer /*"%*s %7s"*/, state) == 1)
+            {
+                if (strcmp(state, str_pattern_2) == 0)
+                {
                     retVal = 1;
-                } else {
+                }
+                else
+                {
                     retVal = 0;
                 }
             }
-        } else {
+        }
+        else
+        {
             retVal = 1;
         }
     }
@@ -438,31 +511,40 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
     return retVal;
 }
 
-int validate_srcip(const char *srcip) {
-    if (!srcip || srcip[0] == '\0') {
+int validate_srcip(const char* srcip)
+{
+    if (!srcip || srcip[0] == '\0')
+    {
         return OS_INVALID;
     }
 
     size_t len = strlen(srcip);
     // "::" is the shortest valid literal; 45 is the longest possible IPv6 text form.
-    if (len < 2 || len > 45) {
+    if (len < 2 || len > 45)
+    {
         return OS_INVALID;
     }
 
     const bool is_ipv6 = (strchr(srcip, ':') != NULL);
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++)
+    {
         const char c = srcip[i];
         const bool is_digit = (c >= '0' && c <= '9');
-        if (is_ipv6) {
+        if (is_ipv6)
+        {
             // IPv6: hex digits, ':' and '.' (the latter for IPv4-mapped forms like ::ffff:1.2.3.4)
             const bool is_hex = is_digit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
-            if (!is_hex && c != ':' && c != '.') {
+            if (!is_hex && c != ':' && c != '.')
+            {
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             // IPv4: decimal digits and '.' only
-            if (!is_digit && c != '.') {
+            if (!is_digit && c != '.')
+            {
                 return OS_INVALID;
             }
         }
@@ -473,60 +555,72 @@ int validate_srcip(const char *srcip) {
 
 #ifndef WIN32
 
-bool canonicalize_ip(const char *ip, char *output, size_t output_size) {
+bool canonicalize_ip(const char* ip, char* output, size_t output_size)
+{
     unsigned char addr[sizeof(struct in6_addr)];
 
-    if (!ip || !output || output_size == 0) {
+    if (!ip || !output || output_size == 0)
+    {
         return false;
     }
 
     // Strict parsing matching the manager's white_list grammar (inet_pton): octal, hex
     // and short IPv4 forms are rejected instead of reinterpreted into a different host.
-    if (inet_pton(AF_INET, ip, addr) == 1) {
+    if (inet_pton(AF_INET, ip, addr) == 1)
+    {
         return inet_ntop(AF_INET, addr, output, output_size) != NULL;
     }
-    if (inet_pton(AF_INET6, ip, addr) == 1) {
+    if (inet_pton(AF_INET6, ip, addr) == 1)
+    {
         return inet_ntop(AF_INET6, addr, output, output_size) != NULL;
     }
 
     return false;
 }
 
-bool hosts_deny_rule_matches(const char *line, const char *rule) {
-    if (!line || !rule) {
+bool hosts_deny_rule_matches(const char* line, const char* rule)
+{
+    if (!line || !rule)
+    {
         return false;
     }
 
     // Match the exact Wazuh-managed rule, ignoring trailing EOL/whitespace, so an
     // administrator line that merely contains the IP as a substring is never touched.
     size_t len = strlen(line);
-    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r' ||
-                       line[len - 1] == ' ' || line[len - 1] == '\t')) {
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r' || line[len - 1] == ' ' || line[len - 1] == '\t'))
+    {
         len--;
     }
 
     return strlen(rule) == len && strncmp(line, rule, len) == 0;
 }
 
-int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
+int lock(const char* lock_path, const char* lock_pid_path, const char* log_path, const char* proc_name)
+{
     char log_msg[OS_MAXSTR];
-    int i=0;
+    int i = 0;
     int max_iteration = 50;
     int saved_pid = -1;
     int read;
 
     // Providing a lock.
-    while (true) {
-        FILE *pid_file;
+    while (true)
+    {
+        FILE* pid_file;
         int current_pid = -1;
 
-        if (mkdir(lock_path, S_IRWXG) == 0) {
+        if (mkdir(lock_path, S_IRWXG) == 0)
+        {
             // Lock acquired (setting the pid)
             pid_t pid = getpid();
-            if (pid_file = wfopen(lock_pid_path, "w"), !pid_file) {
+            if (pid_file = wfopen(lock_pid_path, "w"), !pid_file)
+            {
                 write_debug_file(log_path, "Cannot write pid file");
                 return OS_INVALID;
-            } else {
+            }
+            else
+            {
                 fprintf(pid_file, "%d", (int)pid);
                 fclose(pid_file);
                 return OS_SUCCESS;
@@ -534,22 +628,29 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         }
 
         // Getting currently/saved PID locking the file
-        if (pid_file = wfopen(lock_pid_path, "r"), !pid_file) {
+        if (pid_file = wfopen(lock_pid_path, "r"), !pid_file)
+        {
             write_debug_file(log_path, "Cannot read pid file");
-        } else {
+        }
+        else
+        {
             read = fscanf(pid_file, "%d", &current_pid);
             fclose(pid_file);
 
-            if (read == 1) {
-                if (saved_pid == -1) {
+            if (read == 1)
+            {
+                if (saved_pid == -1)
+                {
                     saved_pid = current_pid;
                 }
 
-                if (current_pid == saved_pid) {
+                if (current_pid == saved_pid)
+                {
                     i++;
                 }
-
-            } else {
+            }
+            else
+            {
                 write_debug_file(log_path, "Cannot read pid file");
             }
         }
@@ -561,44 +662,61 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         // So i increments 2 by 2 if the pid does not change.
         // If the pid keeps changing, we will increments one
         // by one and fail after MAX_ITERACTION
-        if (i >= max_iteration) {
+        if (i >= max_iteration)
+        {
             bool kill = false;
-            char *pgrep_path = NULL;
+            char* pgrep_path = NULL;
 
-            if (get_binary_path("pgrep", &pgrep_path) < 0) {
+            if (get_binary_path("pgrep", &pgrep_path) < 0)
+            {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", pgrep_path);
+                snprintf(log_msg,
+                         OS_MAXSTR - 1,
+                         "Binary '%s' not found in default paths, the full path will not be used.",
+                         pgrep_path);
                 write_debug_file(log_path, log_msg);
             }
-            char *command_ex_1[4] = { pgrep_path, "-f", (char *)proc_name, NULL };
+            char* command_ex_1[4] = {pgrep_path, "-f", (char*)proc_name, NULL};
 
-            wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
-            if (!wfd) {
+            wfd_t* wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
+            if (!wfd)
+            {
                 write_debug_file(log_path, "Unable to run pgrep");
-            } else {
+            }
+            else
+            {
                 char output_buf[OS_MAXSTR];
-                while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
+                while (fgets(output_buf, OS_MAXSTR, wfd->file_out))
+                {
                     int pid = atoi(output_buf);
-                    if (pid == current_pid) {
+                    if (pid == current_pid)
+                    {
                         char pid_str[10];
-                        char *kill_path = NULL;
+                        char* kill_path = NULL;
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
 
-                        if (get_binary_path("kill", &kill_path) < 0) {
+                        if (get_binary_path("kill", &kill_path) < 0)
+                        {
                             memset(log_msg, '\0', OS_MAXSTR);
-                            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", kill_path);
+                            snprintf(log_msg,
+                                     OS_MAXSTR - 1,
+                                     "Binary '%s' not found in default paths, the full path will not be used.",
+                                     kill_path);
                             write_debug_file(log_path, log_msg);
                         }
-                        char *command_ex_2[4] = { kill_path, "-9", pid_str, NULL };
+                        char* command_ex_2[4] = {kill_path, "-9", pid_str, NULL};
 
-                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
-                        if (!wfd2) {
+                        wfd_t* wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
+                        if (!wfd2)
+                        {
                             write_debug_file(log_path, "Unable to run kill");
-                        } else {
+                        }
+                        else
+                        {
                             wpclose(wfd2);
                             memset(log_msg, '\0', OS_MAXSTR);
-                            snprintf(log_msg, OS_MAXSTR -1, "Killed process %d holding lock.", pid);
+                            snprintf(log_msg, OS_MAXSTR - 1, "Killed process %d holding lock.", pid);
                             write_debug_file(log_path, log_msg);
                             kill = true;
                             unlock(lock_path, log_path);
@@ -614,16 +732,18 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
 
             os_free(pgrep_path);
 
-            if (!kill) {
+            if (!kill)
+            {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "Unable to kill process %d holding lock.", current_pid);
+                snprintf(log_msg, OS_MAXSTR - 1, "Unable to kill process %d holding lock.", current_pid);
                 write_debug_file(log_path, log_msg);
 
                 // Unlocking
                 unlock(lock_path, log_path);
 
                 // Try take lock again
-                if (mkdir(lock_path, S_IRWXG) == 0) {
+                if (mkdir(lock_path, S_IRWXG) == 0)
+                {
                     // Lock acquired (setting the pid)
                     pid_t pid = getpid();
                     pid_file = wfopen(lock_pid_path, "w");
@@ -637,16 +757,18 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
             }
         }
     }
-
 }
 
-void unlock(const char *lock_path, const char *log_path) {
-    if (rmdir_ex(lock_path) < 0) {
+void unlock(const char* lock_path, const char* log_path)
+{
+    if (rmdir_ex(lock_path) < 0)
+    {
         write_debug_file(log_path, "Unable to remove lock folder");
     }
 }
 
-int get_ip_version(const char *ip) {
+int get_ip_version(const char* ip)
+{
     struct addrinfo hint, *res = NULL;
     int ret;
 
@@ -656,14 +778,18 @@ int get_ip_version(const char *ip) {
     hint.ai_flags = AI_NUMERICHOST;
 
     ret = getaddrinfo(ip, NULL, &hint, &res);
-    if (ret) {
+    if (ret)
+    {
         freeaddrinfo(res);
         return OS_INVALID;
     }
-    if (res->ai_family == AF_INET) {
+    if (res->ai_family == AF_INET)
+    {
         freeaddrinfo(res);
         return 4;
-    } else if (res->ai_family == AF_INET6) {
+    }
+    else if (res->ai_family == AF_INET6)
+    {
         freeaddrinfo(res);
         return 6;
     }
@@ -672,38 +798,44 @@ int get_ip_version(const char *ip) {
     return OS_INVALID;
 }
 
-int execute_command_with_retry(const char *ar_name, const char *path, char * const *argv) {
+int execute_command_with_retry(const char* ar_name, const char* path, char* const* argv)
+{
     char log_msg[OS_MAXSTR];
     char buffer[OS_MAXSTR];
     int status;
 
-    for (int attempt = 1; ; attempt++) {
+    for (int attempt = 1;; attempt++)
+    {
         status = -1;
-        wfd_t *wfd = wpopenv(path, argv, W_BIND_STDOUT | W_BIND_STDERR);
+        wfd_t* wfd = wpopenv(path, argv, W_BIND_STDOUT | W_BIND_STDERR);
 
-        if (wfd) {
+        if (wfd)
+        {
             // Drain the output: a command writing to a closed pipe dies by SIGPIPE
             while (fgets(buffer, sizeof(buffer), wfd->file_out));
 
             status = wpclose(wfd);
 
-            if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            {
                 return OS_SUCCESS;
             }
         }
 
         // Only a failed start or exit code 4 (iptables: xtables lock busy) can pass on a later attempt
-        if (attempt == AR_COMMAND_ATTEMPTS || (status != -1 && !(WIFEXITED(status) && WEXITSTATUS(status) == 4))) {
+        if (attempt == AR_COMMAND_ATTEMPTS || (status != -1 && !(WIFEXITED(status) && WEXITSTATUS(status) == 4)))
+        {
             break;
         }
 
         sleep(attempt);
     }
 
-    int len = snprintf(log_msg, sizeof(log_msg), "Command failed (exit code %d):",
-                       WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+    int len = snprintf(
+        log_msg, sizeof(log_msg), "Command failed (exit code %d):", WIFEXITED(status) ? WEXITSTATUS(status) : -1);
 
-    for (int i = 0; argv[i] && len > 0 && (size_t)len < sizeof(log_msg); i++) {
+    for (int i = 0; argv[i] && len > 0 && (size_t)len < sizeof(log_msg); i++)
+    {
         len += snprintf(log_msg + len, sizeof(log_msg) - len, " %s", argv[i]);
     }
 

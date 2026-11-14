@@ -30,9 +30,9 @@
 #include "sharedDefs.h"
 #include "plist/plist.h"
 
-static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
-static const std::string PLIST_BINARY_START { "bplist00"            };
-static const std::string UTILITIES_FOLDER_NAME { "Utilities" };
+static const std::string APP_INFO_PATH {"Contents/Info.plist"};
+static const std::string PLIST_BINARY_START {"bplist00"};
+static const std::string UTILITIES_FOLDER_NAME {"Utilities"};
 const std::set<std::string> excludedCategories = {"pkg", "x86_64", "arm64"};
 
 // A plain substring search for "/Utilities" would also match a folder that merely starts
@@ -53,7 +53,7 @@ static bool isUnderUtilitiesFolder(const std::string& filePath)
 
 // Real Info.plist/receipt files are a few KB at most; this is a generous ceiling, not a
 // realistic size, so it never rejects legitimate content.
-static constexpr int64_t MAX_PLIST_SIZE { 10 * 1024 * 1024 };
+static constexpr int64_t MAX_PLIST_SIZE {10 * 1024 * 1024};
 
 // Opens the file once and stats that same file descriptor (not the path), so there is no
 // window between the check and the read for the target to be swapped for a FIFO (TOCTOU),
@@ -74,7 +74,8 @@ static std::optional<std::string> readRegularFileCapped(const std::string& fileP
 
     struct stat fileStat {};
 
-    const bool isEligible = (fstat(fd, &fileStat) == 0) && S_ISREG(fileStat.st_mode) && fileStat.st_size <= MAX_PLIST_SIZE;
+    const bool isEligible =
+        (fstat(fd, &fileStat) == 0) && S_ISREG(fileStat.st_mode) && fileStat.st_size <= MAX_PLIST_SIZE;
 
     std::optional<std::string> content;
 
@@ -85,7 +86,8 @@ static std::optional<std::string> readRegularFileCapped(const std::string& fileP
 
         while (totalRead < fileStat.st_size)
         {
-            const ssize_t bytesRead = read(fd, &buffer[static_cast<size_t>(totalRead)], static_cast<size_t>(fileStat.st_size - totalRead));
+            const ssize_t bytesRead =
+                read(fd, &buffer[static_cast<size_t>(totalRead)], static_cast<size_t>(fileStat.st_size - totalRead));
 
             if (bytesRead <= 0)
             {
@@ -105,589 +107,575 @@ static std::optional<std::string> readRegularFileCapped(const std::string& fileP
 
 class PKGWrapper final : public IPackageWrapper
 {
-    public:
-        using ReceiptLivenessFn =
-            std::function<bool(const std::string& receiptPath, const std::string& installPrefix)>;
+public:
+    using ReceiptLivenessFn = std::function<bool(const std::string& receiptPath, const std::string& installPrefix)>;
 
-        static void setReceiptLivenessChecker(ReceiptLivenessFn fn)
+    static void setReceiptLivenessChecker(ReceiptLivenessFn fn)
+    {
+        s_receiptLivenessChecker() = std::move(fn);
+    }
+
+    static void resetReceiptLivenessChecker()
+    {
+        s_receiptLivenessChecker() = &PKGWrapper::defaultReceiptLivenessChecker;
+    }
+
+    explicit PKGWrapper(const PackageContext& ctx)
+        : m_version {UNKNOWN_VALUE}
+        , m_groups {UNKNOWN_VALUE}
+        , m_description {UNKNOWN_VALUE}
+        , m_architecture {UNKNOWN_VALUE}
+        , m_format {"pkg"}
+        , m_source {UNKNOWN_VALUE}
+        , m_location {UNKNOWN_VALUE}
+        , m_priority {UNKNOWN_VALUE}
+        , m_size {std::nullopt}
+        , m_vendor {UNKNOWN_VALUE}
+        , m_installTime {UNKNOWN_VALUE}
+    {
+        if (Utils::endsWith(ctx.package, ".app"))
         {
-            s_receiptLivenessChecker() = std::move(fn);
+            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
         }
-
-        static void resetReceiptLivenessChecker()
+        else
         {
-            s_receiptLivenessChecker() = &PKGWrapper::defaultReceiptLivenessChecker;
+            getPkgDataRcp(ctx.filePath + "/" + ctx.package);
         }
+    }
 
-        explicit PKGWrapper(const PackageContext& ctx)
-            : m_version{UNKNOWN_VALUE}
-            , m_groups{UNKNOWN_VALUE}
-            , m_description {UNKNOWN_VALUE}
-            , m_architecture{UNKNOWN_VALUE}
-            , m_format{"pkg"}
-            , m_source {UNKNOWN_VALUE}
-            , m_location {UNKNOWN_VALUE}
-            , m_priority {UNKNOWN_VALUE}
-            , m_size {std::nullopt}
-            , m_vendor{UNKNOWN_VALUE}
-            , m_installTime {UNKNOWN_VALUE}
+    ~PKGWrapper() = default;
+
+    std::string name() const override
+    {
+        return m_name;
+    }
+    std::string version() const override
+    {
+        return m_version;
+    }
+    std::string groups() const override
+    {
+        return m_groups;
+    }
+    std::string description() const override
+    {
+        return m_description;
+    }
+    std::string architecture() const override
+    {
+        return m_architecture;
+    }
+    std::string format() const override
+    {
+        return m_format;
+    }
+    std::string osPatch() const override
+    {
+        return m_osPatch;
+    }
+    std::string source() const override
+    {
+        return m_source;
+    }
+    std::string location() const override
+    {
+        return m_location;
+    }
+    std::string vendor() const override
+    {
+        return m_vendor;
+    }
+
+    std::string priority() const override
+    {
+        return m_priority;
+    }
+
+    std::optional<int64_t> size() const override
+    {
+        return m_size;
+    }
+
+    std::string install_time() const override
+    {
+        return m_installTime;
+    }
+
+    std::string multiarch() const override
+    {
+        return m_multiarch;
+    }
+
+private:
+    // True when version equals prefix or continues it with one or more ".<digits>" components.
+    static bool extendsByNumericComponents(const std::string& version, const std::string& prefix)
+    {
+        if (!Utils::startsWith(version, prefix))
         {
-            if (Utils::endsWith(ctx.package, ".app"))
-            {
-                getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
-            }
-            else
-            {
-                getPkgDataRcp(ctx.filePath + "/" + ctx.package);
-            }
-        }
-
-        ~PKGWrapper() = default;
-
-        std::string name() const override
-        {
-            return m_name;
-        }
-        std::string version() const override
-        {
-            return m_version;
-        }
-        std::string groups() const override
-        {
-            return m_groups;
-        }
-        std::string description() const override
-        {
-            return m_description;
-        }
-        std::string architecture() const override
-        {
-            return m_architecture;
-        }
-        std::string format() const override
-        {
-            return m_format;
-        }
-        std::string osPatch() const override
-        {
-            return m_osPatch;
-        }
-        std::string source() const override
-        {
-            return m_source;
-        }
-        std::string location() const override
-        {
-            return m_location;
-        }
-        std::string vendor() const override
-        {
-            return m_vendor;
-        }
-
-        std::string priority() const override
-        {
-            return m_priority;
-        }
-
-        std::optional<int64_t> size() const override
-        {
-            return m_size;
-        }
-
-        std::string install_time() const override
-        {
-            return m_installTime;
-        }
-
-        std::string multiarch() const override
-        {
-            return m_multiarch;
-        }
-
-    private:
-        // True when version equals prefix or continues it with one or more ".<digits>" components.
-        static bool extendsByNumericComponents(const std::string& version, const std::string& prefix)
-        {
-            if (!Utils::startsWith(version, prefix))
-            {
-                return false;
-            }
-
-            const auto suffix { version.substr(prefix.size()) };
-
-            if (suffix.empty())
-            {
-                return true;
-            }
-
-            // A prefix ending in '.' already opened the next component.
-            const bool prefixEndsWithDot { prefix.back() == '.' };
-
-            if (!prefixEndsWithDot && suffix.front() != '.')
-            {
-                return false;
-            }
-
-            bool componentHasDigit { !prefixEndsWithDot };
-
-            for (const auto c : suffix)
-            {
-                if (c == '.')
-                {
-                    if (!componentHasDigit)
-                    {
-                        return false;
-                    }
-
-                    componentHasDigit = false;
-                }
-                else if (std::isdigit(static_cast<unsigned char>(c)))
-                {
-                    componentHasDigit = true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            return componentHasDigit;
-        }
-
-        static bool extractPlistScalarValue(const std::string& line,
-                                            const std::string& tag,
-                                            std::string& value)
-        {
-            const std::string startTag { "<" + tag + ">" };
-            const std::string endTag { "</" + tag + ">" };
-
-            const auto start { line.find(startTag) };
-
-            if (start == std::string::npos)
-            {
-                return false;
-            }
-
-            const auto contentStart { start + startTag.size() };
-            const auto end { line.find(endTag, contentStart) };
-
-            if (end == std::string::npos)
-            {
-                return false;
-            }
-
-            value = line.substr(contentStart, end - contentStart);
-            return true;
-        }
-
-        static bool readPlistValue(std::istream& data,
-                                   const std::string& line,
-                                   const std::string& keyTag,
-                                   std::string& value)
-        {
-            const auto keyPos { line.find(keyTag) };
-
-            if (keyPos == std::string::npos)
-            {
-                return false;
-            }
-
-            const auto readScalarValue =
-                [&value](const std::string & candidate)
-            {
-                return extractPlistScalarValue(candidate, "string", value) ||
-                       extractPlistScalarValue(candidate, "date", value);
-            };
-
-            if (readScalarValue(line.substr(keyPos + keyTag.size())))
-            {
-                return true;
-            }
-
-            std::string nextLine;
-
-            while (std::getline(data, nextLine))
-            {
-                nextLine = Utils::trim(nextLine, " \t");
-
-                if (nextLine.empty())
-                {
-                    continue;
-                }
-
-                return readScalarValue(nextLine);
-            }
-
             return false;
         }
 
-        void getPkgData(const std::string& filePath)
-        {
-            const auto content { readRegularFileCapped(filePath) };
+        const auto suffix {version.substr(prefix.size())};
 
-            if (!content)
+        if (suffix.empty())
+        {
+            return true;
+        }
+
+        // A prefix ending in '.' already opened the next component.
+        const bool prefixEndsWithDot {prefix.back() == '.'};
+
+        if (!prefixEndsWithDot && suffix.front() != '.')
+        {
+            return false;
+        }
+
+        bool componentHasDigit {!prefixEndsWithDot};
+
+        for (const auto c : suffix)
+        {
+            if (c == '.')
             {
-                return;
+                if (!componentHasDigit)
+                {
+                    return false;
+                }
+
+                componentHasDigit = false;
+            }
+            else if (std::isdigit(static_cast<unsigned char>(c)))
+            {
+                componentHasDigit = true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return componentHasDigit;
+    }
+
+    static bool extractPlistScalarValue(const std::string& line, const std::string& tag, std::string& value)
+    {
+        const std::string startTag {"<" + tag + ">"};
+        const std::string endTag {"</" + tag + ">"};
+
+        const auto start {line.find(startTag)};
+
+        if (start == std::string::npos)
+        {
+            return false;
+        }
+
+        const auto contentStart {start + startTag.size()};
+        const auto end {line.find(endTag, contentStart)};
+
+        if (end == std::string::npos)
+        {
+            return false;
+        }
+
+        value = line.substr(contentStart, end - contentStart);
+        return true;
+    }
+
+    static bool
+    readPlistValue(std::istream& data, const std::string& line, const std::string& keyTag, std::string& value)
+    {
+        const auto keyPos {line.find(keyTag)};
+
+        if (keyPos == std::string::npos)
+        {
+            return false;
+        }
+
+        const auto readScalarValue = [&value](const std::string& candidate)
+        {
+            return extractPlistScalarValue(candidate, "string", value) ||
+                   extractPlistScalarValue(candidate, "date", value);
+        };
+
+        if (readScalarValue(line.substr(keyPos + keyTag.size())))
+        {
+            return true;
+        }
+
+        std::string nextLine;
+
+        while (std::getline(data, nextLine))
+        {
+            nextLine = Utils::trim(nextLine, " \t");
+
+            if (nextLine.empty())
+            {
+                continue;
             }
 
-            const bool isBinary { Utils::startsWith(*content, PLIST_BINARY_START) };
-            constexpr auto BUNDLEID_PATTERN{R"(^[^.]+\.([^.]+).*$)"};
-            static std::regex bundleIdRegex{BUNDLEID_PATTERN};
+            return readScalarValue(nextLine);
+        }
 
-            const auto getDataFnc
+        return false;
+    }
+
+    void getPkgData(const std::string& filePath)
+    {
+        const auto content {readRegularFileCapped(filePath)};
+
+        if (!content)
+        {
+            return;
+        }
+
+        const bool isBinary {Utils::startsWith(*content, PLIST_BINARY_START)};
+        constexpr auto BUNDLEID_PATTERN {R"(^[^.]+\.([^.]+).*$)"};
+        static std::regex bundleIdRegex {BUNDLEID_PATTERN};
+
+        const auto getDataFnc {
+            [this, &filePath](std::istream& data)
             {
-                [this, &filePath](std::istream & data)
+                std::string line;
+                std::string bundleShortVersionString;
+                std::string bundleVersion;
+                std::string value;
+
+                while (std::getline(data, line))
                 {
-                    std::string line;
-                    std::string bundleShortVersionString;
-                    std::string bundleVersion;
-                    std::string value;
+                    line = Utils::trim(line, " \t");
 
-                    while (std::getline(data, line))
+                    if (readPlistValue(data, line, "<key>CFBundleName</key>", value))
                     {
-                        line = Utils::trim(line, " \t");
+                        m_name = value;
+                    }
+                    else if (m_name.empty() && readPlistValue(data, line, "<key>CFBundleExecutable</key>", value))
+                    {
+                        m_name = value;
+                    }
+                    else if (readPlistValue(data, line, "<key>CFBundleShortVersionString</key>", value))
+                    {
+                        bundleShortVersionString = value;
+                    }
+                    else if (readPlistValue(data, line, "<key>CFBundleVersion</key>", value))
+                    {
+                        bundleVersion = value;
+                    }
+                    else if (readPlistValue(data, line, "<key>LSApplicationCategoryType</key>", value))
+                    {
+                        auto groups = value;
 
-                        if (readPlistValue(data, line, "<key>CFBundleName</key>", value))
+                        if (!groups.empty())
                         {
-                            m_name = value;
+                            m_groups = groups;
                         }
-                        else if (m_name.empty() &&
-                                 readPlistValue(data, line, "<key>CFBundleExecutable</key>", value))
-                        {
-                            m_name = value;
-                        }
-                        else if (readPlistValue(data, line, "<key>CFBundleShortVersionString</key>", value))
-                        {
-                            bundleShortVersionString = value;
-                        }
-                        else if (readPlistValue(data, line, "<key>CFBundleVersion</key>", value))
-                        {
-                            bundleVersion = value;
-                        }
-                        else if (readPlistValue(data, line, "<key>LSApplicationCategoryType</key>", value))
-                        {
-                            auto groups = value;
+                    }
+                    else if (readPlistValue(data, line, "<key>CFBundleIdentifier</key>", value))
+                    {
+                        auto description = value;
 
-                            if (!groups.empty())
+                        if (!description.empty())
+                        {
+                            m_description = description;
+                            std::string vendor;
+
+                            if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
                             {
-                                m_groups = groups;
-                            }
-                        }
-                        else if (readPlistValue(data, line, "<key>CFBundleIdentifier</key>", value))
-                        {
-                            auto description = value;
+                                m_vendor = vendor;
 
-                            if (!description.empty())
-                            {
-                                m_description = description;
-                                std::string vendor;
-
-                                if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
+                                if (m_vendor.size() > 0 && islower(m_vendor[0]))
                                 {
-                                    m_vendor = vendor;
-
-                                    if (m_vendor.size() > 0 && islower(m_vendor[0]))
-                                    {
-                                        m_vendor[0] = toupper(m_vendor[0]);
-                                    }
+                                    m_vendor[0] = toupper(m_vendor[0]);
                                 }
                             }
                         }
                     }
+                }
 
-                    if (!bundleShortVersionString.empty())
-                    {
-                        if (extendsByNumericComponents(bundleVersion, bundleShortVersionString))
-                        {
-                            m_version = bundleVersion;
-                        }
-                        else
-                        {
-                            m_version = bundleShortVersionString;
-                        }
-                    }
-                    else if (!bundleVersion.empty())
+                if (!bundleShortVersionString.empty())
+                {
+                    if (extendsByNumericComponents(bundleVersion, bundleShortVersionString))
                     {
                         m_version = bundleVersion;
                     }
-
-                    m_architecture = UNKNOWN_VALUE;
-                    m_multiarch = UNKNOWN_VALUE;
-                    m_priority = UNKNOWN_VALUE;
-                    m_size = std::nullopt;
-                    m_installTime = UNKNOWN_VALUE;
-                    m_source = isUnderUtilitiesFolder(filePath) ? "utilities" : "applications";
-                    m_location = filePath;
-                }
-            };
-
-            if (isBinary)
-            {
-                auto xmlContent { binaryToXML(*content) };
-                getDataFnc(xmlContent);
-            }
-            else
-            {
-                std::istringstream data { *content };
-                getDataFnc(data);
-            }
-        }
-
-        void getPkgDataRcp(const std::string& filePath)
-        {
-            const auto content { readRegularFileCapped(filePath) };
-
-            if (!content)
-            {
-                return;
-            }
-
-            const bool isBinary { Utils::startsWith(*content, PLIST_BINARY_START) };
-
-            const auto getDataFncRcp
-            {
-                [this, &filePath](std::istream & data)
-                {
-                    std::string line;
-                    std::string value;
-
-                    while (std::getline(data, line))
+                    else
                     {
-                        line = Utils::trim(line, " \t");
-
-                        if (readPlistValue(data, line, "<key>PackageIdentifier</key>", value))
-                        {
-                            m_description = value;
-                            auto reverseDomainName = Utils::split(m_description, '.');
-
-                            for (size_t i = 0; i < reverseDomainName.size(); i++)
-                            {
-                                if (i == 1)
-                                {
-                                    m_vendor = reverseDomainName[i];
-
-                                    if (m_vendor.size() > 0 && islower(m_vendor[0]))
-                                    {
-                                        m_vendor[0] = toupper(m_vendor[0]);
-                                    }
-                                }
-                                else if (i > 1)
-                                {
-                                    const std::string& current = reverseDomainName[i];
-
-                                    if (excludedCategories.find(current) == excludedCategories.end())
-                                    {
-                                        if (!m_name.empty())
-                                        {
-                                            m_name += ".";
-                                        }
-
-                                        m_name += current;
-                                    }
-                                }
-                            }
-                        }
-                        else if (readPlistValue(data, line, "<key>PackageVersion</key>", value))
-                        {
-                            m_version = value;
-                        }
-                        else if (readPlistValue(data, line, "<key>InstallDate</key>", value))
-                        {
-                            m_installTime = value;
-                        }
-                        else if (readPlistValue(data, line, "<key>InstallPrefixPath</key>", value))
-                        {
-                            m_installPrefix = value;
-                        }
+                        m_version = bundleShortVersionString;
                     }
-
-                    m_multiarch = UNKNOWN_VALUE;
-                    m_source = "receipts";
-                    m_location = filePath;
                 }
-            };
+                else if (!bundleVersion.empty())
+                {
+                    m_version = bundleVersion;
+                }
 
-            if (isBinary)
+                m_architecture = UNKNOWN_VALUE;
+                m_multiarch = UNKNOWN_VALUE;
+                m_priority = UNKNOWN_VALUE;
+                m_size = std::nullopt;
+                m_installTime = UNKNOWN_VALUE;
+                m_source = isUnderUtilitiesFolder(filePath) ? "utilities" : "applications";
+                m_location = filePath;
+            }};
+
+        if (isBinary)
+        {
+            auto xmlContent {binaryToXML(*content)};
+            getDataFnc(xmlContent);
+        }
+        else
+        {
+            std::istringstream data {*content};
+            getDataFnc(data);
+        }
+    }
+
+    void getPkgDataRcp(const std::string& filePath)
+    {
+        const auto content {readRegularFileCapped(filePath)};
+
+        if (!content)
+        {
+            return;
+        }
+
+        const bool isBinary {Utils::startsWith(*content, PLIST_BINARY_START)};
+
+        const auto getDataFncRcp {[this, &filePath](std::istream& data)
+                                  {
+                                      std::string line;
+                                      std::string value;
+
+                                      while (std::getline(data, line))
+                                      {
+                                          line = Utils::trim(line, " \t");
+
+                                          if (readPlistValue(data, line, "<key>PackageIdentifier</key>", value))
+                                          {
+                                              m_description = value;
+                                              auto reverseDomainName = Utils::split(m_description, '.');
+
+                                              for (size_t i = 0; i < reverseDomainName.size(); i++)
+                                              {
+                                                  if (i == 1)
+                                                  {
+                                                      m_vendor = reverseDomainName[i];
+
+                                                      if (m_vendor.size() > 0 && islower(m_vendor[0]))
+                                                      {
+                                                          m_vendor[0] = toupper(m_vendor[0]);
+                                                      }
+                                                  }
+                                                  else if (i > 1)
+                                                  {
+                                                      const std::string& current = reverseDomainName[i];
+
+                                                      if (excludedCategories.find(current) == excludedCategories.end())
+                                                      {
+                                                          if (!m_name.empty())
+                                                          {
+                                                              m_name += ".";
+                                                          }
+
+                                                          m_name += current;
+                                                      }
+                                                  }
+                                              }
+                                          }
+                                          else if (readPlistValue(data, line, "<key>PackageVersion</key>", value))
+                                          {
+                                              m_version = value;
+                                          }
+                                          else if (readPlistValue(data, line, "<key>InstallDate</key>", value))
+                                          {
+                                              m_installTime = value;
+                                          }
+                                          else if (readPlistValue(data, line, "<key>InstallPrefixPath</key>", value))
+                                          {
+                                              m_installPrefix = value;
+                                          }
+                                      }
+
+                                      m_multiarch = UNKNOWN_VALUE;
+                                      m_source = "receipts";
+                                      m_location = filePath;
+                                  }};
+
+        if (isBinary)
+        {
+            auto xmlContent {binaryToXML(*content)};
+            getDataFncRcp(xmlContent);
+        }
+        else
+        {
+            std::istringstream data {*content};
+            getDataFncRcp(data);
+        }
+
+        const auto& checker = s_receiptLivenessChecker();
+
+        if (checker)
+        {
+            const std::string prefix {(m_installPrefix.empty() || m_installPrefix == ".") ? "/" : m_installPrefix};
+
+            if (!checker(filePath, prefix))
             {
-                auto xmlContent { binaryToXML(*content) };
-                getDataFncRcp(xmlContent);
+                m_name.clear();
+            }
+        }
+    }
+
+    static bool defaultReceiptLivenessChecker(const std::string& receiptPath, const std::string& installPrefix)
+    {
+        // Locate companion BOM (<pkgid>.bom next to <pkgid>.plist).
+        static const std::string PLIST_EXT {".plist"};
+        static const std::string BOM_EXT {".bom"};
+
+        if (!Utils::endsWith(receiptPath, PLIST_EXT))
+        {
+            return true;
+        }
+
+        std::string bomPath {receiptPath.substr(0, receiptPath.size() - PLIST_EXT.size())};
+        bomPath += BOM_EXT;
+
+        struct stat st {};
+
+        if (::stat(bomPath.c_str(), &st) != 0)
+        {
+            return (errno != ENOENT && errno != ENOTDIR) ? true : false;
+        }
+
+        std::string escaped;
+        escaped.reserve(bomPath.size());
+
+        for (char c : bomPath)
+        {
+            if (c == '\'')
+            {
+                escaped += "'\\''";
             }
             else
             {
-                std::istringstream data { *content };
-                getDataFncRcp(data);
-            }
-
-            const auto& checker = s_receiptLivenessChecker();
-
-            if (checker)
-            {
-                const std::string prefix { (m_installPrefix.empty() || m_installPrefix == ".") ? "/" : m_installPrefix };
-
-                if (!checker(filePath, prefix))
-                {
-                    m_name.clear();
-                }
+                escaped += c;
             }
         }
 
-        static bool defaultReceiptLivenessChecker(const std::string& receiptPath,
-                                                  const std::string& installPrefix)
+        const std::string cmd {"/usr/bin/lsbom -s '" + escaped + "' 2>/dev/null"};
+
+        FILE* pipe {::popen(cmd.c_str(), "r")};
+
+        if (!pipe)
         {
-            // Locate companion BOM (<pkgid>.bom next to <pkgid>.plist).
-            static const std::string PLIST_EXT { ".plist" };
-            static const std::string BOM_EXT   { ".bom" };
-
-            if (!Utils::endsWith(receiptPath, PLIST_EXT))
-            {
-                return true;
-            }
-
-            std::string bomPath { receiptPath.substr(0, receiptPath.size() - PLIST_EXT.size()) };
-            bomPath += BOM_EXT;
-
-            struct stat st {};
-
-            if (::stat(bomPath.c_str(), &st) != 0)
-            {
-                return (errno != ENOENT && errno != ENOTDIR) ? true : false;
-            }
-
-            std::string escaped;
-            escaped.reserve(bomPath.size());
-
-            for (char c : bomPath)
-            {
-                if (c == '\'')
-                {
-                    escaped += "'\\''";
-                }
-                else
-                {
-                    escaped += c;
-                }
-            }
-
-            const std::string cmd { "/usr/bin/lsbom -s '" + escaped + "' 2>/dev/null" };
-
-            FILE* pipe { ::popen(cmd.c_str(), "r") };
-
-            if (!pipe)
-            {
-                return true;
-            }
-
-            constexpr int MAX_PROBES { 16 };
-            int probes { 0 };
-            bool alive { false };
-            char buffer[4096];
-
-            const auto prefix = (installPrefix.empty() || installPrefix == ".") ? std::string{"/"} :
-                                installPrefix;
-
-            while (probes < MAX_PROBES && std::fgets(buffer, sizeof(buffer), pipe) != nullptr)
-            {
-                std::string line { buffer };
-
-                while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
-                {
-                    line.pop_back();
-                }
-
-                // Skip the BOM root entry (".") and empty lines.
-                if (line.empty() || line == ".")
-                {
-                    continue;
-                }
-
-                if (line.front() == '.')
-                {
-                    line.erase(0, 1);
-                }
-
-                std::string absolute { prefix };
-
-                if (!absolute.empty() && absolute.back() == '/' && !line.empty() && line.front() == '/')
-                {
-                    absolute.pop_back();
-                }
-
-                absolute += line;
-
-                struct stat childSt {};
-
-                if (::lstat(absolute.c_str(), &childSt) == 0)
-                {
-                    alive = true;
-                    break;
-                }
-
-                ++probes;
-            }
-
-            const int pcStatus { ::pclose(pipe) };
-
-            if (pcStatus != 0 && !alive)
-            {
-                return true;
-            }
-
-            return alive;
+            return true;
         }
 
-        static ReceiptLivenessFn& s_receiptLivenessChecker()
+        constexpr int MAX_PROBES {16};
+        int probes {0};
+        bool alive {false};
+        char buffer[4096];
+
+        const auto prefix = (installPrefix.empty() || installPrefix == ".") ? std::string {"/"} : installPrefix;
+
+        while (probes < MAX_PROBES && std::fgets(buffer, sizeof(buffer), pipe) != nullptr)
         {
-            static ReceiptLivenessFn instance { &PKGWrapper::defaultReceiptLivenessChecker };
-            return instance;
-        }
+            std::string line {buffer};
 
-        std::stringstream binaryToXML(const std::string& binaryContent)
-        {
-            std::string xmlContent;
-            plist_t rootNode { nullptr };
-
-            // plist C++ APIs calls - to be used when Makefile and external are updated.
-            // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
-            // const auto xmlContent { dataFromBin->ToXml() };
-
-            // Content binary file to plist representation
-            plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);
-
-            if (nullptr != rootNode)
+            while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
             {
-                char* xml { nullptr };
-                uint32_t length { 0 };
-                // plist binary representation to XML
-                plist_to_xml(rootNode, &xml, &length);
-
-                if (nullptr != xml)
-                {
-                    xmlContent.assign(xml, xml + length);
-                    plist_to_xml_free(xml);
-                }
-
-                plist_free(rootNode);
+                line.pop_back();
             }
 
-            return std::stringstream{xmlContent};
+            // Skip the BOM root entry (".") and empty lines.
+            if (line.empty() || line == ".")
+            {
+                continue;
+            }
+
+            if (line.front() == '.')
+            {
+                line.erase(0, 1);
+            }
+
+            std::string absolute {prefix};
+
+            if (!absolute.empty() && absolute.back() == '/' && !line.empty() && line.front() == '/')
+            {
+                absolute.pop_back();
+            }
+
+            absolute += line;
+
+            struct stat childSt {};
+
+            if (::lstat(absolute.c_str(), &childSt) == 0)
+            {
+                alive = true;
+                break;
+            }
+
+            ++probes;
         }
 
-        std::string m_name;
-        std::string m_version;
-        std::string m_groups;
-        std::string m_description;
-        std::string m_architecture;
-        const std::string m_format;
-        std::string m_osPatch;
-        std::string m_source;
-        std::string m_location;
-        std::string m_multiarch;
-        std::string m_priority;
-        std::optional<int64_t> m_size;
-        std::string m_vendor;
-        std::string m_installTime;
-        std::string m_installPrefix;
+        const int pcStatus {::pclose(pipe)};
+
+        if (pcStatus != 0 && !alive)
+        {
+            return true;
+        }
+
+        return alive;
+    }
+
+    static ReceiptLivenessFn& s_receiptLivenessChecker()
+    {
+        static ReceiptLivenessFn instance {&PKGWrapper::defaultReceiptLivenessChecker};
+        return instance;
+    }
+
+    std::stringstream binaryToXML(const std::string& binaryContent)
+    {
+        std::string xmlContent;
+        plist_t rootNode {nullptr};
+
+        // plist C++ APIs calls - to be used when Makefile and external are updated.
+        // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
+        // const auto xmlContent { dataFromBin->ToXml() };
+
+        // Content binary file to plist representation
+        plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);
+
+        if (nullptr != rootNode)
+        {
+            char* xml {nullptr};
+            uint32_t length {0};
+            // plist binary representation to XML
+            plist_to_xml(rootNode, &xml, &length);
+
+            if (nullptr != xml)
+            {
+                xmlContent.assign(xml, xml + length);
+                plist_to_xml_free(xml);
+            }
+
+            plist_free(rootNode);
+        }
+
+        return std::stringstream {xmlContent};
+    }
+
+    std::string m_name;
+    std::string m_version;
+    std::string m_groups;
+    std::string m_description;
+    std::string m_architecture;
+    const std::string m_format;
+    std::string m_osPatch;
+    std::string m_source;
+    std::string m_location;
+    std::string m_multiarch;
+    std::string m_priority;
+    std::optional<int64_t> m_size;
+    std::string m_vendor;
+    std::string m_installTime;
+    std::string m_installPrefix;
 };
 
 #endif //_PKG_WRAPPER_H

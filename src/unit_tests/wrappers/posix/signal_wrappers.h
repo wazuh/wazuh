@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef SIGNAL_WRAPPERS_H
 #define SIGNAL_WRAPPERS_H
 

@@ -17,10 +17,10 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
 TEST(ChromeExtensionsTests, NumberOfExtensions)
@@ -49,13 +49,16 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 
     for (const auto& jsonElement : extensionsJson)
     {
-        if (jsonElement.contains("manifest_hash") && jsonElement["manifest_hash"] == "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f")
+        if (jsonElement.contains("manifest_hash") &&
+            jsonElement["manifest_hash"] == "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f")
         {
             EXPECT_EQ(jsonElement["author"], "");
             EXPECT_EQ(jsonElement["browser_type"], "chrome");
             EXPECT_EQ(jsonElement["current_locale"], "");
             EXPECT_EQ(jsonElement["default_locale"], "en");
-            EXPECT_EQ(jsonElement["description"], "Do more in Google Chrome with Adobe Acrobat PDF tools. View, fill, comment, sign, and try convert and compress tools.");
+            EXPECT_EQ(jsonElement["description"],
+                      "Do more in Google Chrome with Adobe Acrobat PDF tools. View, fill, comment, sign, and try "
+                      "convert and compress tools.");
             EXPECT_EQ(jsonElement["from_webstore"], "1");
             EXPECT_EQ(jsonElement["identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
             EXPECT_EQ(jsonElement["install_time"], "13398894114840641");
@@ -63,12 +66,19 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f");
             EXPECT_EQ(jsonElement["name"], "Adobe Acrobat: PDF edit, convert, sign tools");
             EXPECT_EQ(jsonElement["optional_permissions"], "history, bookmarks");
-            EXPECT_EQ(jsonElement["path"], (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default" / "Extensions" / "ext1" / "1.2.3").string());
+            EXPECT_EQ(jsonElement["path"],
+                      (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" /
+                       "User Data" / "Default" / "Extensions" / "ext1" / "1.2.3")
+                          .string());
             EXPECT_EQ(jsonElement["permissions"],
-                      "contextMenus, tabs, downloads, nativeMessaging, webRequest, webNavigation, storage, scripting, alarms, offscreen, cookies, sidePanel");
+                      "contextMenus, tabs, downloads, nativeMessaging, webRequest, webNavigation, storage, scripting, "
+                      "alarms, offscreen, cookies, sidePanel");
             EXPECT_EQ(jsonElement["persistent"], "0");
             EXPECT_EQ(jsonElement["profile"], "Seu Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default").string());
+            EXPECT_EQ(jsonElement["profile_path"],
+                      (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" /
+                       "User Data" / "Default")
+                          .string());
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
             EXPECT_EQ(jsonElement["state"], "1");
@@ -90,7 +100,7 @@ TEST(ChromeExtensionsTests, AbsoluteExtensionPathMustBeOnLocalFixedDrive)
     std::filesystem::create_directories(extensionDir);
     std::ofstream(extensionDir / "manifest.json") << R"({"name":"unpacked","version":"1.0"})";
 
-    const auto collectWithPath = [&](const std::string & extensionPath)
+    const auto collectWithPath = [&](const std::string& extensionPath)
     {
         nlohmann::json preferences;
         preferences["extensions"]["settings"]["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]["path"] = extensionPath;

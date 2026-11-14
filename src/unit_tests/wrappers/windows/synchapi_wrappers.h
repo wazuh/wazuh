@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef SYNCHAPI_WRAPPERS_H
 #define SYNCHAPI_WRAPPERS_H
 
@@ -22,10 +21,8 @@
 VOID wrap_Sleep(DWORD dwMilliseconds);
 void wrap_Sleep_hook(DWORD dwMilliseconds);
 
-HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
-                        WINBOOL bManualReset,
-                        WINBOOL bInitialState,
-                        LPCSTR lpName);
+HANDLE
+wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes, WINBOOL bManualReset, WINBOOL bInitialState, LPCSTR lpName);
 
 DWORD wrap_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable);
 

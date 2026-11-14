@@ -15,9 +15,8 @@
 #include "sec.h"
 #include "https_client_bridge.h"
 
-
 /* Receive a message locally on the agent and forward it to the manager */
-void *EventForward()
+void* EventForward()
 {
 
     ssize_t recv_b;
@@ -27,7 +26,8 @@ void *EventForward()
     msg[0] = '\0';
     msg[OS_MAXSTR] = '\0';
 
-    while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
+    while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0)
+    {
         /* Everything on this queue is a stateless event: sync sessions go
          * straight to the module's STREAM intake (#37836), so there is no 's'
          * frame class left to route. The accumulator owns the back-pressure
@@ -44,7 +44,8 @@ void *EventForward()
          * strlen()) before 6867e35baa ("route the agent's events to /stateless
          * only") collapsed both frame classes into this raw datagram length. */
         ssize_t content_len = recv_b;
-        if (content_len > 0 && msg[content_len - 1] == '\0') {
+        if (content_len > 0 && msg[content_len - 1] == '\0')
+        {
             content_len--;
         }
 

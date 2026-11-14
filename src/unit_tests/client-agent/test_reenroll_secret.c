@@ -42,15 +42,17 @@ static int g_staged_fd = -1;
 static bool g_fail_staged_rename = false;
 static bool g_busy_staged_rename = false;
 
-#define SWAP_TARGET "etc/swap-target"
+#define SWAP_TARGET         "etc/swap-target"
 #define SWAP_TARGET_CONTENT "not the re-enrollment secret\n"
 
-int __real_TempFile(File *file, const char *source, int copy);
+int __real_TempFile(File* file, const char* source, int copy);
 
-int __wrap_TempFile(File *file, const char *source, int copy) {
+int __wrap_TempFile(File* file, const char* source, int copy)
+{
     int result = __real_TempFile(file, source, copy);
 
-    if (result == 0) {
+    if (result == 0)
+    {
         snprintf(g_staged_name, sizeof(g_staged_name), "%s", file->name);
         g_staged_fd = fileno(file->fp);
     }
@@ -62,10 +64,12 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
  * then on. After the real fchmod(), which would otherwise land on /dev/full instead. */
 int __real_fchmod(int fd, mode_t mode);
 
-int __wrap_fchmod(int fd, mode_t mode) {
+int __wrap_fchmod(int fd, mode_t mode)
+{
     int result = __real_fchmod(fd, mode);
 
-    if (g_staged_disk_full && fd == g_staged_fd) {
+    if (g_staged_disk_full && fd == g_staged_fd)
+    {
         int full = open("/dev/full", O_WRONLY);
 
         assert_true(full >= 0);
@@ -76,10 +80,12 @@ int __wrap_fchmod(int fd, mode_t mode) {
     return result;
 }
 
-int __real_chmod(const char *path, mode_t mode);
+int __real_chmod(const char* path, mode_t mode);
 
-int __wrap_chmod(const char *path, mode_t mode) {
-    if (g_staged_name[0] != '\0' && strcmp(path, g_staged_name) == 0) {
+int __wrap_chmod(const char* path, mode_t mode)
+{
+    if (g_staged_name[0] != '\0' && strcmp(path, g_staged_name) == 0)
+    {
         g_staged_chmods++;
     }
 
@@ -89,15 +95,18 @@ int __wrap_chmod(const char *path, mode_t mode) {
 /* Makes the move of the staged copy fail: with a directory at its name, pointing the destination's
  * name at SWAP_TARGET, which has to come through untouched; or with EBUSY, as when the secret's
  * file is a single-file bind mount. */
-int __real_rename(const char *oldpath, const char *newpath);
+int __real_rename(const char* oldpath, const char* newpath);
 
-int __wrap_rename(const char *oldpath, const char *newpath) {
-    if (g_busy_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+int __wrap_rename(const char* oldpath, const char* newpath)
+{
+    if (g_busy_staged_rename && strcmp(oldpath, g_staged_name) == 0)
+    {
         errno = EBUSY;
         return -1;
     }
 
-    if (g_fail_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+    if (g_fail_staged_rename && strcmp(oldpath, g_staged_name) == 0)
+    {
         g_fail_staged_rename = false;
         assert_int_equal(unlink(oldpath), 0);
         assert_int_equal(mkdir(oldpath, 0700), 0);
@@ -108,8 +117,10 @@ int __wrap_rename(const char *oldpath, const char *newpath) {
     return __real_rename(oldpath, newpath);
 }
 
-static void reset_staged_hooks(void) {
-    if (g_staged_name[0] != '\0') {
+static void reset_staged_hooks(void)
+{
+    if (g_staged_name[0] != '\0')
+    {
         rmdir(g_staged_name);
     }
 
@@ -123,21 +134,24 @@ static void reset_staged_hooks(void) {
 }
 
 /* For expect_check() on a log line: whether it carries @p check_data, the part a test pins */
-static int log_line_contains(const LargestIntegralType value, const LargestIntegralType check_data) {
-    return strstr((const char *) value, (const char *) check_data) != NULL;
+static int log_line_contains(const LargestIntegralType value, const LargestIntegralType check_data)
+{
+    return strstr((const char*)value, (const char*)check_data) != NULL;
 }
 
 /* ---- fixtures ---- */
 
-static int group_setup(void **state) {
-    (void) state;
+static int group_setup(void** state)
+{
+    (void)state;
     mkdir("etc", 0755);
     unlink(AGENT_REENROLL_SECRET);
     return 0;
 }
 
-static int setup_test(void **state) {
-    (void) state;
+static int setup_test(void** state)
+{
+    (void)state;
     unlink(AGENT_REENROLL_SECRET);
     return 0;
 }
@@ -153,29 +167,33 @@ static int setup_test(void **state) {
  * debug level fails on the unused entry. -2 is the count will_return_maybe() uses, and means "any
  * number of times, including none". Both levels are declared because which one a path logs at is
  * the production code's business, not the test's: every assertion here is on the store. */
-#define ignore_debug_lines()                                  \
-    do {                                                      \
-        expect_any_count(__wrap__mdebug1, formatted_msg, -2); \
-        expect_any_count(__wrap__mdebug2, formatted_msg, -2); \
+#define ignore_debug_lines()                                                                                           \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        expect_any_count(__wrap__mdebug1, formatted_msg, -2);                                                          \
+        expect_any_count(__wrap__mdebug2, formatted_msg, -2);                                                          \
     } while (0)
 
-static int teardown_test(void **state) {
-    (void) state;
+static int teardown_test(void** state)
+{
+    (void)state;
     reset_staged_hooks();
     unlink(AGENT_REENROLL_SECRET);
     return 0;
 }
 
-static void write_store(const char *contents) {
-    FILE *fp = fopen(AGENT_REENROLL_SECRET, "w");
+static void write_store(const char* contents)
+{
+    FILE* fp = fopen(AGENT_REENROLL_SECRET, "w");
     assert_non_null(fp);
     fputs(contents, fp);
     fclose(fp);
 }
 
-static char *read_store(void) {
+static char* read_store(void)
+{
     static char buffer[256];
-    FILE *fp = fopen(AGENT_REENROLL_SECRET, "r");
+    FILE* fp = fopen(AGENT_REENROLL_SECRET, "r");
     assert_non_null(fp);
     memset(buffer, 0, sizeof(buffer));
     assert_non_null(fgets(buffer, sizeof(buffer), fp));
@@ -185,8 +203,9 @@ static char *read_store(void) {
 
 /* ---- store / load round trip ---- */
 
-static void test_store_then_load_round_trip(void **state) {
-    (void) state;
+static void test_store_then_load_round_trip(void** state)
+{
+    (void)state;
     ignore_debug_lines();
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
@@ -200,8 +219,9 @@ static void test_store_then_load_round_trip(void **state) {
 
 /* The id is stored WITH the secret, on one line, because the bearer's `kid` is the agent's own id:
  * an agent that has lost client.keys must still know which id to present. */
-static void test_stored_line_carries_the_id_and_the_secret(void **state) {
-    (void) state;
+static void test_stored_line_carries_the_id_and_the_secret(void** state)
+{
+    (void)state;
     ignore_debug_lines();
 
     assert_int_equal(w_reenroll_secret_store("042", VALID_SECRET), 0);
@@ -211,8 +231,9 @@ static void test_stored_line_carries_the_id_and_the_secret(void **state) {
 
 /* Rotation is the normal case -- the manager mints a new secret on every enrollment -- so a store
  * must replace, not append or refuse. */
-static void test_storing_again_replaces_the_previous_secret(void **state) {
-    (void) state;
+static void test_storing_again_replaces_the_previous_secret(void** state)
+{
+    (void)state;
     ignore_debug_lines();
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
@@ -228,8 +249,9 @@ static void test_storing_again_replaces_the_previous_secret(void **state) {
 #ifndef WIN32
 /* 0640 and no wider: the credential is client.keys's equal, so it gets client.keys's mode. It must
  * stay readable AND writable by the owner because every rotation rewrites it from the daemon. */
-static void test_stored_file_has_client_keys_mode(void **state) {
-    (void) state;
+static void test_stored_file_has_client_keys_mode(void** state)
+{
+    (void)state;
     ignore_debug_lines();
     struct stat info;
 
@@ -241,8 +263,9 @@ static void test_stored_file_has_client_keys_mode(void **state) {
 
 /* That mode goes on through the descriptor TempFile() returned, never by name: by then the name
  * can point at another file. */
-static void test_store_sets_the_mode_through_the_descriptor(void **state) {
-    (void) state;
+static void test_store_sets_the_mode_through_the_descriptor(void** state)
+{
+    (void)state;
     ignore_debug_lines();
 
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
@@ -254,9 +277,10 @@ static void test_store_sets_the_mode_through_the_descriptor(void **state) {
 /* A staged copy that can be neither moved nor copied, here because its name no longer holds a
  * regular file, is a failed store, and nothing goes through the secret file's name: whatever that
  * name points at comes through untouched. */
-static void test_store_never_writes_through_a_swapped_name(void **state) {
-    (void) state;
-    FILE *fp;
+static void test_store_never_writes_through_a_swapped_name(void** state)
+{
+    (void)state;
+    FILE* fp;
     char content[64] = {0};
 
     write_store("001 " OTHER_SECRET "\n");
@@ -283,8 +307,9 @@ static void test_store_never_writes_through_a_swapped_name(void **state) {
 
 /* A secret's file that rename() can't replace, as when it is a single-file bind mount, still gets the
  * secret: copied into it, by a copy that never follows a link at either name. */
-static void test_store_copies_into_a_secret_file_rename_cannot_replace(void **state) {
-    (void) state;
+static void test_store_copies_into_a_secret_file_rename_cannot_replace(void** state)
+{
+    (void)state;
     char content[128] = {0};
     int held;
 
@@ -307,15 +332,18 @@ static void test_store_copies_into_a_secret_file_rename_cannot_replace(void **st
 
 #ifdef __linux__
 /* A secret that could not be written in full is not installed: the store keeps the one it had. */
-static void test_store_keeps_the_previous_secret_when_the_write_fails(void **state) {
-    (void) state;
+static void test_store_keeps_the_previous_secret_when_the_write_fails(void** state)
+{
+    (void)state;
 
     write_store("001 " OTHER_SECRET "\n");
     g_staged_disk_full = true;
 
     ignore_debug_lines();
     /* With the errno of the write that failed */
-    expect_check(__wrap__merror, formatted_msg, log_line_contains,
+    expect_check(__wrap__merror,
+                 formatted_msg,
+                 log_line_contains,
                  (LargestIntegralType)(uintptr_t)"[(28)-(No space left on device)]");
 
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), -1);
@@ -328,10 +356,12 @@ static void test_store_keeps_the_previous_secret_when_the_write_fails(void **sta
 
 /* ---- refusals at the store boundary ---- */
 
-static void test_store_refuses_an_invalid_id(void **state) {
-    (void) state;
+static void test_store_refuses_an_invalid_id(void** state)
+{
+    (void)state;
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Re-enrollment secret not stored: the manager answered with an invalid agent id.");
     assert_int_equal(w_reenroll_secret_store("not-an-id", VALID_SECRET), -1);
 
@@ -339,10 +369,12 @@ static void test_store_refuses_an_invalid_id(void **state) {
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
 }
 
-static void test_store_refuses_a_malformed_secret(void **state) {
-    (void) state;
+static void test_store_refuses_a_malformed_secret(void** state)
+{
+    (void)state;
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Re-enrollment secret not stored: the manager answered with a malformed secret.");
     assert_int_equal(w_reenroll_secret_store("001", "tooshort"), -1);
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
@@ -351,25 +383,29 @@ static void test_store_refuses_a_malformed_secret(void **state) {
 /* Uppercase hex is not what OS_NewReenrollSecret() produces, and the manager compares the derived
  * key, not the text -- so accepting it here would store a secret that derives a different key and
  * fails every re-enrollment. */
-static void test_store_refuses_uppercase_hex(void **state) {
-    (void) state;
+static void test_store_refuses_uppercase_hex(void** state)
+{
+    (void)state;
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Re-enrollment secret not stored: the manager answered with a malformed secret.");
     assert_int_equal(w_reenroll_secret_store("001", "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"),
                      -1);
 }
 
-static void test_store_refuses_null_arguments(void **state) {
-    (void) state;
+static void test_store_refuses_null_arguments(void** state)
+{
+    (void)state;
     assert_int_equal(w_reenroll_secret_store(NULL, VALID_SECRET), -1);
     assert_int_equal(w_reenroll_secret_store("001", NULL), -1);
 }
 
 /* ---- load: absent and malformed are both "absent" ---- */
 
-static void test_load_missing_store_is_absent_not_an_error(void **state) {
-    (void) state;
+static void test_load_missing_store_is_absent_not_an_error(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
@@ -380,8 +416,9 @@ static void test_load_missing_store_is_absent_not_an_error(void **state) {
     assert_string_equal(secret, "");
 }
 
-static void test_load_empty_store_is_absent(void **state) {
-    (void) state;
+static void test_load_empty_store_is_absent(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
@@ -389,25 +426,29 @@ static void test_load_empty_store_is_absent(void **state) {
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
 }
 
-static void test_load_secret_without_an_id_is_malformed(void **state) {
-    (void) state;
+static void test_load_secret_without_an_id_is_malformed(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
     write_store(VALID_SECRET "\n");
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Re-enrollment secret store '" AGENT_REENROLL_SECRET "' is malformed; ignoring it.");
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
     assert_string_equal(secret, "");
 }
 
-static void test_load_extra_field_is_malformed(void **state) {
-    (void) state;
+static void test_load_extra_field_is_malformed(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
     write_store("001 " VALID_SECRET " extra\n");
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Re-enrollment secret store '" AGENT_REENROLL_SECRET "' is malformed; ignoring it.");
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
 }
@@ -415,35 +456,38 @@ static void test_load_extra_field_is_malformed(void **state) {
 /* An over-long secret must be refused, never silently cut to the first 64 characters -- which
  * would validate here and then derive a different key than the manager holds. The line is
  * well-formed (one id, one space, one value), so the value itself is what gets named. */
-static void test_load_over_long_secret_is_refused_not_truncated(void **state) {
-    (void) state;
+static void test_load_over_long_secret_is_refused_not_truncated(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
     write_store("001 " VALID_SECRET "ff\n");
-    expect_string(__wrap__merror, formatted_msg,
-                  "Re-enrollment secret store '" AGENT_REENROLL_SECRET
-                  "' holds an invalid id or secret; ignoring it.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Re-enrollment secret store '" AGENT_REENROLL_SECRET "' holds an invalid id or secret; ignoring it.");
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
     assert_string_equal(secret, "");
 }
 
-static void test_load_invalid_values_are_ignored(void **state) {
-    (void) state;
+static void test_load_invalid_values_are_ignored(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
     write_store("001 zzzz\n");
-    expect_string(__wrap__merror, formatted_msg,
-                  "Re-enrollment secret store '" AGENT_REENROLL_SECRET
-                  "' holds an invalid id or secret; ignoring it.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Re-enrollment secret store '" AGENT_REENROLL_SECRET "' holds an invalid id or secret; ignoring it.");
     assert_int_equal(w_reenroll_secret_load(id, sizeof(id), secret, sizeof(secret)), 0);
 }
 
 /* A trailing CRLF is what a file edited on Windows carries; it must not make a good secret
  * unreadable. */
-static void test_load_tolerates_crlf(void **state) {
-    (void) state;
+static void test_load_tolerates_crlf(void** state)
+{
+    (void)state;
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
@@ -452,24 +496,26 @@ static void test_load_tolerates_crlf(void **state) {
     assert_string_equal(secret, VALID_SECRET);
 }
 
-static void test_load_refuses_null_arguments(void **state) {
-    (void) state;
+static void test_load_refuses_null_arguments(void** state)
+{
+    (void)state;
     char secret[W_REENROLL_SECRET_SIZE];
     assert_int_equal(w_reenroll_secret_load(NULL, W_REENROLL_ID_SIZE, secret, sizeof(secret)), 0);
 }
 
 /* ---- clear ---- */
 
-static void test_clear_overwrites_then_unlinks(void **state) {
-    (void) state;
+static void test_clear_overwrites_then_unlinks(void** state)
+{
+    (void)state;
     ignore_debug_lines();
     char id[W_REENROLL_ID_SIZE];
     char secret[W_REENROLL_SECRET_SIZE];
 
     assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
 
-    expect_string(__wrap__minfo, formatted_msg,
-                  "The re-enrollment secret was rejected by the manager and has been removed.");
+    expect_string(
+        __wrap__minfo, formatted_msg, "The re-enrollment secret was rejected by the manager and has been removed.");
     w_reenroll_secret_clear();
 
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
@@ -478,13 +524,15 @@ static void test_clear_overwrites_then_unlinks(void **state) {
 
 /* Clearing what is not there is not a failure: the caller reaches this after a rejection, and
  * whether a store existed is not something it should have to check first. */
-static void test_clear_without_a_store_is_silent(void **state) {
-    (void) state;
+static void test_clear_without_a_store_is_silent(void** state)
+{
+    (void)state;
     w_reenroll_secret_clear();
     assert_int_equal(IsFile(AGENT_REENROLL_SECRET), -1);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_store_then_load_round_trip, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stored_line_carries_the_id_and_the_secret, setup_test, teardown_test),
@@ -493,11 +541,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_stored_file_has_client_keys_mode, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_store_sets_the_mode_through_the_descriptor, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_store_never_writes_through_a_swapped_name, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_store_copies_into_a_secret_file_rename_cannot_replace, setup_test,
-                                        teardown_test),
+        cmocka_unit_test_setup_teardown(
+            test_store_copies_into_a_secret_file_rename_cannot_replace, setup_test, teardown_test),
 #ifdef __linux__
-        cmocka_unit_test_setup_teardown(test_store_keeps_the_previous_secret_when_the_write_fails, setup_test,
-                                        teardown_test),
+        cmocka_unit_test_setup_teardown(
+            test_store_keeps_the_previous_secret_when_the_write_fails, setup_test, teardown_test),
 #endif
 #endif
         cmocka_unit_test_setup_teardown(test_store_refuses_an_invalid_id, setup_test, teardown_test),

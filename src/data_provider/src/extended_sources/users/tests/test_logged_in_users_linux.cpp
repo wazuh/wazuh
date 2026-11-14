@@ -19,11 +19,11 @@
 
 class MockUtmpxWrapper : public IUtmpxWrapper
 {
-    public:
-        MOCK_METHOD(void, utmpxname, (const char* file), (override));
-        MOCK_METHOD(void, setutxent, (), (override));
-        MOCK_METHOD(void, endutxent, (), (override));
-        MOCK_METHOD(struct utmpx*, getutxent, (), (override));
+public:
+    MOCK_METHOD(void, utmpxname, (const char* file), (override));
+    MOCK_METHOD(void, setutxent, (), (override));
+    MOCK_METHOD(void, endutxent, (), (override));
+    MOCK_METHOD(struct utmpx*, getutxent, (), (override));
 };
 
 void fillCommonFields(struct utmpx& entry)
@@ -49,9 +49,7 @@ TEST(LoggedInUsersProviderTestLocalhost, CollectReturnsExpectedJson)
 
     EXPECT_CALL(*mockWrapper, utmpxname(::testing::_)).Times(1);
     EXPECT_CALL(*mockWrapper, setutxent()).Times(1);
-    EXPECT_CALL(*mockWrapper, getutxent())
-    .WillOnce(::testing::Return(&fakeEntry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*mockWrapper, getutxent()).WillOnce(::testing::Return(&fakeEntry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endutxent()).Times(1);
 
     LoggedInUsersProvider provider(mockWrapper);
@@ -81,9 +79,7 @@ TEST(LoggedInUsersProviderTestIPv4, CollectReturnsExpectedIPv4)
 
     EXPECT_CALL(*mockWrapper, utmpxname(::testing::_)).Times(1);
     EXPECT_CALL(*mockWrapper, setutxent()).Times(1);
-    EXPECT_CALL(*mockWrapper, getutxent())
-    .WillOnce(::testing::Return(&fakeEntry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*mockWrapper, getutxent()).WillOnce(::testing::Return(&fakeEntry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endutxent()).Times(1);
 
     LoggedInUsersProvider provider(mockWrapper);
@@ -105,9 +101,7 @@ TEST(LoggedInUsersProviderTestIPv6, CollectReturnsExpectedIPv6)
 
     EXPECT_CALL(*mockWrapper, utmpxname(::testing::_)).Times(1);
     EXPECT_CALL(*mockWrapper, setutxent()).Times(1);
-    EXPECT_CALL(*mockWrapper, getutxent())
-    .WillOnce(::testing::Return(&fakeEntry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*mockWrapper, getutxent()).WillOnce(::testing::Return(&fakeEntry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endutxent()).Times(1);
 
     LoggedInUsersProvider provider(mockWrapper);

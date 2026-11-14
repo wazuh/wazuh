@@ -115,17 +115,9 @@ namespace taskBatchDetail
 inline TaskBatchPlan planTaskBatch(std::vector<NotifyTask> batch)
 {
     const bool hasUpgrade =
-        std::any_of(batch.begin(), batch.end(),
-                    [](const NotifyTask & task)
-    {
-        return task.type == "remote_upgrade";
-    });
+        std::any_of(batch.begin(), batch.end(), [](const NotifyTask& task) { return task.type == "remote_upgrade"; });
     const bool hasRestart =
-        std::any_of(batch.begin(), batch.end(),
-                    [](const NotifyTask & task)
-    {
-        return task.type == "agent_restart";
-    });
+        std::any_of(batch.begin(), batch.end(), [](const NotifyTask& task) { return task.type == "agent_restart"; });
 
     TaskBatchPlan plan;
 
@@ -143,11 +135,10 @@ inline TaskBatchPlan planTaskBatch(std::vector<NotifyTask> batch)
         }
     }
 
-    std::stable_sort(plan.ordered.begin(), plan.ordered.end(),
-                     [](const NotifyTask & a, const NotifyTask & b)
-    {
-        return taskBatchDetail::rankOf(a.type) < taskBatchDetail::rankOf(b.type);
-    });
+    std::stable_sort(plan.ordered.begin(),
+                     plan.ordered.end(),
+                     [](const NotifyTask& a, const NotifyTask& b)
+                     { return taskBatchDetail::rankOf(a.type) < taskBatchDetail::rankOf(b.type); });
     return plan;
 }
 

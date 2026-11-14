@@ -52,41 +52,41 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback);
 // Extract package information in fully compatible Linux systems
 class FactoryPackagesCreator final
 {
-    public:
-        static void getPackages(const std::function<void(nlohmann::json&)>& callback)
+public:
+    static void getPackages(const std::function<void(nlohmann::json&)>& callback)
+    {
+        const file_system::FileSystemWrapper fs;
+
+        if (fs.is_directory(DPKG_PATH))
         {
-            const file_system::FileSystemWrapper fs;
-
-            if (fs.is_directory(DPKG_PATH))
-            {
-                getDpkgInfo(DPKG_STATUS_PATH, callback);
-            }
-
-            if (fs.is_directory(RPM_PATH))
-            {
-                getRpmInfo(callback);
-            }
-
-            if (fs.is_directory(SNAP_PATH))
-            {
-                getSnapInfo(callback);
-            }
+            getDpkgInfo(DPKG_STATUS_PATH, callback);
         }
 
-        static void getPythonPackages(std::unordered_set<std::string>& pythonPackages)
+        if (fs.is_directory(RPM_PATH))
         {
-            const file_system::FileSystemWrapper fs;
-
-            if (fs.is_directory(DPKG_PATH))
-            {
-                getDpkgPythonPackages(pythonPackages);
-            }
-
-            if (fs.is_directory(RPM_PATH))
-            {
-                getRpmPythonPackages(pythonPackages);
-            }
+            getRpmInfo(callback);
         }
+
+        if (fs.is_directory(SNAP_PATH))
+        {
+            getSnapInfo(callback);
+        }
+    }
+
+    static void getPythonPackages(std::unordered_set<std::string>& pythonPackages)
+    {
+        const file_system::FileSystemWrapper fs;
+
+        if (fs.is_directory(DPKG_PATH))
+        {
+            getDpkgPythonPackages(pythonPackages);
+        }
+
+        if (fs.is_directory(RPM_PATH))
+        {
+            getRpmPythonPackages(pythonPackages);
+        }
+    }
 };
 
 #endif // _PACKAGE_LINUX_DATA_RETRIEVER_H

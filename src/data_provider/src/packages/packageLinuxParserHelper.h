@@ -33,12 +33,12 @@ namespace PackageLinuxHelper
 
         for (const auto& entry : entries)
         {
-            const auto pos{entry.find(":")};
+            const auto pos {entry.find(":")};
 
             if (pos != std::string::npos)
             {
-                const auto key{Utils::trim(entry.substr(0, pos))};
-                const auto value{Utils::trim(entry.substr(pos + 1), " \n")};
+                const auto key {Utils::trim(entry.substr(0, pos))};
+                const auto value {Utils::trim(entry.substr(pos + 1), " \n")};
                 info[key] = value;
             }
         }
@@ -70,9 +70,9 @@ namespace PackageLinuxHelper
             std::string version {UNKNOWN_VALUE};
             std::string vendor {UNKNOWN_VALUE};
             std::string description {UNKNOWN_VALUE};
-            int64_t size { 0 };
+            int64_t size {0};
 
-            auto it{info.find("Priority")};
+            auto it {info.find("Priority")};
 
             if (it != info.end())
             {
@@ -135,18 +135,18 @@ namespace PackageLinuxHelper
                 description = Utils::substrOnFirstOccurrence(it->second, "\n");
             }
 
-            ret["priority"]     = priority;
-            ret["category"]     = groups;
-            ret["size"]         = size;
-            ret["multiarch"]    = multiarch;
+            ret["priority"] = priority;
+            ret["category"] = groups;
+            ret["size"] = size;
+            ret["multiarch"] = multiarch;
             ret["architecture"] = architecture;
-            ret["source"]       = source;
-            ret["version_"]     = version;
-            ret["type"]         = "deb";
-            ret["path"]         = UNKNOWN_VALUE;
-            ret["vendor"]       = vendor;
-            ret["installed"]    = UNKNOWN_VALUE;
-            ret["description"]  = description;
+            ret["source"] = source;
+            ret["version_"] = version;
+            ret["type"] = "deb";
+            ret["path"] = UNKNOWN_VALUE;
+            ret["vendor"] = vendor;
+            ret["installed"] = UNKNOWN_VALUE;
+            ret["description"] = description;
         }
 
         return ret;
@@ -158,12 +158,12 @@ namespace PackageLinuxHelper
 
         std::string name;
         std::string version;
-        std::string vendor       { UNKNOWN_VALUE };
-        std::string install_time { UNKNOWN_VALUE };
-        std::string description  { UNKNOWN_VALUE };
-        int64_t     size         { 0 };
-        bool        hasName      { false };
-        bool        hasVersion   { false };
+        std::string vendor {UNKNOWN_VALUE};
+        std::string install_time {UNKNOWN_VALUE};
+        std::string description {UNKNOWN_VALUE};
+        int64_t size {0};
+        bool hasName {false};
+        bool hasVersion {false};
 
         if (info.contains("name"))
         {
@@ -240,7 +240,7 @@ namespace PackageLinuxHelper
                 {
                     try
                     {
-                        size = std::stoll( stringData );
+                        size = std::stoll(stringData);
                     }
                     catch (const std::exception& e)
                     {
@@ -250,26 +250,27 @@ namespace PackageLinuxHelper
             }
         }
 
-        ret["name"]             = name;
-        ret["path"]             = "/snap/" + name;
-        ret["version_"]         = version;
-        ret["vendor"]           = vendor;
-        ret["installed"]        = install_time == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(install_time)));
-        ret["description"]      = description;
-        ret["size"]             = size;
-        ret["source"]           = "snapcraft";
-        ret["type"]             = "snap";
+        ret["name"] = name;
+        ret["path"] = "/snap/" + name;
+        ret["version_"] = version;
+        ret["vendor"] = vendor;
+        ret["installed"] = install_time == UNKNOWN_VALUE
+                               ? UNKNOWN_VALUE
+                               : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(install_time)));
+        ret["description"] = description;
+        ret["size"] = size;
+        ret["source"] = "snapcraft";
+        ret["type"] = "snap";
 
-        ret["priority"]         = UNKNOWN_VALUE;
-        ret["multiarch"]        = UNKNOWN_VALUE;
-        ret["architecture"]     = UNKNOWN_VALUE;
-        ret["category"]         = UNKNOWN_VALUE;
+        ret["priority"] = UNKNOWN_VALUE;
+        ret["multiarch"] = UNKNOWN_VALUE;
+        ret["architecture"] = UNKNOWN_VALUE;
+        ret["category"] = UNKNOWN_VALUE;
 
         return ret;
     }
 
-
-};
+}; // namespace PackageLinuxHelper
 
 #pragma GCC diagnostic pop
 

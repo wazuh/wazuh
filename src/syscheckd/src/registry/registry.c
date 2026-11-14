@@ -34,17 +34,9 @@
 #define MAX_KEY_LENGTH 260
 #define MAX_VALUE_NAME 16383
 
-static const char *FIM_EVENT_TYPE_ARRAY[] = {
-    "added",
-    "deleted",
-    "modified"
-};
+static const char* FIM_EVENT_TYPE_ARRAY[] = {"added", "deleted", "modified"};
 
-static const char *FIM_EVENT_MODE[] = {
-    "scheduled",
-    "realtime",
-    "whodata"
-};
+static const char* FIM_EVENT_MODE[] = {"scheduled", "realtime", "whodata"};
 
 /**
  * @brief Get the abbreviation of the registry hive from the full path.
@@ -52,22 +44,23 @@ static const char *FIM_EVENT_MODE[] = {
  * @param path The full path of the registry key.
  * @return The abbreviation of the registry hive.
  */
-STATIC const char* get_registry_hive_abbreviation(const char* path) {
-    struct {
-        const char *full;
-        const char *abbr;
-    } hives[] = {
-        {"HKEY_CLASSES_ROOT", "HKCR"},
-        {"HKEY_CURRENT_USER", "HKCU"},
-        {"HKEY_LOCAL_MACHINE", "HKLM"},
-        {"HKEY_USERS", "HKU"},
-        {"HKEY_CURRENT_CONFIG", "HKCC"}
-    };
+STATIC const char* get_registry_hive_abbreviation(const char* path)
+{
+    struct
+    {
+        const char* full;
+        const char* abbr;
+    } hives[] = {{"HKEY_CLASSES_ROOT", "HKCR"},
+                 {"HKEY_CURRENT_USER", "HKCU"},
+                 {"HKEY_LOCAL_MACHINE", "HKLM"},
+                 {"HKEY_USERS", "HKU"},
+                 {"HKEY_CURRENT_CONFIG", "HKCC"}};
 
-    for (size_t i = 0; i < sizeof(hives)/sizeof(hives[0]); ++i) {
+    for (size_t i = 0; i < sizeof(hives) / sizeof(hives[0]); ++i)
+    {
         size_t len = strlen(hives[i].full);
-        if (strncmp(path, hives[i].full, len) == 0 &&
-            (path[len] == '\\' || path[len] == '\0')) {
+        if (strncmp(path, hives[i].full, len) == 0 && (path[len] == '\\' || path[len] == '\0'))
+        {
             return hives[i].abbr;
         }
     }
@@ -81,18 +74,16 @@ STATIC const char* get_registry_hive_abbreviation(const char* path) {
  * @param path The full path of the registry key.
  * @return The full registry key path without the hive abbreviation.
  */
-STATIC const char* get_registry_key(const char* path) {
-    const char *prefixes[] = {
-        "HKEY_CLASSES_ROOT\\",
-        "HKEY_CURRENT_USER\\",
-        "HKEY_LOCAL_MACHINE\\",
-        "HKEY_USERS\\",
-        "HKEY_CURRENT_CONFIG\\"
-    };
+STATIC const char* get_registry_key(const char* path)
+{
+    const char* prefixes[] = {
+        "HKEY_CLASSES_ROOT\\", "HKEY_CURRENT_USER\\", "HKEY_LOCAL_MACHINE\\", "HKEY_USERS\\", "HKEY_CURRENT_CONFIG\\"};
 
-    for (size_t i = 0; i < sizeof(prefixes)/sizeof(prefixes[0]); ++i) {
+    for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); ++i)
+    {
         size_t len = strlen(prefixes[i]);
-        if (strncmp(path, prefixes[i], len) == 0) {
+        if (strncmp(path, prefixes[i], len) == 0)
+        {
             return path + len;
         }
     }
@@ -100,31 +91,41 @@ STATIC const char* get_registry_key(const char* path) {
     return path;
 }
 
-cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, cJSON* registry_stateful){
+cJSON* build_stateful_event_registry(const char* path,
+                                     const char* sha1_hash,
+                                     const uint64_t document_version,
+                                     int arch,
+                                     const cJSON* dbsync_event,
+                                     cJSON* registry_stateful)
+{
     cJSON* stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
+    if (stateful_event == NULL)
+    {
         return NULL;
     }
     cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
 
-    char *utf8_path = auto_to_utf8(path);
+    char* utf8_path = auto_to_utf8(path);
     cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
-    const char *hive = get_registry_hive_abbreviation(path);
-    const char *key = get_registry_key(path);
+    const char* hive = get_registry_hive_abbreviation(path);
+    const char* key = get_registry_key(path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
-        char *full_key = NULL;
+        char* full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        char *utf8_full_key = auto_to_utf8(full_key);
+        char* utf8_full_key = auto_to_utf8(full_key);
         cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
-        char *utf8_key_path = auto_to_utf8(path);
+    }
+    else
+    {
+        char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
     }
@@ -150,24 +151,33 @@ cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, co
     return stateful_event;
 }
 
-
-cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *registry_data){
+cJSON* build_stateful_event_registry_key(const char* path,
+                                         const char* sha1_hash,
+                                         const uint64_t document_version,
+                                         int arch,
+                                         const cJSON* dbsync_event,
+                                         fim_registry_key* registry_data)
+{
     const registry_t* config = fim_registry_configuration(path, arch);
 
     // If config is NULL the attributes cannot be translated: fim_registry_key_attributes_json needs it
     // to know which checks are enabled. Callers replaying rows from the local DB (startup promotion,
     // recovery resync) may hand us a path that is no longer covered by the current configuration.
-    if (config == NULL) {
+    if (config == NULL)
+    {
         merror("Failed to get configuration for registry path: %s", path);
         return NULL;
     }
 
     cJSON* registry_stateful = fim_registry_key_attributes_json(dbsync_event, registry_data, config);
 
-    cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
+    cJSON* stateful_event =
+        build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
 
-    if (!stateful_event) {
-        if (registry_stateful) {
+    if (!stateful_event)
+    {
+        if (registry_stateful)
+        {
             cJSON_Delete(registry_stateful);
         }
         return NULL;
@@ -175,22 +185,31 @@ cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash
     return stateful_event;
 }
 
-cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data){
+cJSON* build_stateful_event_registry_value(const char* path,
+                                           const char* value,
+                                           const char* sha1_hash,
+                                           const uint64_t document_version,
+                                           int arch,
+                                           const cJSON* dbsync_event,
+                                           fim_registry_value_data* registry_data)
+{
     const registry_t* config = fim_registry_configuration(path, arch);
 
     // Same as build_stateful_event_registry_key: without configuration there is nothing to translate.
-    if (config == NULL) {
+    if (config == NULL)
+    {
         merror("Failed to get configuration for registry path: %s", path);
         return NULL;
     }
 
     cJSON* registry_stateful = fim_registry_value_attributes_json(dbsync_event, registry_data, config);
 
-    char *utf8_value = auto_to_utf8(value);
+    char* utf8_value = auto_to_utf8(value);
     cJSON_AddStringToObject(registry_stateful, "value", utf8_value ? utf8_value : value);
     os_free(utf8_value);
 
-    cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
+    cJSON* stateful_event =
+        build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
 
     return stateful_event;
 }
@@ -210,9 +229,10 @@ cJSON* build_stateful_event_registry_value(const char* path, const char* value, 
  * @param txn_context Transaction context with event metadata.
  */
 STATIC void handle_orphaned_delete_registry_key(const char* path,
-                                                 int arch,
-                                                 const cJSON* result_json,
-                                                 fim_key_txn_context_t* txn_context) {
+                                                int arch,
+                                                const cJSON* result_json,
+                                                fim_key_txn_context_t* txn_context)
+{
     cJSON* stateless_event = NULL;
     cJSON* stateful_event = NULL;
     char iso_time[32];
@@ -221,19 +241,22 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
 
     // Get checksum from result_json
     cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
-    if (checksum_json == NULL) {
+    if (checksum_json == NULL)
+    {
         mdebug1("Couldn't find checksum for orphaned delete '%s'", path);
         return;
     }
     char* sha1_checksum = cJSON_GetStringValue(checksum_json);
-    if (sha1_checksum == NULL) {
+    if (sha1_checksum == NULL)
+    {
         mdebug1("Invalid checksum value for orphaned delete '%s'", path);
         return;
     }
 
     // Get version from result_json (for DELETED events, version is at top level)
     cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
-    if (version_json == NULL) {
+    if (version_json == NULL)
+    {
         mdebug1("Couldn't find version for orphaned delete '%s'", path);
         return;
     }
@@ -241,7 +264,8 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
 
     // Build minimal stateless event
     stateless_event = cJSON_CreateObject();
-    if (stateless_event == NULL) {
+    if (stateless_event == NULL)
+    {
         return;
     }
 
@@ -268,7 +292,8 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     const char* hive = get_registry_hive_abbreviation(path);
     const char* key = get_registry_key(path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
         char* full_key = NULL;
         os_malloc(full_key_len, full_key);
@@ -277,7 +302,9 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
         cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
+    }
+    else
+    {
         char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
@@ -288,7 +315,8 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
 
     // Send stateless event if enabled
-    if (notify_scan != 0 && txn_context->evt_data->report_event) {
+    if (notify_scan != 0 && txn_context->evt_data->report_event)
+    {
         send_syscheck_msg(stateless_event);
     }
 
@@ -296,7 +324,8 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
 
     // Build minimal stateful event for sync
     stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
+    if (stateful_event == NULL)
+    {
         return;
     }
 
@@ -307,7 +336,8 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
         char* full_key = NULL;
         os_malloc(full_key_len, full_key);
@@ -316,7 +346,9 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
         cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
+    }
+    else
+    {
         char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
@@ -347,7 +379,8 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     // Read sync flag from result_json
     int sync_flag = 0;
     cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
-    if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+    if (sync_json != NULL && cJSON_IsNumber(sync_json))
+    {
         sync_flag = sync_json->valueint;
     }
 
@@ -355,9 +388,16 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
     char item_desc[PATH_MAX + 64];
     snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
-    validate_and_persist_fim_event(stateful_event, registry_key_sha1, OPERATION_DELETE,
-                                    FIM_REGISTRY_KEYS_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL, sync_flag);
+    validate_and_persist_fim_event(stateful_event,
+                                   registry_key_sha1,
+                                   OPERATION_DELETE,
+                                   FIM_REGISTRY_KEYS_SYNC_INDEX,
+                                   document_version,
+                                   item_desc,
+                                   false,
+                                   NULL,
+                                   NULL,
+                                   sync_flag);
 
     cJSON_Delete(stateful_event);
 }
@@ -377,32 +417,34 @@ STATIC void handle_orphaned_delete_registry_key(const char* path,
  * @param result_json Data from dbsync containing checksum and version.
  * @param txn_context Transaction context with event metadata.
  */
-STATIC void handle_orphaned_delete_registry_value(const char* path,
-                                                   const char* value,
-                                                   int arch,
-                                                   const cJSON* result_json,
-                                                   fim_val_txn_context_t* txn_context) {
+STATIC void handle_orphaned_delete_registry_value(
+    const char* path, const char* value, int arch, const cJSON* result_json, fim_val_txn_context_t* txn_context)
+{
     cJSON* stateless_event = NULL;
     cJSON* stateful_event = NULL;
     char iso_time[32];
 
-    mdebug1("Generating delete event for orphaned registry value '%s\\%s' (path removed from configuration)", path, value);
+    mdebug1(
+        "Generating delete event for orphaned registry value '%s\\%s' (path removed from configuration)", path, value);
 
     // Get checksum from result_json
     cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
-    if (checksum_json == NULL) {
+    if (checksum_json == NULL)
+    {
         mdebug1("Couldn't find checksum for orphaned delete '%s\\%s'", path, value);
         return;
     }
     char* sha1_checksum = cJSON_GetStringValue(checksum_json);
-    if (sha1_checksum == NULL) {
+    if (sha1_checksum == NULL)
+    {
         mdebug1("Invalid checksum value for orphaned delete '%s\\%s'", path, value);
         return;
     }
 
     // Get version from result_json (for DELETED events, version is at top level)
     cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
-    if (version_json == NULL) {
+    if (version_json == NULL)
+    {
         mdebug1("Couldn't find version for orphaned delete '%s\\%s'", path, value);
         return;
     }
@@ -410,7 +452,8 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
 
     // Build minimal stateless event
     stateless_event = cJSON_CreateObject();
-    if (stateless_event == NULL) {
+    if (stateless_event == NULL)
+    {
         return;
     }
 
@@ -437,7 +480,8 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     const char* hive = get_registry_hive_abbreviation(path);
     const char* key = get_registry_key(path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
         char* full_key = NULL;
         os_malloc(full_key_len, full_key);
@@ -446,7 +490,9 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
         cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
+    }
+    else
+    {
         char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
@@ -462,7 +508,8 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
 
     // Send stateless event if enabled
-    if (notify_scan != 0 && txn_context->evt_data->report_event) {
+    if (notify_scan != 0 && txn_context->evt_data->report_event)
+    {
         send_syscheck_msg(stateless_event);
     }
 
@@ -470,7 +517,8 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
 
     // Build minimal stateful event for sync
     stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
+    if (stateful_event == NULL)
+    {
         return;
     }
 
@@ -481,7 +529,8 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
         char* full_key = NULL;
         os_malloc(full_key_len, full_key);
@@ -490,7 +539,9 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
         cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
+    }
+    else
+    {
         char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
@@ -525,7 +576,8 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     // Read sync flag from result_json
     int sync_flag = 0;
     cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
-    if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+    if (sync_json != NULL && cJSON_IsNumber(sync_json))
+    {
         sync_flag = sync_json->valueint;
     }
 
@@ -533,9 +585,16 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
     // Note: For orphaned deletes, we don't mark for deletion from DBSync since the item is already deleted
     char item_desc[PATH_MAX + 128];
     snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
-    validate_and_persist_fim_event(stateful_event, registry_value_sha1, OPERATION_DELETE,
-                                    FIM_REGISTRY_VALUES_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL, sync_flag);
+    validate_and_persist_fim_event(stateful_event,
+                                   registry_value_sha1,
+                                   OPERATION_DELETE,
+                                   FIM_REGISTRY_VALUES_SYNC_INDEX,
+                                   document_version,
+                                   item_desc,
+                                   false,
+                                   NULL,
+                                   NULL,
+                                   sync_flag);
 
     cJSON_Delete(stateful_event);
 }
@@ -549,46 +608,52 @@ STATIC void handle_orphaned_delete_registry_value(const char* path,
  * @param result_json Data returned by dbsync in JSON format.
  * @param user_data Registry key transaction context.
  */
-STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
-                                              const cJSON* result_json,
-                                              void* user_data) {
+STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
+{
 
-    cJSON *stateless_event = NULL;
-    cJSON *json_path = NULL;
-    cJSON *json_arch = NULL;
-    cJSON *old_data = NULL;
-    cJSON *old_attributes = NULL;
-    cJSON *changed_attributes = NULL;
-    char *path = NULL;
+    cJSON* stateless_event = NULL;
+    cJSON* json_path = NULL;
+    cJSON* json_arch = NULL;
+    cJSON* old_data = NULL;
+    cJSON* old_attributes = NULL;
+    cJSON* changed_attributes = NULL;
+    char* path = NULL;
     int arch = -1;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
     int sync_flag = 0;
 
-    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
+    fim_key_txn_context_t* event_data = (fim_key_txn_context_t*)user_data;
 
     // In case of deletions, key is NULL, so we need to get the path and arch from the json event
-    if (event_data->key == NULL) {
-        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
+    if (event_data->key == NULL)
+    {
+        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL)
+        {
             goto end;
         }
-        if (json_arch = cJSON_GetObjectItem(result_json, "architecture"), json_arch == NULL) {
+        if (json_arch = cJSON_GetObjectItem(result_json, "architecture"), json_arch == NULL)
+        {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
-        arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
-
-    } else {
+        arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
+    }
+    else
+    {
         path = event_data->key->path;
         arch = event_data->key->architecture;
     }
 
-    if (event_data->config == NULL) {
+    if (event_data->config == NULL)
+    {
         event_data->config = fim_registry_configuration(path, arch);
-        if (event_data->config == NULL) {
+        if (event_data->config == NULL)
+        {
             // For DELETE events of orphaned registry keys (path removed from config),
             // generate minimal delete events without requiring configuration
-            if (resultType == DELETED) {
+            if (resultType == DELETED)
+            {
                 handle_orphaned_delete_registry_key(path, arch, result_json, event_data);
             }
             goto end;
@@ -596,42 +661,54 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     }
 
     // Extract version early so it's available for deferred sync items
-    cJSON *version_aux = NULL;
-    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
-    if (new_data != NULL) {
+    cJSON* version_aux = NULL;
+    cJSON* new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL)
+    {
         // For MODIFIED events, version is in the "new" object
         version_aux = cJSON_GetObjectItem(new_data, "version");
-    } else {
+    }
+    else
+    {
         // For INSERTED/DELETED events, version is at the top level
         version_aux = cJSON_GetObjectItem(result_json, "version");
     }
 
     uint64_t document_version = 0;
-    if (version_aux != NULL) {
+    if (version_aux != NULL)
+    {
         document_version = (uint64_t)version_aux->valueint;
     }
 
-    switch (resultType) {
+    switch (resultType)
+    {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
             // For CREATE events: determine if within limit and defer sync flag update
-            if (syscheck.registry_key_limit > 0) {
+            if (syscheck.registry_key_limit > 0)
+            {
                 sync_flag = (synced_docs_registry_keys < syscheck.registry_key_limit) ? 1 : 0;
-            } else {
+            }
+            else
+            {
                 sync_flag = 1;
             }
             // Add to deferred list if sync_flag should be 1
-            if (sync_flag == 1 && event_data->pending_sync_updates != NULL) {
+            if (sync_flag == 1 && event_data->pending_sync_updates != NULL)
+            {
                 synced_docs_registry_keys++;
                 cJSON* sync_item = cJSON_CreateObject();
-                if (sync_item != NULL) {
+                if (sync_item != NULL)
+                {
                     cJSON_AddStringToObject(sync_item, "path", path);
                     cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
                     cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
                     add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
                     cJSON_Delete(sync_item);
-                } else {
+                }
+                else
+                {
                     merror("Failed to create cJSON object for deferred sync item");
                 }
             }
@@ -643,25 +720,31 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
 
             // Get the old sync flag value to track synced documents and determine if promotion is needed
             old_data = cJSON_GetObjectItem(result_json, "old");
-            cJSON *sync_json = cJSON_GetObjectItem(old_data, "sync");
-            if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+            cJSON* sync_json = cJSON_GetObjectItem(old_data, "sync");
+            if (sync_json != NULL && cJSON_IsNumber(sync_json))
+            {
                 sync_flag = sync_json->valueint;
                 // NOTE: We don't add to deferred list here because syncRow preserves the sync flag
                 // when it's not in the input data. The sync flag is already 1 after the transaction.
             }
 
-            if (sync_flag == 0 && syscheck.registry_key_limit > 0) { // Promote
-                if (synced_docs_registry_keys < syscheck.registry_key_limit) {
+            if (sync_flag == 0 && syscheck.registry_key_limit > 0)
+            { // Promote
+                if (synced_docs_registry_keys < syscheck.registry_key_limit)
+                {
                     synced_docs_registry_keys++;
                     cJSON* sync_item = cJSON_CreateObject();
-                    if (sync_item != NULL) {
+                    if (sync_item != NULL)
+                    {
                         cJSON_AddStringToObject(sync_item, "path", path);
                         cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
                         cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
                         add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
                         cJSON_Delete(sync_item);
                         sync_flag = 1;
-                    } else {
+                    }
+                    else
+                    {
                         merror("Failed to create cJSON object for deferred sync item");
                     }
                 }
@@ -673,10 +756,12 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
             sync_operation = OPERATION_DELETE;
             // For DELETE events: entry is NULL, read sync flag from DB result
             {
-            cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
-                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json))
+                {
                     sync_flag = sync_json->valueint;
-                    if (sync_flag == 1) {
+                    if (sync_flag == 1)
+                    {
                         synced_docs_registry_keys--;
                     }
                 }
@@ -687,13 +772,12 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
-        default:
-            goto end;
-            break;
+        default: goto end; break;
     }
 
     stateless_event = cJSON_CreateObject();
-    if (stateless_event == NULL) {
+    if (stateless_event == NULL)
+    {
         return;
     }
 
@@ -713,24 +797,27 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON* registry_stateless = fim_registry_key_attributes_json(result_json, event_data->key, event_data->config);
     cJSON_AddItemToObject(data, "registry", registry_stateless);
 
-    char *utf8_path = auto_to_utf8(path);
+    char* utf8_path = auto_to_utf8(path);
     cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
-    const char *hive = get_registry_hive_abbreviation(path);
-    const char *key = get_registry_key(path);
+    const char* hive = get_registry_hive_abbreviation(path);
+    const char* key = get_registry_key(path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
-        char *full_key = NULL;
+        char* full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        char *utf8_full_key = auto_to_utf8(full_key);
+        char* utf8_full_key = auto_to_utf8(full_key);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
-        char *utf8_key_path = auto_to_utf8(path);
+    }
+    else
+    {
+        char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
     }
@@ -741,28 +828,29 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data != NULL) {
+    if (old_data != NULL)
+    {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(registry_stateless, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
-        fim_calculate_dbsync_difference_key(event_data->config,
-                                            old_data,
-                                            changed_attributes,
-                                            old_attributes);
+        fim_calculate_dbsync_difference_key(event_data->config, old_data, changed_attributes, old_attributes);
 
-        if (cJSON_GetArraySize(changed_attributes) == 0) {
+        if (cJSON_GetArraySize(changed_attributes) == 0)
+        {
             mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
             goto end;
         }
     }
 
-    if (event_data->config->tag != NULL) {
+    if (event_data->config->tag != NULL)
+    {
         cJSON_AddStringToObject(registry_stateless, "tags", event_data->config->tag);
     }
 
-    if (notify_scan != 0 && event_data->evt_data->report_event) {
+    if (notify_scan != 0 && event_data->evt_data->report_event)
+    {
         send_syscheck_msg(stateless_event);
     }
 
@@ -774,19 +862,27 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
 
     // Calculate checksum
     const char* sha1_hash;
-    if (event_data->key != NULL) {
+    if (event_data->key != NULL)
+    {
         sha1_hash = event_data->key->checksum;
-    } else {
-        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
-        if (aux != NULL) {
+    }
+    else
+    {
+        cJSON* aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL)
+        {
             sha1_hash = cJSON_GetStringValue(aux);
-        } else {
+        }
+        else
+        {
             mdebug1("Couldn't find checksum for '%s", path);
             return;
         }
     }
-    cJSON* stateful_event = build_stateful_event_registry_key(path, sha1_hash, document_version, arch, result_json, event_data->key);
-    if (!stateful_event) {
+    cJSON* stateful_event =
+        build_stateful_event_registry_key(path, sha1_hash, document_version, arch, result_json, event_data->key);
+    if (!stateful_event)
+    {
         merror("Couldn't create stateful event for %s", path);
         goto end; // LCOV_EXCL_LINE
     }
@@ -796,30 +892,40 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     char item_desc[PATH_MAX + 64];
     snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
 
-    failed_registry_key_t *failed_key = NULL;
+    failed_registry_key_t* failed_key = NULL;
     bool mark_for_deletion = false;
 
-    if (resultType == INSERTED || resultType == MODIFIED) {
+    if (resultType == INSERTED || resultType == MODIFIED)
+    {
         failed_key = malloc(sizeof(failed_registry_key_t));
-        if (failed_key) {
+        if (failed_key)
+        {
             failed_key->path = strdup(path);
             failed_key->arch = arch;
             mark_for_deletion = (failed_key->path != NULL);
-            if (!mark_for_deletion) {
+            if (!mark_for_deletion)
+            {
                 os_free(failed_key);
                 failed_key = NULL;
             }
         }
     }
 
-    bool validation_passed = validate_and_persist_fim_event(stateful_event, registry_key_sha1, sync_operation,
-                                                             FIM_REGISTRY_KEYS_SYNC_INDEX, document_version,
-                                                             item_desc, mark_for_deletion,
-                                                             event_data->failed_keys, failed_key, sync_flag);
+    bool validation_passed = validate_and_persist_fim_event(stateful_event,
+                                                            registry_key_sha1,
+                                                            sync_operation,
+                                                            FIM_REGISTRY_KEYS_SYNC_INDEX,
+                                                            document_version,
+                                                            item_desc,
+                                                            mark_for_deletion,
+                                                            event_data->failed_keys,
+                                                            failed_key,
+                                                            sync_flag);
 
     // If validation passed, we need to free failed_key (it wasn't added to the list)
     // If validation failed, failed_key was added to the list and will be freed later
-    if (validation_passed && failed_key) {
+    if (validation_passed && failed_key)
+    {
         os_free(failed_key->path);
         os_free(failed_key);
     }
@@ -836,96 +942,117 @@ end:
  * @param result_json Data returned by dbsync in JSON format.
  * @param user_data Registry value transaction context.
  */
-STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
-                                                const cJSON* result_json,
-                                                void* user_data) {
+STATIC void
+registry_value_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
+{
 
-    cJSON *stateless_event = NULL;
-    cJSON *json_path = NULL;
-    cJSON *json_arch = NULL;
-    cJSON *json_value = NULL;
-    cJSON *old_data = NULL;
-    cJSON *old_attributes = NULL;
-    cJSON *changed_attributes = NULL;
-    char *path = NULL;
-    char *value = NULL;
+    cJSON* stateless_event = NULL;
+    cJSON* json_path = NULL;
+    cJSON* json_arch = NULL;
+    cJSON* json_value = NULL;
+    cJSON* old_data = NULL;
+    cJSON* old_attributes = NULL;
+    cJSON* changed_attributes = NULL;
+    char* path = NULL;
+    char* value = NULL;
     int arch = -1;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
     int sync_flag = 0;
 
-    fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
+    fim_val_txn_context_t* event_data = (fim_val_txn_context_t*)user_data;
 
     // In case of deletions, data is NULL, so we need to get the path and arch from the json event
-    if (event_data->data == NULL) {
-        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
+    if (event_data->data == NULL)
+    {
+        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL)
+        {
             goto end;
         }
-        if (json_arch = cJSON_GetObjectItem(result_json, "architecture"), json_arch == NULL) {
+        if (json_arch = cJSON_GetObjectItem(result_json, "architecture"), json_arch == NULL)
+        {
             goto end;
         }
-        if (json_value = cJSON_GetObjectItem(result_json, "value"), json_value == NULL) {
+        if (json_value = cJSON_GetObjectItem(result_json, "value"), json_value == NULL)
+        {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
-        arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
+        arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
         value = cJSON_GetStringValue(json_value);
-    } else {
+    }
+    else
+    {
         path = event_data->data->path;
         arch = event_data->data->architecture;
         value = event_data->data->value;
     }
 
     // Extract version early so it's available for deferred sync items
-    cJSON *version_aux = NULL;
-    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
-    if (new_data != NULL) {
+    cJSON* version_aux = NULL;
+    cJSON* new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL)
+    {
         // For MODIFIED events, version is in the "new" object
         version_aux = cJSON_GetObjectItem(new_data, "version");
-    } else {
+    }
+    else
+    {
         // For INSERTED/DELETED events, version is at the top level
         version_aux = cJSON_GetObjectItem(result_json, "version");
     }
 
     uint64_t document_version = 0;
-    if (version_aux != NULL) {
+    if (version_aux != NULL)
+    {
         document_version = (uint64_t)version_aux->valueint;
     }
 
-    if (event_data->config == NULL) {
+    if (event_data->config == NULL)
+    {
         event_data->config = fim_registry_configuration(path, arch);
-        if (event_data->config == NULL) {
+        if (event_data->config == NULL)
+        {
             // For DELETE events of orphaned registry values (path removed from config),
             // generate minimal delete events without requiring configuration
-            if (resultType == DELETED) {
+            if (resultType == DELETED)
+            {
                 handle_orphaned_delete_registry_value(path, value, arch, result_json, event_data);
             }
             goto end;
         }
     }
 
-    switch (resultType) {
+    switch (resultType)
+    {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
             // For CREATE events: determine if within limit and defer sync flag update
-            if (syscheck.registry_value_limit > 0) {
+            if (syscheck.registry_value_limit > 0)
+            {
                 sync_flag = (synced_docs_registry_values < syscheck.registry_value_limit) ? 1 : 0;
-            } else {
+            }
+            else
+            {
                 sync_flag = 1;
             }
             // Add to deferred list if sync_flag should be 1
-            if (sync_flag == 1 && event_data->pending_sync_updates != NULL) {
+            if (sync_flag == 1 && event_data->pending_sync_updates != NULL)
+            {
                 synced_docs_registry_values++;
                 cJSON* sync_item = cJSON_CreateObject();
-                if (sync_item != NULL) {
+                if (sync_item != NULL)
+                {
                     cJSON_AddStringToObject(sync_item, "path", path);
                     cJSON_AddStringToObject(sync_item, "value", value);
                     cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
                     cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
                     add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
                     cJSON_Delete(sync_item);
-                } else {
+                }
+                else
+                {
                     merror("Failed to create cJSON object for deferred sync item");
                 }
             }
@@ -937,18 +1064,22 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
 
             // Get the old sync flag value to track synced documents and determine if promotion is needed
             old_data = cJSON_GetObjectItem(result_json, "old");
-            cJSON *sync_json = cJSON_GetObjectItem(old_data, "sync");
-            if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+            cJSON* sync_json = cJSON_GetObjectItem(old_data, "sync");
+            if (sync_json != NULL && cJSON_IsNumber(sync_json))
+            {
                 sync_flag = sync_json->valueint;
                 // NOTE: We don't add to deferred list here because syncRow preserves the sync flag
                 // when it's not in the input data. The sync flag is already 1 after the transaction.
             }
 
-            if (sync_flag == 0 && syscheck.registry_value_limit > 0) { // Promote
-                if (synced_docs_registry_values < syscheck.registry_value_limit) {
+            if (sync_flag == 0 && syscheck.registry_value_limit > 0)
+            { // Promote
+                if (synced_docs_registry_values < syscheck.registry_value_limit)
+                {
                     synced_docs_registry_values++;
                     cJSON* sync_item = cJSON_CreateObject();
-                    if (sync_item != NULL) {
+                    if (sync_item != NULL)
+                    {
                         cJSON_AddStringToObject(sync_item, "path", path);
                         cJSON_AddStringToObject(sync_item, "value", value);
                         cJSON_AddStringToObject(sync_item, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
@@ -956,7 +1087,9 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                         add_pending_sync_item(event_data->pending_sync_updates, sync_item, 1);
                         cJSON_Delete(sync_item);
                         sync_flag = 1;
-                    } else {
+                    }
+                    else
+                    {
                         merror("Failed to create cJSON object for deferred sync item");
                     }
                 }
@@ -964,17 +1097,20 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
             break;
 
         case DELETED:
-            if (event_data->config->opts & CHECK_SEECHANGES) {
+            if (event_data->config->opts & CHECK_SEECHANGES)
+            {
                 fim_diff_process_delete_value(path, value, arch);
             }
             event_data->evt_data->type = FIM_DELETE;
             sync_operation = OPERATION_DELETE;
             // For DELETE events: entry is NULL, read sync flag from DB result
             {
-            cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
-                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json))
+                {
                     sync_flag = sync_json->valueint;
-                    if (sync_flag == 1) {
+                    if (sync_flag == 1)
+                    {
                         synced_docs_registry_values--;
                     }
                 }
@@ -985,13 +1121,12 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
-        default:
-            goto end;
-            break;
+        default: goto end; break;
     }
 
     stateless_event = cJSON_CreateObject();
-    if (stateless_event == NULL) {
+    if (stateless_event == NULL)
+    {
         goto end;
     }
 
@@ -1011,75 +1146,86 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON* registry_stateless = fim_registry_value_attributes_json(result_json, event_data->data, event_data->config);
     cJSON_AddItemToObject(data, "registry", registry_stateless);
 
-    char *utf8_path = auto_to_utf8(path);
+    char* utf8_path = auto_to_utf8(path);
     cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
     os_free(utf8_path);
 
-    const char *hive = get_registry_hive_abbreviation(path);
-    const char *key = get_registry_key(path);
+    const char* hive = get_registry_hive_abbreviation(path);
+    const char* key = get_registry_key(path);
 
-    if (strlen(hive) > 0 && strlen(key) > 0) {
+    if (strlen(hive) > 0 && strlen(key) > 0)
+    {
         size_t full_key_len = strlen(hive) + 1 + strlen(key) + 1;
-        char *full_key = NULL;
+        char* full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        char *utf8_full_key = auto_to_utf8(full_key);
+        char* utf8_full_key = auto_to_utf8(full_key);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
         os_free(utf8_full_key);
         os_free(full_key);
-    } else {
-        char *utf8_key_path = auto_to_utf8(path);
+    }
+    else
+    {
+        char* utf8_key_path = auto_to_utf8(path);
         cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
         os_free(utf8_key_path);
     }
     cJSON_AddStringToObject(registry_stateless, "hive", hive);
 
     cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    char *utf8_value = auto_to_utf8(value);
+    char* utf8_value = auto_to_utf8(value);
     cJSON_AddStringToObject(registry_stateless, "value", utf8_value ? utf8_value : value);
     os_free(utf8_value);
 
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data != NULL) {
+    if (old_data != NULL)
+    {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(registry_stateless, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
-        fim_calculate_dbsync_difference_value(event_data->config,
-                                              old_data,
-                                              changed_attributes,
-                                              old_attributes);
+        fim_calculate_dbsync_difference_value(event_data->config, old_data, changed_attributes, old_attributes);
 
-        if (cJSON_GetArraySize(changed_attributes) == 0) {
+        if (cJSON_GetArraySize(changed_attributes) == 0)
+        {
             mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
             goto end;
         }
     }
 
-    if (event_data->config->tag != NULL) {
+    if (event_data->config->tag != NULL)
+    {
         cJSON_AddStringToObject(registry_stateless, "tags", event_data->config->tag);
     }
 
-    if (event_data->diff != NULL && resultType == MODIFIED) {
+    if (event_data->diff != NULL && resultType == MODIFIED)
+    {
         cJSON_AddStringToObject(registry_stateless, "content_changes", event_data->diff);
     }
 
-    if (notify_scan != 0 && event_data->evt_data->report_event) {
+    if (notify_scan != 0 && event_data->evt_data->report_event)
+    {
         send_syscheck_msg(stateless_event);
     }
 
     // Calculate checksum
     const char* sha1_hash;
-    if (event_data->data != NULL) {
+    if (event_data->data != NULL)
+    {
         sha1_hash = event_data->data->checksum;
-    } else {
-        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
-        if (aux != NULL) {
+    }
+    else
+    {
+        cJSON* aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL)
+        {
             sha1_hash = cJSON_GetStringValue(aux);
-        } else {
+        }
+        else
+        {
             mdebug1("Couldn't find checksum for '%s", path);
             return;
         }
@@ -1090,8 +1236,10 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
 
-    cJSON* stateful_event = build_stateful_event_registry_value(path, value, sha1_hash, document_version, arch, result_json, event_data->data);
-    if (!stateful_event) {
+    cJSON* stateful_event = build_stateful_event_registry_value(
+        path, value, sha1_hash, document_version, arch, result_json, event_data->data);
+    if (!stateful_event)
+    {
         merror("Couldn't create stateful event for %s", path);
         goto end; // LCOV_EXCL_LINE
     }
@@ -1101,17 +1249,20 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char item_desc[PATH_MAX + 128];
     snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
 
-    failed_registry_value_t *failed_value = NULL;
+    failed_registry_value_t* failed_value = NULL;
     bool mark_for_deletion = false;
 
-    if (resultType == INSERTED || resultType == MODIFIED) {
+    if (resultType == INSERTED || resultType == MODIFIED)
+    {
         failed_value = malloc(sizeof(failed_registry_value_t));
-        if (failed_value) {
+        if (failed_value)
+        {
             failed_value->path = strdup(path);
             failed_value->value = strdup(value);
             failed_value->arch = arch;
             mark_for_deletion = (failed_value->path != NULL && failed_value->value != NULL);
-            if (!mark_for_deletion) {
+            if (!mark_for_deletion)
+            {
                 os_free(failed_value->path);
                 os_free(failed_value->value);
                 os_free(failed_value);
@@ -1120,14 +1271,21 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    bool validation_passed = validate_and_persist_fim_event(stateful_event, registry_value_sha1, sync_operation,
-                                                             FIM_REGISTRY_VALUES_SYNC_INDEX, document_version,
-                                                             item_desc, mark_for_deletion,
-                                                             event_data->failed_values, failed_value, sync_flag);
+    bool validation_passed = validate_and_persist_fim_event(stateful_event,
+                                                            registry_value_sha1,
+                                                            sync_operation,
+                                                            FIM_REGISTRY_VALUES_SYNC_INDEX,
+                                                            document_version,
+                                                            item_desc,
+                                                            mark_for_deletion,
+                                                            event_data->failed_values,
+                                                            failed_value,
+                                                            sync_flag);
 
     // If validation passed, we need to free failed_value (it wasn't added to the list)
     // If validation failed, failed_value was added to the list and will be freed later
-    if (validation_passed && failed_value) {
+    if (validation_passed && failed_value)
+    {
         os_free(failed_value->path);
         os_free(failed_value->value);
         os_free(failed_value);
@@ -1149,32 +1307,44 @@ end:
  * unchanged on error.
  * @return 0 if the root key is properly set, -1 otherwise.
  */
-int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **sub_key) {
+int fim_set_root_key(HKEY* root_key_handle, const char* full_key, const char** sub_key)
+{
     int root_key_length;
 
-    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
+    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL)
+    {
         return -1;
     }
 
     /* Verify valid root tree */
-    if (strncmp(full_key, "HKEY_LOCAL_MACHINE", 18) == 0) {
+    if (strncmp(full_key, "HKEY_LOCAL_MACHINE", 18) == 0)
+    {
         *root_key_handle = HKEY_LOCAL_MACHINE;
         root_key_length = 18;
-    } else if (strncmp(full_key, "HKEY_CLASSES_ROOT", 17) == 0) {
+    }
+    else if (strncmp(full_key, "HKEY_CLASSES_ROOT", 17) == 0)
+    {
         *root_key_handle = HKEY_CLASSES_ROOT;
         root_key_length = 17;
-    } else if (strncmp(full_key, "HKEY_CURRENT_CONFIG", 19) == 0) {
+    }
+    else if (strncmp(full_key, "HKEY_CURRENT_CONFIG", 19) == 0)
+    {
         *root_key_handle = HKEY_CURRENT_CONFIG;
         root_key_length = 19;
-    } else if (strncmp(full_key, "HKEY_USERS", 10) == 0) {
+    }
+    else if (strncmp(full_key, "HKEY_USERS", 10) == 0)
+    {
         *root_key_handle = HKEY_USERS;
         root_key_length = 10;
-    } else {
+    }
+    else
+    {
         *root_key_handle = NULL;
         return -1;
     }
 
-    if (full_key[root_key_length] != '\\') {
+    if (full_key[root_key_length] != '\\')
+    {
         *root_key_handle = NULL;
         return -1;
     }
@@ -1183,35 +1353,41 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
     return 0;
 }
 
-registry_t *fim_registry_configuration(const char *key, int arch) {
+registry_t* fim_registry_configuration(const char* key, int arch)
+{
     int it = 0;
     int top = 0;
     int match;
-    registry_t *ret = NULL;
+    registry_t* ret = NULL;
 
     // syscheck.registry is normally left as REGISTRY_EMPTY by Read_Syscheck_Config, but that fallback
     // sits after its OS_INVALID returns: an unparseable ossec.conf leaves it NULL, and
     // Start_win32_Syscheck's dump_syscheck_registry() recovery only runs on the "disabled" branch,
     // while fim_initialize() runs unconditionally. Guard here so every caller is safe.
-    if (syscheck.registry == NULL) {
+    if (syscheck.registry == NULL)
+    {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "registry", key);
         return NULL;
     }
 
-    for (it = 0; syscheck.registry[it].entry; it++) {
-        if (arch != syscheck.registry[it].arch) {
+    for (it = 0; syscheck.registry[it].entry; it++)
+    {
+        if (arch != syscheck.registry[it].arch)
+        {
             continue;
         }
 
         match = w_compare_str(syscheck.registry[it].entry, key);
 
-        if (top < match) {
+        if (top < match)
+        {
             ret = &syscheck.registry[it];
             top = match;
         }
     }
 
-    if (ret == NULL) {
+    if (ret == NULL)
+    {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "registry", key);
     }
 
@@ -1225,29 +1401,34 @@ registry_t *fim_registry_configuration(const char *key, int arch) {
  * @param configuration The configuration associated with the registry entry.
  * @return 0 if the path is valid, -1 if the path is to be excluded.
  */
-int fim_registry_validate_recursion_level(const char *key_path, const registry_t *configuration) {
-    const char *pos;
+int fim_registry_validate_recursion_level(const char* key_path, const registry_t* configuration)
+{
+    const char* pos;
     int depth = 0;
     unsigned int parent_path_size;
 
-    if (key_path == NULL || configuration == NULL) {
+    if (key_path == NULL || configuration == NULL)
+    {
         return -1;
     }
 
     /* Verify recursion level */
     parent_path_size = strlen(configuration->entry);
     // Recursion level only for registry keys
-    if (parent_path_size > strlen(key_path)) {
+    if (parent_path_size > strlen(key_path))
+    {
         return -1;
     }
 
     pos = key_path + parent_path_size;
-    while (pos = strchr(pos, PATH_SEP), pos) {
+    while (pos = strchr(pos, PATH_SEP), pos)
+    {
         depth++;
         pos++;
     }
 
-    if (depth > configuration->recursion_level) {
+    if (depth > configuration->recursion_level)
+    {
         mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, key_path);
         return -1;
     }
@@ -1263,45 +1444,61 @@ int fim_registry_validate_recursion_level(const char *key_path, const registry_t
  * @param key 1 if the entry is a key, 0 if the entry is a value.
  * @return 0 if the path is valid, -1 if the path is to be excluded.
  */
-int fim_registry_validate_ignore(const char *entry, const registry_t *configuration, int key) {
+int fim_registry_validate_ignore(const char* entry, const registry_t* configuration, int key)
+{
     int ign_it;
-    registry_ignore **ignore_list;
-    registry_ignore_regex **ignore_list_regex;
+    registry_ignore** ignore_list;
+    registry_ignore_regex** ignore_list_regex;
 
-    if (entry == NULL || configuration == NULL) {
+    if (entry == NULL || configuration == NULL)
+    {
         return -1;
     }
 
-    if (key) {
+    if (key)
+    {
         ignore_list = &syscheck.key_ignore;
         ignore_list_regex = &syscheck.key_ignore_regex;
-    } else {
+    }
+    else
+    {
         ignore_list = &syscheck.value_ignore;
         ignore_list_regex = &syscheck.value_ignore_regex;
     }
 
-    if (*ignore_list) {
-        for (ign_it = 0; (*ignore_list)[ign_it].entry; ign_it++) {
-            if ((*ignore_list)[ign_it].arch != configuration->arch) {
+    if (*ignore_list)
+    {
+        for (ign_it = 0; (*ignore_list)[ign_it].entry; ign_it++)
+        {
+            if ((*ignore_list)[ign_it].arch != configuration->arch)
+            {
                 continue;
             }
-            if (strncasecmp((*ignore_list)[ign_it].entry, entry, strlen((*ignore_list)[ign_it].entry)) == 0) {
-                mdebug2(FIM_REG_IGNORE_ENTRY, key ? "registry" : "value",
-                        (*ignore_list)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
+            if (strncasecmp((*ignore_list)[ign_it].entry, entry, strlen((*ignore_list)[ign_it].entry)) == 0)
+            {
+                mdebug2(FIM_REG_IGNORE_ENTRY,
+                        key ? "registry" : "value",
+                        (*ignore_list)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]",
+                        entry,
                         (*ignore_list)[ign_it].entry);
                 return -1;
             }
         }
     }
-    if (*ignore_list_regex) {
-        for (ign_it = 0; (*ignore_list_regex)[ign_it].regex; ign_it++) {
-            if ((*ignore_list_regex)[ign_it].arch != configuration->arch) {
+    if (*ignore_list_regex)
+    {
+        for (ign_it = 0; (*ignore_list_regex)[ign_it].regex; ign_it++)
+        {
+            if ((*ignore_list_regex)[ign_it].arch != configuration->arch)
+            {
                 continue;
-
             }
-            if (OSMatch_Execute(entry, strlen(entry), (*ignore_list_regex)[ign_it].regex)) {
-                mdebug2(FIM_REG_IGNORE_SREGEX, key ? "registry" : "value",
-                        (*ignore_list_regex)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
+            if (OSMatch_Execute(entry, strlen(entry), (*ignore_list_regex)[ign_it].regex))
+            {
+                mdebug2(FIM_REG_IGNORE_SREGEX,
+                        key ? "registry" : "value",
+                        (*ignore_list_regex)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]",
+                        entry,
                         (*ignore_list_regex)[ign_it].regex->raw);
                 return -1;
             }
@@ -1317,15 +1514,19 @@ int fim_registry_validate_ignore(const char *entry, const registry_t *configurat
  * @param restriction The regex restriction to be checked
  * @return 1 if the folder has been configured with the specified restriction, 0 if not
  */
-int fim_registry_validate_restrict(const char *entry, OSMatch *restriction) {
-    if (entry == NULL) {
+int fim_registry_validate_restrict(const char* entry, OSMatch* restriction)
+{
+    if (entry == NULL)
+    {
         merror(NULL_ERROR);
         return 1;
     }
 
     // Restrict file types
-    if (restriction) {
-        if (!OSMatch_Execute(entry, strlen(entry), restriction)) {
+    if (restriction)
+    {
+        if (!OSMatch_Execute(entry, strlen(entry), restriction))
+        {
             mdebug2(FIM_FILE_IGNORE_RESTRICT, entry, restriction->raw);
             return 1;
         }
@@ -1339,34 +1540,35 @@ int fim_registry_validate_restrict(const char *entry, OSMatch *restriction) {
  *
  * @param data FIM registry key whose checksum will be computed
  */
-void fim_registry_get_checksum_key(fim_registry_key *data) {
-    char *checksum = NULL;
+void fim_registry_get_checksum_key(fim_registry_key* data)
+{
+    char* checksum = NULL;
     int size;
 
     size = snprintf(0,
-            0,
-            "%s:%s:%s:%s:%s:%s:%lu:%d",
-            data->path ? data->path : "",
-            data->permissions ? data->permissions : "",
-            data->uid ? data->uid : "",
-            data->owner ? data->owner : "",
-            data->gid ? data->gid : "",
-            data->group ? data->group : "",
-            data->mtime,
-            data->architecture);
+                    0,
+                    "%s:%s:%s:%s:%s:%s:%lu:%d",
+                    data->path ? data->path : "",
+                    data->permissions ? data->permissions : "",
+                    data->uid ? data->uid : "",
+                    data->owner ? data->owner : "",
+                    data->gid ? data->gid : "",
+                    data->group ? data->group : "",
+                    data->mtime,
+                    data->architecture);
 
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
-            size + 1,
-            "%s:%s:%s:%s:%s:%s:%lu:%d",
-            data->path ? data->path : "",
-            data->permissions ? data->permissions : "",
-            data->uid ? data->uid : "",
-            data->gid ? data->gid : "",
-            data->owner ? data->owner : "",
-            data->group ? data->group : "",
-            data->mtime,
-            data->architecture);
+             size + 1,
+             "%s:%s:%s:%s:%s:%s:%lu:%d",
+             data->path ? data->path : "",
+             data->permissions ? data->permissions : "",
+             data->uid ? data->uid : "",
+             data->gid ? data->gid : "",
+             data->owner ? data->owner : "",
+             data->group ? data->group : "",
+             data->mtime,
+             data->architecture);
 
     OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);
@@ -1377,34 +1579,35 @@ void fim_registry_get_checksum_key(fim_registry_key *data) {
  *
  * @param data FIM registry value whose checksum will be computed
  */
-void fim_registry_get_checksum_value(fim_registry_value_data *data) {
-    char *checksum = NULL;
+void fim_registry_get_checksum_value(fim_registry_value_data* data)
+{
+    char* checksum = NULL;
     int size;
 
     size = snprintf(0,
-            0,
-            "%s:%s:%d:%u:%llu:%s:%s:%s",
-            data->path ? data->path : "",
-            data->value ? data->value : "",
-            data->architecture,
-            data->type,
-            data->size,
-            data->hash_md5 ,
-            data->hash_sha1,
-            data->hash_sha256);
+                    0,
+                    "%s:%s:%d:%u:%llu:%s:%s:%s",
+                    data->path ? data->path : "",
+                    data->value ? data->value : "",
+                    data->architecture,
+                    data->type,
+                    data->size,
+                    data->hash_md5,
+                    data->hash_sha1,
+                    data->hash_sha256);
 
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
-            size + 1,
-            "%s:%s:%d:%u:%llu:%s:%s:%s",
-            data->path ? data->path : "",
-            data->value ? data->value : "",
-            data->architecture,
-            data->type,
-            data->size,
-            data->hash_md5 ,
-            data->hash_sha1,
-            data->hash_sha256);
+             size + 1,
+             "%s:%s:%d:%u:%llu:%s:%s:%s",
+             data->path ? data->path : "",
+             data->value ? data->value : "",
+             data->architecture,
+             data->type,
+             data->size,
+             data->hash_md5,
+             data->hash_sha1,
+             data->hash_sha256);
 
     OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);
@@ -1418,16 +1621,20 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
  * @param sha1_ctx An uninitialized sha1 context.
  * @param sha256_ctx An uninitialized sha256 context.
  */
-void fim_registry_init_digests(int opts, EVP_MD_CTX *md5_ctx, EVP_MD_CTX *sha1_ctx, EVP_MD_CTX *sha256_ctx) {
-    if (opts & CHECK_MD5SUM) {
+void fim_registry_init_digests(int opts, EVP_MD_CTX* md5_ctx, EVP_MD_CTX* sha1_ctx, EVP_MD_CTX* sha256_ctx)
+{
+    if (opts & CHECK_MD5SUM)
+    {
         EVP_DigestInit(md5_ctx, EVP_md5());
     }
 
-    if (opts & CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM)
+    {
         EVP_DigestInit(sha1_ctx, EVP_sha1());
     }
 
-    if (opts & CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM)
+    {
         EVP_DigestInit(sha256_ctx, EVP_sha256());
     }
 }
@@ -1442,21 +1649,21 @@ void fim_registry_init_digests(int opts, EVP_MD_CTX *md5_ctx, EVP_MD_CTX *sha1_c
  * @param sha1_ctx An SHA1 CTX to be updated with the contents of buffer.
  * @param sha256_ctx An SHA256 CTX to be updated with the contents of buffer.
  */
-void fim_registry_update_digests(const BYTE *buffer,
-                                 size_t length,
-                                 int opts,
-                                 EVP_MD_CTX *md5_ctx,
-                                 EVP_MD_CTX *sha1_ctx,
-                                 EVP_MD_CTX *sha256_ctx) {
-    if (opts & CHECK_MD5SUM) {
+void fim_registry_update_digests(
+    const BYTE* buffer, size_t length, int opts, EVP_MD_CTX* md5_ctx, EVP_MD_CTX* sha1_ctx, EVP_MD_CTX* sha256_ctx)
+{
+    if (opts & CHECK_MD5SUM)
+    {
         EVP_DigestUpdate(md5_ctx, buffer, length);
     }
 
-    if (opts & CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM)
+    {
         EVP_DigestUpdate(sha1_ctx, buffer, length);
     }
 
-    if (opts & CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM)
+    {
         EVP_DigestUpdate(sha256_ctx, buffer, length);
     }
 }
@@ -1473,36 +1680,43 @@ void fim_registry_update_digests(const BYTE *buffer,
  * @param sha256_output A buffer holding the SHA256 hash on exit.
  */
 void fim_registry_final_digests(int opts,
-                                EVP_MD_CTX *md5_ctx,
-                                EVP_MD_CTX *sha1_ctx,
-                                EVP_MD_CTX *sha256_ctx,
+                                EVP_MD_CTX* md5_ctx,
+                                EVP_MD_CTX* sha1_ctx,
+                                EVP_MD_CTX* sha256_ctx,
                                 os_md5 md5_output,
                                 os_sha1 sha1_output,
-                                os_sha256 sha256_output) {
+                                os_sha256 sha256_output)
+{
     unsigned char md5_digest[MD5_DIGEST_LENGTH];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
     int n;
 
-    if (opts & CHECK_MD5SUM) {
+    if (opts & CHECK_MD5SUM)
+    {
         EVP_DigestFinal(md5_ctx, md5_digest, NULL);
-        for (n = 0; n < MD5_DIGEST_LENGTH; n++) {
+        for (n = 0; n < MD5_DIGEST_LENGTH; n++)
+        {
             snprintf(md5_output, 3, "%02x", md5_digest[n]);
             md5_output += 2;
         }
     }
 
-    if (opts & CHECK_SHA1SUM) {
+    if (opts & CHECK_SHA1SUM)
+    {
         EVP_DigestFinal(sha1_ctx, sha1_digest, NULL);
-        for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        for (n = 0; n < SHA_DIGEST_LENGTH; n++)
+        {
             snprintf(sha1_output, 3, "%02x", sha1_digest[n]);
             sha1_output += 2;
         }
     }
 
-    if (opts & CHECK_SHA256SUM) {
+    if (opts & CHECK_SHA256SUM)
+    {
         EVP_DigestFinal(sha256_ctx, sha256_digest, NULL);
-        for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
+        for (n = 0; n < SHA256_DIGEST_LENGTH; n++)
+        {
             snprintf(sha256_output, 3, "%02x", sha256_digest[n]);
             sha256_output += 2;
         }
@@ -1516,12 +1730,13 @@ void fim_registry_final_digests(int opts,
  * @param configuration The confguration associated with the value.
  * @param data_buffer Raw buffer holding the value's contents.
  */
-void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, BYTE *data_buffer) {
-    EVP_MD_CTX *md5_ctx = EVP_MD_CTX_new();
-    EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
-    EVP_MD_CTX *sha256_ctx = EVP_MD_CTX_new();
+void fim_registry_calculate_hashes(fim_entry* entry, registry_t* configuration, BYTE* data_buffer)
+{
+    EVP_MD_CTX* md5_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* sha1_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* sha256_ctx = EVP_MD_CTX_new();
 
-    char *string_it;
+    char* string_it;
     BYTE buffer[OS_SIZE_2048];
     size_t length;
     bool is_successful = true;
@@ -1530,69 +1745,85 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
     entry->registry_entry.value->hash_sha1[0] = '\0';
     entry->registry_entry.value->hash_sha256[0] = '\0';
 
-    if ((configuration->opts & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)) == 0) {
+    if ((configuration->opts & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)) == 0)
+    {
         return;
     }
 
     /* Initialize configured hashes */
     fim_registry_init_digests(configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
 
-    switch (entry->registry_entry.value->type) {
-    case REG_SZ:
-    case REG_EXPAND_SZ: {
-        WCHAR *w_data = (WCHAR *)data_buffer;
-        char *utf8_data = wide_to_utf8(w_data);
-        if (utf8_data) {
-            fim_registry_update_digests((BYTE *)utf8_data, strlen(utf8_data), configuration->opts,
-                                        md5_ctx, sha1_ctx, sha256_ctx);
-            os_free(utf8_data);
-        } else {
-            mdebug1("Error converting registry value data to UTF-8.");
-            is_successful = false;
-        }
-    }
-    break;
-    case REG_MULTI_SZ: {
-        WCHAR *w_data = (WCHAR *)data_buffer;
-
-        // Multi string check
-        while (*w_data) {
-            char *utf8_data = wide_to_utf8(w_data);
-            if (utf8_data) {
-                fim_registry_update_digests((BYTE *)utf8_data, strlen(utf8_data), configuration->opts,
-                                            md5_ctx, sha1_ctx, sha256_ctx);
+    switch (entry->registry_entry.value->type)
+    {
+        case REG_SZ:
+        case REG_EXPAND_SZ:
+        {
+            WCHAR* w_data = (WCHAR*)data_buffer;
+            char* utf8_data = wide_to_utf8(w_data);
+            if (utf8_data)
+            {
+                fim_registry_update_digests(
+                    (BYTE*)utf8_data, strlen(utf8_data), configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
                 os_free(utf8_data);
             }
-            else {
+            else
+            {
                 mdebug1("Error converting registry value data to UTF-8.");
                 is_successful = false;
-                break;
             }
-            w_data += wcslen(w_data) + 1; // Update pointer to next string location
         }
-    }
-    break;
-    case REG_DWORD:
-        length = snprintf((char *)buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
-        fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
         break;
-    default:
-        for (unsigned int i = 0; i < entry->registry_entry.value->size; i++) {
-            length = snprintf((char *)buffer, 3, "%02x", (unsigned int)data_buffer[i] & 0xFF);
+        case REG_MULTI_SZ:
+        {
+            WCHAR* w_data = (WCHAR*)data_buffer;
+
+            // Multi string check
+            while (*w_data)
+            {
+                char* utf8_data = wide_to_utf8(w_data);
+                if (utf8_data)
+                {
+                    fim_registry_update_digests(
+                        (BYTE*)utf8_data, strlen(utf8_data), configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
+                    os_free(utf8_data);
+                }
+                else
+                {
+                    mdebug1("Error converting registry value data to UTF-8.");
+                    is_successful = false;
+                    break;
+                }
+                w_data += wcslen(w_data) + 1; // Update pointer to next string location
+            }
+        }
+        break;
+        case REG_DWORD:
+            length = snprintf((char*)buffer, OS_SIZE_2048, "%08x", *((unsigned int*)data_buffer));
             fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
-        }
-        break;
+            break;
+        default:
+            for (unsigned int i = 0; i < entry->registry_entry.value->size; i++)
+            {
+                length = snprintf((char*)buffer, 3, "%02x", (unsigned int)data_buffer[i] & 0xFF);
+                fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
+            }
+            break;
     }
 
-    if (!is_successful) {
+    if (!is_successful)
+    {
         EVP_MD_CTX_free(md5_ctx);
         EVP_MD_CTX_free(sha1_ctx);
         EVP_MD_CTX_free(sha256_ctx);
         return;
     }
 
-    fim_registry_final_digests(configuration->opts, md5_ctx, sha1_ctx, sha256_ctx,
-                               entry->registry_entry.value->hash_md5, entry->registry_entry.value->hash_sha1,
+    fim_registry_final_digests(configuration->opts,
+                               md5_ctx,
+                               sha1_ctx,
+                               sha256_ctx,
+                               entry->registry_entry.value->hash_md5,
+                               entry->registry_entry.value->hash_sha1,
                                entry->registry_entry.value->hash_sha256);
 
     EVP_MD_CTX_free(md5_ctx);
@@ -1605,8 +1836,10 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
  *
  * @param data A fim_registry_key object to be free'd.
  */
-void fim_registry_free_key(fim_registry_key *key) {
-    if (key) {
+void fim_registry_free_key(fim_registry_key* key)
+{
+    if (key)
+    {
         os_free(key->path);
         os_free(key->permissions);
         cJSON_Delete(key->perm_json);
@@ -1626,8 +1859,9 @@ void fim_registry_free_key(fim_registry_key *key) {
  * @param configuration The confguration associated with the key.
  * @return A fim_registry_key object holding the information from the queried key, NULL on error.
  */
-fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry_t *configuration) {
-    fim_registry_key *key;
+fim_registry_key* fim_registry_get_key_data(HKEY key_handle, const char* path, const registry_t* configuration)
+{
+    fim_registry_key* key;
 
     os_calloc(1, sizeof(fim_registry_key), key);
 
@@ -1635,20 +1869,24 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
 
     key->architecture = configuration->arch;
 
-     if (configuration->opts & CHECK_OWNER) {
+    if (configuration->opts & CHECK_OWNER)
+    {
         key->owner = get_registry_user(path, &key->uid, key_handle);
     }
 
-    if (configuration->opts & CHECK_GROUP) {
+    if (configuration->opts & CHECK_GROUP)
+    {
         key->group = get_registry_group(&key->gid, key_handle);
     }
 
-    if (configuration->opts & CHECK_PERM) {
+    if (configuration->opts & CHECK_PERM)
+    {
         int error;
 
         key->perm_json = NULL;
         error = get_registry_permissions(key_handle, &(key->perm_json));
-        if (error) {
+        if (error)
+        {
             mdebug1(FIM_EXTRACT_PERM_FAIL, path, error);
             fim_registry_free_key(key);
             return NULL;
@@ -1658,7 +1896,8 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->permissions = cJSON_PrintUnformatted(key->perm_json);
     }
 
-    if (configuration->opts & CHECK_MTIME) {
+    if (configuration->opts & CHECK_MTIME)
+    {
         key->mtime = get_registry_mtime(key_handle);
     }
 
@@ -1672,15 +1911,19 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
  *
  * @param data A fim_registry_value_data object to be free'd.
  */
-void fim_registry_free_value_data(fim_registry_value_data *data) {
-    if (data) {
+void fim_registry_free_value_data(fim_registry_value_data* data)
+{
+    if (data)
+    {
         os_free(data->value);
         free(data);
     }
 }
 
-void fim_registry_free_entry(fim_entry *entry) {
-    if (entry) {
+void fim_registry_free_entry(fim_entry* entry)
+{
+    if (entry)
+    {
         fim_registry_free_key(entry->registry_entry.key);
         fim_registry_free_value_data(entry->registry_entry.value);
         os_free(entry);
@@ -1698,24 +1941,32 @@ void fim_registry_free_entry(fim_entry *entry) {
  *         returns the original buffer cast to char* (no allocation). Returns NULL if
  *         UTF-16 to UTF-8 conversion fails.
  */
-STATIC char *fim_registry_convert_value_for_diff(const BYTE *data_buffer, DWORD data_type) {
-    char *value_data_for_diff = NULL;
+STATIC char* fim_registry_convert_value_for_diff(const BYTE* data_buffer, DWORD data_type)
+{
+    char* value_data_for_diff = NULL;
 
-    if (data_type == REG_SZ || data_type == REG_EXPAND_SZ) {
+    if (data_type == REG_SZ || data_type == REG_EXPAND_SZ)
+    {
         value_data_for_diff = wide_to_utf8((WCHAR*)data_buffer);
-    } else if (data_type == REG_MULTI_SZ) {
-        WCHAR *w_data = (WCHAR *)data_buffer;
+    }
+    else if (data_type == REG_MULTI_SZ)
+    {
+        WCHAR* w_data = (WCHAR*)data_buffer;
         size_t total_size = 0;
-        WCHAR *it;
-        char *cur;
+        WCHAR* it;
+        char* cur;
 
         it = w_data;
-        while (*it) {
-            char *utf8_temp = wide_to_utf8(it);
-            if (utf8_temp) {
+        while (*it)
+        {
+            char* utf8_temp = wide_to_utf8(it);
+            if (utf8_temp)
+            {
                 total_size += strlen(utf8_temp) + 1;
                 os_free(utf8_temp);
-            } else {
+            }
+            else
+            {
                 return NULL;
             }
             it += wcslen(it) + 1;
@@ -1725,22 +1976,28 @@ STATIC char *fim_registry_convert_value_for_diff(const BYTE *data_buffer, DWORD 
         os_calloc(total_size, sizeof(char), value_data_for_diff);
 
         cur = value_data_for_diff;
-        while (*w_data) {
-            char *utf8_data = wide_to_utf8(w_data);
-            if (utf8_data) {
+        while (*w_data)
+        {
+            char* utf8_data = wide_to_utf8(w_data);
+            if (utf8_data)
+            {
                 size_t len = strlen(utf8_data);
                 memcpy(cur, utf8_data, len + 1);
                 cur += len + 1;
                 os_free(utf8_data);
-            } else {
+            }
+            else
+            {
                 os_free(value_data_for_diff);
                 return NULL;
             }
             w_data += wcslen(w_data) + 1;
         }
         *cur = '\0';
-    } else {
-        value_data_for_diff = (char *)data_buffer;
+    }
+    else
+    {
+        value_data_for_diff = (char*)data_buffer;
     }
 
     return value_data_for_diff;
@@ -1764,15 +2021,16 @@ void fim_read_values(HKEY key_handle,
                      DWORD max_value_length,
                      DWORD max_value_data_length,
                      TXN_HANDLE regval_txn_handler,
-                     fim_val_txn_context_t *txn_ctx_regval) {
+                     fim_val_txn_context_t* txn_ctx_regval)
+{
     fim_registry_value_data value_data;
-    WCHAR *value_name_buffer;
-    BYTE *data_buffer;
+    WCHAR* value_name_buffer;
+    BYTE* data_buffer;
     DWORD i;
     fim_entry new;
-    char *value_path;
+    char* value_path;
     size_t value_path_length;
-    registry_t *configuration = NULL;
+    registry_t* configuration = NULL;
     char* diff = NULL;
 
     value_data.architecture = arch;
@@ -1784,13 +2042,15 @@ void fim_read_values(HKEY key_handle,
     os_calloc(max_value_length + 1, sizeof(WCHAR), value_name_buffer);
     os_calloc(max_value_data_length + 4, sizeof(BYTE), data_buffer);
 
-    for (i = 0; i < value_count; i++) {
+    for (i = 0; i < value_count; i++)
+    {
         DWORD value_size = max_value_length + 1;
         DWORD data_size = max_value_data_length;
         DWORD data_type = 0;
 
         configuration = fim_registry_configuration(path, arch);
-        if (configuration == NULL) {
+        if (configuration == NULL)
+        {
             os_free(value_data.value);
             os_free(value_name_buffer);
             os_free(data_buffer);
@@ -1798,15 +2058,17 @@ void fim_read_values(HKEY key_handle,
         }
 
         if (RegEnumValueW(key_handle, i, value_name_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
-            ERROR_SUCCESS) {
+            ERROR_SUCCESS)
+        {
             break;
         }
 
         os_free(value_data.value);
 
-        char *value_name_utf8 = wide_to_utf8(value_name_buffer);
+        char* value_name_utf8 = wide_to_utf8(value_name_buffer);
 
-        if (value_name_utf8 == NULL) {
+        if (value_name_utf8 == NULL)
+        {
             mdebug1("Failed to convert value name to UTF-8");
             continue;
         }
@@ -1819,9 +2081,11 @@ void fim_read_values(HKEY key_handle,
         value_path_length = strlen(new.registry_entry.value->path) + strlen(new.registry_entry.value->value) + 2;
 
         os_malloc(value_path_length, value_path);
-        snprintf(value_path, value_path_length, "%s\\%s", new.registry_entry.value->path, new.registry_entry.value->value);
+        snprintf(
+            value_path, value_path_length, "%s\\%s", new.registry_entry.value->path, new.registry_entry.value->value);
 
-        if (fim_registry_validate_ignore(value_path, configuration, 0)) {
+        if (fim_registry_validate_ignore(value_path, configuration, 0))
+        {
             os_free(value_path);
             os_free(value_data.value);
             continue;
@@ -1829,7 +2093,8 @@ void fim_read_values(HKEY key_handle,
 
         os_free(value_path);
 
-        if (fim_registry_validate_restrict(new.registry_entry.value->value, configuration->restrict_value)) {
+        if (fim_registry_validate_restrict(new.registry_entry.value->value, configuration->restrict_value))
+        {
             continue;
         }
 
@@ -1837,16 +2102,22 @@ void fim_read_values(HKEY key_handle,
 
         fim_registry_get_checksum_value(new.registry_entry.value);
 
-        if (configuration->opts & CHECK_SEECHANGES) {
-            char *value_data_for_diff = fim_registry_convert_value_for_diff(data_buffer, data_type);
+        if (configuration->opts & CHECK_SEECHANGES)
+        {
+            char* value_data_for_diff = fim_registry_convert_value_for_diff(data_buffer, data_type);
 
-            if (value_data_for_diff) {
-                diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->value,
-                                           value_data_for_diff, new.registry_entry.value->type, configuration);
+            if (value_data_for_diff)
+            {
+                diff = fim_registry_value_diff(new.registry_entry.value->path,
+                                               new.registry_entry.value->value,
+                                               value_data_for_diff,
+                                               new.registry_entry.value->type,
+                                               configuration);
             }
 
             // Free only if allocated in this function
-            if (data_type == REG_SZ || data_type == REG_EXPAND_SZ || data_type == REG_MULTI_SZ) {
+            if (data_type == REG_SZ || data_type == REG_EXPAND_SZ || data_type == REG_MULTI_SZ)
+            {
                 os_free(value_data_for_diff);
             }
         }
@@ -1855,7 +2126,8 @@ void fim_read_values(HKEY key_handle,
         txn_ctx_regval->config = configuration;
 
         int result_transaction = fim_db_transaction_sync_row(regval_txn_handler, &new);
-        if (result_transaction < 0) {
+        if (result_transaction < 0)
+        {
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
 
@@ -1879,15 +2151,16 @@ void fim_read_values(HKEY key_handle,
  * @param parent_configuration A pointer to the configuration of this key's "parent".
  */
 void fim_open_key(HKEY root_key_handle,
-                  const char *full_key,
-                  const char *sub_key,
+                  const char* full_key,
+                  const char* sub_key,
                   int arch,
                   fim_event_mode mode,
-                  registry_t *parent_configuration,
+                  registry_t* parent_configuration,
                   TXN_HANDLE regkey_txn_handler,
                   TXN_HANDLE regval_txn_handler,
-                  fim_val_txn_context_t *txn_ctx_regval,
-                  fim_key_txn_context_t *txn_ctx_reg) {
+                  fim_val_txn_context_t* txn_ctx_regval,
+                  fim_key_txn_context_t* txn_ctx_reg)
+{
 
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
@@ -1895,49 +2168,56 @@ void fim_open_key(HKEY root_key_handle,
     DWORD value_count;
     DWORD max_value_length;
     DWORD max_value_data_length;
-    FILETIME file_time = { 0 };
+    FILETIME file_time = {0};
     DWORD i;
     fim_entry new;
-    registry_t *configuration;
+    registry_t* configuration;
     int result_transaction = -1;
 
     /* Same pruning as fim_checker(): this recursion runs under fim_registry_scan_mutex, which the
      * shutdown teardown needs to release the registry transaction contexts (issue #38212). The
      * check belongs here and not only in the caller's loop, because a single top level key takes
      * minutes on its own. */
-    if (mode == FIM_SCHEDULED && fim_shutdown_process_on()) {
+    if (mode == FIM_SCHEDULED && fim_shutdown_process_on())
+    {
         return;
     }
 
-    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
+    if (root_key_handle == NULL || full_key == NULL || sub_key == NULL)
+    {
         return;
     }
 
     configuration = fim_registry_configuration(full_key, arch);
-    if (configuration == NULL) {
+    if (configuration == NULL)
+    {
         return;
     }
 
-    if (mode == FIM_SCHEDULED && parent_configuration != NULL && parent_configuration != configuration) {
+    if (mode == FIM_SCHEDULED && parent_configuration != NULL && parent_configuration != configuration)
+    {
         // If a more specific configuration is available in scheduled mode, we will scan this registry later.
         return;
     }
 
     // Recursion level restrictions.
-    if (fim_registry_validate_recursion_level(full_key, configuration)) {
+    if (fim_registry_validate_recursion_level(full_key, configuration))
+    {
         return;
     }
 
     // Ignore restriction
-    if (fim_registry_validate_ignore(full_key, configuration, 1)) {
+    if (fim_registry_validate_ignore(full_key, configuration, 1))
+    {
         return;
     }
 
     access_rights = KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
 
-    WCHAR *sub_key_wide = auto_to_wide(sub_key);
+    WCHAR* sub_key_wide = auto_to_wide(sub_key);
 
-    if (sub_key_wide == NULL) {
+    if (sub_key_wide == NULL)
+    {
         mdebug1("Failed to convert registry key to wide character: '%s'", sub_key);
         return;
     }
@@ -1945,34 +2225,49 @@ void fim_open_key(HKEY root_key_handle,
     LONG reg_result = RegOpenKeyExW(root_key_handle, sub_key_wide, 0, access_rights, &current_key_handle);
     os_free(sub_key_wide);
 
-    if (reg_result != ERROR_SUCCESS) {
+    if (reg_result != ERROR_SUCCESS)
+    {
         mdebug1(FIM_REG_OPEN, sub_key, arch == ARCH_32BIT ? "[x32]" : "[x64]", reg_result);
         return;
     }
 
     /* We use the class_name, sub_key_count and the value count */
-    if (RegQueryInfoKey(current_key_handle, NULL, NULL, NULL, &sub_key_count, NULL, NULL, &value_count,
-                        &max_value_length, &max_value_data_length, NULL, &file_time) != ERROR_SUCCESS) {
+    if (RegQueryInfoKey(current_key_handle,
+                        NULL,
+                        NULL,
+                        NULL,
+                        &sub_key_count,
+                        NULL,
+                        NULL,
+                        &value_count,
+                        &max_value_length,
+                        &max_value_data_length,
+                        NULL,
+                        &file_time) != ERROR_SUCCESS)
+    {
         RegCloseKey(current_key_handle);
         return;
     }
 
     /* Query each sub_key and call open_key */
-    for (i = 0; i < sub_key_count; i++) {
-        char *new_full_key;
-        char *new_sub_key;
+    for (i = 0; i < sub_key_count; i++)
+    {
+        char* new_full_key;
+        char* new_sub_key;
         size_t new_full_key_length;
         WCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
         DWORD sub_key_name_s = MAX_KEY_LENGTH + 1;
 
         if (RegEnumKeyExW(current_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) !=
-            ERROR_SUCCESS) {
+            ERROR_SUCCESS)
+        {
             continue;
         }
 
-        char *sub_key_name_utf8 = wide_to_utf8(sub_key_name_b);
+        char* sub_key_name_utf8 = wide_to_utf8(sub_key_name_b);
 
-        if (sub_key_name_utf8 == NULL) {
+        if (sub_key_name_utf8 == NULL)
+        {
             mdebug1("Failed to convert sub key name to UTF-8");
             continue;
         }
@@ -1985,19 +2280,29 @@ void fim_open_key(HKEY root_key_handle,
 
         os_free(sub_key_name_utf8);
 
-        if (new_sub_key = strchr(new_full_key, '\\'), new_sub_key) {
+        if (new_sub_key = strchr(new_full_key, '\\'), new_sub_key)
+        {
             new_sub_key++;
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration, regkey_txn_handler,
-                     regval_txn_handler, txn_ctx_regval, txn_ctx_reg);
+        fim_open_key(root_key_handle,
+                     new_full_key,
+                     new_sub_key,
+                     arch,
+                     mode,
+                     configuration,
+                     regkey_txn_handler,
+                     regval_txn_handler,
+                     txn_ctx_regval,
+                     txn_ctx_reg);
 
         os_free(new_full_key);
     }
 
     // Restrict check
-    if (fim_registry_validate_restrict(full_key, configuration->restrict_key)) {
+    if (fim_registry_validate_restrict(full_key, configuration->restrict_key))
+    {
         return;
     }
 
@@ -2006,7 +2311,8 @@ void fim_open_key(HKEY root_key_handle,
     new.registry_entry.key = fim_registry_get_key_data(current_key_handle, full_key, configuration);
     new.registry_entry.value = NULL;
 
-    if (new.registry_entry.key == NULL) {
+    if (new.registry_entry.key == NULL)
+    {
         return;
     }
 
@@ -2014,13 +2320,21 @@ void fim_open_key(HKEY root_key_handle,
     txn_ctx_reg->config = configuration;
 
     result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
-    if(result_transaction < 0){
+    if (result_transaction < 0)
+    {
         merror("Dbsync registry transaction failed due to %d", result_transaction);
     }
 
-    if (value_count) {
-        fim_read_values(current_key_handle, new.registry_entry.key->path, new.registry_entry.key->architecture, value_count, max_value_length, max_value_data_length,
-                        regval_txn_handler, txn_ctx_regval);
+    if (value_count)
+    {
+        fim_read_values(current_key_handle,
+                        new.registry_entry.key->path,
+                        new.registry_entry.key->architecture,
+                        value_count,
+                        max_value_length,
+                        max_value_data_length,
+                        regval_txn_handler,
+                        txn_ctx_regval);
     }
 
     txn_ctx_reg->config = NULL;
@@ -2029,19 +2343,23 @@ void fim_open_key(HKEY root_key_handle,
     RegCloseKey(current_key_handle);
 }
 
-static void free_failed_registry_key(void *data) {
-    failed_registry_key_t *key = (failed_registry_key_t *)data;
+static void free_failed_registry_key(void* data)
+{
+    failed_registry_key_t* key = (failed_registry_key_t*)data;
 
-    if (key != NULL) {
+    if (key != NULL)
+    {
         os_free(key->path);
         os_free(key);
     }
 }
 
-static void free_failed_registry_value(void *data) {
-    failed_registry_value_t *value = (failed_registry_value_t *)data;
+static void free_failed_registry_value(void* data)
+{
+    failed_registry_value_t* value = (failed_registry_value_t*)data;
 
-    if (value != NULL) {
+    if (value != NULL)
+    {
         os_free(value->path);
         os_free(value->value);
         os_free(value);
@@ -2055,9 +2373,10 @@ static void free_failed_registry_value(void *data) {
  * @param arch Arch of the entry
  * @return Allocated string, to be freed by the caller
  */
-static char *fim_registry_index_key(const char *path, int arch) {
+static char* fim_registry_index_key(const char* path, int arch)
+{
     size_t length = strlen(path) + 5;
-    char *key = NULL;
+    char* key = NULL;
 
     os_malloc(length, key);
     snprintf(key, length, "%s|%s", arch == ARCH_64BIT ? "x64" : "x32", path);
@@ -2070,26 +2389,33 @@ static char *fim_registry_index_key(const char *path, int arch) {
  * @param entry The registry entry
  * @return true only when opening the key fails because it is not found
  */
-static bool fim_registry_key_missing(const registry_t *entry) {
+static bool fim_registry_key_missing(const registry_t* entry)
+{
     HKEY root_key_handle = NULL;
     HKEY key_handle = NULL;
-    const char *sub_key = NULL;
-    WCHAR *sub_key_wide = NULL;
+    const char* sub_key = NULL;
+    WCHAR* sub_key_wide = NULL;
     LONG result;
 
-    if (fim_set_root_key(&root_key_handle, entry->entry, &sub_key) != 0) {
+    if (fim_set_root_key(&root_key_handle, entry->entry, &sub_key) != 0)
+    {
         return true;
     }
 
-    if (sub_key_wide = auto_to_wide(sub_key), sub_key_wide == NULL) {
+    if (sub_key_wide = auto_to_wide(sub_key), sub_key_wide == NULL)
+    {
         return false;
     }
 
-    result = RegOpenKeyExW(root_key_handle, sub_key_wide, 0,
-                           KEY_READ | (entry->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &key_handle);
+    result = RegOpenKeyExW(root_key_handle,
+                           sub_key_wide,
+                           0,
+                           KEY_READ | (entry->arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY),
+                           &key_handle);
     os_free(sub_key_wide);
 
-    if (result == ERROR_SUCCESS) {
+    if (result == ERROR_SUCCESS)
+    {
         RegCloseKey(key_handle);
         return false;
     }
@@ -2103,11 +2429,14 @@ static bool fim_registry_key_missing(const registry_t *entry) {
  * @param pattern The wildcard pattern
  * @param status FIM_REG_EXPAND_* flags of the expansion
  */
-static void fim_registry_log_expand_status(registry_t *pattern, int status) {
-    if ((status & FIM_REG_EXPAND_TRUNCATED) && !(pattern->expand_status & FIM_REG_EXPAND_TRUNCATED)) {
+static void fim_registry_log_expand_status(registry_t* pattern, int status)
+{
+    if ((status & FIM_REG_EXPAND_TRUNCATED) && !(pattern->expand_status & FIM_REG_EXPAND_TRUNCATED))
+    {
         mwarn(FIM_WARN_REG_WILDCARD_LIMIT, pattern->entry, OS_SIZE_8192 - 1);
     }
-    if ((status & FIM_REG_EXPAND_FAILED) && !(pattern->expand_status & FIM_REG_EXPAND_FAILED)) {
+    if ((status & FIM_REG_EXPAND_FAILED) && !(pattern->expand_status & FIM_REG_EXPAND_FAILED))
+    {
         mwarn(FIM_WARN_REG_WILDCARD_LIST, pattern->entry);
     }
     pattern->expand_status = status;
@@ -2121,56 +2450,67 @@ static void fim_registry_log_expand_status(registry_t *pattern, int status) {
  * read syscheck.registry from the dbsync threads, so it must not change between this call and
  * the deleted rows of both transactions.
  */
-STATIC void fim_registry_update_wildcards() {
+STATIC void fim_registry_update_wildcards()
+{
     char optstr[1024];
-    OSHash *index = NULL;
+    OSHash* index = NULL;
     int count = 0;
     int size = 0;
     int i;
 
-    if (syscheck.registry_wildcards == NULL) {
+    if (syscheck.registry_wildcards == NULL)
+    {
         return;
     }
 
     mdebug1(FIM_WILDCARDS_REGISTERS_START);
 
-    if (index = OSHash_Create(), index == NULL) {
+    if (index = OSHash_Create(), index == NULL)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         // Keep every entry rather than reporting them as deleted
-        for (i = 0; syscheck.registry[i].entry; i++) {
+        for (i = 0; syscheck.registry[i].entry; i++)
+        {
             syscheck.registry[i].is_expanded = 1;
         }
         return;
     }
 
-    for (size = 0; syscheck.registry[size].entry; size++) {
-        char *key = fim_registry_index_key(syscheck.registry[size].entry, syscheck.registry[size].arch);
+    for (size = 0; syscheck.registry[size].entry; size++)
+    {
+        char* key = fim_registry_index_key(syscheck.registry[size].entry, syscheck.registry[size].arch);
 
         syscheck.registry[size].is_expanded = 0;
-        OSHash_Add_ins(index, key, (void *)(intptr_t)(size + 1));
+        OSHash_Add_ins(index, key, (void*)(intptr_t)(size + 1));
         os_free(key);
     }
 
-    while (syscheck.registry_wildcards[count].entry) {
+    while (syscheck.registry_wildcards[count].entry)
+    {
         count++;
     }
 
     // Backwards, so the last pattern wins when several match a key
-    for (int w = count - 1; w >= 0; w--) {
-        registry_t *pattern = &syscheck.registry_wildcards[w];
+    for (int w = count - 1; w >= 0; w--)
+    {
+        registry_t* pattern = &syscheck.registry_wildcards[w];
         HKEY root_key_handle = NULL;
-        const char *sub_key = NULL;
-        char **paths = NULL;
+        const char* sub_key = NULL;
+        char** paths = NULL;
         int added = 0;
         int status;
 
         // The scan would discard its keys and they would be added again on every scan
-        if (fim_set_root_key(&root_key_handle, pattern->entry, &sub_key) != 0) {
-            if (*pattern->entry != '\0') {
+        if (fim_set_root_key(&root_key_handle, pattern->entry, &sub_key) != 0)
+        {
+            if (*pattern->entry != '\0')
+            {
                 mwarn(FIM_WARN_REG_WILDCARD_ROOT, pattern->entry);
                 // Emptied so the warning is logged only once, also for the other view of arch="both"
-                for (i = 0; i < count; i++) {
-                    if (i != w && strcmp(syscheck.registry_wildcards[i].entry, pattern->entry) == 0) {
+                for (i = 0; i < count; i++)
+                {
+                    if (i != w && strcmp(syscheck.registry_wildcards[i].entry, pattern->entry) == 0)
+                    {
                         *syscheck.registry_wildcards[i].entry = '\0';
                     }
                 }
@@ -2179,52 +2519,66 @@ STATIC void fim_registry_update_wildcards() {
             continue;
         }
 
-        os_calloc(OS_SIZE_8192, sizeof(char *), paths);
+        os_calloc(OS_SIZE_8192, sizeof(char*), paths);
         status = expand_wildcard_registers(pattern->entry, paths, pattern->arch);
 
-        for (int p = 0; paths[p]; p++) {
-            char *key = fim_registry_index_key(paths[p], pattern->arch);
+        for (int p = 0; paths[p]; p++)
+        {
+            char* key = fim_registry_index_key(paths[p], pattern->arch);
             intptr_t position = (intptr_t)OSHash_Get_ins(index, key);
 
-            if (position > size) {
+            if (position > size)
+            {
                 // Already added by this expansion
-            } else if (position > 0) {
+            }
+            else if (position > 0)
+            {
                 // Explicit entries and the ones of other patterns keep their options
                 syscheck.registry[position - 1].is_expanded = 1;
-            } else {
+            }
+            else
+            {
                 // New key: moved to the front of paths, it will be appended at this position
-                char *swap = paths[added];
+                char* swap = paths[added];
                 paths[added] = paths[p];
                 paths[p] = swap;
                 added++;
-                OSHash_Add_ins(index, key, (void *)(intptr_t)(size + added));
+                OSHash_Add_ins(index, key, (void*)(intptr_t)(size + added));
             }
             os_free(key);
         }
 
-        if (added > 0) {
+        if (added > 0)
+        {
             w_rwlock_wrlock(&syscheck.registry_lock);
-            registry_t *entries = append_syscheck_registry(&syscheck, pattern, paths, added);
-            for (int a = 0; a < added; a++) {
+            registry_t* entries = append_syscheck_registry(&syscheck, pattern, paths, added);
+            for (int a = 0; a < added; a++)
+            {
                 entries[a].wildcard = w + 1;
                 entries[a].is_expanded = 1;
             }
             w_rwlock_unlock(&syscheck.registry_lock);
             size += added;
 
-            for (int a = 0; a < added; a++) {
+            for (int a = 0; a < added; a++)
+            {
                 mdebug2(FIM_WILDCARDS_ADD_REGISTER, pattern->entry, paths[a]);
-                minfo(FIM_MONITORING_REGISTRY, paths[a], pattern->arch == ARCH_64BIT ? " [x64]" : "",
+                minfo(FIM_MONITORING_REGISTRY,
+                      paths[a],
+                      pattern->arch == ARCH_64BIT ? " [x64]" : "",
                       syscheck_opts2str(optstr, sizeof(optstr), pattern->opts));
             }
         }
         free_strarray(paths);
 
         // An incomplete expansion only drops the entries whose key is really gone
-        if (status != 0) {
-            for (i = 0; syscheck.registry[i].entry; i++) {
+        if (status != 0)
+        {
+            for (i = 0; syscheck.registry[i].entry; i++)
+            {
                 if (syscheck.registry[i].wildcard == (unsigned int)(w + 1) && !syscheck.registry[i].is_expanded &&
-                    !fim_registry_key_missing(&syscheck.registry[i])) {
+                    !fim_registry_key_missing(&syscheck.registry[i]))
+                {
                     syscheck.registry[i].is_expanded = 1;
                 }
             }
@@ -2239,18 +2593,23 @@ STATIC void fim_registry_update_wildcards() {
 /**
  * @brief Drops the wildcard entries that were not expanded in this scan.
  */
-STATIC void fim_registry_remove_unexpanded() {
+STATIC void fim_registry_remove_unexpanded()
+{
     int i;
     int last = 0;
 
-    if (syscheck.registry_wildcards == NULL) {
+    if (syscheck.registry_wildcards == NULL)
+    {
         return;
     }
 
     w_rwlock_wrlock(&syscheck.registry_lock);
-    for (i = 0; syscheck.registry[i].entry; i++) {
-        if (syscheck.registry[i].wildcard && !syscheck.registry[i].is_expanded) {
-            mdebug2(FIM_WILDCARDS_REMOVE_REGISTER, syscheck.registry[i].entry,
+    for (i = 0; syscheck.registry[i].entry; i++)
+    {
+        if (syscheck.registry[i].wildcard && !syscheck.registry[i].is_expanded)
+        {
+            mdebug2(FIM_WILDCARDS_REMOVE_REGISTER,
+                    syscheck.registry[i].entry,
                     syscheck.registry[i].arch == ARCH_64BIT ? "[x64]" : "[x32]");
             free_registry_entry(&syscheck.registry[i]);
             continue;
@@ -2262,29 +2621,36 @@ STATIC void fim_registry_remove_unexpanded() {
     w_rwlock_unlock(&syscheck.registry_lock);
 }
 
-void fim_registry_scan() {
-    if (fim_shutdown_process_on()) {
+void fim_registry_scan()
+{
+    if (fim_shutdown_process_on())
+    {
         return;
     }
 
     HKEY root_key_handle = NULL;
-    const char *sub_key = NULL;
+    const char* sub_key = NULL;
     int i = 0;
 
     // Check if registries are configured - if syscheck.registry is NULL or empty,
     // but we have data in the database, we need to send DataClean for registry indices.
     // Wildcard patterns that match no key yet still need the scan: it expands them.
-    if (syscheck.registry == NULL || (syscheck.registry[0].entry == NULL && syscheck.registry_wildcards == NULL)) {
-        if (fim_shutdown_process_on()) {
+    if (syscheck.registry == NULL || (syscheck.registry[0].entry == NULL && syscheck.registry_wildcards == NULL))
+    {
+        if (fim_shutdown_process_on())
+        {
             return;
         }
 
         int registry_keys_count = fim_db_get_count_registry_key();
         int registry_values_count = fim_db_get_count_registry_data();
 
-        if (registry_keys_count > 0 || registry_values_count > 0) {
-            mdebug1("No registry paths configured but database has %d keys and %d values. Initiating DataClean for registries.",
-                    registry_keys_count, registry_values_count);
+        if (registry_keys_count > 0 || registry_values_count > 0)
+        {
+            mdebug1("No registry paths configured but database has %d keys and %d values. Initiating DataClean for "
+                    "registries.",
+                    registry_keys_count,
+                    registry_values_count);
 
             // Under the handle read lock, like the file path does: the shutdown destroys the handle
             // under the write lock, so reading it unlocked is a use-after-free window (issue #38212).
@@ -2292,17 +2658,20 @@ void fim_registry_scan() {
             bool dataCleanSent = false;
 
             w_rwlock_rdlock(&fim_sync_handle_rwlock);
-            if (syscheck.sync_handle) {
+            if (syscheck.sync_handle)
+            {
                 sync_handle_available = true;
 
                 // Prepare indices vector for data clean notification
                 const char* indices[2] = {NULL, NULL};
                 size_t indices_count = 0;
 
-                if (registry_keys_count > 0) {
+                if (registry_keys_count > 0)
+                {
                     indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
                 }
-                if (registry_values_count > 0) {
+                if (registry_values_count > 0)
+                {
                     indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
                 }
 
@@ -2311,16 +2680,24 @@ void fim_registry_scan() {
             }
             w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-            if (sync_handle_available) {
-                if (dataCleanSent) {
-                    minfo("DataClean notification sent successfully for registry indices (all registry paths removed from configuration).");
-                } else {
-                    mwarn("DataClean notification failed for registry indices. Indexer may retain stale registry data.");
+            if (sync_handle_available)
+            {
+                if (dataCleanSent)
+                {
+                    minfo("DataClean notification sent successfully for registry indices (all registry paths removed "
+                          "from configuration).");
+                }
+                else
+                {
+                    mwarn(
+                        "DataClean notification failed for registry indices. Indexer may retain stale registry data.");
                 }
 
                 // Clear registry tables from both databases
                 fim_db_clean_registry_tables();
-            } else {
+            }
+            else
+            {
                 mdebug1("Sync protocol not initialized, cannot send DataClean notification for registries.");
             }
         }
@@ -2329,15 +2706,17 @@ void fim_registry_scan() {
     }
 
     // Create lists for deferred deletion of validation failures
-    OSList *failed_keys = OSList_Create();
-    if (!failed_keys) {
+    OSList* failed_keys = OSList_Create();
+    if (!failed_keys)
+    {
         merror("Failed to create failed_keys list for schema validation cleanup");
         return;
     }
     OSList_SetFreeDataPointer(failed_keys, free_failed_registry_key);
 
-    OSList *failed_values = OSList_Create();
-    if (!failed_values) {
+    OSList* failed_values = OSList_Create();
+    if (!failed_values)
+    {
         merror("Failed to create failed_values list for schema validation cleanup");
         OSList_Destroy(failed_keys);
         return;
@@ -2345,8 +2724,9 @@ void fim_registry_scan() {
     OSList_SetFreeDataPointer(failed_values, free_failed_registry_value);
 
     // Create lists for pending sync flag updates
-    OSList *pending_sync_keys = OSList_Create();
-    if (!pending_sync_keys) {
+    OSList* pending_sync_keys = OSList_Create();
+    if (!pending_sync_keys)
+    {
         merror("Failed to create pending sync keys list");
         OSList_Destroy(failed_keys);
         OSList_Destroy(failed_values);
@@ -2354,8 +2734,9 @@ void fim_registry_scan() {
     }
     OSList_SetFreeDataPointer(pending_sync_keys, free_pending_sync_item);
 
-    OSList *pending_sync_values = OSList_Create();
-    if (!pending_sync_values) {
+    OSList* pending_sync_values = OSList_Create();
+    if (!pending_sync_values)
+    {
         merror("Failed to create pending sync values list");
         OSList_Destroy(pending_sync_keys);
         OSList_Destroy(failed_keys);
@@ -2370,7 +2751,8 @@ void fim_registry_scan() {
     w_mutex_lock(&syscheck.fim_registry_scan_mutex);
 
     // Re-checked with the mutex held: the teardown may have run while this scan was waiting.
-    if (fim_shutdown_process_on()) {
+    if (fim_shutdown_process_on())
+    {
         mdebug1("Shutdown in progress: skipping the registry scan.");
         w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
         OSList_Destroy(pending_sync_keys);
@@ -2384,25 +2766,37 @@ void fim_registry_scan() {
     synced_docs_registry_keys = fim_db_count_synced_docs(FIMDB_REGISTRY_KEY_TABLENAME);
     synced_docs_registry_values = fim_db_count_synced_docs(FIMDB_REGISTRY_VALUE_TABLENAME);
 
-    event_data_t evt_data_registry_key = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key, .config = NULL, .failed_keys = failed_keys, .pending_sync_updates = pending_sync_keys };
-    TXN_HANDLE regkey_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, registry_key_transaction_callback, &txn_ctx_reg);
-    event_data_t evt_data_registry_value = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value, .config = NULL, .failed_values = failed_values, .pending_sync_updates = pending_sync_values };
-    TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
-                                                             registry_value_transaction_callback, &txn_ctx_regval);
+    event_data_t evt_data_registry_key = {.report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL};
+    fim_key_txn_context_t txn_ctx_reg = {.evt_data = &evt_data_registry_key,
+                                         .config = NULL,
+                                         .failed_keys = failed_keys,
+                                         .pending_sync_updates = pending_sync_keys};
+    TXN_HANDLE regkey_txn_handler =
+        fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, registry_key_transaction_callback, &txn_ctx_reg);
+    event_data_t evt_data_registry_value = {.report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL};
+    fim_val_txn_context_t txn_ctx_regval = {.evt_data = &evt_data_registry_value,
+                                            .config = NULL,
+                                            .failed_values = failed_values,
+                                            .pending_sync_updates = pending_sync_values};
+    TXN_HANDLE regval_txn_handler =
+        fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, registry_value_transaction_callback, &txn_ctx_regval);
 
-    if (regkey_txn_handler == NULL || regval_txn_handler == NULL) {
-        if (regkey_txn_handler == NULL) {
+    if (regkey_txn_handler == NULL || regval_txn_handler == NULL)
+    {
+        if (regkey_txn_handler == NULL)
+        {
             merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_KEY_TXN_TABLE);
         }
-        if (regval_txn_handler == NULL) {
+        if (regval_txn_handler == NULL)
+        {
             merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_VALUE_TXN_TABLE);
         }
-        if (regkey_txn_handler != NULL) {
+        if (regkey_txn_handler != NULL)
+        {
             fim_db_transaction_close(regkey_txn_handler);
         }
-        if (regval_txn_handler != NULL) {
+        if (regval_txn_handler != NULL)
+        {
             fim_db_transaction_close(regval_txn_handler);
         }
         w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
@@ -2417,42 +2811,59 @@ void fim_registry_scan() {
     mdebug1(FIM_WINREGISTRY_START);
     fim_registry_update_wildcards();
     /* Get sub class and a valid registry entry */
-    for (i = 0; syscheck.registry[i].entry; i++) {
+    for (i = 0; syscheck.registry[i].entry; i++)
+    {
         /* Ignored entries are zeroed */
-        if (*syscheck.registry[i].entry == '\0') {
+        if (*syscheck.registry[i].entry == '\0')
+        {
             continue;
         }
 
         /* The key no longer matches its wildcard: let the transaction report it as deleted */
-        if (syscheck.registry[i].wildcard && !syscheck.registry[i].is_expanded) {
+        if (syscheck.registry[i].wildcard && !syscheck.registry[i].is_expanded)
+        {
             continue;
         }
 
         /* Read syscheck registry entry */
-        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
+        mdebug2(FIM_READING_REGISTRY,
+                syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
                 syscheck.registry[i].entry);
 
-        if (fim_set_root_key(&root_key_handle, syscheck.registry[i].entry, &sub_key) != 0) {
-            mdebug1(FIM_INV_REG, syscheck.registry[i].entry,
-                    syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
+        if (fim_set_root_key(&root_key_handle, syscheck.registry[i].entry, &sub_key) != 0)
+        {
+            mdebug1(
+                FIM_INV_REG, syscheck.registry[i].entry, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
             continue;
         }
-        if (fim_shutdown_process_on()) {
+        if (fim_shutdown_process_on())
+        {
             break;
         }
 
-        fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
-                     NULL, regkey_txn_handler, regval_txn_handler, &txn_ctx_regval, &txn_ctx_reg);
+        fim_open_key(root_key_handle,
+                     syscheck.registry[i].entry,
+                     sub_key,
+                     syscheck.registry[i].arch,
+                     FIM_SCHEDULED,
+                     NULL,
+                     regkey_txn_handler,
+                     regval_txn_handler,
+                     &txn_ctx_regval,
+                     &txn_ctx_reg);
     }
     txn_ctx_reg.key = NULL;
     txn_ctx_regval.data = NULL;
 
-    if (fim_shutdown_process_on()) {
+    if (fim_shutdown_process_on())
+    {
         mdebug1("Shutdown in progress: closing the registry scan transactions without the deleted rows stage.");
         fim_db_transaction_close(regval_txn_handler);
         fim_db_transaction_close(regkey_txn_handler);
-    } else {
+    }
+    else
+    {
         fim_db_transaction_deleted_rows(regval_txn_handler, registry_value_transaction_callback, &txn_ctx_regval);
         fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
 

@@ -16,109 +16,144 @@
 /* Name this daemon reports itself under in the /config and /stats documents. */
 #define AGCOM_MODULE_NAME "agent"
 
+size_t agcom_dispatch(char* command, char** output)
+{
 
-size_t agcom_dispatch(char * command, char ** output){
+    char* rcv_comm = command;
+    char* rcv_args = NULL;
 
-    char *rcv_comm = command;
-    char *rcv_args = NULL;
-
-    if ((rcv_args = strchr(rcv_comm, ' '))){
+    if ((rcv_args = strchr(rcv_comm, ' ')))
+    {
         *rcv_args = '\0';
         rcv_args++;
     }
 
-    if (strcmp(rcv_comm, "getconfig") == 0){
+    if (strcmp(rcv_comm, "getconfig") == 0)
+    {
         // getconfig section
-        if (!rcv_args){
+        if (!rcv_args)
+        {
             mdebug1("AGCOM getconfig needs arguments.");
             os_strdup("err AGCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return agcom_getconfig(rcv_args, output);
-
-    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getallconfig") == 0)
+    {
         return agcom_getallconfig(output);
-
-    } else if (strcmp(rcv_comm, "getallstats") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getallstats") == 0)
+    {
         return agcom_getallstats(output);
-
-    } else if (strcmp(rcv_comm, "getstate") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getstate") == 0)
+    {
         return agcom_getstate(output);
-    } else if (strcmp(rcv_comm, "gethandshake") == 0) {
+    }
+    else if (strcmp(rcv_comm, "gethandshake") == 0)
+    {
         return agcom_gethandshake(output);
-    } else if (strcmp(rcv_comm, "getstartupgate") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getstartupgate") == 0)
+    {
         return agcom_getstartupgate(output);
-    } else if (strcmp(rcv_comm, "getdoclimits") == 0) {
-        if (!rcv_args) {
+    }
+    else if (strcmp(rcv_comm, "getdoclimits") == 0)
+    {
+        if (!rcv_args)
+        {
             mdebug1("AGCOM getdoclimits needs arguments (module name).");
             os_strdup("err AGCOM getdoclimits needs arguments", *output);
             return strlen(*output);
         }
 
-        cJSON *cfg = getDocumentLimits(rcv_args);
-        if (cfg) {
+        cJSON* cfg = getDocumentLimits(rcv_args);
+        if (cfg)
+        {
             os_strdup("ok", *output);
-            char *json_str = cJSON_PrintUnformatted(cfg);
+            char* json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             os_free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             mdebug1("AGCOM Module limits not configured for module '%s'.", rcv_args);
             os_strdup("err Module limits not configured", *output);
             return strlen(*output);
         }
-    } else {
+    }
+    else
+    {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
 
-size_t agcom_getconfig(const char * section, char ** output) {
+size_t agcom_getconfig(const char* section, char** output)
+{
 
-    cJSON *cfg;
-    char *json_str;
+    cJSON* cfg;
+    char* json_str;
 
     /* "client" is the 4.x name of this section and stays accepted so the Server
      * API's existing /config/agent/client path keeps working; the document it
      * returns is keyed "agent" either way. */
-    if (strcmp(section, "agent") == 0 || strcmp(section, "client") == 0){
-        if (cfg = getAgentConfig(), cfg) {
+    if (strcmp(section, "agent") == 0 || strcmp(section, "client") == 0)
+    {
+        if (cfg = getAgentConfig(), cfg)
+        {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "internal") == 0){
-        if (cfg = getAgentInternalOptions(), cfg) {
+    }
+    else if (strcmp(section, "internal") == 0)
+    {
+        if (cfg = getAgentInternalOptions(), cfg)
+        {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
 #ifndef WIN32
-    } else if (strcmp(section, "anti_tampering") == 0){
-        if (cfg = getAntiTamperingConfig(), cfg) {
+    }
+    else if (strcmp(section, "anti_tampering") == 0)
+    {
+        if (cfg = getAntiTamperingConfig(), cfg)
+        {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             os_free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
 #endif
-    } else {
+    }
+    else
+    {
         goto error;
     }
 error:
@@ -127,10 +162,11 @@ error:
     return strlen(*output);
 }
 
-size_t agcom_getallconfig(char ** output) {
+size_t agcom_getallconfig(char** output)
+{
 
-    cJSON *report = cJSON_CreateObject();
-    cJSON *body = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
+    cJSON* body = cJSON_CreateObject();
 
     module_report_merge(body, getAgentConfig());
     module_report_merge(body, getAgentInternalOptions());
@@ -146,13 +182,15 @@ size_t agcom_getallconfig(char ** output) {
  * the body itself carries no error channel. Added here rather than inside
  * w_agentd_state_get() so the /stats push, where the response status is the
  * error channel, can send the body bare. */
-size_t agcom_getstate(char ** output) {
+size_t agcom_getstate(char** output)
+{
 
-    cJSON *envelope = cJSON_CreateObject();
-    cJSON *body = w_agentd_state_get();
-    char *json_str = NULL;
+    cJSON* envelope = cJSON_CreateObject();
+    cJSON* body = w_agentd_state_get();
+    char* json_str = NULL;
 
-    if (!envelope || !body) {
+    if (!envelope || !body)
+    {
         cJSON_Delete(envelope);
         cJSON_Delete(body);
         os_strdup("err Could not build the agent state", *output);
@@ -165,7 +203,8 @@ size_t agcom_getstate(char ** output) {
     json_str = cJSON_PrintUnformatted(envelope);
     cJSON_Delete(envelope);
 
-    if (!json_str) {
+    if (!json_str)
+    {
         os_strdup("err Could not serialize the agent state", *output);
         return strlen(*output);
     }
@@ -174,9 +213,10 @@ size_t agcom_getstate(char ** output) {
     return strlen(*output);
 }
 
-size_t agcom_getallstats(char ** output) {
+size_t agcom_getallstats(char** output)
+{
 
-    cJSON *report = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
 
     module_report_add(report, AGCOM_MODULE_NAME, w_agentd_state_get());
     return module_report_reply(report, output);
@@ -187,7 +227,8 @@ size_t agcom_getallstats(char ** output) {
  * @param output Pointer to store the allocated response string.
  * @return Length of the response string.
  */
-size_t agcom_gethandshake(char **output) {
+size_t agcom_gethandshake(char** output)
+{
     /* Snapshot the handshake globals under lock: they may be rewritten concurrently by
      * the connection thread on every reconnect, and agent-info now polls this every cycle
      * (not just once at startup), so a torn read is no longer a one-time-only risk. */
@@ -201,7 +242,8 @@ size_t agcom_gethandshake(char **output) {
     agent_groups_snapshot[sizeof(agent_groups_snapshot) - 1] = '\0';
     w_mutex_unlock(&agent_handshake_mutex);
 
-    if (cluster_name_snapshot[0] == '\0') {
+    if (cluster_name_snapshot[0] == '\0')
+    {
         mdebug1("Cluster name not received yet from manager.");
         os_strdup("err Cluster name not received yet from manager", *output);
         return strlen(*output);
@@ -209,20 +251,24 @@ size_t agcom_gethandshake(char **output) {
 
     /* Empty agent_groups is allowed - fallback to merge.mg will be used */
 
-    char *json_str = NULL;
-    cJSON *root = cJSON_CreateObject();
+    char* json_str = NULL;
+    cJSON* root = cJSON_CreateObject();
 
-    if (root) {
+    if (root)
+    {
         cJSON_AddStringToObject(root, "cluster_name", cluster_name_snapshot);
         cJSON_AddStringToObject(root, "agent_groups", agent_groups_snapshot);
         json_str = cJSON_PrintUnformatted(root);
         cJSON_Delete(root);
     }
 
-    if (json_str) {
+    if (json_str)
+    {
         os_strdup(json_str, *output);
         os_free(json_str);
-    } else {
+    }
+    else
+    {
         mdebug1("Failed to create handshake JSON response.");
         os_strdup("err Failed to create handshake JSON response", *output);
         return strlen(*output);
@@ -237,16 +283,18 @@ size_t agcom_gethandshake(char **output) {
  * @param output Pointer to store the allocated response string.
  * @return Length of the response string.
  */
-size_t agcom_getstartupgate(char **output) {
+size_t agcom_getstartupgate(char** output)
+{
     bool ready = false;
     char reason[OS_SIZE_128] = {0};
-    cJSON *root = NULL;
-    char *json_str = NULL;
+    cJSON* root = NULL;
+    char* json_str = NULL;
 
     startup_gate_get_status(&ready, reason, sizeof(reason));
 
     root = cJSON_CreateObject();
-    if (!root) {
+    if (!root)
+    {
         os_strdup("err Failed to create startup gate response", *output);
         return strlen(*output);
     }
@@ -257,7 +305,8 @@ size_t agcom_getstartupgate(char **output) {
     json_str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
 
-    if (!json_str) {
+    if (!json_str)
+    {
         os_strdup("err Failed to serialize startup gate response", *output);
         return strlen(*output);
     }
@@ -274,25 +323,32 @@ size_t agcom_getstartupgate(char **output) {
  * @param module Module name ("fim", "syscollector", or "sca").
  * @return cJSON object with the limits, or NULL if module is unknown or limits not received.
  */
-cJSON *getDocumentLimits(const char *module) {
-    if (!module) {
+cJSON* getDocumentLimits(const char* module)
+{
+    if (!module)
+    {
         return NULL;
     }
 
-    if (!agent_module_limits.limits_received) {
+    if (!agent_module_limits.limits_received)
+    {
         return NULL;
     }
 
-    cJSON *cfg = cJSON_CreateObject();
-    if (!cfg) {
+    cJSON* cfg = cJSON_CreateObject();
+    if (!cfg)
+    {
         return NULL;
     }
 
-    if (strcmp(module, "fim") == 0) {
+    if (strcmp(module, "fim") == 0)
+    {
         cJSON_AddNumberToObject(cfg, "file", agent_module_limits.fim.file);
         cJSON_AddNumberToObject(cfg, "registry_key", agent_module_limits.fim.registry_key);
         cJSON_AddNumberToObject(cfg, "registry_value", agent_module_limits.fim.registry_value);
-    } else if (strcmp(module, "syscollector") == 0) {
+    }
+    else if (strcmp(module, "syscollector") == 0)
+    {
         cJSON_AddNumberToObject(cfg, "hotfixes", agent_module_limits.syscollector.hotfixes);
         cJSON_AddNumberToObject(cfg, "packages", agent_module_limits.syscollector.packages);
         cJSON_AddNumberToObject(cfg, "processes", agent_module_limits.syscollector.processes);
@@ -306,9 +362,13 @@ cJSON *getDocumentLimits(const char *module) {
         cJSON_AddNumberToObject(cfg, "groups", agent_module_limits.syscollector.groups);
         cJSON_AddNumberToObject(cfg, "services", agent_module_limits.syscollector.services);
         cJSON_AddNumberToObject(cfg, "browser_extensions", agent_module_limits.syscollector.browser_extensions);
-    } else if (strcmp(module, "sca") == 0) {
+    }
+    else if (strcmp(module, "sca") == 0)
+    {
         cJSON_AddNumberToObject(cfg, "checks", agent_module_limits.sca.checks);
-    } else {
+    }
+    else
+    {
         cJSON_Delete(cfg);
         return NULL;
     }
@@ -317,42 +377,47 @@ cJSON *getDocumentLimits(const char *module) {
 }
 
 #ifndef WIN32
-void * agcom_main(__attribute__((unused)) void * arg) {
+void* agcom_main(__attribute__((unused)) void* arg)
+{
     int sock;
     int peer;
-    char *buffer = NULL;
-    char *response = NULL;
+    char* buffer = NULL;
+    char* response = NULL;
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
     // Bind socket
-    if (sock = OS_BindUnixDomain(AG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.",
-               AG_LOCAL_SOCK, errno, strerror(errno));
+    if (sock = OS_BindUnixDomain(AG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0)
+    {
+        merror("Unable to bind to socket '%s': (%d) %s.", AG_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
     // Main loop
-    while (1) {
+    while (1)
+    {
         // Select
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
-        case -1:
-            if (errno != EINTR) {
-                merror_exit("At agcom_main(): select(): %s", strerror(errno));
-            }
-            continue;
-        case 0:
-            continue;
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL))
+        {
+            case -1:
+                if (errno != EINTR)
+                {
+                    merror_exit("At agcom_main(): select(): %s", strerror(errno));
+                }
+                continue;
+            case 0: continue;
         }
 
         // Accept
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
+        if (peer = accept(sock, NULL, NULL), peer < 0)
+        {
+            if (errno != EINTR)
+            {
                 merror("At agcom_main(): accept(): %s", strerror(errno));
             }
             continue;
@@ -360,30 +425,29 @@ void * agcom_main(__attribute__((unused)) void * arg) {
 
         // Receive
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            merror("At agcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
-            break;
-        case -1:
-            merror("At agcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
-            break;
-        case 0:
-            mdebug1("Empty message from local client.");
-            close(peer);
-            os_free(buffer);
-            continue;
-        case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
-            os_free(buffer);
-            continue;
-        default:
-            // Dispatch
-            length = agcom_dispatch(buffer, &response);
-            // Send
-            OS_SendSecureTCP(peer, length, response);
-            os_free(response);
-            close(peer);
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length)
+        {
+            case OS_SOCKTERR:
+                merror("At agcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
+            case -1: merror("At agcom_main(): OS_RecvSecureTCP(): %s", strerror(errno)); break;
+            case 0:
+                mdebug1("Empty message from local client.");
+                close(peer);
+                os_free(buffer);
+                continue;
+            case OS_MAXLEN:
+                merror("Received message > %i", MAX_DYN_STR);
+                close(peer);
+                os_free(buffer);
+                continue;
+            default:
+                // Dispatch
+                length = agcom_dispatch(buffer, &response);
+                // Send
+                OS_SendSecureTCP(peer, length, response);
+                os_free(response);
+                close(peer);
         }
         os_free(buffer);
     }

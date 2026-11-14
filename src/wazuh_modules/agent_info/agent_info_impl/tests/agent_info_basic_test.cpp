@@ -26,72 +26,72 @@
  */
 class AgentInfoImplTest : public ::testing::Test
 {
-    protected:
-        void clearLogOutput()
+protected:
+    void clearLogOutput()
+    {
+        std::lock_guard<std::mutex> lock(m_logMutex);
+        m_logOutput.clear();
+    }
+
+    std::string getLogOutput() const
+    {
+        std::lock_guard<std::mutex> lock(m_logMutex);
+        return m_logOutput;
+    }
+
+    void SetUp() override
+    {
+        clearLogOutput();
+
+        // Create the logging function to capture log messages
+        m_logFunction = [this](const modules_log_level_t /* level */, const std::string& log)
         {
+            // Normalize line endings by removing carriage returns to avoid Windows compatibility issues
+            std::string normalized = log;
+            normalized.erase(std::remove(normalized.begin(), normalized.end(), '\r'), normalized.end());
             std::lock_guard<std::mutex> lock(m_logMutex);
-            m_logOutput.clear();
-        }
+            m_logOutput += normalized;
+            m_logOutput += "\n";
+        };
 
-        std::string getLogOutput() const
+        // Create a mock query module function
+        m_queryModuleFunction =
+            [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
         {
-            std::lock_guard<std::mutex> lock(m_logMutex);
-            return m_logOutput;
-        }
-
-        void SetUp() override
-        {
-            clearLogOutput();
-
-            // Create the logging function to capture log messages
-            m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
+            // Mock implementation that returns success
+            if (response)
             {
-                // Normalize line endings by removing carriage returns to avoid Windows compatibility issues
-                std::string normalized = log;
-                normalized.erase(std::remove(normalized.begin(), normalized.end(), '\r'), normalized.end());
-                std::lock_guard<std::mutex> lock(m_logMutex);
-                m_logOutput += normalized;
-                m_logOutput += "\n";
-            };
+                *response = nullptr;
+            }
 
-            // Create a mock query module function
-            m_queryModuleFunction = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
-            {
-                // Mock implementation that returns success
-                if (response)
-                {
-                    *response = nullptr;
-                }
+            return 0;
+        };
 
-                return 0;
-            };
+        m_mockDBSync = std::make_shared<MockDBSync>();
 
-            m_mockDBSync = std::make_shared<MockDBSync>();
+        // Configure expected calls to avoid warnings
+        EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
-            // Configure expected calls to avoid warnings
-            EXPECT_CALL(*m_mockDBSync, handle())
-            .WillRepeatedly(::testing::Return(nullptr));
+        // Configure selectRows call for loadSyncFlags()
+        EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
-            // Configure selectRows call for loadSyncFlags()
-            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-            .WillRepeatedly(::testing::Return());
+        m_agentInfo =
+            std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync);
+    }
 
-            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync);
-        }
+    void TearDown() override
+    {
+        // Explicitly reset to ensure proper cleanup order
+        m_agentInfo.reset();
+        m_mockDBSync.reset();
+    }
 
-        void TearDown() override
-        {
-            // Explicitly reset to ensure proper cleanup order
-            m_agentInfo.reset();
-            m_mockDBSync.reset();
-        }
-
-        std::shared_ptr<MockDBSync> m_mockDBSync = nullptr;
-        std::shared_ptr<AgentInfoImpl> m_agentInfo = nullptr;
-        std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
-        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunction;
-        mutable std::mutex m_logMutex;
-        std::string m_logOutput;
+    std::shared_ptr<MockDBSync> m_mockDBSync = nullptr;
+    std::shared_ptr<AgentInfoImpl> m_agentInfo = nullptr;
+    std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+    std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunction;
+    mutable std::mutex m_logMutex;
+    std::string m_logOutput;
 };
 
 TEST_F(AgentInfoImplTest, ConstructorInitializesSuccessfully)
@@ -103,10 +103,7 @@ TEST_F(AgentInfoImplTest, ConstructorInitializesSuccessfully)
 TEST_F(AgentInfoImplTest, StartMethodLogsCorrectly)
 {
     clearLogOutput();
-    m_agentInfo->start(1, 86400, []()
-    {
-        return false;
-    });
+    m_agentInfo->start(1, 86400, []() { return false; });
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo module started"));
 }
 
@@ -131,10 +128,7 @@ TEST_F(AgentInfoImplTest, DestructorCallsStop)
 TEST_F(AgentInfoImplTest, StartAndStopSequence)
 {
     clearLogOutput();
-    m_agentInfo->start(1, 86400, []()
-    {
-        return false;
-    });
+    m_agentInfo->start(1, 86400, []() { return false; });
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo module started"));
 
     clearLogOutput();
@@ -144,14 +138,8 @@ TEST_F(AgentInfoImplTest, StartAndStopSequence)
 
 TEST_F(AgentInfoImplTest, MultipleStartCallsSucceed)
 {
-    m_agentInfo->start(1, 86400, []()
-    {
-        return false;
-    });
-    m_agentInfo->start(1, 86400, []()
-    {
-        return false;
-    });
+    m_agentInfo->start(1, 86400, []() { return false; });
+    m_agentInfo->start(1, 86400, []() { return false; });
     // Should not crash or throw
     SUCCEED();
 }
@@ -195,7 +183,8 @@ TEST_F(AgentInfoImplTest, ConstructorWithCustomSysInfoSucceeds)
     clearLogOutput();
 
     // Create AgentInfoImpl with custom SysInfo
-    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
+    auto agentInfo = std::make_shared<AgentInfoImpl>(
+        "test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo initialized"));
@@ -218,77 +207,77 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     clearLogOutput();
 
     // Mock handle() to return nullptr - updateChanges will catch exceptions
-    EXPECT_CALL(*m_mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
     // Mock selectRows to invoke callback with default values
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["should_sync_metadata"] = 0;
-        data["should_sync_groups"] = 0;
-        data["last_metadata_integrity"] = 0;
-        data["last_groups_integrity"] = 0;
-        callback(SELECTED, data);
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["should_sync_metadata"] = 0;
+                data["should_sync_groups"] = 0;
+                data["last_metadata_integrity"] = 0;
+                data["last_groups_integrity"] = 0;
+                callback(SELECTED, data);
+            }));
 
     // Use atomic flag to ensure thread synchronization
-    std::atomic<bool> startedFirstIteration{false};
+    std::atomic<bool> startedFirstIteration {false};
 
     // Use a thread to stop the agent after the first iteration completes
     // NOTE: start() has a 5-second initial delay, so we need to wait for that plus the iteration time
-    std::thread stopThread([this, &startedFirstIteration]()
-    {
-        // Wait for the first iteration to complete (accounting for 5-second initial delay)
-        while (!startedFirstIteration.load(std::memory_order_acquire))
+    std::thread stopThread(
+        [this, &startedFirstIteration]()
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+            // Wait for the first iteration to complete (accounting for 5-second initial delay)
+            while (!startedFirstIteration.load(std::memory_order_acquire))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
 
-        // Add a small delay to ensure we're in the wait phase
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        m_agentInfo->stop();
-    });
+            // Add a small delay to ensure we're in the wait phase
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            m_agentInfo->stop();
+        });
 
     // Start with a shouldContinue that keeps running until stopped
     int iterations = 0;
-    m_agentInfo->start(1, 86400, [&iterations, &startedFirstIteration]()
-    {
-        iterations++;
+    m_agentInfo->start(1,
+                       86400,
+                       [&iterations, &startedFirstIteration]()
+                       {
+                           iterations++;
 
-        if (iterations == 1)
-        {
-            startedFirstIteration.store(true, std::memory_order_release);
-        }
+                           if (iterations == 1)
+                           {
+                               startedFirstIteration.store(true, std::memory_order_release);
+                           }
 
-        return true;  // Keep running until stopped externally
-    });
+                           return true; // Keep running until stopped externally
+                       });
 
     stopThread.join();
 
     // Verify start was called
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo module started"));
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo module stopped"));
-    EXPECT_GE(iterations, 1);  // At least one iteration should have completed
+    EXPECT_GE(iterations, 1); // At least one iteration should have completed
 }
 
 TEST_F(AgentInfoImplTest, ConstructorThrowsWhenLogFunctionIsNull)
 {
     EXPECT_THROW(
-    {
-        AgentInfoImpl agentInfo("test_path", nullptr, nullptr, m_queryModuleFunction, m_mockDBSync);
-    },
-    std::invalid_argument);
+        { AgentInfoImpl agentInfo("test_path", nullptr, nullptr, m_queryModuleFunction, m_mockDBSync); },
+        std::invalid_argument);
 }
 
 TEST_F(AgentInfoImplTest, ConstructorThrowsWhenQueryModuleFunctionIsNull)
 {
     EXPECT_THROW(
-    {
-        AgentInfoImpl agentInfo("test_path", nullptr, m_logFunction, nullptr, m_mockDBSync);
-    },
-    std::invalid_argument);
+        { AgentInfoImpl agentInfo("test_path", nullptr, m_logFunction, nullptr, m_mockDBSync); },
+        std::invalid_argument);
 }
 
 // Regression test for the clean-stop ordering fix (issues #37629 / #37714).
@@ -307,28 +296,23 @@ TEST_F(AgentInfoImplTest, StopSignalsWithoutWaitingAndReleaseIsSeparate)
     constexpr auto HOLD = std::chrono::milliseconds(300);
 
     auto mockSysInfo = std::make_shared<MockSysInfo>();
-    std::atomic<bool> loopInBody{false};
+    std::atomic<bool> loopInBody {false};
 
     EXPECT_CALL(*mockSysInfo, os())
-    .WillRepeatedly(::testing::Invoke([&]() -> nlohmann::json
-    {
-        loopInBody.store(true, std::memory_order_release);
-        std::this_thread::sleep_for(HOLD);
-        return nlohmann::json::object();
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [&]() -> nlohmann::json
+            {
+                loopInBody.store(true, std::memory_order_release);
+                std::this_thread::sleep_for(HOLD);
+                return nlohmann::json::object();
+            }));
 
-    auto agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
+    auto agentInfo = std::make_shared<AgentInfoImpl>(
+        "test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
 
     // start() blocks until stopped, so it runs on its own thread. It has a fixed
     // 5s initial delay before the first iteration.
-    std::thread loopThread([&]()
-    {
-        agentInfo->start(3600, 86400, []()
-        {
-            return true;
-        });
-    });
+    std::thread loopThread([&]() { agentInfo->start(3600, 86400, []() { return true; }); });
 
     while (!loopInBody.load(std::memory_order_acquire))
     {
@@ -346,14 +330,14 @@ TEST_F(AgentInfoImplTest, StopSignalsWithoutWaitingAndReleaseIsSeparate)
     // The signal still ends the loop promptly.
     loopThread.join();
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo module loop ended"))
-            << "stop() did not make the run loop exit";
+        << "stop() did not make the run loop exit";
 
     // And the teardown stop() used to perform is now a separate, explicit step, which
     // the module thread runs on its way out. It must actually close the connection.
     clearLogOutput();
     agentInfo->releaseResources();
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("DBSync connection closed"))
-            << "releaseResources() did not close the DBSync connection";
+        << "releaseResources() did not close the DBSync connection";
 }
 
 TEST_F(AgentInfoImplTest, ReleaseResourcesRefusesWhileRunLoopIsActive)
@@ -367,26 +351,21 @@ TEST_F(AgentInfoImplTest, ReleaseResourcesRefusesWhileRunLoopIsActive)
     constexpr auto HOLD = std::chrono::milliseconds(400);
 
     auto mockSysInfo = std::make_shared<MockSysInfo>();
-    std::atomic<bool> loopInBody{false};
+    std::atomic<bool> loopInBody {false};
 
     EXPECT_CALL(*mockSysInfo, os())
-    .WillRepeatedly(::testing::Invoke([&]() -> nlohmann::json
-    {
-        loopInBody.store(true, std::memory_order_release);
-        std::this_thread::sleep_for(HOLD);
-        return nlohmann::json::object();
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [&]() -> nlohmann::json
+            {
+                loopInBody.store(true, std::memory_order_release);
+                std::this_thread::sleep_for(HOLD);
+                return nlohmann::json::object();
+            }));
 
-    auto agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
+    auto agentInfo = std::make_shared<AgentInfoImpl>(
+        "test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
 
-    std::thread loopThread([&]()
-    {
-        agentInfo->start(3600, 86400, []()
-        {
-            return true;
-        });
-    });
+    std::thread loopThread([&]() { agentInfo->start(3600, 86400, []() { return true; }); });
 
     while (!loopInBody.load(std::memory_order_acquire))
     {
@@ -396,9 +375,9 @@ TEST_F(AgentInfoImplTest, ReleaseResourcesRefusesWhileRunLoopIsActive)
     clearLogOutput();
     agentInfo->releaseResources();
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("run loop still active"))
-            << "releaseResources() tore down while the run loop was running";
+        << "releaseResources() tore down while the run loop was running";
     EXPECT_THAT(getLogOutput(), ::testing::Not(::testing::HasSubstr("DBSync connection closed")))
-            << "releaseResources() closed DBSync under a live run loop";
+        << "releaseResources() closed DBSync under a live run loop";
 
     agentInfo->stop();
     loopThread.join();
@@ -407,7 +386,7 @@ TEST_F(AgentInfoImplTest, ReleaseResourcesRefusesWhileRunLoopIsActive)
     clearLogOutput();
     agentInfo->releaseResources();
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("DBSync connection closed"))
-            << "releaseResources() did not close the DBSync connection after the loop ended";
+        << "releaseResources() did not close the DBSync connection after the loop ended";
 }
 
 // After the sync protocol is torn down, the asynchronous response path

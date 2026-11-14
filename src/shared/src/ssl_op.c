@@ -30,19 +30,23 @@
  * then load the file containing the CA chain and verify the certificate
  * sent by the peer.
  */
-SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert)
+SSL_CTX* os_ssl_keys(
+    int is_server, const char* os_dir, const char* ciphers, const char* cert, const char* key, const char* ca_cert)
 {
-    SSL_CTX *ctx = NULL;
+    SSL_CTX* ctx = NULL;
 
-    if (!(ctx = get_ssl_context(ciphers))) {
+    if (!(ctx = get_ssl_context(ciphers)))
+    {
         goto SSL_ERROR;
     }
 
     /* If a CA certificate has been specified then load it and verify the peer */
-    if (ca_cert) {
+    if (ca_cert)
+    {
         mdebug1("Peer verification requested.");
 
-        if (!load_ca_cert(ctx, ca_cert)) {
+        if (!load_ca_cert(ctx, ca_cert))
+        {
             goto SSL_ERROR;
         }
 
@@ -50,36 +54,50 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, con
     }
 
     /* Loading a certificate and key is mandatory for the server and optional for clients */
-    if (is_server) {
+    if (is_server)
+    {
         char default_cert[PATH_MAX + 1];
         char default_key[PATH_MAX + 1];
 
-        if (!cert) {
-            if (CERTFILE[0] == '/') {
+        if (!cert)
+        {
+            if (CERTFILE[0] == '/')
+            {
                 snprintf(default_cert, PATH_MAX + 1, "%s", CERTFILE);
-            } else {
+            }
+            else
+            {
                 snprintf(default_cert, PATH_MAX + 1, "%s/%s", os_dir, CERTFILE);
             }
             cert = default_cert;
         }
 
-        if (!key) {
-            if (KEYFILE[0] == '/') {
+        if (!key)
+        {
+            if (KEYFILE[0] == '/')
+            {
                 snprintf(default_key, PATH_MAX + 1, "%s", KEYFILE);
-            } else {
+            }
+            else
+            {
                 snprintf(default_key, PATH_MAX + 1, "%s/%s", os_dir, KEYFILE);
             }
             key = default_key;
         }
 
-        if (!load_cert_and_key(ctx, cert, key)) {
+        if (!load_cert_and_key(ctx, cert, key))
+        {
             goto SSL_ERROR;
         }
 
         mdebug1("Returning CTX for server.");
-    } else {
-        if (cert && key) {
-            if (!load_cert_and_key(ctx, cert, key)) {
+    }
+    else
+    {
+        if (cert && key)
+        {
+            if (!load_cert_and_key(ctx, cert, key))
+            {
                 goto SSL_ERROR;
             }
         }
@@ -90,16 +108,17 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, con
     return ctx;
 
 SSL_ERROR:
-    if (ctx) {
+    if (ctx)
+    {
         SSL_CTX_free(ctx);
     }
 
-    return (SSL_CTX *)NULL;
+    return (SSL_CTX*)NULL;
 }
 
-SSL_CTX *get_ssl_context(const char *ciphers)
+SSL_CTX* get_ssl_context(const char* ciphers)
 {
-    SSL_CTX *ctx = NULL;
+    SSL_CTX* ctx = NULL;
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -107,13 +126,15 @@ SSL_CTX *get_ssl_context(const char *ciphers)
 
     /* Create our context */
 
-    if (ctx = SSL_CTX_new(TLS_method()), !ctx) {
+    if (ctx = SSL_CTX_new(TLS_method()), !ctx)
+    {
         goto CONTEXT_ERR;
     }
 
     SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
 
-    if (!(SSL_CTX_set_ciphersuites(ctx, ciphers))) {
+    if (!(SSL_CTX_set_ciphersuites(ctx, ciphers)))
+    {
         merror("Invalid TLS 1.3 cipher suite list: '%s'", ciphers);
         ERR_print_errors_fp(stderr);
         goto CONTEXT_ERR;
@@ -122,53 +143,60 @@ SSL_CTX *get_ssl_context(const char *ciphers)
     return ctx;
 
 CONTEXT_ERR:
-    if (ctx) {
+    if (ctx)
+    {
         SSL_CTX_free(ctx);
     }
 
-    return (SSL_CTX *)NULL;
+    return (SSL_CTX*)NULL;
 }
 
-int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key)
+int load_cert_and_key(SSL_CTX* ctx, const char* cert, const char* key)
 {
-    if (File_DateofChange(cert) <= 0) {
+    if (File_DateofChange(cert) <= 0)
+    {
         merror("Unable to read certificate file (not found): %s", cert);
         return 0;
     }
 
-    if (!(SSL_CTX_use_certificate_chain_file(ctx, cert))) {
+    if (!(SSL_CTX_use_certificate_chain_file(ctx, cert)))
+    {
         merror("Unable to read certificate file: %s", cert);
         ERR_print_errors_fp(stderr);
         return 0;
     }
 
-    if (!(SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM))) {
+    if (!(SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM)))
+    {
         merror("Unable to read private key file: %s", key);
         ERR_print_errors_fp(stderr);
         return 0;
     }
 
-    if (!SSL_CTX_check_private_key(ctx)) {
+    if (!SSL_CTX_check_private_key(ctx))
+    {
         merror("Unable to verify private key file");
         ERR_print_errors_fp(stderr);
         return 0;
     }
 
-#if(OPENSSL_VERSION_NUMBER < 0x00905100L)
+#if (OPENSSL_VERSION_NUMBER < 0x00905100L)
     SSL_CTX_set_verify_depth(ctx, 1);
 #endif
 
     return 1;
 }
 
-int load_ca_cert(SSL_CTX *ctx, const char *ca_cert)
+int load_ca_cert(SSL_CTX* ctx, const char* ca_cert)
 {
-    if (!ca_cert) {
+    if (!ca_cert)
+    {
         merror("Verification requested but no CA certificate file specified");
         return 0;
     }
 
-    if (SSL_CTX_load_verify_locations(ctx, ca_cert, NULL) != 1) {
+    if (SSL_CTX_load_verify_locations(ctx, ca_cert, NULL) != 1)
+    {
         merror("Unable to read CA certificate file \"%s\"", ca_cert);
         return 0;
     }
@@ -180,12 +208,13 @@ int load_ca_cert(SSL_CTX *ctx, const char *ca_cert)
  * information in the case that certificate verification fails
  * for any reason.
  */
-int verify_callback(int ok, X509_STORE_CTX *store)
+int verify_callback(int ok, X509_STORE_CTX* store)
 {
     char data[256];
 
-    if (!ok) {
-        X509 *cert = X509_STORE_CTX_get_current_cert(store);
+    if (!ok)
+    {
+        X509* cert = X509_STORE_CTX_get_current_cert(store);
         int depth = X509_STORE_CTX_get_error_depth(store);
         int err = X509_STORE_CTX_get_error(store);
 
@@ -203,19 +232,23 @@ int verify_callback(int ok, X509_STORE_CTX *store)
     return ok;
 }
 
-
-int wrap_SSL_read(SSL *ssl, void *buf, int num) {
+int wrap_SSL_read(SSL* ssl, void* buf, int num)
+{
     int ret = 0;
     int offset = 0;
     ret = SSL_read(ssl, buf, num);
-    while(ret >= MAX_SSL_PACKET_SIZE) {
+    while (ret >= MAX_SSL_PACKET_SIZE)
+    {
         offset += ret;
-        ret = SSL_read(ssl, (void *) buf + offset, num - offset);
+        ret = SSL_read(ssl, (void*)buf + offset, num - offset);
     }
-    if (ret < 0 && offset > 0) {
+    if (ret < 0 && offset > 0)
+    {
         // If we have already read at least once return what was read
         return offset;
-    } else {
+    }
+    else
+    {
         return offset + ret;
     }
 }

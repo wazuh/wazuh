@@ -51,95 +51,91 @@ struct LaunchdService
 /// service information, formatting it into a JSON object for easy consumption.
 class LaunchdProvider
 {
-    public:
-        /// @brief Constructor with filesystem wrapper.
-        /// @param fileSystemWrapper Unique pointer to a file system wrapper implementation (optional).
-        /// @param searchPaths Directories to scan for job plists. When given, they replace the
-        /// system defaults and the per-user scan is skipped. Intended for testing.
-        /// @param overridesPath Directory holding the launchd override database. When given, it
-        /// replaces the system default. Intended for testing.
-        explicit LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
-                                 const std::vector<std::string>& searchPaths = {},
-                                 const std::string& overridesPath = {});
+public:
+    /// @brief Constructor with filesystem wrapper.
+    /// @param fileSystemWrapper Unique pointer to a file system wrapper implementation (optional).
+    /// @param searchPaths Directories to scan for job plists. When given, they replace the
+    /// system defaults and the per-user scan is skipped. Intended for testing.
+    /// @param overridesPath Directory holding the launchd override database. When given, it
+    /// replaces the system default. Intended for testing.
+    explicit LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
+                             const std::vector<std::string>& searchPaths = {},
+                             const std::string& overridesPath = {});
 
-        /// @brief Collects launchd services information.
-        /// @return A JSON object containing the collected launchd services information.
-        nlohmann::json collect();
+    /// @brief Collects launchd services information.
+    /// @return A JSON object containing the collected launchd services information.
+    nlohmann::json collect();
 
-    private:
-        /// @brief Standard launchd search paths.
-        std::vector<std::string> m_launchdSearchPaths =
-        {
-            "/System/Library/LaunchDaemons",
-            "/Library/LaunchDaemons",
-            "/System/Library/LaunchAgents",
-            "/Library/LaunchAgents",
-            "/Library/Apple/System/Library/LaunchDaemons",
-            "/Library/Apple/System/Library/LaunchAgents",
-        };
+private:
+    /// @brief Standard launchd search paths.
+    std::vector<std::string> m_launchdSearchPaths = {
+        "/System/Library/LaunchDaemons",
+        "/Library/LaunchDaemons",
+        "/System/Library/LaunchAgents",
+        "/Library/LaunchAgents",
+        "/Library/Apple/System/Library/LaunchDaemons",
+        "/Library/Apple/System/Library/LaunchAgents",
+    };
 
-        /// @brief User-specific launchd search paths.
-        std::vector<std::string> m_userLaunchdSearchPaths =
-        {
-            "Library/LaunchAgents",
-        };
+    /// @brief User-specific launchd search paths.
+    std::vector<std::string> m_userLaunchdSearchPaths = {
+        "Library/LaunchAgents",
+    };
 
-        /// @brief Mapping of plist keys to service structure fields for string values.
-        const std::map<std::string, std::string> m_launchdTopLevelStringKeys =
-        {
-            {"Label", "label"},
-            {"RunAtLoad", "run_at_load"},
-            {"KeepAlive", "keep_alive"},
-            {"StandardOutPath", "stdout_path"},
-            {"StandardErrorPath", "stderr_path"},
-            {"inetdCompatibility", "inetd_compatibility"},
-            {"StartInterval", "start_interval"},
-            {"Program", "program"},
-            {"StartOnMount", "start_on_mount"},
-            {"OnDemand", "on_demand"},
-            {"Disabled", "disabled"},
-            {"UserName", "username"},
-            {"GroupName", "groupname"},
-            {"RootDirectory", "root_directory"},
-            {"WorkingDirectory", "working_directory"},
-            {"ProcessType", "process_type"},
-        };
+    /// @brief Mapping of plist keys to service structure fields for string values.
+    const std::map<std::string, std::string> m_launchdTopLevelStringKeys = {
+        {"Label", "label"},
+        {"RunAtLoad", "run_at_load"},
+        {"KeepAlive", "keep_alive"},
+        {"StandardOutPath", "stdout_path"},
+        {"StandardErrorPath", "stderr_path"},
+        {"inetdCompatibility", "inetd_compatibility"},
+        {"StartInterval", "start_interval"},
+        {"Program", "program"},
+        {"StartOnMount", "start_on_mount"},
+        {"OnDemand", "on_demand"},
+        {"Disabled", "disabled"},
+        {"UserName", "username"},
+        {"GroupName", "groupname"},
+        {"RootDirectory", "root_directory"},
+        {"WorkingDirectory", "working_directory"},
+        {"ProcessType", "process_type"},
+    };
 
-        /// @brief Mapping of plist keys to service structure fields for array values.
-        const std::map<std::string, std::string> m_launchdTopLevelArrayKeys =
-        {
-            {"ProgramArguments", "program_arguments"},
-            {"WatchPaths", "watch_paths"},
-            {"QueueDirectories", "queue_directories"},
-        };
+    /// @brief Mapping of plist keys to service structure fields for array values.
+    const std::map<std::string, std::string> m_launchdTopLevelArrayKeys = {
+        {"ProgramArguments", "program_arguments"},
+        {"WatchPaths", "watch_paths"},
+        {"QueueDirectories", "queue_directories"},
+    };
 
-        /// @brief Directory holding the launchd override database.
-        std::string m_launchdOverridesPath = "/var/db/com.apple.xpc.launchd";
+    /// @brief Directory holding the launchd override database.
+    std::string m_launchdOverridesPath = "/var/db/com.apple.xpc.launchd";
 
-        /// @brief Retrieves all launcher plist files from known paths.
-        /// @param launchers Vector to store the found plist file paths.
-        void getLauncherPaths(std::vector<std::string>& launchers);
+    /// @brief Retrieves all launcher plist files from known paths.
+    /// @param launchers Vector to store the found plist file paths.
+    void getLauncherPaths(std::vector<std::string>& launchers);
 
-        /// @brief Loads the launchd override database into m_disabledOverrides.
-        /// launchctl enable/disable records the state there rather than in the job plist.
-        void loadDisabledOverrides();
+    /// @brief Loads the launchd override database into m_disabledOverrides.
+    /// launchctl enable/disable records the state there rather than in the job plist.
+    void loadDisabledOverrides();
 
-        /// @brief Parses a plist file and extracts service information.
-        /// @param path Path to the plist file.
-        /// @param service LaunchdService structure to fill with parsed data.
-        /// @return True if parsing was successful, false otherwise.
-        bool parsePlistFile(const std::string& path, LaunchdService& service);
+    /// @brief Parses a plist file and extracts service information.
+    /// @param path Path to the plist file.
+    /// @param service LaunchdService structure to fill with parsed data.
+    /// @return True if parsing was successful, false otherwise.
+    bool parsePlistFile(const std::string& path, LaunchdService& service);
 
-        /// @brief Encodes array elements as a JSON array string.
-        /// The inventory stores these fields as text, and any separator could also appear inside
-        /// an element, so JSON keeps the element boundaries recoverable.
-        /// @param arrayElements Vector of strings to encode.
-        /// @return JSON array string, or an empty string when there are no elements.
-        std::string encodeArrayElements(const std::vector<std::string>& arrayElements);
+    /// @brief Encodes array elements as a JSON array string.
+    /// The inventory stores these fields as text, and any separator could also appear inside
+    /// an element, so JSON keeps the element boundaries recoverable.
+    /// @param arrayElements Vector of strings to encode.
+    /// @return JSON array string, or an empty string when there are no elements.
+    std::string encodeArrayElements(const std::vector<std::string>& arrayElements);
 
-        /// @brief Disabled state by launchd label, as recorded in the override database.
-        std::map<std::string, bool> m_disabledOverrides;
+    /// @brief Disabled state by launchd label, as recorded in the override database.
+    std::map<std::string, bool> m_disabledOverrides;
 
-        /// @brief Pointer to the file system wrapper implementation.
-        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+    /// @brief Pointer to the file system wrapper implementation.
+    std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 };

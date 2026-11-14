@@ -26,9 +26,7 @@ namespace od
     /// @param record_type Type of record to search (e.g., users or groups).
     /// @param record Optional record name to filter the search.
     /// @param names Output map of record names to hidden status.
-    void genEntries(const std::string& record_type,
-                    const std::string* record,
-                    std::map<std::string, bool>& names);
+    void genEntries(const std::string& record_type, const std::string* record, std::map<std::string, bool>& names);
 
     /// @brief Retrieves account policy data for a given user UID.
     ///

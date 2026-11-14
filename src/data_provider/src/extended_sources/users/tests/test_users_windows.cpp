@@ -14,46 +14,55 @@
 
 class MockWindowsApiWrapper : public IWindowsApiWrapper
 {
-    public:
-        MOCK_METHOD(DWORD, NetUserEnumWrapper,
-                    (LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, LPDWORD), (override));
-        MOCK_METHOD(DWORD, NetLocalGroupEnumWrapper,
-                    (LPCWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, LPDWORD), (override));
-        MOCK_METHOD(DWORD, NetUserGetInfoWrapper,
-                    (LPCWSTR, LPCWSTR, DWORD, LPBYTE*), (override));
-        MOCK_METHOD(DWORD, RegOpenKeyExWWrapper,
-                    (HKEY, LPCWSTR, DWORD, REGSAM, PHKEY), (override));
-        MOCK_METHOD(DWORD, RegQueryValueExWWrapper,
-                    (HKEY, LPCWSTR, LPDWORD, LPDWORD, LPBYTE, LPDWORD), (override));
-        MOCK_METHOD(LSTATUS, RegQueryInfoKeyWWrapper,
-                    (HKEY, LPWSTR, LPDWORD, LPDWORD, LPDWORD, LPDWORD,
-                     LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, PFILETIME), (override));
-        MOCK_METHOD(bool, IsValidSidWrapper, (PSID), (override));
-        MOCK_METHOD(BOOL, ConvertSidToStringSidAWrapper, (PSID, LPSTR*), (override));
-        MOCK_METHOD(bool, ConvertSidToStringSidWWrapper, (PSID, LPWSTR*), (override));
-        MOCK_METHOD(BOOL, ConvertStringSidToSidAWrapper, (LPCSTR, PSID*), (override));
-        MOCK_METHOD(BOOL, LookupAccountSidWWrapper,
-                    (LPCWSTR, PSID, LPWSTR, LPDWORD, LPWSTR, LPDWORD, PSID_NAME_USE), (override));
-        MOCK_METHOD(bool, LookupAccountNameWWrapper,
-                    (LPCWSTR, LPCWSTR, PSID, LPDWORD, LPWSTR, LPDWORD, PSID_NAME_USE), (override));
-        MOCK_METHOD(void, FreeSidWrapper, (LPVOID), (override));
-        MOCK_METHOD(DWORD, NetUserGetLocalGroupsWrapper,
-                    (LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD), (override));
-        MOCK_METHOD(PUCHAR, GetSidSubAuthorityCountWrapper, (PSID), (override));
-        MOCK_METHOD(PDWORD, GetSidSubAuthorityWrapper, (PSID, DWORD), (override));
-        MOCK_METHOD(LSTATUS, RegEnumKeyWWrapper, (HKEY, DWORD, LPWSTR, DWORD), (override));
-        MOCK_METHOD(DWORD, GetLastErrorWrapper, (), (override));
-        MOCK_METHOD(LSTATUS, RegCloseKeyWrapper, (HKEY hKey), (override));
+public:
+    MOCK_METHOD(DWORD,
+                NetUserEnumWrapper,
+                (LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, LPDWORD),
+                (override));
+    MOCK_METHOD(DWORD,
+                NetLocalGroupEnumWrapper,
+                (LPCWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD, LPDWORD),
+                (override));
+    MOCK_METHOD(DWORD, NetUserGetInfoWrapper, (LPCWSTR, LPCWSTR, DWORD, LPBYTE*), (override));
+    MOCK_METHOD(DWORD, RegOpenKeyExWWrapper, (HKEY, LPCWSTR, DWORD, REGSAM, PHKEY), (override));
+    MOCK_METHOD(DWORD, RegQueryValueExWWrapper, (HKEY, LPCWSTR, LPDWORD, LPDWORD, LPBYTE, LPDWORD), (override));
+    MOCK_METHOD(
+        LSTATUS,
+        RegQueryInfoKeyWWrapper,
+        (HKEY, LPWSTR, LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, LPDWORD, PFILETIME),
+        (override));
+    MOCK_METHOD(bool, IsValidSidWrapper, (PSID), (override));
+    MOCK_METHOD(BOOL, ConvertSidToStringSidAWrapper, (PSID, LPSTR*), (override));
+    MOCK_METHOD(bool, ConvertSidToStringSidWWrapper, (PSID, LPWSTR*), (override));
+    MOCK_METHOD(BOOL, ConvertStringSidToSidAWrapper, (LPCSTR, PSID*), (override));
+    MOCK_METHOD(BOOL,
+                LookupAccountSidWWrapper,
+                (LPCWSTR, PSID, LPWSTR, LPDWORD, LPWSTR, LPDWORD, PSID_NAME_USE),
+                (override));
+    MOCK_METHOD(bool,
+                LookupAccountNameWWrapper,
+                (LPCWSTR, LPCWSTR, PSID, LPDWORD, LPWSTR, LPDWORD, PSID_NAME_USE),
+                (override));
+    MOCK_METHOD(void, FreeSidWrapper, (LPVOID), (override));
+    MOCK_METHOD(DWORD,
+                NetUserGetLocalGroupsWrapper,
+                (LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD),
+                (override));
+    MOCK_METHOD(PUCHAR, GetSidSubAuthorityCountWrapper, (PSID), (override));
+    MOCK_METHOD(PDWORD, GetSidSubAuthorityWrapper, (PSID, DWORD), (override));
+    MOCK_METHOD(LSTATUS, RegEnumKeyWWrapper, (HKEY, DWORD, LPWSTR, DWORD), (override));
+    MOCK_METHOD(DWORD, GetLastErrorWrapper, (), (override));
+    MOCK_METHOD(LSTATUS, RegCloseKeyWrapper, (HKEY hKey), (override));
 };
 
 class UsersHelperTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            // Reset cache before each test to avoid memory accumulation
-            UsersHelper::resetCache();
-        }
+protected:
+    void SetUp() override
+    {
+        // Reset cache before each test to avoid memory accumulation
+        UsersHelper::resetCache();
+    }
 };
 
 TEST_F(UsersHelperTest, GetUserShellReturnsDefault)
@@ -88,72 +97,97 @@ TEST_F(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
     auto userInfo3 = new USER_INFO_3;
     userInfo3->usri3_primary_group_id = fakeRid;
 
-    EXPECT_CALL(*mockApi, NetUserEnumWrapper(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::SetArgPointee<3>(reinterpret_cast<LPBYTE>(usersInfo0)),
-                  ::testing::SetArgPointee<5>(1),
-                  ::testing::SetArgPointee<6>(1),
-                  ::testing::Return(NERR_Success)
-              ));
+    EXPECT_CALL(*mockApi,
+                NetUserEnumWrapper(::testing::_,
+                                   ::testing::_,
+                                   ::testing::_,
+                                   ::testing::_,
+                                   ::testing::_,
+                                   ::testing::_,
+                                   ::testing::_,
+                                   ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<3>(reinterpret_cast<LPBYTE>(usersInfo0)),
+                                   ::testing::SetArgPointee<5>(1),
+                                   ::testing::SetArgPointee<6>(1),
+                                   ::testing::Return(NERR_Success)));
 
     EXPECT_CALL(*mockApi, NetUserGetInfoWrapper(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::SetArgPointee<3>(reinterpret_cast<LPBYTE>(userInfo4)),
-                  ::testing::Return(NERR_Success)
-              ));
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<3>(reinterpret_cast<LPBYTE>(userInfo4)),
+                                   ::testing::Return(NERR_Success)));
 
     EXPECT_CALL(*mockApi, ConvertSidToStringSidWWrapper(fakeSid, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  [&sidString](PSID, LPWSTR * sidOut)
-    {
-        size_t len = sidString.length() + 1;
-        *sidOut = static_cast<LPWSTR>(malloc(len * sizeof(wchar_t)));
-        std::wstring wideSid(sidString.begin(), sidString.end());
-        wcscpy_s(*sidOut, len, wideSid.c_str());
-    },
-    ::testing::Return(1)));
+        .WillOnce(::testing::DoAll(
+            [&sidString](PSID, LPWSTR* sidOut)
+            {
+                size_t len = sidString.length() + 1;
+                *sidOut = static_cast<LPWSTR>(malloc(len * sizeof(wchar_t)));
+                std::wstring wideSid(sidString.begin(), sidString.end());
+                wcscpy_s(*sidOut, len, wideSid.c_str());
+            },
+            ::testing::Return(1)));
 
     BYTE subAuthCount = 2;
-    EXPECT_CALL(*mockApi, GetSidSubAuthorityCountWrapper(fakeSid))
-    .WillOnce(::testing::Return(&subAuthCount));
+    EXPECT_CALL(*mockApi, GetSidSubAuthorityCountWrapper(fakeSid)).WillOnce(::testing::Return(&subAuthCount));
 
-    EXPECT_CALL(*mockApi, GetSidSubAuthorityWrapper(fakeSid, 1))
-    .WillOnce(::testing::Return(&fakeRid));
+    EXPECT_CALL(*mockApi, GetSidSubAuthorityWrapper(fakeSid, 1)).WillOnce(::testing::Return(&fakeRid));
 
-    EXPECT_CALL(*mockApi, NetUserGetLocalGroupsWrapper(::testing::_, testUsername, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(ERROR_ACCESS_DENIED));
+    EXPECT_CALL(*mockApi,
+                NetUserGetLocalGroupsWrapper(::testing::_,
+                                             testUsername,
+                                             ::testing::_,
+                                             ::testing::_,
+                                             ::testing::_,
+                                             ::testing::_,
+                                             ::testing::_,
+                                             ::testing::_))
+        .WillOnce(::testing::Return(ERROR_ACCESS_DENIED));
 
     EXPECT_CALL(*mockApi, NetUserGetInfoWrapper(::testing::_, testUsername, 3, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::SetArgPointee<3>(reinterpret_cast<LPBYTE>(userInfo3)),
-                  ::testing::Return(NERR_Success)
-              ));
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<3>(reinterpret_cast<LPBYTE>(userInfo3)),
+                                   ::testing::Return(NERR_Success)));
 
     // getRoamingProfileSids() is called first - mock it to return empty (FILE_NOT_FOUND)
     HKEY fakeProfileListKey = reinterpret_cast<HKEY>(0x9999);
-    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"), 0, KEY_READ, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeProfileListKey), ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(*mockApi,
+                RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE,
+                                     ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"),
+                                     0,
+                                     KEY_READ,
+                                     ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeProfileListKey), ::testing::Return(ERROR_SUCCESS)));
 
-    EXPECT_CALL(*mockApi, RegQueryInfoKeyWWrapper(fakeProfileListKey, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_,
-                                                  ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(0), ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(*mockApi,
+                RegQueryInfoKeyWWrapper(fakeProfileListKey,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(0), ::testing::Return(ERROR_SUCCESS)));
 
-    EXPECT_CALL(*mockApi, RegCloseKeyWrapper(fakeProfileListKey))
-    .WillOnce(::testing::Return(ERROR_SUCCESS));
+    EXPECT_CALL(*mockApi, RegCloseKeyWrapper(fakeProfileListKey)).WillOnce(::testing::Return(ERROR_SUCCESS));
 
     // getUserHomeDir() calls RegOpenKeyExWWrapper for each user
-    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::HasSubstr(L"ProfileList\\S-1-5-21-1000"), 0, KEY_READ, ::testing::_))
-    .WillOnce(::testing::Return(ERROR_FILE_NOT_FOUND));
+    EXPECT_CALL(*mockApi,
+                RegOpenKeyExWWrapper(
+                    HKEY_LOCAL_MACHINE, ::testing::HasSubstr(L"ProfileList\\S-1-5-21-1000"), 0, KEY_READ, ::testing::_))
+        .WillOnce(::testing::Return(ERROR_FILE_NOT_FOUND));
 
     auto users = helper.processLocalAccounts(processedSids);
 
-    EXPECT_EQ(users.size(), size_t{1});
+    EXPECT_EQ(users.size(), size_t {1});
     const auto& user = users[0];
 
     EXPECT_EQ(user.username, "TestUser");
     EXPECT_EQ(user.description, "Test comment");
-    EXPECT_EQ(user.uid, std::uint32_t{1000});
-    EXPECT_EQ(user.gid, std::uint32_t{1000});
+    EXPECT_EQ(user.uid, std::uint32_t {1000});
+    EXPECT_EQ(user.gid, std::uint32_t {1000});
     EXPECT_EQ(user.sid, "S-1-5-21-1000");
     EXPECT_EQ(user.type, "local");
 
@@ -173,88 +207,143 @@ TEST_F(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
     PSID fakeSid = reinterpret_cast<PSID>(0x1002);
 
     // Call getRoamingProfileSids()
-    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"), 0, KEY_READ, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeRootKey), ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(*mockApi,
+                RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE,
+                                     ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"),
+                                     0,
+                                     KEY_READ,
+                                     ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeRootKey), ::testing::Return(ERROR_SUCCESS)));
 
-    EXPECT_CALL(*mockApi, RegQueryInfoKeyWWrapper(fakeRootKey, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_,
-                                                  ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(1), ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(*mockApi,
+                RegQueryInfoKeyWWrapper(fakeRootKey,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(1), ::testing::Return(ERROR_SUCCESS)));
 
     EXPECT_CALL(*mockApi, RegEnumKeyWWrapper(fakeRootKey, 0, ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::Invoke([](HKEY, DWORD, LPWSTR buffer, DWORD length)
-    {
-        const wchar_t* sid = L"S-1-5-21-1234567890-1234567890-1234567890-1002";
-        wcsncpy(buffer, sid, length);
-        buffer[length - 1] = L'\0';
-    }),
-    ::testing::Return(ERROR_SUCCESS)));
+        .WillOnce(::testing::DoAll(::testing::Invoke(
+                                       [](HKEY, DWORD, LPWSTR buffer, DWORD length)
+                                       {
+                                           const wchar_t* sid = L"S-1-5-21-1234567890-1234567890-1234567890-1002";
+                                           wcsncpy(buffer, sid, length);
+                                           buffer[length - 1] = L'\0';
+                                       }),
+                                   ::testing::Return(ERROR_SUCCESS)));
 
     // All subsequent calls return ERROR_NO_MORE_ITEMS to stop iteration
     EXPECT_CALL(*mockApi, RegEnumKeyWWrapper(fakeRootKey, ::testing::Ge(1), ::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return(ERROR_NO_MORE_ITEMS));
+        .WillRepeatedly(::testing::Return(ERROR_NO_MORE_ITEMS));
 
     // RegCloseKeyWrapper may be called by RAII destructors
     EXPECT_CALL(*mockApi, RegCloseKeyWrapper(::testing::_))
-    .Times(::testing::AtLeast(0))
-    .WillRepeatedly(::testing::Return(ERROR_SUCCESS));
+        .Times(::testing::AtLeast(0))
+        .WillRepeatedly(::testing::Return(ERROR_SUCCESS));
 
-    EXPECT_CALL(*mockApi, ConvertStringSidToSidAWrapper(::testing::StrEq("S-1-5-21-1234567890-1234567890-1234567890-1002"), ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<1>(fakeSid), ::testing::Return(TRUE)));
+    EXPECT_CALL(
+        *mockApi,
+        ConvertStringSidToSidAWrapper(::testing::StrEq("S-1-5-21-1234567890-1234567890-1234567890-1002"), ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<1>(fakeSid), ::testing::Return(TRUE)));
 
     BYTE subAuthCount = 1;
     DWORD fakeRid = 1002;
     EXPECT_CALL(*mockApi, GetSidSubAuthorityCountWrapper(fakeSid)).WillOnce(::testing::Return(&subAuthCount));
     EXPECT_CALL(*mockApi, GetSidSubAuthorityWrapper(fakeSid, 0)).WillOnce(::testing::Return(&fakeRid));
 
-    EXPECT_CALL(*mockApi, LookupAccountSidWWrapper(nullptr, fakeSid, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::Invoke([](LPCWSTR, PSID, LPWSTR name, LPDWORD, LPWSTR, LPDWORD, SID_NAME_USE*)
-    {
-        if (name) wcscpy(name, L"RoamingUser");
-    }),
-    ::testing::Return(TRUE)));
+    EXPECT_CALL(*mockApi,
+                LookupAccountSidWWrapper(
+                    nullptr, fakeSid, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::Invoke(
+                                       [](LPCWSTR, PSID, LPWSTR name, LPDWORD, LPWSTR, LPDWORD, SID_NAME_USE*)
+                                       {
+                                           if (name)
+                                               wcscpy(name, L"RoamingUser");
+                                       }),
+                                   ::testing::Return(TRUE)));
 
-    EXPECT_CALL(*mockApi, RegOpenKeyExWWrapper(HKEY_LOCAL_MACHINE, ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\S-1-5-21-1234567890-1234567890-1234567890-1002"), 0,
-                                               KEY_READ, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeProfileKey), ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(
+        *mockApi,
+        RegOpenKeyExWWrapper(
+            HKEY_LOCAL_MACHINE,
+            ::testing::StrEq(L"SOFTWARE\\Microsoft\\Windows "
+                             L"NT\\CurrentVersion\\ProfileList\\S-1-5-21-1234567890-1234567890-1234567890-1002"),
+            0,
+            KEY_READ,
+            ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::SetArgPointee<4>(fakeProfileKey), ::testing::Return(ERROR_SUCCESS)));
 
-    EXPECT_CALL(*mockApi, RegQueryInfoKeyWWrapper(fakeProfileKey, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_,
-                                                  ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(::testing::SetArgPointee<7>(1), ::testing::SetArgPointee<9>(MAX_PATH), ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(*mockApi,
+                RegQueryInfoKeyWWrapper(fakeProfileKey,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_))
+        .WillOnce(::testing::DoAll(
+            ::testing::SetArgPointee<7>(1), ::testing::SetArgPointee<9>(MAX_PATH), ::testing::Return(ERROR_SUCCESS)));
 
-    EXPECT_CALL(*mockApi, RegQueryValueExWWrapper(fakeProfileKey, ::testing::StrEq(L"ProfileImagePath"), ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::Invoke([](HKEY, LPCWSTR, LPDWORD, LPDWORD type, LPBYTE data, LPDWORD)
-    {
-        *type = REG_SZ;
-        const wchar_t* path = L"C:\\Users\\RoamingUser";
-        memcpy(data, path, (wcslen(path) + 1) * sizeof(wchar_t));
-    }),
-    ::testing::Return(ERROR_SUCCESS)));
+    EXPECT_CALL(*mockApi,
+                RegQueryValueExWWrapper(fakeProfileKey,
+                                        ::testing::StrEq(L"ProfileImagePath"),
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_,
+                                        ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::Invoke(
+                                       [](HKEY, LPCWSTR, LPDWORD, LPDWORD type, LPBYTE data, LPDWORD)
+                                       {
+                                           *type = REG_SZ;
+                                           const wchar_t* path = L"C:\\Users\\RoamingUser";
+                                           memcpy(data, path, (wcslen(path) + 1) * sizeof(wchar_t));
+                                       }),
+                                   ::testing::Return(ERROR_SUCCESS)));
 
     wchar_t* groupName = new wchar_t[10];
     wcscpy(groupName, L"TestGroup");
-    auto userGroupsBuffer = new LOCALGROUP_USERS_INFO_0[1] { { groupName } };
-    EXPECT_CALL(*mockApi, NetUserGetLocalGroupsWrapper(nullptr, ::testing::StrEq(L"RoamingUser"), 0, 0, ::testing::_, MAX_PREFERRED_LENGTH, ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::Invoke([userGroupsBuffer](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buffer, DWORD, LPDWORD, LPDWORD)
-    {
-        *buffer = reinterpret_cast<LPBYTE>(userGroupsBuffer);
-        return NERR_Success;
-    }),
-    ::testing::Return(NERR_Success)));
+    auto userGroupsBuffer = new LOCALGROUP_USERS_INFO_0[1] {{groupName}};
+    EXPECT_CALL(*mockApi,
+                NetUserGetLocalGroupsWrapper(nullptr,
+                                             ::testing::StrEq(L"RoamingUser"),
+                                             0,
+                                             0,
+                                             ::testing::_,
+                                             MAX_PREFERRED_LENGTH,
+                                             ::testing::_,
+                                             ::testing::_))
+        .WillOnce(::testing::DoAll(
+            ::testing::Invoke(
+                [userGroupsBuffer](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE* buffer, DWORD, LPDWORD, LPDWORD)
+                {
+                    *buffer = reinterpret_cast<LPBYTE>(userGroupsBuffer);
+                    return NERR_Success;
+                }),
+            ::testing::Return(NERR_Success)));
 
-    auto userInfo = new USER_INFO_2{};
+    auto userInfo = new USER_INFO_2 {};
     userInfo->usri2_comment = const_cast<LPWSTR>(L"Comment for RoamingUser");
     EXPECT_CALL(*mockApi, NetUserGetInfoWrapper(nullptr, ::testing::StrEq(L"RoamingUser"), ::testing::_, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::Invoke([userInfo](LPCWSTR, LPCWSTR, DWORD, LPBYTE * buffer)
-    {
-        *buffer = reinterpret_cast<LPBYTE>(userInfo);
-        return NERR_Success;
-    }),
-    ::testing::Return(NERR_Success)));
+        .WillOnce(::testing::DoAll(::testing::Invoke(
+                                       [userInfo](LPCWSTR, LPCWSTR, DWORD, LPBYTE* buffer)
+                                       {
+                                           *buffer = reinterpret_cast<LPBYTE>(userInfo);
+                                           return NERR_Success;
+                                       }),
+                                   ::testing::Return(NERR_Success)));
 
     EXPECT_CALL(*mockApi, RegCloseKeyWrapper(fakeRootKey)).Times(1);
     EXPECT_CALL(*mockApi, RegCloseKeyWrapper(fakeProfileKey)).Times(1);
@@ -262,10 +351,10 @@ TEST_F(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
 
     auto users = helper.processRoamingProfiles(processedSids);
 
-    ASSERT_EQ(users.size(), size_t{1});
+    ASSERT_EQ(users.size(), size_t {1});
     EXPECT_EQ(users[0].username, "RoamingUser");
-    EXPECT_EQ(users[0].uid, std::uint32_t{1002});
-    EXPECT_EQ(users[0].gid, std::uint32_t{1002});
+    EXPECT_EQ(users[0].uid, std::uint32_t {1002});
+    EXPECT_EQ(users[0].gid, std::uint32_t {1002});
     EXPECT_EQ(users[0].directory, "C:\\Users\\RoamingUser");
 
     delete[] userGroupsBuffer;

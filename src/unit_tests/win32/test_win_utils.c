@@ -26,74 +26,57 @@
 extern sysinfo_networks_func sysinfo_network_ptr;
 extern sysinfo_free_result_func sysinfo_free_result_ptr;
 
-static agent global_config = { 0 };
+static agent global_config = {0};
 static int test_case_selector = 0;
 static int error_code_sysinfo_network = 0;
 
 /* Every frame goes to the HTTPS module: the legacy egress is gone (#38030). */
-int __wrap_w_https_client_submit_event(const char *frame, size_t length) {
+int __wrap_w_https_client_submit_event(const char* frame, size_t length)
+{
     check_expected(frame);
     check_expected(length);
     return mock();
 }
 
-int mock_sysinfo_networks_func(cJSON **object) {
+int mock_sysinfo_networks_func(cJSON** object)
+{
 
-    static const char *ip_update_success =
-    "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
-    static const char *ipv6_gw_ipv4_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
-    static const char *ipv6_gw_ipv6_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *ipv4_gw_ipv4_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
-    static const char *ipv4_gw_ipv6_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *dual_stack_gw_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"gateway6\":\"fe80::1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ], \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *ipv6_only_gw_update_success =
-    "{ \"iface\": [ { \"gateway\":\" \", \"gateway6\":\"fe80::1\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *ipv4_only_gw_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"gateway6\":\" \", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ], \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *iface_bad_name = "{\"iface_fail\":[]}";
-    static const char *iface_no_elements = "{\"iface\":[]";
-    static const char *gateway_unknown = "{ \"iface\": [ { \"gateway\":\"unknown\" } ] }";
-    const char *json_string = NULL;
+    static const char* ip_update_success =
+        "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char* ipv6_gw_ipv4_addr_update_success =
+        "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char* ipv6_gw_ipv6_addr_update_success =
+        "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char* ipv4_gw_ipv4_addr_update_success =
+        "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char* ipv4_gw_ipv6_addr_update_success = "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv6\": [ { "
+                                                          "\"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char* dual_stack_gw_update_success =
+        "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"gateway6\":\"fe80::1\", \"IPv4\": [ { "
+        "\"address\":\"111.222.333.444\" } ], \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char* ipv6_only_gw_update_success = "{ \"iface\": [ { \"gateway\":\" \", \"gateway6\":\"fe80::1\", "
+                                                     "\"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char* ipv4_only_gw_update_success =
+        "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"gateway6\":\" \", \"IPv4\": [ { "
+        "\"address\":\"111.222.333.444\" } ], \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char* iface_bad_name = "{\"iface_fail\":[]}";
+    static const char* iface_no_elements = "{\"iface\":[]";
+    static const char* gateway_unknown = "{ \"iface\": [ { \"gateway\":\"unknown\" } ] }";
+    const char* json_string = NULL;
 
-    switch (test_case_selector) {
-    case 1:
-        json_string = ip_update_success;
-        break;
-    case 2:
-        json_string = iface_bad_name;
-        break;
-    case 3:
-        json_string = iface_no_elements;
-        break;
-    case 4:
-        json_string = gateway_unknown;
-        break;
-    case 5:
-        json_string = ipv6_gw_ipv4_addr_update_success;
-        break;
-    case 6:
-        json_string = ipv6_gw_ipv6_addr_update_success;
-        break;
-    case 7:
-        json_string = ipv4_gw_ipv4_addr_update_success;
-        break;
-    case  8:
-        json_string = ipv4_gw_ipv6_addr_update_success;
-        break;
-    case 9:
-        json_string = dual_stack_gw_update_success;
-        break;
-    case 10:
-        json_string = ipv6_only_gw_update_success;
-        break;
-    case 11:
-        json_string = ipv4_only_gw_update_success;
-        break;
+    switch (test_case_selector)
+    {
+        case 1: json_string = ip_update_success; break;
+        case 2: json_string = iface_bad_name; break;
+        case 3: json_string = iface_no_elements; break;
+        case 4: json_string = gateway_unknown; break;
+        case 5: json_string = ipv6_gw_ipv4_addr_update_success; break;
+        case 6: json_string = ipv6_gw_ipv6_addr_update_success; break;
+        case 7: json_string = ipv4_gw_ipv4_addr_update_success; break;
+        case 8: json_string = ipv4_gw_ipv6_addr_update_success; break;
+        case 9: json_string = dual_stack_gw_update_success; break;
+        case 10: json_string = ipv6_only_gw_update_success; break;
+        case 11: json_string = ipv4_only_gw_update_success; break;
     }
 
     *object = cJSON_Parse(json_string);
@@ -101,7 +84,8 @@ int mock_sysinfo_networks_func(cJSON **object) {
     return error_code_sysinfo_network;
 }
 
-void mock_sysinfo_free_result_func(cJSON **object) {
+void mock_sysinfo_free_result_func(cJSON** object)
+{
     cJSON_free(*object);
     return;
 }
@@ -113,7 +97,8 @@ void mock_sysinfo_free_result_func(cJSON **object) {
  * an uninitialized CRITICAL_SECTION is undefined behavior (issue 38428). */
 extern void wm_lifecycle_lock_init(void);
 
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     agt = &global_config;
     sysinfo_network_ptr = mock_sysinfo_networks_func;
     sysinfo_free_result_ptr = mock_sysinfo_free_result_func;
@@ -122,10 +107,11 @@ static int setup_group(void **state) {
     return 0;
 }
 
-static void test_get_agent_ip_legacy_win32_update_ip_success(void **state) {
+static void test_get_agent_ip_legacy_win32_update_ip_success(void** state)
+{
 
-    char *agent_ip = { "\0" };
-    char *address = { "111.222.333.444" };
+    char* agent_ip = {"\0"};
+    char* address = {"111.222.333.444"};
     error_code_sysinfo_network = 0;
     test_case_selector = 1;
 
@@ -134,94 +120,102 @@ static void test_get_agent_ip_legacy_win32_update_ip_success(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
-static void test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv6_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv6_success(void** state)
+{
 
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    const char* address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
     error_code_sysinfo_network = 0;
     test_case_selector = 6;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv4_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv4_success(void** state)
+{
 
-    const char * address = {"111.222.333.444"};
+    const char* address = {"111.222.333.444"};
     error_code_sysinfo_network = 0;
     test_case_selector = 5;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv4_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv4_success(void** state)
+{
 
-    const char * address = {"111.222.333.444"};
+    const char* address = {"111.222.333.444"};
     error_code_sysinfo_network = 0;
     test_case_selector = 7;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv6_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv6_success(void** state)
+{
 
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    const char* address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
     error_code_sysinfo_network = 0;
     test_case_selector = 8;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success(void** state)
+{
 
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    const char* address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
     error_code_sysinfo_network = 0;
     test_case_selector = 9;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success(void** state)
+{
 
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    const char* address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
     error_code_sysinfo_network = 0;
     test_case_selector = 10;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_ipv4_only_gateway_ipv4_success(void ** state) {
+static void test_get_agent_ip_legacy_win32_ipv4_only_gateway_ipv4_success(void** state)
+{
 
-    const char * address = {"111.222.333.444"};
+    const char* address = {"111.222.333.444"};
     error_code_sysinfo_network = 0;
     test_case_selector = 11;
 
-    char * agent_ip = get_agent_ip_legacy_win32();
+    char* agent_ip = get_agent_ip_legacy_win32();
 
     assert_string_equal(agent_ip, address);
     os_free(agent_ip);
 }
 
-static void test_get_agent_ip_legacy_win32_sysinfo_error(void **state) {
+static void test_get_agent_ip_legacy_win32_sysinfo_error(void** state)
+{
 
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
+    char* agent_ip = {"\0"};
+    char* address = {"\0"};
     error_code_sysinfo_network = 2;
     test_case_selector = 1;
     expect_string(__wrap__merror, formatted_msg, "Unable to get system network information. Error code: 2.");
@@ -230,10 +224,11 @@ static void test_get_agent_ip_legacy_win32_sysinfo_error(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
-static void test_get_agent_ip_legacy_win32_iface_bad_name(void **state) {
+static void test_get_agent_ip_legacy_win32_iface_bad_name(void** state)
+{
 
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
+    char* agent_ip = {"\0"};
+    char* address = {"\0"};
     error_code_sysinfo_network = 0;
     test_case_selector = 2;
 
@@ -242,10 +237,11 @@ static void test_get_agent_ip_legacy_win32_iface_bad_name(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
-static void test_get_agent_ip_legacy_win32_iface_no_elements(void **state) {
+static void test_get_agent_ip_legacy_win32_iface_no_elements(void** state)
+{
 
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
+    char* agent_ip = {"\0"};
+    char* address = {"\0"};
     error_code_sysinfo_network = 0;
     test_case_selector = 3;
 
@@ -254,10 +250,11 @@ static void test_get_agent_ip_legacy_win32_iface_no_elements(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
-static void test_get_agent_ip_legacy_win32_gateway_unknown(void **state) {
+static void test_get_agent_ip_legacy_win32_gateway_unknown(void** state)
+{
 
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
+    char* agent_ip = {"\0"};
+    char* address = {"\0"};
     error_code_sysinfo_network = 0;
     test_case_selector = 4;
 
@@ -266,7 +263,8 @@ static void test_get_agent_ip_legacy_win32_gateway_unknown(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
-static void test_SendMSGAction_mutex_abandoned(void **state) {
+static void test_SendMSGAction_mutex_abandoned(void** state)
+{
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -279,7 +277,8 @@ static void test_SendMSGAction_mutex_abandoned(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_SendMSGAction_mutex_error(void **state) {
+static void test_SendMSGAction_mutex_error(void** state)
+{
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -292,8 +291,8 @@ static void test_SendMSGAction_mutex_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_SendMSGAction_non_escape(void **state) {
-
+static void test_SendMSGAction_non_escape(void** state)
+{
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -311,8 +310,8 @@ static void test_SendMSGAction_non_escape(void **state) {
     assert_int_equal(ret, 0);
 }
 
-static void test_SendMSGAction_escape(void **state) {
-
+static void test_SendMSGAction_escape(void** state)
+{
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -331,15 +330,16 @@ static void test_SendMSGAction_escape(void **state) {
     assert_int_equal(ret, 0);
 }
 
-static void test_SendMSGAction_multi_escape(void **state) {
-
+static void test_SendMSGAction_multi_escape(void** state)
+{
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
     expect_string(__wrap_w_https_client_submit_event, frame, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
-    expect_value(__wrap_w_https_client_submit_event, length, strlen("1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message"));
+    expect_value(
+        __wrap_w_https_client_submit_event, length, strlen("1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message"));
     will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
@@ -350,8 +350,9 @@ static void test_SendMSGAction_multi_escape(void **state) {
     assert_int_equal(ret, 0);
 }
 
-static void test_SendMSGAction_rejects_a_null_message(void **state) {
-    (void) state;
+static void test_SendMSGAction_rejects_a_null_message(void** state)
+{
+    (void)state;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -370,15 +371,16 @@ static void test_SendMSGAction_rejects_a_null_message(void **state) {
 /* utf8_reported in SendMSGAction() is process-global and cmocka runs every test in one
  * process, so this must stay the first registered test that sends invalid UTF-8. A later
  * one reaches the mdebug2 arm instead and this mwarn expectation fails. */
-static void test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message(void **state) {
-    (void) state;
+static void test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message(void** state)
+{
+    (void)state;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "Invalid UTF-8 byte in a message from 'test.log'. Replacing it with U+FFFD.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "Invalid UTF-8 byte in a message from 'test.log'. Replacing it with U+FFFD.");
 
     expect_string(__wrap_w_https_client_submit_event, frame, "1:test.log:caf\xEF\xBF\xBD");
     expect_value(__wrap_w_https_client_submit_event, length, strlen("1:test.log:caf\xEF\xBF\xBD"));
@@ -392,8 +394,9 @@ static void test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message(void
     assert_int_equal(ret, 0);
 }
 
-static void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(void **state) {
-    (void) state;
+static void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(void** state)
+{
+    (void)state;
     static char location[300];
     static char message[OS_MAXSTR];
     static char expected[OS_MAXSTR];
@@ -416,8 +419,11 @@ static void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    snprintf(expected_debug, sizeof(expected_debug),
-             "Message from '%s' cut to %zu bytes to fit the queue.", location, budget - 1);
+    snprintf(expected_debug,
+             sizeof(expected_debug),
+             "Message from '%s' cut to %zu bytes to fit the queue.",
+             location,
+             budget - 1);
     expect_string(__wrap__mdebug2, formatted_msg, expected_debug);
 
     expect_string(__wrap_w_https_client_submit_event, frame, expected);
@@ -438,8 +444,9 @@ static void test_SendMSGAction_cuts_an_oversize_message_on_a_character_boundary(
     assert_int_equal(strlen(expected), 65534);
 }
 
-static void test_SendBinaryMSGAction_mutex_abandoned(void **state) {
-    (void) state;
+static void test_SendBinaryMSGAction_mutex_abandoned(void** state)
+{
+    (void)state;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -451,8 +458,9 @@ static void test_SendBinaryMSGAction_mutex_abandoned(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_SendBinaryMSGAction_message_too_large(void **state) {
-    (void) state;
+static void test_SendBinaryMSGAction_message_too_large(void** state)
+{
+    (void)state;
 
     size_t payload_len = OS_MAXSTR;
     char payload[payload_len];
@@ -462,7 +470,10 @@ static void test_SendBinaryMSGAction_message_too_large(void **state) {
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Binary message is too large to be sent (65542 bytes required, 65536 max). Payload of 65536 bytes for module 'FIM' was dropped.");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Binary message is too large to be sent (65542 bytes required, 65536 max). Payload of 65536 bytes "
+                  "for module 'FIM' was dropped.");
 
     expect_any(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 1);
@@ -471,17 +482,17 @@ static void test_SendBinaryMSGAction_message_too_large(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_SendBinaryMSGAction_submits_the_binary_frame(void **state) {
-    (void) state;
-
+static void test_SendBinaryMSGAction_submits_the_binary_frame(void** state)
+{
+    (void)state;
 
     const char payload[] = {'d', 'a', 't', 'a', '\0', 'm', 'o', 'r', 'e'};
     size_t payload_len = sizeof(payload);
-    const char *locmsg = "FIM";
+    const char* locmsg = "FIM";
     char loc = 's';
 
     char expected_msg[100];
-    char *p = expected_msg;
+    char* p = expected_msg;
     strcpy(p, "s:FIM:");
     p += strlen("s:FIM:");
     memcpy(p, payload, payload_len);
@@ -506,24 +517,28 @@ static void test_SendBinaryMSGAction_submits_the_binary_frame(void **state) {
 /* --- issue 38428: startup vs. shutdown mutual exclusion ------------------ */
 
 extern volatile sig_atomic_t wm_shutdown_requested;
-extern wmodule *wmodules;
+extern wmodule* wmodules;
 extern void wm_start_modules_unless_shutting_down(void);
 extern void stop_wmodules(void);
 
-startup_gate_wait_result_t __wrap_startup_gate_wait_for_ready(const char *module_name) {
+startup_gate_wait_result_t __wrap_startup_gate_wait_for_ready(const char* module_name)
+{
     check_expected(module_name);
     return mock_type(startup_gate_wait_result_t);
 }
 
-int __wrap_wm_config(void) {
+int __wrap_wm_config(void)
+{
     return mock_type(int);
 }
 
-int __wrap_wm_check(void) {
+int __wrap_wm_check(void)
+{
     return mock_type(int);
 }
 
-static int teardown_wm_lifecycle(void **state) {
+static int teardown_wm_lifecycle(void** state)
+{
     (void)state;
     wm_shutdown_requested = 0;
     wmodules = NULL;
@@ -532,7 +547,8 @@ static int teardown_wm_lifecycle(void **state) {
 
 /* --- skthread(): must not start syscheck once a shutdown is in flight --- */
 
-static void test_skthread_skips_start_on_shutdown_requested(void **state) {
+static void test_skthread_skips_start_on_shutdown_requested(void** state)
+{
     (void)state;
     expect_string(__wrap_startup_gate_wait_for_ready, module_name, "wazuh-syscheckd");
     will_return(__wrap_startup_gate_wait_for_ready, STARTUP_GATE_SHUTDOWN_REQUESTED);
@@ -542,7 +558,8 @@ static void test_skthread_skips_start_on_shutdown_requested(void **state) {
     skthread(NULL);
 }
 
-static void test_skthread_starts_syscheck_when_gate_ready(void **state) {
+static void test_skthread_starts_syscheck_when_gate_ready(void** state)
+{
     (void)state;
     expect_string(__wrap_startup_gate_wait_for_ready, module_name, "wazuh-syscheckd");
     will_return(__wrap_startup_gate_wait_for_ready, STARTUP_GATE_READY);
@@ -561,20 +578,23 @@ static void test_skthread_starts_syscheck_when_gate_ready(void **state) {
 
 static int test_routine_call_count = 0;
 
-DWORD WINAPI test_module_routine(__attribute__((unused)) void *data) {
+DWORD WINAPI test_module_routine(__attribute__((unused)) void* data)
+{
     test_routine_call_count++;
     return 0;
 }
 
-static int setup_module_routine_counter(void **state) {
+static int setup_module_routine_counter(void** state)
+{
     (void)state;
     test_routine_call_count = 0;
     return 0;
 }
 
-static void test_win_module_thread_skips_routine_on_shutdown_requested(void **state) {
+static void test_win_module_thread_skips_routine_on_shutdown_requested(void** state)
+{
     (void)state;
-    win_module_start_ctx_t *ctx = NULL;
+    win_module_start_ctx_t* ctx = NULL;
     os_calloc(1, sizeof(win_module_start_ctx_t), ctx);
     ctx->routine = test_module_routine;
     ctx->data = NULL;
@@ -588,9 +608,10 @@ static void test_win_module_thread_skips_routine_on_shutdown_requested(void **st
     assert_int_equal(test_routine_call_count, 0);
 }
 
-static void test_win_module_thread_runs_routine_when_gate_ready(void **state) {
+static void test_win_module_thread_runs_routine_when_gate_ready(void** state)
+{
     (void)state;
-    win_module_start_ctx_t *ctx = NULL;
+    win_module_start_ctx_t* ctx = NULL;
     os_calloc(1, sizeof(win_module_start_ctx_t), ctx);
     ctx->routine = test_module_routine;
     ctx->data = NULL;
@@ -607,7 +628,8 @@ static void test_win_module_thread_runs_routine_when_gate_ready(void **state) {
 /* --- wm_start_modules_unless_shutting_down(): the lock-guarded region that
  * replaces local_start()'s old unconditional wm_config()+spawn-loop. */
 
-static void test_wm_start_modules_skips_everything_when_shutdown_already_requested(void **state) {
+static void test_wm_start_modules_skips_everything_when_shutdown_already_requested(void** state)
+{
     (void)state;
     wm_shutdown_requested = 1;
 
@@ -620,13 +642,14 @@ static void test_wm_start_modules_skips_everything_when_shutdown_already_request
     assert_null(wmodules);
 }
 
-static void test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down(void **state) {
+static void test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down(void** state)
+{
     (void)state;
     wm_context ctx = {
         .name = "test-module",
         .start = test_module_routine,
     };
-    wmodule mod = { .context = &ctx, .data = NULL, .next = NULL };
+    wmodule mod = {.context = &ctx, .data = NULL, .next = NULL};
     wmodules = &mod;
 
     will_return(__wrap_wm_config, 0);
@@ -641,10 +664,11 @@ static void test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_d
 /* --- stop_wmodules(): sets the shutdown flag and joins every spawned module,
  * even when it never got a real thread (mid-startup race, issue 38428 §2). */
 
-static void test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread(void **state) {
+static void test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread(void** state)
+{
     (void)state;
-    wm_context ctx = { .name = "test-module" };
-    wmodule mod = { .context = &ctx, .data = NULL, .win_thread = NULL, .next = NULL };
+    wm_context ctx = {.name = "test-module"};
+    wmodule mod = {.context = &ctx, .data = NULL, .win_thread = NULL, .next = NULL};
     wmodules = &mod;
     wm_shutdown_requested = 0;
 
@@ -653,10 +677,11 @@ static void test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_threa
     assert_int_equal(wm_shutdown_requested, 1);
 }
 
-static void test_stop_wmodules_joins_a_spawned_thread(void **state) {
+static void test_stop_wmodules_joins_a_spawned_thread(void** state)
+{
     (void)state;
-    wm_context ctx = { .name = "test-module" };
-    wmodule mod = { .context = &ctx, .data = NULL, .win_thread = (HANDLE)0x5678, .next = NULL };
+    wm_context ctx = {.name = "test-module"};
+    wmodule mod = {.context = &ctx, .data = NULL, .win_thread = (HANDLE)0x5678, .next = NULL};
     wmodules = &mod;
     wm_shutdown_requested = 0;
 
@@ -672,10 +697,13 @@ static void test_stop_wmodules_joins_a_spawned_thread(void **state) {
     assert_null(mod.win_thread);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ip_success), cmocka_unit_test(test_get_agent_ip_legacy_win32_sysinfo_error),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_iface_bad_name),    cmocka_unit_test(test_get_agent_ip_legacy_win32_iface_no_elements),
+        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ip_success),
+        cmocka_unit_test(test_get_agent_ip_legacy_win32_sysinfo_error),
+        cmocka_unit_test(test_get_agent_ip_legacy_win32_iface_bad_name),
+        cmocka_unit_test(test_get_agent_ip_legacy_win32_iface_no_elements),
         cmocka_unit_test(test_get_agent_ip_legacy_win32_gateway_unknown),
         cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv6_success),
         cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv4_success),
@@ -684,8 +712,10 @@ int main(void) {
         cmocka_unit_test(test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success),
         cmocka_unit_test(test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success),
         cmocka_unit_test(test_get_agent_ip_legacy_win32_ipv4_only_gateway_ipv4_success),
-        cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
-        cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
+        cmocka_unit_test(test_SendMSGAction_mutex_abandoned),
+        cmocka_unit_test(test_SendMSGAction_mutex_error),
+        cmocka_unit_test(test_SendMSGAction_non_escape),
+        cmocka_unit_test(test_SendMSGAction_escape),
         cmocka_unit_test(test_SendMSGAction_multi_escape),
         cmocka_unit_test(test_SendMSGAction_rejects_a_null_message),
         cmocka_unit_test(test_SendMSGAction_replaces_an_invalid_utf8_byte_in_the_message),
@@ -695,11 +725,15 @@ int main(void) {
         cmocka_unit_test(test_SendBinaryMSGAction_submits_the_binary_frame),
         cmocka_unit_test(test_skthread_skips_start_on_shutdown_requested),
         cmocka_unit_test(test_skthread_starts_syscheck_when_gate_ready),
-        cmocka_unit_test_setup(test_win_module_thread_skips_routine_on_shutdown_requested, setup_module_routine_counter),
+        cmocka_unit_test_setup(test_win_module_thread_skips_routine_on_shutdown_requested,
+                               setup_module_routine_counter),
         cmocka_unit_test_setup(test_win_module_thread_runs_routine_when_gate_ready, setup_module_routine_counter),
-        cmocka_unit_test_teardown(test_wm_start_modules_skips_everything_when_shutdown_already_requested, teardown_wm_lifecycle),
-        cmocka_unit_test_teardown(test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down, teardown_wm_lifecycle),
-        cmocka_unit_test_teardown(test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread, teardown_wm_lifecycle),
+        cmocka_unit_test_teardown(test_wm_start_modules_skips_everything_when_shutdown_already_requested,
+                                  teardown_wm_lifecycle),
+        cmocka_unit_test_teardown(test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_down,
+                                  teardown_wm_lifecycle),
+        cmocka_unit_test_teardown(test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread,
+                                  teardown_wm_lifecycle),
         cmocka_unit_test_teardown(test_stop_wmodules_joins_a_spawned_thread, teardown_wm_lifecycle),
     };
 

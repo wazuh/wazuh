@@ -12,8 +12,7 @@
 #include <string>
 #include <vector>
 
-constexpr auto OS_SQL_STATEMENT
-{
+constexpr auto OS_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_osinfo (
     hostname TEXT,
     architecture TEXT,
@@ -34,20 +33,17 @@ constexpr auto OS_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"
-};
+    PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"};
 
 // Upgrades of a persistent database created with an older schema, applied in order. Entry N moves
 // a database from schema version N + 1 to N + 2 (a database with no entries is version 1). The
 // create statements above always describe the latest schema.
-static const std::vector<std::string> UPGRADE_SQL_STATEMENTS
-{
+static const std::vector<std::string> UPGRADE_SQL_STATEMENTS {
     // host.os.distribution.release was replaced by host.os.display_version.
     "ALTER TABLE dbsync_osinfo RENAME COLUMN os_distribution_release TO os_display_version;",
 };
 
-constexpr auto HW_SQL_STATEMENT
-{
+constexpr auto HW_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_hwinfo (
     serial_number TEXT,
     cpu_name TEXT,
@@ -59,21 +55,17 @@ constexpr auto HW_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (serial_number)) WITHOUT ROWID;)"
-};
+    PRIMARY KEY (serial_number)) WITHOUT ROWID;)"};
 
-constexpr auto HOTFIXES_SQL_STATEMENT
-{
+constexpr auto HOTFIXES_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_hotfixes(
     hotfix_name TEXT,
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (hotfix_name)) WITHOUT ROWID;)"
-};
+    PRIMARY KEY (hotfix_name)) WITHOUT ROWID;)"};
 
-constexpr auto PACKAGES_SQL_STATEMENT
-{
+constexpr auto PACKAGES_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_packages(
     name TEXT,
     version_ TEXT,
@@ -91,11 +83,9 @@ constexpr auto PACKAGES_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (name,version_,architecture,type,path)) WITHOUT ROWID;)"
-};
+    PRIMARY KEY (name,version_,architecture,type,path)) WITHOUT ROWID;)"};
 
-constexpr auto PROCESSES_SQL_STATEMENT
-{
+constexpr auto PROCESSES_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_processes (
     pid TEXT,
     name TEXT,
@@ -110,11 +100,9 @@ constexpr auto PROCESSES_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (pid)) WITHOUT ROWID;)"
-};
+    PRIMARY KEY (pid)) WITHOUT ROWID;)"};
 
-constexpr auto PORTS_SQL_STATEMENT
-{
+constexpr auto PORTS_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_ports (
        network_transport TEXT,
        source_ip TEXT,
@@ -130,11 +118,9 @@ constexpr auto PORTS_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;)"
-};
+       PRIMARY KEY (file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;)"};
 
-constexpr auto NETIFACE_SQL_STATEMENT
-{
+constexpr auto NETIFACE_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_network_iface (
        interface_name TEXT,
        interface_alias TEXT,
@@ -153,11 +139,9 @@ constexpr auto NETIFACE_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (interface_name,interface_alias,interface_type)) WITHOUT ROWID;)"
-};
+       PRIMARY KEY (interface_name,interface_alias,interface_type)) WITHOUT ROWID;)"};
 
-constexpr auto NETPROTO_SQL_STATEMENT
-{
+constexpr auto NETPROTO_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_network_protocol (
        interface_name TEXT,
        network_type TEXT,
@@ -167,11 +151,9 @@ constexpr auto NETPROTO_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (interface_name,network_type)) WITHOUT ROWID;)"
-};
+       PRIMARY KEY (interface_name,network_type)) WITHOUT ROWID;)"};
 
-constexpr auto NETADDR_SQL_STATEMENT
-{
+constexpr auto NETADDR_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_network_address (
        interface_name TEXT,
        network_type INTEGER,
@@ -181,11 +163,9 @@ constexpr auto NETADDR_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (interface_name,network_type,network_ip)) WITHOUT ROWID;)"
-};
+       PRIMARY KEY (interface_name,network_type,network_ip)) WITHOUT ROWID;)"};
 
-constexpr auto USERS_SQL_STATEMENT
-{
+constexpr auto USERS_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_users (
         user_name TEXT,
         user_full_name TEXT,
@@ -221,11 +201,9 @@ constexpr auto USERS_SQL_STATEMENT
         sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (user_name)) WITHOUT ROWID;)"
-};
+        PRIMARY KEY (user_name)) WITHOUT ROWID;)"};
 
-constexpr auto GROUPS_SQL_STATEMENT
-{
+constexpr auto GROUPS_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_groups (
     group_id BIGINT,
     group_name TEXT,
@@ -237,11 +215,9 @@ constexpr auto GROUPS_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (group_name)) WITHOUT ROWID;)"
-};
+    PRIMARY KEY (group_name)) WITHOUT ROWID;)"};
 
-constexpr auto SERVICES_SQL_STATEMENT
-{
+constexpr auto SERVICES_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_services (
         service_id TEXT,
         service_name TEXT,
@@ -278,11 +254,9 @@ constexpr auto SERVICES_SQL_STATEMENT
         sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
-};
+        PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"};
 
-constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
-{
+constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT {
     R"(CREATE TABLE dbsync_browser_extensions (
         browser_name TEXT,
         user_id TEXT,
@@ -309,61 +283,59 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
-};
+        PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"};
 
-constexpr auto TABLE_METADATA_SQL_STATEMENT
-{
+constexpr auto TABLE_METADATA_SQL_STATEMENT {
     R"(CREATE TABLE IF NOT EXISTS table_metadata (
     table_name TEXT PRIMARY KEY,
     last_sync_time INTEGER NOT NULL
-    );)"
-};
+    );)"};
 
-constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };
-constexpr auto NET_PROTOCOL_TABLE           { "dbsync_network_protocol"     };
-constexpr auto NET_ADDRESS_TABLE            { "dbsync_network_address"      };
-constexpr auto PACKAGES_TABLE               { "dbsync_packages"             };
-constexpr auto HOTFIXES_TABLE               { "dbsync_hotfixes"             };
-constexpr auto PORTS_TABLE                  { "dbsync_ports"                };
-constexpr auto PROCESSES_TABLE              { "dbsync_processes"            };
-constexpr auto OS_TABLE                     { "dbsync_osinfo"               };
-constexpr auto HW_TABLE                     { "dbsync_hwinfo"               };
-constexpr auto USERS_TABLE                  { "dbsync_users"                };
-constexpr auto GROUPS_TABLE                 { "dbsync_groups"               };
-constexpr auto SERVICES_TABLE               { "dbsync_services"             };
-constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };
+constexpr auto NET_IFACE_TABLE {"dbsync_network_iface"};
+constexpr auto NET_PROTOCOL_TABLE {"dbsync_network_protocol"};
+constexpr auto NET_ADDRESS_TABLE {"dbsync_network_address"};
+constexpr auto PACKAGES_TABLE {"dbsync_packages"};
+constexpr auto HOTFIXES_TABLE {"dbsync_hotfixes"};
+constexpr auto PORTS_TABLE {"dbsync_ports"};
+constexpr auto PROCESSES_TABLE {"dbsync_processes"};
+constexpr auto OS_TABLE {"dbsync_osinfo"};
+constexpr auto HW_TABLE {"dbsync_hwinfo"};
+constexpr auto USERS_TABLE {"dbsync_users"};
+constexpr auto GROUPS_TABLE {"dbsync_groups"};
+constexpr auto SERVICES_TABLE {"dbsync_services"};
+constexpr auto BROWSER_EXTENSIONS_TABLE {"dbsync_browser_extensions"};
 
-constexpr auto METADATA_TABLE               { "table_metadata"              };
+constexpr auto METADATA_TABLE {"table_metadata"};
 
 // Primary key fields for each table (used for ORDER BY clauses)
 // These must match the PRIMARY KEY definitions in the CREATE TABLE statements above
-constexpr auto OS_PK_FIELDS                 { "os_name, os_version" };
-constexpr auto HW_PK_FIELDS                 { "serial_number" };
-constexpr auto HOTFIXES_PK_FIELDS           { "hotfix_name" };
-constexpr auto PACKAGES_PK_FIELDS           { "name, version_, architecture, type, path" };
-constexpr auto PROCESSES_PK_FIELDS          { "pid" };
-constexpr auto PORTS_PK_FIELDS              { "file_inode, network_transport, source_ip, source_port" };
-constexpr auto NET_IFACE_PK_FIELDS          { "interface_name, interface_alias, interface_type" };
-constexpr auto NET_PROTOCOL_PK_FIELDS       { "interface_name, network_type" };
-constexpr auto NET_ADDRESS_PK_FIELDS        { "interface_name, network_type, network_ip" };
-constexpr auto USERS_PK_FIELDS              { "user_name" };
-constexpr auto GROUPS_PK_FIELDS             { "group_name" };
-constexpr auto SERVICES_PK_FIELDS           { "service_id, file_path" };
-constexpr auto BROWSER_EXTENSIONS_PK_FIELDS { "browser_name, user_id, browser_profile_path, package_name, package_version_" };
+constexpr auto OS_PK_FIELDS {"os_name, os_version"};
+constexpr auto HW_PK_FIELDS {"serial_number"};
+constexpr auto HOTFIXES_PK_FIELDS {"hotfix_name"};
+constexpr auto PACKAGES_PK_FIELDS {"name, version_, architecture, type, path"};
+constexpr auto PROCESSES_PK_FIELDS {"pid"};
+constexpr auto PORTS_PK_FIELDS {"file_inode, network_transport, source_ip, source_port"};
+constexpr auto NET_IFACE_PK_FIELDS {"interface_name, interface_alias, interface_type"};
+constexpr auto NET_PROTOCOL_PK_FIELDS {"interface_name, network_type"};
+constexpr auto NET_ADDRESS_PK_FIELDS {"interface_name, network_type, network_ip"};
+constexpr auto USERS_PK_FIELDS {"user_name"};
+constexpr auto GROUPS_PK_FIELDS {"group_name"};
+constexpr auto SERVICES_PK_FIELDS {"service_id, file_path"};
+constexpr auto BROWSER_EXTENSIONS_PK_FIELDS {
+    "browser_name, user_id, browser_profile_path, package_name, package_version_"};
 
 // Simplified ordering fields for document limit management
 // Most tables use first PK field only, but some use multiple for better stability
-constexpr auto OS_ORDER_BY                  { "os_name" };
-constexpr auto HW_ORDER_BY                  { "serial_number" };
-constexpr auto HOTFIXES_ORDER_BY            { "hotfix_name" };
-constexpr auto PACKAGES_ORDER_BY            { "name, type" };  // Use name+type for stability
-constexpr auto PROCESSES_ORDER_BY           { "pid" };
-constexpr auto PORTS_ORDER_BY               { "file_inode" };
-constexpr auto NET_IFACE_ORDER_BY           { "interface_name" };
-constexpr auto NET_PROTOCOL_ORDER_BY        { "interface_name" };
-constexpr auto NET_ADDRESS_ORDER_BY         { "interface_name" };
-constexpr auto USERS_ORDER_BY               { "user_name" };
-constexpr auto GROUPS_ORDER_BY              { "group_name" };
-constexpr auto SERVICES_ORDER_BY            { "service_id" };
-constexpr auto BROWSER_EXTENSIONS_ORDER_BY  { "browser_name" };
+constexpr auto OS_ORDER_BY {"os_name"};
+constexpr auto HW_ORDER_BY {"serial_number"};
+constexpr auto HOTFIXES_ORDER_BY {"hotfix_name"};
+constexpr auto PACKAGES_ORDER_BY {"name, type"}; // Use name+type for stability
+constexpr auto PROCESSES_ORDER_BY {"pid"};
+constexpr auto PORTS_ORDER_BY {"file_inode"};
+constexpr auto NET_IFACE_ORDER_BY {"interface_name"};
+constexpr auto NET_PROTOCOL_ORDER_BY {"interface_name"};
+constexpr auto NET_ADDRESS_ORDER_BY {"interface_name"};
+constexpr auto USERS_ORDER_BY {"user_name"};
+constexpr auto GROUPS_ORDER_BY {"group_name"};
+constexpr auto SERVICES_ORDER_BY {"service_id"};
+constexpr auto BROWSER_EXTENSIONS_ORDER_BY {"browser_name"};

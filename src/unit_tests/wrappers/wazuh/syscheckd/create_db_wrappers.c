@@ -13,71 +13,91 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration) {
+void __wrap_fim_checker(const char* path, event_data_t* evt_data, const directory_t* configuration)
+{
     check_expected(path);
     check_expected(evt_data);
     check_expected(configuration);
 }
 
-directory_t *__wrap_fim_configuration_directory(const char *path,
-                                                 __attribute__((unused)) bool notify_not_found,
-                                                 __attribute__((unused)) const OSList *directories_list) {
+directory_t* __wrap_fim_configuration_directory(const char* path,
+                                                __attribute__((unused)) bool notify_not_found,
+                                                __attribute__((unused)) const OSList* directories_list)
+{
     check_expected(path);
-    return mock_type(directory_t *);
+    return mock_type(directory_t*);
 }
 
-void __wrap_fim_realtime_event(char *file) {
+void __wrap_fim_realtime_event(char* file)
+{
     check_expected(file);
 }
 
-int __wrap_fim_whodata_event(whodata_evt * w_evt)
+int __wrap_fim_whodata_event(whodata_evt* w_evt)
 {
-    if (w_evt->process_id) check_expected(w_evt->process_id);
-    if (w_evt->user_id) check_expected(w_evt->user_id);
-    if (w_evt->process_name) check_expected(w_evt->process_name);
-    if (w_evt->path) check_expected(w_evt->path);
+    if (w_evt->process_id)
+        check_expected(w_evt->process_id);
+    if (w_evt->user_id)
+        check_expected(w_evt->user_id);
+    if (w_evt->process_name)
+        check_expected(w_evt->process_name);
+    if (w_evt->path)
+        check_expected(w_evt->path);
 #ifndef WIN32
-    if (w_evt->group_id) check_expected(w_evt->group_id);
-    if (w_evt->audit_uid) check_expected(w_evt->audit_uid);
-    if (w_evt->effective_uid) check_expected(w_evt->effective_uid);
-    if (w_evt->inode) check_expected(w_evt->inode);
-    if (w_evt->ppid) check_expected(w_evt->ppid);
+    if (w_evt->group_id)
+        check_expected(w_evt->group_id);
+    if (w_evt->audit_uid)
+        check_expected(w_evt->audit_uid);
+    if (w_evt->effective_uid)
+        check_expected(w_evt->effective_uid);
+    if (w_evt->inode)
+        check_expected(w_evt->inode);
+    if (w_evt->ppid)
+        check_expected(w_evt->ppid);
 #endif
     return 1;
 }
 
-void expect_fim_checker_call(const char *path, const directory_t *configuration) {
+void expect_fim_checker_call(const char* path, const directory_t* configuration)
+{
     expect_string(__wrap_fim_checker, path, path);
     expect_any(__wrap_fim_checker, evt_data);
     expect_value(__wrap_fim_checker, configuration, configuration);
 }
 
-void expect_fim_configuration_directory_call(const char *path, directory_t *ret) {
+void expect_fim_configuration_directory_call(const char* path, directory_t* ret)
+{
     expect_string(__wrap_fim_configuration_directory, path, path);
     will_return(__wrap_fim_configuration_directory, ret);
 }
 
-void __wrap_fim_db_transaction_deleted_rows(__attribute__((unused))TXN_HANDLE txn_handler,
-                                            __attribute__((unused))result_callback_t callback,
-                                            __attribute__((unused))void* txn_ctx) {
+void __wrap_fim_db_transaction_deleted_rows(__attribute__((unused)) TXN_HANDLE txn_handler,
+                                            __attribute__((unused)) result_callback_t callback,
+                                            __attribute__((unused)) void* txn_ctx)
+{
     function_called();
 }
 
-int __wrap_fim_db_transaction_sync_row(__attribute__((unused))TXN_HANDLE txn_handler, __attribute__((unused))const fim_entry* entry){
+int __wrap_fim_db_transaction_sync_row(__attribute__((unused)) TXN_HANDLE txn_handler,
+                                       __attribute__((unused)) const fim_entry* entry)
+{
     return mock_type(int);
 }
 
-TXN_HANDLE __wrap_fim_db_transaction_start(__attribute__((unused))const char* table,
-                                           __attribute__((unused))result_callback_t row_callback,
-                                           __attribute__((unused))void *user_data){
+TXN_HANDLE __wrap_fim_db_transaction_start(__attribute__((unused)) const char* table,
+                                           __attribute__((unused)) result_callback_t row_callback,
+                                           __attribute__((unused)) void* user_data)
+{
     return mock_type(TXN_HANDLE);
 }
 
-int __wrap_Start_win32_Syscheck() {
+int __wrap_Start_win32_Syscheck()
+{
     function_called();
     return mock();
 }
 
-void __wrap_fim_generate_delete_event(){
+void __wrap_fim_generate_delete_event()
+{
     function_called();
 }

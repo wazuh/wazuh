@@ -14,25 +14,29 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int __wrap_sysinfo_os(cJSON ** js_result) {
+int __wrap_sysinfo_os(cJSON** js_result)
+{
 
-    *js_result = mock_ptr_type(cJSON *);
+    *js_result = mock_ptr_type(cJSON*);
     return mock_type(int);
 }
 
-int __wrap_sysinfo_processes(cJSON ** js_result) {
+int __wrap_sysinfo_processes(cJSON** js_result)
+{
 
-    *js_result = mock_ptr_type(cJSON *);
+    *js_result = mock_ptr_type(cJSON*);
     return mock_type(int);
 }
 
-int __wrap_sysinfo_networks(cJSON ** js_result) {
+int __wrap_sysinfo_networks(cJSON** js_result)
+{
 
-    *js_result = mock_ptr_type(cJSON *);
+    *js_result = mock_ptr_type(cJSON*);
     return mock_type(int);
 }
 
-void __wrap_sysinfo_free_result( __attribute__((unused)) cJSON ** js_data) {
+void __wrap_sysinfo_free_result(__attribute__((unused)) cJSON** js_data)
+{
 
-    js_data = mock_ptr_type(cJSON **);
+    js_data = mock_ptr_type(cJSON**);
 }

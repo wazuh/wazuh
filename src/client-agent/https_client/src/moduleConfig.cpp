@@ -39,8 +39,7 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.agentKeyHex = boundedString(config.agent_key, sizeof(config.agent_key));
     typed.verifyMode = static_cast<hc_verify_mode_t>(config.verify_mode);
     typed.caPath = boundedString(config.ca_path, sizeof(config.ca_path));
-    typed.systemFallbackCaPath = boundedString(config.system_fallback_ca_path,
-                                               sizeof(config.system_fallback_ca_path));
+    typed.systemFallbackCaPath = boundedString(config.system_fallback_ca_path, sizeof(config.system_fallback_ca_path));
     typed.clientCert = boundedString(config.client_cert, sizeof(config.client_cert));
     typed.clientKey = boundedString(config.client_key, sizeof(config.client_key));
     typed.ciphers = boundedString(config.ciphers, sizeof(config.ciphers));
@@ -109,17 +108,15 @@ bool ModuleConfig::validateTiming(const LogFn& logFn) const
     return true;
 }
 
-bool ModuleConfig::validateTransport(const IFsProbe& fsProbe, const LogFn& logFn,
-                                     bool unverifiedByDesign) const
+bool ModuleConfig::validateTransport(const IFsProbe& fsProbe, const LogFn& logFn, bool unverifiedByDesign) const
 {
     return validateTls(fsProbe, logFn, unverifiedByDesign) && validateClientCert(fsProbe, logFn);
 }
 
-bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
-                               bool unverifiedByDesign) const
+bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn, bool unverifiedByDesign) const
 {
-    if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE
-            && verifyMode != HC_VERIFY_SYSTEM)
+    if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE &&
+        verifyMode != HC_VERIFY_SYSTEM)
     {
         LOGFN_ERROR(logFn, "Config rejected: unknown verification_mode %d.", verifyMode);
         return false;

@@ -72,7 +72,8 @@ std::optional<std::wstring> ServicesHelper::readServiceDllFromParameters(const s
 
     std::wstring buffer(dataSize / sizeof(wchar_t), L'\0');
 
-    status = m_winapiWrapper->RegQueryValueExWWrapper(hKey, L"ServiceDll", nullptr, nullptr, reinterpret_cast<LPBYTE>(&buffer[0]), &dataSize);
+    status = m_winapiWrapper->RegQueryValueExWWrapper(
+        hKey, L"ServiceDll", nullptr, nullptr, reinterpret_cast<LPBYTE>(&buffer[0]), &dataSize);
 
     m_winapiWrapper->RegCloseKeyWrapper(hKey);
 

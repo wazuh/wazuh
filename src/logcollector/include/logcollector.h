@@ -261,9 +261,9 @@ typedef struct w_msg_queue_t
     w_queue_t* msg_queue;
     pthread_mutex_t mutex;
     pthread_cond_t available;
-    time_t last_warned;              ///< Last time a "queue is full" or "accepting lines again" warning fired for this target
+    time_t last_warned; ///< Last time a "queue is full" or "accepting lines again" warning fired for this target
     unsigned long dropped_since_warning; ///< Lines dropped for this target and not yet reported
-    const char * target_name;        ///< Cached on push so pop can name the target in the recovery warning
+    const char* target_name;             ///< Cached on push so pop can name the target in the recovery warning
 } w_msg_queue_t;
 
 /* Hash table of queues */
@@ -369,7 +369,7 @@ bool w_get_hash_context(logreader* lf, EVP_MD_CTX** context, int64_t position);
  * @param line Line read from `lf->fp`.
  * @param position Position of the stream before the line was read. It is moved to the end of the line.
  */
-void w_hash_read_line(logreader *lf, EVP_MD_CTX *context, const char *line, int64_t *position);
+void w_hash_read_line(logreader* lf, EVP_MD_CTX* context, const char* line, int64_t* position);
 
 extern int sample_log_length;
 extern int lc_debug_level;
@@ -404,7 +404,7 @@ void w_macos_release_log_stream(void);
  * @param arg Unused
  * @return NULL
  */
-void * w_macos_log_reader(void * arg);
+void* w_macos_log_reader(void* arg);
 #endif
 
 #endif /* LOGREADER_H */

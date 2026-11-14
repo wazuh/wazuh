@@ -12,27 +12,24 @@
 
 const std::string K_SERVICE_START_TYPE[] = {"BOOT_START", "SYSTEM_START", "AUTO_START", "DEMAND_START", "DISABLED"};
 
-const std::string K_SERVICE_STATUS[] =
-{
-    "UNKNOWN", "STOPPED", "START_PENDING", "STOP_PENDING", "RUNNING", "CONTINUE_PENDING", "PAUSE_PENDING", "PAUSED"
-};
+const std::string K_SERVICE_STATUS[] = {
+    "UNKNOWN", "STOPPED", "START_PENDING", "STOP_PENDING", "RUNNING", "CONTINUE_PENDING", "PAUSE_PENDING", "PAUSED"};
 
 /* Possible values defined here (dwServiceType):
  * https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-service_status
  * https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-query_service_configw
  */
 const std::map<int, std::string> K_SERVICE_TYPE = {{0x00000001, "KERNEL_DRIVER"},
-    {0x00000002, "FILE_SYSTEM_DRIVER"},
-    {0x00000010, "OWN_PROCESS"},
-    {0x00000020, "SHARE_PROCESS"},
-    {0x00000050, "USER_OWN_PROCESS"},
-    {0x00000060, "USER_SHARE_PROCESS"},
-    {0x000000d0, "USER_OWN_PROCESS(Instance)"},
-    {0x000000e0, "USER_SHARE_PROCESS(Instance)"},
-    {0x00000100, "INTERACTIVE_PROCESS"},
-    {0x00000110, "OWN_PROCESS(Interactive)"},
-    {0x00000120, "SHARE_PROCESS(Interactive)"}
-};
+                                                   {0x00000002, "FILE_SYSTEM_DRIVER"},
+                                                   {0x00000010, "OWN_PROCESS"},
+                                                   {0x00000020, "SHARE_PROCESS"},
+                                                   {0x00000050, "USER_OWN_PROCESS"},
+                                                   {0x00000060, "USER_SHARE_PROCESS"},
+                                                   {0x000000d0, "USER_OWN_PROCESS(Instance)"},
+                                                   {0x000000e0, "USER_SHARE_PROCESS(Instance)"},
+                                                   {0x00000100, "INTERACTIVE_PROCESS"},
+                                                   {0x00000110, "OWN_PROCESS(Interactive)"},
+                                                   {0x00000120, "SHARE_PROCESS(Interactive)"}};
 
 ServicesProvider::ServicesProvider(std::shared_ptr<IServicesHelper> servicesHelper,
                                    std::shared_ptr<IWinSvcWrapper> winSvcWrapper,
@@ -40,13 +37,15 @@ ServicesProvider::ServicesProvider(std::shared_ptr<IServicesHelper> servicesHelp
     : m_servicesHelper(std::move(servicesHelper))
     , m_winSvcWrapper(std::move(winSvcWrapper))
     , m_winApiWrapper(std::move(winApiWrapper))
-{}
+{
+}
 
 ServicesProvider::ServicesProvider()
     : m_servicesHelper(std::make_shared<ServicesHelper>())
     , m_winSvcWrapper(std::make_shared<WinSvcWrapper>())
     , m_winApiWrapper(std::make_shared<WindowsApiWrapper>())
-{}
+{
+}
 
 bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS_PROCESSW& svc, nlohmann::json& results)
 {
@@ -109,7 +108,8 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
         auto descBuf = std::make_unique<BYTE[]>(descBufSize);
         auto desc = reinterpret_cast<LPSERVICE_DESCRIPTIONW>(descBuf.get());
 
-        if (m_winSvcWrapper->QueryServiceConfig2WWrapper(svcHandle, SERVICE_CONFIG_DESCRIPTION, descBuf.get(), descBufSize, &descBufSize))
+        if (m_winSvcWrapper->QueryServiceConfig2WWrapper(
+                svcHandle, SERVICE_CONFIG_DESCRIPTION, descBuf.get(), descBufSize, &descBufSize))
         {
             if (desc->lpDescription != nullptr)
             {
@@ -118,7 +118,8 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
         }
         else
         {
-            // std::cerr << "Warning: Failed to get service description. Error: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+            // std::cerr << "Warning: Failed to get service description. Error: " <<
+            // m_winApiWrapper->GetLastErrorWrapper() << "\n";
         }
     }
 
@@ -148,7 +149,8 @@ nlohmann::json ServicesProvider::collect()
 
     if (!scmHandle)
     {
-        // std::cerr << "Failed to connect to Service Connection Manager: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Failed to connect to Service Connection Manager: " << m_winApiWrapper->GetLastErrorWrapper() <<
+        // "\n";
         return results;
     }
 

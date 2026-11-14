@@ -32,54 +32,53 @@
 
 class SyncProtocolIntegrationTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
+protected:
+    void SetUp() override
+    {
+        // Create temporary directory for test databases
+        testDbPath = "/tmp/sync_protocol_integration_test_" +
+                     std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) + ".db";
+
+        // Set up metadata for sync protocol
+        agent_metadata_t metadata = {};
+        strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+        strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+        strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+        strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+        strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+        strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+        strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+        strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
+        char* groups[] = {const_cast<char*>("group1")};
+        metadata.groups = groups;
+        metadata.groups_count = 1;
+        metadata_provider_update(&metadata);
+
+        // Create logger
+        logger = [](modules_log_level_t, const std::string&)
         {
-            // Create temporary directory for test databases
-            testDbPath = "/tmp/sync_protocol_integration_test_" +
-                         std::to_string(std::chrono::system_clock::now().time_since_epoch().count()) +
-                         ".db";
+            // Silent logger for tests, but can be enabled for debugging
+            // std::cout << "[" << level << "] " << msg << std::endl;
+        };
 
-            // Set up metadata for sync protocol
-            agent_metadata_t metadata = {};
-            strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-            strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
-            strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
-            strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
-            strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
-            strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
-            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
-            strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
-            char* groups[] = {const_cast<char*>("group1")};
-            metadata.groups = groups;
-            metadata.groups_count = 1;
-            metadata_provider_update(&metadata);
+        // Create MQ functions (mock for now, but could be real)
+    }
 
-            // Create logger
-            logger = [](modules_log_level_t, const std::string&)
-            {
-                // Silent logger for tests, but can be enabled for debugging
-                // std::cout << "[" << level << "] " << msg << std::endl;
-            };
-
-            // Create MQ functions (mock for now, but could be real)
+    void TearDown() override
+    {
+        // Clean up test database
+        if (std::filesystem::exists(testDbPath))
+        {
+            std::filesystem::remove(testDbPath);
         }
 
-        void TearDown() override
-        {
-            // Clean up test database
-            if (std::filesystem::exists(testDbPath))
-            {
-                std::filesystem::remove(testDbPath);
-            }
+        // Reset metadata provider
+        metadata_provider_reset();
+    }
 
-            // Reset metadata provider
-            metadata_provider_reset();
-        }
-
-        std::string testDbPath;
-        LoggerFunc logger;
+    std::string testDbPath;
+    LoggerFunc logger;
 };
 
 // ========================================
@@ -106,9 +105,7 @@ TEST_F(SyncProtocolIntegrationTest, PersistentQueue_RealDatabase_BasicOperations
     std::string testIndex = "wazuh-states-vulnerabilities-packages";
     std::string testData = R"({"name":"test-pkg","version":"1.0","architecture":"x86_64"})";
 
-    EXPECT_NO_THROW(
-        queue.submit(testId, testIndex, testData, Operation::CREATE, 0, false)
-    );
+    EXPECT_NO_THROW(queue.submit(testId, testIndex, testData, Operation::CREATE, 0, false));
 
     // Fetch pending items (should return the item we just submitted)
     auto pendingItems = queue.fetchPendingItems(true);
@@ -135,12 +132,12 @@ TEST_F(SyncProtocolIntegrationTest, PersistentQueue_FetchOnlyDataValues)
     PersistentQueue queue(testDbPath, logger);
 
     // Submit DataValue item
-    queue.submit("datavalue1", "wazuh-states-vulnerabilities-packages",
-                 R"({"name":"pkg1"})", Operation::CREATE, 0, false);
+    queue.submit(
+        "datavalue1", "wazuh-states-vulnerabilities-packages", R"({"name":"pkg1"})", Operation::CREATE, 0, false);
 
     // Submit DataContext item
-    queue.submit("datacontext1", "wazuh-states-vulnerabilities-packages",
-                 R"({"context":"data"})", Operation::MODIFY, 0, true);
+    queue.submit(
+        "datacontext1", "wazuh-states-vulnerabilities-packages", R"({"context":"data"})", Operation::MODIFY, 0, true);
 
     // Fetch only DataValues
     auto dataValues = queue.fetchPendingItems(true);
@@ -208,14 +205,13 @@ TEST_F(SyncProtocolIntegrationTest, PersistentQueue_ClearAllDataContext)
     PersistentQueue queue(testDbPath, logger);
 
     // Submit multiple items
-    queue.submit("datavalue1", "wazuh-states-vulnerabilities-packages",
-                 R"({"name":"pkg1"})", Operation::CREATE, 0, false);
-    queue.submit("datacontext1", "wazuh-states-vulnerabilities-packages",
-                 R"({"context":"ctx1"})", Operation::MODIFY, 0, true);
-    queue.submit("datavalue2", "wazuh-states-vulnerabilities-system",
-                 R"({"os":"Linux"})", Operation::CREATE, 0, false);
-    queue.submit("datacontext2", "wazuh-states-vulnerabilities-system",
-                 R"({"context":"ctx2"})", Operation::MODIFY, 0, true);
+    queue.submit(
+        "datavalue1", "wazuh-states-vulnerabilities-packages", R"({"name":"pkg1"})", Operation::CREATE, 0, false);
+    queue.submit(
+        "datacontext1", "wazuh-states-vulnerabilities-packages", R"({"context":"ctx1"})", Operation::MODIFY, 0, true);
+    queue.submit("datavalue2", "wazuh-states-vulnerabilities-system", R"({"os":"Linux"})", Operation::CREATE, 0, false);
+    queue.submit(
+        "datacontext2", "wazuh-states-vulnerabilities-system", R"({"context":"ctx2"})", Operation::MODIFY, 0, true);
 
     // Verify we have 4 items total
     auto allItems = queue.fetchPendingItems(false);
@@ -260,9 +256,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_PersistAndFetch)
         "description": "Test package for integration tests"
     })";
 
-    EXPECT_NO_THROW(
-        protocol.persistDifference(packageId, Operation::CREATE, packageIndex, packageData, 0, false)
-    );
+    EXPECT_NO_THROW(protocol.persistDifference(packageId, Operation::CREATE, packageIndex, packageData, 0, false));
 
     // Fetch pending items
     auto pendingItems = protocol.fetchPendingItems(true);
@@ -290,22 +284,30 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_VDWorkflow_ClearAndFetch)
     AgentSyncProtocol protocol("syscollector_vd", testDbPath, logger, nullptr);
 
     // Step 1: Persist DataValue items
-    protocol.persistDifference("pkg1", Operation::CREATE,
+    protocol.persistDifference("pkg1",
+                               Operation::CREATE,
                                "wazuh-states-vulnerabilities-packages",
-                               R"({"name":"pkg1","version":"1.0"})", 0, false);
+                               R"({"name":"pkg1","version":"1.0"})",
+                               0,
+                               false);
 
-    protocol.persistDifference("os1", Operation::MODIFY,
+    protocol.persistDifference("os1",
+                               Operation::MODIFY,
                                "wazuh-states-vulnerabilities-system",
-                               R"({"os_name":"Linux","os_version":"5.10"})", 0, false);
+                               R"({"os_name":"Linux","os_version":"5.10"})",
+                               0,
+                               false);
 
     // Step 2: Persist DataContext items
-    protocol.persistDifference("ctx_pkg", Operation::MODIFY,
+    protocol.persistDifference("ctx_pkg",
+                               Operation::MODIFY,
                                "wazuh-states-vulnerabilities-packages",
-                               R"({"context":"packages_context"})", 0, true);
+                               R"({"context":"packages_context"})",
+                               0,
+                               true);
 
-    protocol.persistDifference("ctx_os", Operation::MODIFY,
-                               "wazuh-states-vulnerabilities-system",
-                               R"({"context":"os_context"})", 0, true);
+    protocol.persistDifference(
+        "ctx_os", Operation::MODIFY, "wazuh-states-vulnerabilities-system", R"({"context":"os_context"})", 0, true);
 
     // Step 3: Verify we have both types
     auto allItems = protocol.fetchPendingItems(false);
@@ -337,19 +339,16 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_MultipleIndices)
     AgentSyncProtocol protocol("syscollector_vd", testDbPath, logger, nullptr);
 
     // Persist to packages index
-    protocol.persistDifference("item1", Operation::CREATE,
-                               "wazuh-states-vulnerabilities-packages",
-                               R"({"name":"package1"})", 0, false);
+    protocol.persistDifference(
+        "item1", Operation::CREATE, "wazuh-states-vulnerabilities-packages", R"({"name":"package1"})", 0, false);
 
     // Persist to system index
-    protocol.persistDifference("item2", Operation::CREATE,
-                               "wazuh-states-vulnerabilities-system",
-                               R"({"os":"Linux"})", 0, false);
+    protocol.persistDifference(
+        "item2", Operation::CREATE, "wazuh-states-vulnerabilities-system", R"({"os":"Linux"})", 0, false);
 
     // Persist to hotfixes index
-    protocol.persistDifference("item3", Operation::CREATE,
-                               "wazuh-states-vulnerabilities-hotfixes",
-                               R"({"hotfix":"KB123456"})", 0, false);
+    protocol.persistDifference(
+        "item3", Operation::CREATE, "wazuh-states-vulnerabilities-hotfixes", R"({"hotfix":"KB123456"})", 0, false);
 
     // Fetch all items
     auto items = protocol.fetchPendingItems(true);
@@ -385,9 +384,12 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_DataPersistenceAcrossInsta
     {
         AgentSyncProtocol protocol1("syscollector_vd", testDbPath, logger, nullptr);
 
-        protocol1.persistDifference("persistent_item", Operation::CREATE,
+        protocol1.persistDifference("persistent_item",
+                                    Operation::CREATE,
                                     "wazuh-states-vulnerabilities-packages",
-                                    R"({"name":"persistent_package"})", 0, false);
+                                    R"({"name":"persistent_package"})",
+                                    0,
+                                    false);
     }
     // protocol1 goes out of scope and is destroyed
 

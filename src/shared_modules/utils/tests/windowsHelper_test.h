@@ -18,15 +18,14 @@
 
 class WindowsHelperTest : public ::testing::Test
 {
-    protected:
+protected:
+    WindowsHelperTest() = default;
+    virtual ~WindowsHelperTest() = default;
 
-        WindowsHelperTest() = default;
-        virtual ~WindowsHelperTest() = default;
+    void SetUp() override;
+    void TearDown() override;
 
-        void SetUp() override;
-        void TearDown() override;
-
-        std::string m_timezone;
+    std::string m_timezone;
 };
 
-#endif //WINDOWS_HELPER_TEST_H
+#endif // WINDOWS_HELPER_TEST_H

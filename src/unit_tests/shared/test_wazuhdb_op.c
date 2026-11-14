@@ -23,13 +23,13 @@
 
 // Tests
 
-void test_ok_query(void **state)
+void test_ok_query(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 001 syscheck save file 0:0:0:0:0:0:0:0:0:0:0:0:0!0:0 /tmp/test.file";
+    char* query = "agent 001 syscheck save file 0:0:0:0:0:0:0:0:0:0:0:0:0!0:0 /tmp/test.file";
     char response[OS_SIZE_6144];
-    char *message;
+    char* message;
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -50,13 +50,13 @@ void test_ok_query(void **state)
     assert_int_equal(wdbc_parse_result(response, &message), WDBC_OK);
 }
 
-void test_ok2_query(void **state)
+void test_ok2_query(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 001 syscheck delete /tmp/test.file";
+    char* query = "agent 001 syscheck delete /tmp/test.file";
     char response[OS_SIZE_6144];
-    char *message;
+    char* message;
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -77,13 +77,13 @@ void test_ok2_query(void **state)
     assert_int_equal(wdbc_parse_result(response, &message), WDBC_OK);
 }
 
-void test_okmsg_query(void **state)
+void test_okmsg_query(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 001 syscheck scan_info_get start_scan";
+    char* query = "agent 001 syscheck scan_info_get start_scan";
     char response[OS_SIZE_6144];
-    char *message;
+    char* message;
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -104,13 +104,13 @@ void test_okmsg_query(void **state)
     assert_int_equal(wdbc_parse_result(response, &message), WDBC_OK);
 }
 
-void test_err_query(void **state)
+void test_err_query(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 001";
+    char* query = "agent 001";
     char response[OS_SIZE_6144];
-    char *message;
+    char* message;
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -131,11 +131,11 @@ void test_err_query(void **state)
     assert_int_equal(wdbc_parse_result(response, &message), WDBC_ERROR);
 }
 
-void test_query_ex_timeout_bounds_the_socket(void **state)
+void test_query_ex_timeout_bounds_the_socket(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "global sql SELECT 1;";
+    char* query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     // One connect attempt, not wdbc_connect()'s ladder of five with 1, 2, 3, 4 and 5 second
@@ -164,11 +164,11 @@ void test_query_ex_timeout_bounds_the_socket(void **state)
     assert_string_equal("ok {}", response);
 }
 
-void test_query_ex_timeout_fails_when_deadline_cannot_be_set(void **state)
+void test_query_ex_timeout_fails_when_deadline_cannot_be_set(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "global sql SELECT 1;";
+    char* query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
@@ -191,11 +191,11 @@ void test_query_ex_timeout_fails_when_deadline_cannot_be_set(void **state)
     assert_int_equal(-1, wdb_sock);
 }
 
-void test_query_ex_zero_timeout_keeps_the_unbounded_path(void **state)
+void test_query_ex_zero_timeout_keeps_the_unbounded_path(void** state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 001 syscheck save file";
+    char* query = "agent 001 syscheck save file";
     char response[OS_SIZE_6144];
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
@@ -227,7 +227,7 @@ void test_query_ex_zero_timeout_keeps_the_unbounded_path(void **state)
  * @param reset_errno How the lost connection is reported -- ECONNRESET or EPIPE, which differ only
  *                    in whether wazuh-db had unread data queued when it closed.
  */
-static void expect_lost_connection_retry(const char *query, int reset_errno)
+static void expect_lost_connection_retry(const char* query, int reset_errno)
 {
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -273,10 +273,10 @@ static void expect_lost_connection_retry(const char *query, int reset_errno)
     errno = reset_errno;
 }
 
-void test_query_ex_retries_once_after_a_connection_reset(void **state)
+void test_query_ex_retries_once_after_a_connection_reset(void** state)
 {
     int wdb_sock = -1;
-    char *query = "global sql SELECT 1;";
+    char* query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     // ECONNRESET, not EPIPE: a wazuh-db that closed with a queued query unread reports this one,
@@ -289,10 +289,10 @@ void test_query_ex_retries_once_after_a_connection_reset(void **state)
     assert_int_equal(65556, wdb_sock);
 }
 
-void test_query_ex_retries_once_after_a_broken_pipe(void **state)
+void test_query_ex_retries_once_after_a_broken_pipe(void** state)
 {
     int wdb_sock = -1;
-    char *query = "global sql SELECT 1;";
+    char* query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     // The sibling errno, pinned alongside it so the two cannot drift apart again.
@@ -302,16 +302,16 @@ void test_query_ex_retries_once_after_a_broken_pipe(void **state)
     assert_string_equal("ok {}", response);
 }
 
-static int teardown_clear_shutdown(void **state)
+static int teardown_clear_shutdown(void** state)
 {
     w_shutdown_requested_set(false);
     return 0;
 }
 
-void test_query_ex_does_not_reconnect_while_shutting_down(void **state)
+void test_query_ex_does_not_reconnect_while_shutting_down(void** state)
 {
     int wdb_sock = -1;
-    char *query = "global sql SELECT 1;";
+    char* query = "global sql SELECT 1;";
     char response[OS_SIZE_6144];
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
@@ -344,7 +344,7 @@ void test_query_ex_does_not_reconnect_while_shutting_down(void **state)
     assert_int_equal(-1, wdb_sock);
 }
 
-void test_connect_gives_up_at_once_while_shutting_down(void **state)
+void test_connect_gives_up_at_once_while_shutting_down(void** state)
 {
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -361,7 +361,8 @@ void test_connect_gives_up_at_once_while_shutting_down(void **state)
     assert_int_equal(-1, wdbc_connect());
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ok_query),
         cmocka_unit_test(test_ok2_query),

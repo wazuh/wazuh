@@ -17,20 +17,21 @@
 #define static
 
 #undef WAZUH_DEFINES
-#define WAZUH_DEFINES   "./internal_options.conf"
+#define WAZUH_DEFINES "./internal_options.conf"
 
 #undef WAZUH_LDEFINES
-#define WAZUH_LDEFINES   "./local_internal_options.conf"
+#define WAZUH_LDEFINES "./local_internal_options.conf"
 #endif
 
 #define DEFAULT_IPV6_PREFIX  128
 #define DEFAULT_IPV4_NETMASK 32
 
-
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
+static char* _read_file(const char* high_name, const char* low_name, const char* defines_file)
+    __attribute__((nonnull(3)));
 static void _init_masks(void);
-static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
-static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max) __attribute__((nonnull));
+static const char* __gethour(const char* str, char* ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
+static int parse_define_int_value(const char* high_name, const char* low_name, char* value, int min, int max)
+    __attribute__((nonnull));
 
 /**
  * @brief Convert the netmask from an integer value, valid from 0 to 128.
@@ -39,7 +40,7 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
  * @param[out] nmask6 structure to complete value of the netmask.
  * @return Returns 0 on success or -1 on failure.
  */
-static int convertNetmask(int netnumb, struct in6_addr *nmask6);
+static int convertNetmask(int netnumb, struct in6_addr* nmask6);
 
 /**
  * @brief Get CIDR from IPv6 netmask.
@@ -47,59 +48,61 @@ static int convertNetmask(int netnumb, struct in6_addr *nmask6);
  * @param[in] netmask IPV6 netmask.
  * @return CIDR representation of IPv6 netmask.
  */
-static int getCIDRipv6(uint8_t *netmask);
+static int getCIDRipv6(uint8_t* netmask);
 
 /* Global variables */
 static int _mask_inited = 0;
 static unsigned int _netmasks[33];
 
-
 /*
-* ipv4 alone; or ipv4 + CIDR; or ipv4 + netmask
-*             example:  "10.10.10.10" or "10.10.10.10/32" or "10.10.10.10/255.255.255.255"
-*
-* ipv6 format: uncompress and compress IPv6 supported, with or without prefix
-*             example: "2001:db8:abcd:0012:0000:0000:0000:0000" or "11AA::11AA" or "::11AA:11AA:11AA:11AA/64"
-*/
+ * ipv4 alone; or ipv4 + CIDR; or ipv4 + netmask
+ *             example:  "10.10.10.10" or "10.10.10.10/32" or "10.10.10.10/255.255.255.255"
+ *
+ * ipv6 format: uncompress and compress IPv6 supported, with or without prefix
+ *             example: "2001:db8:abcd:0012:0000:0000:0000:0000" or "11AA::11AA" or "::11AA:11AA:11AA:11AA/64"
+ */
 
-#define IPV4_ADDRESS "(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\x5c.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+#define IPV4_ADDRESS                                                                                                   \
+    "(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\x5c.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 #define IPV6_PREFIX "12[0-8]|1[0-1][0-9]|[0-9]?[0-9]"
 
-#define IPV4_MASK_IPV6 "^::[fF]{4}:("IPV4_ADDRESS"(?:\x2F(?:(?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?)$"
+#define IPV4_MASK_IPV6 "^::[fF]{4}:(" IPV4_ADDRESS "(?:\x2F(?:(?:3[0-2]|[1-2]?[0-9])|" IPV4_ADDRESS "))?)$"
 
-static  char *ip_address_regex[] = {
-// IPv4
-"^(?:::[fF]{4}:)?("IPV4_ADDRESS")(?:\x2F((?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?$",
-// IPv6
-"^((?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,6}(?::[0-9a-fA-F]{1,4}){1})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1}(?::[0-9a-fA-F]{1,4}){1,6})(?:\x2F("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,7}:)(?:\x2F("IPV6_PREFIX"))?$",
-"^(:(?::[0-9a-fA-F]{1,4}){1,7})(?:\x2F("IPV6_PREFIX"))?$",
-"^(::)$",
-NULL,
+static char* ip_address_regex[] = {
+    // IPv4
+    "^(?:::[fF]{4}:)?(" IPV4_ADDRESS ")(?:\x2F((?:3[0-2]|[1-2]?[0-9])|" IPV4_ADDRESS "))?$",
+    // IPv6
+    "^((?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1,6}(?::[0-9a-fA-F]{1,4}){1})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1}(?::[0-9a-fA-F]{1,4}){1,6})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^((?:[0-9a-fA-F]{1,4}:){1,7}:)(?:\x2F(" IPV6_PREFIX "))?$",
+    "^(:(?::[0-9a-fA-F]{1,4}){1,7})(?:\x2F(" IPV6_PREFIX "))?$",
+    "^(::)$",
+    NULL,
 };
 
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
  * If return is not null, value must be freed
  */
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file)
+static char* _read_file(const char* high_name, const char* low_name, const char* defines_file)
 {
-    FILE *fp;
+    FILE* fp;
     char buf[OS_SIZE_1024 + 1];
-    char *buf_pt;
-    char *tmp_buffer;
-    char *ret;
+    char* buf_pt;
+    char* tmp_buffer;
+    char* ret;
     int i;
 
     fp = wfopen(defines_file, "r");
-    if (!fp) {
-        if (errno != ENOENT) {
+    if (!fp)
+    {
+        if (errno != ENOENT)
+        {
             merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
         }
         return (NULL);
@@ -107,7 +110,8 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     w_file_cloexec(fp);
 
     /* Invalid call */
-    if (!high_name || !low_name) {
+    if (!high_name || !low_name)
+    {
         merror(NULL_ERROR);
         fclose(fp);
         return (NULL);
@@ -115,15 +119,18 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 
     /* Read it */
     buf[OS_SIZE_1024] = '\0';
-    while (fgets(buf, OS_SIZE_1024 , fp) != NULL) {
+    while (fgets(buf, OS_SIZE_1024, fp) != NULL)
+    {
         /* Commented or blank lines */
-        if (buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n') {
+        if (buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n')
+        {
             continue;
         }
 
         /* Messages not formatted correctly */
         buf_pt = strchr(buf, '.');
-        if (!buf_pt) {
+        if (!buf_pt)
+        {
             merror(FGETS_ERROR, defines_file, buf);
             continue;
         }
@@ -131,7 +138,8 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Check for the high name */
         *buf_pt = '\0';
         buf_pt++;
-        if (strcmp(buf, high_name) != 0) {
+        if (strcmp(buf, high_name) != 0)
+        {
             continue;
         }
 
@@ -139,7 +147,8 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 
         /* Get the equal */
         buf_pt = strchr(buf_pt, '=');
-        if (!buf_pt) {
+        if (!buf_pt)
+        {
             merror(FGETS_ERROR, defines_file, buf);
             continue;
         }
@@ -150,34 +159,38 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 
         /* Remove possible whitespaces between the low name and the equal sign */
         i = (strlen(tmp_buffer) - 1);
-        while(tmp_buffer[i] == ' ')
+        while (tmp_buffer[i] == ' ')
         {
             tmp_buffer[i] = '\0';
             i--;
         }
 
         /* Check for the low name */
-        if (strcmp(tmp_buffer, low_name) != 0) {
+        if (strcmp(tmp_buffer, low_name) != 0)
+        {
             continue;
         }
 
         /* Ignore possible whitespaces between the equal sign and the value for this option */
-        while(*buf_pt == ' ') buf_pt++;
+        while (*buf_pt == ' ') buf_pt++;
 
         /* Remove newlines or anything that will cause errors */
         tmp_buffer = strrchr(buf_pt, '\n');
-        if (tmp_buffer) {
+        if (tmp_buffer)
+        {
             *tmp_buffer = '\0';
         }
         tmp_buffer = strrchr(buf_pt, '\r');
-        if (tmp_buffer) {
+        if (tmp_buffer)
+        {
             *tmp_buffer = '\0';
         }
 
         /* A key written with no value is an unfinished edit, not an unset option. Left through, it
          * reaches atoi() as 0, which the range check accepts on every option whose minimum is 0 and
          * rejects on the rest. Refused here, before anything is allocated. */
-        if (*buf_pt == '\0') {
+        if (*buf_pt == '\0')
+        {
             fclose(fp);
             merror_exit(INV_DEF, high_name, low_name, buf_pt);
         }
@@ -192,9 +205,10 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 }
 
 /* Convert to netmasks from CIDR number */
-static int convertNetmask(int netnumb, struct in6_addr *nmask6)
+static int convertNetmask(int netnumb, struct in6_addr* nmask6)
 {
-    if (netnumb < 0 || netnumb > 128) {
+    if (netnumb < 0 || netnumb > 128)
+    {
         return -1;
     }
 
@@ -202,7 +216,8 @@ static int convertNetmask(int netnumb, struct in6_addr *nmask6)
     uint32_t index = 0;
     uint8_t variable_size = 8;
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 16; i++)
+    {
 #ifndef WIN32
         nmask6->s6_addr[i] = 0;
 #else
@@ -211,8 +226,9 @@ static int convertNetmask(int netnumb, struct in6_addr *nmask6)
         index = ((netnumb > variable_size) ? variable_size : netnumb);
         netnumb -= index;
 
-        for (uint8_t a = 0; a < index; a++) {
-            aux = variable_size - a -1;
+        for (uint8_t a = 0; a < index; a++)
+        {
+            aux = variable_size - a - 1;
 #ifndef WIN32
             nmask6->s6_addr[i] += UINT8_C(1) << aux;
 #else
@@ -265,19 +281,21 @@ static void _init_masks()
 /* Get an integer definition. This function always return on
  * success or exits on error.
  */
-int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
+int getDefine_Int(const char* high_name, const char* low_name, int min, int max)
 {
     int ret;
-    char *value;
+    char* value;
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, WAZUH_LDEFINES);
 #ifdef WAZUH_DEFINES
-    if (!value) {
+    if (!value)
+    {
         value = _read_file(high_name, low_name, WAZUH_DEFINES);
     }
 #endif
-    if (!value) {
+    if (!value)
+    {
         merror_exit(DEF_NOT_FOUND, high_name, low_name);
     }
 
@@ -289,41 +307,48 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     return (ret);
 }
 
-static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max)
+static int parse_define_int_value(const char* high_name, const char* low_name, char* value, int min, int max)
 {
     long long parsed = 0;
     int valid = 1;
-    const char *pt = value;
+    const char* pt = value;
 
     /* A leading '-' is accepted so that options declared with a negative minimum can take a
      * negative value; the range check below rejects it everywhere else. */
-    if (*pt == '-') {
+    if (*pt == '-')
+    {
         pt++;
     }
 
     /* At least one digit, and nothing but digits after the optional sign. */
-    if (*pt == '\0') {
+    if (*pt == '\0')
+    {
         valid = 0;
     }
 
-    for (; valid && *pt != '\0'; pt++) {
-        if (!isdigit((int)*pt)) {
+    for (; valid && *pt != '\0'; pt++)
+    {
+        if (!isdigit((int)*pt))
+        {
             valid = 0;
         }
     }
 
     /* strtoll instead of atoi: a value past the integer range must be refused, not wrapped
      * (e.g. 4294967298 read as 2). */
-    if (valid) {
-        char *end = NULL;
+    if (valid)
+    {
+        char* end = NULL;
         errno = 0;
         parsed = strtoll(value, &end, 10);
-        if (errno == ERANGE || end == value || *end != '\0' || parsed < INT_MIN || parsed > INT_MAX) {
+        if (errno == ERANGE || end == value || *end != '\0' || parsed < INT_MIN || parsed > INT_MAX)
+        {
             valid = 0;
         }
     }
 
-    if (!valid || (parsed < min) || (parsed > max)) {
+    if (!valid || (parsed < min) || (parsed > max))
+    {
         /* Free the value before exiting: the message needs a copy of it. */
         char shown[OS_SIZE_256];
         snprintf(shown, sizeof(shown), "%s", value);
@@ -338,19 +363,21 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
  * Tries the local defines file, then the main defines file.
  * Returns default_val when the option is absent from both files.
  */
-int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
+int getDefine_Int_default(const char* high_name, const char* low_name, int min, int max, int default_val)
 {
     int ret;
-    char *value;
+    char* value;
 
     /* Try to read from the local define file */
     value = _read_file(high_name, low_name, WAZUH_LDEFINES);
 #ifdef WAZUH_DEFINES
-    if (!value) {
+    if (!value)
+    {
         value = _read_file(high_name, low_name, WAZUH_DEFINES);
     }
 #endif
-    if (!value) {
+    if (!value)
+    {
         return default_val;
     }
 
@@ -365,7 +392,7 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
 /* Whether the entry can be compared against an address of the given family.
  * "any" is stored as a zeroed os_ipv6 with is_ipv6 unset and matches both families.
  */
-static bool os_ip_family_matches(const os_ip *entry, bool query_is_ipv6)
+static bool os_ip_family_matches(const os_ip* entry, bool query_is_ipv6)
 {
     return (entry->is_ipv6 == query_is_ipv6) || (strcmp(entry->ip, "any") == 0);
 }
@@ -373,7 +400,7 @@ static bool os_ip_family_matches(const os_ip *entry, bool query_is_ipv6)
 /* Check if IP_address is present at that_IP
  * Returns 1 on success or 0 on failure
  */
-int OS_IPFound(const char *ip_address, const os_ip *that_ip)
+int OS_IPFound(const char* ip_address, const os_ip* that_ip)
 {
     int _true = 1;
     bool is_ipv6 = false;
@@ -381,39 +408,55 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     struct in6_addr net6;
 
     /* Extract IP address */
-    if (OS_SUCCESS == get_ipv4_numeric(ip_address, &net)) {
+    if (OS_SUCCESS == get_ipv4_numeric(ip_address, &net))
+    {
         is_ipv6 = false;
-    } else if (OS_SUCCESS == get_ipv6_numeric(ip_address, &net6)) {
+    }
+    else if (OS_SUCCESS == get_ipv6_numeric(ip_address, &net6))
+    {
         is_ipv6 = true;
-    } else {
+    }
+    else
+    {
         return (!_true);
     }
 
     /* If negate is set */
-    if (that_ip->ip[0] == '!') {
+    if (that_ip->ip[0] == '!')
+    {
         _true = 0;
     }
 
     /* An entry of the other family has no matching union arm to read */
-    if (!os_ip_family_matches(that_ip, is_ipv6)) {
+    if (!os_ip_family_matches(that_ip, is_ipv6))
+    {
         return (!_true);
     }
 
     /* Check if IP is in thatip & netmask */
-    if (is_ipv6) {
-        for(unsigned int i = 0; i < 16; i++) {
+    if (is_ipv6)
+    {
+        for (unsigned int i = 0; i < 16; i++)
+        {
 #ifndef WIN32
-            if ((net6.s6_addr[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i]) {
+            if ((net6.s6_addr[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i])
+            {
 #else
-            if ((net6.u.Byte[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i]) {
+            if ((net6.u.Byte[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i])
+            {
 #endif
                 break;
-            } else if (i >= (15)) {
+            }
+            else if (i >= (15))
+            {
                 return (_true);
             }
         }
-    } else {
-        if ((net.s_addr & that_ip->ipv4->netmask) == that_ip->ipv4->ip_address) {
+    }
+    else
+    {
+        if ((net.s_addr & that_ip->ipv4->netmask) == that_ip->ipv4->ip_address)
+        {
             return (_true);
         }
     }
@@ -426,7 +469,7 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
  * Returns 1 on success or 0 on failure
  * The list MUST be NULL terminated
  */
-int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
+int OS_IPFoundList(const char* ip_address, os_ip** list_of_ips)
 {
     int _true = 1;
     bool is_ipv6 = false;
@@ -434,42 +477,59 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
     struct in6_addr net6;
 
     /* Extract IP address */
-    if (OS_SUCCESS == get_ipv4_numeric(ip_address, &net)) {
+    if (OS_SUCCESS == get_ipv4_numeric(ip_address, &net))
+    {
         is_ipv6 = false;
-    } else if (OS_SUCCESS == get_ipv6_numeric(ip_address, &net6)) {
+    }
+    else if (OS_SUCCESS == get_ipv6_numeric(ip_address, &net6))
+    {
         is_ipv6 = true;
-    } else {
+    }
+    else
+    {
         return (!_true);
     }
 
-    while (*list_of_ips) {
-        os_ip *l_ip = *list_of_ips;
+    while (*list_of_ips)
+    {
+        os_ip* l_ip = *list_of_ips;
 
-        if (l_ip->ip[0] == '!') {
+        if (l_ip->ip[0] == '!')
+        {
             _true = 0;
         }
 
         /* An entry of the other family has no matching union arm to read */
-        if (!os_ip_family_matches(l_ip, is_ipv6)) {
+        if (!os_ip_family_matches(l_ip, is_ipv6))
+        {
             list_of_ips++;
             continue;
         }
 
         /* Check if IP is in thatip & netmask */
-        if (is_ipv6) {
-            for(unsigned int i = 0; i < 16; i++) {
+        if (is_ipv6)
+        {
+            for (unsigned int i = 0; i < 16; i++)
+            {
 #ifndef WIN32
-                if ((net6.s6_addr[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i]) {
+                if ((net6.s6_addr[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i])
+                {
 #else
-                if ((net6.u.Byte[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i]) {
+                if ((net6.u.Byte[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i])
+                {
 #endif
                     break;
-                } else if (i >= (15)) {
+                }
+                else if (i >= (15))
+                {
                     return (_true);
                 }
             }
-        } else {
-            if ((net.s_addr & l_ip->ipv4->netmask) == l_ip->ipv4->ip_address) {
+        }
+        else
+        {
+            if ((net.s_addr & l_ip->ipv4->netmask) == l_ip->ipv4->ip_address)
+            {
                 return (_true);
             }
         }
@@ -484,134 +544,166 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
  * Returns 0 if doesn't match or 1 if it is an IP or 2 an IP with CIDR.
  * WARNING: On success this function may modify the value of ip_address
  */
-int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
+int OS_IsValidIP(const char* ip_address, os_ip* final_ip)
 {
     unsigned int ret = 0;
 
     /* Can't be null */
-    if (!ip_address) {
+    if (!ip_address)
+    {
         return (0);
     }
 
-    if (*ip_address == '!') {
+    if (*ip_address == '!')
+    {
         ip_address++;
     }
 
     /* Assign the IP address */
-    if (final_ip) {
+    if (final_ip)
+    {
         memset(final_ip, 0, sizeof(os_ip));
         os_calloc(IPSIZE + 1, sizeof(char), final_ip->ip);
         strncpy(final_ip->ip, ip_address, IPSIZE);
         OS_GetIPv4FromIPv6(final_ip->ip, IPSIZE);
     }
 
-    if (strcmp(ip_address, "any") != 0) {
+    if (strcmp(ip_address, "any") != 0)
+    {
 
-        w_expression_t * exp;
+        w_expression_t* exp;
         unsigned int i = 0;
 
-        regex_matching * regex_match = NULL;
+        regex_matching* regex_match = NULL;
         os_calloc(1, sizeof(regex_matching), regex_match);
 
-        while (ip_address_regex[i] != NULL) {
+        while (ip_address_regex[i] != NULL)
+        {
 
             w_calloc_expression_t(&exp, EXP_TYPE_PCRE2);
             if (w_expression_compile(exp, ip_address_regex[i], 0) &&
-                 w_expression_match(exp, ip_address, NULL, regex_match)) {
+                w_expression_match(exp, ip_address, NULL, regex_match))
+            {
 
                 /* number of regex captures */
                 int sub_strings_num = 0;
-                if (regex_match->sub_strings) {
+                if (regex_match->sub_strings)
+                {
                     for (sub_strings_num = 0; regex_match->sub_strings[sub_strings_num] != NULL; sub_strings_num++);
                 }
 
                 ret = sub_strings_num == 2 ? 2 : 1;
 
-                if (final_ip) {
+                if (final_ip)
+                {
                     /* Regex 0 (i = 0) match IPv4, superior regex match IPv6 */
-                    if (i > 0) {
+                    if (i > 0)
+                    {
                         /* IPv6 */
                         os_calloc(1, sizeof(os_ipv6), final_ip->ipv6);
                         final_ip->is_ipv6 = TRUE;
 
                         /* At this point regex can capture 1 or 2 strings, first is the ip and second the prefix */
-                        if (sub_strings_num > 0) {
+                        if (sub_strings_num > 0)
+                        {
                             /* IP Address captured */
                             struct in6_addr net6;
                             struct in6_addr nmask6;
                             memset(&net6, 0, sizeof(net6));
                             memset(&nmask6, 0, sizeof(nmask6));
 
-                            if (OS_INVALID == get_ipv6_numeric(regex_match->sub_strings[0], &net6)) {
+                            if (OS_INVALID == get_ipv6_numeric(regex_match->sub_strings[0], &net6))
+                            {
                                 ret = 0;
                                 break;
                             }
 
-                            if (sub_strings_num == 2) {
+                            if (sub_strings_num == 2)
+                            {
                                 /* prefix */
                                 int cidr = atoi(regex_match->sub_strings[1]);
-                                if ((strlen(regex_match->sub_strings[1]) > 3) ||
-                                      convertNetmask(cidr, &nmask6)) {
+                                if ((strlen(regex_match->sub_strings[1]) > 3) || convertNetmask(cidr, &nmask6))
+                                {
                                     ret = 0;
                                     break;
                                 }
-                            } else if (convertNetmask(DEFAULT_IPV6_PREFIX, &nmask6)) {
+                            }
+                            else if (convertNetmask(DEFAULT_IPV6_PREFIX, &nmask6))
+                            {
                                 ret = 0;
                                 break;
                             }
 #ifndef WIN32
-                            for(unsigned int i = 0; i < 16; i++) {
+                            for (unsigned int i = 0; i < 16; i++)
+                            {
                                 final_ip->ipv6->ip_address[i] = net6.s6_addr[i] & nmask6.s6_addr[i];
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.s6_addr, sizeof(final_ip->ipv6->netmask));
 #else
-                            for(unsigned int i = 0; i < 16; i++) {
+                            for (unsigned int i = 0; i < 16; i++)
+                            {
                                 final_ip->ipv6->ip_address[i] = net6.u.Byte[i] & nmask6.u.Byte[i];
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
                             OS_ExpandIPv6(final_ip->ip, IPSIZE);
-
-                        } else {
+                        }
+                        else
+                        {
                             ret = 0;
                             break;
                         }
-                    } else {
+                    }
+                    else
+                    {
                         /* IPv4 */
                         os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
                         final_ip->is_ipv6 = FALSE;
 
                         /* At this point regex can capture 1 or 2 strings, ip and CIDR or netmask */
-                        if (sub_strings_num > 0) {
+                        if (sub_strings_num > 0)
+                        {
                             /* IP Address captured */
                             struct in_addr net;
                             struct in_addr nmask;
                             memset(&net, 0, sizeof(net));
                             memset(&nmask, 0, sizeof(nmask));
 
-                            if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[0], &net)) {
-                                if (strcmp("0.0.0.0", regex_match->sub_strings[0]) == 0) {
+                            if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[0], &net))
+                            {
+                                if (strcmp("0.0.0.0", regex_match->sub_strings[0]) == 0)
+                                {
                                     net.s_addr = 0;
-                                } else {
+                                }
+                                else
+                                {
                                     ret = 0;
                                     break;
                                 }
                             }
 
-                            if (sub_strings_num == 2) {
+                            if (sub_strings_num == 2)
+                            {
                                 /* CIDR or Netmask */
-                                if (strlen(regex_match->sub_strings[1]) <= 2) {
+                                if (strlen(regex_match->sub_strings[1]) <= 2)
+                                {
                                     int cidr = atoi(regex_match->sub_strings[1]);
-                                    if (!_mask_inited) {
+                                    if (!_mask_inited)
+                                    {
                                         _init_masks();
                                     }
                                     nmask.s_addr = htonl(_netmasks[cidr]);
-                                } else if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[1], &nmask)) {
+                                }
+                                else if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[1], &nmask))
+                                {
                                     ret = 0;
                                     break;
                                 }
-                            } else {
-                                if (!_mask_inited) {
+                            }
+                            else
+                            {
+                                if (!_mask_inited)
+                                {
                                     _init_masks();
                                 }
                                 nmask.s_addr = htonl(_netmasks[DEFAULT_IPV4_NETMASK]);
@@ -619,8 +711,9 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
                             final_ip->ipv4->ip_address = net.s_addr & nmask.s_addr;
                             final_ip->ipv4->netmask = nmask.s_addr;
-
-                        } else {
+                        }
+                        else
+                        {
                             ret = 0;
                             break;
                         }
@@ -633,12 +726,13 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         }
 
         OSRegex_free_regex_matching(regex_match);
-        os_free(regex_match)
-        w_free_expression_t(&exp);
+        os_free(regex_match) w_free_expression_t(&exp);
     }
-    else {
+    else
+    {
         /* any case */
-        if (final_ip) {
+        if (final_ip)
+        {
             os_calloc(1, sizeof(os_ipv6), final_ip->ipv6);
             memset(final_ip->ipv6->ip_address, 0, sizeof(final_ip->ipv6->ip_address));
             memset(final_ip->ipv6->netmask, 0, sizeof(final_ip->ipv6->netmask));
@@ -650,47 +744,49 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 }
 
 /* Extract embedded IPv4 from IPv6 */
-int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
+int OS_GetIPv4FromIPv6(char* ip_address, size_t size)
 {
-    w_expression_t * exp;
+    w_expression_t* exp;
     int ret = 0;
 
-    regex_matching * regex_match = NULL;
+    regex_matching* regex_match = NULL;
     os_calloc(1, sizeof(regex_matching), regex_match);
 
     w_calloc_expression_t(&exp, EXP_TYPE_PCRE2);
-    if (w_expression_compile(exp, IPV4_MASK_IPV6, 0) &&
-         w_expression_match(exp, ip_address, NULL, regex_match)) {
+    if (w_expression_compile(exp, IPV4_MASK_IPV6, 0) && w_expression_match(exp, ip_address, NULL, regex_match))
+    {
 
         /* number of regex captures */
-        if (regex_match->sub_strings && regex_match->sub_strings[0]) {
+        if (regex_match->sub_strings && regex_match->sub_strings[0])
+        {
             strncpy(ip_address, regex_match->sub_strings[0], size);
             ret = 1;
         }
     }
 
     OSRegex_free_regex_matching(regex_match);
-    os_free(regex_match)
-    w_free_expression_t(&exp);
+    os_free(regex_match) w_free_expression_t(&exp);
     return ret;
 }
 
 /* Expand IPv6 address */
-int OS_ExpandIPv6(char *ip_address, size_t size)
+int OS_ExpandIPv6(char* ip_address, size_t size)
 {
     struct in6_addr net6;
     char aux_ip[IPSIZE + 1] = {0};
-    char *save_ptr = NULL;
+    char* save_ptr = NULL;
 
     memset(&net6, 0, sizeof(net6));
     strncpy(aux_ip, ip_address, IPSIZE);
 
-    if (OS_INVALID == get_ipv6_numeric(strtok_r(aux_ip, "/", &save_ptr), &net6)) {
+    if (OS_INVALID == get_ipv6_numeric(strtok_r(aux_ip, "/", &save_ptr), &net6))
+    {
         return OS_INVALID;
     }
 
     uint8_t aux[16];
-    for(unsigned int i = 0; i < 16; i++) {
+    for (unsigned int i = 0; i < 16; i++)
+    {
 #ifndef WIN32
         aux[i] = net6.s6_addr[i];
 #else
@@ -700,26 +796,60 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
 
     /* In case of ip_address has CIDR */
     int cidr = 0;
-    char *cidr_str = strtok_r(NULL, "/", &save_ptr);
-    if (cidr_str) {
+    char* cidr_str = strtok_r(NULL, "/", &save_ptr);
+    if (cidr_str)
+    {
         cidr = atoi(cidr_str);
-        if (cidr < 0 || cidr > DEFAULT_IPV6_PREFIX) {
+        if (cidr < 0 || cidr > DEFAULT_IPV6_PREFIX)
+        {
             return OS_INVALID;
         }
     }
 
-    if (cidr) {
-        snprintf(ip_address, size, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X/%u",
-            (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
-            (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
-            (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
-            (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15], cidr);
-    } else {
-        snprintf(ip_address, size, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
-            (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
-            (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
-            (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
-            (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15]);
+    if (cidr)
+    {
+        snprintf(ip_address,
+                 size,
+                 "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X/%u",
+                 (int)aux[0],
+                 (int)aux[1],
+                 (int)aux[2],
+                 (int)aux[3],
+                 (int)aux[4],
+                 (int)aux[5],
+                 (int)aux[6],
+                 (int)aux[7],
+                 (int)aux[8],
+                 (int)aux[9],
+                 (int)aux[10],
+                 (int)aux[11],
+                 (int)aux[12],
+                 (int)aux[13],
+                 (int)aux[14],
+                 (int)aux[15],
+                 cidr);
+    }
+    else
+    {
+        snprintf(ip_address,
+                 size,
+                 "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+                 (int)aux[0],
+                 (int)aux[1],
+                 (int)aux[2],
+                 (int)aux[3],
+                 (int)aux[4],
+                 (int)aux[5],
+                 (int)aux[6],
+                 (int)aux[7],
+                 (int)aux[8],
+                 (int)aux[9],
+                 (int)aux[10],
+                 (int)aux[11],
+                 (int)aux[12],
+                 (int)aux[13],
+                 (int)aux[14],
+                 (int)aux[15]);
     }
 
     return OS_SUCCESS;
@@ -735,16 +865,18 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
  *      hh:mm am - hh:mm pm (12 hour format)
  *      hh am - hh pm (12 hour format)
  */
-#define RM_WHITE(x)while(*x == ' ')x++;
+#define RM_WHITE(x)                                                                                                    \
+    while (*x == ' ') x++;
 
-static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len)
+static const char* __gethour(const char* str, char* ossec_hour, const size_t ossec_hour_len)
 {
     int _size = 0;
     int chour = 0;
     int cmin = 0;
 
     /* Invalid time format */
-    if (!isdigit((int)*str)) {
+    if (!isdigit((int)*str))
+    {
         merror(INVALID_TIME, str);
     }
 
@@ -752,28 +884,32 @@ static const char *__gethour(const char *str, char *ossec_hour, const size_t oss
     chour = atoi(str);
 
     /* Get a valid hour */
-    if (chour < 0 || chour >= 24) {
+    if (chour < 0 || chour >= 24)
+    {
         merror(INVALID_TIME, str);
         return (NULL);
     }
 
     /* Go after the hour */
-    while (isdigit((int)*str)) {
+    while (isdigit((int)*str))
+    {
         _size++;
         str++;
     }
 
     /* Invalid hour */
-    if (_size > 2) {
+    if (_size > 2)
+    {
         merror(INVALID_TIME, str);
         return (NULL);
     }
 
     /* Get minute */
-    if (*str == ':') {
+    if (*str == ':')
+    {
         str++;
-        if ((!isdigit((int)*str) ||
-                !isdigit((int) * (str + 1))) && isdigit((int) * (str + 2))) {
+        if ((!isdigit((int)*str) || !isdigit((int)*(str + 1))) && isdigit((int)*(str + 2)))
+        {
             merror(INVALID_TIME, str);
             return (NULL);
         }
@@ -785,45 +921,57 @@ static const char *__gethour(const char *str, char *ossec_hour, const size_t oss
     /* Remove spaces */
     RM_WHITE(str);
 
-    if ((*str == 'a') || (*str == 'A')) {
+    if ((*str == 'a') || (*str == 'A'))
+    {
         str++;
-        if ((*str == 'm') || (*str == 'M')) {
-            if (chour == 12) chour = 0;
+        if ((*str == 'm') || (*str == 'M'))
+        {
+            if (chour == 12)
+                chour = 0;
             const int bytes_written = snprintf(ossec_hour, ossec_hour_len, "%02d:%02d", chour, cmin);
 
-            if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len) {
+            if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len)
+            {
                 return (NULL);
             }
 
             str++;
             return (str);
         }
-    } else if ((*str == 'p') || (*str == 'P')) {
+    }
+    else if ((*str == 'p') || (*str == 'P'))
+    {
         str++;
-        if ((*str == 'm') || (*str == 'M')) {
-            if (chour == 12) chour = 0;
+        if ((*str == 'm') || (*str == 'M'))
+        {
+            if (chour == 12)
+                chour = 0;
             chour += 12;
 
             /* New hour must be valid */
-            if (chour < 0 || chour >= 24) {
+            if (chour < 0 || chour >= 24)
+            {
                 merror(INVALID_TIME, str);
                 return (NULL);
             }
 
             const int bytes_written = snprintf(ossec_hour, ossec_hour_len, "%02d:%02d", chour, cmin);
 
-            if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len) {
+            if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len)
+            {
                 return (NULL);
             }
 
             str++;
             return (str);
         }
-
-    } else {
+    }
+    else
+    {
         const int bytes_written = snprintf(ossec_hour, ossec_hour_len, "%02d:%02d", chour, cmin);
 
-        if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len) {
+        if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len)
+        {
             return (NULL);
         }
 
@@ -835,15 +983,16 @@ static const char *__gethour(const char *str, char *ossec_hour, const size_t oss
     return (NULL);
 }
 
-char *OS_IsValidTime(const char *time_str)
+char* OS_IsValidTime(const char* time_str)
 {
-    char *ret;
+    char* ret;
     char first_hour[7];
     char second_hour[7];
     int ng = 0;
 
     /* Must be not null */
-    if (!time_str) {
+    if (!time_str)
+    {
         return (NULL);
     }
 
@@ -855,7 +1004,8 @@ char *OS_IsValidTime(const char *time_str)
     RM_WHITE(time_str);
 
     /* Check for negative */
-    if (*time_str == '!') {
+    if (*time_str == '!')
+    {
         ng = 1;
         time_str++;
 
@@ -866,14 +1016,16 @@ char *OS_IsValidTime(const char *time_str)
     /* Get first hour */
     time_str = __gethour(time_str, first_hour, sizeof(first_hour));
 
-    if (!time_str) {
+    if (!time_str)
+    {
         return (NULL);
     }
 
     /* Remove spaces */
     RM_WHITE(time_str);
 
-    if (*time_str != '-') {
+    if (*time_str != '-')
+    {
         return (NULL);
     }
 
@@ -884,19 +1036,22 @@ char *OS_IsValidTime(const char *time_str)
 
     /* Get second hour */
     time_str = __gethour(time_str, second_hour, sizeof(second_hour));
-    if (!time_str) {
+    if (!time_str)
+    {
         return (NULL);
     }
 
     RM_WHITE(time_str);
-    if (*time_str != '\0') {
+    if (*time_str != '\0')
+    {
         return (NULL);
     }
 
     os_calloc(16, sizeof(char), ret);
 
     /* Fix dump hours */
-    if (strcmp(first_hour, second_hour) > 0) {
+    if (strcmp(first_hour, second_hour) > 0)
+    {
         snprintf(ret, 16, "!%s%s", second_hour, first_hour);
         return (ret);
     }
@@ -908,17 +1063,19 @@ char *OS_IsValidTime(const char *time_str)
 }
 
 /* Check if the current time is the same or has passed the specified one */
-int OS_IsAfterTime(const char *time_str, const char *ossec_time)
+int OS_IsAfterTime(const char* time_str, const char* ossec_time)
 {
     /* Unique times can't have a ! */
-    if (*ossec_time == '!') {
+    if (*ossec_time == '!')
+    {
         return (0);
     }
 
     ossec_time++;
 
     /* Compare against min/max value */
-    if (strncmp(time_str, ossec_time, 5) >= 0) {
+    if (strncmp(time_str, ossec_time, 5) >= 0)
+    {
         return (1);
     }
 
@@ -926,11 +1083,12 @@ int OS_IsAfterTime(const char *time_str, const char *ossec_time)
 }
 
 /* Create a unique time, not a range. Must be used with OS_IsAfterTime. */
-char *OS_IsValidUniqueTime(const char *time_str)
+char* OS_IsValidUniqueTime(const char* time_str)
 {
     char mytime[128 + 1];
 
-    if (*time_str == '!') {
+    if (*time_str == '!')
+    {
         return (NULL);
     }
 
@@ -941,21 +1099,24 @@ char *OS_IsValidUniqueTime(const char *time_str)
 }
 
 /* Check if the specified week day is in the range */
-int OS_IsonDay(int week_day, const char *ossec_day)
+int OS_IsonDay(int week_day, const char* ossec_day)
 {
     int _true = 1;
 
     /* Negative */
-    if (ossec_day[7] == '!') {
+    if (ossec_day[7] == '!')
+    {
         _true = 0;
     }
 
-    if (week_day < 0 || week_day > 7) {
+    if (week_day < 0 || week_day > 7)
+    {
         return (0);
     }
 
     /* It is on the right day */
-    if (ossec_day[week_day] == 1) {
+    if (ossec_day[week_day] == 1)
+    {
         return (_true);
     }
 
@@ -970,41 +1131,60 @@ int OS_IsonDay(int week_day, const char *ossec_day)
  *  monday,tuesday
  *  mon,tue wed
  */
-#define RM_SEP(x)while((*x == ' ') || (*x == ','))x++;
+#define RM_SEP(x)                                                                                                      \
+    while ((*x == ' ') || (*x == ',')) x++;
 
 #define IS_SEP(x) (*x == ' ' || *x == ',')
 
-char *OS_IsValidDay(const char *day_str)
+char* OS_IsValidDay(const char* day_str)
 {
     int i = 0, ng = 0;
-    char *ret;
+    char* ret;
     char day_ret[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-    const char *(days[]) = {
-        "sunday", "sun", "monday", "mon", "tuesday", "tue",
-        "wednesday", "wed", "thursday", "thu", "friday",
-        "fri", "saturday", "sat", "weekdays", "weekends", NULL
-    };
+    const char*(days[]) = {"sunday",
+                           "sun",
+                           "monday",
+                           "mon",
+                           "tuesday",
+                           "tue",
+                           "wednesday",
+                           "wed",
+                           "thursday",
+                           "thu",
+                           "friday",
+                           "fri",
+                           "saturday",
+                           "sat",
+                           "weekdays",
+                           "weekends",
+                           NULL};
     int days_int[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8};
 
     /* Must be a valid string */
-    if (!day_str) {
+    if (!day_str)
+    {
         return (NULL);
     }
 
     RM_WHITE(day_str);
 
     /* Check for negatives */
-    if (*day_str == '!') {
+    if (*day_str == '!')
+    {
         ng = 1;
         RM_WHITE(day_str);
     }
 
-    while (*day_str != '\0') {
+    while (*day_str != '\0')
+    {
         i = 0;
-        while (days[i]) {
-            if (strncasecmp(day_str, days[i], strlen(days[i])) == 0) {
+        while (days[i])
+        {
+            if (strncasecmp(day_str, days[i], strlen(days[i])) == 0)
+            {
                 /* Weekdays */
-                if (days_int[i] == 7) {
+                if (days_int[i] == 7)
+                {
                     day_ret[1] = 1;
                     day_ret[2] = 1;
                     day_ret[3] = 1;
@@ -1012,10 +1192,13 @@ char *OS_IsValidDay(const char *day_str)
                     day_ret[5] = 1;
                 }
                 /* Weekends */
-                else if (days_int[i] == 8) {
+                else if (days_int[i] == 8)
+                {
                     day_ret[0] = 1;
                     day_ret[6] = 1;
-                } else {
+                }
+                else
+                {
                     day_ret[days_int[i]] = 1;
                 }
                 break;
@@ -1023,40 +1206,50 @@ char *OS_IsValidDay(const char *day_str)
             i++;
         }
 
-        if (!days[i]) {
+        if (!days[i])
+        {
             return (NULL);
         }
 
         day_str += strlen(days[i]);
 
-        if (IS_SEP(day_str)) {
+        if (IS_SEP(day_str))
+        {
             RM_SEP(day_str);
             continue;
-        } else if (*day_str == '\0') {
+        }
+        else if (*day_str == '\0')
+        {
             break;
-        } else {
+        }
+        else
+        {
             return (NULL);
         }
     }
 
     /* Assign values */
     os_calloc(9, sizeof(char), ret);
-    if (ng == 1) {
+    if (ng == 1)
+    {
         /* Set negative */
         ret[7] = '!';
     }
 
     ng = 0;
-    for (i = 0; i <= 6; i++) {
+    for (i = 0; i <= 6; i++)
+    {
         /* Check if some is checked */
-        if (day_ret[i] == 1) {
+        if (day_ret[i] == 1)
+        {
             ng = 1;
         }
         ret[i] = day_ret[i];
     }
 
     /* At least one day must be checked */
-    if (ng == 0) {
+    if (ng == 0)
+    {
         free(ret);
         return (NULL);
     }
@@ -1065,29 +1258,35 @@ char *OS_IsValidDay(const char *day_str)
 }
 
 // Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
-int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
+int OS_CIDRtoStr(const os_ip* ip, char* string, size_t size)
+{
     int imask = 0;
     bool is_ipv6 = false;
     uint32_t hmask;
 
-    if (strchr(ip->ip, ':') != NULL) {
+    if (strchr(ip->ip, ':') != NULL)
+    {
         is_ipv6 = true;
         imask = getCIDRipv6(ip->ipv6->netmask);
     }
 
-    if (is_ipv6 && imask < 128) {
+    if (is_ipv6 && imask < 128)
+    {
         return ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1);
-
-    } else if (!is_ipv6 && (ip->ipv4->netmask != 0xFFFFFFFF) && strcmp(ip->ip, "any")) {
-        if (!_mask_inited) {
+    }
+    else if (!is_ipv6 && (ip->ipv4->netmask != 0xFFFFFFFF) && strcmp(ip->ip, "any"))
+    {
+        if (!_mask_inited)
+        {
             _init_masks();
         }
 
         hmask = ntohl(ip->ipv4->netmask);
         for (imask = 0; imask < 32 && _netmasks[imask] != hmask; imask++);
         return (imask < 32) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
-
-    } else {
+    }
+    else
+    {
         strncpy(string, ip->ip, size - 1);
         string[size - 1] = '\0';
         return 0;
@@ -1095,13 +1294,17 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
 }
 
 // Get CIDR from IPv6 netmask
-static int getCIDRipv6(uint8_t *netmask) {
+static int getCIDRipv6(uint8_t* netmask)
+{
     int imask = 0;
     uint8_t aux = 0;
-    for (uint8_t i = 0; i < 16; i++) {
+    for (uint8_t i = 0; i < 16; i++)
+    {
         aux = netmask[i];
-        for (uint8_t a = 0; a < 8 && aux > 0; a++) {
-            if (0x01 & aux) {
+        for (uint8_t a = 0; a < 8 && aux > 0; a++)
+        {
+            if (0x01 & aux)
+            {
                 imask++;
             }
             aux = aux >> UINT8_C(1);
@@ -1114,28 +1317,42 @@ static int getCIDRipv6(uint8_t *netmask) {
    If not found, -1 is returned.
 */
 
-int w_validate_wday(const char * day_str) {
+int w_validate_wday(const char* day_str)
+{
 
     int i = 0;
 
-    const char *(days[]) = {
-        "sunday", "sun", "monday", "mon", "tuesday", "tue",
-        "wednesday", "wed", "thursday", "thu", "friday",
-        "fri", "saturday", "sat", NULL
-    };
+    const char*(days[]) = {"sunday",
+                           "sun",
+                           "monday",
+                           "mon",
+                           "tuesday",
+                           "tue",
+                           "wednesday",
+                           "wed",
+                           "thursday",
+                           "thu",
+                           "friday",
+                           "fri",
+                           "saturday",
+                           "sat",
+                           NULL};
 
     int days_int[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6};
 
     /* Must be a valid string */
-    if (!day_str) {
+    if (!day_str)
+    {
         return -1;
     }
 
     // Remove spaces
     RM_WHITE(day_str);
 
-    while((days[i] != NULL)) {
-        if (strncasecmp(day_str, days[i], strlen(days[i])) == 0) {
+    while ((days[i] != NULL))
+    {
+        if (strncasecmp(day_str, days[i], strlen(days[i])) == 0)
+        {
             return days_int[i];
         }
         i++;
@@ -1143,33 +1360,39 @@ int w_validate_wday(const char * day_str) {
 
     merror(INVALID_DAY, day_str);
     return -1;
-
 }
 
 // Acceptable format: hh:mm (24 hour format)
-char * w_validate_time(const char * time_str) {
+char* w_validate_time(const char* time_str)
+{
 
     int hour = -1;
     int min = -1;
-    char * ret_time = NULL;
+    char* ret_time = NULL;
 
-    if (!time_str) {
+    if (!time_str)
+    {
         return NULL;
     }
 
     /* Remove spaces */
     RM_WHITE(time_str);
 
-    if (!strchr(time_str, ':')) {
+    if (!strchr(time_str, ':'))
+    {
         merror(INVALID_TIME, time_str);
         return NULL;
     }
 
-    if (sscanf(time_str, "%d:%d", &hour, &min) < 0) {
+    if (sscanf(time_str, "%d:%d", &hour, &min) < 0)
+    {
         merror(INVALID_TIME, time_str);
         return NULL;
-    } else {
-        if ((hour < 0 || hour >= 24) || (min < 0 || min >= 60)) {
+    }
+    else
+    {
+        if ((hour < 0 || hour >= 24) || (min < 0 || min >= 60))
+        {
             merror(INVALID_TIME, time_str);
             return NULL;
         }
@@ -1179,54 +1402,49 @@ char * w_validate_time(const char * time_str) {
     snprintf(ret_time, 12, "%02d:%02d", hour, min);
 
     return ret_time;
-
 }
 
 // Validate if the specified interval is multiple of weeks or days
-int w_validate_interval(int interval, int force) {
+int w_validate_interval(int interval, int force)
+{
 
     int ret = -1;
 
-    switch(force) {
-        case 0:     // Force to be a multiple of a day
+    switch (force)
+    {
+        case 0: // Force to be a multiple of a day
             ret = interval % 86400;
             break;
-        case 1:     // Force to be a multiple of a week
+        case 1: // Force to be a multiple of a week
             ret = interval % 604800;
             break;
-        default:
-            merror("At validate_interval(): internal error.");
+        default: merror("At validate_interval(): internal error.");
     }
 
     return ret;
 }
 
-long long w_validate_bytes(const char *content) {
+long long w_validate_bytes(const char* content)
+{
 
     long long converted_value = 0;
-    char * end;
+    char* end;
     long read_value = strtol(content, &end, 10);
 
-    if (read_value < 0 || read_value == LONG_MAX || content == end) {
+    if (read_value < 0 || read_value == LONG_MAX || content == end)
+    {
         return -1;
     }
 
-    switch (*end) {
+    switch (*end)
+    {
         case 'K':
-        case 'k':
-            converted_value = read_value * 1024LL;
-            break;
+        case 'k': converted_value = read_value * 1024LL; break;
         case 'M':
-        case 'm':
-            converted_value = read_value * (1024 * 1024LL);
-            break;
+        case 'm': converted_value = read_value * (1024 * 1024LL); break;
         case 'G':
-        case 'g':
-            converted_value = read_value * (1024 * 1024 * 1024LL);
-            break;
-        default:
-            converted_value = read_value;
-            break;
+        case 'g': converted_value = read_value * (1024 * 1024 * 1024LL); break;
+        default: converted_value = read_value; break;
     }
 
     return converted_value;

@@ -37,36 +37,35 @@
  */
 class ConfigFetcher final
 {
-    public:
-        ConfigFetcher(const ModuleConfig& config,
-                      IHttpPerformer& performer,
-                      const ISigner& signer,
-                      IClock& clock,
-                      IRandom& random,
-                      ISpoolFileFactory& spoolFactory,
-                      AuthGate& authGate,
-                      CompressionGate& compressionGate);
+public:
+    ConfigFetcher(const ModuleConfig& config,
+                  IHttpPerformer& performer,
+                  const ISigner& signer,
+                  IClock& clock,
+                  IRandom& random,
+                  ISpoolFileFactory& spoolFactory,
+                  AuthGate& authGate,
+                  CompressionGate& compressionGate);
 
-        /// Downloads this agent's configuration, expecting the given SHA-256.
-        /// A non-empty `configToken` (the manager's agent.config_token, never
-        /// interpreted here) is sent as resource_id; an empty one sends
-        /// {"resource_type":"config"} and the manager derives the resource from
-        /// the authenticated agent. Returns the verified spool file (deleted on
-        /// drop) or nullptr on any failure, already logged.
-        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& configToken,
-                                         Waiter& waiter);
+    /// Downloads this agent's configuration, expecting the given SHA-256.
+    /// A non-empty `configToken` (the manager's agent.config_token, never
+    /// interpreted here) is sent as resource_id; an empty one sends
+    /// {"resource_type":"config"} and the manager derives the resource from
+    /// the authenticated agent. Returns the verified spool file (deleted on
+    /// drop) or nullptr on any failure, already logged.
+    std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& configToken, Waiter& waiter);
 
-    private:
-        void logFailedDownload(const std::string& expectedHash, const RetrySender::Result& result);
-        void warnUndecodable(const HttpResponse& response);
+private:
+    void logFailedDownload(const std::string& expectedHash, const RetrySender::Result& result);
+    void warnUndecodable(const HttpResponse& response);
 
-        const ModuleConfig& m_config;
-        Backoff m_backoff;
-        RetrySender m_sender;
-        ISpoolFileFactory& m_spoolFactory;
-        LogRateLimiter m_undecodableLimiter;
-        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
-        std::string m_lastRejectedHash; ///< Last advertised hash whose download the manager rejected for good.
+    const ModuleConfig& m_config;
+    Backoff m_backoff;
+    RetrySender m_sender;
+    ISpoolFileFactory& m_spoolFactory;
+    LogRateLimiter m_undecodableLimiter;
+    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+    std::string m_lastRejectedHash; ///< Last advertised hash whose download the manager rejected for good.
 };
 
 #endif // _HC_CONFIG_FETCHER_HPP

@@ -26,19 +26,19 @@
 wchar_t* auto_to_wide(const char* input);
 
 /// Convert wide string to utf8
-char *wide_to_utf8(const wchar_t *input);
+char* wide_to_utf8(const wchar_t* input);
 
 /// Convert wide string to ansi
-char *wide_to_ansi(const wchar_t *input);
+char* wide_to_ansi(const wchar_t* input);
 
 /// Convert ansi to utf8
-char *auto_to_utf8(const char *input);
+char* auto_to_utf8(const char* input);
 
 /// Convert utf8 to ansi
-char *auto_to_ansi(const char *input);
+char* auto_to_ansi(const char* input);
 
 /// Stat a file with utf8 path
-int utf8_stat64(const char * pathname, struct _stat64 * statbuf);
+int utf8_stat64(const char* pathname, struct _stat64* statbuf);
 
 /// Create a file with utf8 path
 HANDLE utf8_CreateFile(const char* utf8_path,
@@ -65,7 +65,7 @@ BOOL utf8_RemoveDirectory(const char* utf8_path);
 DWORD utf8_GetFileAttributes(const char* utf8_path);
 
 /// Get short path
-char *utf8_GetShortPathName(const char* utf8_path);
+char* utf8_GetShortPathName(const char* utf8_path);
 
 /// Get file security
 BOOL utf8_GetFileSecurity(
@@ -93,9 +93,9 @@ DWORD utf8_SetNamedSecurityInfo(const char* utf8_path,
 /// Lookup account SID and return UTF-8 strings
 BOOL utf8_LookupAccountSid(LPCSTR lpSystemName,
                            PSID lpSid,
-                           char **lpName,
+                           char** lpName,
                            LPDWORD cchName,
-                           char **lpReferencedDomainName,
+                           char** lpReferencedDomainName,
                            LPDWORD cchReferencedDomainName,
                            PSID_NAME_USE peUse);
 

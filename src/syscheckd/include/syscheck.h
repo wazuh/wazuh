@@ -26,15 +26,15 @@
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 // Root-owned directory; only root creates this socket and connects to it.
-#define AUDIT_SOCKET                "var/audit/socket"
-#define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
-#define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
-#define AUDIT_HEALTHCHECK_DIR       "tmp"
-#define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
+#define AUDIT_SOCKET           "var/audit/socket"
+#define MAX_CONN_RETRIES       5 // Max retries to reconnect to Audit socket
+#define AUDIT_CONF_FILE        "tmp/af_wazuh.conf"
+#define AUDIT_HEALTHCHECK_DIR  "tmp"
+#define AUDIT_HEALTHCHECK_KEY  "wazuh_hc"
+#define AUDIT_HEALTHCHECK_FILE "tmp/audit_hc"
 
-#define FIM_SYNC_PROTOCOL_DB_PATH   "queue/fim/db/fim_sync.db"
-#define FIM_SYNC_RETRIES 3
+#define FIM_SYNC_PROTOCOL_DB_PATH "queue/fim/db/fim_sync.db"
+#define FIM_SYNC_RETRIES          3
 
 /* How long fim_shutdown_waiter() waits for the inventory synchronization thread to exit before
  * giving up on the database teardown. */
@@ -51,7 +51,7 @@
 #define FIM_TEARDOWN_BUDGET_MS       (FIM_SYNC_EXIT_TIMEOUT_WIN_MS + (2 * FIM_SCAN_MUTEX_WAIT_MS))
 #endif
 
-#define FIM_FILES_SYNC_INDEX         "wazuh-states-fim-files"
+#define FIM_FILES_SYNC_INDEX "wazuh-states-fim-files"
 #ifdef WIN32
 #define FIM_REGISTRY_KEYS_SYNC_INDEX   "wazuh-states-fim-registry-keys"
 #define FIM_REGISTRY_VALUES_SYNC_INDEX "wazuh-states-fim-registry-values"
@@ -74,9 +74,9 @@
 
 /* Win32 does not have lstat */
 #ifdef WIN32
-#define w_stat(x, y) w_stat64(x, y)
+#define w_stat(x, y)  w_stat64(x, y)
 #define w_lstat(x, y) w_stat64(x, y)
-#define stat _stat64
+#define stat          _stat64
 #else
 #define w_lstat(x, y) lstat(x, y)
 #endif
@@ -347,7 +347,8 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
  * @param _msg The message to be persisted
  * @param version The document version (64-bit unsigned integer)
  */
-void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1, 3, 4)));
+void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version)
+    __attribute__((nonnull(1, 3, 4)));
 
 /**
  * @brief Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334).
@@ -375,25 +376,26 @@ extern pthread_rwlock_t fim_sync_handle_rwlock;
  * @param index The index pattern for schema validation (e.g., FIM_FILES_SYNC_INDEX)
  * @param document_version The document version (64-bit unsigned integer)
  * @param item_description Description of the item for logging (e.g., "file /path/to/file")
- * @param mark_for_deletion If true and validation fails for INSERT/MODIFY, failed_item_data will be added to failed_list
- * @param failed_list Optional OSList to add failed items for deferred deletion (can be NULL if mark_for_deletion is false)
+ * @param mark_for_deletion If true and validation fails for INSERT/MODIFY, failed_item_data will be added to
+ * failed_list
+ * @param failed_list Optional OSList to add failed items for deferred deletion (can be NULL if mark_for_deletion is
+ * false)
  * @param failed_item_data Optional data to add to failed_list if validation fails (can be NULL).
  *                          Caller must free this if function returns true and it was allocated.
  *
- * @return true if validation passed and event was persisted (or schema validation is disabled), false if validation failed
+ * @return true if validation passed and event was persisted (or schema validation is disabled), false if validation
+ * failed
  */
-bool validate_and_persist_fim_event(
-    const cJSON* stateful_event,
-    const char* id,
-    Operation_t operation,
-    const char* index,
-    uint64_t document_version,
-    const char* item_description,
-    bool mark_for_deletion,
-    OSList* failed_list,
-    void* failed_item_data,
-    int sync_flag
-) __attribute__((nonnull(1, 2, 4, 6)));
+bool validate_and_persist_fim_event(const cJSON* stateful_event,
+                                    const char* id,
+                                    Operation_t operation,
+                                    const char* index,
+                                    uint64_t document_version,
+                                    const char* item_description,
+                                    bool mark_for_deletion,
+                                    OSList* failed_list,
+                                    void* failed_item_data,
+                                    int sync_flag) __attribute__((nonnull(1, 2, 4, 6)));
 
 /**
  * @brief Clean up files that failed schema validation by deleting them from DBSync
@@ -550,7 +552,7 @@ void audit_rules_to_realtime();
  * @param max Size of the templates array
  * @return Number of candidates written to templates, 0 if no known plugins directory was found
  */
-int audisp_get_candidates(const char **plugin_dir, const char **templates, int max);
+int audisp_get_candidates(const char** plugin_dir, const char** templates, int max);
 
 /**
  * @brief Whether the audisp plugin configuration on disk is one of the known templates
@@ -560,7 +562,7 @@ int audisp_get_candidates(const char **plugin_dir, const char **templates, int m
  * @param count Number of templates
  * @return 1 when the file on disk matches one of them, 0 otherwise
  */
-int audisp_configuration_is_known(const char *plugin_dir, const char **templates, int count);
+int audisp_configuration_is_known(const char* plugin_dir, const char** templates, int count);
 
 /**
  * @brief Configure the audisp plugin and connect to the who-data socket, probing the known
@@ -579,7 +581,7 @@ int configure_and_connect_audit_socket(void);
  *         restarted because restart_audit is disabled, -1 on error (a failed Auditd restart
  *         included)
  */
-int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
+int set_auditd_config_template(const char* plugin_dir, const char* audisp_config);
 
 /**
  * @brief Removes the Audit plugin configuration file, if present.
@@ -599,7 +601,7 @@ int init_auditd_socket(void);
  * @param audit_sock Output: file descriptor of the reconnected socket, -1 on failure
  * @return File descriptor of the socket, -1 on error
  */
-int audit_reconnect_with_retries(int *audit_sock);
+int audit_reconnect_with_retries(int* audit_sock);
 
 /**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds
@@ -655,7 +657,7 @@ void audit_parse(char* buffer);
  * @param audit_socket The audit socket to read the events from. Updated if the healthcheck reconnects
  * @return 0 on success, -1 on error
  */
-int audit_health_check(int *audit_socket);
+int audit_health_check(int* audit_socket);
 
 /**
  * @brief Deletes all the existing audit rules added by FIM
@@ -798,8 +800,8 @@ size_t syscom_getconfig(const char* section, char** output);
 size_t syscom_getallconfig(char** output);
 
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
-extern atomic_int_t fim_flush_in_progress;  // 0 = idle, 1 = flush active
-extern atomic_int_t fim_flush_result;       // 0 = success, -1 = error (valid only when in_progress=0)
+extern atomic_int_t fim_flush_in_progress; // 0 = idle, 1 = flush active
+extern atomic_int_t fim_flush_result;      // 0 = success, -1 = error (valid only when in_progress=0)
 
 /**
  * @brief Pauses FIM scanning

@@ -14,9 +14,9 @@
 
 class SysInfoProcessMacTest : public ::testing::Test
 {
-    protected:
-        SysInfoProcessMacTest() = default;
-        virtual ~SysInfoProcessMacTest() = default;
+protected:
+    SysInfoProcessMacTest() = default;
+    virtual ~SysInfoProcessMacTest() = default;
 };
 
 #endif //_SYSINFO_PROCESS_MAC_TEST_H

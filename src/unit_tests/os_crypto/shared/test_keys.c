@@ -22,23 +22,22 @@
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 
-
-int OS_IsAllowedID(keystore *keys, const char *id);
-int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
-void move_netdata(keystore *keys, const keystore *old_keys);
+int OS_IsAllowedID(keystore* keys, const char* id);
+int w_get_agent_net_protocol_from_keystore(keystore* keys, const char* agent_id);
+void move_netdata(keystore* keys, const keystore* old_keys);
 
 // Setup / Teardown
 
-static int setup_config(void **state)
+static int setup_config(void** state)
 {
     /*
      * 001 agent1 1.1.1.1 NULL
      * 002 agent2 2.2.2.2 1628683533
      */
-    keystore *keys;
+    keystore* keys;
 
     os_calloc(1, sizeof(keystore), keys);
-    os_calloc(3, sizeof(keyentry *), keys->keyentries);
+    os_calloc(3, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 2;
 
     os_calloc(3, sizeof(keyentry), keys->keyentries[0]);
@@ -66,11 +65,12 @@ static int setup_config(void **state)
     return 0;
 }
 
-static int teardown_config(void **state)
+static int teardown_config(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
 
-    for (int i = 0; i < keys->keysize; i++) {
+    for (int i = 0; i < keys->keysize; i++)
+    {
         free(keys->keyentries[i]->ip->ipv4);
         free(keys->keyentries[i]->ip);
         free(keys->keyentries[i]);
@@ -86,38 +86,38 @@ static int teardown_config(void **state)
 
 // Wraps
 
-int __wrap_TempFile(File *file, const char *source, int copy) {
-    file->name = mock_type(char *);
-    file->fp = mock_type(FILE *);
+int __wrap_TempFile(File* file, const char* source, int copy)
+{
+    file->name = mock_type(char*);
+    file->fp = mock_type(FILE*);
     check_expected(source);
     check_expected(copy);
     return mock_type(int);
 }
 
 // Test OS_IsAllowedID
-void test_OS_IsAllowedID_id_NULL(void **state)
+void test_OS_IsAllowedID_id_NULL(void** state)
 {
     keystore keys;
 
-    const char * id = NULL;
+    const char* id = NULL;
 
     int ret = OS_IsAllowedID(&keys, id);
 
     assert_int_equal(ret, -1);
-
 }
 
-void test_OS_IsAllowedID_entry_NULL(void **state)
+void test_OS_IsAllowedID_entry_NULL(void** state)
 {
     test_mode = 1;
 
-    keystore *keys = NULL;
+    keystore* keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
     keys->keytree_id = (rb_tree*)1;
 
-    keyentry * data = NULL;
+    keyentry* data = NULL;
 
-    const char * id = "12345";
+    const char* id = "12345";
 
     expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
     expect_string(__wrap_rbtree_get, key, id);
@@ -128,27 +128,25 @@ void test_OS_IsAllowedID_entry_NULL(void **state)
     assert_int_equal(ret, -1);
 
     os_free(keys);
-
 }
 
-void test_OS_IsAllowedID_entry_OK(void **state)
+void test_OS_IsAllowedID_entry_OK(void** state)
 {
     test_mode = 1;
 
-    keystore *keys = NULL;
+    keystore* keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
     keys->keytree_id = (rb_tree*)1;
 
-    keyentry * data = NULL;
+    keyentry* data = NULL;
     os_calloc(1, sizeof(keyentry), data);
     data->keyid = 0;
 
-    const char * id = "12345";
+    const char* id = "12345";
 
     expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
     expect_string(__wrap_rbtree_get, key, id);
     will_return(__wrap_rbtree_get, data);
-
 
     int ret = OS_IsAllowedID(keys, id);
 
@@ -157,19 +155,18 @@ void test_OS_IsAllowedID_entry_OK(void **state)
     os_free(keys);
 
     os_free(data);
-
 }
 
 // Test w_get_agent_net_protocol_from_keystore
-void test_w_get_agent_net_protocol_from_keystore_uninitialized_keystore(void **state)
+void test_w_get_agent_net_protocol_from_keystore_uninitialized_keystore(void** state)
 {
     test_mode = 1;
 
-    keystore *keys = NULL;
+    keystore* keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
     keys->keytree_id = NULL;
 
-    const char * id = "12345";
+    const char* id = "12345";
 
     int ret = w_get_agent_net_protocol_from_keystore(keys, id);
 
@@ -178,18 +175,18 @@ void test_w_get_agent_net_protocol_from_keystore_uninitialized_keystore(void **s
     os_free(keys);
 }
 
-void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
+void test_w_get_agent_net_protocol_from_keystore_key_NULL(void** state)
 {
     test_mode = 1;
 
-    //test_OS_IsAllowedID_entry_NULL
-    keystore *keys = NULL;
+    // test_OS_IsAllowedID_entry_NULL
+    keystore* keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
     keys->keytree_id = (rb_tree*)1;
 
-    keyentry * data = NULL;
+    keyentry* data = NULL;
 
-    const char * id = "12345";
+    const char* id = "12345";
 
     expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
     expect_string(__wrap_rbtree_get, key, id);
@@ -200,26 +197,25 @@ void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
     assert_int_equal(ret, -1);
 
     os_free(keys);
-
 }
 
-void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
+void test_w_get_agent_net_protocol_from_keystore_OK(void** state)
 {
     test_mode = 1;
 
-    //test_OS_IsAllowedID_entry_OK
-    keystore *keys = NULL;
+    // test_OS_IsAllowedID_entry_OK
+    keystore* keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
     keys->keytree_id = (rb_tree*)1;
-    os_calloc(1, sizeof(keyentry *), keys->keyentries);
+    os_calloc(1, sizeof(keyentry*), keys->keyentries);
     os_calloc(1, sizeof(keyentry), keys->keyentries[0]);
     keys->keyentries[0]->net_protocol = 1;
 
-    keyentry * data = NULL;
+    keyentry* data = NULL;
     os_calloc(1, sizeof(keyentry), data);
     data->keyid = 0;
 
-    const char * id = "12345";
+    const char* id = "12345";
 
     expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
     expect_string(__wrap_rbtree_get, key, id);
@@ -229,19 +225,16 @@ void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
 
     assert_int_equal(ret, 1);
 
-    os_free(keys->keyentries[0])
-    os_free(keys->keyentries)
-    os_free(keys);
+    os_free(keys->keyentries[0]) os_free(keys->keyentries) os_free(keys);
 
     os_free(data);
-
 }
 
 // Test OS_ReadTimestamps
 
-void test_OS_ReadTimestamps_file_missing(void **state)
+void test_OS_ReadTimestamps_file_missing(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
 
     expect_wfopen(TIMESTAMP_FILE, "r", NULL);
     errno = ENOENT;
@@ -250,9 +243,9 @@ void test_OS_ReadTimestamps_file_missing(void **state)
     assert_int_equal(r, 0);
 }
 
-void test_OS_ReadTimestamps_file_error(void **state)
+void test_OS_ReadTimestamps_file_error(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
 
     expect_wfopen(TIMESTAMP_FILE, "r", NULL);
     errno = EACCES;
@@ -261,12 +254,12 @@ void test_OS_ReadTimestamps_file_error(void **state)
     assert_int_equal(r, -1);
 }
 
-void test_OS_ReadTimestamps_wrong_line(void **state)
+void test_OS_ReadTimestamps_wrong_line(void** state)
 {
-    keystore *keys = *(keystore **)state;
-    expect_wfopen(TIMESTAMP_FILE, "r", (FILE *)1);
+    keystore* keys = *(keystore**)state;
+    expect_wfopen(TIMESTAMP_FILE, "r", (FILE*)1);
 
-    expect_fclose((FILE *)1, 0);
+    expect_fclose((FILE*)1, 0);
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "000 wrong line\n");
     expect_value(__wrap_fgets, __stream, 1);
@@ -276,22 +269,15 @@ void test_OS_ReadTimestamps_wrong_line(void **state)
     assert_int_equal(r, 0);
 }
 
-void test_OS_ReadTimestamps_valid_line(void **state)
+void test_OS_ReadTimestamps_valid_line(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
 
     struct tm tm = {
-        .tm_sec = 11,
-        .tm_min = 36,
-        .tm_hour = 14,
-        .tm_mday = 11,
-        .tm_mon = 7,
-        .tm_year = 121,
-        .tm_isdst = -1
-    };
+        .tm_sec = 11, .tm_min = 36, .tm_hour = 14, .tm_mday = 11, .tm_mon = 7, .tm_year = 121, .tm_isdst = -1};
 
-    expect_wfopen(TIMESTAMP_FILE, "r", (FILE *)1);
-    expect_fclose((FILE *)1, 0);
+    expect_wfopen(TIMESTAMP_FILE, "r", (FILE*)1);
+    expect_fclose((FILE*)1, 0);
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "001 agent1 1.1.1.1 2021-08-11 14:36:11\n");
     expect_value(__wrap_fgets, __stream, 1);
@@ -309,9 +295,9 @@ void test_OS_ReadTimestamps_valid_line(void **state)
 
 // Test OS_WriteTimestamps
 
-void test_OS_WriteTimestamps_file_error(void **state)
+void test_OS_WriteTimestamps_file_error(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
 
     expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
     expect_value(__wrap_TempFile, copy, 0);
@@ -324,21 +310,22 @@ void test_OS_WriteTimestamps_file_error(void **state)
     assert_int_equal(r, -1);
 }
 
-void test_OS_WriteTimestamps_file_write(void **state)
+void test_OS_WriteTimestamps_file_write(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
     char timestamp[40];
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
 
-    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+    strftime(
+        timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
 
     expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
-    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, (FILE*)1);
     will_return(__wrap_TempFile, 0);
-    expect_fprintf((FILE *)1, timestamp, 0);
-    expect_fclose((FILE *)1, 0);
+    expect_fprintf((FILE*)1, timestamp, 0);
+    expect_fclose((FILE*)1, 0);
     expect_string(__wrap_OS_MoveFile, src, TIMESTAMP_FILE ".bak");
     expect_string(__wrap_OS_MoveFile, dst, TIMESTAMP_FILE);
     will_return(__wrap_OS_MoveFile, 0);
@@ -347,69 +334,76 @@ void test_OS_WriteTimestamps_file_write(void **state)
     assert_int_equal(r, 0);
 }
 
-void test_OS_WriteTimestamps_write_error(void **state)
+void test_OS_WriteTimestamps_write_error(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
     char timestamp[40];
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
 
-    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+    strftime(
+        timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
 
     expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
-    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, (FILE*)1);
     will_return(__wrap_TempFile, 0);
-    expect_fprintf((FILE *)1, timestamp, -1);
-    expect_fclose((FILE *)1, 0);
+    expect_fprintf((FILE*)1, timestamp, -1);
+    expect_fclose((FILE*)1, 0);
     expect_string(__wrap_unlink, file, "queue/agents-timestamp.bak");
     will_return(__wrap_unlink, 0);
-    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/agents-timestamp.bak' due to [(28)-(No space left on device)].");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(1110): Could not write file 'queue/agents-timestamp.bak' due to [(28)-(No space left on device)].");
     errno = ENOSPC;
 
     int r = OS_WriteTimestamps(keys);
     assert_int_equal(r, -1);
 }
 
-void test_OS_WriteTimestamps_close_error(void **state)
+void test_OS_WriteTimestamps_close_error(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
     char timestamp[40];
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
 
-    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+    strftime(
+        timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
 
     expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
-    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, (FILE*)1);
     will_return(__wrap_TempFile, 0);
-    expect_fprintf((FILE *)1, timestamp, 0);
-    expect_fclose((FILE *)1, -1);
+    expect_fprintf((FILE*)1, timestamp, 0);
+    expect_fclose((FILE*)1, -1);
     expect_string(__wrap_unlink, file, "queue/agents-timestamp.bak");
     will_return(__wrap_unlink, 0);
-    expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'queue/agents-timestamp.bak' due to [(28)-(No space left on device)].");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(1140): Could not close file 'queue/agents-timestamp.bak' due to [(28)-(No space left on device)].");
     errno = ENOSPC;
 
     int r = OS_WriteTimestamps(keys);
     assert_int_equal(r, -1);
 }
 
-void test_OS_WriteTimestamps_move_error(void **state)
+void test_OS_WriteTimestamps_move_error(void** state)
 {
-    keystore *keys = *(keystore **)state;
+    keystore* keys = *(keystore**)state;
     char timestamp[40];
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
 
-    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+    strftime(
+        timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
 
     expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
-    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, (FILE*)1);
     will_return(__wrap_TempFile, 0);
-    expect_fprintf((FILE *)1, timestamp, 0);
-    expect_fclose((FILE *)1, 0);
+    expect_fprintf((FILE*)1, timestamp, 0);
+    expect_fclose((FILE*)1, 0);
     expect_string(__wrap_OS_MoveFile, src, TIMESTAMP_FILE ".bak");
     expect_string(__wrap_OS_MoveFile, dst, TIMESTAMP_FILE);
     will_return(__wrap_OS_MoveFile, -1);
@@ -422,8 +416,9 @@ void test_OS_WriteTimestamps_move_error(void **state)
 
 // Test w_get_key_hash
 
-void test_w_get_key_hash_empty_parameters(void **state){
-    keyentry *keys = NULL;
+void test_w_get_key_hash_empty_parameters(void** state)
+{
+    keyentry* keys = NULL;
     os_sha1 output = {0};
     int ret;
 
@@ -433,11 +428,12 @@ void test_w_get_key_hash_empty_parameters(void **state){
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_get_key_hash_empty_value(void **state){
-    keyentry *keys = NULL;
+void test_w_get_key_hash_empty_value(void** state)
+{
+    keyentry* keys = NULL;
     os_sha1 output = {0};
     int ret;
-    os_calloc(1, sizeof (keyentry), keys);
+    os_calloc(1, sizeof(keyentry), keys);
     keys->id = "001";
     keys->name = "debian10";
     keys->raw_key = NULL;
@@ -449,11 +445,12 @@ void test_w_get_key_hash_empty_value(void **state){
     os_free(keys);
 }
 
-void test_w_get_key_hash_success(void **state){
-    keyentry *keys = NULL;
+void test_w_get_key_hash_success(void** state)
+{
+    keyentry* keys = NULL;
     os_sha1 output = {0};
     int ret;
-    os_calloc(1, sizeof (keyentry), keys);
+    os_calloc(1, sizeof(keyentry), keys);
     keys->id = "001";
     keys->name = "debian10";
     keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
@@ -470,33 +467,34 @@ void test_w_get_key_hash_success(void **state){
 
 /* Agent 001 as a client.keys reload leaves it: the counters the reload read from its rids file, and
  * its key material. */
-typedef struct {
+typedef struct
+{
     keystore keys;
-    keyentry *entries[2];
+    keyentry* entries[2];
     keyentry entry;
     os_ip ip;
 } netdata_store;
 
-static void netdata_store_init(netdata_store *store, const char *encryption_key, unsigned int global,
-                               unsigned int local, int sock)
+static void
+netdata_store_init(netdata_store* store, const char* encryption_key, unsigned int global, unsigned int local, int sock)
 {
     memset(store, 0, sizeof(*store));
     store->ip.ip = "1.1.1.1";
     store->entry.id = "001";
     store->entry.ip = &store->ip;
     store->entry.keyid = 0;
-    store->entry.encryption_key = (char *)encryption_key;
+    store->entry.encryption_key = (char*)encryption_key;
     store->entry.global = global;
     store->entry.local = local;
     store->entry.sock = sock;
     store->entries[0] = &store->entry;
     store->keys.keyentries = store->entries;
     store->keys.keysize = 1;
-    store->keys.keytree_id = (rb_tree *)1;
+    store->keys.keytree_id = (rb_tree*)1;
     store->keys.keytree_sock = rbtree_init();
 }
 
-static void netdata_move(netdata_store *reloaded, netdata_store *old)
+static void netdata_move(netdata_store* reloaded, netdata_store* old)
 {
     expect_value(__wrap_rbtree_get, tree, reloaded->keys.keytree_id);
     expect_string(__wrap_rbtree_get, key, "001");
@@ -508,7 +506,7 @@ static void netdata_move(netdata_store *reloaded, netdata_store *old)
     rbtree_destroy(old->keys.keytree_sock);
 }
 
-void test_move_netdata_carries_counters_ahead_of_rids(void **state)
+void test_move_netdata_carries_counters_ahead_of_rids(void** state)
 {
     netdata_store old;
     netdata_store reloaded;
@@ -525,7 +523,7 @@ void test_move_netdata_carries_counters_ahead_of_rids(void **state)
     assert_int_equal(reloaded.entry.sock, 7);
 }
 
-void test_move_netdata_carries_local_counter_ahead_of_rids(void **state)
+void test_move_netdata_carries_local_counter_ahead_of_rids(void** state)
 {
     netdata_store old;
     netdata_store reloaded;
@@ -539,7 +537,7 @@ void test_move_netdata_carries_local_counter_ahead_of_rids(void **state)
     assert_int_equal(reloaded.entry.local, 20);
 }
 
-void test_move_netdata_keeps_rids_counters_ahead_of_memory(void **state)
+void test_move_netdata_keeps_rids_counters_ahead_of_memory(void** state)
 {
     netdata_store old;
     netdata_store reloaded;
@@ -554,7 +552,7 @@ void test_move_netdata_keeps_rids_counters_ahead_of_memory(void **state)
     assert_int_equal(reloaded.entry.sock, 7);
 }
 
-void test_move_netdata_replaced_key_keeps_rids_counters(void **state)
+void test_move_netdata_replaced_key_keeps_rids_counters(void** state)
 {
     netdata_store old;
     netdata_store reloaded;
@@ -601,8 +599,7 @@ int main(void)
         cmocka_unit_test(test_move_netdata_carries_counters_ahead_of_rids),
         cmocka_unit_test(test_move_netdata_carries_local_counter_ahead_of_rids),
         cmocka_unit_test(test_move_netdata_keeps_rids_counters_ahead_of_memory),
-        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters)
-    };
+        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters)};
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

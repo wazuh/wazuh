@@ -7,17 +7,16 @@
  * Foundation
  */
 
-
 #ifndef STDIO_WRAPPERS_WINDOWS_H
 #define STDIO_WRAPPERS_WINDOWS_H
 
 #include <stdio.h>
 
-char * wrap_fgets(char * __s, int __n, FILE * __stream);
+char* wrap_fgets(char* __s, int __n, FILE* __stream);
 
-int wrap_fprintf(FILE *__stream, const char *__format, ...);
+int wrap_fprintf(FILE* __stream, const char* __format, ...);
 
 #define fprintf wrap_fprintf
-#define fgets wrap_fgets
+#define fgets   wrap_fgets
 
 #endif

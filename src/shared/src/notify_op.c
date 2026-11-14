@@ -12,11 +12,13 @@
 
 #if defined(__linux__)
 
-wnotify_t * wnotify_init(int size) {
-    wnotify_t * notify;
+wnotify_t* wnotify_init(int size)
+{
+    wnotify_t* notify;
     int fd;
 
-    if (fd = epoll_create(size), fd < 0) {
+    if (fd = epoll_create(size), fd < 0)
+    {
         return NULL;
     }
 
@@ -28,38 +30,44 @@ wnotify_t * wnotify_init(int size) {
     return notify;
 }
 
-int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
+int wnotify_add(wnotify_t* notify, int fd, const woperation_t op)
+{
 
     const int operation = (op & WO_READ ? EPOLLIN : 0) | (op & WO_WRITE ? EPOLLOUT : 0);
-    struct epoll_event request = { .events = operation, .data = { .fd = fd } };
+    struct epoll_event request = {.events = operation, .data = {.fd = fd}};
     return epoll_ctl(notify->fd, EPOLL_CTL_ADD, fd, &request);
 }
 
-int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
+int wnotify_modify(wnotify_t* notify, int fd, const woperation_t op)
+{
 
     const int operation = (op & WO_READ ? EPOLLIN : 0) | (op & WO_WRITE ? EPOLLOUT : 0);
-    struct epoll_event request = { .events = operation, .data = { .fd = fd } };
+    struct epoll_event request = {.events = operation, .data = {.fd = fd}};
     return epoll_ctl(notify->fd, EPOLL_CTL_MOD, fd, &request);
 }
 
-int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
+int wnotify_delete(wnotify_t* notify, int fd, const woperation_t op)
+{
 
     const int operation = (op & WO_READ ? EPOLLIN : 0) | (op & WO_WRITE ? EPOLLOUT : 0);
-    struct epoll_event request = { .events = operation, .data = { .fd = fd } };
+    struct epoll_event request = {.events = operation, .data = {.fd = fd}};
     return epoll_ctl(notify->fd, EPOLL_CTL_DEL, fd, &request);
 }
 
-int wnotify_wait(wnotify_t * notify, int timeout) {
+int wnotify_wait(wnotify_t* notify, int timeout)
+{
     return epoll_wait(notify->fd, notify->events, notify->size, timeout);
 }
 
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
-wnotify_t * wnotify_init(int size) {
-    wnotify_t * notify;
+wnotify_t* wnotify_init(int size)
+{
+    wnotify_t* notify;
     int fd;
 
-    if (fd = kqueue(), fd < 0) {
+    if (fd = kqueue(), fd < 0)
+    {
         return NULL;
     }
 
@@ -70,7 +78,8 @@ wnotify_t * wnotify_init(int size) {
     return notify;
 }
 
-int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
+int wnotify_add(wnotify_t* notify, int fd, const woperation_t op)
+{
     struct kevent request;
 
     const int operation = (op & WO_READ ? EVFILT_READ : 0) | (op & WO_WRITE ? EVFILT_WRITE : 0);
@@ -78,14 +87,16 @@ int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
     return kevent(notify->fd, &request, 1, NULL, 0, NULL);
 }
 
-int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
+int wnotify_modify(wnotify_t* notify, int fd, const woperation_t op)
+{
 
     // Re-adding an existing event will modify the parameters of the original event,
     // and not result in a duplicate entry.
     return wnotify_add(notify, fd, op);
 }
 
-int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
+int wnotify_delete(wnotify_t* notify, int fd, const woperation_t op)
+{
     struct kevent request;
 
     const int operation = (op & WO_READ ? EVFILT_READ : 0) | (op & WO_WRITE ? EVFILT_WRITE : 0);
@@ -93,8 +104,9 @@ int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
     return kevent(notify->fd, &request, 1, NULL, 0, NULL);
 }
 
-int wnotify_wait(wnotify_t * notify, int timeout) {
-    struct timespec ts = { timeout / 1000, (timeout % 1000) * 1000000 };
+int wnotify_wait(wnotify_t* notify, int timeout)
+{
+    struct timespec ts = {timeout / 1000, (timeout % 1000) * 1000000};
     return kevent(notify->fd, NULL, 0, notify->events, notify->size, timeout >= 0 ? &ts : NULL);
 }
 
@@ -102,8 +114,10 @@ int wnotify_wait(wnotify_t * notify, int timeout) {
 
 #if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
-void wnotify_close(wnotify_t * notify) {
-    if (notify) {
+void wnotify_close(wnotify_t* notify)
+{
+    if (notify)
+    {
         close(notify->fd);
         free(notify->events);
         free(notify);

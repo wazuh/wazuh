@@ -46,62 +46,62 @@
  */
 class CaBundleFetcher final
 {
-    public:
-        /// @param install Receives a body that passed every check the module can make, with the
-        ///        publication it is being adopted at. Returns whether it is now installed --
-        ///        the module cannot parse X.509 itself, so the consumer has the last word and
-        ///        a false answer leaves the state untouched.
-        using InstallFn = std::function<bool(const std::string&, std::int64_t)>;
+public:
+    /// @param install Receives a body that passed every check the module can make, with the
+    ///        publication it is being adopted at. Returns whether it is now installed --
+    ///        the module cannot parse X.509 itself, so the consumer has the last word and
+    ///        a false answer leaves the state untouched.
+    using InstallFn = std::function<bool(const std::string&, std::int64_t)>;
 
-        CaBundleFetcher(const ModuleConfig& config,
-                        IHttpPerformer& performer,
-                        const IFsProbe& fsProbe,
-                        IClock& clock,
-                        IRandom& random,
-                        CaPublicationState& state,
-                        InstallFn install,
-                        LogFn logFn);
+    CaBundleFetcher(const ModuleConfig& config,
+                    IHttpPerformer& performer,
+                    const IFsProbe& fsProbe,
+                    IClock& clock,
+                    IRandom& random,
+                    CaPublicationState& state,
+                    InstallFn install,
+                    LogFn logFn);
 
-        /// One control iteration's worth: schedules the wait, sits out the rest of it, or
-        /// performs the refresh that is now due.
-        void tick(Waiter& waiter);
+    /// One control iteration's worth: schedules the wait, sits out the rest of it, or
+    /// performs the refresh that is now due.
+    void tick(Waiter& waiter);
 
-    private:
-        /// Uniform over a few keepalive intervals, per rule 7.
-        std::chrono::milliseconds jitterDelay();
+private:
+    /// Uniform over a few keepalive intervals, per rule 7.
+    std::chrono::milliseconds jitterDelay();
 
-        /// Everything the module can judge about a response before the bytes reach the
-        /// consumer. Returns the body to install, or nullopt with the reason already logged.
-        std::optional<std::string> vet(const HttpResponse& response, std::int64_t target);
+    /// Everything the module can judge about a response before the bytes reach the
+    /// consumer. Returns the body to install, or nullopt with the reason already logged.
+    std::optional<std::string> vet(const HttpResponse& response, std::int64_t target);
 
-        void performRefresh(std::int64_t target, Waiter& waiter);
+    void performRefresh(std::int64_t target, Waiter& waiter);
 
-        const ModuleConfig& m_config;
-        IHttpPerformer& m_performer;
-        const IFsProbe& m_fsProbe;
-        IClock& m_clock;
-        IRandom& m_random;
-        CaPublicationState& m_state;
-        Backoff m_backoff;
-        InstallFn m_install;
-        LogFn m_logFn;
+    const ModuleConfig& m_config;
+    IHttpPerformer& m_performer;
+    const IFsProbe& m_fsProbe;
+    IClock& m_clock;
+    IRandom& m_random;
+    CaPublicationState& m_state;
+    Backoff m_backoff;
+    InstallFn m_install;
+    LogFn m_logFn;
 
-        /// When the next attempt may run. Unset while nothing is pending.
-        std::optional<std::chrono::steady_clock::time_point> m_dueAt;
+    /// When the next attempt may run. Unset while nothing is pending.
+    std::optional<std::chrono::steady_clock::time_point> m_dueAt;
 
-        /// Consecutive failed attempts at m_attemptedTarget, and the target they belong to.
-        int m_attempts {0};
-        std::int64_t m_attemptedTarget {0};
+    /// Consecutive failed attempts at m_attemptedTarget, and the target they belong to.
+    int m_attempts {0};
+    std::int64_t m_attemptedTarget {0};
 
-        /// The highest publication this agent has given up on. Anything at or below it is not
-        /// attempted again until the cooldown below lifts; a strictly higher one is, at once.
-        std::int64_t m_abandoned {0};
+    /// The highest publication this agent has given up on. Anything at or below it is not
+    /// attempted again until the cooldown below lifts; a strictly higher one is, at once.
+    std::int64_t m_abandoned {0};
 
-        /// When that happened. Abandonment is a cooldown rather than a permanent verdict --
-        /// see ABANDON_COOLDOWN -- because a rotation re-advertises one publication until the
-        /// next publish, so an abandonment that never lifted would silently end this agent's
-        /// ability to follow CA rotations at all.
-        std::optional<std::chrono::steady_clock::time_point> m_abandonedAt;
+    /// When that happened. Abandonment is a cooldown rather than a permanent verdict --
+    /// see ABANDON_COOLDOWN -- because a rotation re-advertises one publication until the
+    /// next publish, so an abandonment that never lifted would silently end this agent's
+    /// ability to follow CA rotations at all.
+    std::optional<std::chrono::steady_clock::time_point> m_abandonedAt;
 };
 
 #endif // _HC_CA_BUNDLE_FETCHER_HPP

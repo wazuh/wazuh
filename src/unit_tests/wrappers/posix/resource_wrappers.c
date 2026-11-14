@@ -14,18 +14,21 @@
 #include <cmocka.h>
 
 #ifndef WIN32
-int __wrap_getrlimit(int resource, struct rlimit *rlim) {
+int __wrap_getrlimit(int resource, struct rlimit* rlim)
+{
     check_expected(resource);
 
-    const struct rlimit *mock_limit = mock_type(const struct rlimit *);
-    if (mock_limit != NULL) {
+    const struct rlimit* mock_limit = mock_type(const struct rlimit*);
+    if (mock_limit != NULL)
+    {
         *rlim = *mock_limit;
     }
 
     return mock_type(int);
 }
 
-int __wrap_setrlimit(int resource, const struct rlimit *rlim) {
+int __wrap_setrlimit(int resource, const struct rlimit* rlim)
+{
     const rlim_t rlim_cur = rlim->rlim_cur;
     const rlim_t rlim_max = rlim->rlim_max;
 

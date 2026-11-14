@@ -30,11 +30,11 @@
  * the send or the receive fails with EBADF: a test that still sees the earlier errno proves it was
  * taken before close(). */
 
-#define OK_RESPONSE "{\"error\":0,\"data\":{\"changed\":true,\"pending\":false,\"pending_offset\":0}}"
+#define OK_RESPONSE    "{\"error\":0,\"data\":{\"changed\":true,\"pending\":false,\"pending_offset\":0}}"
 #define ERROR_RESPONSE "{\"error\":5,\"message\":\"busy\"}"
 #define TIMEOUT_REASON "agent-info did not answer within 5 seconds"
-#define TIMEOUT_MSG "vd_offset_client: " TIMEOUT_REASON "; will retry next notify."
-#define WARN_SUFFIX "; vulnerability rescan requests wait until it answers."
+#define TIMEOUT_MSG    "vd_offset_client: " TIMEOUT_REASON "; will retry next notify."
+#define WARN_SUFFIX    "; vulnerability rescan requests wait until it answers."
 
 /* Not static in unit-test builds, so each test starts without a streak. */
 void vd_offset_streak_reset(void);
@@ -42,9 +42,10 @@ void vd_offset_streak_reset(void);
 static time_t g_now = 1000;
 static int g_closed_fd = -1;
 
-int __wrap_OS_ConnectUnixDomain(__attribute__((unused)) const char *path,
+int __wrap_OS_ConnectUnixDomain(__attribute__((unused)) const char* path,
                                 __attribute__((unused)) int type,
-                                __attribute__((unused)) int max_msg_size) {
+                                __attribute__((unused)) int max_msg_size)
+{
     const int ret = mock_type(int);
     errno = mock_type(int);
     return ret;
@@ -52,20 +53,23 @@ int __wrap_OS_ConnectUnixDomain(__attribute__((unused)) const char *path,
 
 int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
                              __attribute__((unused)) long seconds,
-                             __attribute__((unused)) long useconds) {
+                             __attribute__((unused)) long useconds)
+{
     return 0;
 }
 
 int __wrap_OS_SendSecureTCP(__attribute__((unused)) int sock,
                             __attribute__((unused)) uint32_t size,
-                            __attribute__((unused)) const void *msg) {
+                            __attribute__((unused)) const void* msg)
+{
     const int ret = mock_type(int);
     errno = mock_type(int);
     return ret;
 }
 
-int __wrap_OS_RecvSecureTCP(__attribute__((unused)) int sock, char *ret, uint32_t size) {
-    const char *response = mock_ptr_type(const char *);
+int __wrap_OS_RecvSecureTCP(__attribute__((unused)) int sock, char* ret, uint32_t size)
+{
+    const char* response = mock_ptr_type(const char*);
     const int recv_errno = mock_type(int);
     const int recv_ret = mock_type(int);
 
@@ -75,22 +79,26 @@ int __wrap_OS_RecvSecureTCP(__attribute__((unused)) int sock, char *ret, uint32_
 }
 
 /* Local rather than the shared one, which would pull in wrappers this test does not link. */
-int __wrap_usleep(__attribute__((unused)) useconds_t usec) {
+int __wrap_usleep(__attribute__((unused)) useconds_t usec)
+{
     function_called();
     return 0;
 }
 
-time_t __wrap_w_get_monotonic_time(void) {
+time_t __wrap_w_get_monotonic_time(void)
+{
     return g_now;
 }
 
-static int setup(void **state) {
+static int setup(void** state)
+{
     (void)state;
 
     /* A descriptor number that is free right now, and stays free: nothing in these tests opens
      * files between here and the close() under test. */
     g_closed_fd = open("/dev/null", O_RDONLY);
-    if (g_closed_fd < 0 || close(g_closed_fd) != 0) {
+    if (g_closed_fd < 0 || close(g_closed_fd) != 0)
+    {
         return -1;
     }
 
@@ -99,17 +107,20 @@ static int setup(void **state) {
     return 0;
 }
 
-static void expect_connected(void) {
+static void expect_connected(void)
+{
     will_return(__wrap_OS_ConnectUnixDomain, g_closed_fd);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 }
 
-static void expect_sent(void) {
+static void expect_sent(void)
+{
     will_return(__wrap_OS_SendSecureTCP, 0);
     will_return(__wrap_OS_SendSecureTCP, 0);
 }
 
-static void expect_query(int recv_ret, int recv_errno, const char *response) {
+static void expect_query(int recv_ret, int recv_errno, const char* response)
+{
     expect_connected();
     expect_sent();
     will_return(__wrap_OS_RecvSecureTCP, response);
@@ -117,19 +128,23 @@ static void expect_query(int recv_ret, int recv_errno, const char *response) {
     will_return(__wrap_OS_RecvSecureTCP, recv_ret);
 }
 
-static void expect_answer(const char *response) {
+static void expect_answer(const char* response)
+{
     expect_query((int)strlen(response), 0, response);
 }
 
-static void expect_debug(const char *msg) {
+static void expect_debug(const char* msg)
+{
     expect_string(__wrap__mdebug1, formatted_msg, msg);
 }
 
-static void expect_warn(const char *msg) {
+static void expect_warn(const char* msg)
+{
     expect_string(__wrap__mwarn, formatted_msg, msg);
 }
 
-static void observe_fails(void) {
+static void observe_fails(void)
+{
     bool changed = true;
     bool pending = true;
     uint64_t pending_offset = 7;
@@ -140,7 +155,8 @@ static void observe_fails(void) {
     assert_int_equal(pending_offset, 0);
 }
 
-static void observe_answers(void) {
+static void observe_answers(void)
+{
     bool changed = false;
 
     expect_answer(OK_RESPONSE);
@@ -148,14 +164,16 @@ static void observe_answers(void) {
     assert_true(changed);
 }
 
-static void timeout_at(time_t now) {
+static void timeout_at(time_t now)
+{
     g_now = now;
     expect_query(-1, EAGAIN, "");
     expect_debug(TIMEOUT_MSG);
     observe_fails();
 }
 
-static void answer_after(time_t now, const char *recovery_msg) {
+static void answer_after(time_t now, const char* recovery_msg)
+{
     g_now = now;
     expect_debug(recovery_msg);
     observe_answers();
@@ -163,14 +181,16 @@ static void answer_after(time_t now, const char *recovery_msg) {
 
 /* Tests */
 
-static void test_timeout_is_debug(void **state) {
+static void test_timeout_is_debug(void** state)
+{
     (void)state;
 
     timeout_at(1000);
     answer_after(1010, "vd_offset_client: agent-info answered again after 10 seconds (1 failed queries).");
 }
 
-static void test_peer_closed_is_debug(void **state) {
+static void test_peer_closed_is_debug(void** state)
+{
     (void)state;
 
     expect_query(0, 0, "");
@@ -178,12 +198,16 @@ static void test_peer_closed_is_debug(void **state) {
     observe_fails();
 }
 
-static void test_oversized_response_is_an_error(void **state) {
+static void test_oversized_response_is_an_error(void** state)
+{
     (void)state;
     char msg[OS_MAXSTR];
 
-    snprintf(msg, sizeof(msg), "vd_offset_client: agent-info response is longer than %d bytes (recv_len=%d).",
-             OS_MAXSTR, OS_SOCKTERR);
+    snprintf(msg,
+             sizeof(msg),
+             "vd_offset_client: agent-info response is longer than %d bytes (recv_len=%d).",
+             OS_MAXSTR,
+             OS_SOCKTERR);
 
     expect_query(OS_SOCKTERR, 0, "");
     expect_string(__wrap__merror, formatted_msg, msg);
@@ -193,30 +217,38 @@ static void test_oversized_response_is_an_error(void **state) {
     answer_after(1000, "vd_offset_client: agent-info answered again after 0 seconds (1 failed queries).");
 }
 
-static void test_other_errno_is_debug_with_the_receive_errno(void **state) {
+static void test_other_errno_is_debug_with_the_receive_errno(void** state)
+{
     (void)state;
     char msg[OS_MAXSTR];
 
-    snprintf(msg, sizeof(msg), "vd_offset_client: no response from agent-info: %s (%d); will retry next notify.",
-             strerror(ECONNRESET), ECONNRESET);
+    snprintf(msg,
+             sizeof(msg),
+             "vd_offset_client: no response from agent-info: %s (%d); will retry next notify.",
+             strerror(ECONNRESET),
+             ECONNRESET);
 
     expect_query(-1, ECONNRESET, "");
     expect_debug(msg);
     observe_fails();
 }
 
-static void test_connect_failure_counts_toward_the_streak(void **state) {
+static void test_connect_failure_counts_toward_the_streak(void** state)
+{
     (void)state;
     char msg[OS_MAXSTR];
     int attempt;
 
     /* The agent's path: the client is built with CLIENT, this test is not, so WM_LOCAL_SOCK differs here. */
-    snprintf(msg, sizeof(msg),
+    snprintf(msg,
+             sizeof(msg),
              "vd_offset_client: could not connect to 'queue/sockets/wmodules' after 10 attempt(s): %s (%d); "
              "will retry next notify.",
-             strerror(ECONNREFUSED), ECONNREFUSED);
+             strerror(ECONNREFUSED),
+             ECONNREFUSED);
 
-    for (attempt = 0; attempt < 10; attempt++) {
+    for (attempt = 0; attempt < 10; attempt++)
+    {
         will_return(__wrap_OS_ConnectUnixDomain, -1);
         will_return(__wrap_OS_ConnectUnixDomain, ECONNREFUSED);
     }
@@ -227,13 +259,16 @@ static void test_connect_failure_counts_toward_the_streak(void **state) {
     answer_after(1020, "vd_offset_client: agent-info answered again after 20 seconds (1 failed queries).");
 }
 
-static void test_send_failure_is_debug_with_the_send_errno(void **state) {
+static void test_send_failure_is_debug_with_the_send_errno(void** state)
+{
     (void)state;
     char msg[OS_MAXSTR];
 
-    snprintf(msg, sizeof(msg),
+    snprintf(msg,
+             sizeof(msg),
              "vd_offset_client: could not send the query to agent-info: %s (%d); will retry next notify.",
-             strerror(EPIPE), EPIPE);
+             strerror(EPIPE),
+             EPIPE);
 
     expect_connected();
     will_return(__wrap_OS_SendSecureTCP, OS_SOCKTERR);
@@ -244,7 +279,8 @@ static void test_send_failure_is_debug_with_the_send_errno(void **state) {
     answer_after(1010, "vd_offset_client: agent-info answered again after 10 seconds (1 failed queries).");
 }
 
-static void test_error_answer_does_not_end_the_streak(void **state) {
+static void test_error_answer_does_not_end_the_streak(void** state)
+{
     (void)state;
 
     timeout_at(1000);
@@ -265,7 +301,8 @@ static void test_error_answer_does_not_end_the_streak(void **state) {
     answer_after(1310, "vd_offset_client: agent-info answered again after 310 seconds (3 failed queries).");
 }
 
-static void test_malformed_answer_counts_toward_the_streak(void **state) {
+static void test_malformed_answer_counts_toward_the_streak(void** state)
+{
     (void)state;
 
     expect_answer("not json");
@@ -275,7 +312,8 @@ static void test_malformed_answer_counts_toward_the_streak(void **state) {
     answer_after(1010, "vd_offset_client: agent-info answered again after 10 seconds (1 failed queries).");
 }
 
-static void test_warns_every_interval_without_an_answer(void **state) {
+static void test_warns_every_interval_without_an_answer(void** state)
+{
     (void)state;
 
     timeout_at(1000);
@@ -301,7 +339,8 @@ static void test_warns_every_interval_without_an_answer(void **state) {
     answer_after(1601, "vd_offset_client: agent-info answered again after 601 seconds (6 failed queries).");
 }
 
-static void test_an_answer_restarts_the_interval(void **state) {
+static void test_an_answer_restarts_the_interval(void** state)
+{
     (void)state;
 
     timeout_at(2000);
@@ -321,7 +360,8 @@ static void test_an_answer_restarts_the_interval(void **state) {
     answer_after(2651, "vd_offset_client: agent-info answered again after 301 seconds (3 failed queries).");
 }
 
-static void test_a_gap_without_queries_starts_a_new_streak(void **state) {
+static void test_a_gap_without_queries_starts_a_new_streak(void** state)
+{
     (void)state;
 
     /* One failure, then 20 minutes without any query (agent disconnected, or no offset sent). */
@@ -341,7 +381,8 @@ static void test_a_gap_without_queries_starts_a_new_streak(void **state) {
     answer_after(2510, "vd_offset_client: agent-info answered again after 310 seconds (3 failed queries).");
 }
 
-static void test_a_gap_up_to_the_interval_keeps_the_streak(void **state) {
+static void test_a_gap_up_to_the_interval_keeps_the_streak(void** state)
+{
     (void)state;
 
     timeout_at(1000);
@@ -354,13 +395,15 @@ static void test_a_gap_up_to_the_interval_keeps_the_streak(void **state) {
     observe_fails();
 }
 
-static void test_answer_without_a_streak_logs_nothing(void **state) {
+static void test_answer_without_a_streak_logs_nothing(void** state)
+{
     (void)state;
 
     observe_answers();
 }
 
-static void test_clear_pending_timeout_is_debug(void **state) {
+static void test_clear_pending_timeout_is_debug(void** state)
+{
     (void)state;
 
     expect_query(-1, EWOULDBLOCK, "");
@@ -373,7 +416,8 @@ static void test_clear_pending_timeout_is_debug(void **state) {
     assert_true(vd_offset_client_clear_pending(42));
 }
 
-static void test_clear_pending_error_answer_counts_toward_the_streak(void **state) {
+static void test_clear_pending_error_answer_counts_toward_the_streak(void** state)
+{
     (void)state;
 
     expect_answer(ERROR_RESPONSE);
@@ -383,7 +427,8 @@ static void test_clear_pending_error_answer_counts_toward_the_streak(void **stat
     answer_after(1010, "vd_offset_client: agent-info answered again after 10 seconds (1 failed queries).");
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_timeout_is_debug, setup),
         cmocka_unit_test_setup(test_peer_closed_is_debug, setup),

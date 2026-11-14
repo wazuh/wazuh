@@ -15,13 +15,12 @@
 class SQLiteTest : public ::testing::Test
 {
 
-    protected:
+protected:
+    SQLiteTest() = default;
+    virtual ~SQLiteTest() = default;
 
-        SQLiteTest() = default;
-        virtual ~SQLiteTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SQLITE_TEST_H

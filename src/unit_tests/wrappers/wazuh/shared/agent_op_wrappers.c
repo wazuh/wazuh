@@ -20,29 +20,35 @@
 #include "shared.h"
 // #include "../../analysisd/logmsg.h"
 
-int __wrap_auth_connect() {
+int __wrap_auth_connect()
+{
     return mock();
 }
 
-char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
+char* __wrap_get_agent_id_from_name(__attribute__((unused)) char* agent_name)
+{
     return mock_type(char*);
 }
 
-char* __wrap_getPrimaryIP(void) {
+char* __wrap_getPrimaryIP(void)
+{
     return mock_type(char*);
 }
 
-cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
+cJSON* __wrap_w_create_sendsync_payload(const char* daemon_name, cJSON* message)
+{
     check_expected(daemon_name);
 
-    if (mock()) {
+    if (mock())
+    {
         cJSON_Delete(message);
     }
 
     return mock_type(cJSON*);
 }
 
-int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
+int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response)
+{
     check_expected(command);
     check_expected(payload);
 
@@ -51,12 +57,14 @@ int __wrap_w_send_clustered_message(const char* command, const char* payload, ch
     return mock();
 }
 
-bool __wrap_w_query_agentd(const char *module, const char *query, char *output, size_t output_size) {
+bool __wrap_w_query_agentd(const char* module, const char* query, char* output, size_t output_size)
+{
     check_expected(module);
     check_expected(query);
 
     const char* mock_output = mock_ptr_type(char*);
-    if (mock_output && output && output_size > 0) {
+    if (mock_output && output && output_size > 0)
+    {
         strncpy(output, mock_output, output_size - 1);
         output[output_size - 1] = '\0';
     }

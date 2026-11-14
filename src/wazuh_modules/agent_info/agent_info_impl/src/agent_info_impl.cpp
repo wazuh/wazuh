@@ -47,51 +47,43 @@ constexpr int MAX_COORDINATION_RETRIES = 3;
 constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
 // Map DBSync callback results to operation strings for stateless events
-static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
-{
+static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP {
     {MODIFIED, "modified"},
     {DELETED, "deleted"},
     {INSERTED, "created"},
 };
 
 // Map tables to their delta synchronization modes
-static const std::map<std::string, Mode> TABLE_DELTA_MODE_MAP
-{
+static const std::map<std::string, Mode> TABLE_DELTA_MODE_MAP {
     {AGENT_METADATA_TABLE, Mode::METADATA_DELTA},
     {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
 };
 
 // Map tables to their integrity check modes
-static const std::map<std::string, Mode> TABLE_CHECK_MODE_MAP
-{
+static const std::map<std::string, Mode> TABLE_CHECK_MODE_MAP {
     {AGENT_METADATA_TABLE, Mode::METADATA_CHECK},
     {AGENT_GROUPS_TABLE, Mode::GROUP_CHECK},
 };
 
 // Map modules to their corresponding indices that should be updated when agent metadata or groups change
-static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
-{
+static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP {
     {FIM_NAME, {"wazuh-states-fim-files", "wazuh-states-fim-registry-keys", "wazuh-states-fim-registry-values"}},
     {SCA_WM_NAME, {"wazuh-states-sca"}},
-    {
-        SYSCOLLECTOR_WM_NAME,
-        {
-            "wazuh-states-inventory-system",
-            "wazuh-states-inventory-hardware",
-            "wazuh-states-inventory-hotfixes",
-            "wazuh-states-inventory-packages",
-            "wazuh-states-inventory-processes",
-            "wazuh-states-inventory-ports",
-            "wazuh-states-inventory-interfaces",
-            "wazuh-states-inventory-protocols",
-            "wazuh-states-inventory-networks",
-            "wazuh-states-inventory-users",
-            "wazuh-states-inventory-groups",
-            "wazuh-states-inventory-services",
-            "wazuh-states-inventory-browser-extensions",
-            "wazuh-states-vulnerabilities"
-        }
-    }};
+    {SYSCOLLECTOR_WM_NAME,
+     {"wazuh-states-inventory-system",
+      "wazuh-states-inventory-hardware",
+      "wazuh-states-inventory-hotfixes",
+      "wazuh-states-inventory-packages",
+      "wazuh-states-inventory-processes",
+      "wazuh-states-inventory-ports",
+      "wazuh-states-inventory-interfaces",
+      "wazuh-states-inventory-protocols",
+      "wazuh-states-inventory-networks",
+      "wazuh-states-inventory-users",
+      "wazuh-states-inventory-groups",
+      "wazuh-states-inventory-services",
+      "wazuh-states-inventory-browser-extensions",
+      "wazuh-states-vulnerabilities"}}};
 
 const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_metadata ("
                                            "agent_id          TEXT NOT NULL PRIMARY KEY,"
@@ -149,8 +141,8 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              handshake_query_callback_t handshakeQueryFunction)
     : m_dBSync(
           dbSync ? std::move(dbSync)
-          : std::make_shared<DBSync>(
-              HostType::AGENT, DbEngineType::SQLITE3, dbPath, GetCreateStatement(), DbManagement::PERSISTENT))
+                 : std::make_shared<DBSync>(
+                       HostType::AGENT, DbEngineType::SQLITE3, dbPath, GetCreateStatement(), DbManagement::PERSISTENT))
     , m_sysInfo(sysInfo ? std::move(sysInfo) : std::make_shared<SysInfo>())
     , m_fileIO(fileIO ? std::move(fileIO) : std::make_shared<file_io::FileIOUtils>())
     , m_fileSystem(fileSystem ? std::move(fileSystem) : std::make_shared<file_system::FileSystemWrapper>())
@@ -185,7 +177,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, const std::functi
 {
     m_logFunction(LOG_DEBUG,
                   "AgentInfo module started with interval: " + std::to_string(interval) +
-                  " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
+                      " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
     // Load sync flags from database at startup
     loadSyncFlags();
@@ -403,16 +395,14 @@ void AgentInfoImpl::stop()
 
 void AgentInfoImpl::initSyncProtocol(const std::string& moduleName)
 {
-    auto logger_func = [this](modules_log_level_t level, const std::string & msg)
+    auto logger_func = [this](modules_log_level_t level, const std::string& msg)
     {
         m_logFunction(level, msg);
     };
 
     try
     {
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName,
-                                                               std::nullopt,
-                                                               logger_func);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, std::nullopt, logger_func);
         m_logFunction(LOG_DEBUG, "Agent-info sync protocol initialized with only in-memory synchronization");
     }
     catch (const std::exception& ex)
@@ -523,10 +513,7 @@ void AgentInfoImpl::populateAgentMetadata()
         char clusterNameBuf[256] = {0};
         char agentGroupsBuf[65536] = {0};
 
-        if (m_handshakeQueryFunction(clusterNameBuf,
-                                     sizeof(clusterNameBuf),
-                                     agentGroupsBuf,
-                                     sizeof(agentGroupsBuf)))
+        if (m_handshakeQueryFunction(clusterNameBuf, sizeof(clusterNameBuf), agentGroupsBuf, sizeof(agentGroupsBuf)))
         {
             m_lastLiveClusterName = clusterNameBuf;
             m_hasLiveHandshakeSucceededOnce = true;
@@ -543,8 +530,7 @@ void AgentInfoImpl::populateAgentMetadata()
     // Once a live query has succeeded at least once, always prefer those last-known-good
     // values. Only before the first success (or when no callback is registered at all,
     // e.g. in unit tests) do we fall back to the C-side cache seeded once at module startup.
-    std::string cluster_name =
-        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterName : agent_info_get_cluster_name();
+    std::string cluster_name = m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterName : agent_info_get_cluster_name();
 
     agentMetadata["cluster_name"] = cluster_name;
 
@@ -665,7 +651,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     agent_metadata_t metadata {};
 
     // Copy string fields safely
-    auto copyField = [](char* dest, size_t dest_size, const nlohmann::json & json, const char* field)
+    auto copyField = [](char* dest, size_t dest_size, const nlohmann::json& json, const char* field)
     {
         if (json.contains(field) && json[field].is_string())
         {
@@ -698,7 +684,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     // Copy groups
     if (!groups.empty())
     {
-        metadata.groups = new char* [groups.size()];
+        metadata.groups = new char*[groups.size()];
         metadata.groups_count = groups.size();
 
         for (size_t i = 0; i < groups.size(); ++i)
@@ -745,27 +731,27 @@ bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName)
     // Read the first line of client.keys file
     m_fileIO->readLineByLine(
         KEYS_FILE,
-        [&](const std::string & line)
-    {
-        if (!line.empty())
+        [&](const std::string& line)
         {
-            // client.keys format: ID NAME IP KEY
-            // Use stringHelper to split by space
-            auto tokens = Utils::split(line, ' ');
-
-            if (tokens.size() >= 2)
+            if (!line.empty())
             {
-                agentId = tokens[0];
-                agentName = tokens[1];
+                // client.keys format: ID NAME IP KEY
+                // Use stringHelper to split by space
+                auto tokens = Utils::split(line, ' ');
 
-                m_logFunction(LOG_DEBUG, "Read agent data from client.keys: ID=" + agentId + ", Name=" + agentName);
-                found = true;
-                return false; // Stop reading after first line
+                if (tokens.size() >= 2)
+                {
+                    agentId = tokens[0];
+                    agentName = tokens[1];
+
+                    m_logFunction(LOG_DEBUG, "Read agent data from client.keys: ID=" + agentId + ", Name=" + agentName);
+                    found = true;
+                    return false; // Stop reading after first line
+                }
             }
-        }
 
-        return true; // Continue reading if first line was empty
-    });
+            return true; // Continue reading if first line was empty
+        });
 
     return found;
 }
@@ -796,88 +782,90 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
     bool foundXMLComments = false;
 
     m_fileIO->readLineByLine(mergedFile,
-                             [&](const std::string & line)
-    {
-        std::string trimmedLine = Utils::trim(line);
+                             [&](const std::string& line)
+                             {
+                                 std::string trimmedLine = Utils::trim(line);
 
-        // Check first line for group name or hash
-        if (isFirstLine)
-        {
-            isFirstLine = false;
+                                 // Check first line for group name or hash
+                                 if (isFirstLine)
+                                 {
+                                     isFirstLine = false;
 
-            // First line should start with '#'
-            if (!trimmedLine.empty() && trimmedLine[0] == '#')
-            {
-                std::string firstLineValue = trimmedLine.substr(1); // Remove the '#'
-                firstLineValue = Utils::trim(firstLineValue);
+                                     // First line should start with '#'
+                                     if (!trimmedLine.empty() && trimmedLine[0] == '#')
+                                     {
+                                         std::string firstLineValue = trimmedLine.substr(1); // Remove the '#'
+                                         firstLineValue = Utils::trim(firstLineValue);
 
-                if (!firstLineValue.empty())
-                {
-                    // Check if this looks like a hash or a group name. Hashes are 32 hexadecimal
-                    // characters, or 8 in a merged.mg written before the hash was widened
-                    bool looksLikeHash = (firstLineValue.length() == 32 || firstLineValue.length() == 8);
+                                         if (!firstLineValue.empty())
+                                         {
+                                             // Check if this looks like a hash or a group name. Hashes are 32
+                                             // hexadecimal characters, or 8 in a merged.mg written before the hash was
+                                             // widened
+                                             bool looksLikeHash =
+                                                 (firstLineValue.length() == 32 || firstLineValue.length() == 8);
 
-                    if (looksLikeHash)
-                    {
-                        for (char c : firstLineValue)
-                        {
-                            if (!std::isxdigit(c))
-                            {
-                                looksLikeHash = false;
-                                break;
-                            }
-                        }
-                    }
+                                             if (looksLikeHash)
+                                             {
+                                                 for (char c : firstLineValue)
+                                                 {
+                                                     if (!std::isxdigit(c))
+                                                     {
+                                                         looksLikeHash = false;
+                                                         break;
+                                                     }
+                                                 }
+                                             }
 
-                    if (!looksLikeHash)
-                    {
-                        // Single-group format: the first line is the actual group name
-                        groups.push_back(std::move(firstLineValue));
-                        return false; // Stop reading, we have the single group
-                    }
+                                             if (!looksLikeHash)
+                                             {
+                                                 // Single-group format: the first line is the actual group name
+                                                 groups.push_back(std::move(firstLineValue));
+                                                 return false; // Stop reading, we have the single group
+                                             }
 
-                    // Otherwise, it's a hash - continue reading to find XML comments
-                }
+                                             // Otherwise, it's a hash - continue reading to find XML comments
+                                         }
 
-                return true; // Continue to next line
-            }
+                                         return true; // Continue to next line
+                                     }
 
-            // If first line doesn't start with '#', continue processing as it might be an XML
-            // comment
-        }
+                                     // If first line doesn't start with '#', continue processing as it might be an XML
+                                     // comment
+                                 }
 
-        // Look for multi-group format: XML comments with "Source file:"
-        size_t sourceFilePos = trimmedLine.find("Source file:");
+                                 // Look for multi-group format: XML comments with "Source file:"
+                                 size_t sourceFilePos = trimmedLine.find("Source file:");
 
-        if (sourceFilePos != std::string::npos && trimmedLine.find("<!--") == 0)
-        {
-            foundXMLComments = true;
+                                 if (sourceFilePos != std::string::npos && trimmedLine.find("<!--") == 0)
+                                 {
+                                     foundXMLComments = true;
 
-            // Extract the path after "Source file:"
-            size_t pathStart = sourceFilePos + 12; // Length of "Source file:"
+                                     // Extract the path after "Source file:"
+                                     size_t pathStart = sourceFilePos + 12; // Length of "Source file:"
 
-            // Skip any leading whitespace after "Source file:"
-            while (pathStart < trimmedLine.length() && std::isspace(trimmedLine[pathStart]))
-            {
-                pathStart++;
-            }
+                                     // Skip any leading whitespace after "Source file:"
+                                     while (pathStart < trimmedLine.length() && std::isspace(trimmedLine[pathStart]))
+                                     {
+                                         pathStart++;
+                                     }
 
-            auto pathEnd = trimmedLine.find("/agent.conf", pathStart);
+                                     auto pathEnd = trimmedLine.find("/agent.conf", pathStart);
 
-            if (pathEnd != std::string::npos && pathEnd > pathStart)
-            {
-                std::string groupName = trimmedLine.substr(pathStart, pathEnd - pathStart);
-                groupName = Utils::trim(groupName);
+                                     if (pathEnd != std::string::npos && pathEnd > pathStart)
+                                     {
+                                         std::string groupName = trimmedLine.substr(pathStart, pathEnd - pathStart);
+                                         groupName = Utils::trim(groupName);
 
-                if (!groupName.empty())
-                {
-                    groups.push_back(std::move(groupName));
-                }
-            }
-        }
+                                         if (!groupName.empty())
+                                         {
+                                             groups.push_back(std::move(groupName));
+                                         }
+                                     }
+                                 }
 
-        return true; // Continue reading to find all groups
-    });
+                                 return true; // Continue reading to find all groups
+                             });
 
     if (!groups.empty())
     {
@@ -891,7 +879,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 {
     bool hasChanges = false;
 
-    const auto callback = [this, &table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
+    const auto callback = [this, &table, &hasChanges](ReturnTypeCallback result, const nlohmann::json& data)
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
@@ -1017,8 +1005,7 @@ bool AgentInfoImpl::shouldGenerateStatelessEvent(ReturnTypeCallback result,
                                                                 "host_os_name",
                                                                 "host_os_type",
                                                                 "host_os_platform",
-                                                                "host_os_version"
-                                                               };
+                                                                "host_os_version"};
 
         const nlohmann::json& newData = data["new"];
         const nlohmann::json& oldData = data["old"];
@@ -1271,15 +1258,15 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
         {
             m_logFunction(LOG_DEBUG,
                           moduleName + " module is unavailable (error " + std::to_string(moduleResp.errorCode) +
-                          "): " + responseStr);
+                              "): " + responseStr);
             return moduleResp;
         }
 
         // For other errors, log and retry
         m_logFunction(LOG_DEBUG,
                       "Attempt " + std::to_string(attempt) + "/" + std::to_string(MAX_COORDINATION_RETRIES) +
-                      " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) +
-                      "): " + responseStr);
+                          " failed for " + moduleName + " (error " + std::to_string(moduleResp.errorCode) +
+                          "): " + responseStr);
 
         if (attempt < MAX_COORDINATION_RETRIES)
         {
@@ -1358,7 +1345,8 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     auto waitOrStopped = [this]() -> bool
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return isShutdownInProgress(); });
+        return m_cv.wait_for(
+            lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return isShutdownInProgress(); });
     };
 
     for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
@@ -1377,7 +1365,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
             // A shutdown stops syscheckd before stop() reaches this module: expected then.
             m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
-                          "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                              "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
 
             if (waitOrStopped())
             {
@@ -1398,7 +1386,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
                 bool firstSyncCompleted = true;
 
                 if (pollJson["data"].contains("first_sync_completed") &&
-                        pollJson["data"]["first_sync_completed"].is_boolean())
+                    pollJson["data"]["first_sync_completed"].is_boolean())
                 {
                     firstSyncCompleted = pollJson["data"]["first_sync_completed"].get<bool>();
                 }
@@ -1412,8 +1400,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
                     }
                     else
                     {
-                        m_logFunction(LOG_DEBUG,
-                                      "Still deferring coordination until FIM first sync completes");
+                        m_logFunction(LOG_DEBUG, "Still deferring coordination until FIM first sync completes");
                     }
 
                     return PauseProbeResult::Deferred;
@@ -1434,7 +1421,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
                 {
                     m_logFunction(LOG_DEBUG,
                                   moduleName + " pause still in progress (attempt " + std::to_string(attempt) + "/" +
-                                  std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                                      std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
 
                     if (waitOrStopped())
                     {
@@ -1464,7 +1451,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
         {
             m_logFunction(LOG_WARNING,
                           "Failed to parse pause poll response from " + moduleName + ": " + std::string(e.what()) +
-                          " - Response: " + pollResponse.response);
+                              " - Response: " + pollResponse.response);
         }
 
         if (waitOrStopped())
@@ -1484,7 +1471,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
     m_logFunction(LOG_WARNING,
                   moduleName + " pause did not complete within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
-                  " seconds (scan mutex may be held by a long sync cycle, or IPC communication failure)");
+                      " seconds (scan mutex may be held by a long sync cycle, or IPC communication failure)");
     return PauseProbeResult::Failed;
 }
 
@@ -1516,8 +1503,8 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
             if (!pollResponse.success)
             {
                 m_logFunction(LOG_DEBUG,
-                              "Failed to poll flush status for " + moduleName + " (attempt " +
-                              std::to_string(attempt) + "), will retry...");
+                              "Failed to poll flush status for " + moduleName + " (attempt " + std::to_string(attempt) +
+                                  "), will retry...");
                 continue;
             }
 
@@ -1535,14 +1522,14 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
                         {
                             m_logFunction(LOG_INFO,
                                           "Waiting for " + moduleName + " module to complete synchronization (" +
-                                          std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
-                                          " seconds elapsed)");
+                                              std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
+                                              " seconds elapsed)");
                         }
                         else
                         {
                             m_logFunction(LOG_DEBUG,
-                                          moduleName + " flush still in progress (attempt " +
-                                          std::to_string(attempt) + ")");
+                                          moduleName + " flush still in progress (attempt " + std::to_string(attempt) +
+                                              ")");
                         }
                     }
                     else if (status == "completed")
@@ -1551,16 +1538,17 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
                         bool flushSucceeded = (result == "success");
 
                         m_logFunction(LOG_INFO,
-                                      moduleName + " pending operations completed with result: " + result +
-                                      " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
-                                      " seconds)");
+                                      moduleName + " pending operations completed with result: " + result + " (took " +
+                                          std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds)");
 
                         if (!flushSucceeded)
                         {
                             // Flush did not complete successfully. Modules are already resumed;
                             // data will be retried in the next regular sync cycle. Continue
                             // monitoring remaining modules rather than aborting early.
-                            m_logFunction(LOG_INFO, moduleName + " flush did not complete — data will be retried in the next sync cycle");
+                            m_logFunction(LOG_INFO,
+                                          moduleName +
+                                              " flush did not complete — data will be retried in the next sync cycle");
                             anyFailed = true;
                         }
 
@@ -1571,8 +1559,8 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
             catch (const std::exception& e)
             {
                 m_logFunction(LOG_WARNING,
-                              "Failed to parse flush poll response from " + moduleName + ": " +
-                              std::string(e.what()) + " - Response: " + pollResponse.response);
+                              "Failed to parse flush poll response from " + moduleName + ": " + std::string(e.what()) +
+                                  " - Response: " + pollResponse.response);
             }
         }
 
@@ -1590,9 +1578,8 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
             // modulesd shutdown.
             std::unique_lock<std::mutex> lock(m_mutex);
 
-            if (m_cv.wait_for(lock,
-                              std::chrono::milliseconds(FLUSH_POLL_DELAY_MS),
-                              [this] { return isShutdownInProgress(); }))
+            if (m_cv.wait_for(
+                    lock, std::chrono::milliseconds(FLUSH_POLL_DELAY_MS), [this] { return isShutdownInProgress(); }))
             {
                 break; // stop requested - exit the poll loop immediately
             }
@@ -1701,8 +1688,7 @@ bool AgentInfoImpl::isVDFirstSyncDone()
     {
         // No / unparseable response (syscollector unreachable): fail open, same rationale as
         // isModuleFirstSyncCompleted -- a transient hiccup must not permanently block re-scans.
-        m_logFunction(LOG_DEBUG,
-                      "Could not read vd_first_sync_completed from syscollector: " + std::string(e.what()));
+        m_logFunction(LOG_DEBUG, "Could not read vd_first_sync_completed from syscollector: " + std::string(e.what()));
         return true;
     }
 }
@@ -1762,11 +1748,12 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
                     {
                         m_logFunction(LOG_INFO,
                                       "Deferring coordination until " + module +
-                                      " first sync completes, will retry next cycle");
+                                          " first sync completes, will retry next cycle");
                     }
                     else
                     {
-                        m_logFunction(LOG_DEBUG, "Still deferring coordination until " + module + " first sync completes");
+                        m_logFunction(LOG_DEBUG,
+                                      "Still deferring coordination until " + module + " first sync completes");
                     }
 
                     pausedModules.insert(module);
@@ -1788,15 +1775,15 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
                 // Module is disabled/not found/not running - skip it (not an error)
                 m_logFunction(LOG_DEBUG,
                               "Skipping " + module + " (unavailable, error " + std::to_string(response.errorCode) +
-                              "): " + response.response);
+                                  "): " + response.response);
             }
             else
             {
                 // Communication error or other failure - abort coordination
                 m_logFunction(LOG_DEBUG,
                               "Failed to pause " + module + " (communication error " +
-                              std::to_string(response.errorCode) +
-                              "), aborting coordination: " + response.response);
+                                  std::to_string(response.errorCode) +
+                                  "), aborting coordination: " + response.response);
                 resumePausedModules(pausedModules);
                 return PauseCoordinationResult::Failed;
             }
@@ -1829,7 +1816,7 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
             // Same as the pause poll: a shutdown stops syscheckd before stop() reaches this module.
             m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+                              "), aborting coordination");
             return false;
         }
 
@@ -1838,7 +1825,6 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 
     return true;
 }
-
 
 int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModules,
                                        bool incrementVersion,
@@ -1865,7 +1851,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
             {
                 m_logFunction(LOG_WARNING,
                               "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
-                              "), aborting coordination");
+                                  "), aborting coordination");
             }
 
             return -1;
@@ -1879,7 +1865,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
             nlohmann::json responseJson = nlohmann::json::parse(response.response);
 
             if (responseJson.contains("data") && responseJson["data"].contains("version") &&
-                    responseJson["data"]["version"].is_number())
+                responseJson["data"]["version"].is_number())
             {
                 version = responseJson["data"]["version"].get<int>();
             }
@@ -1894,7 +1880,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
         {
             m_logFunction(LOG_WARNING,
                           "Failed to parse JSON response from " + module + ": " + std::string(e.what()) +
-                          " - Response: " + response.response);
+                              " - Response: " + response.response);
             return -1;
         }
 
@@ -1909,7 +1895,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     int newVersion = incrementVersion ? (globalMaxVersion + 1) : globalMaxVersion;
     m_logFunction(LOG_DEBUG,
                   "Calculated new global version: " + std::to_string(newVersion) +
-                  (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
+                      (incrementVersion ? " (max + 1 for metadata update)" : " (max for groups update)"));
 
     // Step 3: Set new version on all modules
     for (const auto& module : pausedModules)
@@ -1930,7 +1916,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
             {
                 m_logFunction(LOG_WARNING,
                               "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
-                              "), aborting coordination");
+                                  "), aborting coordination");
             }
 
             return -1;
@@ -2022,8 +2008,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
             if (isShutdownInProgress())
             {
                 // No "next cycle": the module is stopping, so version sync is simply not handed over.
-                m_logFunction(LOG_INFO,
-                              "Module flush aborted: the module is stopping.");
+                m_logFunction(LOG_INFO, "Module flush aborted: the module is stopping.");
             }
             else
             {
@@ -2053,7 +2038,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         if (m_spSyncProtocol)
         {
             SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
-                                              TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
+                TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
 
             if (!syncResult.success)
             {
@@ -2062,27 +2047,30 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
                     // Not a real failure: the sync was aborted because the module is stopping.
                     m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
                 }
-                else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
-                         && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+                else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable) &&
+                         syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
                 {
                     // Either the manager is not ready for this agent yet, or the local sync intake
                     // itself isn't reachable yet -- both mostly right after a restart -- and the
                     // sync has not failed enough times in a row to suspect it will not clear.
                     // Agent-info retries this table on the next coordination cycle.
-                    m_logFunction(LOG_INFO, "Synchronization of " + table + " deferred: " +
-                                  syncResult.failureReason + " Will retry next cycle.");
+                    m_logFunction(LOG_INFO,
+                                  "Synchronization of " + table + " deferred: " + syncResult.failureReason +
+                                      " Will retry next cycle.");
                 }
                 else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
                 {
                     // Neither condition has cleared for several cycles in a row.
-                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table + " " +
-                                  std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
-                                  syncResult.failureReason);
+                    m_logFunction(LOG_WARNING,
+                                  "Failed to synchronize " + table + " " +
+                                      std::to_string(syncResult.consecutiveFailures) +
+                                      " times in a row: " + syncResult.failureReason);
                 }
                 else
                 {
-                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table +
-                                  (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                    m_logFunction(LOG_WARNING,
+                                  "Failed to synchronize " + table +
+                                      (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
                 }
 
                 return CoordinationResult::Failed;
@@ -2098,7 +2086,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
         m_logFunction(LOG_DEBUG,
                       "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
-                      ", New version: " + std::to_string(newVersion));
+                          ", New version: " + std::to_string(newVersion));
 
         return CoordinationResult::Success;
     }
@@ -2229,7 +2217,7 @@ void AgentInfoImpl::loadSyncFlags()
         bool rowFound = false;
 
         // Query the db_metadata table
-        auto callback = [this, &rowFound](ReturnTypeCallback, const nlohmann::json & data)
+        auto callback = [this, &rowFound](ReturnTypeCallback, const nlohmann::json& data)
         {
             rowFound = true;
 
@@ -2310,12 +2298,12 @@ bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
         bool alreadyRecorded = false;
 
         auto existsQuery = SelectQuery::builder()
-                           .table(TASKS_TABLE)
-                           .columnList({"task_id"})
-                           .rowFilter("WHERE task_id = ?")
-                           .rowFilterBindText(taskId)
-                           .countOpt(1)
-                           .build();
+                               .table(TASKS_TABLE)
+                               .columnList({"task_id"})
+                               .rowFilter("WHERE task_id = ?")
+                               .rowFilterBindText(taskId)
+                               .countOpt(1)
+                               .build();
 
         const auto existsCallback = [&alreadyRecorded](ReturnTypeCallback, const nlohmann::json&)
         {
@@ -2343,7 +2331,8 @@ bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
     }
     catch (const std::exception& e)
     {
-        m_logFunction(LOG_ERROR, "Failed to check/record task " + taskId + " in agent_info.db: " + std::string(e.what()));
+        m_logFunction(LOG_ERROR,
+                      "Failed to check/record task " + taskId + " in agent_info.db: " + std::string(e.what()));
         return false;
     }
 }
@@ -2363,18 +2352,17 @@ void AgentInfoImpl::cleanupExpiredTasks(uint32_t ttlSeconds, uint32_t maxEntries
     {
         const int64_t cutoff = Utils::getSecondsFromEpoch() - static_cast<int64_t>(ttlSeconds);
 
-        auto ttlDeleteQuery = DeleteQuery::builder()
-                              .table(TASKS_TABLE)
-                              .rowFilter("recorded_at < " + std::to_string(cutoff))
-                              .build();
+        auto ttlDeleteQuery =
+            DeleteQuery::builder().table(TASKS_TABLE).rowFilter("recorded_at < " + std::to_string(cutoff)).build();
 
         m_dBSync->deleteRows(ttlDeleteQuery.query());
 
-        auto capDeleteQuery = DeleteQuery::builder()
-                              .table(TASKS_TABLE)
-                              .rowFilter("task_id NOT IN (SELECT task_id FROM " + std::string(TASKS_TABLE) +
-                                         " ORDER BY recorded_at DESC LIMIT " + std::to_string(effectiveMaxEntries) + ")")
-                              .build();
+        auto capDeleteQuery =
+            DeleteQuery::builder()
+                .table(TASKS_TABLE)
+                .rowFilter("task_id NOT IN (SELECT task_id FROM " + std::string(TASKS_TABLE) +
+                           " ORDER BY recorded_at DESC LIMIT " + std::to_string(effectiveMaxEntries) + ")")
+                .build();
 
         m_dBSync->deleteRows(capDeleteQuery.query());
     }
@@ -2397,12 +2385,9 @@ size_t AgentInfoImpl::countTasks()
 
     try
     {
-        auto countQuery = SelectQuery::builder()
-                          .table(TASKS_TABLE)
-                          .columnList({"COUNT(*) AS count"})
-                          .build();
+        auto countQuery = SelectQuery::builder().table(TASKS_TABLE).columnList({"COUNT(*) AS count"}).build();
 
-        const auto countCallback = [&count](ReturnTypeCallback, const nlohmann::json & data)
+        const auto countCallback = [&count](ReturnTypeCallback, const nlohmann::json& data)
         {
             if (data.contains("count") && data["count"].is_number())
             {
@@ -2426,7 +2411,7 @@ AgentInfoImpl::VdFeedState AgentInfoImpl::readVdFeedStateLocked() const
 
     try
     {
-        const auto callback = [&state](ReturnTypeCallback, const nlohmann::json & data)
+        const auto callback = [&state](ReturnTypeCallback, const nlohmann::json& data)
         {
             if (data.contains("has_offset") && data["has_offset"].is_number())
             {
@@ -2674,8 +2659,8 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
 
         m_logFunction(LOG_DEBUG,
                       "Resetting sync flag for " + table +
-                      " to false in database. m_shouldSyncMetadata=" + std::to_string(m_shouldSyncMetadata) +
-                      ", m_shouldSyncGroups=" + std::to_string(m_shouldSyncGroups));
+                          " to false in database. m_shouldSyncMetadata=" + std::to_string(m_shouldSyncMetadata) +
+                          ", m_shouldSyncGroups=" + std::to_string(m_shouldSyncGroups));
 
         updateDbMetadata();
         m_logFunction(LOG_DEBUG, "Reset sync flag for " + table);
@@ -2856,7 +2841,8 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
 
         // Perform integrity check - no globalVersion needed for CHECK modes
-        SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
+        SyncModuleResult syncResult =
+            m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
 
         // Update the last sync time regardless of the synchronization result
         // This ensures we always wait for integrity_interval before trying again
@@ -2871,27 +2857,29 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             // Not a real failure: the integrity check was aborted because the module is stopping.
             m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
         }
-        else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable)
-                 && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        else if ((syncResult.managerNotReady || syncResult.localTransportUnavailable) &&
+                 syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
             // Either the manager is not ready for this agent yet, or the local sync intake itself
             // isn't reachable yet -- both mostly right after a restart -- and the sync has not
             // failed enough times in a row to suspect it will not clear. Agent-info retries this
             // table on the next integrity cycle.
-            m_logFunction(LOG_INFO, "Integrity check for " + table + " deferred: " +
-                          syncResult.failureReason + " Will retry next cycle.");
+            m_logFunction(LOG_INFO,
+                          "Integrity check for " + table + " deferred: " + syncResult.failureReason +
+                              " Will retry next cycle.");
         }
         else if (syncResult.managerNotReady || syncResult.localTransportUnavailable)
         {
             // Neither condition has cleared for several cycles in a row.
-            m_logFunction(LOG_WARNING, "Integrity check for " + table + " failed " +
-                          std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
-                          syncResult.failureReason);
+            m_logFunction(LOG_WARNING,
+                          "Integrity check for " + table + " failed " + std::to_string(syncResult.consecutiveFailures) +
+                              " times in a row: " + syncResult.failureReason);
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed integrity check for " + table +
-                          (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+            m_logFunction(LOG_WARNING,
+                          "Failed integrity check for " + table +
+                              (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 
         return syncResult.success;

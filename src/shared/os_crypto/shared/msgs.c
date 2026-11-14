@@ -34,70 +34,61 @@
  * and updated accordingly so that size checks remain correct.
  */
 
-#define MD5_CHECKSUM_SIZE 32
-#define RANDOM_DATA_SIZE 5
+#define MD5_CHECKSUM_SIZE   32
+#define RANDOM_DATA_SIZE    5
 #define GLOBAL_COUNTER_SIZE 10
-#define LOCAL_COUNTER_SIZE 4
+#define LOCAL_COUNTER_SIZE  4
 #define COUNTER_FORMAT_SIZE 1 /* For the ':' character */
 /* Whether a message's (global, local) counters are ahead of the ones stored for the agent */
-#define COUNTERS_AHEAD(msg_g, msg_l, entry) \
+#define COUNTERS_AHEAD(msg_g, msg_l, entry)                                                                            \
     (((msg_g) > (entry)->global) || (((msg_g) == (entry)->global) && ((msg_l) > (entry)->local)))
 
-#define MSG_OVERHEAD (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
+#define MSG_OVERHEAD                                                                                                   \
+    (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
 
 /* Prototypes */
-STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
-STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
-STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * cid) __attribute((nonnull));
-STATIC char *CheckSum(char *msg, size_t length) __attribute((nonnull));
+STATIC void StoreSenderCounter(const keystore* keys, unsigned int global, unsigned int local) __attribute((nonnull));
+STATIC void StoreCounter(const keystore* keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
+STATIC void ReloadCounter(const keystore* keys, unsigned int id, const char* cid) __attribute((nonnull));
+STATIC char* CheckSum(char* msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
-static _Atomic (unsigned int) global_count = 0;
-static _Atomic (unsigned int) local_count  = 0;
+static _Atomic(unsigned int) global_count = 0;
+static _Atomic(unsigned int) local_count = 0;
 
 /* Average compression rates */
-static _Atomic (unsigned int) evt_count = 0;
-static _Atomic (unsigned int) rcv_count = 0;
-static _Atomic (size_t) c_orig_size = 0;
-static _Atomic (size_t) c_comp_size = 0;
+static _Atomic(unsigned int) evt_count = 0;
+static _Atomic(unsigned int) rcv_count = 0;
+static _Atomic(size_t) c_orig_size = 0;
+static _Atomic(size_t) c_comp_size = 0;
 
 /* Global variables (read from define file) */
 unsigned int _s_comp_print = 0;
 unsigned int _s_recv_flush = 0;
 int _s_verify_counter = 1;
 
-
 /* Crypto methods function */
-int doEncryptByMethod(const char *input, char *output, const char *charkey,
-    long size, short int action,int method)
+int doEncryptByMethod(const char* input, char* output, const char* charkey, long size, short int action, int method)
 {
-    switch(method)
+    switch (method)
     {
-        case W_METH_BLOWFISH:
-            return OS_BF_Str(input, output,
-                    charkey,
-                    size,
-                    action);
-        case W_METH_AES:
-            return OS_AES_Str(input, output,
-                charkey,
-                size,
-                action);
+        case W_METH_BLOWFISH: return OS_BF_Str(input, output, charkey, size, action);
+        case W_METH_AES: return OS_AES_Str(input, output, charkey, size, action);
 
-        default:
-            return OS_INVALID;
+        default: return OS_INVALID;
     }
 }
 
 /* Set the agent crypto method read from the wazuh configuration file */
-void os_set_agent_crypto_method(keystore * keys,const int method){
+void os_set_agent_crypto_method(keystore* keys, const int method)
+{
     keys->keyentries[0]->crypto_method = method;
 }
 
 static time_t saved_time = 0;
 
 /* Read counters for each agent */
-void OS_StartCounter(keystore *keys)
+void OS_StartCounter(keystore* keys)
 {
     unsigned int i;
     char rids_file[OS_FLSIZE + 1];
@@ -107,53 +98,66 @@ void OS_StartCounter(keystore *keys)
     mdebug1("OS_StartCounter: keysize: %u", keys->keysize);
 
     /* Start receiving counter */
-    for (i = 0; i <= keys->keysize; i++) {
+    for (i = 0; i <= keys->keysize; i++)
+    {
         /* On i == keysize, we deal with the sender counter */
-        if (i == keys->keysize) {
+        if (i == keys->keysize)
+        {
             snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, SENDER_COUNTER);
-        } else {
+        }
+        else
+        {
             snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[i]->id);
         }
 
         keys->keyentries[i]->fp = wfopen(rids_file, "r+");
 
         /* If nothing is there, try to open as write only */
-        if (!keys->keyentries[i]->fp) {
+        if (!keys->keyentries[i]->fp)
+        {
             keys->keyentries[i]->fp = wfopen(rids_file, "w");
-            if (!keys->keyentries[i]->fp) {
+            if (!keys->keyentries[i]->fp)
+            {
                 int my_error = errno;
 
                 merror("Unable to open agent file. errno: %d", my_error);
                 merror_exit(FOPEN_ERROR, rids_file, errno, strerror(errno));
             }
-        } else {
+        }
+        else
+        {
             unsigned int g_c = 0, l_c = 0;
-            if (fscanf(keys->keyentries[i]->fp, "%u:%u", &g_c, &l_c) != 2) {
-                if (i == keys->keysize) {
+            if (fscanf(keys->keyentries[i]->fp, "%u:%u", &g_c, &l_c) != 2)
+            {
+                if (i == keys->keysize)
+                {
                     mdebug1("No previous sender counter.");
-                } else {
-                    mdebug1("No previous counter available for '%s'.",
-                            keys->keyentries[i]->name);
+                }
+                else
+                {
+                    mdebug1("No previous counter available for '%s'.", keys->keyentries[i]->name);
                 }
 
                 g_c = 0;
                 l_c = 0;
             }
 
-            if (i == keys->keysize) {
-                mdebug1("Assigning sender counter: %u:%u",
-                        g_c, l_c);
+            if (i == keys->keysize)
+            {
+                mdebug1("Assigning sender counter: %u:%u", g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
-            } else {
-                mdebug1("Assigning counter for agent %s: '%u:%u'.",
-                        keys->keyentries[i]->name, g_c, l_c);
+            }
+            else
+            {
+                mdebug1("Assigning counter for agent %s: '%u:%u'.", keys->keyentries[i]->name, g_c, l_c);
 
                 keys->keyentries[i]->global = g_c;
                 keys->keyentries[i]->local = l_c;
             }
         }
-        if (i != keys->keysize) {
+        if (i != keys->keysize)
+        {
             fclose(keys->keyentries[i]->fp);
             keys->keyentries[i]->fp = NULL;
         }
@@ -166,25 +170,22 @@ void OS_StartCounter(keystore *keys)
 
     /* Get counter values. On the manager RemotedConfig() has already read both (on the `-t` path too),
      * so these reads only run on the agent; keep their ranges and defaults identical to that copy. */
-    if (_s_recv_flush == 0) {
-        _s_recv_flush = (unsigned int) getDefine_Int_default("remoted",
-                        "recv_counter_flush",
-                        10, 999999, 128);
+    if (_s_recv_flush == 0)
+    {
+        _s_recv_flush = (unsigned int)getDefine_Int_default("remoted", "recv_counter_flush", 10, 999999, 128);
     }
 
     /* Average printout values */
-    if (_s_comp_print == 0) {
-        _s_comp_print = (unsigned int) getDefine_Int_default("remoted",
-                        "comp_average_printout",
-                        10, 999999, 19999);
+    if (_s_comp_print == 0)
+    {
+        _s_comp_print = (unsigned int)getDefine_Int_default("remoted", "comp_average_printout", 10, 999999, 19999);
     }
 
-
-    _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id" , 0, 1, 0);
+    _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id", 0, 1, 0);
 }
 
 /* Remove the ID counter */
-void OS_RemoveCounter(const char *id)
+void OS_RemoveCounter(const char* id)
 {
     char rids_file[OS_FLSIZE + 1];
     snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, id);
@@ -192,7 +193,7 @@ void OS_RemoveCounter(const char *id)
 }
 
 /* Store sender counter */
-STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local)
+STATIC void StoreSenderCounter(const keystore* keys, unsigned int global, unsigned int local)
 {
     /* Write to the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
@@ -201,15 +202,18 @@ STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
 }
 
 /* Store the global and local count of events */
-STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
+STATIC void StoreCounter(const keystore* keys, int id, unsigned int global, unsigned int local)
 {
-    if (!keys->keyentries[id]->fp) {
+    if (!keys->keyentries[id]->fp)
+    {
         char rids_file[OS_FLSIZE + 1];
         snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
         keys->keyentries[id]->fp = wfopen(rids_file, "r+");
-        if (!keys->keyentries[id]->fp) {
+        if (!keys->keyentries[id]->fp)
+        {
             keys->keyentries[id]->fp = wfopen(rids_file, "w");
-            if (!keys->keyentries[id]->fp) {
+            if (!keys->keyentries[id]->fp)
+            {
                 int my_error = errno;
 
                 merror("Unable to open agent file. errno: %d", my_error);
@@ -225,17 +229,20 @@ STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     fflush(keys->keyentries[id]->fp);
 
     keys->keyentries[id]->updating_time = time(0);
-    if (!keys->keyentries[id]->rids_node) {
+    if (!keys->keyentries[id]->rids_node)
+    {
         mdebug2("Pushing rids_node for agent %s.", keys->keyentries[id]->id);
         keys->keyentries[id]->rids_node = linked_queue_push_ex(keys->opened_fp_queue, keys->keyentries[id]);
-    } else {
+    }
+    else
+    {
         mdebug2("Updating rids_node for agent %s.", keys->keyentries[id]->id);
         linked_queue_unlink_and_push_node(keys->opened_fp_queue, keys->keyentries[id]->rids_node);
     }
 }
 
 /* Reload the global and local count of events */
-STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * cid)
+STATIC void ReloadCounter(const keystore* keys, unsigned int id, const char* cid)
 {
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
@@ -243,23 +250,31 @@ STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
     new_inode = File_Inode(rids_file);
 
-    if (keys->keyentries[id]->inode != new_inode) {
+    if (keys->keyentries[id]->inode != new_inode)
+    {
         keys->keyentries[id]->fp = wfopen(rids_file, "r+");
 
-        if (!keys->keyentries[id]->fp) {
+        if (!keys->keyentries[id]->fp)
+        {
             keys->keyentries[id]->fp = wfopen(rids_file, "w");
-            if (!keys->keyentries[id]->fp) {
+            if (!keys->keyentries[id]->fp)
+            {
                 goto fail_open;
             }
         }
-        else {
+        else
+        {
             unsigned int g_c = 0;
             unsigned int l_c = 0;
 
-            if (fscanf(keys->keyentries[id]->fp, "%u:%u", &g_c, &l_c) != 2) {
-                if (id == keys->keysize) {
+            if (fscanf(keys->keyentries[id]->fp, "%u:%u", &g_c, &l_c) != 2)
+            {
+                if (id == keys->keysize)
+                {
                     mdebug1("No previous sender counter.");
-                } else {
+                }
+                else
+                {
                     mdebug1("No previous counter available for '%s'.", keys->keyentries[id]->id);
                 }
 
@@ -267,11 +282,14 @@ STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
                 l_c = 0;
             }
 
-            if (id == keys->keysize) {
+            if (id == keys->keysize)
+            {
                 mdebug1("Reloading sender counter: %u:%u", g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
-            } else {
+            }
+            else
+            {
                 mdebug1("Reloading counter for agent %s: '%u:%u'.", keys->keyentries[id]->id, g_c, l_c);
 
                 keys->keyentries[id]->global = g_c;
@@ -291,7 +309,7 @@ fail_open:
 /* Verify the checksum of the message
  * Returns NULL on error or the message on success
  */
-STATIC char *CheckSum(char *msg, size_t length)
+STATIC char* CheckSum(char* msg, size_t length)
 {
     os_md5 recvd_sum;
     os_md5 checksum;
@@ -304,7 +322,8 @@ STATIC char *CheckSum(char *msg, size_t length)
 
     OS_MD5_Str(msg, (ssize_t)length - 32, checksum);
 
-    if (strncmp(checksum, recvd_sum, 32) != 0) {
+    if (strncmp(checksum, recvd_sum, 32) != 0)
+    {
         return (NULL);
     }
 
@@ -317,22 +336,30 @@ STATIC char *CheckSum(char *msg, size_t length)
  * levels: there the peer is its own manager. */
 #ifdef CLIENT
 #define preauth_merror(...) merror(__VA_ARGS__)
-#define preauth_mwarn(...) mwarn(__VA_ARGS__)
+#define preauth_mwarn(...)  mwarn(__VA_ARGS__)
 #else
 #define preauth_merror(...) mdebug1(__VA_ARGS__)
-#define preauth_mwarn(...) mdebug1(__VA_ARGS__)
+#define preauth_mwarn(...)  mdebug1(__VA_ARGS__)
 #endif
 
-int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
+int ReadSecMSG(keystore* keys,
+               char* buffer,
+               char* cleartext,
+               int id,
+               unsigned int buffer_size,
+               size_t* final_size,
+               const char* srcip,
+               char** output)
 {
-    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY)
+    {
         merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
         return -1;
     }
 
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
-    char *f_msg;
+    char* f_msg;
     crypt_method method;
 #ifndef CLIENT
     bool stale = false;
@@ -348,39 +375,45 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     method = keys->keyentries[id]->crypto_method;
 #endif
 
-    if(strncmp(buffer, "#AES", 4)==0){
-        buffer+=4;
-        #ifndef CLIENT
-            method = W_METH_AES;
-        #endif
+    if (strncmp(buffer, "#AES", 4) == 0)
+    {
+        buffer += 4;
+#ifndef CLIENT
+        method = W_METH_AES;
+#endif
     }
-    else{
-        #ifndef CLIENT
-            method = W_METH_BLOWFISH;
-        #endif
+    else
+    {
+#ifndef CLIENT
+        method = W_METH_BLOWFISH;
+#endif
     }
 
-    if (*buffer == ':') {
+    if (*buffer == ':')
+    {
         buffer++;
-    } else {
+    }
+    else
+    {
         preauth_merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
         w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_CORRUPT;
     }
 
     /* Decrypt message */
-    switch(method){
+    switch (method)
+    {
         case W_METH_BLOWFISH:
-            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
-                        buffer_size, OS_DECRYPT)) {
+            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key, buffer_size, OS_DECRYPT))
+            {
                 preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
             break;
         case W_METH_AES:
-            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
-                buffer_size-4, OS_DECRYPT)) {
+            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key, buffer_size - 4, OS_DECRYPT))
+            {
                 preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
@@ -391,7 +424,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     w_mutex_unlock(&keys->keyentries[id]->mutex);
 
     /* Compressed */
-    if (cleartext[0] == '!') {
+    if (cleartext[0] == '!')
+    {
         static __thread char decompress_buffer[OS_MAXSTR + 1];
 
         cleartext[buffer_size] = '\0';
@@ -399,7 +433,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         buffer_size--;
 
         /* Remove padding */
-        while (*cleartext == '!') {
+        while (*cleartext == '!')
+        {
             cleartext++;
             buffer_size--;
         }
@@ -407,24 +442,30 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         /* Uncompress to temporary buffer */
         *final_size = os_zlib_uncompress(cleartext, decompress_buffer, buffer_size, OS_MAXSTR);
 #ifdef CLIENT
-        if (*final_size < MSG_OVERHEAD) {
+        if (*final_size < MSG_OVERHEAD)
+        {
             merror(UNCOMPRESS_ERR);
             return KS_CORRUPT;
         }
 #else
-        if (*final_size == 0) {
-            mdebug1(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+        if (*final_size == 0)
+        {
+            mdebug1(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'",
+                    keys->keyentries[id]->id,
+                    keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
-        if (*final_size < MSG_OVERHEAD) {
+        if (*final_size < MSG_OVERHEAD)
+        {
             mdebug1("Decompressed message too short from agent '%s'", keys->keyentries[id]->id);
             return KS_CORRUPT;
         }
 #endif
 
         /* Check checksum */
-        if (f_msg = CheckSum(decompress_buffer, *final_size), !f_msg) {
+        if (f_msg = CheckSum(decompress_buffer, *final_size), !f_msg)
+        {
             preauth_merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
@@ -433,21 +474,23 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         f_msg += 5;
 
         /* Check count -- protect against replay attacks */
-        msg_global = (unsigned int) atoi(f_msg);
+        msg_global = (unsigned int)atoi(f_msg);
         f_msg += 10;
 
         /* Check for the right message format */
-        if (*f_msg != ':') {
+        if (*f_msg != ':')
+        {
             merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
             return KS_CORRUPT;
         }
         f_msg++;
 
-        msg_local = (unsigned int) atoi(f_msg);
+        msg_local = (unsigned int)atoi(f_msg);
         f_msg += 4;
 
         /* Check for the right message format */
-        if (*f_msg != ':') {
+        if (*f_msg != ':')
+        {
             merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
             return KS_CORRUPT;
         }
@@ -458,12 +501,14 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         w_mutex_lock(&keys->keyentries[id]->mutex);
 
         /* Return the message if we don't need to verify the counter */
-        if (!_s_verify_counter) {
+        if (!_s_verify_counter)
+        {
 #ifndef CLIENT
             /* The manager accepts the message, but an older or repeated one (a replay, or a frame a
              * concurrent worker overtook) never rolls the stored counters back, and is reported as
              * stale so that it cannot take over the agent's session. */
-            if (!COUNTERS_AHEAD(msg_global, msg_local, keys->keyentries[id])) {
+            if (!COUNTERS_AHEAD(msg_global, msg_local, keys->keyentries[id]))
+            {
                 stale = true;
                 *output = f_msg;
                 goto authenticated;
@@ -472,7 +517,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             /* Update current counts */
             keys->keyentries[id]->global = msg_global;
             keys->keyentries[id]->local = msg_local;
-            if (rcv_count >= _s_recv_flush) {
+            if (rcv_count >= _s_recv_flush)
+            {
                 StoreCounter(keys, id, msg_global, msg_local);
                 rcv_count = 0;
             }
@@ -481,17 +527,19 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             goto authenticated;
         }
 
-        if (rcv_count >= _s_recv_flush) {
+        if (rcv_count >= _s_recv_flush)
+        {
             ReloadCounter(keys, id, keys->keyentries[id]->id);
         }
         if ((msg_global > keys->keyentries[id]->global) ||
-                ((msg_global == keys->keyentries[id]->global) &&
-                 (msg_local > keys->keyentries[id]->local))) {
+            ((msg_global == keys->keyentries[id]->global) && (msg_local > keys->keyentries[id]->local)))
+        {
             /* Update current counts */
             keys->keyentries[id]->global = msg_global;
             keys->keyentries[id]->local = msg_local;
 
-            if (rcv_count >= _s_recv_flush) {
+            if (rcv_count >= _s_recv_flush)
+            {
                 StoreCounter(keys, id, msg_global, msg_local);
                 rcv_count = 0;
             }
@@ -501,14 +549,15 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 
         /* Check if it is a duplicated message */
-        if (msg_global == keys->keyentries[id]->global) {
+        if (msg_global == keys->keyentries[id]->global)
+        {
             /* Warn about duplicated messages */
             mwarn("Duplicate error:  global: %u, local: %u, "
-                "saved global: %u, saved local:%u",
-                msg_global,
-                msg_local,
-                keys->keyentries[id]->global,
-                keys->keyentries[id]->local);
+                  "saved global: %u, saved local:%u",
+                  msg_global,
+                  msg_local,
+                  keys->keyentries[id]->global,
+                  keys->keyentries[id]->local);
             w_mutex_unlock(&keys->keyentries[id]->mutex);
             merror(ENCTIME_ERROR, keys->keyentries[id]->name);
             return KS_RIDS;
@@ -517,11 +566,13 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
 
     /* Old format */
-    else if (cleartext[0] == ':') {
+    else if (cleartext[0] == ':')
+    {
         unsigned int msg_count;
         unsigned int msg_time;
 
-        if (buffer_size < MSG_OVERHEAD) {
+        if (buffer_size < MSG_OVERHEAD)
+        {
             preauth_mwarn("Message too short from agent '%s'", keys->keyentries[id]->id);
             return KS_CORRUPT;
         }
@@ -532,28 +583,33 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         /* Check checksum */
         cleartext++;
         f_msg = CheckSum(cleartext, buffer_size);
-        if (f_msg == NULL) {
+        if (f_msg == NULL)
+        {
             preauth_merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
         /* Check time -- protect against replay attacks */
-        msg_time = (unsigned int) atoi(f_msg);
+        msg_time = (unsigned int)atoi(f_msg);
         f_msg += 11;
 
-        msg_count = (unsigned int) atoi(f_msg);
+        msg_count = (unsigned int)atoi(f_msg);
         f_msg += 5;
 
         w_mutex_lock(&keys->keyentries[id]->mutex);
 
         /* Return the message if we don't need to verify the counter */
-        if (!_s_verify_counter) {
+        if (!_s_verify_counter)
+        {
 #ifndef CLIENT
             /* As in the compressed format: a message not ahead of the stored counters is accepted as
              * stale and leaves them as they are; one ahead advances them. */
-            if (!COUNTERS_AHEAD(msg_time, msg_count, keys->keyentries[id])) {
+            if (!COUNTERS_AHEAD(msg_time, msg_count, keys->keyentries[id]))
+            {
                 stale = true;
-            } else {
+            }
+            else
+            {
                 keys->keyentries[id]->global = msg_time;
                 keys->keyentries[id]->local = msg_count;
             }
@@ -564,12 +620,15 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 #endif
 
             f_msg = strchr(f_msg, ':');
-            if (f_msg) {
+            if (f_msg)
+            {
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
                 goto authenticated;
-            } else {
+            }
+            else
+            {
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
                 return KS_CORRUPT;
@@ -577,19 +636,22 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 
         if ((msg_time > keys->keyentries[id]->global) ||
-                ((msg_time == keys->keyentries[id]->global) &&
-                 (msg_count > keys->keyentries[id]->local))) {
+            ((msg_time == keys->keyentries[id]->global) && (msg_count > keys->keyentries[id]->local)))
+        {
             /* Update current time and count */
             keys->keyentries[id]->global = msg_time;
             keys->keyentries[id]->local = msg_count;
 
             f_msg = strchr(f_msg, ':');
-            if (f_msg) {
+            if (f_msg)
+            {
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
                 goto authenticated;
-            } else {
+            }
+            else
+            {
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
                 return KS_CORRUPT;
@@ -597,8 +659,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 
         /* Check if it is a duplicated message */
-        if ((msg_count == keys->keyentries[id]->local) &&
-                (msg_time == keys->keyentries[id]->global)) {
+        if ((msg_count == keys->keyentries[id]->local) && (msg_time == keys->keyentries[id]->global))
+        {
 
             w_mutex_unlock(&keys->keyentries[id]->mutex);
             return KS_RIDS;
@@ -606,11 +668,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
         /* Warn about duplicated message */
         mwarn("Duplicate error:  msg_count: %u, time: %u, "
-               "saved count: %u, saved_time:%u",
-               msg_count,
-               msg_time,
-               keys->keyentries[id]->local,
-               keys->keyentries[id]->global);
+              "saved count: %u, saved_time:%u",
+              msg_count,
+              msg_time,
+              keys->keyentries[id]->local,
+              keys->keyentries[id]->global);
 
         merror(ENCTIME_ERROR, keys->keyentries[id]->name);
         w_mutex_unlock(&keys->keyentries[id]->mutex);
@@ -635,9 +697,10 @@ authenticated:
 /* Create an encrypted message
  * Returns the size
  */
-size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id)
+size_t CreateSecMSG(const keystore* keys, const char* msg, size_t msg_length, char* msg_encrypted, unsigned int id)
 {
-    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY)
+    {
         merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
         return -1;
     }
@@ -655,9 +718,11 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     time_t curr_time;
 
     /* Check for invalid msg sizes */
-    if ((msg_length > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_length < 1)) {
+    if ((msg_length > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_length < 1))
+    {
         curr_time = time(0);
-        if (curr_time - saved_time > 3600) {
+        if (curr_time - saved_time > 3600)
+        {
             merror("Incorrect message size: %lu", (unsigned long)msg_length);
             saved_time = curr_time;
         }
@@ -667,20 +732,15 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
 
     crypto_method = keys->keyentries[id]->crypto_method;
 
-    switch(crypto_method)
+    switch (crypto_method)
     {
-        case W_METH_BLOWFISH:
-            memcpy(crypto_token,":",1);
-            break;
-        case W_METH_AES:
-            memcpy(crypto_token,"#AES:",5);
-            break;
-        default:
-            return OS_INVALID;
+        case W_METH_BLOWFISH: memcpy(crypto_token, ":", 1); break;
+        case W_METH_AES: memcpy(crypto_token, "#AES:", 5); break;
+        default: return OS_INVALID;
     }
 
     /* Random number, take only 5 chars ~= 2^16=65536*/
-    rand1 = (u_int16_t) os_random();
+    rand1 = (u_int16_t)os_random();
 
     _tmpmsg[OS_MAXSTR + 1] = '\0';
     _finmsg[OS_MAXSTR + 1] = '\0';
@@ -690,7 +750,8 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     ReloadCounter(keys, keys->keysize, SENDER_COUNTER);
 
     /* Increase local and global counters */
-    if (local_count >= 9997) {
+    if (local_count >= 9997)
+    {
         local_count = 0;
         global_count++;
     }
@@ -712,7 +773,8 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
      * We assign the first 8 bytes for padding
      */
     cmp_size = os_zlib_compress(_finmsg, _tmpmsg + 8, length, OS_MAXSTR - 12);
-    if (!cmp_size) {
+    if (!cmp_size)
+    {
         merror(COMPRESS_ERR, _finmsg);
         w_mutex_unlock(&keys->keyentries[keys->keysize]->mutex);
         return (0);
@@ -721,7 +783,8 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
 
     /* Pad the message (needs to be div by 8) */
     bfsize = 8 - (cmp_size % 8);
-    if (bfsize == 8) {
+    if (bfsize == 8)
+    {
         bfsize = 0;
     }
 
@@ -739,7 +802,8 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     /* Get average sizes */
     c_orig_size += length;
     c_comp_size += cmp_size;
-    if (evt_count > _s_comp_print) {
+    if (evt_count > _s_comp_print)
+    {
         mdebug1("Event count after '%u': %lu->%lu (%lu%%)",
                 evt_count,
                 (unsigned long)c_orig_size,
@@ -752,27 +816,32 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     evt_count++;
 
     /* If the IP is dynamic (not single host), append agent ID to the message */
-    if (!isSingleHost(keys->keyentries[id]->ip) && isAgent) {
-        length = snprintf(msg_encrypted, 16, "!%s!%s", keys->keyentries[id]->id,crypto_token);
-    } else {
+    if (!isSingleHost(keys->keyentries[id]->ip) && isAgent)
+    {
+        length = snprintf(msg_encrypted, 16, "!%s!%s", keys->keyentries[id]->id, crypto_token);
+    }
+    else
+    {
         /* Set beginning of the message */
-        length = snprintf(msg_encrypted, 6, "%s",crypto_token);
+        length = snprintf(msg_encrypted, 6, "%s", crypto_token);
     }
 
     /* length is the amount of non-encrypted message appended to the buffer
      * On dynamic IPs, it will include the agent ID
      */
     /* Encrypt everything */
-    crypto_length = doEncryptByMethod(_tmpmsg + (7 - bfsize), msg_encrypted + length,
-        keys->keyentries[id]->encryption_key,
-        (long) cmp_size,
-        OS_ENCRYPT,crypto_method);
+    crypto_length = doEncryptByMethod(_tmpmsg + (7 - bfsize),
+                                      msg_encrypted + length,
+                                      keys->keyentries[id]->encryption_key,
+                                      (long)cmp_size,
+                                      OS_ENCRYPT,
+                                      crypto_method);
 
     /* Store before leaving */
     StoreSenderCounter(keys, global_count, local_count);
     w_mutex_unlock(&keys->keyentries[keys->keysize]->mutex);
 
-    if(cmp_size < crypto_length)
+    if (cmp_size < crypto_length)
         cmp_size = crypto_length;
 
     return (cmp_size + length);

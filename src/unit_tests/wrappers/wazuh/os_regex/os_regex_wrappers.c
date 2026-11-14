@@ -15,12 +15,15 @@
 #include "shared.h"
 #include "../../common.h"
 
-char **d_sub_strings = NULL;
+char** d_sub_strings = NULL;
 
-extern int __real_OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
-int __wrap_OSRegex_Compile(const char *pattern, OSRegex *reg, int flags) {
-    if (test_mode) {
-        if (pattern) {
+extern int __real_OSRegex_Compile(const char* pattern, OSRegex* reg, int flags);
+int __wrap_OSRegex_Compile(const char* pattern, OSRegex* reg, int flags)
+{
+    if (test_mode)
+    {
+        if (pattern)
+        {
             check_expected(pattern);
         }
 
@@ -30,9 +33,11 @@ int __wrap_OSRegex_Compile(const char *pattern, OSRegex *reg, int flags) {
     return __real_OSRegex_Compile(pattern, reg, flags);
 }
 
-void __wrap_OSRegex_FreePattern(OSRegex *reg) {
+void __wrap_OSRegex_FreePattern(OSRegex* reg)
+{
     check_expected(reg);
-    if (reg->d_sub_strings) {
+    if (reg->d_sub_strings)
+    {
         w_FreeArray(reg->d_sub_strings);
         os_free(reg->d_sub_strings);
         reg->d_sub_strings = NULL;
@@ -40,24 +45,32 @@ void __wrap_OSRegex_FreePattern(OSRegex *reg) {
     return;
 }
 
-extern const char *__real_OSRegex_Execute(const char *str, OSRegex *reg);
-const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
-    if (test_mode) {
-        if (str) {
+extern const char* __real_OSRegex_Execute(const char* str, OSRegex* reg);
+const char* __wrap_OSRegex_Execute(const char* str, OSRegex* reg)
+{
+    if (test_mode)
+    {
+        if (str)
+        {
             check_expected(str);
         }
 
-        const char *ret = mock_type(const char *);
+        const char* ret = mock_type(const char*);
 
         reg->d_sub_strings = NULL;
         os_calloc(16, sizeof(char), reg->d_sub_strings);
 
-        if(!strcmp(str, "test")) {
+        if (!strcmp(str, "test"))
+        {
             reg->d_sub_strings[0] = NULL;
-        } else if (ret && !strncmp(ret, "https://", 8)) {
+        }
+        else if (ret && !strncmp(ret, "https://", 8))
+        {
             // A mocked URL is also what the pattern captured
             os_strdup(ret, *reg->d_sub_strings);
-        } else {
+        }
+        else
+        {
             os_strdup("https://api.com/", *reg->d_sub_strings);
         }
 
@@ -67,7 +80,8 @@ const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
     return __real_OSRegex_Execute(str, reg);
 }
 
-int __wrap_OS_StrIsNum(const char *str) {
+int __wrap_OS_StrIsNum(const char* str)
+{
     int retval = mock();
 
     check_expected(str);
@@ -75,10 +89,13 @@ int __wrap_OS_StrIsNum(const char *str) {
     return retval;
 }
 
-extern int __real_OSMatch_Compile(const char *pattern, OSRegex *reg, int flags);
-int __wrap_OSMatch_Compile(const char *pattern, OSRegex *reg, int flags) {
-    if (test_mode) {
-        if (pattern) {
+extern int __real_OSMatch_Compile(const char* pattern, OSRegex* reg, int flags);
+int __wrap_OSMatch_Compile(const char* pattern, OSRegex* reg, int flags)
+{
+    if (test_mode)
+    {
+        if (pattern)
+        {
             check_expected(pattern);
         }
 
@@ -88,27 +105,33 @@ int __wrap_OSMatch_Compile(const char *pattern, OSRegex *reg, int flags) {
     return __real_OSRegex_Compile(pattern, reg, flags);
 }
 
-extern int __real_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
-int __wrap_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg) {
-    if (test_mode) {
-        if (str) {
+extern int __real_OSMatch_Execute(const char* str, size_t str_len, OSMatch* reg);
+int __wrap_OSMatch_Execute(const char* str, size_t str_len, OSMatch* reg)
+{
+    if (test_mode)
+    {
+        if (str)
+        {
             check_expected(str);
         }
 
         return mock();
     }
 
-    return  __real_OSMatch_Execute(str, str_len, reg);
+    return __real_OSMatch_Execute(str, str_len, reg);
 }
 
-extern const char *__real_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match);
-const char *__wrap_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match) {
-    if (test_mode) {
-        if (str) {
+extern const char* __real_OSRegex_Execute_ex(const char* str, OSRegex* reg, regex_matching* regex_match);
+const char* __wrap_OSRegex_Execute_ex(const char* str, OSRegex* reg, regex_matching* regex_match)
+{
+    if (test_mode)
+    {
+        if (str)
+        {
             check_expected(str);
         }
 
-        return mock_type(const char *);
+        return mock_type(const char*);
     }
 
     return __real_OSRegex_Execute_ex(str, reg, regex_match);

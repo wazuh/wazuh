@@ -38,96 +38,92 @@
  */
 class SCARecoveryTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
+
+        // Create directory for shared memory file (required on Unix/macOS)
+        // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path.
+        // #38601: in its own directory, because the id published below is now read by
+        // checkAgentIdentity() on every syncModule() -- including the other SCA test
+        // binaries', which share this relative path and do not expect an id to appear.
+        std::filesystem::create_directories("sca_recovery_test_workdir/var/run");
+        std::filesystem::current_path("sca_recovery_test_workdir");
+
+        // Initialize metadata provider manually to ensure it's available before initSyncProtocol
+        agent_metadata_t metadata = {};
+        strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+        strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+        strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+        strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+        strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+        strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+        strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+        strncpy(metadata.os_version, "20.04", sizeof(metadata.os_version) - 1);
+        char* groups[] = {const_cast<char*>("default")};
+        metadata.groups = groups;
+        metadata.groups_count = 1;
+        metadata_provider_update(&metadata);
+
+        // Set up logging callback
+        LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string& log)
+                                      { m_logOutput += log + "\n"; });
+
+        m_mockDBSync = std::make_shared<MockDBSync>();
+        m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+        // Basic mock setup for DBSync handle
+        EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+
+        m_sca = std::make_shared<SecurityConfigurationAssessment>("test_sca.db", m_mockDBSync, m_mockFileSystem);
+    }
+
+    void TearDown() override
+    {
+        m_sca.reset();
+        m_mockDBSync.reset();
+        m_mockFileSystem.reset();
+        // Back out of the per-binary directory entered in SetUp.
+        std::filesystem::current_path("..");
+    }
+
+    // Helper method to initialize sync protocol with specific integrity interval
+    void initSyncProtocolWithInterval(std::chrono::seconds integrityInterval)
+    {
+        try
         {
-            m_logOutput.clear();
-
-            // Create directory for shared memory file (required on Unix/macOS)
-            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path.
-            // #38601: in its own directory, because the id published below is now read by
-            // checkAgentIdentity() on every syncModule() -- including the other SCA test
-            // binaries', which share this relative path and do not expect an id to appear.
-            std::filesystem::create_directories("sca_recovery_test_workdir/var/run");
-            std::filesystem::current_path("sca_recovery_test_workdir");
-
-            // Initialize metadata provider manually to ensure it's available before initSyncProtocol
-            agent_metadata_t metadata = {};
-            strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
-            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-            strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
-            strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
-            strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
-            strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
-            strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
-            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
-            strncpy(metadata.os_version, "20.04", sizeof(metadata.os_version) - 1);
-            char* groups[] = {const_cast<char*>("default")};
-            metadata.groups = groups;
-            metadata.groups_count = 1;
-            metadata_provider_update(&metadata);
-
-            // Set up logging callback
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
-            {
-                m_logOutput += log + "\n";
-            });
-
-            m_mockDBSync = std::make_shared<MockDBSync>();
-            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
-
-            // Basic mock setup for DBSync handle
-            EXPECT_CALL(*m_mockDBSync, handle())
-            .WillRepeatedly(::testing::Return(nullptr));
-
-            m_sca = std::make_shared<SecurityConfigurationAssessment>("test_sca.db", m_mockDBSync, m_mockFileSystem);
+            m_sca->initSyncProtocol("test_module", "test_sync.db", integrityInterval);
         }
-
-        void TearDown() override
+        catch (const std::exception&)
         {
-            m_sca.reset();
-            m_mockDBSync.reset();
-            m_mockFileSystem.reset();
-            // Back out of the per-binary directory entered in SetUp.
-            std::filesystem::current_path("..");
+            // Ignore initialization errors in tests - we just need the interval set
         }
+    }
 
-        // Helper method to initialize sync protocol with specific integrity interval
-        void initSyncProtocolWithInterval(std::chrono::seconds integrityInterval)
+    static bool waitUntil(const std::function<bool()>& predicate,
+                          const std::chrono::milliseconds timeout = std::chrono::milliseconds(1000))
+    {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+
+        while (std::chrono::steady_clock::now() < deadline)
         {
-            try
+            if (predicate())
             {
-                m_sca->initSyncProtocol("test_module", "test_sync.db",
-                                        integrityInterval);
-            }
-            catch (const std::exception&)
-            {
-                // Ignore initialization errors in tests - we just need the interval set
-            }
-        }
-
-        static bool waitUntil(const std::function<bool()>& predicate,
-                              const std::chrono::milliseconds timeout = std::chrono::milliseconds(1000))
-        {
-            const auto deadline = std::chrono::steady_clock::now() + timeout;
-
-            while (std::chrono::steady_clock::now() < deadline)
-            {
-                if (predicate())
-                {
-                    return true;
-                }
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return true;
             }
 
-            return predicate();
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
-        std::shared_ptr<MockDBSync> m_mockDBSync;
-        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
-        std::shared_ptr<SecurityConfigurationAssessment> m_sca;
-        std::string m_logOutput;
+        return predicate();
+    }
+
+    std::shared_ptr<MockDBSync> m_mockDBSync;
+    std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+    std::shared_ptr<SecurityConfigurationAssessment> m_sca;
+    std::string m_logOutput;
 };
 
 // Test: initSyncProtocol with integrity interval stores the value correctly
@@ -156,14 +152,15 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityIntervalNotElapsed)
     // Mock getLastIntegrityCheckTime to return recent timestamp (1 minute ago)
     // This will be called by integrityIntervalElapsed
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        int64_t recentTime = Utils::getSecondsFromEpoch() - 60;  // 1 minute ago
-        data["value"] = recentTime;
-        callback(SELECTED, data);
-    }));
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                int64_t recentTime = Utils::getSecondsFromEpoch() - 60; // 1 minute ago
+                data["value"] = recentTime;
+                callback(SELECTED, data);
+            }));
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -182,12 +179,11 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityFirstCheck)
 
     // Mock getLastIntegrityCheckTime to return 0 (first check)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .Times(2)
-    .WillRepeatedly(::testing::Return());  // No metadata, returns 0
+        .Times(2)
+        .WillRepeatedly(::testing::Return()); // No metadata, returns 0
 
     // Mock updateLastIntegrityCheckTime
-    EXPECT_CALL(*m_mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(reinterpret_cast<DBSYNC_HANDLE>(0x1)));
+    EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(reinterpret_cast<DBSYNC_HANDLE>(0x1)));
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -205,7 +201,7 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityFirstCheck)
 // Test: query check_integrity with disabled interval (0)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityDisabled)
 {
-    initSyncProtocolWithInterval(std::chrono::seconds(0));  // Disabled
+    initSyncProtocolWithInterval(std::chrono::seconds(0)); // Disabled
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -224,7 +220,7 @@ TEST_F(SCARecoveryTest, QueryUnknownCommandReturnsError)
 
     nlohmann::json jsonResponse = nlohmann::json::parse(response);
 
-    EXPECT_EQ(jsonResponse["error"], 1);  // MQ_ERR_UNKNOWN_COMMAND
+    EXPECT_EQ(jsonResponse["error"], 1); // MQ_ERR_UNKNOWN_COMMAND
     EXPECT_TRUE(jsonResponse["message"].get<std::string>().find("Unknown") != std::string::npos);
 }
 
@@ -235,7 +231,7 @@ TEST_F(SCARecoveryTest, QueryMalformedJSONReturnsError)
 
     nlohmann::json jsonResponse = nlohmann::json::parse(response);
 
-    EXPECT_EQ(jsonResponse["error"], 98);  // MQ_ERR_INTERNAL
+    EXPECT_EQ(jsonResponse["error"], 98); // MQ_ERR_INTERNAL
     EXPECT_TRUE(jsonResponse["message"].get<std::string>().find("Exception") != std::string::npos);
 }
 
@@ -246,7 +242,7 @@ TEST_F(SCARecoveryTest, QueryMissingCommandField)
 
     nlohmann::json jsonResponse = nlohmann::json::parse(response);
 
-    EXPECT_EQ(jsonResponse["error"], 3);  // MQ_ERR_INVALID_PARAMS
+    EXPECT_EQ(jsonResponse["error"], 3); // MQ_ERR_INVALID_PARAMS
     EXPECT_TRUE(jsonResponse["message"].get<std::string>().find("Missing") != std::string::npos);
 }
 
@@ -277,13 +273,14 @@ TEST_F(SCARecoveryTest, QueryGetVersionCommand)
 {
     // Mock getMaxVersion
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["max_version"] = 5;
-        callback(SELECTED, data);
-    }));
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["max_version"] = 5;
+                callback(SELECTED, data);
+            }));
 
     std::string response = m_sca->query(R"({"command":"get_version"})");
 
@@ -295,8 +292,7 @@ TEST_F(SCARecoveryTest, QueryGetVersionCommand)
 
 TEST_F(SCARecoveryTest, QueryGetFirstSyncCompletedDefaultsToFalse)
 {
-    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return());
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_)).WillOnce(::testing::Return());
 
     std::string response = m_sca->query(R"({"command":"get_first_sync_completed"})");
 
@@ -309,13 +305,14 @@ TEST_F(SCARecoveryTest, QueryGetFirstSyncCompletedDefaultsToFalse)
 TEST_F(SCARecoveryTest, QueryGetFirstSyncCompletedReturnsTrueWhenMetadataExists)
 {
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["value"] = 123456;
-        callback(SELECTED, data);
-    }));
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["value"] = 123456;
+                callback(SELECTED, data);
+            }));
 
     std::string response = m_sca->query(R"({"command":"get_first_sync_completed"})");
 
@@ -330,23 +327,24 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityEmptyChecksum)
 {
     initSyncProtocolWithInterval(std::chrono::seconds(3600));
 
-    int64_t oldTime = Utils::getSecondsFromEpoch() - 7200;  // 2 hours ago
+    int64_t oldTime = Utils::getSecondsFromEpoch() - 7200; // 2 hours ago
 
     // Mock getLastIntegrityCheckTime to trigger check
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([oldTime](const nlohmann::json& /* query */,
-                                          std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["value"] = oldTime;
-        callback(SELECTED, data);
-    }))
-    // Mock updateLastIntegrityCheckTime
-    .WillRepeatedly(::testing::Return());
+        .WillOnce(::testing::Invoke(
+            [oldTime](const nlohmann::json& /* query */,
+                      std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["value"] = oldTime;
+                callback(SELECTED, data);
+            }))
+        // Mock updateLastIntegrityCheckTime
+        .WillRepeatedly(::testing::Return());
 
     // Mock concatenated checksums to throw error
     EXPECT_CALL(*m_mockDBSync, getConcatenatedChecksums(::testing::_, ::testing::_))
-    .WillOnce(::testing::Throw(std::runtime_error("DB error")));
+        .WillOnce(::testing::Throw(std::runtime_error("DB error")));
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -377,33 +375,33 @@ TEST_F(SCARecoveryTest, IntegrityIntervalConfiguration)
 // Test: Recovery methods work together (integration test via query)
 TEST_F(SCARecoveryTest, QueryCheckIntegrityIntegrationFlow)
 {
-    initSyncProtocolWithInterval(std::chrono::seconds(60));  // 1 minute for testing
+    initSyncProtocolWithInterval(std::chrono::seconds(60)); // 1 minute for testing
 
     // Simulate old last check time (2 minutes ago) to trigger check
     int64_t oldTime = Utils::getSecondsFromEpoch() - 120;
 
     // Setup mock expectations for the full flow
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    // 1. getLastIntegrityCheckTime - return old time
-    .WillOnce(::testing::Invoke([oldTime](const nlohmann::json& /* query */,
-                                          std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["value"] = oldTime;
-        callback(SELECTED, data);
-    }))
-    // 2. Any subsequent calls (updateLastIntegrityCheckTime, etc.)
-    .WillRepeatedly(::testing::Return());
+        // 1. getLastIntegrityCheckTime - return old time
+        .WillOnce(::testing::Invoke(
+            [oldTime](const nlohmann::json& /* query */,
+                      std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["value"] = oldTime;
+                callback(SELECTED, data);
+            }))
+        // 2. Any subsequent calls (updateLastIntegrityCheckTime, etc.)
+        .WillRepeatedly(::testing::Return());
 
     // Mock concatenated checksums (used to calculate table checksum)
     EXPECT_CALL(*m_mockDBSync, getConcatenatedChecksums(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return("abc123def456"));
+        .WillOnce(::testing::Return("abc123def456"));
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
     // Should get valid JSON response
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         nlohmann::json jsonResponse = nlohmann::json::parse(response);
         EXPECT_EQ(jsonResponse["data"]["module"], "sca");
         EXPECT_EQ(jsonResponse["data"]["action"], "check_integrity");
@@ -417,7 +415,7 @@ TEST_F(SCARecoveryTest, QueryCheckIntegrityIntegrationFlow)
 // Test: Verify JSON response structure for check_integrity
 TEST_F(SCARecoveryTest, CheckIntegrityResponseStructure)
 {
-    initSyncProtocolWithInterval(std::chrono::seconds(0));  // Disabled for simple test
+    initSyncProtocolWithInterval(std::chrono::seconds(0)); // Disabled for simple test
 
     std::string response = m_sca->query(R"({"command":"check_integrity"})");
 
@@ -446,11 +444,12 @@ TEST_F(SCARecoveryTest, QueryFlushReportsCompletedErrorWhenSyncFails)
     EXPECT_EQ(flushResponse["error"], 0);
     EXPECT_EQ(flushResponse["data"]["action"], "flush");
 
-    EXPECT_TRUE(waitUntil([this]()
-    {
-        auto completedResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
-        return completedResponse["data"]["status"] == "completed";
-    }));
+    EXPECT_TRUE(waitUntil(
+        [this]()
+        {
+            auto completedResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
+            return completedResponse["data"]["status"] == "completed";
+        }));
 
     nlohmann::json completedResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
     EXPECT_EQ(completedResponse["data"]["status"], "completed");

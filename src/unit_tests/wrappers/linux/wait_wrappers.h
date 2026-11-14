@@ -7,13 +7,12 @@
  * Foundation
  */
 
-
 #ifndef WAIT_WRAPPERS_H
 #define WAIT_WRAPPERS_H
 
 #include <sys/types.h>
 #include <sys/wait.h>
 
-pid_t __wrap_waitpid(pid_t __pid, int * wstatus, int __options);
+pid_t __wrap_waitpid(pid_t __pid, int* wstatus, int __options);
 
 #endif // WAIT_WRAPPERS_H

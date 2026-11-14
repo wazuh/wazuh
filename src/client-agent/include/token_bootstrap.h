@@ -58,7 +58,8 @@
  *        core has already logged, so a caller can classify the failure without re-deriving it
  *        from the log.
  */
-typedef enum {
+typedef enum
+{
     W_TOKEN_ENROLL_OK = 0,         /**< Committed: the anchor is installed AND client.keys written */
     W_TOKEN_ENROLL_ERR_TOKEN,      /**< Undecodable token, or an `adr` outside the endpoint grammar */
     W_TOKEN_ENROLL_ERR_ANCHOR,     /**< /cacerts fetch, truncation, pin mismatch, or anchor write */
@@ -72,11 +73,12 @@ typedef enum {
 /**
  * @brief What to enroll with, and what to leave behind.
  */
-typedef struct {
+typedef struct
+{
     /** The token TEXT, never a path: acquiring it and disposing of it belong to the caller.
      *  w_agent_token_bootstrap() reads and unlinks a file; an operator's token file is neither
      *  the core's to read nor its to delete. */
-    const char *token_text;
+    const char* token_text;
     /** The runtime user the agent will drop to. Two files are handed to it: the re-enrollment
      *  secret, which the daemon rewrites on every rotation after that drop, and since #39321 the
      *  trust anchor, which the daemon replaces when the manager publishes a new CA bundle --
@@ -103,15 +105,16 @@ typedef struct {
  * @brief What the enrollment did, for a caller that has to explain it to an operator.
  *        Fully populated on success; on failure, whatever was known before the failing step.
  */
-typedef struct {
-    char host[HC_MAX_HOST];          /**< Manager host the token named */
-    int port;                        /**< Resolved port (1517 unless the token said otherwise) */
-    char endpoint[HC_MAX_ENDPOINT];  /**< Resolved URL prefix */
-    bool used_pin;                   /**< false when the token embedded the CA and nothing was fetched */
-    bool had_anchor;                 /**< An anchor existed before this call */
-    bool had_keys;                   /**< client.keys was non-empty before this call */
-    bool anchor_changed;             /**< The committed anchor differs from what was there before */
-    bool rolled_back;                /**< ERR_COMMIT only: the previous state was restored */
+typedef struct
+{
+    char host[HC_MAX_HOST];         /**< Manager host the token named */
+    int port;                       /**< Resolved port (1517 unless the token said otherwise) */
+    char endpoint[HC_MAX_ENDPOINT]; /**< Resolved URL prefix */
+    bool used_pin;                  /**< false when the token embedded the CA and nothing was fetched */
+    bool had_anchor;                /**< An anchor existed before this call */
+    bool had_keys;                  /**< client.keys was non-empty before this call */
+    bool anchor_changed;            /**< The committed anchor differs from what was there before */
+    bool rolled_back;               /**< ERR_COMMIT only: the previous state was restored */
     /** The failure may clear on its own: no response at all, or a 5xx, from /cacerts or /enroll,
      *  or a 429 from /cacerts.
      *  Meaningless when the status is OK. It is the whole of what w_agent_token_bootstrap()
@@ -137,10 +140,10 @@ typedef struct {
      *  an address that does not resolve and a pin that does not match, and those want opposite
      *  responses. Empty when the step logged nothing of its own. */
     char detail[256];
-    char keys_backup[PATH_MAX];      /**< Non-empty only when a rollback itself failed */
-    char agent_id[16];               /**< Agent id the manager assigned */
-    char agent_name[256];            /**< Agent name the manager registered */
-    long http_code;                  /**< Last HTTP status from /enroll */
+    char keys_backup[PATH_MAX]; /**< Non-empty only when a rollback itself failed */
+    char agent_id[16];          /**< Agent id the manager assigned */
+    char agent_name[256];       /**< Agent name the manager registered */
+    long http_code;             /**< Last HTTP status from /enroll */
     /** What the manager said when it refused, verbatim, from either error envelope
      *  (w_enrollment_parse_error()). Empty when it did not refuse or said nothing: the reason for
      *  a refusal is the manager's to give, and repeating it is the difference between "refused"
@@ -166,13 +169,12 @@ typedef struct {
  * @param report Filled in with what happened. May be NULL.
  * @return W_TOKEN_ENROLL_OK when the anchor and client.keys are both committed.
  */
-w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
-                                             w_token_enroll_report_t *report);
+w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t* opts, w_token_enroll_report_t* report);
 
 /**
  * @brief A short, operator-facing sentence for a status. Never NULL.
  */
-const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status);
+const char* w_agent_token_enroll_strerror(w_token_enroll_status_t status);
 
 /**
  * @brief Reads an enrollment token out of a file: its first line, trimmed, bounded by
@@ -185,14 +187,15 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status);
  * @return Newly allocated token text the caller must free, or NULL when the file is missing,
  *         empty, or unreadable.
  */
-char *w_agent_token_read_file(const char *path);
+char* w_agent_token_read_file(const char* path);
 
 /** @brief Outcome of w_agent_token_read_stream(). */
-typedef enum {
+typedef enum
+{
     W_TOKEN_READ_OK = 0,
-    W_TOKEN_READ_TTY,       ///< The stream is a terminal: a token never arrives that way
-    W_TOKEN_READ_IO,        ///< Reading the stream failed
-    W_TOKEN_READ_TOO_BIG    ///< W_ETOKEN_MAX_FILE_BYTES or more: refused, never truncated
+    W_TOKEN_READ_TTY,    ///< The stream is a terminal: a token never arrives that way
+    W_TOKEN_READ_IO,     ///< Reading the stream failed
+    W_TOKEN_READ_TOO_BIG ///< W_ETOKEN_MAX_FILE_BYTES or more: refused, never truncated
 } w_token_read_status_t;
 
 /**
@@ -206,7 +209,7 @@ typedef enum {
  * @param text Receives newly allocated token text the caller must free; NULL unless OK.
  * @return W_TOKEN_READ_OK, or the reason nothing was read.
  */
-w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
+w_token_read_status_t w_agent_token_read_stream(FILE* in, char** text);
 
 /**
  * @brief Outcome of w_agent_token_bootstrap(): whether the caller should give up or retry.
@@ -234,7 +237,8 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * `token_unknown` or `stale_token` (see w_token_enroll_report_t.pending). It is retried like
  * TRANSIENT, but only for W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S (see w_token_bootstrap_bound_pending()).
  */
-typedef enum {
+typedef enum
+{
     W_TOKEN_BOOTSTRAP_DONE = 0,
     W_TOKEN_BOOTSTRAP_TRANSIENT,
     W_TOKEN_BOOTSTRAP_PERMANENT,
@@ -285,7 +289,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
  * @param now Monotonic seconds (w_get_monotonic_time()), so a clock step cannot stretch the window.
  * @return W_TOKEN_BOOTSTRAP_DONE, W_TOKEN_BOOTSTRAP_TRANSIENT or W_TOKEN_BOOTSTRAP_PERMANENT.
  */
-w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result,
-                                                           time_t *pending_since, time_t now);
+w_token_bootstrap_result_t
+w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result, time_t* pending_since, time_t now);
 
 #endif /* TOKEN_BOOTSTRAP_H */

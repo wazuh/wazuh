@@ -14,25 +14,27 @@
 #include <stdbool.h>
 #include <curl.h>
 
-#define WURL_WRITE_FILE_ERROR "Cannot open file '%s'"
+#define WURL_WRITE_FILE_ERROR    "Cannot open file '%s'"
 #define WURL_DOWNLOAD_FILE_ERROR "Cannot download file '%s' from URL: '%s'"
-#define WURL_TIMEOUT_ERROR  "Timeout reached when downloading file '%s' from URL: '%s'"
+#define WURL_TIMEOUT_ERROR       "Timeout reached when downloading file '%s' from URL: '%s'"
 
-#define WURL_GET_METHOD "GET"
+#define WURL_GET_METHOD  "GET"
 #define WURL_POST_METHOD "POST"
 
-typedef struct curl_response {
-    char *header;               /* Response header */
-    char *body;                 /* Response body */
-    long status_code;           /* Response code (200, 404, 500...) */
-    bool max_size_reached;      /* Response incomplete, limit buffer reached */
+typedef struct curl_response
+{
+    char* header;          /* Response header */
+    char* body;            /* Response body */
+    long status_code;      /* Response code (200, 404, 500...) */
+    bool max_size_reached; /* Response incomplete, limit buffer reached */
 } curl_response;
 
-int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout);
-int w_download_status(int status,const char *url,const char *dest);
+int wurl_get(const char* url, const char* dest, const char* header, const char* data, const long timeout);
+int w_download_status(int status, const char* url, const char* dest);
 // Request download
-int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
-int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
+int wurl_request(const char* url, const char* dest, const char* header, const char* data, const long timeout);
+int wurl_request_gz(
+    const char* url, const char* dest, const char* header, const char* data, const long timeout, char* sha256);
 
 /**
  * @brief Make a HTTP GET request
@@ -41,7 +43,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
  * @param timeout Maximum time allowed for the request
  * @return Request response (body)
  */
-char * wurl_http_get(const char * url, size_t max_size, const long timeout);
+char* wurl_http_get(const char* url, size_t max_size, const long timeout);
 
 /**
  * @brief Make a HTTP request
@@ -55,12 +57,21 @@ char * wurl_http_get(const char * url, size_t max_size, const long timeout);
  * @param ssl_verify Set ssl verification or ignore it
  * @return Request response (status_code, headers and body)
  */
-curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload, size_t max_size, const long timeout, const char *userpass, bool ssl_verify);
+curl_response* wurl_http_request(char* method,
+                                 char** headers,
+                                 const char* url,
+                                 const char* payload,
+                                 size_t max_size,
+                                 const long timeout,
+                                 const char* userpass,
+                                 bool ssl_verify);
 
 void wurl_free_response(curl_response* response);
 #ifndef CLIENT
-int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
-int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
+int wurl_request_bz2(
+    const char* url, const char* dest, const char* header, const char* data, const long timeout, char* sha256);
+int wurl_request_uncompress_bz2_gz(
+    const char* url, const char* dest, const char* header, const char* data, const long timeout, char* sha256);
 #endif
 
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */

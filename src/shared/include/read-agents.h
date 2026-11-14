@@ -14,7 +14,8 @@
 #include <cJSON.h>
 
 /* Status */
-typedef enum agent_status_t {
+typedef enum agent_status_t
+{
     GA_STATUS_ACTIVE = 12,
     GA_STATUS_NACTIVE,
     GA_STATUS_NEVER,
@@ -26,7 +27,7 @@ typedef enum agent_status_t {
 /* Return the unix permission string
  * Returns a pointer to a local static array
  */
-char *agent_file_perm(mode_t mode);
+char* agent_file_perm(mode_t mode);
 #endif
 
 #endif /* CRAGENT_H */

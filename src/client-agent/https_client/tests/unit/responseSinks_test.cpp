@@ -37,37 +37,37 @@ namespace
 
     class FileSinkTest : public ::testing::Test
     {
-        protected:
-            void SetUp() override
-            {
-                m_file = std::fopen(m_path.c_str(), "wb");
-                ASSERT_NE(nullptr, m_file);
-            }
+    protected:
+        void SetUp() override
+        {
+            m_file = std::fopen(m_path.c_str(), "wb");
+            ASSERT_NE(nullptr, m_file);
+        }
 
-            void TearDown() override
-            {
-                closeFile();
-                std::remove(m_path.c_str());
-            }
+        void TearDown() override
+        {
+            closeFile();
+            std::remove(m_path.c_str());
+        }
 
-            void closeFile()
+        void closeFile()
+        {
+            if (m_file != nullptr)
             {
-                if (m_file != nullptr)
-                {
-                    std::fclose(m_file);
-                    m_file = nullptr;
-                }
+                std::fclose(m_file);
+                m_file = nullptr;
             }
+        }
 
-            std::string contents()
-            {
-                closeFile();
-                std::ifstream file {m_path, std::ios::binary};
-                return std::string {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}};
-            }
+        std::string contents()
+        {
+            closeFile();
+            std::ifstream file {m_path, std::ios::binary};
+            return std::string {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}};
+        }
 
-            const std::string m_path {::testing::TempDir() + "hc_response_sink.tmp"};
-            std::FILE* m_file {nullptr};
+        const std::string m_path {::testing::TempDir() + "hc_response_sink.tmp"};
+        std::FILE* m_file {nullptr};
     };
 } // namespace
 

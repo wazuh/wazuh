@@ -14,27 +14,32 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-void __wrap_w_macos_set_last_log_timestamp(char * timestamp) {
+void __wrap_w_macos_set_last_log_timestamp(char* timestamp)
+{
 
     check_expected(timestamp);
 }
 
-void __wrap_w_macos_set_log_settings(char * settings) {
+void __wrap_w_macos_set_log_settings(char* settings)
+{
 
     check_expected(settings);
 }
 
-bool __wrap_w_is_macos_sierra() {
+bool __wrap_w_is_macos_sierra()
+{
 
     return mock_type(bool);
 }
 
-pid_t __wrap_w_get_first_child(pid_t parent_pid) {
+pid_t __wrap_w_get_first_child(pid_t parent_pid)
+{
 
     check_expected(parent_pid);
     return mock_type(pid_t);
 }
 
-void __wrap_w_macos_set_is_valid_data(bool is_valid) {
+void __wrap_w_macos_set_is_valid_data(bool is_valid)
+{
     check_expected(is_valid);
 }

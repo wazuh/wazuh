@@ -15,13 +15,12 @@
 
 class SysInfoPackagesLinuxParserRPMTest : public ::testing::Test
 {
-    protected:
+protected:
+    SysInfoPackagesLinuxParserRPMTest() = default;
+    virtual ~SysInfoPackagesLinuxParserRPMTest() = default;
 
-        SysInfoPackagesLinuxParserRPMTest() = default;
-        virtual ~SysInfoPackagesLinuxParserRPMTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYSINFO_PACKAGES_LINUX_PARSER_RPM_TEST_H

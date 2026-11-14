@@ -13,13 +13,14 @@
 #include "networkInterfaceWindows.h"
 #include "networkWindowsWrapper.h"
 
-std::shared_ptr<IOSNetwork> FactoryWindowsNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+std::shared_ptr<IOSNetwork>
+FactoryWindowsNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
 {
     std::shared_ptr<IOSNetwork> ret;
 
     if (interfaceWrapper)
     {
-        const auto family { interfaceWrapper->family() };
+        const auto family {interfaceWrapper->family()};
 
         if (Utils::NetworkWindowsHelper::IPV4 == family)
         {
@@ -38,29 +39,29 @@ std::shared_ptr<IOSNetwork> FactoryWindowsNetwork::create(const std::shared_ptr<
     }
     else
     {
-        throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
+        throw std::runtime_error {"Error nullptr interfaceWrapper instance."};
     }
 
     return ret;
 }
 
-template <>
+template<>
 void WindowsNetworkImpl<Utils::NetworkWindowsHelper::UNDEF>::buildNetworkData(nlohmann::json& /*network*/)
 {
-    throw std::runtime_error { "Invalid network adapter family." };
+    throw std::runtime_error {"Invalid network adapter family."};
 }
 
-template <>
+template<>
 void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlohmann::json& networkV4)
 {
     // Get IPv4 address
-    const auto address { m_interfaceAddress->address() };
+    const auto address {m_interfaceAddress->address()};
 
     if (!address.empty())
     {
         nlohmann::json ipv4JS;
         ipv4JS["network_ip"] = address;
-        ipv4JS["network_netmask"] =  m_interfaceAddress->netmask();
+        ipv4JS["network_netmask"] = m_interfaceAddress->netmask();
         ipv4JS["network_broadcast"] = m_interfaceAddress->broadcast();
         ipv4JS["network_metric"] = m_interfaceAddress->metrics();
         ipv4JS["network_dhcp"] = m_interfaceAddress->dhcp();
@@ -69,18 +70,18 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlo
     }
     else
     {
-        throw std::runtime_error { "Invalid IpV4 address." };
+        throw std::runtime_error {"Invalid IpV4 address."};
     }
 }
 
-template <>
+template<>
 void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlohmann::json& networkV6)
 {
-    const auto address { m_interfaceAddress->addressV6() };
+    const auto address {m_interfaceAddress->addressV6()};
 
     if (!address.empty())
     {
-        nlohmann::json ipv6JS { };
+        nlohmann::json ipv6JS {};
         ipv6JS["network_ip"] = address;
         ipv6JS["network_netmask"] = m_interfaceAddress->netmaskV6();
         ipv6JS["network_broadcast"] = m_interfaceAddress->broadcastV6();
@@ -91,31 +92,31 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlo
     }
     else
     {
-        throw std::runtime_error { "Invalid IpV6 address." };
+        throw std::runtime_error {"Invalid IpV6 address."};
     }
 }
 
-template <>
+template<>
 void WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>::buildNetworkData(nlohmann::json& networkCommon)
 {
     // Extraction of common adapter data
-    networkCommon["interface_name"]  = m_interfaceAddress->name();
+    networkCommon["interface_name"] = m_interfaceAddress->name();
     networkCommon["interface_alias"] = m_interfaceAddress->adapter();
     networkCommon["interface_state"] = m_interfaceAddress->state();
-    networkCommon["interface_type"]  = m_interfaceAddress->type();
-    networkCommon["host_mac"]        = m_interfaceAddress->MAC();
+    networkCommon["interface_type"] = m_interfaceAddress->type();
+    networkCommon["host_mac"] = m_interfaceAddress->MAC();
 
-    const auto stats { m_interfaceAddress->stats() };
-    networkCommon["host_network_egress_packages"]  = stats.txPackets;
+    const auto stats {m_interfaceAddress->stats()};
+    networkCommon["host_network_egress_packages"] = stats.txPackets;
     networkCommon["host_network_ingress_packages"] = stats.rxPackets;
-    networkCommon["host_network_egress_bytes"]     = stats.txBytes;
-    networkCommon["host_network_ingress_bytes"]    = stats.rxBytes;
-    networkCommon["host_network_egress_errors"]    = stats.txErrors;
-    networkCommon["host_network_ingress_errors"]   = stats.rxErrors;
-    networkCommon["host_network_egress_drops"]     = stats.txDropped;
-    networkCommon["host_network_ingress_drops"]    = stats.rxDropped;
+    networkCommon["host_network_egress_bytes"] = stats.txBytes;
+    networkCommon["host_network_ingress_bytes"] = stats.rxBytes;
+    networkCommon["host_network_egress_errors"] = stats.txErrors;
+    networkCommon["host_network_ingress_errors"] = stats.rxErrors;
+    networkCommon["host_network_egress_drops"] = stats.txDropped;
+    networkCommon["host_network_ingress_drops"] = stats.rxDropped;
 
-    networkCommon["interface_mtu"]    = m_interfaceAddress->mtu();
-    networkCommon["network_gateway"]  = m_interfaceAddress->gateway();
+    networkCommon["interface_mtu"] = m_interfaceAddress->mtu();
+    networkCommon["network_gateway"] = m_interfaceAddress->gateway();
     networkCommon["network_gateway6"] = m_interfaceAddress->gatewayV6();
 }

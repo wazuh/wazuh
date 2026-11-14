@@ -71,17 +71,27 @@ namespace
     }
 } // namespace
 
-RescanRequester::RescanRequester(const ModuleConfig& config, IHttpPerformer& performer,
-                                 const ISigner& signer, IClock& clock, IRandom& random,
-                                 AuthGate& authGate, CompressionGate& compressionGate,
+RescanRequester::RescanRequester(const ModuleConfig& config,
+                                 IHttpPerformer& performer,
+                                 const ISigner& signer,
+                                 IClock& clock,
+                                 IRandom& random,
+                                 AuthGate& authGate,
+                                 CompressionGate& compressionGate,
                                  IVdOffsetStore& store)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-      // All seven arguments, like every other RetrySender in this module: the old 5-argument form
-      // let &authGate convert to the `bool compressionEnabled` slot, which force-compressed every
-      // /scan/vd, left the shared CompressionGate out of a 415 here, and dropped 401s on the
-      // floor (never reaching AuthGate::reportAuthFailure).
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+    // All seven arguments, like every other RetrySender in this module: the old 5-argument form
+    // let &authGate convert to the `bool compressionEnabled` slot, which force-compressed every
+    // /scan/vd, left the shared CompressionGate out of a 415 here, and dropped 401s on the
+    // floor (never reaching AuthGate::reportAuthFailure).
+    , m_sender(performer,
+               signer,
+               clock,
+               m_backoff,
+               config.httpsCompressionEnabled,
+               &compressionGate,
+               &authGate,
                config.serverEndpoint)
     , m_store(store)
 {
@@ -95,8 +105,7 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
     {
         const std::string body = requestBody(attemptOffset);
 
-        LOGFN_DEBUG2(m_logFn, "Sending /scan/vd (feed_offset=%llu).",
-                     static_cast<unsigned long long>(attemptOffset));
+        LOGFN_DEBUG2(m_logFn, "Sending /scan/vd (feed_offset=%llu).", static_cast<unsigned long long>(attemptOffset));
 
         const auto result =
             m_sender.send(scanVdSpec(body, m_config.requestTimeoutMs), waiter, PER_REQUEST_MAX_ATTEMPTS);
@@ -104,8 +113,8 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
         if (result.outcome == OutcomeClass::Ok)
         {
             m_store.clearPending(attemptOffset);
-            LOGFN_DEBUG1(m_logFn, "/scan/vd accepted for feed_offset=%llu.",
-                         static_cast<unsigned long long>(attemptOffset));
+            LOGFN_DEBUG1(
+                m_logFn, "/scan/vd accepted for feed_offset=%llu.", static_cast<unsigned long long>(attemptOffset));
             return true;
         }
 
@@ -113,19 +122,20 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
         {
             uint64_t currentVersion = 0;
 
-            if (!parseCurrentVersion(result.response.body, currentVersion) ||
-                    currentVersion <= attemptOffset)
+            if (!parseCurrentVersion(result.response.body, currentVersion) || currentVersion <= attemptOffset)
             {
                 // Manager's offset is not newer (or the body was unreadable): per the
                 // design, the agent does NOT move its offset backward or on a guess.
                 // Give up this cycle; the next Notify re-arms.
-                LOGFN_DEBUG1(m_logFn, "/scan/vd rejected for feed_offset=%llu with no "
+                LOGFN_DEBUG1(m_logFn,
+                             "/scan/vd rejected for feed_offset=%llu with no "
                              "usable newer current_version; will retry next cycle.",
                              static_cast<unsigned long long>(attemptOffset));
                 return false;
             }
 
-            LOGFN_DEBUG1(m_logFn, "/scan/vd reported a newer feed_offset (%llu -> %llu); "
+            LOGFN_DEBUG1(m_logFn,
+                         "/scan/vd reported a newer feed_offset (%llu -> %llu); "
                          "re-observing before retrying.",
                          static_cast<unsigned long long>(attemptOffset),
                          static_cast<unsigned long long>(currentVersion));
@@ -146,13 +156,14 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
 
         // Any other outcome (transport failure, other HTTP error): give up this
         // cycle, same self-re-arming rationale as ConfigFetcher.
-        LOGFN_DEBUG1(m_logFn, "/scan/vd failed for feed_offset=%llu (outcome %d); "
+        LOGFN_DEBUG1(m_logFn,
+                     "/scan/vd failed for feed_offset=%llu (outcome %d); "
                      "will retry next cycle.",
-                     static_cast<unsigned long long>(attemptOffset), static_cast<int>(result.outcome));
+                     static_cast<unsigned long long>(attemptOffset),
+                     static_cast<int>(result.outcome));
         return false;
     }
 
-    LOGFN_DEBUG1(m_logFn, "/scan/vd exhausted %u rounds without resolving; will retry next cycle.",
-                 MAX_ROUNDS);
+    LOGFN_DEBUG1(m_logFn, "/scan/vd exhausted %u rounds without resolving; will retry next cycle.", MAX_ROUNDS);
     return false;
 }

@@ -13,8 +13,9 @@
 #include <cmocka.h>
 #include "syscheck_config_wrappers.h"
 
-char **__wrap_expand_wildcards(const char *path) {
+char** __wrap_expand_wildcards(const char* path)
+{
     check_expected(path);
 
-    return mock_type(char **);
+    return mock_type(char**);
 }

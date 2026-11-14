@@ -12,43 +12,44 @@
 
 class RegistryRuleEvaluatorTest : public ::testing::Test
 {
-    protected:
-        PolicyEvaluationContext m_ctx;
-        RegistryRuleEvaluator::IsValidKeyFunc m_isValidKey;
-        RegistryRuleEvaluator::EnumValuesFunc m_enumValues;
-        RegistryRuleEvaluator::EnumKeysFunc m_enumKeys;
-        RegistryRuleEvaluator::GetValueFunc m_getValue;
+protected:
+    PolicyEvaluationContext m_ctx;
+    RegistryRuleEvaluator::IsValidKeyFunc m_isValidKey;
+    RegistryRuleEvaluator::EnumValuesFunc m_enumValues;
+    RegistryRuleEvaluator::EnumKeysFunc m_enumKeys;
+    RegistryRuleEvaluator::GetValueFunc m_getValue;
 
-        void SetUp() override
-        {
-            // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback(
+            [](const modules_log_level_t /* level */, const char* /* log */)
             {
                 // Mock logging callback that does nothing
             });
 
-            m_isValidKey = [](const std::string&)
-            {
-                return true;
-            };
-            m_enumValues = [](const std::string&)
-            {
-                return std::vector<std::string> {};
-            };
-            m_enumKeys = [](const std::string&)
-            {
-                return std::vector<std::string> {};
-            };
-            m_getValue = [](const std::string&, const std::string&)
-            {
-                return std::string {};
-            };
-        }
-
-        RegistryRuleEvaluator CreateEvaluator()
+        m_isValidKey = [](const std::string&)
         {
-            return {m_ctx, m_isValidKey, m_enumValues, m_enumKeys, m_getValue};
-        }
+            return true;
+        };
+        m_enumValues = [](const std::string&)
+        {
+            return std::vector<std::string> {};
+        };
+        m_enumKeys = [](const std::string&)
+        {
+            return std::vector<std::string> {};
+        };
+        m_getValue = [](const std::string&, const std::string&)
+        {
+            return std::string {};
+        };
+    }
+
+    RegistryRuleEvaluator CreateEvaluator()
+    {
+        return {m_ctx, m_isValidKey, m_enumValues, m_enumKeys, m_getValue};
+    }
 };
 
 TEST_F(RegistryRuleEvaluatorTest, NoPatternValidKeyReturnsFound)

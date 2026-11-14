@@ -10,17 +10,19 @@
 
 #include <shared.h>
 
-w_queue_t * queue_init(size_t size) {
-    w_queue_t * queue;
+w_queue_t* queue_init(size_t size)
+{
+    w_queue_t* queue;
 
     /* A zero size would divide by zero in queue_full(), and a size whose byte count overflows
      * size_t would allocate a short buffer that queue_push() then writes past. */
-    if (size == 0 || size > SIZE_MAX / sizeof(void *)) {
-        merror_exit("Invalid queue size %zu: it must be between 1 and %zu.", size, SIZE_MAX / sizeof(void *));
+    if (size == 0 || size > SIZE_MAX / sizeof(void*))
+    {
+        merror_exit("Invalid queue size %zu: it must be between 1 and %zu.", size, SIZE_MAX / sizeof(void*));
     }
 
     os_calloc(1, sizeof(w_queue_t), queue);
-    os_malloc(size * sizeof(void *), queue->data);
+    os_malloc(size * sizeof(void*), queue->data);
     queue->size = size;
     queue->elements = 0;
     queue->begin = 0;
@@ -31,8 +33,10 @@ w_queue_t * queue_init(size_t size) {
     return queue;
 }
 
-void queue_free(w_queue_t * queue) {
-    if (queue) {
+void queue_free(w_queue_t* queue)
+{
+    if (queue)
+    {
         free(queue->data);
         w_mutex_destroy(&queue->mutex);
         w_cond_destroy(&queue->available);
@@ -41,11 +45,13 @@ void queue_free(w_queue_t * queue) {
     }
 }
 
-int queue_full(const w_queue_t * queue) {
+int queue_full(const w_queue_t* queue)
+{
     return (queue->begin + 1) % queue->size == queue->end;
 }
 
-int queue_full_ex(w_queue_t * queue) {
+int queue_full_ex(w_queue_t* queue)
+{
     int is_full;
 
     w_mutex_lock(&queue->mutex);
@@ -55,20 +61,24 @@ int queue_full_ex(w_queue_t * queue) {
     return is_full;
 }
 
-int queue_empty(const w_queue_t * queue) {
+int queue_empty(const w_queue_t* queue)
+{
     return queue->begin == queue->end;
 }
 
-int queue_empty_ex(w_queue_t * queue) {
+int queue_empty_ex(w_queue_t* queue)
+{
     w_mutex_lock(&queue->mutex);
     bool empty = queue->begin == queue->end;
     w_mutex_unlock(&queue->mutex);
     return empty;
 }
 
-float queue_get_percentage_ex(w_queue_t * queue) {
+float queue_get_percentage_ex(w_queue_t* queue)
+{
 
-    if (queue == NULL) {
+    if (queue == NULL)
+    {
         return -1;
     }
     w_mutex_lock(&queue->mutex);
@@ -76,13 +86,17 @@ float queue_get_percentage_ex(w_queue_t * queue) {
     size_t size = queue->size;
     w_mutex_unlock(&queue->mutex);
 
-    return (float) elements / (float) (size - 1);
+    return (float)elements / (float)(size - 1);
 }
 
-int queue_push(w_queue_t * queue, void * data) {
-    if (queue_full(queue)) {
+int queue_push(w_queue_t* queue, void* data)
+{
+    if (queue_full(queue))
+    {
         return -1;
-    } else {
+    }
+    else
+    {
         queue->data[queue->begin] = data;
         queue->begin = (queue->begin + 1) % queue->size;
         queue->elements++;
@@ -90,12 +104,14 @@ int queue_push(w_queue_t * queue, void * data) {
     }
 }
 
-int queue_push_ex(w_queue_t * queue, void * data) {
+int queue_push_ex(w_queue_t* queue, void* data)
+{
     int result;
 
     w_mutex_lock(&queue->mutex);
 
-    if (result = queue_push(queue, data), result == 0) {
+    if (result = queue_push(queue, data), result == 0)
+    {
         w_cond_signal(&queue->available);
     }
 
@@ -103,16 +119,18 @@ int queue_push_ex(w_queue_t * queue, void * data) {
     return result;
 }
 
-int queue_push_ex_block(w_queue_t * queue, void * data) {
+int queue_push_ex_block(w_queue_t* queue, void* data)
+{
     int result;
 
     w_mutex_lock(&queue->mutex);
 
-    while (result = queue_full(queue), result) {
+    while (result = queue_full(queue), result)
+    {
         w_cond_wait(&queue->available_not_empty, &queue->mutex);
     }
 
-    result = queue_push(queue,data);
+    result = queue_push(queue, data);
 
     w_cond_signal(&queue->available_not_empty);
     w_cond_signal(&queue->available);
@@ -121,12 +139,16 @@ int queue_push_ex_block(w_queue_t * queue, void * data) {
     return result;
 }
 
-void * queue_pop(w_queue_t * queue) {
-    void * data;
+void* queue_pop(w_queue_t* queue)
+{
+    void* data;
 
-    if (queue_empty(queue)) {
+    if (queue_empty(queue))
+    {
         return NULL;
-    } else {
+    }
+    else
+    {
         data = queue->data[queue->end];
         queue->end = (queue->end + 1) % queue->size;
         queue->elements--;
@@ -134,12 +156,14 @@ void * queue_pop(w_queue_t * queue) {
     }
 }
 
-void * queue_pop_ex(w_queue_t * queue) {
-    void * data;
+void* queue_pop_ex(w_queue_t* queue)
+{
+    void* data;
 
     w_mutex_lock(&queue->mutex);
 
-    while (data = queue_pop(queue), !data) {
+    while (data = queue_pop(queue), !data)
+    {
         w_cond_wait(&queue->available, &queue->mutex);
     }
 
@@ -149,13 +173,16 @@ void * queue_pop_ex(w_queue_t * queue) {
     return data;
 }
 
-void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime) {
-    void * data;
+void* queue_pop_ex_timedwait(w_queue_t* queue, const struct timespec* abstime)
+{
+    void* data;
 
     w_mutex_lock(&queue->mutex);
 
-    while (data = queue_pop(queue), !data) {
-        if (pthread_cond_timedwait(&queue->available, &queue->mutex, abstime) != 0) {
+    while (data = queue_pop(queue), !data)
+    {
+        if (pthread_cond_timedwait(&queue->available, &queue->mutex, abstime) != 0)
+        {
             w_mutex_unlock(&queue->mutex);
             return NULL;
         }
@@ -167,14 +194,16 @@ void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime
     return data;
 }
 
-void * try_queue_pop_ex(w_queue_t * queue) {
-    void * data;
+void* try_queue_pop_ex(w_queue_t* queue)
+{
+    void* data;
 
     w_mutex_lock(&queue->mutex);
 
     data = queue_pop(queue);
 
-    if (data) {
+    if (data)
+    {
         w_cond_signal(&queue->available_not_empty);
     }
 

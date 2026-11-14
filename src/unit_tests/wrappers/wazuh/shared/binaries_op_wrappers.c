@@ -15,7 +15,8 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int __wrap_get_binary_path(const char *command, char **path) {
+int __wrap_get_binary_path(const char* command, char** path)
+{
     check_expected(command);
     *path = (char*)mock_ptr_type(char*);
 

@@ -16,14 +16,14 @@
 
 class PKGWrapperTest : public ::testing::Test
 {
-    protected:
-        PKGWrapperTest() = default;
-        virtual ~PKGWrapperTest() = default;
+protected:
+    PKGWrapperTest() = default;
+    virtual ~PKGWrapperTest() = default;
 
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 
-        std::string m_tempDir;
+    std::string m_tempDir;
 };
 
 #endif //_PKGWRAPPER_TEST_H

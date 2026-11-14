@@ -14,9 +14,9 @@
 #include "logcollector.h"
 #include "sha1_op.h"
 
-
 /* Read syslog files */
-void *read_syslog(logreader *lf, int *rc, int drop_it) {
+void* read_syslog(logreader* lf, int* rc, int drop_it)
+{
     int __ms = 0;
     int __ms_reported = 0;
     char str[OS_MAXSTR + 1];
@@ -31,28 +31,38 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     current_position = w_ftell(lf->fp);
 
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 &&
+                                   fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp);
+         offset += rbytes)
+    {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
         /* Flow control */
-        if (rbytes <= 0) {
+        if (rbytes <= 0)
+        {
             break;
         }
 
         /* Get the last occurrence of \n */
-        if (str[rbytes - 1] == '\n') {
-            if (is_valid_context_file) {
-                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
+        if (str[rbytes - 1] == '\n')
+        {
+            if (is_valid_context_file)
+            {
+                OS_SHA1_Stream_Bytes(context, str, (size_t)rbytes);
             }
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT
+                        "). Dropping line.",
+                        lf->file,
+                        FTELL_INT64 strlen(str),
+                        FTELL_INT64 rbytes - 1);
                 current_position = offset + rbytes;
                 continue;
             }
@@ -61,21 +71,31 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
+        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1)
+        {
             /* Message size > maximum allowed */
             __ms = 1;
-            if (is_valid_context_file) {
-                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
+            if (is_valid_context_file)
+            {
+                OS_SHA1_Stream_Bytes(context, str, (size_t)rbytes);
             }
             str[rbytes - 1] = '\0';
-        } else {
+        }
+        else
+        {
             /* We may not have gotten a line feed
              * because we reached EOF.
              */
-             if (feof(lf->fp)) {
+            if (feof(lf->fp))
+            {
                 /* Message not complete. Return. */
-                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                if(current_position >= 0) {
+                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s",
+                        lf->file,
+                        sample_log_length,
+                        str,
+                        rbytes > sample_log_length ? "..." : "");
+                if (current_position >= 0)
+                {
                     w_fseek(lf->fp, current_position, SEEK_SET);
                 }
                 break;
@@ -83,20 +103,23 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         }
 
 #ifdef WIN32
-        char * p;
+        char* p;
 
-        if ((p = strrchr(str, '\r')) != NULL) {
+        if ((p = strrchr(str, '\r')) != NULL)
+        {
             *p = '\0';
         }
 
         /* Look for empty string (only on Windows) */
-        if (rbytes <= 2) {
+        if (rbytes <= 2)
+        {
             current_position = w_ftell(lf->fp);
             continue;
         }
 
         /* Windows can have comment on their logs */
-        if (str[0] == '#') {
+        if (str[0] == '#')
+        {
             current_position = w_ftell(lf->fp);
             continue;
         }
@@ -105,37 +128,54 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str))
+        {
             /* Send message to queue */
             w_msg_hash_queues_push(str, lf->file, rbytes, lf->log_target, LOCALFILE_MQ);
         }
 
         /* Incorrect message size */
-        if (__ms) {
+        if (__ms)
+        {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
             // truncate str before logging to wazuh log file
 
-            if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+            if (!__ms_reported)
+            {
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...",
+                       lf->file,
+                       FTELL_INT64 rbytes,
+                       sample_log_length,
+                       str);
                 __ms_reported = 1;
-            } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+            }
+            else
+            {
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...",
+                        lf->file,
+                        FTELL_INT64 rbytes,
+                        sample_log_length,
+                        str);
             }
 
-            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes)
+            {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Flow control */
-                if (rbytes <= 0) {
+                if (rbytes <= 0)
+                {
                     break;
                 }
 
-                if (is_valid_context_file) {
-                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
+                if (is_valid_context_file)
+                {
+                    OS_SHA1_Stream_Bytes(context, str, (size_t)rbytes);
                 }
 
                 /* Get the last occurrence of \n */
-                if (str[rbytes - 1] == '\n') {
+                if (str[rbytes - 1] == '\n')
+                {
                     break;
                 }
             }
@@ -144,9 +184,12 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         current_position = w_ftell(lf->fp);
     }
 
-    if (is_valid_context_file) {
+    if (is_valid_context_file)
+    {
         w_update_file_status(lf->file, current_position, context);
-    } else {
+    }
+    else
+    {
         EVP_MD_CTX_free(context);
     }
 

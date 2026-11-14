@@ -15,12 +15,12 @@
 
 class MockShadowWrapper : public IShadowWrapper
 {
-    public:
-        MOCK_METHOD(int, lckpwdf, (), (override));
-        MOCK_METHOD(void, setspent, (), (override));
-        MOCK_METHOD(struct spwd*, getspent, (), (override));
-        MOCK_METHOD(void, endspent, (), (override));
-        MOCK_METHOD(int, ulckpwdf, (), (override));
+public:
+    MOCK_METHOD(int, lckpwdf, (), (override));
+    MOCK_METHOD(void, setspent, (), (override));
+    MOCK_METHOD(struct spwd*, getspent, (), (override));
+    MOCK_METHOD(void, endspent, (), (override));
+    MOCK_METHOD(int, ulckpwdf, (), (override));
 };
 
 /// @brief Builds a shadow entry with the stock aging fields. Name and password stay pointers, so
@@ -44,9 +44,7 @@ static void expectSingleEntry(MockShadowWrapper& wrapper, struct spwd* entry)
 {
     EXPECT_CALL(wrapper, lckpwdf()).WillOnce(::testing::Return(0));
     EXPECT_CALL(wrapper, setspent()).Times(1);
-    EXPECT_CALL(wrapper, getspent())
-    .WillOnce(::testing::Return(entry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(wrapper, getspent()).WillOnce(::testing::Return(entry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(wrapper, endspent()).Times(1);
     EXPECT_CALL(wrapper, ulckpwdf()).WillOnce(::testing::Return(0));
 }
@@ -205,15 +203,11 @@ TEST(ShadowProviderTests, CollectReturnsExpectedJson)
     // Password not_set
     fakeEntry.sp_pwdp = strdup("!!");
 
-    EXPECT_CALL(*mockWrapper, lckpwdf())
-    .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*mockWrapper, lckpwdf()).WillOnce(::testing::Return(0));
     EXPECT_CALL(*mockWrapper, setspent()).Times(1);
-    EXPECT_CALL(*mockWrapper, getspent())
-    .WillOnce(::testing::Return(&fakeEntry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*mockWrapper, getspent()).WillOnce(::testing::Return(&fakeEntry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endspent()).Times(1);
-    EXPECT_CALL(*mockWrapper, ulckpwdf())
-    .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*mockWrapper, ulckpwdf()).WillOnce(::testing::Return(0));
     ShadowProvider provider(mockWrapper);
     auto result = provider.collect();
 
@@ -257,16 +251,14 @@ TEST(ShadowProviderTests, CollectReturnsJsonArray)
     // Password locked
     fakeEntry2.sp_pwdp = strdup("!SomePass");
 
-    EXPECT_CALL(*mockWrapper, lckpwdf())
-    .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*mockWrapper, lckpwdf()).WillOnce(::testing::Return(0));
     EXPECT_CALL(*mockWrapper, setspent()).Times(1);
     EXPECT_CALL(*mockWrapper, getspent())
-    .WillOnce(::testing::Return(&fakeEntry))
-    .WillOnce(::testing::Return(&fakeEntry2))
-    .WillOnce(::testing::Return(nullptr));
+        .WillOnce(::testing::Return(&fakeEntry))
+        .WillOnce(::testing::Return(&fakeEntry2))
+        .WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endspent()).Times(1);
-    EXPECT_CALL(*mockWrapper, ulckpwdf())
-    .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*mockWrapper, ulckpwdf()).WillOnce(::testing::Return(0));
 
     ShadowProvider provider(mockWrapper);
     auto result = provider.collect();

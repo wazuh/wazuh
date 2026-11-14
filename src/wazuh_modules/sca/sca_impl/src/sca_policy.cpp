@@ -38,23 +38,20 @@ void SCAPolicy::Run(std::function<void(const CheckResult&)> reportCheckResult)
 {
     m_scanInProgress = true;
 
-    DEFER([this]()
-    {
-        m_scanInProgress = false;
-    });
+    DEFER([this]() { m_scanInProgress = false; });
 
     Scan(reportCheckResult);
 }
 
-void SCAPolicy::Scan(
-    const std::function<void(const CheckResult&)>& reportCheckResult)
+void SCAPolicy::Scan(const std::function<void(const CheckResult&)>& reportCheckResult)
 {
     auto requirementsOk = sca::CheckResult::Passed;
     std::string requirementsReason;
 
     if (!m_requirements.rules.empty())
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Starting Policy requirements evaluation for policy \"" + m_id + "\".");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Starting Policy requirements evaluation for policy \"" + m_id + "\".");
 
         auto resultEvaluator = CheckConditionEvaluator::FromString(m_requirements.condition);
 
@@ -66,7 +63,8 @@ void SCAPolicy::Scan(
             }
 
             const auto ruleResult = rule->Evaluate();
-            resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
+            resultEvaluator.AddResult(
+                RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
         }
 
         requirementsOk = resultEvaluator.Result();
@@ -76,7 +74,9 @@ void SCAPolicy::Scan(
             requirementsReason = resultEvaluator.GetUnresolvedReason();
         }
 
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Policy requirements evaluation completed for policy \"" + m_id + "\", result: " + sca::CheckResultToString(requirementsOk));
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Policy requirements evaluation completed for policy \"" + m_id +
+                                             "\", result: " + sca::CheckResultToString(requirementsOk));
     }
 
     if (requirementsOk == sca::CheckResult::Passed)
@@ -99,23 +99,19 @@ void SCAPolicy::Scan(
                     }
 
                     const auto ruleResult = rule->Evaluate();
-                    resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
+                    resultEvaluator.AddResult(
+                        RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
                 }
 
                 const auto result = resultEvaluator.Result();
                 const auto reason = resultEvaluator.Reason();
 
                 // NOLINTBEGIN(bugprone-unchecked-optional-access)
-                LoggingHelper::getInstance().log(
-                    LOG_DEBUG,
-                    "Policy check \"" +
-                    check.id.value() +
-                    "\" evaluation completed for policy \"" +
-                    m_id +
-                    "\", result: " +
-                    sca::CheckResultToString(result) +
-                    (reason.empty() ? "" : ", reason: " + OnOneLine(reason))
-                );
+                LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                 "Policy check \"" + check.id.value() +
+                                                     "\" evaluation completed for policy \"" + m_id +
+                                                     "\", result: " + sca::CheckResultToString(result) +
+                                                     (reason.empty() ? "" : ", reason: " + OnOneLine(reason)));
 
                 reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(result), reason});
                 // NOLINTEND(bugprone-unchecked-optional-access)
@@ -123,8 +119,9 @@ void SCAPolicy::Scan(
             catch (const std::exception& e)
             {
                 // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-                LoggingHelper::getInstance().log(LOG_ERROR, "Failed to evaluate check '" + check.id.value() + "' of policy '" +
-                                                 m_id + "'. Skipping it. Error: " + e.what());
+                LoggingHelper::getInstance().log(LOG_ERROR,
+                                                 "Failed to evaluate check '" + check.id.value() + "' of policy '" +
+                                                     m_id + "'. Skipping it. Error: " + e.what());
             }
         }
 
@@ -137,7 +134,8 @@ void SCAPolicy::Scan(
         for (const auto& check : m_checks)
         {
             // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-            reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotRun), requirementsReason});
+            reportCheckResult(
+                {m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotRun), requirementsReason});
         }
     }
     else
@@ -147,19 +145,23 @@ void SCAPolicy::Scan(
         // cannot be evaluated (an invalid rule) is not a failed one, so say which it was.
         if (requirementsOk == sca::CheckResult::NotApplicable)
         {
-            LoggingHelper::getInstance().log(LOG_INFO,
-                                             "Policy \"" + m_id + "\" skipped: its requirements could not be evaluated: " +
-                                             requirementsReason);
+            LoggingHelper::getInstance().log(
+                LOG_INFO,
+                "Policy \"" + m_id + "\" skipped: its requirements could not be evaluated: " + requirementsReason);
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "Policy \"" + m_id + "\" skipped: its requirements are not met.");
+            LoggingHelper::getInstance().log(LOG_INFO,
+                                             "Policy \"" + m_id + "\" skipped: its requirements are not met.");
         }
 
         for (const auto& check : m_checks)
         {
             // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-            reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotApplicable), "Policy requirements not met"});
+            reportCheckResult({m_id,
+                               check.id.value(),
+                               sca::CheckResultToString(sca::CheckResult::NotApplicable),
+                               "Policy requirements not met"});
         }
     }
 }

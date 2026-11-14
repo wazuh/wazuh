@@ -22,21 +22,22 @@
 #define ENROLLMENT_H
 
 #include "enrollment_status.h" /* w_enroll_status_t, w_enroll_action_t */
-#include "https_client.h"  /* hc_enroll_result_t */
+#include "https_client.h"      /* hc_enroll_result_t */
 
 /** @brief One built /enroll request, ready for w_https_client_enroll(). */
-typedef struct w_enroll_request_t {
-    char *body_json; /**< Heap-allocated JSON body. Freed by w_enroll_request_destroy(). */
-    char *password;  /**< Heap-allocated password, or NULL for mTLS/open mode
-                       *   (no bearer token). Freed by w_enroll_request_destroy(). */
+typedef struct w_enroll_request_t
+{
+    char* body_json; /**< Heap-allocated JSON body. Freed by w_enroll_request_destroy(). */
+    char* password;  /**< Heap-allocated password, or NULL for mTLS/open mode
+                      *   (no bearer token). Freed by w_enroll_request_destroy(). */
     /** Re-enrollment credential (#39064), both NULL unless this agent holds a
      *  re-enrollment secret: the `kid` is the agent's own canonical id and the key is
      *  the HKDF (label WAZUH-REENROLL-KEY) of the stored secret, as 64 hex characters.
      *  When set they take priority over `password` inside the transport module, which
      *  is where every bearer is minted. Freed -- and the key wiped -- by
      *  w_enroll_request_destroy(). */
-    char *enroll_kid;
-    char *enroll_key_hex;
+    char* enroll_kid;
+    char* enroll_key_hex;
 } w_enroll_request_t;
 
 /**
@@ -62,10 +63,10 @@ typedef struct w_enroll_request_t {
  * @return 0 on success; -1 on a local validation failure (e.g. an invalid
  *         configured agent name or agent_address) -- nothing is sent in that case.
  */
-int w_enrollment_build_request(w_enroll_request_t *out);
+int w_enrollment_build_request(w_enroll_request_t* out);
 
 /** @brief Frees the heap fields of a w_enroll_request_t. NULL-safe. */
-void w_enroll_request_destroy(w_enroll_request_t *request);
+void w_enroll_request_destroy(w_enroll_request_t* request);
 
 /**
  * @brief What a refused /enroll response says about why, whichever error envelope carried it.
@@ -74,7 +75,8 @@ void w_enroll_request_destroy(w_enroll_request_t *request);
  * w_enrollment_process_response() writes and the reason wazuh-agent-auth (and the Windows
  * enrollment dialog that reads it) shows must not disagree about what the manager said.
  */
-typedef struct w_enroll_error_t {
+typedef struct w_enroll_error_t
+{
     char message[256];     /**< The manager's reason, "" when it gave none. */
     char auth_class[64];   /**< The nested envelope's string `code` (a 401's class), or "". */
     int authd_code;        /**< The nested envelope's numeric `code`, 0 when absent. */
@@ -91,7 +93,7 @@ typedef struct w_enroll_error_t {
  * @param result The /enroll outcome. Only http_code and body are read.
  * @param out Filled in; zeroed first.
  */
-void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t *out);
+void w_enrollment_parse_error(const hc_enroll_result_t* result, w_enroll_error_t* out);
 
 /**
  * @brief Tells whether a refused /enroll is the manager refusing the enrollment token itself:
@@ -107,14 +109,13 @@ void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t
  * @return What happened to the token in plain words ("has expired"), or NULL when the refusal is
  *         not about the token.
  */
-const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *error, char *reason,
-                                       size_t reason_size);
+const char* w_enrollment_token_refusal(long http_code, const w_enroll_error_t* error, char* reason, size_t reason_size);
 
 /**
  * @brief The enrollment token id a request signed with, or "(id unknown)" when its kid is not a
  *        token id (a re-enrollment bearer's, or none).
  */
-const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
+const char* w_enrollment_token_id_or_unknown(const char* enroll_kid);
 
 /**
  * @brief Parses one /enroll HTTP outcome and, on success, writes client.keys
@@ -127,6 +128,6 @@ const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
  * crypto method: that stays the orchestrator's job (start_agent.c's
  * try_enroll_to_server()), same as it is today.
  */
-w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid);
+w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t* result, const char* enroll_kid);
 
 #endif /* ENROLLMENT_H */

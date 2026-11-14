@@ -113,8 +113,13 @@ namespace
     // perfectly valid chain for the wrong identity. notBefore/notAfter default to "valid
     // now, for an hour" (the original shape); the date-failure tests below override them
     // to isolate a certificate-validity-period failure from the hostname check.
-    void makeCaSignedLeaf(X509* caCert, EVP_PKEY* caKey, const char* san, EVP_PKEY** keyOut, X509** certOut,
-                          long notBeforeOffsetSeconds = 0, long notAfterOffsetSeconds = 60L * 60L)
+    void makeCaSignedLeaf(X509* caCert,
+                          EVP_PKEY* caKey,
+                          const char* san,
+                          EVP_PKEY** keyOut,
+                          X509** certOut,
+                          long notBeforeOffsetSeconds = 0,
+                          long notAfterOffsetSeconds = 60L * 60L)
     {
         EVP_PKEY* pkey = EVP_RSA_gen(2048);
         X509* cert = X509_new();
@@ -123,8 +128,7 @@ namespace
         X509_gmtime_adj(X509_get_notAfter(cert), notAfterOffsetSeconds);
         X509_set_pubkey(cert, pkey);
         X509_NAME* name = X509_get_subject_name(cert);
-        X509_NAME_add_entry_by_txt(
-            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("leaf"), -1, -1, 0);
+        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("leaf"), -1, -1, 0);
         X509_set_issuer_name(cert, X509_get_subject_name(caCert));
         addExtension(cert, NID_subject_alt_name, san);
         X509_sign(cert, caKey, EVP_sha256());
@@ -155,60 +159,60 @@ namespace
     // before any HTTP status.
     class TlsServer
     {
-        public:
-            // extraChainCert, when given, is appended after `cert` via SSL_CTX_add1_chain_cert,
-            // which bumps its own refcount -- the caller still owns/frees its X509* like every
-            // other cert here (e.g. a genuine CA an attacker leaf doesn't actually chain up to).
-            TlsServer(X509* cert, EVP_PKEY* key, uint16_t port, X509* extraChainCert = nullptr)
-                : m_server(cert, key)
+    public:
+        // extraChainCert, when given, is appended after `cert` via SSL_CTX_add1_chain_cert,
+        // which bumps its own refcount -- the caller still owns/frees its X509* like every
+        // other cert here (e.g. a genuine CA an attacker leaf doesn't actually chain up to).
+        TlsServer(X509* cert, EVP_PKEY* key, uint16_t port, X509* extraChainCert = nullptr)
+            : m_server(cert, key)
+        {
+            if (extraChainCert != nullptr)
             {
-                if (extraChainCert != nullptr)
-                {
-                    SSL_CTX_add1_chain_cert(m_server.ssl_context(), extraChainCert);
-                }
-
-                m_server.Post("/stateless",
-                              [](const httplib::Request&, httplib::Response & response)
-                {
-                    response.status = 200;
-                    response.set_content("ok", "text/plain");
-                });
-                m_thread = std::thread([this, port] { m_server.listen("127.0.0.1", port); });
-                waitUntilReady(port);
+                SSL_CTX_add1_chain_cert(m_server.ssl_context(), extraChainCert);
             }
 
-            ~TlsServer()
+            m_server.Post("/stateless",
+                          [](const httplib::Request&, httplib::Response& response)
+                          {
+                              response.status = 200;
+                              response.set_content("ok", "text/plain");
+                          });
+            m_thread = std::thread([this, port] { m_server.listen("127.0.0.1", port); });
+            waitUntilReady(port);
+        }
+
+        ~TlsServer()
+        {
+            m_server.stop();
+
+            if (m_thread.joinable())
             {
-                m_server.stop();
-
-                if (m_thread.joinable())
-                {
-                    m_thread.join();
-                }
+                m_thread.join();
             }
+        }
 
-            TlsServer(const TlsServer&) = delete;
-            TlsServer& operator=(const TlsServer&) = delete;
+        TlsServer(const TlsServer&) = delete;
+        TlsServer& operator=(const TlsServer&) = delete;
 
-        private:
-            static void waitUntilReady(uint16_t port)
+    private:
+        static void waitUntilReady(uint16_t port)
+        {
+            httplib::Client probe {"https://127.0.0.1:" + std::to_string(port)};
+            probe.enable_server_certificate_verification(false);
+
+            for (int attempt = 0; attempt < 200; attempt++)
             {
-                httplib::Client probe {"https://127.0.0.1:" + std::to_string(port)};
-                probe.enable_server_certificate_verification(false);
-
-                for (int attempt = 0; attempt < 200; attempt++)
+                if (auto result = probe.Post("/stateless"))
                 {
-                    if (auto result = probe.Post("/stateless"))
-                    {
-                        return;
-                    }
-
-                    usleep(20 * 1000);
+                    return;
                 }
-            }
 
-            httplib::SSLServer m_server;
-            std::thread m_thread;
+                usleep(20 * 1000);
+            }
+        }
+
+        httplib::SSLServer m_server;
+        std::thread m_thread;
     };
 
     ModuleConfig tlsFullConfig(uint16_t port, const std::string& caPath)
@@ -243,8 +247,8 @@ namespace
 
         if (!fallbackCaPath.empty())
         {
-            std::strncpy(config.system_fallback_ca_path, fallbackCaPath.c_str(),
-                         sizeof(config.system_fallback_ca_path) - 1);
+            std::strncpy(
+                config.system_fallback_ca_path, fallbackCaPath.c_str(), sizeof(config.system_fallback_ca_path) - 1);
         }
 
         return ModuleConfig::fromC(config);
@@ -257,24 +261,24 @@ namespace
     // without needing root or mutating the test machine's real CA store.
     class FixedFsProbe final : public IFsProbe
     {
-        public:
-            explicit FixedFsProbe(std::string bundlePath)
-                : m_bundlePath(std::move(bundlePath))
-            {
-            }
+    public:
+        explicit FixedFsProbe(std::string bundlePath)
+            : m_bundlePath(std::move(bundlePath))
+        {
+        }
 
-            bool isReadableFile(const std::string&) const override
-            {
-                return true;
-            }
+        bool isReadableFile(const std::string&) const override
+        {
+            return true;
+        }
 
-            std::string findSystemCaBundle() const override
-            {
-                return m_bundlePath;
-            }
+        std::string findSystemCaBundle() const override
+        {
+            return m_bundlePath;
+        }
 
-        private:
-            std::string m_bundlePath;
+    private:
+        std::string m_bundlePath;
     };
 
     HttpResponse sendSigned(CurlPerformer& performer, const JwtSigner& signer, const std::string& body)

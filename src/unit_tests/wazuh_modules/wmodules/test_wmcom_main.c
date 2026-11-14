@@ -28,75 +28,89 @@ static int recv_errno;
 
 /* The listener serves one client and stops: closing the client is the last step of each
  * exchange, so it is where the loop is told to end. */
-int __wrap_close(int fd) {
-    if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0])) {
+int __wrap_close(int fd)
+{
+    if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0]))
+    {
         closed_fds[closed_fds_count++] = fd;
     }
 
-    if (fd == TEST_PEER) {
+    if (fd == TEST_PEER)
+    {
         wm_shutdown_requested = 1;
     }
 
     return 0;
 }
 
-int __wrap_OS_BindUnixDomainWithPerms(__attribute__((unused)) const char *path,
+int __wrap_OS_BindUnixDomainWithPerms(__attribute__((unused)) const char* path,
                                       __attribute__((unused)) int type,
                                       __attribute__((unused)) int max_msg_size,
                                       __attribute__((unused)) uid_t uid,
                                       __attribute__((unused)) gid_t gid,
-                                      __attribute__((unused)) mode_t perm) {
+                                      __attribute__((unused)) mode_t perm)
+{
     return TEST_SOCKET;
 }
 
-int __wrap_wm_select_interruptible(int sock, __attribute__((unused)) fd_set *fdset) {
+int __wrap_wm_select_interruptible(int sock, __attribute__((unused)) fd_set* fdset)
+{
     check_expected(sock);
     return 1;
 }
 
-int __wrap_accept(int sock, __attribute__((unused)) struct sockaddr *address,
-                  __attribute__((unused)) socklen_t *address_len) {
+int __wrap_accept(int sock,
+                  __attribute__((unused)) struct sockaddr* address,
+                  __attribute__((unused)) socklen_t* address_len)
+{
     check_expected(sock);
     return TEST_PEER;
 }
 
-int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds) {
+int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds)
+{
     check_expected(socket);
     check_expected(seconds);
     check_expected(useconds);
     return 0;
 }
 
-int __wrap_OS_SetSendTimeout(int socket, int seconds) {
+int __wrap_OS_SetSendTimeout(int socket, int seconds)
+{
     check_expected(socket);
     check_expected(seconds);
     return 0;
 }
 
-int __wrap_OS_RecvSecureTCP(int sock, char *ret, uint32_t size) {
+int __wrap_OS_RecvSecureTCP(int sock, char* ret, uint32_t size)
+{
     check_expected(sock);
 
-    const char *data = mock_type(const char *);
-    if (data) {
+    const char* data = mock_type(const char*);
+    if (data)
+    {
         strncpy(ret, data, size);
     }
 
     const int result = mock_type(int);
-    if (result == -1) {
+    if (result == -1)
+    {
         errno = recv_errno;
     }
 
     return result;
 }
 
-int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void *msg) {
+int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void* msg)
+{
     check_expected(sock);
     check_expected(size);
     check_expected(msg);
     return 0;
 }
 
-static int setup(void **state) {
+static int setup(void** state)
+{
     (void)state;
     closed_fds_count = 0;
     recv_errno = 0;
@@ -105,13 +119,15 @@ static int setup(void **state) {
     return 0;
 }
 
-static int teardown(void **state) {
+static int teardown(void** state)
+{
     (void)state;
     wm_shutdown_requested = 0;
     return 0;
 }
 
-static void expect_client_accepted(void) {
+static void expect_client_accepted(void)
+{
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread ready");
 
     expect_value(__wrap_wm_select_interruptible, sock, TEST_SOCKET);
@@ -128,28 +144,31 @@ static void expect_client_accepted(void) {
 }
 
 // No module takes the message, so modulesSync() retries before giving up.
-static void expect_sync_retries_exhausted(void) {
+static void expect_sync_retries_exhausted(void)
+{
     expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
     expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
     expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
     expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
 }
 
-static void assert_client_and_socket_closed(void) {
+static void assert_client_and_socket_closed(void)
+{
     assert_int_equal(closed_fds_count, 2);
     assert_int_equal(closed_fds[0], TEST_PEER);
     assert_int_equal(closed_fds[1], TEST_SOCKET);
 }
 
-static void test_wmcom_main_closes_client_on_oversize_request(void **state) {
+static void test_wmcom_main_closes_client_on_oversize_request(void** state)
+{
     (void)state;
 
     expect_client_accepted();
     will_return(__wrap_OS_RecvSecureTCP, NULL);
     will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+    expect_string(
+        __wrap__merror, formatted_msg, "At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
     expect_string(__wrap__mdebug1, formatted_msg, "Local server thread finished.");
 
     wmcom_main(NULL);
@@ -157,7 +176,8 @@ static void test_wmcom_main_closes_client_on_oversize_request(void **state) {
     assert_client_and_socket_closed();
 }
 
-static void test_wmcom_main_closes_client_on_receive_error(void **state) {
+static void test_wmcom_main_closes_client_on_receive_error(void** state)
+{
     (void)state;
     char expected[OS_SIZE_256];
 
@@ -175,7 +195,8 @@ static void test_wmcom_main_closes_client_on_receive_error(void **state) {
     assert_client_and_socket_closed();
 }
 
-static void test_wmcom_main_closes_client_that_does_not_send(void **state) {
+static void test_wmcom_main_closes_client_that_does_not_send(void** state)
+{
     (void)state;
 
     expect_client_accepted();
@@ -183,7 +204,8 @@ static void test_wmcom_main_closes_client_that_does_not_send(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, NULL);
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "At wmcom_main(): a local client sent nothing for 7 seconds before completing its request.");
     expect_string(__wrap__mdebug1, formatted_msg, "Local server thread finished.");
 
@@ -192,7 +214,8 @@ static void test_wmcom_main_closes_client_that_does_not_send(void **state) {
     assert_client_and_socket_closed();
 }
 
-static void test_wmcom_main_answers_and_closes_client(void **state) {
+static void test_wmcom_main_answers_and_closes_client(void** state)
+{
     (void)state;
     static const char EXPECTED_REPLY[] = "err Unrecognized command";
 
@@ -216,7 +239,8 @@ static void test_wmcom_main_answers_and_closes_client(void **state) {
     assert_client_and_socket_closed();
 }
 
-static void test_wmcom_main_closes_client_on_empty_request(void **state) {
+static void test_wmcom_main_closes_client_on_empty_request(void** state)
+{
     (void)state;
 
     expect_client_accepted();
@@ -231,12 +255,13 @@ static void test_wmcom_main_closes_client_on_empty_request(void **state) {
     assert_client_and_socket_closed();
 }
 
-static void test_wmcom_main_terminates_a_full_size_request(void **state) {
+static void test_wmcom_main_terminates_a_full_size_request(void** state)
+{
     (void)state;
     static const char EXPECTED_REPLY[] = "err Unrecognized command";
-    char *request = NULL;
-    char *expected_sync = NULL;
-    char *expected_unrecognized = NULL;
+    char* request = NULL;
+    char* expected_sync = NULL;
+    char* expected_unrecognized = NULL;
     os_calloc(OS_MAXSTR + 1, sizeof(char), request);
     os_calloc(OS_MAXSTR, sizeof(char), expected_sync);
     os_calloc(OS_MAXSTR, sizeof(char), expected_unrecognized);
@@ -268,7 +293,8 @@ static void test_wmcom_main_terminates_a_full_size_request(void **state) {
     os_free(request);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wmcom_main_closes_client_on_oversize_request, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wmcom_main_closes_client_on_receive_error, setup, teardown),

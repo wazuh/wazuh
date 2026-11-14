@@ -22,11 +22,11 @@ namespace Utils
 
     static bool patternMatch(const std::string& entryName, const std::string& pattern)
     {
-        auto match { true };
+        auto match {true};
         // Match the glob pattern without regex
-        auto patternPos { 0u };
+        auto patternPos {0u};
 
-        for (auto i { 0u }; i < entryName.size(); ++i)
+        for (auto i {0u}; i < entryName.size(); ++i)
         {
             if (patternPos < pattern.size())
             {
@@ -88,6 +88,6 @@ namespace Utils
         return match;
     }
 #pragma GCC diagnostic pop
-}
+} // namespace Utils
 
 #endif // _GLOB_HELPER_H

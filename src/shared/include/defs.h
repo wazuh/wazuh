@@ -157,11 +157,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 // standardized names; the agent keeps the legacy ones until the agent sockets are
 // renamed as a whole. Delete this fork then.
 #ifdef CLIENT
-#define WM_LOCAL_SOCK      "queue/sockets/wmodules"
-#define CONTROL_SOCK       "queue/sockets/control"
+#define WM_LOCAL_SOCK "queue/sockets/wmodules"
+#define CONTROL_SOCK  "queue/sockets/control"
 #else
-#define WM_LOCAL_SOCK      "queue/sockets/wmodules.sock"
-#define CONTROL_SOCK       "queue/sockets/control.sock"
+#define WM_LOCAL_SOCK "queue/sockets/wmodules.sock"
+#define CONTROL_SOCK  "queue/sockets/control.sock"
 #endif
 
 // Attempts to check sockets availability
@@ -183,7 +183,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_TASK_MODULE_URL "http://localhost"
 
 /* Active Response files */
-#define AR_BINDIR      "active-response/bin"
+#define AR_BINDIR "active-response/bin"
 #ifndef WIN32
 #ifdef CLIENT
 #define AGENTCONFIG  "etc/shared/agent.conf"
@@ -296,17 +296,17 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Authentication keys file */
 #ifndef WIN32
 #ifdef CLIENT
-#define KEYS_FILE  "etc/client.keys"
-#define AUTHD_PASS "etc/authd.pass"
+#define KEYS_FILE              "etc/client.keys"
+#define AUTHD_PASS             "etc/authd.pass"
 #define ENROLLMENT_TOKENS_FILE "etc/enrollment_tokens.json"
 #else
-#define KEYS_FILE  WAZUH_MANAGER_CONF_DIR "/client.keys"
-#define AUTHD_PASS WAZUH_MANAGER_CONF_DIR "/authd.pass"
+#define KEYS_FILE              WAZUH_MANAGER_CONF_DIR "/client.keys"
+#define AUTHD_PASS             WAZUH_MANAGER_CONF_DIR "/authd.pass"
 #define ENROLLMENT_TOKENS_FILE WAZUH_MANAGER_CONF_DIR "/enrollment_tokens.json"
 #endif
 #else
-#define KEYS_FILE  "client.keys"
-#define AUTHD_PASS "authd.pass"
+#define KEYS_FILE              "client.keys"
+#define AUTHD_PASS             "authd.pass"
 #define ENROLLMENT_TOKENS_FILE "enrollment_tokens.json"
 #endif
 

@@ -28,24 +28,26 @@
  */
 class CompressionGate final
 {
-    public:
-        /// A compressed attempt got a 415. Idempotent; safe from any thread.
-        void reportRejected()
+public:
+    /// A compressed attempt got a 415. Idempotent; safe from any thread.
+    void reportRejected()
+    {
+        if (!m_disabled.exchange(true, std::memory_order_relaxed))
         {
-            if (!m_disabled.exchange(true, std::memory_order_relaxed))
-            {
-                LOGFN_INFO(m_logFn, "Manager rejected 'zstd' compression. HTTPS traffic will be uncompressed until the next restart.");
-            }
+            LOGFN_INFO(
+                m_logFn,
+                "Manager rejected 'zstd' compression. HTTPS traffic will be uncompressed until the next restart.");
         }
+    }
 
-        bool disabled() const
-        {
-            return m_disabled.load(std::memory_order_relaxed);
-        }
+    bool disabled() const
+    {
+        return m_disabled.load(std::memory_order_relaxed);
+    }
 
-    private:
-        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
-        std::atomic<bool> m_disabled {false};
+private:
+    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+    std::atomic<bool> m_disabled {false};
 };
 
 #endif // _HC_COMPRESSION_GATE_HPP

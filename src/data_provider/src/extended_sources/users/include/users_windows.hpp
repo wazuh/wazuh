@@ -19,30 +19,29 @@
 /// generate JSON output, optionally applying UID-based constraints.
 class UsersProvider
 {
-    public:
-        /// @brief Constructs the provider with a custom users helper.
-        /// @param m_usersHelper Shared pointer to an `IUsersHelper` implementation.
-        explicit UsersProvider(
-            std::shared_ptr<IUsersHelper> m_usersHelper);
+public:
+    /// @brief Constructs the provider with a custom users helper.
+    /// @param m_usersHelper Shared pointer to an `IUsersHelper` implementation.
+    explicit UsersProvider(std::shared_ptr<IUsersHelper> m_usersHelper);
 
-        /// @brief Default constructor. Uses default-initialized helper.
-        UsersProvider();
+    /// @brief Default constructor. Uses default-initialized helper.
+    UsersProvider();
 
-        /// @brief Collects information about all users.
-        /// @return A JSON array with information for each user.
-        nlohmann::json collect();
+    /// @brief Collects information about all users.
+    /// @return A JSON array with information for each user.
+    nlohmann::json collect();
 
-        /// @brief Collects information only for users with specified UIDs.
-        /// @param uids Set of UIDs to include in the collection.
-        /// @return A JSON array with information for matching users.
-        nlohmann::json collectWithConstraints(const std::set<std::uint32_t>& uids);
+    /// @brief Collects information only for users with specified UIDs.
+    /// @param uids Set of UIDs to include in the collection.
+    /// @return A JSON array with information for matching users.
+    nlohmann::json collectWithConstraints(const std::set<std::uint32_t>& uids);
 
-    private:
-        /// @brief Generates a JSON object for a single user.
-        /// @param user A `User` structure with user details.
-        /// @return A JSON object representing the user.
-        nlohmann::json genUserJson(const User& user);
+private:
+    /// @brief Generates a JSON object for a single user.
+    /// @param user A `User` structure with user details.
+    /// @return A JSON object representing the user.
+    nlohmann::json genUserJson(const User& user);
 
-        /// @brief Helper used to retrieve user information.
-        std::shared_ptr<IUsersHelper> m_usersHelper;
+    /// @brief Helper used to retrieve user information.
+    std::shared_ptr<IUsersHelper> m_usersHelper;
 };

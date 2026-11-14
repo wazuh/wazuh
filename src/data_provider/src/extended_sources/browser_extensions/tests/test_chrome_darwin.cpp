@@ -18,12 +18,11 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
-
 
 // The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
 static std::string fixtureOwner(const std::string& path)
@@ -38,7 +37,8 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
@@ -51,14 +51,16 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
 
     for (const auto& jsonElement : extensionsJson)
     {
-        if (jsonElement.contains("manifest_hash") && jsonElement["manifest_hash"] == "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19")
+        if (jsonElement.contains("manifest_hash") &&
+            jsonElement["manifest_hash"] == "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19")
         {
             EXPECT_EQ(jsonElement["author"], "");
             EXPECT_EQ(jsonElement["browser_type"], "chrome");
@@ -72,12 +74,20 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
             EXPECT_EQ(jsonElement["name"], "Chrome Web Store Payments");
             EXPECT_EQ(jsonElement["optional_permissions"], "");
-            EXPECT_EQ(jsonElement["path"], (std::filesystem::path(mockHomePath) / "mock-user/Library/Application Support/Google/Chrome/Profile 1/Extensions/ext2/1.2.3").string());
+            EXPECT_EQ(jsonElement["path"],
+                      (std::filesystem::path(mockHomePath) /
+                       "mock-user/Library/Application Support/Google/Chrome/Profile 1/Extensions/ext2/1.2.3")
+                          .string());
             EXPECT_EQ(jsonElement["permissions"],
-                      "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
+                      "identity, webview, https://www.google.com/, https://www.googleapis.com/*, "
+                      "https://payments.google.com/payments/v4/js/integrator.js, "
+                      "https://sandbox.google.com/payments/v4/js/integrator.js");
             EXPECT_EQ(jsonElement["persistent"], "0");
             EXPECT_EQ(jsonElement["profile"], "Your Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], (std::filesystem::path(mockHomePath) / "mock-user/Library/Application Support/Google/Chrome/Profile 1").string());
+            EXPECT_EQ(
+                jsonElement["profile_path"],
+                (std::filesystem::path(mockHomePath) / "mock-user/Library/Application Support/Google/Chrome/Profile 1")
+                    .string());
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
             EXPECT_EQ(jsonElement["state"], "1");

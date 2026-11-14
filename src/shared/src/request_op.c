@@ -13,8 +13,9 @@
 
 // Create node
 
-req_node_t * req_create(int sock, const char * counter, const char * target, const char * buffer, size_t length) {
-    req_node_t * node;
+req_node_t* req_create(int sock, const char* counter, const char* target, const char* buffer, size_t length)
+{
+    req_node_t* node;
 
     os_malloc(sizeof(req_node_t), node);
     node->sock = sock;
@@ -31,7 +32,8 @@ req_node_t * req_create(int sock, const char * counter, const char * target, con
 }
 
 // Update node and signal available. It locks mutex.
-void req_update(req_node_t * node, const char * buffer, size_t length) {
+void req_update(req_node_t* node, const char* buffer, size_t length)
+{
     w_mutex_lock(&node->mutex);
     os_free(node->buffer);
     os_malloc(length + 1, node->buffer);
@@ -43,10 +45,13 @@ void req_update(req_node_t * node, const char * buffer, size_t length) {
 }
 
 // Free node
-void req_free(req_node_t * node) {
-    if (node) {
+void req_free(req_node_t* node)
+{
+    if (node)
+    {
 #ifndef WIN32
-        if (node->sock >= 0) {
+        if (node->sock >= 0)
+        {
             close(node->sock);
         }
 #endif

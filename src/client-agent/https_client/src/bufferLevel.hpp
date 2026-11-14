@@ -43,114 +43,113 @@
  */
 class BufferLevelLadder final
 {
-    public:
-        struct Transition
-        {
-            bool announce;          ///< True when the agent reports this step.
-            hc_buffer_level_t level;
-        };
+public:
+    struct Transition
+    {
+        bool announce; ///< True when the agent reports this step.
+        hc_buffer_level_t level;
+    };
 
-        BufferLevelLadder(uint32_t warnLevel, uint32_t normalLevel, uint32_t toleranceSeconds)
-            : m_warnLevel(warnLevel)
-              // Mirrors internal_options' own constraint (normal_level max is
-              // warn_level - 1): a config that inverts them would otherwise make
-              // every observation both "warn" and "normal" at once.
-            , m_normalLevel(normalLevel < warnLevel ? normalLevel
-                            : (warnLevel > 0 ? warnLevel - 1 : 0))
-            , m_toleranceSeconds(toleranceSeconds)
+    BufferLevelLadder(uint32_t warnLevel, uint32_t normalLevel, uint32_t toleranceSeconds)
+        : m_warnLevel(warnLevel)
+        // Mirrors internal_options' own constraint (normal_level max is
+        // warn_level - 1): a config that inverts them would otherwise make
+        // every observation both "warn" and "normal" at once.
+        , m_normalLevel(normalLevel < warnLevel ? normalLevel : (warnLevel > 0 ? warnLevel - 1 : 0))
+        , m_toleranceSeconds(toleranceSeconds)
+    {
+    }
+
+    /**
+     * @brief Feeds one observation of the buffer.
+     *
+     * @param occupancyPercent Whole-buffer occupancy, 0-100.
+     * @param eventDropped     True when this observation follows a
+     *                         drop-newest rejection (buffer.c's full()).
+     * @param nowSeconds       Monotonic seconds, for the FLOOD dwell.
+     */
+    Transition observe(unsigned occupancyPercent, bool eventDropped, int64_t nowSeconds)
+    {
+        // buffer.c: from NORMAL or WARNING, a full buffer goes straight to
+        // FULL and starts the tolerance clock.
+        if (eventDropped && m_level != HC_BUFFER_FULL && m_level != HC_BUFFER_FLOOD)
         {
+            m_level = HC_BUFFER_FULL;
+            m_fullSince = nowSeconds;
+            return Transition {true, m_level};
         }
 
-        /**
-         * @brief Feeds one observation of the buffer.
-         *
-         * @param occupancyPercent Whole-buffer occupancy, 0-100.
-         * @param eventDropped     True when this observation follows a
-         *                         drop-newest rejection (buffer.c's full()).
-         * @param nowSeconds       Monotonic seconds, for the FLOOD dwell.
-         */
-        Transition observe(unsigned occupancyPercent, bool eventDropped, int64_t nowSeconds)
+        switch (m_level)
         {
-            // buffer.c: from NORMAL or WARNING, a full buffer goes straight to
-            // FULL and starts the tolerance clock.
-            if (eventDropped && m_level != HC_BUFFER_FULL && m_level != HC_BUFFER_FLOOD)
-            {
-                m_level = HC_BUFFER_FULL;
-                m_fullSince = nowSeconds;
-                return Transition {true, m_level};
-            }
+            case HC_BUFFER_NORMAL:
+                if (occupancyPercent >= m_warnLevel)
+                {
+                    m_level = HC_BUFFER_WARNING;
+                    return Transition {true, m_level};
+                }
 
-            switch (m_level)
-            {
-                case HC_BUFFER_NORMAL:
-                    if (occupancyPercent >= m_warnLevel)
-                    {
-                        m_level = HC_BUFFER_WARNING;
-                        return Transition {true, m_level};
-                    }
+                break;
 
-                    break;
+            case HC_BUFFER_WARNING:
+                if (occupancyPercent <= m_normalLevel)
+                {
+                    m_level = HC_BUFFER_NORMAL;
+                    return Transition {true, m_level};
+                }
 
-                case HC_BUFFER_WARNING:
-                    if (occupancyPercent <= m_normalLevel)
-                    {
-                        m_level = HC_BUFFER_NORMAL;
-                        return Transition {true, m_level};
-                    }
+                break;
 
-                    break;
+            case HC_BUFFER_FULL:
+                if (occupancyPercent <= m_normalLevel)
+                {
+                    m_level = HC_BUFFER_NORMAL;
+                    return Transition {true, m_level};
+                }
 
-                case HC_BUFFER_FULL:
-                    if (occupancyPercent <= m_normalLevel)
-                    {
-                        m_level = HC_BUFFER_NORMAL;
-                        return Transition {true, m_level};
-                    }
+                if (occupancyPercent <= m_warnLevel)
+                {
+                    m_level = HC_BUFFER_WARNING; // Quiet step down, as in buffer.c.
+                    return Transition {false, m_level};
+                }
 
-                    if (occupancyPercent <= m_warnLevel)
-                    {
-                        m_level = HC_BUFFER_WARNING; // Quiet step down, as in buffer.c.
-                        return Transition {false, m_level};
-                    }
+                if (nowSeconds - m_fullSince >= static_cast<int64_t>(m_toleranceSeconds))
+                {
+                    m_level = HC_BUFFER_FLOOD;
+                    return Transition {true, m_level};
+                }
 
-                    if (nowSeconds - m_fullSince >= static_cast<int64_t>(m_toleranceSeconds))
-                    {
-                        m_level = HC_BUFFER_FLOOD;
-                        return Transition {true, m_level};
-                    }
+                break;
 
-                    break;
+            case HC_BUFFER_FLOOD:
+                if (occupancyPercent <= m_normalLevel)
+                {
+                    m_level = HC_BUFFER_NORMAL;
+                    return Transition {true, m_level};
+                }
 
-                case HC_BUFFER_FLOOD:
-                    if (occupancyPercent <= m_normalLevel)
-                    {
-                        m_level = HC_BUFFER_NORMAL;
-                        return Transition {true, m_level};
-                    }
+                if (occupancyPercent <= m_warnLevel)
+                {
+                    m_level = HC_BUFFER_WARNING; // Quiet step down, as in buffer.c.
+                    return Transition {false, m_level};
+                }
 
-                    if (occupancyPercent <= m_warnLevel)
-                    {
-                        m_level = HC_BUFFER_WARNING; // Quiet step down, as in buffer.c.
-                        return Transition {false, m_level};
-                    }
-
-                    break;
-            }
-
-            return Transition {false, m_level};
+                break;
         }
 
-        hc_buffer_level_t level() const
-        {
-            return m_level;
-        }
+        return Transition {false, m_level};
+    }
 
-    private:
-        uint32_t m_warnLevel;
-        uint32_t m_normalLevel;
-        uint32_t m_toleranceSeconds;
-        hc_buffer_level_t m_level {HC_BUFFER_NORMAL};
-        int64_t m_fullSince {0};
+    hc_buffer_level_t level() const
+    {
+        return m_level;
+    }
+
+private:
+    uint32_t m_warnLevel;
+    uint32_t m_normalLevel;
+    uint32_t m_toleranceSeconds;
+    hc_buffer_level_t m_level {HC_BUFFER_NORMAL};
+    int64_t m_fullSince {0};
 };
 
 #endif // _HC_BUFFER_LEVEL_HPP

@@ -14,7 +14,8 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
+int __wrap_check_x509_cert(const SSL* ssl, const char* manager)
+{
     check_expected_ptr(ssl);
     check_expected(manager);
     return mock_type(int);

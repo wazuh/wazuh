@@ -37,37 +37,44 @@ extern void send_msg_on_startup(void);
 /* Wrappers for w_agentd_populate_metadata dependencies */
 static agent_metadata_t last_published;
 
-int __wrap_metadata_provider_update(const agent_metadata_t *metadata) {
+int __wrap_metadata_provider_update(const agent_metadata_t* metadata)
+{
     check_expected(metadata);
 
-    if (metadata != NULL) {
+    if (metadata != NULL)
+    {
         last_published = *metadata;
     }
 
     return (int)mock();
 }
 
-os_info *__wrap_get_unix_version(void) {
-    return (os_info *)mock_ptr_type(os_info *);
+os_info* __wrap_get_unix_version(void)
+{
+    return (os_info*)mock_ptr_type(os_info*);
 }
 
-os_info *__wrap_get_win_version(void) {
-    return (os_info *)mock_ptr_type(os_info *);
+os_info* __wrap_get_win_version(void)
+{
+    return (os_info*)mock_ptr_type(os_info*);
 }
 
-void __wrap_free_osinfo(os_info *osinfo) {
+void __wrap_free_osinfo(os_info* osinfo)
+{
     return;
 }
 
-int __wrap_w_https_client_submit_event(const char *frame, size_t length) {
+int __wrap_w_https_client_submit_event(const char* frame, size_t length)
+{
     check_expected(frame);
     check_expected(length);
     return (int)mock();
 }
 
 /* setup/teardown */
-static int setup_test(void **state) {
-    agt = (agent *)calloc(1, sizeof(agent));
+static int setup_test(void** state)
+{
+    agt = (agent*)calloc(1, sizeof(agent));
     agt->server = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
@@ -86,7 +93,8 @@ static int setup_test(void **state) {
     return 0;
 }
 
-static int teardown_test(void **state) {
+static int teardown_test(void** state)
+{
     os_free(agt);
     return 0;
 }
@@ -94,14 +102,16 @@ static int teardown_test(void **state) {
 /* start_agent */
 
 /* A non-startup call has nothing left to do: no connection to re-establish. */
-static void test_start_agent_not_startup_is_a_noop(void **state) {
+static void test_start_agent_not_startup_is_a_noop(void** state)
+{
     (void)state;
 
     start_agent(0);
 }
 
 /* send_msg_on_startup: same event, submitted to the HTTPS accumulator. */
-static void test_send_msg_on_startup_goes_to_https(void **state) {
+static void test_send_msg_on_startup_goes_to_https(void** state)
+{
     (void)state;
 
     expect_any(__wrap_w_https_client_submit_event, frame);
@@ -117,7 +127,8 @@ static void test_send_msg_on_startup_goes_to_https(void **state) {
  * (it is exclusively owned by metadata_provider_update_vd_feed_offset(), called from agent-info),
  * so this function has nothing to carry over or retry -- the three-attempt-read/carry-over
  * dance this file used to test here no longer exists in start_agent.c. */
-static void test_populate_metadata_publishes_identity(void **state) {
+static void test_populate_metadata_publishes_identity(void** state)
+{
     (void)state;
 
     snprintf(agent_cluster_name, sizeof(agent_cluster_name), "%s", "wazuh-cluster");
@@ -139,7 +150,8 @@ static void test_populate_metadata_publishes_identity(void **state) {
 
 /* os_platform: a fixed "windows" on Windows, whatever get_win_version() returned (it never
  * fills the field); on the other platforms, the value read by get_unix_version(). */
-static void test_populate_metadata_os_platform_from_os_info(void **state) {
+static void test_populate_metadata_os_platform_from_os_info(void** state)
+{
     (void)state;
 
     os_info os = {0};
@@ -167,7 +179,8 @@ static void test_populate_metadata_os_platform_from_os_info(void **state) {
 
 /* Without OS info at all, Windows still publishes its platform; elsewhere it stays empty
  * rather than guessed. */
-static void test_populate_metadata_os_platform_without_os_info(void **state) {
+static void test_populate_metadata_os_platform_without_os_info(void** state)
+{
     (void)state;
 
 #ifdef TEST_WINAGENT
@@ -190,7 +203,8 @@ static void test_populate_metadata_os_platform_without_os_info(void **state) {
 }
 
 /* A failed publication is reported and swallowed: it must not abort the start. */
-static void test_populate_metadata_update_failure(void **state) {
+static void test_populate_metadata_update_failure(void** state)
+{
     (void)state;
 
 #ifdef TEST_WINAGENT
@@ -205,7 +219,8 @@ static void test_populate_metadata_update_failure(void **state) {
     w_agentd_populate_metadata();
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_start_agent_not_startup_is_a_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup_goes_to_https, setup_test, teardown_test),

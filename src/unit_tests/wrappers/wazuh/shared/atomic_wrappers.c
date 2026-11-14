@@ -14,22 +14,26 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int __wrap_atomic_int_get(atomic_int_t *atomic) {
+int __wrap_atomic_int_get(atomic_int_t* atomic)
+{
     check_expected_ptr(atomic);
     return mock();
 }
 
-void __wrap_atomic_int_set(atomic_int_t *atomic, __attribute__((unused)) int value) {
+void __wrap_atomic_int_set(atomic_int_t* atomic, __attribute__((unused)) int value)
+{
     check_expected_ptr(atomic);
     atomic->data = mock();
 }
 
-int __wrap_atomic_int_inc(atomic_int_t *atomic) {
+int __wrap_atomic_int_inc(atomic_int_t* atomic)
+{
     check_expected_ptr(atomic);
     return mock();
 }
 
-int __wrap_atomic_int_dec(atomic_int_t *atomic) {
+int __wrap_atomic_int_dec(atomic_int_t* atomic)
+{
     check_expected_ptr(atomic);
     return mock();
 }

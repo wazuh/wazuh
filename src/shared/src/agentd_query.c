@@ -13,11 +13,10 @@
 #include "os_net.h"
 
 #ifdef WIN32
-extern size_t agcom_dispatch(char * command, char ** output);
+extern size_t agcom_dispatch(char* command, char** output);
 #endif
 
-bool w_query_agentd(const char* log_tag, const char* command,
-                    char* output_buffer, size_t buffer_size)
+bool w_query_agentd(const char* log_tag, const char* command, char* output_buffer, size_t buffer_size)
 {
     if (!log_tag || !command || !output_buffer || buffer_size == 0)
     {
@@ -60,7 +59,7 @@ bool w_query_agentd(const char* log_tag, const char* command,
         {
             mtdebug1(log_tag, "Empty response from agent socket");
         }
-        else if (response_length == -2)  // OS_SOCKTERR
+        else if (response_length == -2) // OS_SOCKTERR
         {
             mterror(log_tag, "Maximum buffer length reached reading from agent socket");
         }
@@ -94,8 +93,7 @@ bool w_query_agentd(const char* log_tag, const char* command,
     size_t max_copy = sizeof(response_buffer) - 1;
     if (output_len > max_copy)
     {
-        mtwarn(log_tag, "Response too large (%zu bytes), truncating to %zu bytes",
-               output_len, max_copy);
+        mtwarn(log_tag, "Response too large (%zu bytes), truncating to %zu bytes", output_len, max_copy);
         output_len = max_copy;
     }
 
@@ -117,8 +115,7 @@ bool w_query_agentd(const char* log_tag, const char* command,
 
         if (json_len >= buffer_size)
         {
-            mterror(log_tag, "Output buffer too small (%zu bytes needed, %zu available)",
-                    json_len + 1, buffer_size);
+            mterror(log_tag, "Output buffer too small (%zu bytes needed, %zu available)", json_len + 1, buffer_size);
             return false;
         }
 

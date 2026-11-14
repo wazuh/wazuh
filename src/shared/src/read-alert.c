@@ -15,52 +15,53 @@
 
 /* ** Alert xyz: email active-response ** */
 
-#define ALERT_BEGIN     "** Alert"
-#define ALERT_BEGIN_SZ  8
-#define RULE_BEGIN      "Rule: "
-#define RULE_BEGIN_SZ   6
-#define SRCIP_BEGIN     "Src IP: "
-#define SRCIP_BEGIN_SZ  8
-#define SRCPORT_BEGIN     "Src Port: "
-#define SRCPORT_BEGIN_SZ  10
-#define DSTIP_BEGIN     "Dst IP: "
-#define DSTIP_BEGIN_SZ  8
-#define DSTPORT_BEGIN     "Dst Port: "
-#define DSTPORT_BEGIN_SZ  10
-#define USER_BEGIN      "User: "
-#define USER_BEGIN_SZ   6
-#define ALERT_MAIL      "mail"
-#define ALERT_MAIL_SZ   4
-#define OLDMD5_BEGIN      "Old md5sum was: "
-#define OLDMD5_BEGIN_SZ   16
-#define NEWMD5_BEGIN      "New md5sum is : "
-#define NEWMD5_BEGIN_SZ   16
-#define OLDSHA1_BEGIN     "Old sha1sum was: "
-#define OLDSHA1_BEGIN_SZ  17
-#define NEWSHA1_BEGIN     "New sha1sum is : "
-#define NEWSHA1_BEGIN_SZ  17
-#define OLDSHA256_BEGIN     "Old sha256sum was: "
-#define OLDSHA256_BEGIN_SZ  19
-#define NEWSHA256_BEGIN     "New sha256sum is : "
-#define NEWSHA256_BEGIN_SZ  19
+#define ALERT_BEGIN        "** Alert"
+#define ALERT_BEGIN_SZ     8
+#define RULE_BEGIN         "Rule: "
+#define RULE_BEGIN_SZ      6
+#define SRCIP_BEGIN        "Src IP: "
+#define SRCIP_BEGIN_SZ     8
+#define SRCPORT_BEGIN      "Src Port: "
+#define SRCPORT_BEGIN_SZ   10
+#define DSTIP_BEGIN        "Dst IP: "
+#define DSTIP_BEGIN_SZ     8
+#define DSTPORT_BEGIN      "Dst Port: "
+#define DSTPORT_BEGIN_SZ   10
+#define USER_BEGIN         "User: "
+#define USER_BEGIN_SZ      6
+#define ALERT_MAIL         "mail"
+#define ALERT_MAIL_SZ      4
+#define OLDMD5_BEGIN       "Old md5sum was: "
+#define OLDMD5_BEGIN_SZ    16
+#define NEWMD5_BEGIN       "New md5sum is : "
+#define NEWMD5_BEGIN_SZ    16
+#define OLDSHA1_BEGIN      "Old sha1sum was: "
+#define OLDSHA1_BEGIN_SZ   17
+#define NEWSHA1_BEGIN      "New sha1sum is : "
+#define NEWSHA1_BEGIN_SZ   17
+#define OLDSHA256_BEGIN    "Old sha256sum was: "
+#define OLDSHA256_BEGIN_SZ 19
+#define NEWSHA256_BEGIN    "New sha256sum is : "
+#define NEWSHA256_BEGIN_SZ 19
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-#define SIZE_BEGIN        "Size changed from "
-#define SIZE_BEGIN_SZ     18
-#define OWNER_BEGIN        "Ownership was "
-#define OWNER_BEGIN_SZ     14
-#define GROUP_BEGIN        "Group ownership was "
-#define GROUP_BEGIN_SZ     20
-#define PERM_BEGIN        "Permissions changed from "
-#define PERM_BEGIN_SZ     25
+#define SIZE_BEGIN     "Size changed from "
+#define SIZE_BEGIN_SZ  18
+#define OWNER_BEGIN    "Ownership was "
+#define OWNER_BEGIN_SZ 14
+#define GROUP_BEGIN    "Group ownership was "
+#define GROUP_BEGIN_SZ 20
+#define PERM_BEGIN     "Permissions changed from "
+#define PERM_BEGIN_SZ  25
 
-#define LOG_LIMIT      100
+#define LOG_LIMIT 100
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 
-#define INTEGRITY_CHECKSUM_BEGIN "Integrity checksum changed for: '"
+#define INTEGRITY_CHECKSUM_BEGIN    "Integrity checksum changed for: '"
 #define INTEGRITY_CHECKSUM_BEGIN_SZ (sizeof(INTEGRITY_CHECKSUM_BEGIN) - 1)
 
-void FreeAlertData(alert_data *al_data) {
-    char **p;
+void FreeAlertData(alert_data* al_data)
+{
+    char** p;
     os_free(al_data->alertid);
     os_free(al_data->date);
     os_free(al_data->location);
@@ -81,11 +82,13 @@ void FreeAlertData(alert_data *al_data) {
     os_free(al_data->group_chg);
     os_free(al_data->perm_chg);
 
-/* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-    if (al_data->log) {
+    /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+    if (al_data->log)
+    {
         p = al_data->log;
 
-        while (*(p)) {
+        while (*(p))
+        {
             os_free(*(p));
             p++;
         }
@@ -98,27 +101,34 @@ void FreeAlertData(alert_data *al_data) {
 }
 
 /* Return alert data for the file specified */
-alert_data *GetAlertData(int flag, FILE *fp) {
+alert_data* GetAlertData(int flag, FILE* fp)
+{
 
-    alert_data *al_data;
+    alert_data* al_data;
     os_calloc(1, sizeof(alert_data), al_data);
 
     int _r = 0, issyscheck = 0;
     size_t log_size = 0;
-    char *p;
+    char* p;
     char str[OS_MAXSTR + 1];
     str[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, fp) != NULL) {
+    while (fgets(str, OS_MAXSTR, fp) != NULL)
+    {
         /* End of alert */
-        if (strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0) {
-            char *m;
+        if (strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
+        {
+            char* m;
             size_t z = 0;
             /* End of the alert. */
-            if (_r == 2) {
-                if (fseek(fp, -strlen(str), SEEK_CUR) != -1) {
+            if (_r == 2)
+            {
+                if (fseek(fp, -strlen(str), SEEK_CUR) != -1)
+                {
                     return (al_data);
-                } else {
+                }
+                else
+                {
                     goto l_error;
                 }
             }
@@ -126,7 +136,8 @@ alert_data *GetAlertData(int flag, FILE *fp) {
             p = str + ALERT_BEGIN_SZ + 1;
 
             m = strstr(p, ":");
-            if (!m) {
+            if (!m)
+            {
                 continue;
             }
 
@@ -137,31 +148,35 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
             /* Search for email flag */
             p = strchr(p, ' ');
-            if (!p) {
+            if (!p)
+            {
                 continue;
             }
 
             p++;
 
             /* Check for the flags */
-            if ((flag & CRALERT_MAIL_SET) &&
-                    (strncmp(ALERT_MAIL, p, ALERT_MAIL_SZ) != 0)) {
+            if ((flag & CRALERT_MAIL_SET) && (strncmp(ALERT_MAIL, p, ALERT_MAIL_SZ) != 0))
+            {
                 continue;
             }
 
             p = strchr(p, '-');
-            if (p) {
+            if (p)
+            {
                 p++;
                 /* Skip leading spaces */
-                while (*p == ' ') {
-                        p++;
+                while (*p == ' ')
+                {
+                    p++;
                 }
                 os_free(al_data->group);
                 os_strdup(p, al_data->group);
 
                 /* Clean newline from group */
                 os_clearnl(al_data->group, p);
-                if (al_data->group != NULL && strstr(al_data->group, "syscheck") != NULL) {
+                if (al_data->group != NULL && strstr(al_data->group, "syscheck") != NULL)
+                {
                     issyscheck = 1;
                 }
             }
@@ -171,24 +186,30 @@ alert_data *GetAlertData(int flag, FILE *fp) {
             continue;
         }
 
-        if (_r < 1) {
+        if (_r < 1)
+        {
             continue;
         }
 
         /*** Extract information from the event ***/
 
         /* r1 means: 2006 Apr 13 16:15:17 /var/log/auth.log */
-        if (_r == 1) {
+        if (_r == 1)
+        {
             /* Clear newline */
             os_clearnl(str, p);
 
             p = strchr(str, ':');
-            if (p) {
+            if (p)
+            {
                 p = strchr(p, ' ');
-                if (p) {
+                if (p)
+                {
                     *p = '\0';
                     p++;
-                } else {
+                }
+                else
+                {
                     /* If p is null it is because strchr failed */
                     merror("date or location not NULL");
                     goto l_error;
@@ -196,7 +217,8 @@ alert_data *GetAlertData(int flag, FILE *fp) {
             }
 
             /* If not, str is date and p is the location */
-            if (al_data->date || al_data->location || !p) {
+            if (al_data->date || al_data->location || !p)
+            {
                 merror("date or location not NULL or p is NULL");
                 goto l_error;
             }
@@ -206,24 +228,30 @@ alert_data *GetAlertData(int flag, FILE *fp) {
             _r = 2;
             log_size = 0;
             continue;
-        } else if (_r == 2) {
+        }
+        else if (_r == 2)
+        {
             /* Rule begin */
-            if (strncmp(RULE_BEGIN, str, RULE_BEGIN_SZ) == 0) {
+            if (strncmp(RULE_BEGIN, str, RULE_BEGIN_SZ) == 0)
+            {
                 os_clearnl(str, p);
 
                 p = str + RULE_BEGIN_SZ;
                 al_data->rule = atoi(p);
 
                 p = strchr(p, ' ');
-                if (p) {
+                if (p)
+                {
                     p++;
                     p = strchr(p, ' ');
-                    if (p) {
+                    if (p)
+                    {
                         p++;
                     }
                 }
 
-                if (!p) {
+                if (!p)
+                {
                     goto l_error;
                 }
 
@@ -231,7 +259,8 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
                 /* Get the comment */
                 p = strchr(p, '\'');
-                if (!p) {
+                if (!p)
+                {
                     goto l_error;
                 }
 
@@ -241,30 +270,36 @@ alert_data *GetAlertData(int flag, FILE *fp) {
 
                 /* Must have the closing \' */
                 p = strrchr(al_data->comment, '\'');
-                if (p) {
+                if (p)
+                {
                     *p = '\0';
-                } else {
+                }
+                else
+                {
                     goto l_error;
                 }
             }
 
             /* srcip */
-            else if (strncmp(SRCIP_BEGIN, str, SRCIP_BEGIN_SZ) == 0) {
+            else if (strncmp(SRCIP_BEGIN, str, SRCIP_BEGIN_SZ) == 0)
+            {
                 os_clearnl(str, p);
 
                 p = str + SRCIP_BEGIN_SZ;
                 os_free(al_data->srcip);
-                os_strdup(p,al_data->srcip);
+                os_strdup(p, al_data->srcip);
             }
             /* srcport */
-            else if (strncmp(SRCPORT_BEGIN, str, SRCPORT_BEGIN_SZ) == 0) {
+            else if (strncmp(SRCPORT_BEGIN, str, SRCPORT_BEGIN_SZ) == 0)
+            {
                 os_clearnl(str, p);
 
                 p = str + SRCPORT_BEGIN_SZ;
                 al_data->srcport = atoi(p);
             }
             /* dstip */
-            else if (strncmp(DSTIP_BEGIN, str, DSTIP_BEGIN_SZ) == 0) {
+            else if (strncmp(DSTIP_BEGIN, str, DSTIP_BEGIN_SZ) == 0)
+            {
                 os_clearnl(str, p);
 
                 p = str + DSTIP_BEGIN_SZ;
@@ -272,14 +307,16 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                 os_strdup(p, al_data->dstip);
             }
             /* dstport */
-            else if (strncmp(DSTPORT_BEGIN, str, DSTPORT_BEGIN_SZ) == 0) {
+            else if (strncmp(DSTPORT_BEGIN, str, DSTPORT_BEGIN_SZ) == 0)
+            {
                 os_clearnl(str, p);
 
                 p = str + DSTPORT_BEGIN_SZ;
                 al_data->dstport = atoi(p);
             }
             /* username */
-            else if (strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0) {
+            else if (strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0)
+            {
                 os_clearnl(str, p);
 
                 p = str + USER_BEGIN_SZ;
@@ -287,23 +324,30 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                 os_strdup(p, al_data->user);
             }
 
-         /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
+            /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
             /* It is a log message */
-            else if (log_size < LOG_LIMIT) {
+            else if (log_size < LOG_LIMIT)
+            {
                 os_clearnl(str, p);
 
-                if (issyscheck == 1) {
+                if (issyscheck == 1)
+                {
                     /* Use prefix length constant to avoid magic numbers and potential buffer underflow */
-                    if (strncmp(str, INTEGRITY_CHECKSUM_BEGIN, INTEGRITY_CHECKSUM_BEGIN_SZ) == 0) {
+                    if (strncmp(str, INTEGRITY_CHECKSUM_BEGIN, INTEGRITY_CHECKSUM_BEGIN_SZ) == 0)
+                    {
                         al_data->filename = strdup(str + INTEGRITY_CHECKSUM_BEGIN_SZ);
-                        if (al_data->filename) {
+                        if (al_data->filename)
+                        {
                             size_t len = strlen(al_data->filename);
-                            if (len > 0) {
-                                if (al_data->filename[len - 1] == '\r') {
+                            if (len > 0)
+                            {
+                                if (al_data->filename[len - 1] == '\r')
+                                {
                                     al_data->filename[len - 1] = '\0';
                                     len--;
                                 }
-                                if (len > 0 && al_data->filename[len - 1] == '\'') {
+                                if (len > 0 && al_data->filename[len - 1] == '\'')
+                                {
                                     al_data->filename[len - 1] = '\0';
                                 }
                             }
@@ -312,7 +356,7 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                     issyscheck = 0;
                 }
 
-                os_realloc(al_data->log, (log_size + 2) * sizeof(char *), al_data->log);
+                os_realloc(al_data->log, (log_size + 2) * sizeof(char*), al_data->log);
                 os_strdup(str, al_data->log[log_size]);
                 log_size++;
                 al_data->log[log_size] = NULL;
@@ -321,7 +365,8 @@ alert_data *GetAlertData(int flag, FILE *fp) {
     }
 
     // We reached the end of the alert and the information is saved.
-    if (feof(fp) && *str == '\0' && _r == 2) {
+    if (feof(fp) && *str == '\0' && _r == 2)
+    {
         return al_data;
     }
 

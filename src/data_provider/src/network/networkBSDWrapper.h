@@ -36,415 +36,423 @@
 #include "stringHelper.h"
 #include "wazuhCommon.hpp"
 
-static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
-{
-    { std::make_pair(IFT_ETHER, IFT_ETHER),                     "ethernet"       },
-    { std::make_pair(IFT_LOOP, IFT_LOOP),                       "loopback"       },
-    { std::make_pair(IFT_ISO88023, IFT_ISO88023),               "CSMA/CD"        },
-    { std::make_pair(IFT_ISO88024, IFT_ISO88025),               "token ring"     },
-    { std::make_pair(IFT_FDDI, IFT_FDDI),                       "FDDI"           },
-    { std::make_pair(IFT_PPP, IFT_PPP),                         "point-to-point" },
-    { std::make_pair(IFT_ATM, IFT_ATM),                         "ATM"            },
-    { std::make_pair(IFT_GIF, IFT_GIF),                         "tunnel"         },
-    { std::make_pair(IFT_STF, IFT_STF),                         "tunnel"         },
-    { std::make_pair(IFT_L2VLAN, IFT_L2VLAN),                   "vlan"           },
-    { std::make_pair(IFT_BRIDGE, IFT_BRIDGE),                   "bridge"         },
-    { std::make_pair(IFT_CELLULAR, IFT_CELLULAR),               "cellular"       },
-    { std::make_pair(IFT_OTHER, IFT_OTHER),                     "other"          },
+static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE = {
+    {std::make_pair(IFT_ETHER, IFT_ETHER), "ethernet"},
+    {std::make_pair(IFT_LOOP, IFT_LOOP), "loopback"},
+    {std::make_pair(IFT_ISO88023, IFT_ISO88023), "CSMA/CD"},
+    {std::make_pair(IFT_ISO88024, IFT_ISO88025), "token ring"},
+    {std::make_pair(IFT_FDDI, IFT_FDDI), "FDDI"},
+    {std::make_pair(IFT_PPP, IFT_PPP), "point-to-point"},
+    {std::make_pair(IFT_ATM, IFT_ATM), "ATM"},
+    {std::make_pair(IFT_GIF, IFT_GIF), "tunnel"},
+    {std::make_pair(IFT_STF, IFT_STF), "tunnel"},
+    {std::make_pair(IFT_L2VLAN, IFT_L2VLAN), "vlan"},
+    {std::make_pair(IFT_BRIDGE, IFT_BRIDGE), "bridge"},
+    {std::make_pair(IFT_CELLULAR, IFT_CELLULAR), "cellular"},
+    {std::make_pair(IFT_OTHER, IFT_OTHER), "other"},
 };
 
 class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
-        ifaddrs* m_interfaceAddress;
-        std::shared_ptr<const std::set<std::string>> m_dhcpLeaseInterfaces;
+    ifaddrs* m_interfaceAddress;
+    std::shared_ptr<const std::set<std::string>> m_dhcpLeaseInterfaces;
 
-        // Routing messages trim trailing zero bytes of a sockaddr, so a short one is padded with zeros
-        static sockaddr_storage paddedSockaddr(const sockaddr* address)
+    // Routing messages trim trailing zero bytes of a sockaddr, so a short one is padded with zeros
+    static sockaddr_storage paddedSockaddr(const sockaddr* address)
+    {
+        sockaddr_storage storage {};
+        std::memcpy(&storage, address, std::min<size_t>(address->sa_len, sizeof(storage)));
+        return storage;
+    }
+
+    static bool isUnspecified(const sockaddr_storage& storage, const int family)
+    {
+        if (AF_INET == family)
         {
-            sockaddr_storage storage {};
-            std::memcpy(&storage, address, std::min<size_t>(address->sa_len, sizeof(storage)));
-            return storage;
+            return INADDR_ANY == reinterpret_cast<const sockaddr_in*>(&storage)->sin_addr.s_addr;
         }
 
-        static bool isUnspecified(const sockaddr_storage& storage, const int family)
+        if (AF_INET6 == family)
         {
-            if (AF_INET == family)
-            {
-                return INADDR_ANY == reinterpret_cast<const sockaddr_in*>(&storage)->sin_addr.s_addr;
-            }
-
-            if (AF_INET6 == family)
-            {
-                return IN6_IS_ADDR_UNSPECIFIED(&reinterpret_cast<const sockaddr_in6*>(&storage)->sin6_addr);
-            }
-
-            return false;
+            return IN6_IS_ADDR_UNSPECIFIED(&reinterpret_cast<const sockaddr_in6*>(&storage)->sin6_addr);
         }
 
-        std::string gatewayByFamily(const int family) const
+        return false;
+    }
+
+    std::string gatewayByFamily(const int family) const
+    {
+        std::string retVal;
+        size_t tableSize {0};
+        int mib[] = {CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY};
+        const auto sdl {reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr)};
+
+        if (sdl && sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
         {
-            std::string retVal;
-            size_t tableSize { 0 };
-            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
-            const auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
+            std::unique_ptr<char[]> table {std::make_unique<char[]>(tableSize)};
 
-            if (sdl && sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
+            if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
             {
-                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
+                retVal = parseGateway(table.get(), tableSize, sdl->sdl_index, family);
+            }
+        }
 
-                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
+        return retVal;
+    }
+
+public:
+    // Returns the gateway of the default route of the given family on the interface, from a routing table dump
+    static std::string
+    parseGateway(const char* table, const size_t tableSize, const unsigned short ifIndex, const int family)
+    {
+        const char* const end {table + tableSize};
+
+        for (const char* p = table; p + sizeof(rt_msghdr) <= end;)
+        {
+            const auto msg {reinterpret_cast<const rt_msghdr*>(p)};
+
+            if (msg->rtm_msglen < sizeof(rt_msghdr) || p + msg->rtm_msglen > end)
+            {
+                break;
+            }
+
+            const char* const msgEnd {p + msg->rtm_msglen};
+            p = msgEnd;
+
+            if ((msg->rtm_addrs & (RTA_DST | RTA_GATEWAY)) != (RTA_DST | RTA_GATEWAY) ||
+                (msg->rtm_flags & (RTF_UP | RTF_GATEWAY)) != (RTF_UP | RTF_GATEWAY) ||
+                (msg->rtm_flags & (RTF_REJECT | RTF_BLACKHOLE)) || msg->rtm_index != ifIndex)
+            {
+                continue;
+            }
+
+            // Addresses follow the header in RTA_* order: destination, gateway, netmask
+            const sockaddr* addresses[3] {};
+            const char* next {reinterpret_cast<const char*>(msg + 1)};
+            const auto count {(msg->rtm_addrs & RTA_NETMASK) ? 3 : 2};
+            auto complete {true};
+
+            for (auto i = 0; i < count; ++i)
+            {
+                const auto sa {reinterpret_cast<const sockaddr*>(next)};
+
+                if (next + offsetof(sockaddr, sa_data) > msgEnd || next + sa->sa_len > msgEnd)
                 {
-                    retVal = parseGateway(table.get(), tableSize, sdl->sdl_index, family);
-                }
-            }
-
-            return retVal;
-        }
-
-    public:
-        // Returns the gateway of the default route of the given family on the interface, from a routing table dump
-        static std::string parseGateway(const char* table, const size_t tableSize, const unsigned short ifIndex, const int family)
-        {
-            const char* const end { table + tableSize };
-
-            for (const char* p = table; p + sizeof(rt_msghdr) <= end;)
-            {
-                const auto msg { reinterpret_cast<const rt_msghdr*>(p) };
-
-                if (msg->rtm_msglen < sizeof(rt_msghdr) || p + msg->rtm_msglen > end)
-                {
+                    complete = false;
                     break;
                 }
 
-                const char* const msgEnd { p + msg->rtm_msglen };
-                p = msgEnd;
-
-                if ((msg->rtm_addrs & (RTA_DST | RTA_GATEWAY)) != (RTA_DST | RTA_GATEWAY) ||
-                        (msg->rtm_flags & (RTF_UP | RTF_GATEWAY)) != (RTF_UP | RTF_GATEWAY) ||
-                        (msg->rtm_flags & (RTF_REJECT | RTF_BLACKHOLE)) ||
-                        msg->rtm_index != ifIndex)
-                {
-                    continue;
-                }
-
-                // Addresses follow the header in RTA_* order: destination, gateway, netmask
-                const sockaddr* addresses[3] {};
-                const char* next { reinterpret_cast<const char*>(msg + 1) };
-                const auto count { (msg->rtm_addrs & RTA_NETMASK) ? 3 : 2 };
-                auto complete { true };
-
-                for (auto i = 0; i < count; ++i)
-                {
-                    const auto sa { reinterpret_cast<const sockaddr*>(next) };
-
-                    if (next + offsetof(sockaddr, sa_data) > msgEnd || next + sa->sa_len > msgEnd)
-                    {
-                        complete = false;
-                        break;
-                    }
-
-                    addresses[i] = sa;
-                    next += ROUNDUP(sa->sa_len);
-                }
-
-                if (!complete ||
-                        addresses[0]->sa_family != family ||
-                        !isUnspecified(paddedSockaddr(addresses[0]), family) ||
-                        (addresses[2] && !isUnspecified(paddedSockaddr(addresses[2]), family)) ||
-                        addresses[1]->sa_family != family)
-                {
-                    continue;
-                }
-
-                auto gateway { paddedSockaddr(addresses[1]) };
-
-                if (AF_INET == family)
-                {
-                    return Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(&gateway)->sin_addr);
-                }
-
-                auto& address { reinterpret_cast<sockaddr_in6*>(&gateway)->sin6_addr };
-
-                // The kernel embeds the scope id in bytes 2-3 of link-local addresses
-                if (IN6_IS_ADDR_LINKLOCAL(&address))
-                {
-                    address.s6_addr[2] = 0;
-                    address.s6_addr[3] = 0;
-                }
-
-                return Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
+                addresses[i] = sa;
+                next += ROUNDUP(sa->sa_len);
             }
 
-            return "";
+            if (!complete || addresses[0]->sa_family != family ||
+                !isUnspecified(paddedSockaddr(addresses[0]), family) ||
+                (addresses[2] && !isUnspecified(paddedSockaddr(addresses[2]), family)) ||
+                addresses[1]->sa_family != family)
+            {
+                continue;
+            }
+
+            auto gateway {paddedSockaddr(addresses[1])};
+
+            if (AF_INET == family)
+            {
+                return Utils::NetworkHelper::IAddressToBinary(AF_INET,
+                                                              &reinterpret_cast<sockaddr_in*>(&gateway)->sin_addr);
+            }
+
+            auto& address {reinterpret_cast<sockaddr_in6*>(&gateway)->sin6_addr};
+
+            // The kernel embeds the scope id in bytes 2-3 of link-local addresses
+            if (IN6_IS_ADDR_LINKLOCAL(&address))
+            {
+                address.s6_addr[2] = 0;
+                address.s6_addr[3] = 0;
+            }
+
+            return Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
         }
+
+        return "";
+    }
 
 #ifdef __APPLE__
-        // A DHCP lease is published under State:/Network/Service/<id>/DHCP next to State:/Network/Service/<id>/IPv4,
-        // which names the interface. services is the dictionary SCDynamicStoreCopyMultiple() returns for both keys.
-        static std::set<std::string> findDhcpLeaseInterfaces(CFDictionaryRef services)
+    // A DHCP lease is published under State:/Network/Service/<id>/DHCP next to State:/Network/Service/<id>/IPv4,
+    // which names the interface. services is the dictionary SCDynamicStoreCopyMultiple() returns for both keys.
+    static std::set<std::string> findDhcpLeaseInterfaces(CFDictionaryRef services)
+    {
+        std::set<std::string> retVal;
+        const std::string ipv4Suffix {"/IPv4"};
+        const std::string servicePrefix {"State:/Network/Service/"};
+        const auto count {CFDictionaryGetCount(services)};
+        std::vector<const void*> keys(static_cast<size_t>(count));
+        std::vector<const void*> values(static_cast<size_t>(count));
+        CFDictionaryGetKeysAndValues(services, keys.data(), values.data());
+
+        for (CFIndex i = 0; i < count; ++i)
         {
-            std::set<std::string> retVal;
-            const std::string ipv4Suffix { "/IPv4" };
-            const std::string servicePrefix { "State:/Network/Service/" };
-            const auto count { CFDictionaryGetCount(services) };
-            std::vector<const void*> keys(static_cast<size_t>(count));
-            std::vector<const void*> values(static_cast<size_t>(count));
-            CFDictionaryGetKeysAndValues(services, keys.data(), values.data());
+            char keyBuffer[256] {};
+            char nameBuffer[IFNAMSIZ] {};
+            const auto key {static_cast<CFStringRef>(keys[i])};
+            const auto state {static_cast<CFDictionaryRef>(values[i])};
 
-            for (CFIndex i = 0; i < count; ++i)
+            if (CFGetTypeID(key) != CFStringGetTypeID() || CFGetTypeID(state) != CFDictionaryGetTypeID() ||
+                !CFStringGetCString(key, keyBuffer, sizeof(keyBuffer), kCFStringEncodingUTF8))
             {
-                char keyBuffer[256] {};
-                char nameBuffer[IFNAMSIZ] {};
-                const auto key { static_cast<CFStringRef>(keys[i]) };
-                const auto state { static_cast<CFDictionaryRef>(values[i]) };
-
-                if (CFGetTypeID(key) != CFStringGetTypeID() ||
-                        CFGetTypeID(state) != CFDictionaryGetTypeID() ||
-                        !CFStringGetCString(key, keyBuffer, sizeof(keyBuffer), kCFStringEncodingUTF8))
-                {
-                    continue;
-                }
-
-                const std::string keyName { keyBuffer };
-                const auto interfaceName { static_cast<CFStringRef>(CFDictionaryGetValue(state, kSCPropInterfaceName)) };
-
-                if (keyName.size() <= servicePrefix.size() + ipv4Suffix.size() ||
-                        keyName.compare(keyName.size() - ipv4Suffix.size(), ipv4Suffix.size(), ipv4Suffix) != 0 ||
-                        !interfaceName ||
-                        CFGetTypeID(interfaceName) != CFStringGetTypeID() ||
-                        !CFStringGetCString(interfaceName, nameBuffer, sizeof(nameBuffer), kCFStringEncodingUTF8))
-                {
-                    continue;
-                }
-
-                const auto dhcpKey { CFStringCreateWithCString(nullptr, (keyName.substr(0, keyName.size() - ipv4Suffix.size()) + "/DHCP").c_str(), kCFStringEncodingUTF8) };
-
-                if (dhcpKey)
-                {
-                    if (CFDictionaryContainsKey(services, dhcpKey))
-                    {
-                        retVal.insert(nameBuffer);
-                    }
-
-                    CFRelease(dhcpKey);
-                }
+                continue;
             }
 
+            const std::string keyName {keyBuffer};
+            const auto interfaceName {static_cast<CFStringRef>(CFDictionaryGetValue(state, kSCPropInterfaceName))};
+
+            if (keyName.size() <= servicePrefix.size() + ipv4Suffix.size() ||
+                keyName.compare(keyName.size() - ipv4Suffix.size(), ipv4Suffix.size(), ipv4Suffix) != 0 ||
+                !interfaceName || CFGetTypeID(interfaceName) != CFStringGetTypeID() ||
+                !CFStringGetCString(interfaceName, nameBuffer, sizeof(nameBuffer), kCFStringEncodingUTF8))
+            {
+                continue;
+            }
+
+            const auto dhcpKey {
+                CFStringCreateWithCString(nullptr,
+                                          (keyName.substr(0, keyName.size() - ipv4Suffix.size()) + "/DHCP").c_str(),
+                                          kCFStringEncodingUTF8)};
+
+            if (dhcpKey)
+            {
+                if (CFDictionaryContainsKey(services, dhcpKey))
+                {
+                    retVal.insert(nameBuffer);
+                }
+
+                CFRelease(dhcpKey);
+            }
+        }
+
+        return retVal;
+    }
+
+    // Interfaces with a DHCP lease, read from the system configuration once for the whole scan.
+    static std::set<std::string> queryDhcpLeaseInterfaces()
+    {
+        std::set<std::string> retVal;
+        const auto store {SCDynamicStoreCreate(nullptr, CFSTR("wazuh-sysinfo"), nullptr, nullptr)};
+
+        if (!store)
+        {
             return retVal;
         }
 
-        // Interfaces with a DHCP lease, read from the system configuration once for the whole scan.
-        static std::set<std::string> queryDhcpLeaseInterfaces()
+        const auto ipv4Pattern {SCDynamicStoreKeyCreateNetworkServiceEntity(
+            nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetIPv4)};
+        const auto dhcpPattern {SCDynamicStoreKeyCreateNetworkServiceEntity(
+            nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetDHCP)};
+
+        if (ipv4Pattern && dhcpPattern)
         {
-            std::set<std::string> retVal;
-            const auto store { SCDynamicStoreCreate(nullptr, CFSTR("wazuh-sysinfo"), nullptr, nullptr) };
+            const void* patternValues[] {ipv4Pattern, dhcpPattern};
+            const auto patterns {CFArrayCreate(nullptr, patternValues, 2, &kCFTypeArrayCallBacks)};
 
-            if (!store)
+            if (patterns)
             {
-                return retVal;
-            }
+                const auto services {SCDynamicStoreCopyMultiple(store, nullptr, patterns)};
 
-            const auto ipv4Pattern { SCDynamicStoreKeyCreateNetworkServiceEntity(nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetIPv4) };
-            const auto dhcpPattern { SCDynamicStoreKeyCreateNetworkServiceEntity(nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetDHCP) };
-
-            if (ipv4Pattern && dhcpPattern)
-            {
-                const void* patternValues[] { ipv4Pattern, dhcpPattern };
-                const auto patterns { CFArrayCreate(nullptr, patternValues, 2, &kCFTypeArrayCallBacks) };
-
-                if (patterns)
+                if (services)
                 {
-                    const auto services { SCDynamicStoreCopyMultiple(store, nullptr, patterns) };
-
-                    if (services)
-                    {
-                        retVal = findDhcpLeaseInterfaces(services);
-                        CFRelease(services);
-                    }
-
-                    CFRelease(patterns);
+                    retVal = findDhcpLeaseInterfaces(services);
+                    CFRelease(services);
                 }
-            }
 
-            if (ipv4Pattern)
-            {
-                CFRelease(ipv4Pattern);
+                CFRelease(patterns);
             }
-
-            if (dhcpPattern)
-            {
-                CFRelease(dhcpPattern);
-            }
-
-            CFRelease(store);
-            return retVal;
         }
+
+        if (ipv4Pattern)
+        {
+            CFRelease(ipv4Pattern);
+        }
+
+        if (dhcpPattern)
+        {
+            CFRelease(dhcpPattern);
+        }
+
+        CFRelease(store);
+        return retVal;
+    }
 #endif
 
-        // dhcpLeaseInterfaces are the interfaces with a DHCP lease, when the platform can tell.
-        explicit NetworkBSDInterface(ifaddrs* addrs, std::shared_ptr<const std::set<std::string>> dhcpLeaseInterfaces = nullptr)
-            : m_interfaceAddress{addrs}
-            , m_dhcpLeaseInterfaces{ std::move(dhcpLeaseInterfaces) }
+    // dhcpLeaseInterfaces are the interfaces with a DHCP lease, when the platform can tell.
+    explicit NetworkBSDInterface(ifaddrs* addrs,
+                                 std::shared_ptr<const std::set<std::string>> dhcpLeaseInterfaces = nullptr)
+        : m_interfaceAddress {addrs}
+        , m_dhcpLeaseInterfaces {std::move(dhcpLeaseInterfaces)}
+    {
+        if (!addrs)
         {
-            if (!addrs)
+            throw std::runtime_error {"Nullptr instances of network interface"};
+        }
+    }
+
+    std::string name() const override
+    {
+        return m_interfaceAddress->ifa_name ? Utils::substrOnFirstOccurrence(m_interfaceAddress->ifa_name, ":") : "";
+    }
+
+    std::string adapter() const override
+    {
+        return "";
+    }
+
+    int family() const override
+    {
+        return m_interfaceAddress->ifa_addr ? m_interfaceAddress->ifa_addr->sa_family : AF_UNSPEC;
+    }
+
+    std::string address() const override
+    {
+        return m_interfaceAddress->ifa_addr
+                   ? Utils::NetworkHelper::IAddressToBinary(
+                         this->family(), &(reinterpret_cast<sockaddr_in*>(m_interfaceAddress->ifa_addr))->sin_addr)
+                   : "";
+    }
+
+    std::string netmask() const override
+    {
+        return m_interfaceAddress->ifa_netmask
+                   ? Utils::NetworkHelper::IAddressToBinary(
+                         m_interfaceAddress->ifa_netmask->sa_family,
+                         &(reinterpret_cast<sockaddr_in*>(m_interfaceAddress->ifa_netmask))->sin_addr)
+                   : "";
+    }
+
+    std::string broadcast() const override
+    {
+        return m_interfaceAddress->ifa_dstaddr
+                   ? Utils::NetworkHelper::IAddressToBinary(
+                         m_interfaceAddress->ifa_dstaddr->sa_family,
+                         &(reinterpret_cast<sockaddr_in*>(m_interfaceAddress->ifa_dstaddr))->sin_addr)
+                   : "";
+    }
+
+    std::string addressV6() const override
+    {
+        return m_interfaceAddress->ifa_addr
+                   ? Utils::NetworkHelper::IAddressToBinary(
+                         m_interfaceAddress->ifa_addr->sa_family,
+                         &(reinterpret_cast<sockaddr_in6*>(m_interfaceAddress->ifa_addr))->sin6_addr)
+                   : "";
+    }
+
+    std::string netmaskV6() const override
+    {
+        return m_interfaceAddress->ifa_netmask
+                   ? Utils::NetworkHelper::IAddressToBinary(
+                         m_interfaceAddress->ifa_netmask->sa_family,
+                         &(reinterpret_cast<sockaddr_in6*>(m_interfaceAddress->ifa_netmask))->sin6_addr)
+                   : "";
+    }
+
+    std::string broadcastV6() const override
+    {
+        return m_interfaceAddress->ifa_dstaddr
+                   ? Utils::NetworkHelper::IAddressToBinary(
+                         m_interfaceAddress->ifa_dstaddr->sa_family,
+                         &(reinterpret_cast<sockaddr_in6*>(m_interfaceAddress->ifa_dstaddr))->sin6_addr)
+                   : "";
+    }
+
+    std::string gateway() const override
+    {
+        return gatewayByFamily(AF_INET);
+    }
+
+    std::string gatewayV6() const override
+    {
+        return gatewayByFamily(AF_INET6);
+    }
+
+    std::string metrics() const override
+    {
+        return "";
+    }
+
+    std::string metricsV6() const override
+    {
+        return "";
+    }
+
+    uint32_t dhcp() const override
+    {
+        if (AF_INET == this->family() && m_dhcpLeaseInterfaces && m_dhcpLeaseInterfaces->count(this->name()))
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    uint32_t mtu() const override
+    {
+        return m_interfaceAddress->ifa_data ? reinterpret_cast<if_data*>(m_interfaceAddress->ifa_data)->ifi_mtu : 0;
+    }
+
+    LinkStats stats() const override
+    {
+        const auto stats {reinterpret_cast<if_data*>(m_interfaceAddress->ifa_data)};
+        LinkStats retVal {};
+
+        if (stats)
+        {
+            retVal.txPackets = stats->ifi_opackets;
+            retVal.rxPackets = stats->ifi_ipackets;
+            retVal.txBytes = stats->ifi_obytes;
+            retVal.rxBytes = stats->ifi_ibytes;
+            retVal.txErrors = stats->ifi_oerrors;
+            retVal.rxErrors = stats->ifi_ierrors;
+            retVal.rxDropped = stats->ifi_iqdrops;
+        }
+
+        return retVal;
+    }
+
+    std::string type() const override
+    {
+        std::string retVal {UNKNOWN_VALUE};
+
+        if (m_interfaceAddress->ifa_addr)
+        {
+            auto sdl {reinterpret_cast<struct sockaddr_dl*>(m_interfaceAddress->ifa_addr)};
+            const auto type {Utils::NetworkHelper::getNetworkTypeStringCode(sdl->sdl_type, NETWORK_INTERFACE_TYPE)};
+            retVal = type.empty() ? UNKNOWN_VALUE : type;
+        }
+
+        return retVal;
+    }
+
+    std::string state() const override
+    {
+        return m_interfaceAddress->ifa_flags & IFF_UP ? "up" : "down";
+    }
+
+    std::string MAC() const override
+    {
+        std::string retVal {"00:00:00:00:00:00"};
+        auto sdl {reinterpret_cast<struct sockaddr_dl*>(m_interfaceAddress->ifa_addr)};
+
+        if (sdl && MAC_ADDRESS_COUNT_SEGMENTS == sdl->sdl_alen)
+        {
+            auto macAddress {&sdl->sdl_data[sdl->sdl_nlen]};
+
+            if (macAddress)
             {
-                throw std::runtime_error { "Nullptr instances of network interface" };
+                retVal = wazuh::hex_encode_delimited(macAddress, MAC_ADDRESS_COUNT_SEGMENTS, ':');
             }
         }
 
-        std::string name() const override
-        {
-            return m_interfaceAddress->ifa_name ? Utils::substrOnFirstOccurrence(m_interfaceAddress->ifa_name, ":") : "";
-        }
-
-        std::string adapter() const override
-        {
-            return "";
-        }
-
-        int family() const override
-        {
-            return m_interfaceAddress->ifa_addr ? m_interfaceAddress->ifa_addr->sa_family : AF_UNSPEC;
-        }
-
-        std::string address() const override
-        {
-            return m_interfaceAddress->ifa_addr ?
-                   Utils::NetworkHelper::IAddressToBinary(
-                       this->family(),
-                       &(reinterpret_cast<sockaddr_in*>(m_interfaceAddress->ifa_addr))->sin_addr) : "";
-        }
-
-        std::string netmask() const override
-        {
-            return m_interfaceAddress->ifa_netmask ?
-                   Utils::NetworkHelper::IAddressToBinary(
-                       m_interfaceAddress->ifa_netmask->sa_family,
-                       &(reinterpret_cast<sockaddr_in*>(m_interfaceAddress->ifa_netmask))->sin_addr) : "";
-        }
-
-        std::string broadcast() const override
-        {
-            return m_interfaceAddress->ifa_dstaddr ?
-                   Utils::NetworkHelper::IAddressToBinary(
-                       m_interfaceAddress->ifa_dstaddr->sa_family,
-                       &(reinterpret_cast<sockaddr_in*>(m_interfaceAddress->ifa_dstaddr))->sin_addr) : "";
-        }
-
-        std::string addressV6() const override
-        {
-            return m_interfaceAddress->ifa_addr ?
-                   Utils::NetworkHelper::IAddressToBinary(
-                       m_interfaceAddress->ifa_addr->sa_family,
-                       &(reinterpret_cast<sockaddr_in6*>(m_interfaceAddress->ifa_addr))->sin6_addr) : "";
-        }
-
-        std::string netmaskV6() const override
-        {
-            return m_interfaceAddress->ifa_netmask ?
-                   Utils::NetworkHelper::IAddressToBinary(
-                       m_interfaceAddress->ifa_netmask->sa_family,
-                       &(reinterpret_cast<sockaddr_in6*>(m_interfaceAddress->ifa_netmask))->sin6_addr) : "";
-        }
-
-        std::string broadcastV6() const override
-        {
-            return m_interfaceAddress->ifa_dstaddr ?
-                   Utils::NetworkHelper::IAddressToBinary(
-                       m_interfaceAddress->ifa_dstaddr->sa_family,
-                       &(reinterpret_cast<sockaddr_in6*>(m_interfaceAddress->ifa_dstaddr))->sin6_addr) : "";
-        }
-
-        std::string gateway() const override
-        {
-            return gatewayByFamily(AF_INET);
-        }
-
-        std::string gatewayV6() const override
-        {
-            return gatewayByFamily(AF_INET6);
-        }
-
-        std::string metrics() const override
-        {
-            return "";
-        }
-
-        std::string metricsV6() const override
-        {
-            return "";
-        }
-
-        uint32_t dhcp() const override
-        {
-            if (AF_INET == this->family() && m_dhcpLeaseInterfaces && m_dhcpLeaseInterfaces->count(this->name()))
-            {
-                return 1;
-            }
-
-            return 0;
-        }
-
-        uint32_t mtu() const override
-        {
-            return m_interfaceAddress->ifa_data ? reinterpret_cast<if_data*>(m_interfaceAddress->ifa_data)->ifi_mtu : 0;
-        }
-
-        LinkStats stats() const override
-        {
-            const auto stats { reinterpret_cast<if_data*>(m_interfaceAddress->ifa_data) };
-            LinkStats retVal {};
-
-            if (stats)
-            {
-                retVal.txPackets    = stats->ifi_opackets;
-                retVal.rxPackets    = stats->ifi_ipackets;
-                retVal.txBytes      = stats->ifi_obytes;
-                retVal.rxBytes      = stats->ifi_ibytes;
-                retVal.txErrors     = stats->ifi_oerrors;
-                retVal.rxErrors     = stats->ifi_ierrors;
-                retVal.rxDropped    = stats->ifi_iqdrops;
-            }
-
-            return retVal;
-        }
-
-        std::string type() const override
-        {
-            std::string retVal { UNKNOWN_VALUE };
-
-            if (m_interfaceAddress->ifa_addr)
-            {
-                auto sdl { reinterpret_cast<struct sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-                const auto type { Utils::NetworkHelper::getNetworkTypeStringCode(sdl->sdl_type, NETWORK_INTERFACE_TYPE) };
-                retVal = type.empty() ? UNKNOWN_VALUE : type;
-            }
-
-            return retVal;
-        }
-
-        std::string state() const override
-        {
-            return m_interfaceAddress->ifa_flags & IFF_UP ? "up" : "down";
-        }
-
-        std::string MAC() const override
-        {
-            std::string retVal { "00:00:00:00:00:00" };
-            auto sdl { reinterpret_cast<struct sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-
-            if (sdl && MAC_ADDRESS_COUNT_SEGMENTS == sdl->sdl_alen)
-            {
-                auto macAddress { &sdl->sdl_data[sdl->sdl_nlen] };
-
-                if (macAddress)
-                {
-                    retVal = wazuh::hex_encode_delimited(macAddress, MAC_ADDRESS_COUNT_SEGMENTS, ':');
-                }
-            }
-
-            return retVal;
-        }
+        return retVal;
+    }
 };
 
 #endif //_NETWORK_BSD_WRAPPER_H

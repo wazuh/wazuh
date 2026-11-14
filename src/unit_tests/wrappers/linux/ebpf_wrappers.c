@@ -12,8 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
-int __wrap_ebpf_whodata_healthcheck() {
+int __wrap_ebpf_whodata_healthcheck()
+{
     // Your function definition goes here
     return mock_type(int);
 }
@@ -21,12 +21,13 @@ int __wrap_ebpf_whodata_healthcheck() {
 typedef void (*FunctionPtr)();
 
 void __wrap_fimebpf_initialize(FunctionPtr fim_conf,
-                                FunctionPtr get_user,
-                                FunctionPtr get_group,
-                                FunctionPtr whodata_event,
-                                FunctionPtr free_whodata_event,
-                                FunctionPtr loggingFunction,
-                                FunctionPtr abspath,
-                                FunctionPtr is_shutdown,
-                                unsigned int queue_size) {
+                               FunctionPtr get_user,
+                               FunctionPtr get_group,
+                               FunctionPtr whodata_event,
+                               FunctionPtr free_whodata_event,
+                               FunctionPtr loggingFunction,
+                               FunctionPtr abspath,
+                               FunctionPtr is_shutdown,
+                               unsigned int queue_size)
+{
 }

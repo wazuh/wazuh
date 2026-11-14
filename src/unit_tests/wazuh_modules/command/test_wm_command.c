@@ -34,143 +34,159 @@
 
 #define WM_COMMAND_TEST_LOGTAG "wazuh-modulesd:command"
 
-static wmodule *command_module;
-static OS_XML *lxml;
+static wmodule* command_module;
+static OS_XML* lxml;
 extern int test_mode;
 
-typedef enum wm_command_payload_case {
+typedef enum wm_command_payload_case
+{
     WM_PAYLOAD_CASE_NORMAL = 0,
     WM_PAYLOAD_CASE_EMPTY,
     WM_PAYLOAD_CASE_TRUNCATED,
     WM_PAYLOAD_CASE_METADATA_ONLY,
 } wm_command_payload_case;
 
-typedef struct wm_command_payload_expectation {
+typedef struct wm_command_payload_expectation
+{
     wm_command_payload_case payload_case;
-    const char *command_line;
-    const char *tag;
+    const char* command_line;
+    const char* tag;
     int exit_code;
-    const char *raw_output;
-    const char *expected_output;   // For NORMAL/EMPTY/METADATA_ONLY expects exact; for TRUNCATED expects prefix match.
+    const char* raw_output;
+    const char* expected_output; // For NORMAL/EMPTY/METADATA_ONLY expects exact; for TRUNCATED expects prefix match.
 } wm_command_payload_expectation;
 
 static wm_command_payload_expectation g_payload_expectation;
 
-static size_t wm_command_max_json_payload_len(void) {
-    const char *extag = WM_COMMAND_CONTEXT.name;
+static size_t wm_command_max_json_payload_len(void)
+{
+    const char* extag = WM_COMMAND_CONTEXT.name;
     const size_t header_len = 3 + strlen(extag); // "1:" + extag + ":"
     return header_len < OS_MAXSTR ? (OS_MAXSTR - header_len - 1) : 0;
 }
 
-static const char *wm_command_json_get_string(const cJSON *obj, const char *key) {
-    const cJSON *item = cJSON_GetObjectItemCaseSensitive((cJSON *)obj, key);
-    if (!cJSON_IsString(item) || !item->valuestring) {
+static const char* wm_command_json_get_string(const cJSON* obj, const char* key)
+{
+    const cJSON* item = cJSON_GetObjectItemCaseSensitive((cJSON*)obj, key);
+    if (!cJSON_IsString(item) || !item->valuestring)
+    {
         return NULL;
     }
     return item->valuestring;
 }
 
-static const cJSON *wm_command_json_get_object(const cJSON *obj, const char *key) {
-    const cJSON *item = cJSON_GetObjectItemCaseSensitive((cJSON *)obj, key);
+static const cJSON* wm_command_json_get_object(const cJSON* obj, const char* key)
+{
+    const cJSON* item = cJSON_GetObjectItemCaseSensitive((cJSON*)obj, key);
     return cJSON_IsObject(item) ? item : NULL;
 }
 
-static const cJSON *wm_command_json_get_array(const cJSON *obj, const char *key) {
-    const cJSON *item = cJSON_GetObjectItemCaseSensitive((cJSON *)obj, key);
+static const cJSON* wm_command_json_get_array(const cJSON* obj, const char* key)
+{
+    const cJSON* item = cJSON_GetObjectItemCaseSensitive((cJSON*)obj, key);
     return cJSON_IsArray(item) ? item : NULL;
 }
 
 static int check_wm_sendmsg_message_is_valid_command_json(const LargestIntegralType value,
-                                                          const LargestIntegralType check_data) {
+                                                          const LargestIntegralType check_data)
+{
     (void)check_data;
-    const char *message = (const char *)value;
+    const char* message = (const char*)value;
     const size_t max_len = wm_command_max_json_payload_len();
 
     assert_non_null(message);
     assert_true(max_len > 0);
     assert_true(strlen(message) <= max_len);
 
-    cJSON *root = cJSON_Parse(message);
+    cJSON* root = cJSON_Parse(message);
     assert_non_null(root);
 
-    const cJSON *event_obj = wm_command_json_get_object(root, "event");
+    const cJSON* event_obj = wm_command_json_get_object(root, "event");
     assert_non_null(event_obj);
 
-    const char *event_module = wm_command_json_get_string(event_obj, "module");
+    const char* event_module = wm_command_json_get_string(event_obj, "module");
     assert_non_null(event_module);
     assert_string_equal(event_module, "wazuh-wodle-cmd");
 
-    const char *event_start = wm_command_json_get_string(event_obj, "start");
+    const char* event_start = wm_command_json_get_string(event_obj, "start");
     assert_non_null(event_start);
 
-    if (g_payload_expectation.tag) {
-        const cJSON *tags = wm_command_json_get_array(root, "tags");
+    if (g_payload_expectation.tag)
+    {
+        const cJSON* tags = wm_command_json_get_array(root, "tags");
         assert_non_null(tags);
-        assert_int_equal(cJSON_GetArraySize((cJSON *)tags), 1);
-        const cJSON *tag_item = cJSON_GetArrayItem((cJSON *)tags, 0);
+        assert_int_equal(cJSON_GetArraySize((cJSON*)tags), 1);
+        const cJSON* tag_item = cJSON_GetArrayItem((cJSON*)tags, 0);
         assert_non_null(tag_item);
         assert_true(cJSON_IsString(tag_item));
         assert_string_equal(tag_item->valuestring, g_payload_expectation.tag);
     }
 
-    const cJSON *process = wm_command_json_get_object(root, "process");
+    const cJSON* process = wm_command_json_get_object(root, "process");
     assert_non_null(process);
 
-    const char *proc_name = wm_command_json_get_string(process, "name");
+    const char* proc_name = wm_command_json_get_string(process, "name");
     assert_non_null(proc_name);
     assert_string_equal(proc_name, "echo");
 
-    const char *proc_path = wm_command_json_get_string(process, "path");
+    const char* proc_path = wm_command_json_get_string(process, "path");
     assert_non_null(proc_path);
     assert_true(strstr(proc_path, "echo") != NULL);
 
-    const char *command_line = wm_command_json_get_string(process, "command_line");
+    const char* command_line = wm_command_json_get_string(process, "command_line");
     assert_non_null(command_line);
     assert_string_equal(command_line, g_payload_expectation.command_line);
 
-    const cJSON *exit_code = cJSON_GetObjectItemCaseSensitive((cJSON *)process, "exit_code");
+    const cJSON* exit_code = cJSON_GetObjectItemCaseSensitive((cJSON*)process, "exit_code");
     assert_true(cJSON_IsNumber(exit_code));
     assert_int_equal(exit_code->valueint, g_payload_expectation.exit_code);
 
-    const cJSON *args = wm_command_json_get_array(process, "args");
+    const cJSON* args = wm_command_json_get_array(process, "args");
     assert_non_null(args);
     // Validate expected args for the default command line used in most tests.
-    if (strcmp(g_payload_expectation.command_line, "/bin/echo arg1 arg2") == 0) {
-        assert_int_equal(cJSON_GetArraySize((cJSON *)args), 2);
-        const cJSON *arg0 = cJSON_GetArrayItem((cJSON *)args, 0);
-        const cJSON *arg1 = cJSON_GetArrayItem((cJSON *)args, 1);
+    if (strcmp(g_payload_expectation.command_line, "/bin/echo arg1 arg2") == 0)
+    {
+        assert_int_equal(cJSON_GetArraySize((cJSON*)args), 2);
+        const cJSON* arg0 = cJSON_GetArrayItem((cJSON*)args, 0);
+        const cJSON* arg1 = cJSON_GetArrayItem((cJSON*)args, 1);
         assert_true(cJSON_IsString(arg0));
         assert_true(cJSON_IsString(arg1));
         assert_string_equal(arg0->valuestring, "arg1");
         assert_string_equal(arg1->valuestring, "arg2");
     }
 
-    const cJSON *process_io = wm_command_json_get_object(process, "io");
+    const cJSON* process_io = wm_command_json_get_object(process, "io");
     assert_non_null(process_io);
-    const char *io_text = wm_command_json_get_string(process_io, "text");
+    const char* io_text = wm_command_json_get_string(process_io, "text");
     assert_non_null(io_text);
 
-    switch (g_payload_expectation.payload_case) {
-    case WM_PAYLOAD_CASE_NORMAL:
-    case WM_PAYLOAD_CASE_EMPTY:
-    case WM_PAYLOAD_CASE_METADATA_ONLY:
-        assert_string_equal(io_text, g_payload_expectation.expected_output ? g_payload_expectation.expected_output : "");
-        break;
-    case WM_PAYLOAD_CASE_TRUNCATED:
-        assert_non_null(g_payload_expectation.raw_output);
-        assert_true(strlen(io_text) < strlen(g_payload_expectation.raw_output));
-        if (g_payload_expectation.expected_output) {
-            assert_true(strncmp(io_text, g_payload_expectation.expected_output, strlen(g_payload_expectation.expected_output)) == 0);
-        }
-        break;
+    switch (g_payload_expectation.payload_case)
+    {
+        case WM_PAYLOAD_CASE_NORMAL:
+        case WM_PAYLOAD_CASE_EMPTY:
+        case WM_PAYLOAD_CASE_METADATA_ONLY:
+            assert_string_equal(io_text,
+                                g_payload_expectation.expected_output ? g_payload_expectation.expected_output : "");
+            break;
+        case WM_PAYLOAD_CASE_TRUNCATED:
+            assert_non_null(g_payload_expectation.raw_output);
+            assert_true(strlen(io_text) < strlen(g_payload_expectation.raw_output));
+            if (g_payload_expectation.expected_output)
+            {
+                assert_true(strncmp(io_text,
+                                    g_payload_expectation.expected_output,
+                                    strlen(g_payload_expectation.expected_output)) == 0);
+            }
+            break;
     }
 
     cJSON_Delete(root);
     return 1;
 }
 
-static int setup_test_payload(void **state) {
-    wm_command_t *command = calloc(1, sizeof(wm_command_t));
+static int setup_test_payload(void** state)
+{
+    wm_command_t* command = calloc(1, sizeof(wm_command_t));
     assert_non_null(command);
 
     command->enabled = 1;
@@ -191,9 +207,11 @@ static int setup_test_payload(void **state) {
     return 0;
 }
 
-static int teardown_test_payload(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
-    if (command) {
+static int teardown_test_payload(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
+    if (command)
+    {
         sched_scan_free(&(command->scan_config));
         free(command->tag);
         free(command->command);
@@ -203,11 +221,13 @@ static int teardown_test_payload(void **state) {
     return 0;
 }
 
-static void wm_command_prepare_single_iteration(void) {
+static void wm_command_prepare_single_iteration(void)
+{
     will_return(__wrap_FOREVER, 0);
 }
 
-static void wm_command_expect_sendmsg_json(void) {
+static void wm_command_expect_sendmsg_json(void)
+{
     expect_any(__wrap_wm_sendmsg, usec);
     expect_any(__wrap_wm_sendmsg, queue);
     expect_check(__wrap_wm_sendmsg, message, check_wm_sendmsg_message_is_valid_command_json, 0);
@@ -216,34 +236,40 @@ static void wm_command_expect_sendmsg_json(void) {
     will_return(__wrap_wm_sendmsg, 0);
 }
 
-static size_t wm_command_build_base_len_for_test(const char *event_start,
-                                                 const char *tag,
-                                                 const char *command_line,
-                                                 const char *proc_name,
-                                                 const char *proc_path,
-                                                 char **proc_argv,
-                                                 int status) {
-    cJSON *json_event = cJSON_CreateObject();
+static size_t wm_command_build_base_len_for_test(const char* event_start,
+                                                 const char* tag,
+                                                 const char* command_line,
+                                                 const char* proc_name,
+                                                 const char* proc_path,
+                                                 char** proc_argv,
+                                                 int status)
+{
+    cJSON* json_event = cJSON_CreateObject();
     assert_non_null(json_event);
 
-    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
-    if (event_obj) {
+    cJSON* event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj)
+    {
         cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
         cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
     }
-    if (tag) {
-        cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
-        if (tags_array) {
+    if (tag)
+    {
+        cJSON* tags_array = cJSON_AddArrayToObject(json_event, "tags");
+        if (tags_array)
+        {
             cJSON_AddItemToArray(tags_array, cJSON_CreateString(tag));
         }
     }
 
-    cJSON *process = cJSON_AddObjectToObject(json_event, "process");
+    cJSON* process = cJSON_AddObjectToObject(json_event, "process");
     assert_non_null(process);
 
-    cJSON *process_args = cJSON_AddArrayToObject(process, "args");
-    if (process_args && proc_argv) {
-        for (size_t i = 1; proc_argv[i]; ++i) {
+    cJSON* process_args = cJSON_AddArrayToObject(process, "args");
+    if (process_args && proc_argv)
+    {
+        for (size_t i = 1; proc_argv[i]; ++i)
+        {
             cJSON_AddItemToArray(process_args, cJSON_CreateString(proc_argv[i]));
         }
     }
@@ -253,11 +279,11 @@ static size_t wm_command_build_base_len_for_test(const char *event_start,
     cJSON_AddStringToObject(process, "command_line", command_line ? command_line : "");
     cJSON_AddNumberToObject(process, "exit_code", status);
 
-    cJSON *process_io = cJSON_AddObjectToObject(process, "io");
+    cJSON* process_io = cJSON_AddObjectToObject(process, "io");
     assert_non_null(process_io);
     cJSON_AddStringToObject(process_io, "text", "");
 
-    char *json_payload = cJSON_PrintUnformatted(json_event);
+    char* json_payload = cJSON_PrintUnformatted(json_event);
     cJSON_Delete(json_event);
 
     assert_non_null(json_payload);
@@ -266,35 +292,41 @@ static size_t wm_command_build_base_len_for_test(const char *event_start,
     return len;
 }
 
-static size_t wm_command_build_payload_len_for_test(const char *event_start,
-                                                    const char *tag,
-                                                    const char *command_line,
-                                                    const char *proc_name,
-                                                    const char *proc_path,
-                                                    char **proc_argv,
+static size_t wm_command_build_payload_len_for_test(const char* event_start,
+                                                    const char* tag,
+                                                    const char* command_line,
+                                                    const char* proc_name,
+                                                    const char* proc_path,
+                                                    char** proc_argv,
                                                     int status,
-                                                    const char *output_text) {
-    cJSON *json_event = cJSON_CreateObject();
+                                                    const char* output_text)
+{
+    cJSON* json_event = cJSON_CreateObject();
     assert_non_null(json_event);
 
-    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
-    if (event_obj) {
+    cJSON* event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj)
+    {
         cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
         cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
     }
-    if (tag) {
-        cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
-        if (tags_array) {
+    if (tag)
+    {
+        cJSON* tags_array = cJSON_AddArrayToObject(json_event, "tags");
+        if (tags_array)
+        {
             cJSON_AddItemToArray(tags_array, cJSON_CreateString(tag));
         }
     }
 
-    cJSON *process = cJSON_AddObjectToObject(json_event, "process");
+    cJSON* process = cJSON_AddObjectToObject(json_event, "process");
     assert_non_null(process);
 
-    cJSON *process_args = cJSON_AddArrayToObject(process, "args");
-    if (process_args && proc_argv) {
-        for (size_t i = 1; proc_argv[i]; ++i) {
+    cJSON* process_args = cJSON_AddArrayToObject(process, "args");
+    if (process_args && proc_argv)
+    {
+        for (size_t i = 1; proc_argv[i]; ++i)
+        {
             cJSON_AddItemToArray(process_args, cJSON_CreateString(proc_argv[i]));
         }
     }
@@ -304,11 +336,11 @@ static size_t wm_command_build_payload_len_for_test(const char *event_start,
     cJSON_AddStringToObject(process, "command_line", command_line ? command_line : "");
     cJSON_AddNumberToObject(process, "exit_code", status);
 
-    cJSON *process_io = cJSON_AddObjectToObject(process, "io");
+    cJSON* process_io = cJSON_AddObjectToObject(process, "io");
     assert_non_null(process_io);
     cJSON_AddStringToObject(process_io, "text", output_text ? output_text : "");
 
-    char *json_payload = cJSON_PrintUnformatted(json_event);
+    char* json_payload = cJSON_PrintUnformatted(json_event);
     cJSON_Delete(json_event);
 
     assert_non_null(json_payload);
@@ -317,42 +349,47 @@ static size_t wm_command_build_payload_len_for_test(const char *event_start,
     return len;
 }
 
-static size_t wm_command_compute_metadata_only_command_filler_len(void) {
+static size_t wm_command_compute_metadata_only_command_filler_len(void)
+{
     const size_t max_len = wm_command_max_json_payload_len();
     assert_true(max_len > 0);
 
-    const char *event_start = "2026-04-27T00:00:00.000Z";
-    const char *tag = "test";
-    const char *proc_path = "/bin/echo";
-    const char *proc_name = "echo";
+    const char* event_start = "2026-04-27T00:00:00.000Z";
+    const char* tag = "test";
+    const char* proc_path = "/bin/echo";
+    const char* proc_name = "echo";
     const int status = 0;
-    const char *prefix = "/bin/echo ";
+    const char* prefix = "/bin/echo ";
 
-    const char *probe_output = "\x1f"; // Control char: JSON-encodes to  (6 bytes), adding 4 net bytes vs empty.
+    const char* probe_output = "\x1f"; // Control char: JSON-encodes to  (6 bytes), adding 4 net bytes vs empty.
 
     // Brute-force search for a command length where:
     // - Metadata-only event (empty output) fits within the payload limit.
     // - Event with a 1-char output that JSON-encodes to 6 bytes does NOT fit (triggering metadata-only fallback).
-    for (size_t filler_len = 0; filler_len < max_len; ++filler_len) {
+    for (size_t filler_len = 0; filler_len < max_len; ++filler_len)
+    {
         const size_t cmd_len = strlen(prefix) + filler_len;
-        char *cmdline = calloc(cmd_len + 1, 1);
+        char* cmdline = calloc(cmd_len + 1, 1);
         assert_non_null(cmdline);
         memcpy(cmdline, prefix, strlen(prefix));
         memset(cmdline + strlen(prefix), 'A', filler_len);
         cmdline[cmd_len] = '\0';
 
-        char *cmd_cpy = strdup(cmdline);
+        char* cmd_cpy = strdup(cmdline);
         assert_non_null(cmd_cpy);
-        char **argv = w_strtok(cmd_cpy);
+        char** argv = w_strtok(cmd_cpy);
 
-        const size_t len_empty = wm_command_build_payload_len_for_test(event_start, tag, cmdline, proc_name, proc_path, argv, status, "");
-        const size_t len_probe = wm_command_build_payload_len_for_test(event_start, tag, cmdline, proc_name, proc_path, argv, status, probe_output);
+        const size_t len_empty =
+            wm_command_build_payload_len_for_test(event_start, tag, cmdline, proc_name, proc_path, argv, status, "");
+        const size_t len_probe = wm_command_build_payload_len_for_test(
+            event_start, tag, cmdline, proc_name, proc_path, argv, status, probe_output);
 
         free_strarray(argv);
         free(cmd_cpy);
         free(cmdline);
 
-        if (len_empty <= max_len && len_probe > max_len) {
+        if (len_empty <= max_len && len_probe > max_len)
+        {
             return filler_len;
         }
     }
@@ -362,8 +399,9 @@ static size_t wm_command_compute_metadata_only_command_filler_len(void) {
 }
 
 /****************************************************************/
-static void wmodule_cleanup(wmodule *module){
-    wm_command_t* module_data = (wm_command_t *)module->data;
+static void wmodule_cleanup(wmodule* module)
+{
+    wm_command_t* module_data = (wm_command_t*)module->data;
     free(module_data->sha256_hash);
     free(module_data->sha1_hash);
     free(module_data->full_command);
@@ -375,9 +413,10 @@ static void wmodule_cleanup(wmodule *module){
 }
 
 /***  SETUPS/TEARDOWNS  ******/
-static int setup_module() {
+static int setup_module()
+{
     command_module = calloc(1, sizeof(wmodule));
-    const char *string =
+    const char* string =
         "<disabled>no</disabled>\n"
         "<tag>test</tag>\n"
         "<command>/bin/bash /root/script.sh</command>\n"
@@ -388,8 +427,7 @@ static int setup_module() {
         "<verify_sha1>da39a3ee5e6b4b0d3255bfef95601890afd80709</verify_sha1>\n"
         "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
         "<interval>10m</interval>\n"
-        "<skip_verification>yes</skip_verification>"
-    ;
+        "<skip_verification>yes</skip_verification>";
     lxml = malloc(sizeof(OS_XML));
     XML_NODE nodes = string_to_xml_node(string, lxml);
 
@@ -399,44 +437,50 @@ static int setup_module() {
     return ret;
 }
 
-static int teardown_module(){
+static int teardown_module()
+{
     test_mode = 0;
     wmodule_cleanup(command_module);
     OS_ClearXML(lxml);
     return 0;
 }
 
-static int setup_test_executions(void **state){
+static int setup_test_executions(void** state)
+{
     wm_max_eps = 1;
     return 0;
 }
 
-static int teardown_test_executions(void **state){
-    wm_command_t* module_data = (wm_command_t *) *state;
+static int teardown_test_executions(void** state)
+{
+    wm_command_t* module_data = (wm_command_t*)*state;
     sched_scan_free(&(module_data->scan_config));
     return 0;
 }
 
-static int setup_test_read(void **state) {
-    test_structure *test = calloc(1, sizeof(test_structure));
-    test->module =  calloc(1, sizeof(wmodule));
+static int setup_test_read(void** state)
+{
+    test_structure* test = calloc(1, sizeof(test_structure));
+    test->module = calloc(1, sizeof(wmodule));
     *state = test;
     return 0;
 }
 
-static int teardown_test_read(void **state) {
-    test_structure *test = *state;
+static int teardown_test_read(void** state)
+{
+    test_structure* test = *state;
     OS_ClearNode(test->nodes);
     OS_ClearXML(&(test->xml));
-    wm_command_t *module_data = (wm_command_t*)test->module->data;
+    wm_command_t* module_data = (wm_command_t*)test->module->data;
     sched_scan_free(&(module_data->scan_config));
     wmodule_cleanup(test->module);
     os_free(test);
     return 0;
 }
 
-static int setup_test_checksum(void **state) {
-    wm_command_t *command = calloc(1, sizeof(wm_command_t));
+static int setup_test_checksum(void** state)
+{
+    wm_command_t* command = calloc(1, sizeof(wm_command_t));
     command->full_command = strdup("/test/file.sh --debug");
     command->md5_hash = strdup("d41d8cd98f00b204e9800998ecf8427e");
     command->sha1_hash = strdup("da39a3ee5e6b4b0d3255bfef95601890afd80709");
@@ -445,8 +489,9 @@ static int setup_test_checksum(void **state) {
     return 0;
 }
 
-static int teardown_test_checksum(void **state) {
-    wm_command_t *command = *state;
+static int teardown_test_checksum(void** state)
+{
+    wm_command_t* command = *state;
     os_free(command->full_command);
     os_free(command->md5_hash);
     os_free(command->sha1_hash);
@@ -456,8 +501,9 @@ static int teardown_test_checksum(void **state) {
 }
 
 /** Tests **/
-void test_interval_execution(void **state) {
-    wm_command_t* module_data = (wm_command_t *)command_module->data;
+void test_interval_execution(void** state)
+{
+    wm_command_t* module_data = (wm_command_t*)command_module->data;
     *state = module_data;
     module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 0;
@@ -484,10 +530,9 @@ void test_interval_execution(void **state) {
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES - 1);
     will_return(__wrap_FOREVER, 0);
 
-    const int verify_debug_calls =
-        ((module_data->md5_hash && module_data->md5_hash[0]) ? 1 : 0) +
-        ((module_data->sha1_hash && module_data->sha1_hash[0]) ? 1 : 0) +
-        ((module_data->sha256_hash && module_data->sha256_hash[0]) ? 1 : 0);
+    const int verify_debug_calls = ((module_data->md5_hash && module_data->md5_hash[0]) ? 1 : 0) +
+                                   ((module_data->sha1_hash && module_data->sha1_hash[0]) ? 1 : 0) +
+                                   ((module_data->sha256_hash && module_data->sha256_hash[0]) ? 1 : 0);
 
     // Expected logs:
     // - mtinfo: 1x module started + 1x per iteration ("Starting command")
@@ -513,9 +558,10 @@ void test_interval_execution(void **state) {
     command_module->context->start(module_data);
 }
 
-static void test_command_payload_normal_output(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
-    const char *output = "hello \"world\"\\nsecond-line";
+static void test_command_payload_normal_output(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
+    const char* output = "hello \"world\"\\nsecond-line";
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -524,7 +570,7 @@ static void test_command_payload_normal_output(void **state) {
     expect_any(__wrap_wm_exec, command);
     expect_any(__wrap_wm_exec, secs);
     expect_any(__wrap_wm_exec, add_path);
-    will_return(__wrap_wm_exec, (char *)output);
+    will_return(__wrap_wm_exec, (char*)output);
     will_return(__wrap_wm_exec, 7);
     will_return(__wrap_wm_exec, 0);
 
@@ -554,9 +600,10 @@ static void test_command_payload_normal_output(void **state) {
     WM_COMMAND_CONTEXT.start(command);
 }
 
-static void test_command_payload_empty_output(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
-    const char *output = "";
+static void test_command_payload_empty_output(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
+    const char* output = "";
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -565,7 +612,7 @@ static void test_command_payload_empty_output(void **state) {
     expect_any(__wrap_wm_exec, command);
     expect_any(__wrap_wm_exec, secs);
     expect_any(__wrap_wm_exec, add_path);
-    will_return(__wrap_wm_exec, (char *)output);
+    will_return(__wrap_wm_exec, (char*)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -591,14 +638,15 @@ static void test_command_payload_empty_output(void **state) {
     WM_COMMAND_CONTEXT.start(command);
 }
 
-static void test_command_payload_long_output_truncates(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_command_payload_long_output_truncates(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     const size_t max_len = wm_command_max_json_payload_len();
     assert_true(max_len > 0);
 
     // Make output far larger than OS_MAXSTR so truncation path is hit.
     const size_t output_len = max_len * 2;
-    char *output = calloc(output_len + 1, 1);
+    char* output = calloc(output_len + 1, 1);
     assert_non_null(output);
     memset(output, 'B', output_len);
     output[output_len] = '\0';
@@ -641,45 +689,40 @@ static void test_command_payload_long_output_truncates(void **state) {
     free(output);
 }
 
-static void test_command_payload_metadata_only_fallback(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
-    
+static void test_command_payload_metadata_only_fallback(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
+
     size_t filler_len = wm_command_compute_metadata_only_command_filler_len();
-    const char *prefix = "/bin/echo ";
+    const char* prefix = "/bin/echo ";
 
     // Reduce until it actually fits at runtime
-    while (filler_len > 0) {
+    while (filler_len > 0)
+    {
         size_t cmd_len = strlen(prefix) + filler_len;
 
-        char *cmdline = calloc(cmd_len + 1, 1);
+        char* cmdline = calloc(cmd_len + 1, 1);
         assert_non_null(cmdline);
         memcpy(cmdline, prefix, strlen(prefix));
         memset(cmdline + strlen(prefix), 'A', filler_len);
         cmdline[cmd_len] = '\0';
 
-        char *cmd_cpy = strdup(cmdline);
-        char **argv = w_strtok(cmd_cpy);
+        char* cmd_cpy = strdup(cmdline);
+        char** argv = w_strtok(cmd_cpy);
 
         size_t len_empty = wm_command_build_payload_len_for_test(
-            "2026-04-27T00:00:00.000Z",
-            command->tag,
-            cmdline,
-            "echo",
-            "/bin/echo",
-            argv,
-            0,
-            ""
-        );
+            "2026-04-27T00:00:00.000Z", command->tag, cmdline, "echo", "/bin/echo", argv, 0, "");
 
         free_strarray(argv);
         free(cmd_cpy);
         free(cmdline);
 
-        if (len_empty <= wm_command_max_json_payload_len()) {
+        if (len_empty <= wm_command_max_json_payload_len())
+        {
             break;
         }
 
-        filler_len--;  // shrink until it fits
+        filler_len--; // shrink until it fits
     }
 
     // Replace the command line with a very long one that almost fills the max payload.
@@ -695,7 +738,7 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     command->sha1_hash = NULL;
     command->sha256_hash = NULL;
 
-    const char *output = "\x1f"; // Control char: JSON-encodes to 6 bytes (), so truncation never fits.
+    const char* output = "\x1f"; // Control char: JSON-encodes to 6 bytes (), so truncation never fits.
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
@@ -703,7 +746,7 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     expect_any(__wrap_wm_exec, command);
     expect_any(__wrap_wm_exec, secs);
     expect_any(__wrap_wm_exec, add_path);
-    will_return(__wrap_wm_exec, (char *)output);
+    will_return(__wrap_wm_exec, (char*)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -733,8 +776,9 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     WM_COMMAND_CONTEXT.start(command);
 }
 
-void test_fake_tag(void **state) {
-    const char *string =
+void test_fake_tag(void** state)
+{
+    const char* string =
         "<fake>True</fake>\n"
         "<disabled>no</disabled>\n"
         "<tag>test</tag>\n"
@@ -748,14 +792,15 @@ void test_fake_tag(void **state) {
         "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
         "<interval>10m</interval>\n"
         "<skip_verification>yes</skip_verification>";
-    test_structure *test = *state;
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "No such tag 'fake' at module 'command'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_command_read(test->nodes, test->module, 0),-1);
+    assert_int_equal(wm_command_read(test->nodes, test->module, 0), -1);
 }
 
-void test_read_scheduling_monthday_configuration(void **state) {
-    const char *string =
+void test_read_scheduling_monthday_configuration(void** state)
+{
+    const char* string =
         "<disabled>no</disabled>\n"
         "<tag>test</tag>\n"
         "<time>12:05</time>\n"
@@ -767,13 +812,12 @@ void test_read_scheduling_monthday_configuration(void **state) {
         "<timeout>0</timeout>\n"
         "<verify_sha1>da39a3ee5e6b4b0d3255bfef95601890afd80709</verify_sha1>\n"
         "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
-        "<skip_verification>yes</skip_verification>"
-    ;
-    test_structure *test = *state;
+        "<skip_verification>yes</skip_verification>";
+    test_structure* test = *state;
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
-    wm_command_t *module_data = (wm_command_t*)test->module->data;
+    assert_int_equal(wm_command_read(test->nodes, test->module, 0), 0);
+    wm_command_t* module_data = (wm_command_t*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 1);
     assert_int_equal(module_data->scan_config.interval, 1);
     assert_int_equal(module_data->scan_config.month_interval, true);
@@ -781,8 +825,9 @@ void test_read_scheduling_monthday_configuration(void **state) {
     assert_string_equal(module_data->scan_config.scan_time, "12:05");
 }
 
-void test_read_scheduling_weekday_configuration(void **state) {
-    const char *string =
+void test_read_scheduling_weekday_configuration(void** state)
+{
+    const char* string =
         "<disabled>no</disabled>\n"
         "<tag>test</tag>\n"
         "<time>10:59</time>\n"
@@ -794,13 +839,12 @@ void test_read_scheduling_weekday_configuration(void **state) {
         "<timeout>0</timeout>\n"
         "<verify_sha1>da39a3ee5e6b4b0d3255bfef95601890afd80709</verify_sha1>\n"
         "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
-        "<skip_verification>yes</skip_verification>"
-    ;
-    test_structure *test = *state;
+        "<skip_verification>yes</skip_verification>";
+    test_structure* test = *state;
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
-    wm_command_t *module_data = (wm_command_t*)test->module->data;
+    assert_int_equal(wm_command_read(test->nodes, test->module, 0), 0);
+    wm_command_t* module_data = (wm_command_t*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 604800);
     assert_int_equal(module_data->scan_config.month_interval, false);
@@ -808,8 +852,9 @@ void test_read_scheduling_weekday_configuration(void **state) {
     assert_string_equal(module_data->scan_config.scan_time, "10:59");
 }
 
-void test_read_scheduling_daytime_configuration(void **state) {
-    const char *string =
+void test_read_scheduling_daytime_configuration(void** state)
+{
+    const char* string =
         "<disabled>no</disabled>\n"
         "<tag>test</tag>\n"
         "<time>10:53</time>\n"
@@ -820,13 +865,12 @@ void test_read_scheduling_daytime_configuration(void **state) {
         "<timeout>0</timeout>\n"
         "<verify_sha1>da39a3ee5e6b4b0d3255bfef95601890afd80709</verify_sha1>\n"
         "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
-        "<skip_verification>yes</skip_verification>"
-    ;
-    test_structure *test = *state;
+        "<skip_verification>yes</skip_verification>";
+    test_structure* test = *state;
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one day. New interval value: 1d");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
-    wm_command_t *module_data = (wm_command_t*)test->module->data;
+    assert_int_equal(wm_command_read(test->nodes, test->module, 0), 0);
+    wm_command_t* module_data = (wm_command_t*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
     assert_int_equal(module_data->scan_config.month_interval, false);
@@ -834,8 +878,9 @@ void test_read_scheduling_daytime_configuration(void **state) {
     assert_string_equal(module_data->scan_config.scan_time, "10:53");
 }
 
-void test_read_scheduling_interval_configuration(void **state) {
-    const char *string =
+void test_read_scheduling_interval_configuration(void** state)
+{
+    const char* string =
         "<disabled>no</disabled>\n"
         "<tag>test</tag>\n"
         "<interval>10s</interval>\n"
@@ -846,51 +891,62 @@ void test_read_scheduling_interval_configuration(void **state) {
         "<timeout>0</timeout>\n"
         "<verify_sha1>da39a3ee5e6b4b0d3255bfef95601890afd80709</verify_sha1>\n"
         "<verify_sha256>292a188e498caea5c5fbfb0beca413c980e7a5edf40d47cf70e1dbc33e4f395e</verify_sha256>\n"
-        "<skip_verification>yes</skip_verification>"
-    ;
-    test_structure *test = *state;
+        "<skip_verification>yes</skip_verification>";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_command_read(test->nodes, test->module, 0),0);
-    wm_command_t *module_data = (wm_command_t*)test->module->data;
+    assert_int_equal(wm_command_read(test->nodes, test->module, 0), 0);
+    wm_command_t* module_data = (wm_command_t*)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 10); // 10 seconds
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
-void test_validate_command_checksums_success(void **state) {
-    wm_command_t *command = *state;
+void test_validate_command_checksums_success(void** state)
+{
+    wm_command_t* command = *state;
 
     expect_wm_validate_command("/test/file.sh", command->md5_hash, MD5SUM, 1);
     expect_wm_validate_command("/test/file.sh", command->sha1_hash, SHA1SUM, 1);
     expect_wm_validate_command("/test/file.sh", command->sha256_hash, SHA256SUM, 1);
 
     expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "MD5 checksum verification was successful for command '/test/file.sh --debug'.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "MD5 checksum verification was successful for command '/test/file.sh --debug'.");
     expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "SHA1 checksum verification was successful for command '/test/file.sh --debug'.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "SHA1 checksum verification was successful for command '/test/file.sh --debug'.");
     expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "SHA256 checksum verification was successful for command '/test/file.sh --debug'.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "SHA256 checksum verification was successful for command '/test/file.sh --debug'.");
 
     assert_int_equal(validate_command_checksums(command, "/test/file.sh"), 0);
 }
 
-void test_validate_command_checksums_failure(void **state) {
-    wm_command_t *command = *state;
+void test_validate_command_checksums_failure(void** state)
+{
+    wm_command_t* command = *state;
 
     expect_wm_validate_command("/test/file.sh", command->md5_hash, MD5SUM, 1);
     expect_wm_validate_command("/test/file.sh", command->sha1_hash, SHA1SUM, 0);
 
     expect_string(__wrap__mtdebug1, tag, WM_COMMAND_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "MD5 checksum verification was successful for command '/test/file.sh --debug'.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "MD5 checksum verification was successful for command '/test/file.sh --debug'.");
     expect_string(__wrap__mterror, tag, WM_COMMAND_TEST_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "SHA1 checksum verification failed for command '/test/file.sh --debug'.");
+    expect_string(
+        __wrap__mterror, formatted_msg, "SHA1 checksum verification failed for command '/test/file.sh --debug'.");
 
     assert_int_equal(validate_command_checksums(command, "/test/file.sh"), -1);
 }
 
-static int setup_test_full_command(void **state) {
-    wm_command_t *command = calloc(1, sizeof(wm_command_t));
+static int setup_test_full_command(void** state)
+{
+    wm_command_t* command = calloc(1, sizeof(wm_command_t));
     assert_non_null(command);
 
     command->enabled = 1;
@@ -909,9 +965,11 @@ static int setup_test_full_command(void **state) {
     return 0;
 }
 
-static int teardown_test_full_command(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
-    if (command) {
+static int teardown_test_full_command(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
+    if (command)
+    {
         sched_scan_free(&(command->scan_config));
         free(command->tag);
         free(command->command);
@@ -922,8 +980,9 @@ static int teardown_test_full_command(void **state) {
     return 0;
 }
 
-static void test_full_command_windows_no_args(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_windows_no_args(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("C:\\\\Windows\\\\System32\\\\whoami.exe");
 
     expect_string(__wrap_get_binary_path, command, "C:\\Windows\\System32\\whoami.exe");
@@ -953,8 +1012,9 @@ static void test_full_command_windows_no_args(void **state) {
     assert_string_equal(command->full_command, "C:\\Windows\\System32\\whoami.exe");
 }
 
-static void test_full_command_windows_with_args(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_windows_with_args(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("C:\\\\Windows\\\\System32\\\\cmd.exe /c dir");
 
     expect_string(__wrap_get_binary_path, command, "C:\\Windows\\System32\\cmd.exe");
@@ -984,8 +1044,9 @@ static void test_full_command_windows_with_args(void **state) {
     assert_string_equal(command->full_command, "C:\\Windows\\System32\\cmd.exe /c dir");
 }
 
-static void test_full_command_linux_no_args(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_linux_no_args(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("/usr/bin/uptime");
 
     expect_string(__wrap_get_binary_path, command, "/usr/bin/uptime");
@@ -1015,8 +1076,9 @@ static void test_full_command_linux_no_args(void **state) {
     assert_string_equal(command->full_command, "/usr/bin/uptime");
 }
 
-static void test_full_command_quoted_args(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_quoted_args(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("/bin/bash \"my script.sh\" \"arg with spaces\"");
 
     expect_string(__wrap_get_binary_path, command, "/bin/bash");
@@ -1046,8 +1108,9 @@ static void test_full_command_quoted_args(void **state) {
     assert_string_equal(command->full_command, "/bin/bash \"my script.sh\" \"arg with spaces\"");
 }
 
-static void test_full_command_quoted_binary_with_spaces(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_quoted_binary_with_spaces(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("\"C:\\\\Program Files\\\\app.exe\" --flag value");
 
     expect_string(__wrap_get_binary_path, command, "C:\\Program Files\\app.exe");
@@ -1077,8 +1140,9 @@ static void test_full_command_quoted_binary_with_spaces(void **state) {
     assert_string_equal(command->full_command, "\"C:\\Program Files\\app.exe\" --flag value");
 }
 
-static void test_full_command_leading_spaces(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_leading_spaces(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("  /usr/bin/echo hello");
 
     expect_string(__wrap_get_binary_path, command, "/usr/bin/echo");
@@ -1108,8 +1172,9 @@ static void test_full_command_leading_spaces(void **state) {
     assert_string_equal(command->full_command, "/usr/bin/echo hello");
 }
 
-static void test_full_command_unquoted_path_with_spaces(void **state) {
-    wm_command_t *command = (wm_command_t *)*state;
+static void test_full_command_unquoted_path_with_spaces(void** state)
+{
+    wm_command_t* command = (wm_command_t*)*state;
     command->command = strdup("C:\\\\Program\\ Files\\\\app.exe --verbose");
 
     expect_string(__wrap_get_binary_path, command, "C:\\Program Files\\app.exe");
@@ -1139,36 +1204,47 @@ static void test_full_command_unquoted_path_with_spaces(void **state) {
     assert_string_equal(command->full_command, "\"C:\\Program Files\\app.exe\" --verbose");
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests_with_startup[] = {
-        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
-    };
+        cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)};
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
-    };
+        cmocka_unit_test_setup_teardown(
+            test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(
+            test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(
+            test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(
+            test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)};
     const struct CMUnitTest tests_validate_command_checksums[] = {
-        cmocka_unit_test_setup_teardown(test_validate_command_checksums_success, setup_test_checksum, teardown_test_checksum),
-        cmocka_unit_test_setup_teardown(test_validate_command_checksums_failure, setup_test_checksum, teardown_test_checksum)
-    };
+        cmocka_unit_test_setup_teardown(
+            test_validate_command_checksums_success, setup_test_checksum, teardown_test_checksum),
+        cmocka_unit_test_setup_teardown(
+            test_validate_command_checksums_failure, setup_test_checksum, teardown_test_checksum)};
     const struct CMUnitTest tests_payload_json[] = {
         cmocka_unit_test_setup_teardown(test_command_payload_normal_output, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_empty_output, setup_test_payload, teardown_test_payload),
-        cmocka_unit_test_setup_teardown(test_command_payload_long_output_truncates, setup_test_payload, teardown_test_payload),
-        cmocka_unit_test_setup_teardown(test_command_payload_metadata_only_fallback, setup_test_payload, teardown_test_payload)
-    };
+        cmocka_unit_test_setup_teardown(
+            test_command_payload_long_output_truncates, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(
+            test_command_payload_metadata_only_fallback, setup_test_payload, teardown_test_payload)};
     const struct CMUnitTest tests_full_command[] = {
-        cmocka_unit_test_setup_teardown(test_full_command_windows_no_args, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_windows_with_args, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_linux_no_args, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_quoted_args, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_quoted_binary_with_spaces, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_leading_spaces, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_unquoted_path_with_spaces, setup_test_full_command, teardown_test_full_command)
-    };
+        cmocka_unit_test_setup_teardown(
+            test_full_command_windows_no_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(
+            test_full_command_windows_with_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(
+            test_full_command_linux_no_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(
+            test_full_command_quoted_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(
+            test_full_command_quoted_binary_with_spaces, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(
+            test_full_command_leading_spaces, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(
+            test_full_command_unquoted_path_with_spaces, setup_test_full_command, teardown_test_full_command)};
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);

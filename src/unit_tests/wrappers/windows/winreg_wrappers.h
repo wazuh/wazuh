@@ -52,17 +52,17 @@ LONG wrap_RegQueryInfoKey(HKEY hKey,
 void expect_RegQueryInfoKey_call(DWORD sub_keys, DWORD values, PFILETIME last_write_time, LONG return_value);
 
 LONG wrap_RegQueryInfoKeyA(HKEY hKey,
-                          LPSTR lpClass,
-                          LPDWORD lpcchClass,
-                          LPDWORD lpReserved,
-                          LPDWORD lpcSubKeys,
-                          LPDWORD lpcbMaxSubKeyLen,
-                          LPDWORD lpcbMaxClassLen,
-                          LPDWORD lpcValues,
-                          LPDWORD lpcbMaxValueNameLen,
-                          LPDWORD lpcbMaxValueLen,
-                          LPDWORD lpcbSecurityDescriptor,
-                          PFILETIME lpftLastWriteTime);
+                           LPSTR lpClass,
+                           LPDWORD lpcchClass,
+                           LPDWORD lpReserved,
+                           LPDWORD lpcSubKeys,
+                           LPDWORD lpcbMaxSubKeyLen,
+                           LPDWORD lpcbMaxClassLen,
+                           LPDWORD lpcValues,
+                           LPDWORD lpcbMaxValueNameLen,
+                           LPDWORD lpcbMaxValueLen,
+                           LPDWORD lpcbSecurityDescriptor,
+                           PFILETIME lpftLastWriteTime);
 
 void expect_RegQueryInfoKeyA_call(PFILETIME last_write_time, LONG return_value);
 
@@ -78,38 +78,26 @@ LONG wrap_RegEnumKeyEx(HKEY hKey,
 void expect_RegEnumKeyEx_call(LPSTR name, DWORD name_length, LONG return_value);
 
 LONG wrap_RegEnumKeyExW(HKEY hKey,
-                       DWORD dwIndex,
-                       LPWSTR lpName,
-                       LPDWORD lpcchName,
-                       LPDWORD lpReserved,
-                       LPWSTR lpClass,
-                       LPDWORD lpcchClass,
-                       PFILETIME lpftLastWriteTime);
+                        DWORD dwIndex,
+                        LPWSTR lpName,
+                        LPDWORD lpcchName,
+                        LPDWORD lpReserved,
+                        LPWSTR lpClass,
+                        LPDWORD lpcchClass,
+                        PFILETIME lpftLastWriteTime);
 
-void expect_RegEnumKeyExW_call(const wchar_t *name, LONG return_value);
+void expect_RegEnumKeyExW_call(const wchar_t* name, LONG return_value);
 
-LONG wrap_RegOpenKeyEx(HKEY hKey,
-                       LPCSTR lpSubKey,
-                       DWORD ulOptions,
-                       REGSAM samDesired,
-                       PHKEY phkResult);
+LONG wrap_RegOpenKeyEx(HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
 
 void expect_RegOpenKeyEx_call(HKEY hKey, LPCSTR sub_key, DWORD options, REGSAM sam, PHKEY result, LONG return_value);
 
-LONG wrap_RegOpenKeyExW(HKEY hKey,
-                       LPCWSTR lpSubKey,
-                       DWORD ulOptions,
-                       REGSAM samDesired,
-                       PHKEY phkResult);
+LONG wrap_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
 
 void expect_RegOpenKeyExW_call(HKEY hKey, LPCWSTR sub_key, DWORD options, REGSAM sam, PHKEY result, LONG return_value);
 
-LONG wrap_RegQueryValueEx(HKEY hKey,
-                          LPCSTR lpValueName,
-                          LPDWORD lpReserved,
-                          LPDWORD lpType,
-                          LPBYTE lpData,
-                          LPDWORD lpcbData);
+LONG wrap_RegQueryValueEx(
+    HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
 
 LONG wrap_RegEnumValue(HKEY hKey,
                        DWORD dwIndex,
@@ -117,17 +105,19 @@ LONG wrap_RegEnumValue(HKEY hKey,
                        LPDWORD lpcchValueName,
                        LPDWORD lpReserved,
                        LPDWORD lpType,
-                       LPBYTE lpData,LPDWORD lpcbData);
+                       LPBYTE lpData,
+                       LPDWORD lpcbData);
 
 void expect_RegEnumValue_call(LPSTR value_name, DWORD type, LPBYTE data, DWORD data_length, LONG return_value);
 
 LONG wrap_RegEnumValueW(HKEY hKey,
-                       DWORD dwIndex,
-                       LPWSTR lpValueName,
-                       LPDWORD lpcchValueName,
-                       LPDWORD lpReserved,
-                       LPDWORD lpType,
-                       LPBYTE lpData,LPDWORD lpcbData);
+                        DWORD dwIndex,
+                        LPWSTR lpValueName,
+                        LPDWORD lpcchValueName,
+                        LPDWORD lpReserved,
+                        LPDWORD lpType,
+                        LPBYTE lpData,
+                        LPDWORD lpcbData);
 
 void expect_RegEnumValueW_call(LPWSTR value_name, DWORD type, LPBYTE data, DWORD data_length, LONG return_value);
 

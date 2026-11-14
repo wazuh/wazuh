@@ -22,22 +22,20 @@
 
 class NPMTest : public ::testing::Test
 {
-    protected:
-        MockFileSystemWrapper* mockFileSystem; // Raw pointer - npm will own it
-        std::unique_ptr<NPM<MockJsonIO>> npm;
+protected:
+    MockFileSystemWrapper* mockFileSystem; // Raw pointer - npm will own it
+    std::unique_ptr<NPM<MockJsonIO>> npm;
 
-        void SetUp() override
-        {
-            mockFileSystem = new MockFileSystemWrapper();
-            npm = std::make_unique<NPM<MockJsonIO>>(std::unique_ptr<IFileSystemWrapper>(mockFileSystem));
-        }
+    void SetUp() override
+    {
+        mockFileSystem = new MockFileSystemWrapper();
+        npm = std::make_unique<NPM<MockJsonIO>>(std::unique_ptr<IFileSystemWrapper>(mockFileSystem));
+    }
 
-        void TearDown() override
-        {
-            npm.reset(); // This will delete mockFileSystem
-        }
+    void TearDown() override
+    {
+        npm.reset(); // This will delete mockFileSystem
+    }
 };
-
-
 
 #endif // _NPMTEST_HPP

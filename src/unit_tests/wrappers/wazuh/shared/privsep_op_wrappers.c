@@ -16,37 +16,45 @@
 #include <string.h>
 
 #ifndef WIN32
-struct group *__wrap_w_getgrgid(gid_t gid, struct group *grp, char *buf, int buflen) {
-    struct group *mock_grp;
-    char *mock_buf;
+struct group* __wrap_w_getgrgid(gid_t gid, struct group* grp, char* buf, int buflen)
+{
+    struct group* mock_grp;
+    char* mock_buf;
     check_expected(gid);
 
-    mock_grp = mock_type(struct group *);
+    mock_grp = mock_type(struct group*);
 
-    if (mock_grp && grp) {
-        memcpy(grp, mock_grp, sizeof(char **) + 2 * sizeof(char *) + sizeof(gid_t));
+    if (mock_grp && grp)
+    {
+        memcpy(grp, mock_grp, sizeof(char**) + 2 * sizeof(char*) + sizeof(gid_t));
     }
 
-    mock_buf = mock_type(char *);
-    if (mock_buf && buf) {
+    mock_buf = mock_type(char*);
+    if (mock_buf && buf)
+    {
         strncpy(buf, mock_buf, buflen);
     }
 
-    if (mock()) {
+    if (mock())
+    {
         return grp;
-    } else {
+    }
+    else
+    {
         return NULL;
     }
 }
 #endif
 
-int __wrap_Privsep_GetUser(const char *name) {
+int __wrap_Privsep_GetUser(const char* name)
+{
     check_expected(name);
 
     return mock();
 }
 
-int __wrap_Privsep_GetGroup(const char *name) {
+int __wrap_Privsep_GetGroup(const char* name)
+{
     check_expected(name);
 
     return mock();

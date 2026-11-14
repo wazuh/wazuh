@@ -31,14 +31,14 @@
     verification can be executed in local_start.
 **************************************************************************************/
 
-static LPTSTR g_lpszServiceName        = "WazuhSvc";
+static LPTSTR g_lpszServiceName = "WazuhSvc";
 static LPTSTR g_lpszServiceDisplayName = "Wazuh";
 static LPTSTR g_lpszServiceDescription = "Wazuh Windows Agent";
 
-static SERVICE_STATUS          ossecServiceStatus;
-static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
+static SERVICE_STATUS ossecServiceStatus;
+static SERVICE_STATUS_HANDLE ossecServiceStatusHandle;
 
-void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
+void WINAPI OssecServiceStart(DWORD argc, LPTSTR* argv);
 void wm_kill_children();
 extern void stop_wmodules();
 extern void wm_lifecycle_lock_init(void);
@@ -48,7 +48,8 @@ extern void wm_lifecycle_lock_init(void);
  * defect #7). No-op before RegisterServiceCtrlHandler() has succeeded. */
 void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms)
 {
-    if (!ossecServiceStatusHandle) {
+    if (!ossecServiceStatusHandle)
+    {
         return;
     }
 
@@ -65,14 +66,19 @@ int os_start_service()
 
     /* Start the database */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (schSCManager) {
-        schService = OpenService(schSCManager, g_lpszServiceName,
-                                 SC_MANAGER_ALL_ACCESS);
-        if (schService) {
-            if (StartService(schService, 0, NULL)) {
+    if (schSCManager)
+    {
+        schService = OpenService(schSCManager, g_lpszServiceName, SC_MANAGER_ALL_ACCESS);
+        if (schService)
+        {
+            if (StartService(schService, 0, NULL))
+            {
                 rc = 1;
-            } else {
-                if (GetLastError() == ERROR_SERVICE_ALREADY_RUNNING) {
+            }
+            else
+            {
+                if (GetLastError() == ERROR_SERVICE_ALREADY_RUNNING)
+                {
                     rc = -1;
                 }
             }
@@ -94,22 +100,27 @@ int os_stop_service()
 
     /* Stop the service database */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (schSCManager) {
-        schService = OpenService(schSCManager, g_lpszServiceName,
-                                 SC_MANAGER_ALL_ACCESS);
-        if (schService) {
+    if (schSCManager)
+    {
+        schService = OpenService(schSCManager, g_lpszServiceName, SC_MANAGER_ALL_ACCESS);
+        if (schService)
+        {
             SERVICE_STATUS lpServiceStatus;
 
-            if (ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus)) {
+            if (ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus))
+            {
                 rc = 1;
             }
-            else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
+            else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE)
+            {
                 rc = -1; /* already stopped — not a real error */
             }
-            else if (GetLastError() == ERROR_SERVICE_CANNOT_ACCEPT_CTRL) {
+            else if (GetLastError() == ERROR_SERVICE_CANNOT_ACCEPT_CTRL)
+            {
                 rc = -1; /* already stopping — wait and restart normally */
             }
-            else {
+            else
+            {
                 plain_mdebug1("os_stop_service(): ControlService failed (error %lu).", GetLastError());
             }
 
@@ -120,10 +131,11 @@ int os_stop_service()
     }
 
     /*
-    * Sleep for a short period of time to avoid possible race-conditions with
-    * newer instances of wazuh-agent.
-    */
-    if (rc == 1 || rc == -1) {
+     * Sleep for a short period of time to avoid possible race-conditions with
+     * newer instances of wazuh-agent.
+     */
+    if (rc == 1 || rc == -1)
+    {
         Sleep(300);
     }
 
@@ -149,15 +161,18 @@ int CheckServiceRunning()
 
     /* Check service status */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (schSCManager) {
-        schService = OpenService(schSCManager, g_lpszServiceName,
-                                 SC_MANAGER_ALL_ACCESS);
-        if (schService) {
+    if (schSCManager)
+    {
+        schService = OpenService(schSCManager, g_lpszServiceName, SC_MANAGER_ALL_ACCESS);
+        if (schService)
+        {
             /* Check status */
             SERVICE_STATUS lpServiceStatus;
 
-            if (QueryServiceStatus(schService, &lpServiceStatus)) {
-                if (lpServiceStatus.dwCurrentState != SERVICE_STOPPED) {
+            if (QueryServiceStatus(schService, &lpServiceStatus))
+            {
+                if (lpServiceStatus.dwCurrentState != SERVICE_STOPPED)
+                {
                     rc = 1;
                 }
             }
@@ -174,29 +189,37 @@ int CheckServiceRunning()
  * sharing, so it is held exactly as long as the process that opened it and released by the system if
  * that process dies. The file is left in place: deleting it on close would leave it delete-pending while
  * another handle (an antivirus scan) stays open, and an open in that window fails with
- * ERROR_ACCESS_DENIED instead of ERROR_SHARING_VIOLATION. Only Administrators and SYSTEM can create or open files in tmp\
- * (SetWazuhPermissions), so no other account can hold it -- unlike a named object, whose name any
- * account can take first.
+ * ERROR_ACCESS_DENIED instead of ERROR_SHARING_VIOLATION. Only Administrators and SYSTEM can create or open files in
+ * tmp\ (SetWazuhPermissions), so no other account can hold it -- unlike a named object, whose name any account can take
+ * first.
  *
  * Retries every 500 ms while another restart holds it. Returns the handle, or INVALID_HANDLE_VALUE with
  * *timed_out set if it was still held after wait_ms, or INVALID_HANDLE_VALUE with *timed_out clear (and
  * the error in GetLastError()) if it could not be opened for any other reason. */
-HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out)
+HANDLE acquire_restart_lock(DWORD wait_ms, int* timed_out)
 {
     const DWORD retryMs = 500;
     DWORD waited = 0;
 
     *timed_out = 0;
 
-    for (;;) {
-        HANDLE lock = CreateFile("tmp\\service-restart.lock", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS,
-                                 FILE_ATTRIBUTE_NORMAL, NULL);
+    for (;;)
+    {
+        HANDLE lock = CreateFile("tmp\\service-restart.lock",
+                                 GENERIC_READ | GENERIC_WRITE,
+                                 0,
+                                 NULL,
+                                 OPEN_ALWAYS,
+                                 FILE_ATTRIBUTE_NORMAL,
+                                 NULL);
 
-        if (lock != INVALID_HANDLE_VALUE || GetLastError() != ERROR_SHARING_VIOLATION) {
+        if (lock != INVALID_HANDLE_VALUE || GetLastError() != ERROR_SHARING_VIOLATION)
+        {
             return lock;
         }
 
-        if (waited >= wait_ms) {
+        if (waited >= wait_ms)
+        {
             *timed_out = 1;
             return INVALID_HANDLE_VALUE;
         }
@@ -207,7 +230,7 @@ HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out)
 }
 
 /* Install the agent service */
-int InstallService(char *path)
+int InstallService(char* path)
 {
     int ret;
     SC_HANDLE schSCManager, schService;
@@ -215,7 +238,8 @@ int InstallService(char *path)
     SERVICE_DESCRIPTION sdBuf;
 
     /* Uninstall service (if it exists) */
-    if (!UninstallService()) {
+    if (!UninstallService())
+    {
         plain_merror("Failure running UninstallService().");
         return (0);
     }
@@ -226,7 +250,8 @@ int InstallService(char *path)
     /* Opening the service database */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 
-    if (schSCManager == NULL) {
+    if (schSCManager == NULL)
+    {
         goto install_error;
     }
 
@@ -239,9 +264,14 @@ int InstallService(char *path)
                                SERVICE_AUTO_START,
                                SERVICE_ERROR_NORMAL,
                                lpszBinaryPathName,
-                               NULL, NULL, NULL, NULL, NULL);
+                               NULL,
+                               NULL,
+                               NULL,
+                               NULL,
+                               NULL);
 
-    if (schService == NULL) {
+    if (schService == NULL)
+    {
         CloseServiceHandle(schSCManager);
         goto install_error;
     }
@@ -254,32 +284,32 @@ int InstallService(char *path)
     CloseServiceHandle(schSCManager);
 
     /* Check for errors */
-    if (!ret) {
+    if (!ret)
+    {
         goto install_error;
     }
 
     plain_minfo("Successfully added to the service database.");
     return (1);
 
-install_error: {
-        char local_msg[1025];
-        LPVOID lpMsgBuf;
+install_error:
+{
+    char local_msg[1025];
+    LPVOID lpMsgBuf;
 
-        memset(local_msg, 0, 1025);
+    memset(local_msg, 0, 1025);
 
-        FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                       FORMAT_MESSAGE_FROM_SYSTEM |
-                       FORMAT_MESSAGE_IGNORE_INSERTS,
-                       NULL,
-                       GetLastError(),
-                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                       (LPTSTR) &lpMsgBuf,
-                       0,
-                       NULL);
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                  NULL,
+                  GetLastError(),
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                  (LPTSTR)&lpMsgBuf,
+                  0,
+                  NULL);
 
-        plain_merror("Unable to create service entry: %s", (LPCTSTR)lpMsgBuf);
-        return (0);
-    }
+    plain_merror("Unable to create service entry: %s", (LPCTSTR)lpMsgBuf);
+    return (0);
+}
 }
 
 /* Uninstall the agent service */
@@ -292,9 +322,11 @@ int UninstallService()
 
     /* Remove from the service database */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (schSCManager) {
+    if (schSCManager)
+    {
         schService = OpenService(schSCManager, g_lpszServiceName, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
-        if (schService) {
+        if (schService)
+        {
             /* Query the raw state directly instead of CheckServiceRunning(): that
              * helper now treats anything but SERVICE_STOPPED as "running" (issue
              * 38428, to fix the restart-wait loop giving up too early), but here a
@@ -306,47 +338,64 @@ int UninstallService()
             BOOL queried = QueryServiceStatus(schService, &currentStatus);
             DWORD currentState = queried ? currentStatus.dwCurrentState : SERVICE_RUNNING;
 
-            if (queried && currentState == SERVICE_STOPPED) {
+            if (queried && currentState == SERVICE_STOPPED)
+            {
                 plain_minfo("Found (%s) service is not running.", g_lpszServiceName);
                 ret = 1;
-            } else if (queried && currentState == SERVICE_STOP_PENDING) {
+            }
+            else if (queried && currentState == SERVICE_STOP_PENDING)
+            {
                 plain_minfo("Found (%s) service is already stopping; waiting for it to finish.", g_lpszServiceName);
 
                 const DWORD stopWaitTimeoutMs = 45000;
                 const DWORD waitStart = GetTickCount();
                 ret = 1;
 
-                while (QueryServiceStatus(schService, &currentStatus) && currentStatus.dwCurrentState != SERVICE_STOPPED) {
-                    if (GetTickCount() - waitStart > stopWaitTimeoutMs) {
-                        plain_merror("Failure waiting for (%s) to finish stopping before removing it.", g_lpszServiceName);
+                while (QueryServiceStatus(schService, &currentStatus) &&
+                       currentStatus.dwCurrentState != SERVICE_STOPPED)
+                {
+                    if (GetTickCount() - waitStart > stopWaitTimeoutMs)
+                    {
+                        plain_merror("Failure waiting for (%s) to finish stopping before removing it.",
+                                     g_lpszServiceName);
                         ret = 0;
                         break;
                     }
                     Sleep(500);
                 }
-            } else {
+            }
+            else
+            {
                 plain_minfo("Found (%s) service is running going to try and stop it.", g_lpszServiceName);
                 ret = ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus);
-                if (!ret) {
-                    plain_merror("Failure stopping service (%s) before removing it (%ld).", g_lpszServiceName, GetLastError());
-                } else {
+                if (!ret)
+                {
+                    plain_merror(
+                        "Failure stopping service (%s) before removing it (%ld).", g_lpszServiceName, GetLastError());
+                }
+                else
+                {
                     plain_minfo("Successfully stopped (%s).", g_lpszServiceName);
                 }
             }
 
-            if (ret && DeleteService(schService)) {
+            if (ret && DeleteService(schService))
+            {
                 plain_minfo("Successfully removed (%s) from the service database.", g_lpszServiceName);
                 rc = 1;
             }
             CloseServiceHandle(schService);
-        } else {
+        }
+        else
+        {
             plain_minfo("Service does not exist (%s) nothing to remove.", g_lpszServiceName);
             rc = 1;
         }
         CloseServiceHandle(schSCManager);
     }
 
-    if (!rc) {
+    if (!rc)
+    {
         plain_merror("Failure removing (%s) from the service database.", g_lpszServiceName);
     }
 
@@ -361,24 +410,27 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
      * time on top of the first, racing the SCM transitions. */
     static volatile LONG stop_in_progress = 0;
 
-    if (ossecServiceStatusHandle) {
-        switch (dwOpcode) {
+    if (ossecServiceStatusHandle)
+    {
+        switch (dwOpcode)
+        {
             case SERVICE_CONTROL_STOP:
-                if (InterlockedCompareExchange(&stop_in_progress, 1, 0) != 0) {
+                if (InterlockedCompareExchange(&stop_in_progress, 1, 0) != 0)
+                {
                     return;
                 }
 
-                ossecServiceStatus.dwWin32ExitCode          = 0;
-                ossecServiceStatus.dwCheckPoint             = 0;
+                ossecServiceStatus.dwWin32ExitCode = 0;
+                ossecServiceStatus.dwCheckPoint = 0;
                 /* The stop path below blocks: wm_kill_children(), stop_wmodules() and the FIM
                  * database teardown (FIM_TEARDOWN_BUDGET_MS). The wait hint provides a best-effort
                  * estimate to the SCM covering teardown and module shutdowns. */
-                ossecServiceStatus.dwWaitHint               = FIM_TEARDOWN_BUDGET_MS + 10000;
+                ossecServiceStatus.dwWaitHint = FIM_TEARDOWN_BUDGET_MS + 10000;
 
                 plain_minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
-                ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
-                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                ossecServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
+                SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Set pending exit signal.");
 
                 is_fim_shutdown = true;
@@ -399,10 +451,10 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 // in-progress stop; a terminal state has no pending operation left to
                 // report, so both must go back to zero here rather than being left stale
                 // (issue 38428).
-                ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
-                ossecServiceStatus.dwCheckPoint              = 0;
-                ossecServiceStatus.dwWaitHint                = 0;
-                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                ossecServiceStatus.dwCurrentState = SERVICE_STOPPED;
+                ossecServiceStatus.dwCheckPoint = 0;
+                ossecServiceStatus.dwWaitHint = 0;
+                SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Exit completed successfully.");
                 break;
         }
@@ -416,14 +468,12 @@ void WinSetError()
 }
 
 /* Initialize the agent service dispatcher */
-int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **argv)
+int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
 {
-    SERVICE_TABLE_ENTRY   steDispatchTable[] = {
-        { g_lpszServiceName, OssecServiceStart },
-        { NULL,       NULL                     }
-    };
+    SERVICE_TABLE_ENTRY steDispatchTable[] = {{g_lpszServiceName, OssecServiceStart}, {NULL, NULL}};
 
-    if (!StartServiceCtrlDispatcher(steDispatchTable)) {
+    if (!StartServiceCtrlDispatcher(steDispatchTable))
+    {
         plain_minfo("Unable to set service information.");
         return (1);
     }
@@ -432,7 +482,7 @@ int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **
 }
 
 /* Start OSSEC service */
-void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__((unused)) LPTSTR *argv)
+void WINAPI OssecServiceStart(__attribute__((unused)) DWORD argc, __attribute__((unused)) LPTSTR* argv)
 {
 #ifdef OSSECHIDS
     /* Must run before RegisterServiceCtrlHandler() below: from that point on,
@@ -444,19 +494,18 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
     wm_lifecycle_lock_init();
 #endif
 
-    ossecServiceStatus.dwServiceType            = SERVICE_WIN32;
-    ossecServiceStatus.dwCurrentState           = SERVICE_START_PENDING;
-    ossecServiceStatus.dwControlsAccepted       = SERVICE_ACCEPT_STOP;
-    ossecServiceStatus.dwWin32ExitCode          = 0;
+    ossecServiceStatus.dwServiceType = SERVICE_WIN32;
+    ossecServiceStatus.dwCurrentState = SERVICE_START_PENDING;
+    ossecServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    ossecServiceStatus.dwWin32ExitCode = 0;
     ossecServiceStatus.dwServiceSpecificExitCode = 0;
-    ossecServiceStatus.dwCheckPoint             = 0;
-    ossecServiceStatus.dwWaitHint               = 0;
+    ossecServiceStatus.dwCheckPoint = 0;
+    ossecServiceStatus.dwWaitHint = 0;
 
-    ossecServiceStatusHandle =
-        RegisterServiceCtrlHandler(g_lpszServiceName,
-                                   OssecServiceCtrlHandler);
+    ossecServiceStatusHandle = RegisterServiceCtrlHandler(g_lpszServiceName, OssecServiceCtrlHandler);
 
-    if (ossecServiceStatusHandle == (SERVICE_STATUS_HANDLE)0) {
+    if (ossecServiceStatusHandle == (SERVICE_STATUS_HANDLE)0)
+    {
         plain_minfo("RegisterServiceCtrlHandler failed.");
         return;
     }
@@ -465,7 +514,8 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
     ossecServiceStatus.dwCheckPoint = 0;
     ossecServiceStatus.dwWaitHint = 0;
 
-    if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus)) {
+    if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus))
+    {
         plain_minfo("SetServiceStatus error.");
         return;
     }

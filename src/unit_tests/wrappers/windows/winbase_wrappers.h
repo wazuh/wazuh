@@ -7,23 +7,22 @@
  * Foundation
  */
 
-
 #ifndef WINBASE_WRAPPERS_H
 #define WINBASE_WRAPPERS_H
 
 #include <windows.h>
 
-#undef  LookupPrivilegeValue
+#undef LookupPrivilegeValue
 #define LookupPrivilegeValue wrap_LookupPrivilegeValue
-#define LocalFree wrap_LocalFree
-#undef  FormatMessage
+#define LocalFree            wrap_LocalFree
+#undef FormatMessage
 #define FormatMessage wrap_FormatMessage
-#undef  LookupAccountSid
+#undef LookupAccountSid
 #define LookupAccountSid wrap_LookupAccountSid
-#undef  LookupAccountSidW
+#undef LookupAccountSidW
 #define LookupAccountSidW wrap_LookupAccountSid
-#undef  GetFileSecurity
-#define GetFileSecurity wrap_GetFileSecurity
+#undef GetFileSecurity
+#define GetFileSecurity       wrap_GetFileSecurity
 #define ReadDirectoryChangesW wrap_ReadDirectoryChangesW
 
 DWORD wrap_FormatMessage(DWORD dwFlags,
@@ -32,16 +31,17 @@ DWORD wrap_FormatMessage(DWORD dwFlags,
                          DWORD dwLanguageId,
                          LPTSTR lpBuffer,
                          DWORD nSize,
-                         va_list *Arguments);
+                         va_list* Arguments);
 
-void expect_FormatMessage_call(char *buffer);
+void expect_FormatMessage_call(char* buffer);
 
 HLOCAL wrap_LocalFree(HLOCAL hMem);
 
 WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
                              SECURITY_INFORMATION RequestedInformation,
                              PSECURITY_DESCRIPTOR pSecurityDescriptor,
-                             DWORD nLength, LPDWORD lpnLengthNeeded);
+                             DWORD nLength,
+                             LPDWORD lpnLengthNeeded);
 
 WINBOOL wrap_LookupAccountSid(LPCSTR lpSystemName,
                               PSID Sid,
@@ -51,7 +51,7 @@ WINBOOL wrap_LookupAccountSid(LPCSTR lpSystemName,
                               LPDWORD cchReferencedDomainName,
                               PSID_NAME_USE peUse);
 
-void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value);
+void expect_LookupAccountSid_call(char* name, char* DomainName, int ret_value);
 
 WINBOOL wrap_ReadDirectoryChangesW(HANDLE hDirectory,
                                    LPVOID lpBuffer,
@@ -62,8 +62,6 @@ WINBOOL wrap_ReadDirectoryChangesW(HANDLE hDirectory,
                                    LPOVERLAPPED lpOverlapped,
                                    LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
 
-BOOL wrap_LookupPrivilegeValue(LPCSTR lpSystemName,
-                               LPCSTR lpName,
-                               PLUID  lpLuid);
+BOOL wrap_LookupPrivilegeValue(LPCSTR lpSystemName, LPCSTR lpName, PLUID lpLuid);
 
 #endif

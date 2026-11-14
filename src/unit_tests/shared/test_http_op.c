@@ -89,7 +89,7 @@ void test_uhttp_post_refuses_a_null_buffer_with_a_positive_length(void** state)
 
     uhttp_result_t result = {0};
     assert_int_equal(-1, uhttp_post(client, NULL, 8, &result));
-    assert_int_equal(0, result.curl_code);  /* untouched: nothing was attempted */
+    assert_int_equal(0, result.curl_code); /* untouched: nothing was attempted */
     assert_int_equal(0, result.http_status);
 
     uhttp_client_free(client);

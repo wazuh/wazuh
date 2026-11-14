@@ -31,9 +31,10 @@
  * runs them all in-process and calls their dispatchers directly. The stubs
  * below switch; every assertion further down is shared. */
 
-typedef struct answer_t {
-    const char* target;     ///< Component the answer belongs to.
-    const char* reply;      ///< Reply to hand back, NULL when unreachable.
+typedef struct answer_t
+{
+    const char* target; ///< Component the answer belongs to.
+    const char* reply;  ///< Reply to hand back, NULL when unreachable.
 } answer_t;
 
 static const answer_t* g_answers = NULL;
@@ -59,8 +60,10 @@ static const answer_t* answer_for(const char* target)
 {
     size_t i;
 
-    for (i = 0; i < g_answer_count; i++) {
-        if (strcmp(g_answers[i].target, target) == 0) {
+    for (i = 0; i < g_answer_count; i++)
+    {
+        if (strcmp(g_answers[i].target, target) == 0)
+        {
             return &g_answers[i];
         }
     }
@@ -70,7 +73,8 @@ static const answer_t* answer_for(const char* target)
 
 #ifndef TEST_WINAGENT
 
-int __wrap_OS_ConnectUnixDomain(const char* path, __attribute__((unused)) int type,
+int __wrap_OS_ConnectUnixDomain(const char* path,
+                                __attribute__((unused)) int type,
                                 __attribute__((unused)) int max_msg_size)
 {
     /* The path is "queue/sockets/<target>"; keep the target so the recv stub
@@ -80,7 +84,8 @@ int __wrap_OS_ConnectUnixDomain(const char* path, __attribute__((unused)) int ty
 
     g_connect_calls++;
 
-    if (!answer || !answer->reply) {
+    if (!answer || !answer->reply)
+    {
         return -1;
     }
 
@@ -95,12 +100,12 @@ int __wrap_OS_SendSecureTCP(__attribute__((unused)) int sock,
     return 0;
 }
 
-int __wrap_OS_RecvSecureTCP(__attribute__((unused)) int sock, char* ret,
-                            __attribute__((unused)) uint32_t size)
+int __wrap_OS_RecvSecureTCP(__attribute__((unused)) int sock, char* ret, __attribute__((unused)) uint32_t size)
 {
     const answer_t* answer = g_connected_target ? answer_for(g_connected_target) : NULL;
 
-    if (!answer || !answer->reply) {
+    if (!answer || !answer->reply)
+    {
         return -1;
     }
 
@@ -123,7 +128,8 @@ static size_t dispatch_as(const char* target, char** output)
 
     g_connect_calls++;
 
-    if (!answer || !answer->reply) {
+    if (!answer || !answer->reply)
+    {
         return 0;
     }
 
@@ -136,8 +142,8 @@ size_t __wrap_agcom_dispatch(__attribute__((unused)) char* command, char** outpu
     return dispatch_as("agent", output);
 }
 
-size_t __wrap_syscom_dispatch(__attribute__((unused)) char* command,
-                              __attribute__((unused)) size_t command_len, char** output)
+size_t
+__wrap_syscom_dispatch(__attribute__((unused)) char* command, __attribute__((unused)) size_t command_len, char** output)
 {
     return dispatch_as("syscheck", output);
 }
@@ -147,8 +153,8 @@ size_t __wrap_lccom_dispatch(__attribute__((unused)) char* command, char** outpu
     return dispatch_as("logcollector", output);
 }
 
-size_t __wrap_wmcom_dispatch(__attribute__((unused)) char* command,
-                             __attribute__((unused)) size_t command_len, char** output)
+size_t
+__wrap_wmcom_dispatch(__attribute__((unused)) char* command, __attribute__((unused)) size_t command_len, char** output)
 {
     return dispatch_as("wmodules", output);
 }
@@ -224,7 +230,7 @@ static void test_collect_config_reports_the_daemons_that_are_up(void** state)
     (void)state;
     const answer_t answers[] = {
         {"agent", "ok {\"agent\":{\"client\":{}}}"},
-        {"syscheck", NULL},         /* not running */
+        {"syscheck", NULL}, /* not running */
         {"logcollector", "err Could not get requested section"},
         {"wmodules", "ok {\"sca\":{}}"},
         {"com", NULL},
@@ -272,7 +278,7 @@ static void test_collect_config_ignores_a_reply_that_is_not_a_report(void** stat
 {
     (void)state;
     const answer_t answers[] = {
-        {"agent", "ok [{\"module\":\"agent\"}]"},  /* the old array shape */
+        {"agent", "ok [{\"module\":\"agent\"}]"}, /* the old array shape */
         {"syscheck", "ok not json at all"},
         {"logcollector", "ok {\"logcollector\":{}}"},
         {"wmodules", NULL},

@@ -85,206 +85,201 @@ namespace
     /// configured behavior.
     class FakeIntake
     {
-        public:
-            enum class Behavior
-            {
-                Accept,          ///< Read the frame, answer SYNC_FRAME_ACCEPTED.
-                Refuse,          ///< Read the frame, answer SYNC_FRAME_REFUSED.
-                CloseWithoutAck, ///< Read the frame, close with no status byte.
-                Stall            ///< Read nothing, keep the connection open.
-            };
+    public:
+        enum class Behavior
+        {
+            Accept,          ///< Read the frame, answer SYNC_FRAME_ACCEPTED.
+            Refuse,          ///< Read the frame, answer SYNC_FRAME_REFUSED.
+            CloseWithoutAck, ///< Read the frame, close with no status byte.
+            Stall            ///< Read nothing, keep the connection open.
+        };
 
-            FakeIntake(std::string path, Behavior behavior)
-                : m_path(std::move(path))
-                , m_behavior(behavior)
+        FakeIntake(std::string path, Behavior behavior)
+            : m_path(std::move(path))
+            , m_behavior(behavior)
+        {
+            listenAndServe(); // ASSERT_* needs a void function, not a constructor.
+        }
+
+        ~FakeIntake()
+        {
+            waitDone();
+
+            if (m_listenFd >= 0)
             {
-                listenAndServe(); // ASSERT_* needs a void function, not a constructor.
+                close(m_listenFd);
             }
 
-            ~FakeIntake()
+            unlink(m_path.c_str());
+        }
+
+        /// Joins the serving thread; call before asserting on the capture.
+        void waitDone()
+        {
+            if (m_thread.joinable())
             {
-                waitDone();
+                m_thread.join();
+            }
+        }
 
-                if (m_listenFd >= 0)
-                {
-                    close(m_listenFd);
-                }
+        const std::string& capturedSessionId() const
+        {
+            return m_sessionId;
+        }
 
-                unlink(m_path.c_str());
+        const std::vector<uint8_t>& capturedBody() const
+        {
+            return m_body;
+        }
+
+        bool magicMatched() const
+        {
+            return m_magicOk;
+        }
+
+    private:
+        void listenAndServe()
+        {
+            m_listenFd = socket(AF_UNIX, SOCK_STREAM, 0);
+            ASSERT_GE(m_listenFd, 0);
+
+            sockaddr_un addr {};
+            addr.sun_family = AF_UNIX;
+            std::strncpy(addr.sun_path, m_path.c_str(), sizeof(addr.sun_path) - 1);
+            unlink(m_path.c_str());
+            ASSERT_EQ(bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)), 0);
+            ASSERT_EQ(listen(m_listenFd, 1), 0);
+
+            m_thread = std::thread([this] { serve(); });
+        }
+
+        void serve()
+        {
+            const int fd = accept(m_listenFd, nullptr, nullptr);
+
+            if (fd < 0)
+            {
+                return;
             }
 
-            /// Joins the serving thread; call before asserting on the capture.
-            void waitDone()
+            if (m_behavior == Behavior::Stall)
             {
-                if (m_thread.joinable())
-                {
-                    m_thread.join();
-                }
-            }
-
-            const std::string& capturedSessionId() const
-            {
-                return m_sessionId;
-            }
-
-            const std::vector<uint8_t>& capturedBody() const
-            {
-                return m_body;
-            }
-
-            bool magicMatched() const
-            {
-                return m_magicOk;
-            }
-
-        private:
-            void listenAndServe()
-            {
-                m_listenFd = socket(AF_UNIX, SOCK_STREAM, 0);
-                ASSERT_GE(m_listenFd, 0);
-
-                sockaddr_un addr {};
-                addr.sun_family = AF_UNIX;
-                std::strncpy(addr.sun_path, m_path.c_str(), sizeof(addr.sun_path) - 1);
-                unlink(m_path.c_str());
-                ASSERT_EQ(bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)), 0);
-                ASSERT_EQ(listen(m_listenFd, 1), 0);
-
-                m_thread = std::thread([this]
-                {
-                    serve();
-                });
-            }
-
-            void serve()
-            {
-                const int fd = accept(m_listenFd, nullptr, nullptr);
-
-                if (fd < 0)
-                {
-                    return;
-                }
-
-                if (m_behavior == Behavior::Stall)
-                {
-                    // Outlive the producer's I/O timeout without ever reading.
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    close(fd);
-                    return;
-                }
-
-                std::array<uint8_t, 4> magic {};
-
-                if (!readExact(fd, magic.data(), magic.size()))
-                {
-                    close(fd);
-                    return;
-                }
-
-                m_magicOk = (magic == SYNC_FRAME_MAGIC);
-
-                std::array<uint8_t, 4> idLenBytes {};
-
-                if (!readExact(fd, idLenBytes.data(), idLenBytes.size()))
-                {
-                    close(fd);
-                    return;
-                }
-
-                const uint32_t idLen = getU32(idLenBytes.data());
-                std::string id(idLen, '\0');
-
-                if (idLen > 0 && !readExact(fd, id.data(), idLen))
-                {
-                    close(fd);
-                    return;
-                }
-
-                std::array<uint8_t, 8> bodyLenBytes {};
-
-                if (!readExact(fd, bodyLenBytes.data(), bodyLenBytes.size()))
-                {
-                    close(fd);
-                    return;
-                }
-
-                const uint64_t bodyLen = getU64(bodyLenBytes.data());
-                std::vector<uint8_t> body(bodyLen);
-
-                if (bodyLen > 0 && !readExact(fd, body.data(), body.size()))
-                {
-                    close(fd);
-                    return;
-                }
-
-                m_sessionId = std::move(id);
-                m_body = std::move(body);
-
-                if (m_behavior != Behavior::CloseWithoutAck)
-                {
-                    const uint8_t status = (m_behavior == Behavior::Accept)
-                                           ? SYNC_FRAME_ACCEPTED
-                                           : SYNC_FRAME_REFUSED;
-                    send(fd, &status, sizeof(status), 0);
-                }
-
+                // Outlive the producer's I/O timeout without ever reading.
+                std::this_thread::sleep_for(std::chrono::seconds(1));
                 close(fd);
+                return;
             }
 
-            std::string m_path;
-            Behavior m_behavior;
-            int m_listenFd {-1};
-            std::thread m_thread;
-            std::string m_sessionId;
-            std::vector<uint8_t> m_body;
-            bool m_magicOk {false};
+            std::array<uint8_t, 4> magic {};
+
+            if (!readExact(fd, magic.data(), magic.size()))
+            {
+                close(fd);
+                return;
+            }
+
+            m_magicOk = (magic == SYNC_FRAME_MAGIC);
+
+            std::array<uint8_t, 4> idLenBytes {};
+
+            if (!readExact(fd, idLenBytes.data(), idLenBytes.size()))
+            {
+                close(fd);
+                return;
+            }
+
+            const uint32_t idLen = getU32(idLenBytes.data());
+            std::string id(idLen, '\0');
+
+            if (idLen > 0 && !readExact(fd, id.data(), idLen))
+            {
+                close(fd);
+                return;
+            }
+
+            std::array<uint8_t, 8> bodyLenBytes {};
+
+            if (!readExact(fd, bodyLenBytes.data(), bodyLenBytes.size()))
+            {
+                close(fd);
+                return;
+            }
+
+            const uint64_t bodyLen = getU64(bodyLenBytes.data());
+            std::vector<uint8_t> body(bodyLen);
+
+            if (bodyLen > 0 && !readExact(fd, body.data(), body.size()))
+            {
+                close(fd);
+                return;
+            }
+
+            m_sessionId = std::move(id);
+            m_body = std::move(body);
+
+            if (m_behavior != Behavior::CloseWithoutAck)
+            {
+                const uint8_t status = (m_behavior == Behavior::Accept) ? SYNC_FRAME_ACCEPTED : SYNC_FRAME_REFUSED;
+                send(fd, &status, sizeof(status), 0);
+            }
+
+            close(fd);
+        }
+
+        std::string m_path;
+        Behavior m_behavior;
+        int m_listenFd {-1};
+        std::thread m_thread;
+        std::string m_sessionId;
+        std::vector<uint8_t> m_body;
+        bool m_magicOk {false};
     };
 
     class SyncSocketTransportTest : public ::testing::Test
     {
-        protected:
-            void SetUp() override
-            {
-                char pathTemplate[] = "/tmp/wzsyncXXXXXX";
-                ASSERT_NE(mkdtemp(pathTemplate), nullptr);
-                m_dir = pathTemplate;
-                m_socketPath = m_dir + "/queue-sync";
-            }
+    protected:
+        void SetUp() override
+        {
+            char pathTemplate[] = "/tmp/wzsyncXXXXXX";
+            ASSERT_NE(mkdtemp(pathTemplate), nullptr);
+            m_dir = pathTemplate;
+            m_socketPath = m_dir + "/queue-sync";
+        }
 
-            void TearDown() override
-            {
-                unlink(m_socketPath.c_str());
-                rmdir(m_dir.c_str());
-            }
+        void TearDown() override
+        {
+            unlink(m_socketPath.c_str());
+            rmdir(m_dir.c_str());
+        }
 
-            LoggerFunc captureLogger()
-            {
-                return [this](modules_log_level_t, const std::string & msg)
-                {
-                    std::lock_guard<std::mutex> lock(m_logMutex);
-                    m_logs.push_back(msg);
-                };
-            }
-
-            bool loggedContains(const std::string& needle)
+        LoggerFunc captureLogger()
+        {
+            return [this](modules_log_level_t, const std::string& msg)
             {
                 std::lock_guard<std::mutex> lock(m_logMutex);
+                m_logs.push_back(msg);
+            };
+        }
 
-                for (const auto& line : m_logs)
+        bool loggedContains(const std::string& needle)
+        {
+            std::lock_guard<std::mutex> lock(m_logMutex);
+
+            for (const auto& line : m_logs)
+            {
+                if (line.find(needle) != std::string::npos)
                 {
-                    if (line.find(needle) != std::string::npos)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
-
-                return false;
             }
 
-            std::string m_dir;
-            std::string m_socketPath;
-            std::mutex m_logMutex;
-            std::vector<std::string> m_logs;
+            return false;
+        }
+
+        std::string m_dir;
+        std::string m_socketPath;
+        std::mutex m_logMutex;
+        std::vector<std::string> m_logs;
     };
 } // namespace
 
@@ -355,8 +350,7 @@ TEST_F(SyncSocketTransportTest, ReachableIntakeReportsAvailable)
 TEST_F(SyncSocketTransportTest, StalledIntakeTimesOutInsteadOfHanging)
 {
     FakeIntake intake(m_socketPath, FakeIntake::Behavior::Stall);
-    SyncSocketTransport transport(m_socketPath, "mod", captureLogger(),
-                                  std::chrono::milliseconds {100});
+    SyncSocketTransport transport(m_socketPath, "mod", captureLogger(), std::chrono::milliseconds {100});
 
     const auto before = std::chrono::steady_clock::now();
     EXPECT_FALSE(transport.sendSession(123, {0x01}));

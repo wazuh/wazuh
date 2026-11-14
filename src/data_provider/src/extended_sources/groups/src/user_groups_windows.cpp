@@ -21,7 +21,7 @@ namespace
     struct UserGroupsCacheState final
     {
         std::unordered_map<std::string, std::vector<std::string>> userGroupsCache;
-        std::chrono::steady_clock::time_point cacheTimestamp{};
+        std::chrono::steady_clock::time_point cacheTimestamp {};
         bool cacheValid = false;
         std::size_t apiCallCount = 0;
     };
@@ -31,7 +31,7 @@ namespace
         thread_local auto* state = new UserGroupsCacheState();
         return *state;
     }
-}
+} // namespace
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IWindowsApiWrapper> winapiWrapper,
                                        std::shared_ptr<IUsersHelper> usersHelper,
@@ -123,10 +123,7 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<std::uint32_
         {
             auto it = std::find_if(groups.begin(),
                                    groups.end(),
-                                   [&groupname](const Group & group)
-            {
-                return group.groupname == groupname;
-            });
+                                   [&groupname](const Group& group) { return group.groupname == groupname; });
 
             if (it != groups.end())
             {
@@ -174,10 +171,7 @@ void UserGroupsProvider::processLocalUserGroups(const User& user,
     for (const auto& groupname : groupNames)
     {
         auto optGroup = std::find_if(
-                            groups.begin(), groups.end(), [&groupname](const Group & group)
-        {
-            return group.groupname == groupname;
-        });
+            groups.begin(), groups.end(), [&groupname](const Group& group) { return group.groupname == groupname; });
 
         if (optGroup == groups.end())
         {

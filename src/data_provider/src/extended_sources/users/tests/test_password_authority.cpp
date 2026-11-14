@@ -17,14 +17,9 @@
 
 TEST(PasswordAuthorityTest, AccountWithAPasswordReportsActiveAndItsAlgorithm)
 {
-    const auto result
-    {
-        od::parseAuthenticationAuthority(
-        {
-            ";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2,SRP-RFC5054-4096-SHA512-PBKDF2>",
-            ";Kerberosv5;;user@LKDC:SHA1.0D11;LKDC:SHA1.0D11;"
-        })
-    };
+    const auto result {
+        od::parseAuthenticationAuthority({";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2,SRP-RFC5054-4096-SHA512-PBKDF2>",
+                                          ";Kerberosv5;;user@LKDC:SHA1.0D11;LKDC:SHA1.0D11;"})};
 
     EXPECT_EQ(result["password_status"], "active");
     EXPECT_EQ(result["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
@@ -32,7 +27,7 @@ TEST(PasswordAuthorityTest, AccountWithAPasswordReportsActiveAndItsAlgorithm)
 
 TEST(PasswordAuthorityTest, AccountWithoutAnyAuthorityReportsNotSet)
 {
-    const auto result { od::parseAuthenticationAuthority({}) };
+    const auto result {od::parseAuthenticationAuthority({})};
 
     EXPECT_EQ(result["password_status"], "not_set");
     EXPECT_EQ(result["password_hash_algorithm"], "");
@@ -40,10 +35,8 @@ TEST(PasswordAuthorityTest, AccountWithoutAnyAuthorityReportsNotSet)
 
 TEST(PasswordAuthorityTest, AccountWithOnlyOtherAuthoritiesReportsNotSet)
 {
-    const auto result
-    {
-        od::parseAuthenticationAuthority({";Kerberosv5;;user@LKDC:SHA1.0D11;LKDC:SHA1.0D11;", ";SecureToken;"})
-    };
+    const auto result {
+        od::parseAuthenticationAuthority({";Kerberosv5;;user@LKDC:SHA1.0D11;LKDC:SHA1.0D11;", ";SecureToken;"})};
 
     EXPECT_EQ(result["password_status"], "not_set");
     EXPECT_EQ(result["password_hash_algorithm"], "");
@@ -51,14 +44,8 @@ TEST(PasswordAuthorityTest, AccountWithOnlyOtherAuthoritiesReportsNotSet)
 
 TEST(PasswordAuthorityTest, TheAuthorityOrderDoesNotMatter)
 {
-    const auto result
-    {
-        od::parseAuthenticationAuthority(
-        {
-            ";SecureToken;",
-            ";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2,SRP-RFC5054-4096-SHA512-PBKDF2>"
-        })
-    };
+    const auto result {od::parseAuthenticationAuthority(
+        {";SecureToken;", ";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2,SRP-RFC5054-4096-SHA512-PBKDF2>"})};
 
     EXPECT_EQ(result["password_status"], "active");
     EXPECT_EQ(result["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
@@ -66,14 +53,8 @@ TEST(PasswordAuthorityTest, TheAuthorityOrderDoesNotMatter)
 
 TEST(PasswordAuthorityTest, TheFirstShadowHashAuthorityWins)
 {
-    const auto result
-    {
-        od::parseAuthenticationAuthority(
-        {
-            ";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2>",
-            ";ShadowHash;HASHLIST:<SRP-RFC5054-4096-SHA512-PBKDF2>"
-        })
-    };
+    const auto result {od::parseAuthenticationAuthority(
+        {";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2>", ";ShadowHash;HASHLIST:<SRP-RFC5054-4096-SHA512-PBKDF2>"})};
 
     EXPECT_EQ(result["password_status"], "active");
     EXPECT_EQ(result["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
@@ -81,7 +62,7 @@ TEST(PasswordAuthorityTest, TheFirstShadowHashAuthorityWins)
 
 TEST(PasswordAuthorityTest, AShadowHashWithoutAListStillReportsActive)
 {
-    const auto result { od::parseAuthenticationAuthority({";ShadowHash;"}) };
+    const auto result {od::parseAuthenticationAuthority({";ShadowHash;"})};
 
     EXPECT_EQ(result["password_status"], "active");
     EXPECT_EQ(result["password_hash_algorithm"], "");
@@ -89,7 +70,7 @@ TEST(PasswordAuthorityTest, AShadowHashWithoutAListStillReportsActive)
 
 TEST(PasswordAuthorityTest, AnUnterminatedAlgorithmListIsNotReported)
 {
-    const auto result { od::parseAuthenticationAuthority({";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2"}) };
+    const auto result {od::parseAuthenticationAuthority({";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2"})};
 
     EXPECT_EQ(result["password_status"], "active");
     EXPECT_EQ(result["password_hash_algorithm"], "");
@@ -97,7 +78,7 @@ TEST(PasswordAuthorityTest, AnUnterminatedAlgorithmListIsNotReported)
 
 TEST(PasswordAuthorityTest, ASingleAlgorithmNeedsNoSeparator)
 {
-    const auto result { od::parseAuthenticationAuthority({";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2>"}) };
+    const auto result {od::parseAuthenticationAuthority({";ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2>"})};
 
     EXPECT_EQ(result["password_hash_algorithm"], "SALTED-SHA512-PBKDF2");
 }

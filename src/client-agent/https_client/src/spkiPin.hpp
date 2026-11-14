@@ -110,8 +110,7 @@ std::vector<SpkiDigest> spkiSha256AllFromPem(std::string_view pem, SpkiPinError*
 
 /// As spkiSha256FromPem(), over a single DER-encoded certificate.
 /// A null pointer or zero length is NoCertificate, not a crash.
-std::optional<SpkiDigest> spkiSha256FromDer(const void* der, std::size_t length,
-                                            SpkiPinError* error = nullptr);
+std::optional<SpkiDigest> spkiSha256FromDer(const void* der, std::size_t length, SpkiPinError* error = nullptr);
 
 /// 64 lowercase hex characters. The diagnostic form: comparable against
 /// `openssl dgst -sha256` output by eye, and what --show-token prints.
@@ -170,7 +169,7 @@ SpkiPinMatch spkiPinCompare(const SpkiDigest& digest, std::string_view pin);
  *        "not my manager" is not a malformed-input problem.
  * @return The matched certificate as PEM, or nullopt when nothing matched.
  */
-std::optional<std::string> spkiPinnedCertificatePem(std::string_view pem, std::string_view pin,
-                                                    SpkiPinError* error = nullptr);
+std::optional<std::string>
+spkiPinnedCertificatePem(std::string_view pem, std::string_view pin, SpkiPinError* error = nullptr);
 
 #endif // _HC_SPKI_PIN_HPP

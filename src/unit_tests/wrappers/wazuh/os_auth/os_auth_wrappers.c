@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-void __wrap_add_remove(__attribute__((unused)) const keyentry *entry) {
+void __wrap_add_remove(__attribute__((unused)) const keyentry* entry)
+{
     // Empty wrapper
 }
-

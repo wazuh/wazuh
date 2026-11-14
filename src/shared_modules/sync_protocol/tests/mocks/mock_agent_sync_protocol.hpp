@@ -9,33 +9,47 @@
 
 class MockAgentSyncProtocol : public IAgentSyncProtocol
 {
-    public:
-        MOCK_METHOD(void,
-                    persistDifference,
-                    (const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext),
-                    (override));
+public:
+    MOCK_METHOD(void,
+                persistDifference,
+                (const std::string& id,
+                 Operation operation,
+                 const std::string& index,
+                 const std::string& data,
+                 uint64_t version,
+                 bool isDataContext),
+                (override));
 
-        MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
+    MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
 
-        MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
+    MOCK_METHOD(IntegrityCheckResult,
+                requiresFullSync,
+                (const std::string& index, const std::string& checksum),
+                (override));
 
-        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
+    MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
 
-        MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups, (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
+    MOCK_METHOD(SyncModuleResult,
+                synchronizeMetadataOrGroups,
+                (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion),
+                (override));
 
-        MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
+    MOCK_METHOD(SyncModuleResult,
+                notifyDataClean,
+                (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures),
+                (override));
 
-        MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
+    MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
 
-        MOCK_METHOD(void, clearAllDataContext, (), (override));
+    MOCK_METHOD(void, clearAllDataContext, (), (override));
 
-        MOCK_METHOD(void, deleteDatabase, (), (override));
+    MOCK_METHOD(void, deleteDatabase, (), (override));
 
-        MOCK_METHOD(void, stop, (), (override));
+    MOCK_METHOD(void, stop, (), (override));
 
-        MOCK_METHOD(void, reset, (), (override));
+    MOCK_METHOD(void, reset, (), (override));
 
-        MOCK_METHOD(bool, shouldStop, (), (const, override));
+    MOCK_METHOD(bool, shouldStop, (), (const, override));
 
-        MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t* data, size_t length), (override));
+    MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t* data, size_t length), (override));
 };

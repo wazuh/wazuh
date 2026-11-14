@@ -35,10 +35,10 @@
 
 constexpr std::array<uint8_t, 4> SYNC_FRAME_MAGIC {'W', 'Z', 'S', 'Y'};
 
-constexpr uint64_t SYNC_FRAME_MAX_BODY = 512ULL * 1024 * 1024;    ///< 512 MB body cap.
+constexpr uint64_t SYNC_FRAME_MAX_BODY = 512ULL * 1024 * 1024; ///< 512 MB body cap.
 
-constexpr uint8_t SYNC_FRAME_ACCEPTED = 1;  ///< Queued for /stateful; the producer may forget it.
-constexpr uint8_t SYNC_FRAME_REFUSED = 0;   ///< Not taken; the session is still the producer's.
+constexpr uint8_t SYNC_FRAME_ACCEPTED = 1; ///< Queued for /stateful; the producer may forget it.
+constexpr uint8_t SYNC_FRAME_REFUSED = 0;  ///< Not taken; the session is still the producer's.
 
 /*
  * What a stateful sync session id is allowed to be.
@@ -64,12 +64,11 @@ inline bool isValidSessionId(const std::string& sessionId)
     return std::all_of(sessionId.begin(),
                        sessionId.end(),
                        [](char character)
-    {
-        return (character >= '0' && character <= '9') ||
-               (character >= 'a' && character <= 'z') ||
-               (character >= 'A' && character <= 'Z') || character == '-' ||
-               character == '_' || character == '.';
-    });
+                       {
+                           return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'z') ||
+                                  (character >= 'A' && character <= 'Z') || character == '-' || character == '_' ||
+                                  character == '.';
+                       });
 }
 
 #endif // SYNC_SESSION_WIRE_HPP

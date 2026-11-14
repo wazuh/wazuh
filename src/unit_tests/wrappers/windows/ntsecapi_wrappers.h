@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef NTSECAPI_WRAPPERS_H
 #define NTSECAPI_WRAPPERS_H
 
@@ -39,30 +38,27 @@
 #undef LsaClose
 #define LsaClose wrap_LsaClose
 
-NTSTATUS wrap_LsaOpenPolicy(PLSA_UNICODE_STRING    SystemName,
+NTSTATUS wrap_LsaOpenPolicy(PLSA_UNICODE_STRING SystemName,
                             PLSA_OBJECT_ATTRIBUTES ObjectAttributes,
-                            ACCESS_MASK            DesiredAccess,
-                            PLSA_HANDLE            PolicyHandle);
+                            ACCESS_MASK DesiredAccess,
+                            PLSA_HANDLE PolicyHandle);
 
-NTSTATUS wrap_LsaQueryInformationPolicy(LSA_HANDLE                PolicyHandle,
-                                        POLICY_INFORMATION_CLASS  InformationClass,
-                                        PVOID                     *Buffer);
+NTSTATUS
+wrap_LsaQueryInformationPolicy(LSA_HANDLE PolicyHandle, POLICY_INFORMATION_CLASS InformationClass, PVOID* Buffer);
 
-BOOLEAN wrap_AuditLookupCategoryGuidFromCategoryId(POLICY_AUDIT_EVENT_TYPE AuditCategoryId,
-                                                   GUID                    *pAuditCategoryGuid);
+BOOLEAN wrap_AuditLookupCategoryGuidFromCategoryId(POLICY_AUDIT_EVENT_TYPE AuditCategoryId, GUID* pAuditCategoryGuid);
 
-BOOLEAN wrap_AuditEnumerateSubCategories(const GUID *pAuditCategoryGuid,
-                                         BOOLEAN    bRetrieveAllSubCategories,
-                                         GUID       **ppAuditSubCategoriesArray,
-                                         PULONG     pdwCountReturned);
+BOOLEAN wrap_AuditEnumerateSubCategories(const GUID* pAuditCategoryGuid,
+                                         BOOLEAN bRetrieveAllSubCategories,
+                                         GUID** ppAuditSubCategoriesArray,
+                                         PULONG pdwCountReturned);
 
-BOOLEAN wrap_AuditQuerySystemPolicy(const GUID                *pSubCategoryGuids,
-                                    ULONG                     dwPolicyCount,
-                                    PAUDIT_POLICY_INFORMATION *ppAuditPolicy);
+BOOLEAN wrap_AuditQuerySystemPolicy(const GUID* pSubCategoryGuids,
+                                    ULONG dwPolicyCount,
+                                    PAUDIT_POLICY_INFORMATION* ppAuditPolicy);
 
 NTSTATUS wrap_LsaFreeMemory(PVOID Buffer);
 
 NTSTATUS wrap_LsaClose(LSA_HANDLE ObjectHandle);
-
 
 #endif

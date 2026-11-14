@@ -19,8 +19,9 @@
 /* Tests for OS_IsValidName */
 
 /* Test valid agent names */
-static void test_OS_IsValidName_valid_names(void **state) {
-    (void) state;
+static void test_OS_IsValidName_valid_names(void** state)
+{
+    (void)state;
 
     /* Valid alphanumeric names */
     assert_int_equal(OS_IsValidName("agent01"), 1);
@@ -34,8 +35,9 @@ static void test_OS_IsValidName_valid_names(void **state) {
 }
 
 /* Test dot patterns */
-static void test_OS_IsValidName_dot_patterns(void **state) {
-    (void) state;
+static void test_OS_IsValidName_dot_patterns(void** state)
+{
+    (void)state;
 
     /* Names with double dots should be allowed if they don't start with dot */
     assert_int_equal(OS_IsValidName("test..name"), 1);
@@ -44,8 +46,9 @@ static void test_OS_IsValidName_dot_patterns(void **state) {
 }
 
 /* Test names starting with dot - should be rejected */
-static void test_OS_IsValidName_hidden_files(void **state) {
-    (void) state;
+static void test_OS_IsValidName_hidden_files(void** state)
+{
+    (void)state;
 
     /* Names starting with dot */
     assert_int_equal(OS_IsValidName(".hidden"), 0);
@@ -57,8 +60,9 @@ static void test_OS_IsValidName_hidden_files(void **state) {
 }
 
 /* Test invalid characters */
-static void test_OS_IsValidName_invalid_characters(void **state) {
-    (void) state;
+static void test_OS_IsValidName_invalid_characters(void** state)
+{
+    (void)state;
 
     /* Slashes */
     assert_int_equal(OS_IsValidName("test/agent"), 0);
@@ -74,8 +78,9 @@ static void test_OS_IsValidName_invalid_characters(void **state) {
 }
 
 /* Test name length validation */
-static void test_OS_IsValidName_length(void **state) {
-    (void) state;
+static void test_OS_IsValidName_length(void** state)
+{
+    (void)state;
 
     /* Too short (less than 2 characters) */
     assert_int_equal(OS_IsValidName("a"), 0);
@@ -98,8 +103,9 @@ static void test_OS_IsValidName_length(void **state) {
 }
 
 /* Test edge cases and boundary conditions */
-static void test_OS_IsValidName_edge_cases(void **state) {
-    (void) state;
+static void test_OS_IsValidName_edge_cases(void** state)
+{
+    (void)state;
 
     /* NULL name should be rejected */
     assert_int_equal(OS_IsValidName(NULL), 0);
@@ -118,8 +124,9 @@ static void test_OS_IsValidName_edge_cases(void **state) {
 
 /* Tests for OS_IsValidID */
 
-static void test_OS_IsValidID_valid_ids(void **state) {
-    (void) state;
+static void test_OS_IsValidID_valid_ids(void** state)
+{
+    (void)state;
 
     /* Valid numeric IDs */
     assert_int_equal(OS_IsValidID("001"), 1);
@@ -128,8 +135,9 @@ static void test_OS_IsValidID_valid_ids(void **state) {
     assert_int_equal(OS_IsValidID("1"), 1);
 }
 
-static void test_OS_IsValidID_invalid_ids(void **state) {
-    (void) state;
+static void test_OS_IsValidID_invalid_ids(void** state)
+{
+    (void)state;
 
     /* NULL ID */
     assert_int_equal(OS_IsValidID(NULL), 0);
@@ -143,7 +151,8 @@ static void test_OS_IsValidID_invalid_ids(void **state) {
     assert_int_equal(OS_IsValidID("1-2"), 0);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         /* OS_IsValidName tests */
         cmocka_unit_test(test_OS_IsValidName_valid_names),

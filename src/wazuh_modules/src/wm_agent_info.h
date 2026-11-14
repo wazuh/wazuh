@@ -34,8 +34,9 @@ typedef struct wm_agent_info_task_registry_t
 
 typedef struct wm_agent_info_t
 {
-    int interval;        // Update interval in seconds (for delta updates)
-    int integrity_interval; // Integrity check interval in seconds (for full metadata/groups verification), default 86400 (24h)
+    int interval;           // Update interval in seconds (for delta updates)
+    int integrity_interval; // Integrity check interval in seconds (for full metadata/groups verification), default
+                            // 86400 (24h)
     wm_agent_info_task_registry_t task_registry;
 } wm_agent_info_t;
 

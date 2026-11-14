@@ -17,47 +17,41 @@ ossec_config config_inst;
 HWND hStatus;
 
 /* Dialog -- About WAZUH */
-BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
-       WPARAM wParam,
-       __attribute__((unused))LPARAM lParam)
+BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, __attribute__((unused)) LPARAM lParam)
 {
-    switch (Message) {
+    switch (Message)
+    {
         case WM_CREATE:
-        case WM_INITDIALOG:
-
-            return TRUE;
+        case WM_INITDIALOG: return TRUE;
         case WM_COMMAND:
-            switch (LOWORD(wParam)) {
-                case UI_ID_CLOSE:
-                    EndDialog(hwnd, IDOK);
-                    break;
+            switch (LOWORD(wParam))
+            {
+                case UI_ID_CLOSE: EndDialog(hwnd, IDOK); break;
             }
             break;
 
-        case WM_CLOSE:
-            EndDialog(hwnd, IDOK);
-            break;
-        default:
-            return FALSE;
+        case WM_CLOSE: EndDialog(hwnd, IDOK); break;
+        default: return FALSE;
     }
     return TRUE;
 }
 
 /* Main Dialog */
-BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
-        __attribute__((unused))LPARAM lParam)
+BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, __attribute__((unused)) LPARAM lParam)
 {
     int ret_code = 0;
 
-
-    switch (Message) {
-        case WM_INITDIALOG: {
+    switch (Message)
+    {
+        case WM_INITDIALOG:
+        {
             int statwidths[] = {130, -1};
             HMENU hMenu, hSubMenu;
 
             UINT menuflags = MF_STRING;
 
-            if (config_inst.admin_access == 0) {
+            if (config_inst.admin_access == 0)
+            {
                 menuflags = MF_STRING | MF_GRAYED;
             }
 
@@ -88,63 +82,58 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             AppendMenu(hSubMenu, MF_STRING, UI_MENU_HELP_HELP, "Help");
             AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "&Help");
 
-
             AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
             SetMenu(hwnd, hMenu);
 
-
-            hStatus = CreateWindowEx(0, STATUSCLASSNAME, NULL,
+            hStatus = CreateWindowEx(0,
+                                     STATUSCLASSNAME,
+                                     NULL,
                                      WS_CHILD | WS_VISIBLE,
-                                     0, 0, 0, 0,
-                                     hwnd, (HMENU)IDC_MAIN_STATUS,
-                                     GetModuleHandle(NULL), NULL);
+                                     0,
+                                     0,
+                                     0,
+                                     0,
+                                     hwnd,
+                                     (HMENU)IDC_MAIN_STATUS,
+                                     GetModuleHandle(NULL),
+                                     NULL);
 
-            SendMessage(hStatus, SB_SETPARTS,
-                        sizeof(statwidths) / sizeof(int),
-                        (LPARAM)statwidths);
-            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
-
+            SendMessage(hStatus, SB_SETPARTS, sizeof(statwidths) / sizeof(int), (LPARAM)statwidths);
+            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM) "https://wazuh.com");
 
             /* Initializing config */
             config_read(hwnd);
             gen_server_info(hwnd);
 
             /* Setting the icons */
-            SendMessage(hwnd, WM_SETICON, ICON_SMALL,
-                        (LPARAM)LoadIcon(GetModuleHandle(NULL),
-                                         MAKEINTRESOURCE(IDI_OSSECICON)));
-            SendMessage(hwnd, WM_SETICON, ICON_BIG,
-                        (LPARAM)LoadIcon(GetModuleHandle(NULL),
-                                         MAKEINTRESOURCE(IDI_OSSECICON)));
+            SendMessage(
+                hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_OSSECICON)));
+            SendMessage(
+                hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_OSSECICON)));
 
-            if (config_inst.admin_access == 0) {
-                MessageBox(hwnd, "Admin access required. Some features may not work properly. \n\n"
+            if (config_inst.admin_access == 0)
+            {
+                MessageBox(hwnd,
+                           "Admin access required. Some features may not work properly. \n\n"
                            "**If on Vista (or Server 2008), choose the \"Run as administrator\" option.",
-                           "Admin Access Required", MB_OK);
+                           "Admin Access Required",
+                           MB_OK);
                 break;
             }
-
         }
         break;
 
         case WM_COMMAND:
-            switch (LOWORD(wParam)) {
-                case UI_MENU_MANAGE_EXIT:
-                    PostMessage(hwnd, WM_CLOSE, 0, 0);
-                    break;
+            switch (LOWORD(wParam))
+            {
+                case UI_MENU_MANAGE_EXIT: PostMessage(hwnd, WM_CLOSE, 0, 0); break;
 
-                case UI_MENU_VIEW_LOGS:
-                    _spawnlp( _P_NOWAIT, "notepad", "notepad " OSSECLOGS, NULL );
-                    break;
-                case UI_MENU_VIEW_CONFIG:
-                    _spawnlp( _P_NOWAIT, "notepad", "notepad " CONFIG, NULL );
-                    break;
-                case UI_MENU_HELP_HELP:
-                    _spawnlp( _P_NOWAIT, "notepad", "notepad " HELPTXT, NULL );
-                    break;
-                case UI_MENU_HELP_ABOUT: {
-                    DialogBox(GetModuleHandle(NULL),
-                              MAKEINTRESOURCE(IDD_ABOUT), hwnd, AboutDlgProc);
+                case UI_MENU_VIEW_LOGS: _spawnlp(_P_NOWAIT, "notepad", "notepad " OSSECLOGS, NULL); break;
+                case UI_MENU_VIEW_CONFIG: _spawnlp(_P_NOWAIT, "notepad", "notepad " CONFIG, NULL); break;
+                case UI_MENU_HELP_HELP: _spawnlp(_P_NOWAIT, "notepad", "notepad " HELPTXT, NULL); break;
+                case UI_MENU_HELP_ABOUT:
+                {
+                    DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_ABOUT), hwnd, AboutDlgProc);
                 }
                 break;
                 case IDC_CANCEL:
@@ -155,102 +144,108 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                 case UI_MENU_MANAGE_START:
 
                     /* Start WAZUH  -- must have a valid config before */
-                    if (strcmp(config_inst.server, FL_NOSERVER) != 0) {
+                    if (strcmp(config_inst.server, FL_NOSERVER) != 0)
+                    {
                         ret_code = os_start_service();
-                    } else {
+                    }
+                    else
+                    {
                         ret_code = 0;
                     }
 
-                    if (ret_code == 0) {
-                        MessageBox(hwnd, "Unable to start agent (check config)",
-                                   "Error -- Unable to Start Agent", MB_OK);
-                    } else if (ret_code == 1) {
+                    if (ret_code == 0)
+                    {
+                        MessageBox(
+                            hwnd, "Unable to start agent (check config)", "Error -- Unable to Start Agent", MB_OK);
+                    }
+                    else if (ret_code == 1)
+                    {
                         config_read(hwnd);
                         gen_server_info(hwnd);
 
-                        SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Started");
+                        SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM) "Started");
 
-                        MessageBox(hwnd, "Agent started",
-                                   "Agent Started", MB_OK);
-                    } else {
-                        MessageBox(hwnd, "Agent already running (try restart)",
-                                   "Agent Running", MB_OK);
+                        MessageBox(hwnd, "Agent started", "Agent Started", MB_OK);
+                    }
+                    else
+                    {
+                        MessageBox(hwnd, "Agent already running (try restart)", "Agent Running", MB_OK);
                     }
                     break;
                 case UI_MENU_MANAGE_STOP:
 
                     /* Stop WAZUH */
                     ret_code = os_stop_service();
-                    if (ret_code == 1) {
+                    if (ret_code == 1)
+                    {
                         config_read(hwnd);
                         gen_server_info(hwnd);
 
                         SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM) "Stopped");
                         MessageBox(hwnd, "Agent stopped", "Agent Stopped", MB_OK);
                     }
-                    else if (ret_code == -1) {
+                    else if (ret_code == -1)
+                    {
                         MessageBox(hwnd, "Agent already stopped", "Agent Stopped", MB_OK);
                     }
-                    else {
+                    else
+                    {
                         MessageBox(hwnd, "Unable to stop agent", "Error -- Unable to Stop Agent", MB_OK);
                     }
                     break;
-                case UI_MENU_MANAGE_ENROLL:
-                    run_agent_enroll(hwnd);
-                    break;
-                case UI_MENU_MANAGE_CERTS:
-                    run_agent_certs_only(hwnd);
-                    break;
+                case UI_MENU_MANAGE_ENROLL: run_agent_enroll(hwnd); break;
+                case UI_MENU_MANAGE_CERTS: run_agent_certs_only(hwnd); break;
                 case UI_MENU_MANAGE_STATUS:
-                    if (CheckServiceRunning()) {
-                        MessageBox(hwnd, "Agent running",
-                                   "Agent Running", MB_OK);
-
-                    } else {
-                        MessageBox(hwnd, "Agent stopped",
-                                   "Agent Stopped", MB_OK);
+                    if (CheckServiceRunning())
+                    {
+                        MessageBox(hwnd, "Agent running", "Agent Running", MB_OK);
+                    }
+                    else
+                    {
+                        MessageBox(hwnd, "Agent stopped", "Agent Stopped", MB_OK);
                     }
                     break;
                 case UI_MENU_MANAGE_RESTART:
 
-                    if (strcmp(config_inst.server, FL_NOSERVER) == 0) {
-                        MessageBox(hwnd, "Unable to restart agent (check config)",
-                                   "Error -- Unable to Restart Agent", MB_OK);
+                    if (strcmp(config_inst.server, FL_NOSERVER) == 0)
+                    {
+                        MessageBox(
+                            hwnd, "Unable to restart agent (check config)", "Error -- Unable to Restart Agent", MB_OK);
                         break;
-
                     }
 
                     os_stop_service();
 
                     /* Start WAZUH */
                     ret_code = os_start_service();
-                    if (ret_code == 0) {
-                        MessageBox(hwnd, "Unable to restart agent (check config)",
-                                   "Error -- Unable to Restart Agent", MB_OK);
-                    } else {
+                    if (ret_code == 0)
+                    {
+                        MessageBox(
+                            hwnd, "Unable to restart agent (check config)", "Error -- Unable to Restart Agent", MB_OK);
+                    }
+                    else
+                    {
                         config_read(hwnd);
                         gen_server_info(hwnd);
 
-                        SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Restarted");
-                        MessageBox(hwnd, "Agent restarted",
-                                   "Agent Restarted", MB_OK);
+                        SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM) "Restarted");
+                        MessageBox(hwnd, "Agent restarted", "Agent Restarted", MB_OK);
                     }
                     break;
             }
             break;
 
-        case WM_CLOSE:
-            EndDialog(hwnd, 0);
-            break;
+        case WM_CLOSE: EndDialog(hwnd, 0); break;
 
-        default:
-            return FALSE;
+        default: return FALSE;
     }
     return TRUE;
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevInstance,
-        __attribute__((unused))LPSTR lpCmdLine, __attribute__((unused))int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInstance,
+                   __attribute__((unused)) HINSTANCE hPrevInstance,
+                   __attribute__((unused)) LPSTR lpCmdLine,
+                   __attribute__((unused)) int nCmdShow)
 {
     // This must be always the first instruction
     enable_dll_verification();

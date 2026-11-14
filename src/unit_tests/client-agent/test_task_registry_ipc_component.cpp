@@ -74,7 +74,8 @@
 #include <string>
 #include <thread>
 
-extern "C" {
+extern "C"
+{
 #include "shared.h"
 #include "os_net.h"
 #include "task_registry_client.h"
@@ -83,15 +84,15 @@ extern "C" {
 #include "agent_info.h"
 #include "cJSON.h"
 
-/* wm_agent_info.c's real dedup callback slot (populated via dlopen/dlsym in
- * production -- see so_get_function_sym(agent_info_module, ...) in
- * wm_agent_info_start()). Not declared in any header since only
- * wm_agent_info.c itself normally needs to see it; re-declared here to wire
- * it directly to the real, statically-linked agent_info_task_check_and_record()
- * without going through dlopen -- the dlopen step is deliberately not what
- * this test exercises (see file banner).
- */
-extern agent_info_task_check_and_record_func agent_info_task_check_and_record_ptr;
+    /* wm_agent_info.c's real dedup callback slot (populated via dlopen/dlsym in
+     * production -- see so_get_function_sym(agent_info_module, ...) in
+     * wm_agent_info_start()). Not declared in any header since only
+     * wm_agent_info.c itself normally needs to see it; re-declared here to wire
+     * it directly to the real, statically-linked agent_info_task_check_and_record()
+     * without going through dlopen -- the dlopen step is deliberately not what
+     * this test exercises (see file banner).
+     */
+    extern agent_info_task_check_and_record_func agent_info_task_check_and_record_ptr;
 }
 
 namespace
@@ -201,73 +202,73 @@ namespace
 
     class TaskRegistryIpcComponentTest : public ::testing::Test
     {
-        protected:
-            void SetUp() override
-            {
-                // Isolate this test's CWD: WM_LOCAL_SOCK ("queue/sockets/wmodules")
-                // and agent_info.db's disk path ("queue/agent_info/db/agent_info.db")
-                // are both relative, exactly as in production.
-                m_scratchDir = ::testing::TempDir() + "task_registry_ipc_" +
-                               ::testing::UnitTest::GetInstance()->current_test_info()->name();
-                std::string rm = "rm -rf '" + m_scratchDir + "'";
-                system(rm.c_str());
-                ASSERT_EQ(0, mkdir(m_scratchDir.c_str(), 0755));
-                ASSERT_EQ(0, chdir(m_scratchDir.c_str()));
-                ASSERT_EQ(0, mkdirHierarchy("queue/sockets"));
-                ASSERT_EQ(0, mkdirHierarchy("queue/agent_info/db"));
+    protected:
+        void SetUp() override
+        {
+            // Isolate this test's CWD: WM_LOCAL_SOCK ("queue/sockets/wmodules")
+            // and agent_info.db's disk path ("queue/agent_info/db/agent_info.db")
+            // are both relative, exactly as in production.
+            m_scratchDir = ::testing::TempDir() + "task_registry_ipc_" +
+                           ::testing::UnitTest::GetInstance()->current_test_info()->name();
+            std::string rm = "rm -rf '" + m_scratchDir + "'";
+            system(rm.c_str());
+            ASSERT_EQ(0, mkdir(m_scratchDir.c_str(), 0755));
+            ASSERT_EQ(0, chdir(m_scratchDir.c_str()));
+            ASSERT_EQ(0, mkdirHierarchy("queue/sockets"));
+            ASSERT_EQ(0, mkdirHierarchy("queue/agent_info/db"));
 
-                m_module.thread = 0;
-                m_module.context = &WM_AGENT_INFO_CONTEXT;
-                m_module.tag = nullptr;
-                m_module.data = nullptr;
-                m_module.next = nullptr;
-                wmodules = &m_module;
+            m_module.thread = 0;
+            m_module.context = &WM_AGENT_INFO_CONTEXT;
+            m_module.tag = nullptr;
+            m_module.data = nullptr;
+            m_module.next = nullptr;
+            wmodules = &m_module;
 
-                // AgentInfoImpl's constructor requires both a log and a query-module
-                // function and throws std::invalid_argument without them. It builds its
-                // DBSync member first, so agent_info.db and its schema appear on disk
-                // either way; the throw then leaves g_agent_info_impl null and
-                // agent_info_ensure_database() reports it through the log callback that
-                // is not set yet, so skipping these two reads as "the database is there
-                // but every task query answers MQ_ERR_INTERNAL".
-                agent_info_set_log_function(testLogCallback);
-                agent_info_set_query_module_function(testQueryModuleCallback);
+            // AgentInfoImpl's constructor requires both a log and a query-module
+            // function and throws std::invalid_argument without them. It builds its
+            // DBSync member first, so agent_info.db and its schema appear on disk
+            // either way; the throw then leaves g_agent_info_impl null and
+            // agent_info_ensure_database() reports it through the log callback that
+            // is not set yet, so skipping these two reads as "the database is there
+            // but every task query answers MQ_ERR_INTERNAL".
+            agent_info_set_log_function(testLogCallback);
+            agent_info_set_query_module_function(testQueryModuleCallback);
 
-                // agent_info_task_registry_init() constructs agent_info.db as a side effect
-                // (see its own comment) -- no separate agent_info_start()/blocking sync loop
-                // needed just to exercise the task dedup path.
-                agent_info_task_registry_init(MAX_ENTRIES, TTL_SECONDS);
-                agent_info_task_check_and_record_ptr = agent_info_task_check_and_record;
-            }
+            // agent_info_task_registry_init() constructs agent_info.db as a side effect
+            // (see its own comment) -- no separate agent_info_start()/blocking sync loop
+            // needed just to exercise the task dedup path.
+            agent_info_task_registry_init(MAX_ENTRIES, TTL_SECONDS);
+            agent_info_task_check_and_record_ptr = agent_info_task_check_and_record;
+        }
 
-            void TearDown() override
-            {
-                agent_info_cleanup();
-                agent_info_task_check_and_record_ptr = nullptr;
-                wmodules = nullptr;
-            }
+        void TearDown() override
+        {
+            agent_info_cleanup();
+            agent_info_task_check_and_record_ptr = nullptr;
+            wmodules = nullptr;
+        }
 
-            static int mkdirHierarchy(const std::string& path)
-            {
-                std::string cmd = "mkdir -p '" + path + "'";
-                return system(cmd.c_str());
-            }
+        static int mkdirHierarchy(const std::string& path)
+        {
+            std::string cmd = "mkdir -p '" + path + "'";
+            return system(cmd.c_str());
+        }
 
-            /// Simulates a module-side restart for durability purposes: tears down
-            /// AgentInfoImpl (closing the DBSync connection) and reconstructs it
-            /// against the same backing agent_info.db file, exactly what
-            /// agent_info_cleanup() + a fresh agent_info_ensure_database() do across
-            /// a real process restart (the file is what survives; the DBSync
-            /// connection/in-memory state does not).
-            static void simulateModuleRestart()
-            {
-                agent_info_cleanup();
-                agent_info_task_registry_init(MAX_ENTRIES, TTL_SECONDS);
-                agent_info_task_check_and_record_ptr = agent_info_task_check_and_record;
-            }
+        /// Simulates a module-side restart for durability purposes: tears down
+        /// AgentInfoImpl (closing the DBSync connection) and reconstructs it
+        /// against the same backing agent_info.db file, exactly what
+        /// agent_info_cleanup() + a fresh agent_info_ensure_database() do across
+        /// a real process restart (the file is what survives; the DBSync
+        /// connection/in-memory state does not).
+        static void simulateModuleRestart()
+        {
+            agent_info_cleanup();
+            agent_info_task_registry_init(MAX_ENTRIES, TTL_SECONDS);
+            agent_info_task_check_and_record_ptr = agent_info_task_check_and_record;
+        }
 
-            wmodule m_module {};
-            std::string m_scratchDir;
+        wmodule m_module {};
+        std::string m_scratchDir;
     };
 } // namespace
 

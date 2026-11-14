@@ -7,13 +7,12 @@
  * Foundation
  */
 
-
 #ifndef WINSOCK_WRAPPERS_H
 #define WINSOCK_WRAPPERS_H
 
 #include <winsock.h>
 #define gethostname wrap_gethostname
 
-int wrap_gethostname(char *name, int len);
+int wrap_gethostname(char* name, int len);
 
 #endif

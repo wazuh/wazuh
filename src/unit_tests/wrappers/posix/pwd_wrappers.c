@@ -17,19 +17,18 @@
 #include <errno.h>
 #include <string.h>
 
-
-int __wrap_getpwnam_r(const char *name,
-                      struct passwd *pwd,
-                      __attribute__((unused))  char *buf,
-                      size_t buflen,
-                      struct passwd **result) {
+int __wrap_getpwnam_r(
+    const char* name, struct passwd* pwd, __attribute__((unused)) char* buf, size_t buflen, struct passwd** result)
+{
     *result = NULL;
 
-    if (buflen < 1024) {
+    if (buflen < 1024)
+    {
         return ERANGE;
     }
 
-    if (strcmp(name, "wazuh") == 0) {
+    if (strcmp(name, "wazuh") == 0)
+    {
         pwd->pw_uid = 1000;
         *result = pwd;
     }
@@ -38,10 +37,11 @@ int __wrap_getpwnam_r(const char *name,
 }
 
 int __wrap_getpwuid_r(__attribute__((unused)) uid_t uid,
-                      struct passwd *pwd,
-                      __attribute__((unused)) char *buf,
+                      struct passwd* pwd,
+                      __attribute__((unused)) char* buf,
                       __attribute__((unused)) size_t buflen,
-                      struct passwd **result) {
+                      struct passwd** result)
+{
     pwd->pw_name = mock_type(char*);
     *result = mock_type(struct passwd*);
     return mock();

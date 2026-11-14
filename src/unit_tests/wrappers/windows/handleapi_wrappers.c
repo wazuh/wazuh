@@ -13,21 +13,22 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-WINBOOL wrap_CloseHandle(HANDLE hObject) {
+WINBOOL wrap_CloseHandle(HANDLE hObject)
+{
     check_expected(hObject);
     return mock();
 }
 
-void expect_CloseHandle_call(HANDLE object, int ret) {
+void expect_CloseHandle_call(HANDLE object, int ret)
+{
     expect_value(wrap_CloseHandle, hObject, object);
     will_return(wrap_CloseHandle, ret);
 }
 
-BOOL wrap_CreatePipe(PHANDLE hReadPipe,
-                     PHANDLE hWritePipe,
-                     LPSECURITY_ATTRIBUTES lpPipeAttributes,
-                     DWORD nSize) {
-    if (mock_type(BOOL)) {
+BOOL wrap_CreatePipe(PHANDLE hReadPipe, PHANDLE hWritePipe, LPSECURITY_ATTRIBUTES lpPipeAttributes, DWORD nSize)
+{
+    if (mock_type(BOOL))
+    {
         // Simulate valid handles when successful
         *hReadPipe = mock_type(HANDLE);
         *hWritePipe = mock_type(HANDLE);
@@ -36,9 +37,8 @@ BOOL wrap_CreatePipe(PHANDLE hReadPipe,
     return FALSE;
 }
 
-BOOL wrap_SetHandleInformation(HANDLE hObject,
-                                DWORD dwMask,
-                                DWORD dwFlags) {
+BOOL wrap_SetHandleInformation(HANDLE hObject, DWORD dwMask, DWORD dwFlags)
+{
     check_expected(hObject);
     check_expected(dwMask);
     check_expected(dwFlags);

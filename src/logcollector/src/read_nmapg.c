@@ -12,31 +12,32 @@
 #include "logcollector.h"
 #include "sha1_op.h"
 
-#define NMAPG_HOST  "Host: "
-#define NMAPG_PORT  "Ports:"
-#define NMAPG_OPEN  "open/"
-#define NMAPG_STAT  "Status:"
-#define PORT_PROTO  " %s(%s)"
+#define NMAPG_HOST "Host: "
+#define NMAPG_PORT "Ports:"
+#define NMAPG_OPEN "open/"
+#define NMAPG_STAT "Status:"
+#define PORT_PROTO " %s(%s)"
 
 /* Prototypes */
-static char *__go_after(char *x, const char *y);
-static char *__get_port(char *str, char *proto, char *port, size_t msize);
-
+static char* __go_after(char* x, const char* y);
+static char* __get_port(char* str, char* proto, char* port, size_t msize);
 
 /* Get port and protocol */
-static char *__get_port(char *str, char *proto, char *port, size_t msize)
+static char* __get_port(char* str, char* proto, char* port, size_t msize)
 {
     int filtered = 0;
     char *p, *q;
 
     /* Remov whitespace */
-    while (*str == ' ') {
+    while (*str == ' ')
+    {
         str++;
     }
 
     /* Get port */
     p = strchr(str, '/');
-    if (!p) {
+    if (!p)
+    {
         return (NULL);
     }
     *p = '\0';
@@ -48,25 +49,30 @@ static char *__get_port(char *str, char *proto, char *port, size_t msize)
 
     /* Check if the port is open */
     q = __go_after(p, NMAPG_OPEN);
-    if (!q) {
+    if (!q)
+    {
         /* Port is not open */
         filtered = 1;
         q = p;
 
         /* Going to the start of protocol field */
         p = strchr(q, '/');
-        if (!p) {
+        if (!p)
+        {
             return (NULL);
         }
         p++;
-    } else {
+    }
+    else
+    {
         p = q;
     }
 
     /* Get protocol */
     str = p;
     p = strchr(str, '/');
-    if (!p) {
+    if (!p)
+    {
         return (NULL);
     }
     *p = '\0';
@@ -76,16 +82,19 @@ static char *__get_port(char *str, char *proto, char *port, size_t msize)
     proto[msize - 1] = '\0';
 
     /* Set proto to null if port is not open */
-    if (filtered) {
+    if (filtered)
+    {
         proto[0] = '\0';
     }
 
     /* Remove slashes */
-    if (*p == '/') {
+    if (*p == '/')
+    {
         p++;
         q = p;
         p = strchr(p, ',');
-        if (p) {
+        if (p)
+        {
             return (p);
         }
 
@@ -96,25 +105,28 @@ static char *__get_port(char *str, char *proto, char *port, size_t msize)
 }
 
 /* Check if the string matches */
-static char *__go_after(char *x, const char *y)
+static char* __go_after(char* x, const char* y)
 {
     size_t x_s;
     size_t y_s;
 
     /* X and Y must be not null */
-    if (!x || !y) {
+    if (!x || !y)
+    {
         return (NULL);
     }
 
     x_s = strlen(x);
     y_s = strlen(y);
 
-    if (x_s <= y_s) {
+    if (x_s <= y_s)
+    {
         return (NULL);
     }
 
     /* String does not match */
-    if (strncmp(x, y, y_s) != 0) {
+    if (strncmp(x, y, y_s) != 0)
+    {
         return (NULL);
     }
 
@@ -124,7 +136,8 @@ static char *__go_after(char *x, const char *y)
 }
 
 /* Read Nmap grepable files */
-void *read_nmapg(logreader *lf, int *rc, int drop_it) {
+void* read_nmapg(logreader* lf, int* rc, int drop_it)
+{
     int final_msg_s;
     int index = 0;
     int need_clear = 0;
@@ -134,9 +147,9 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     char port[17] = {0};
     char proto[17] = {0};
 
-    char *ip = NULL;
-    char *p;
-    char *q;
+    char* ip = NULL;
+    char* p;
+    char* q;
 
     int lines = 0;
     int bytes_written = 0;
@@ -144,47 +157,57 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Obtain context to calculate hash */
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, sizeof(str), lf->fp)) {
+    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, sizeof(str), lf->fp))
+    {
 
         lines++;
 
-        if (is_valid_context_file) {
+        if (is_valid_context_file)
+        {
             w_hash_read_line(lf, context, str, &current_position);
         }
 
         /* If need clear is set, we need to clear the line */
-        if (need_clear) {
-            if (q = strchr(str, '\n'), q != NULL) {
+        if (need_clear)
+        {
+            if (q = strchr(str, '\n'), q != NULL)
+            {
                 need_clear = 0;
             }
             continue;
         }
 
         /* Remove \n at the end of the string */
-        if ((q = strchr(str, '\n')) != NULL) {
+        if ((q = strchr(str, '\n')) != NULL)
+        {
             *q = '\0';
-        } else {
+        }
+        else
+        {
             need_clear = 1;
         }
 
         /* Do not get commented lines */
-        if ((str[0] == '#') || (str[0] == '\0')) {
+        if ((str[0] == '#') || (str[0] == '\0'))
+        {
             continue;
         }
 
         /* Get host */
         q = __go_after(str, NMAPG_HOST);
-        if (!q) {
+        if (!q)
+        {
             goto file_error;
         }
 
         /* Get ip/hostname */
         p = strchr(q, ')');
-        if (!p) {
+        if (!p)
+        {
             goto file_error;
         }
 
@@ -193,7 +216,8 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
 
         /* Get the ports */
         q = strchr(p, '\t');
-        if (!q) {
+        if (!q)
+        {
             goto file_error;
         }
         q++;
@@ -204,10 +228,12 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
 
         /* q now should point to the ports */
         p = __go_after(q, NMAPG_PORT);
-        if (!p) {
+        if (!p)
+        {
             /* Check if no port is available */
             p = __go_after(q, NMAPG_STAT);
-            if (p) {
+            if (p)
+            {
                 continue;
             }
 
@@ -215,34 +241,50 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         }
 
         /* Generate final msg */
-        bytes_written = snprintf(final_msg, sizeof(final_msg), "Host: %s, open ports:",
-                 ip);
+        bytes_written = snprintf(final_msg, sizeof(final_msg), "Host: %s, open ports:", ip);
 
-        if (bytes_written < 0) {
+        if (bytes_written < 0)
+        {
             final_msg_s = 0;
-            merror("Error %d (%s) formatting string from file '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 bytes_written, final_msg);
-        } else if ((size_t)bytes_written < sizeof(final_msg)) {
+            merror("Error %d (%s) formatting string from file '%s' (length = " FTELL_TT "): '%s'...",
+                   errno,
+                   strerror(errno),
+                   lf->file,
+                   FTELL_INT64 bytes_written,
+                   final_msg);
+        }
+        else if ((size_t)bytes_written < sizeof(final_msg))
+        {
             final_msg_s = OS_MAX_LOG_SIZE - strlen(final_msg);
-        } else {
+        }
+        else
+        {
             final_msg_s = 0;
-            merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, final_msg);
+            merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...",
+                   lf->file,
+                   FTELL_INT64 bytes_written,
+                   final_msg);
         }
 
         /* Get port and protocol */
-        do {
+        do
+        {
             /* Avoid filling the buffer (3*port size) */
-            if (final_msg_s < 27) {
+            if (final_msg_s < 27)
+            {
                 break;
             }
 
             p = __get_port(p, proto, port, 9);
-            if (!p) {
+            if (!p)
+            {
                 mdebug1("Bad formated nmap grepable file (port).");
                 break;
             }
 
             /* Port not open */
-            if (proto[0] == '\0') {
+            if (proto[0] == '\0')
+            {
                 continue;
             }
 
@@ -254,7 +296,8 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         } while (*p == ',' && (p++));
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, final_msg)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, final_msg))
+        {
             /* Send message to queue */
             w_msg_hash_queues_push(final_msg, lf->file, strlen(final_msg) + 1, lf->log_target, HOSTINFO_MQ);
         }
@@ -263,19 +306,21 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         continue;
 
         /* Handle errors */
-file_error:
+    file_error:
 
         merror("Bad formated nmap grepable file.");
         EVP_MD_CTX_free(context);
         *rc = -1;
         return (NULL);
-
     }
 
     current_position = w_ftell(lf->fp);
-    if (is_valid_context_file) {
+    if (is_valid_context_file)
+    {
         w_update_file_status(lf->file, current_position, context);
-    } else {
+    }
+    else
+    {
         EVP_MD_CTX_free(context);
     }
 

@@ -35,15 +35,14 @@ protected:
 
     static void SetUpTestSuite()
     {
-        Log::assignLogFunction(
-            [](const int logLevel,
-               const char* tag,
-               const char* file,
-               const int line,
-               const char* func,
-               const char* logMessage,
-               va_list args)
-            { logFunctionWrapper(logLevel, tag, file, line, func, logMessage, args); });
+        Log::assignLogFunction([](const int logLevel,
+                                  const char* tag,
+                                  const char* file,
+                                  const int line,
+                                  const char* func,
+                                  const char* logMessage,
+                                  va_list args)
+                               { logFunctionWrapper(logLevel, tag, file, line, func, logMessage, args); });
     }
 
     virtual void SetUp()
@@ -54,7 +53,13 @@ protected:
 class LogFnTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { Log::setModuleLogFn(LogFn {}); }
-    void TearDown() override { Log::setModuleLogFn(LogFn {}); }
+    void SetUp() override
+    {
+        Log::setModuleLogFn(LogFn {});
+    }
+    void TearDown() override
+    {
+        Log::setModuleLogFn(LogFn {});
+    }
 };
 #endif // LOGGER_HELPER_TEST_H

@@ -26,16 +26,14 @@ namespace
 TEST(EncodeStatelessEventLineTest, WrapsFrameAsEeLine)
 {
     const std::string frame = "1:/var/log/syslog:hello";
-    const auto line =
-        encodeStatelessEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    const auto line = encodeStatelessEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
     EXPECT_EQ("E 1:/var/log/syslog:hello\n", line);
 }
 
 TEST(EncodeStatelessEventLineTest, EscapesEmbeddedNewlinesWithLeadingSpace)
 {
     const std::string frame = "line1\nline2\nline3";
-    const auto line =
-        encodeStatelessEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    const auto line = encodeStatelessEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
     EXPECT_EQ("E line1\n line2\n line3\n", line);
 }
 
@@ -174,7 +172,7 @@ TEST(EventAccumulatorTest, ConsumeAfterBoundedSnapshotPreservesRemainderAndTail)
     append(accumulator, "aa");
     append(accumulator, "bb");
     const auto snapshot = accumulator.snapshot(5); // Just the first line.
-    append(accumulator, "cc"); // Arrives before consume.
+    append(accumulator, "cc");                     // Arrives before consume.
     accumulator.consume(snapshot);
     const auto remaining = accumulator.snapshot(SIZE_MAX);
     EXPECT_EQ("E bb\nE cc\n", remaining.body);

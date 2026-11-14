@@ -30,15 +30,18 @@ constexpr auto PASSWD_FILE_PATH {"/etc/passwd"};
 constexpr uid_t SYSTEMD_DYNAMIC_UID_MIN = 61184;
 constexpr uid_t SYSTEMD_DYNAMIC_UID_MAX = 65519;
 
-UsersProvider::UsersProvider(
-    std::shared_ptr<IPasswdWrapperLinux> passwdWrapper,
-    std::shared_ptr<ISystemWrapper> sysWrapper)
-    : m_passwdWrapper(std::move(passwdWrapper)),
-      m_sysWrapper(std::move(sysWrapper)) {}
+UsersProvider::UsersProvider(std::shared_ptr<IPasswdWrapperLinux> passwdWrapper,
+                             std::shared_ptr<ISystemWrapper> sysWrapper)
+    : m_passwdWrapper(std::move(passwdWrapper))
+    , m_sysWrapper(std::move(sysWrapper))
+{
+}
 
 UsersProvider::UsersProvider()
-    : m_passwdWrapper(std::make_shared<PasswdWrapperLinux>()),
-      m_sysWrapper(std::make_shared<SystemWrapper>()) {}
+    : m_passwdWrapper(std::make_shared<PasswdWrapperLinux>())
+    , m_sysWrapper(std::make_shared<SystemWrapper>())
+{
+}
 
 nlohmann::json UsersProvider::collect(bool include_remote)
 {
@@ -91,16 +94,13 @@ std::set<std::string> UsersProvider::collectLocalUsernames()
     auto buf = std::make_unique<char[]>(bufsize);
 
     struct passwd pwd;
-    struct passwd* result
-    {
-        nullptr
-    };
+    struct passwd* result {nullptr};
 
     // Unfiltered on purpose: classification needs every name the file defines.
     int ret;
 
-    while ((ret = m_passwdWrapper->fgetpwent_r(passwd_file, &pwd, buf.get(), bufsize, &result)) == 0
-            && result != nullptr)
+    while ((ret = m_passwdWrapper->fgetpwent_r(passwd_file, &pwd, buf.get(), bufsize, &result)) == 0 &&
+           result != nullptr)
     {
         if (result->pw_name != nullptr)
         {
@@ -139,8 +139,7 @@ nlohmann::json UsersProvider::genUserJson(const struct passwd* pwd, bool isRemot
     return r;
 }
 
-nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& usernames,
-                                                const std::set<uid_t>& uids)
+nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& usernames, const std::set<uid_t>& uids)
 {
     nlohmann::json results = nlohmann::json::array();
 
@@ -155,15 +154,11 @@ nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& use
     auto buf = std::make_unique<char[]>(bufsize);
 
     struct passwd pwd;
-    struct passwd* result
-    {
-        nullptr
-    };
+    struct passwd* result {nullptr};
 
     while (m_passwdWrapper->fgetpwent_r(passwd_file, &pwd, buf.get(), bufsize, &result) == 0 && result != nullptr)
     {
-        if (!usernames.empty()
-                && (result->pw_name == nullptr || usernames.find(result->pw_name) == usernames.end()))
+        if (!usernames.empty() && (result->pw_name == nullptr || usernames.find(result->pw_name) == usernames.end()))
         {
             continue;
         }
@@ -180,8 +175,7 @@ nlohmann::json UsersProvider::collectLocalUsers(const std::set<std::string>& use
     return results;
 }
 
-nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& usernames,
-                                                 const std::set<uid_t>& uids)
+nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& usernames, const std::set<uid_t>& uids)
 {
     nlohmann::json results = nlohmann::json::array();
 
@@ -189,17 +183,14 @@ nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& us
     auto buf = std::make_unique<char[]>(bufsize);
 
     struct passwd pwd;
-    struct passwd* pwd_results
-    {
-        nullptr
-    };
+    struct passwd* pwd_results {nullptr};
 
     m_passwdWrapper->setpwent();
 
     while (m_passwdWrapper->getpwent_r(&pwd, buf.get(), bufsize, &pwd_results) == 0 && pwd_results != nullptr)
     {
-        if (!usernames.empty()
-                && (pwd_results->pw_name == nullptr || usernames.find(pwd_results->pw_name) == usernames.end()))
+        if (!usernames.empty() &&
+            (pwd_results->pw_name == nullptr || usernames.find(pwd_results->pw_name) == usernames.end()))
         {
             continue;
         }
@@ -231,9 +222,8 @@ nlohmann::json UsersProvider::collectRemoteUsers(const std::set<std::string>& us
             const auto uid = user["uid"].get<uid_t>();
             const auto isSystemdDynamic = uid >= SYSTEMD_DYNAMIC_UID_MIN && uid <= SYSTEMD_DYNAMIC_UID_MAX;
 
-            user["is_remote"] = static_cast<int>(!username.empty()
-                                                 && !isSystemdDynamic
-                                                 && localUsernames.count(username) == 0);
+            user["is_remote"] =
+                static_cast<int>(!username.empty() && !isSystemdDynamic && localUsernames.count(username) == 0);
         }
     }
 

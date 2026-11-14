@@ -34,14 +34,14 @@
  * for a different registry. Bounded, same reasoning on both platforms: a genuinely-unavailable
  * agent-info still costs only a small, known, one-shot-comparable tax; the loop breaks on the
  * first success, so the steady-state case pays nothing extra. */
-#define TASK_REGISTRY_CONNECT_RETRIES 10
+#define TASK_REGISTRY_CONNECT_RETRIES        10
 #define TASK_REGISTRY_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
 
 #ifdef WIN32
 /* Same bounded budget as the POSIX constants above -- see vd_offset_client.c's matching
  * constant: the window here is agent-info's own in-process construction, not a socket or
  * module-discovery delay. */
-#define TASK_REGISTRY_WIN_LOOKUP_RETRIES 10
+#define TASK_REGISTRY_WIN_LOOKUP_RETRIES        10
 #define TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US 300000
 #endif
 
@@ -55,27 +55,33 @@
  * anything else (malformed JSON, a non-zero error code) -> ERROR: agent-info
  * itself is telling us something went wrong, not that this is a duplicate --
  * distinct from DUPLICATE so a real registry failure is never miscounted as one. */
-static task_registry_result_t parse_check_and_record_response(const char *response) {
-    if (!response) {
+static task_registry_result_t parse_check_and_record_response(const char* response)
+{
+    if (!response)
+    {
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
-    cJSON *root = cJSON_Parse(response);
-    if (!root) {
+    cJSON* root = cJSON_Parse(response);
+    if (!root)
+    {
         mdebug1("task_registry_client: malformed response from agent-info: '%s'.", response);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
-    const cJSON *error = cJSON_GetObjectItem(root, "error");
+    const cJSON* error = cJSON_GetObjectItem(root, "error");
     task_registry_result_t result;
 
-    if (error && cJSON_IsNumber(error) && error->valueint == 0) {
-        const cJSON *data = cJSON_GetObjectItem(root, "data");
-        const cJSON *is_new_item = data ? cJSON_GetObjectItem(data, "new") : NULL;
+    if (error && cJSON_IsNumber(error) && error->valueint == 0)
+    {
+        const cJSON* data = cJSON_GetObjectItem(root, "data");
+        const cJSON* is_new_item = data ? cJSON_GetObjectItem(data, "new") : NULL;
         bool is_new = is_new_item && cJSON_IsBool(is_new_item) && cJSON_IsTrue(is_new_item);
         result = is_new ? TASK_REGISTRY_RESULT_NEW : TASK_REGISTRY_RESULT_DUPLICATE;
-    } else {
-        const cJSON *message = cJSON_GetObjectItem(root, "message");
+    }
+    else
+    {
+        const cJSON* message = cJSON_GetObjectItem(root, "message");
         mdebug1("task_registry_client: agent-info reported an error (%d): %s",
                 error && cJSON_IsNumber(error) ? error->valueint : -1,
                 (message && cJSON_IsString(message) && message->valuestring) ? message->valuestring : "?");
@@ -93,42 +99,51 @@ static task_registry_result_t parse_check_and_record_response(const char *respon
  * ("query <module_name> <args>") wmcom_dispatch() already supports
  * (src/wazuh_modules/src/wmcom.c / wmodules.c:wm_module_query), reused here
  * rather than inventing a dedicated socket. */
-static task_registry_result_t task_registry_check_and_record_posix(const char *task_id) {
+static task_registry_result_t task_registry_check_and_record_posix(const char* task_id)
+{
     char query[OS_MAXSTR];
     int sock = -1;
     char response[OS_MAXSTR + 1] = {0};
     ssize_t recv_len;
     int attempt;
 
-    snprintf(query, sizeof(query),
-             "query agent-info {\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}",
-             task_id);
+    snprintf(
+        query, sizeof(query), "query agent-info {\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}", task_id);
 
-    for (attempt = 0; attempt < TASK_REGISTRY_CONNECT_RETRIES; attempt++) {
+    for (attempt = 0; attempt < TASK_REGISTRY_CONNECT_RETRIES; attempt++)
+    {
         sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
-        if (sock >= 0) {
+        if (sock >= 0)
+        {
             break;
         }
 
-        if (attempt + 1 < TASK_REGISTRY_CONNECT_RETRIES) {
+        if (attempt + 1 < TASK_REGISTRY_CONNECT_RETRIES)
+        {
             usleep(TASK_REGISTRY_CONNECT_RETRY_DELAY_US);
         }
     }
 
-    if (sock < 0) {
+    if (sock < 0)
+    {
         mdebug1("task_registry_client: could not connect to '%s' after %d attempt(s): %s (%d); "
                 "treating task %s as non-dispatchable (fail closed).",
-                WM_LOCAL_SOCK, TASK_REGISTRY_CONNECT_RETRIES, strerror(errno), errno, task_id);
+                WM_LOCAL_SOCK,
+                TASK_REGISTRY_CONNECT_RETRIES,
+                strerror(errno),
+                errno,
+                task_id);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
-    if (OS_SetRecvTimeout(sock, TASK_REGISTRY_RECV_TIMEOUT_S, 0) < 0) {
+    if (OS_SetRecvTimeout(sock, TASK_REGISTRY_RECV_TIMEOUT_S, 0) < 0)
+    {
         mdebug2("task_registry_client: OS_SetRecvTimeout failed: %s (%d).", strerror(errno), errno);
     }
 
-    if (OS_SendSecureTCP(sock, strlen(query), query) < 0) {
-        merror("task_registry_client: OS_SendSecureTCP failed for task %s: %s (%d).",
-               task_id, strerror(errno), errno);
+    if (OS_SendSecureTCP(sock, strlen(query), query) < 0)
+    {
+        merror("task_registry_client: OS_SendSecureTCP failed for task %s: %s (%d).", task_id, strerror(errno), errno);
         close(sock);
         return TASK_REGISTRY_RESULT_ERROR;
     }
@@ -136,10 +151,12 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
     recv_len = OS_RecvSecureTCP(sock, response, OS_MAXSTR);
     close(sock);
 
-    if (recv_len <= 0) {
+    if (recv_len <= 0)
+    {
         merror("task_registry_client: no/invalid response from agent-info for task %s "
                "(recv_len=%zd); treating as non-dispatchable (fail closed).",
-               task_id, recv_len);
+               task_id,
+               recv_len);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
@@ -157,53 +174,62 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
  * (see the TASK_REGISTRY_CONNECT_RETRIES comment above: module missing from the list entirely,
  * or present but not yet wired up) -- never for a genuine, lasting error, which the retry below
  * must not loop on. */
-static bool task_registry_is_transient_unavailable(const char *json) {
-    cJSON *root = cJSON_Parse(json);
-    if (!root) {
+static bool task_registry_is_transient_unavailable(const char* json)
+{
+    cJSON* root = cJSON_Parse(json);
+    if (!root)
+    {
         return false;
     }
 
     int error_code = -1;
     bool transient = mq_parse_error_field(root, &error_code) &&
-                      (error_code == MQ_ERR_MODULE_NOT_FOUND || error_code == MQ_ERR_MODULE_NOT_RUNNING);
+                     (error_code == MQ_ERR_MODULE_NOT_FOUND || error_code == MQ_ERR_MODULE_NOT_RUNNING);
     cJSON_Delete(root);
     return transient;
 }
 
-static task_registry_result_t task_registry_check_and_record_win(const char *task_id) {
+static task_registry_result_t task_registry_check_and_record_win(const char* task_id)
+{
     char command[OS_MAXSTR];
-    char *output = NULL;
+    char* output = NULL;
     task_registry_result_t result;
     int attempt;
 
-    snprintf(command, sizeof(command),
-             "{\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}", task_id);
+    snprintf(command, sizeof(command), "{\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}", task_id);
 
-    for (attempt = 0; attempt < TASK_REGISTRY_WIN_LOOKUP_RETRIES; attempt++) {
+    for (attempt = 0; attempt < TASK_REGISTRY_WIN_LOOKUP_RETRIES; attempt++)
+    {
         os_free(output);
 
         wm_module_query_json_ex("agent-info", command, &output);
 
-        if (!output || !task_registry_is_transient_unavailable(output)) {
+        if (!output || !task_registry_is_transient_unavailable(output))
+        {
             break;
         }
 
-        if (attempt + 1 < TASK_REGISTRY_WIN_LOOKUP_RETRIES) {
+        if (attempt + 1 < TASK_REGISTRY_WIN_LOOKUP_RETRIES)
+        {
             w_time_delay(TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US / 1000);
         }
     }
 
-    if (!output) {
+    if (!output)
+    {
         merror("task_registry_client: agent-info query returned no output for task %s after "
                "%d attempt(s); treating as non-dispatchable (fail closed).",
-               task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
+               task_id,
+               TASK_REGISTRY_WIN_LOOKUP_RETRIES);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
-    if (task_registry_is_transient_unavailable(output)) {
+    if (task_registry_is_transient_unavailable(output))
+    {
         mdebug1("task_registry_client: agent-info not ready yet for task %s after %d "
                 "attempt(s); treating as non-dispatchable (fail closed).",
-                task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
+                task_id,
+                TASK_REGISTRY_WIN_LOOKUP_RETRIES);
         os_free(output);
         return TASK_REGISTRY_RESULT_ERROR;
     }
@@ -214,8 +240,10 @@ static task_registry_result_t task_registry_check_and_record_win(const char *tas
 }
 #endif
 
-task_registry_result_t task_registry_check_and_record(const char *task_id) {
-    if (!task_id || !*task_id) {
+task_registry_result_t task_registry_check_and_record(const char* task_id)
+{
+    if (!task_id || !*task_id)
+    {
         return TASK_REGISTRY_RESULT_ERROR;
     }
 

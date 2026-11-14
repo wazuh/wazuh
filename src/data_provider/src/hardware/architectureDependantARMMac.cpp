@@ -18,13 +18,14 @@ namespace
 {
     constexpr const char* CPU_FREQ_KEYS[] = {"voltage-states5-sram", "voltage-states1-sram"};
 
-    bool readMaxFrequency(IOsPrimitivesMac* osPrimitives, CFMutableDictionaryRef properties, const char* keyName, uint64_t& cpuHz)
+    bool readMaxFrequency(IOsPrimitivesMac* osPrimitives,
+                          CFMutableDictionaryRef properties,
+                          const char* keyName,
+                          uint64_t& cpuHz)
     {
-        CFStringRef cfkey = osPrimitives->CFStringCreateWithCString(kCFAllocatorDefault, keyName, kCFStringEncodingUTF8);
-        DEFER([osPrimitives, cfkey]()
-        {
-            osPrimitives->CFRelease(cfkey);
-        });
+        CFStringRef cfkey =
+            osPrimitives->CFStringCreateWithCString(kCFAllocatorDefault, keyName, kCFStringEncodingUTF8);
+        DEFER([osPrimitives, cfkey]() { osPrimitives->CFRelease(cfkey); });
 
         auto p_cores_freq_property = static_cast<CFDataRef>(osPrimitives->CFDictionaryGetValue(properties, cfkey));
 
@@ -47,7 +48,9 @@ namespace
         for (size_t i = 0; i + sizeof(uint32_t) <= length; i += sizeof(uint32_t))
         {
             uint32_t cur_freq = 0;
-            osPrimitives->CFDataGetBytes(p_cores_freq_property, osPrimitives->CFRangeMake(i, sizeof(uint32_t)), reinterpret_cast<UInt8*>(&cur_freq));
+            osPrimitives->CFDataGetBytes(p_cores_freq_property,
+                                         osPrimitives->CFRangeMake(i, sizeof(uint32_t)),
+                                         reinterpret_cast<UInt8*>(&cur_freq));
             maxFreq = std::max(maxFreq, static_cast<uint64_t>(cur_freq));
         }
 
@@ -59,15 +62,15 @@ namespace
         cpuHz = maxFreq;
         return true;
     }
-}
+} // namespace
 
 double getMhz(IOsPrimitivesMac* osPrimitives)
 {
-    constexpr auto MHz{1000000};
+    constexpr auto MHz {1000000};
     uint64_t cpuHz = 0;
 
-    size_t sysctlLen{sizeof(cpuHz)};
-    int sysctlRet{osPrimitives->sysctlbyname("hw.cpufrequency", &cpuHz, &sysctlLen, nullptr, 0)};
+    size_t sysctlLen {sizeof(cpuHz)};
+    int sysctlRet {osPrimitives->sysctlbyname("hw.cpufrequency", &cpuHz, &sysctlLen, nullptr, 0)};
 
     if (sysctlRet == 0 && cpuHz != 0)
     {
@@ -91,19 +94,13 @@ double getMhz(IOsPrimitivesMac* osPrimitives)
         return static_cast<double>(cpuHz) / MHz;
     }
 
-    DEFER([osPrimitives, device_it]()
-    {
-        osPrimitives->IOObjectRelease(device_it);
-    });
+    DEFER([osPrimitives, device_it]() { osPrimitives->IOObjectRelease(device_it); });
 
     io_object_t device = 0;
 
     while ((device = osPrimitives->IOIteratorNext(device_it)))
     {
-        DEFER([osPrimitives, device]()
-        {
-            osPrimitives->IOObjectRelease(device);
-        });
+        DEFER([osPrimitives, device]() { osPrimitives->IOObjectRelease(device); });
 
         io_name_t buf;
         kr = osPrimitives->IORegistryEntryGetName(device, buf);
@@ -128,10 +125,7 @@ double getMhz(IOsPrimitivesMac* osPrimitives)
             continue;
         }
 
-        DEFER([osPrimitives, properties]()
-        {
-            osPrimitives->CFRelease(properties);
-        });
+        DEFER([osPrimitives, properties]() { osPrimitives->CFRelease(properties); });
 
         for (const auto& keyName : CPU_FREQ_KEYS)
         {

@@ -79,5 +79,4 @@ public:
 
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
 
-
 #endif // EBPF_WHODATA_HPP

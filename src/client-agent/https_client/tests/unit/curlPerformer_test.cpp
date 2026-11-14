@@ -59,11 +59,7 @@ namespace
     CurlPerformer makePerformer(const ModuleConfig& config, std::unique_ptr<ICurlHandle> handle)
     {
         auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(handle));
-        return CurlPerformer {config,
-                              [shared]() -> std::unique_ptr<ICurlHandle>
-        {
-            return std::move(*shared);
-        }};
+        return CurlPerformer {config, [shared]() -> std::unique_ptr<ICurlHandle> { return std::move(*shared); }};
     }
 
     /// Partial-expectation tests: absorb the option calls they do not assert
@@ -183,7 +179,7 @@ TEST(CurlPerformerTest, AnInMemoryResponseWithoutACapStaysUnbounded)
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 
     auto performer = makePerformer(config, std::move(mock));
-    (void) performer.perform(spec);
+    (void)performer.perform(spec);
 }
 
 TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
@@ -312,9 +308,7 @@ TEST(CurlPerformerTest, NoAcceptEncodingWhenUnset)
 // there is nothing to hold.
 TEST(CurlPerformerTest, TheReplyCodingIsCheckedOnlyWhenOneWasOffered)
 {
-    for (const std::string offered :
-            {"zstd", ""
-            })
+    for (const std::string offered : {"zstd", ""})
     {
         auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
         auto* handle = mock.get();
@@ -348,12 +342,14 @@ TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
 
     HeaderCapture capture;
     EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
-    EXPECT_CALL(*handle, perform()).WillOnce(Invoke([&capture]
-    {
-        EXPECT_TRUE(capture.contentCoding->admitHeader("HTTP/1.1 200 OK\r\n"));
-        EXPECT_FALSE(capture.contentCoding->admitHeader("Content-Encoding: zstd, zstd\r\n"));
-        return TransportStatus::OtherError;
-    }));
+    EXPECT_CALL(*handle, perform())
+        .WillOnce(Invoke(
+            [&capture]
+            {
+                EXPECT_TRUE(capture.contentCoding->admitHeader("HTTP/1.1 200 OK\r\n"));
+                EXPECT_FALSE(capture.contentCoding->admitHeader("Content-Encoding: zstd, zstd\r\n"));
+                return TransportStatus::OtherError;
+            }));
     EXPECT_CALL(*handle, curlError()).WillOnce(Return("(23) Failed writing header"));
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
@@ -408,13 +404,14 @@ TEST(CurlPerformerTest, ACodingLibcurlCannotDecodeIsNotOffered)
 TEST(CurlPerformerTest, AnOfferLibcurlCannotDecodeIsWarnedAboutOnce)
 {
     captureTheModuleLog();
-    CurlPerformer performer {makeConfig(HC_VERIFY_NONE), []() -> std::unique_ptr<ICurlHandle>
-        {
-            auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
-            ON_CALL(*handle, decodes(_)).WillByDefault(Return(false));
-            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
-            return handle;
-        }};
+    CurlPerformer performer {makeConfig(HC_VERIFY_NONE),
+                             []() -> std::unique_ptr<ICurlHandle>
+                             {
+                                 auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+                                 ON_CALL(*handle, decodes(_)).WillByDefault(Return(false));
+                                 ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+                                 return handle;
+                             }};
 
     HttpRequestSpec spec;
     spec.target = "/download";
@@ -486,15 +483,15 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     EXPECT_CALL(*handle, captureResponseBody(_, _)).WillOnce(DoAll(SaveArg<0>(&bodyOut), Return(true)));
     EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&captureOut), Return(true)));
     EXPECT_CALL(*handle, perform())
-    .WillOnce(Invoke(
-                  [&]() -> TransportStatus
-    {
-        *bodyOut = "{\"ok\":true}";
-        *captureOut.retryAfter = 7;
-        *captureOut.serverDate = 1755000000;
-        *captureOut.caGeneration = 1789000012;
-        return TransportStatus::Ok;
-    }));
+        .WillOnce(Invoke(
+            [&]() -> TransportStatus
+            {
+                *bodyOut = "{\"ok\":true}";
+                *captureOut.retryAfter = 7;
+                *captureOut.serverDate = 1755000000;
+                *captureOut.caGeneration = 1789000012;
+                return TransportStatus::Ok;
+            }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(503));
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
@@ -727,9 +724,8 @@ TEST(CurlPerformerTest, TlsSystemModeVerifiesPeerAndHost)
 #endif
 
     auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(mock));
-    CurlPerformer performer {config,
-                             [shared]() -> std::unique_ptr<ICurlHandle> { return std::move(*shared); },
-                             fsProbe};
+    CurlPerformer performer {
+        config, [shared]() -> std::unique_ptr<ICurlHandle> { return std::move(*shared); }, fsProbe};
     performer.perform(HttpRequestSpec {});
 }
 
@@ -741,9 +737,7 @@ TEST(CurlPerformerTest, TlsSystemModeResolvesTrustAnchorOnceNotPerRequest)
 
     // Resolved once at construction; perform() below runs twice and must not
     // probe the filesystem again on the second request.
-    EXPECT_CALL(fsProbe, findSystemCaBundle())
-    .Times(1)
-    .WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).Times(1).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
 
     CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
     {
@@ -1247,8 +1241,8 @@ TEST(CurlPerformerTest, SystemModeShrinksTheFallbackAttemptsTimeoutByWhatTheFirs
             // the fallback at all), simulated as having spent 600 ms of the 5000 ms budget.
             EXPECT_CALL(*handle, setOptionLong(CurlOption::TimeoutMs, 5000L));
             ON_CALL(*handle, perform())
-            .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {600}); }),
-            Return(TransportStatus::TlsFail)));
+                .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {600}); }),
+                                     Return(TransportStatus::TlsFail)));
             ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
         }
         else
@@ -1291,8 +1285,8 @@ TEST(CurlPerformerTest, SystemModeSkipsTheFallbackAttemptWhenNoBudgetRemains)
         ++callCount;
         // The OS bundle attempt alone consumes the entire 5000 ms budget.
         ON_CALL(*handle, perform())
-        .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {5000}); }),
-        Return(TransportStatus::TlsFail)));
+            .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {5000}); }),
+                                 Return(TransportStatus::TlsFail)));
         ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
         return handle;
     };
@@ -1336,8 +1330,8 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemains)
             // so this call returns without ever dialing the fallback anchor.
             EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
             ON_CALL(*handle, perform())
-            .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {5000}); }),
-            Return(TransportStatus::TlsFail)));
+                .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {5000}); }),
+                                     Return(TransportStatus::TlsFail)));
             ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
         }
         else
@@ -1521,12 +1515,12 @@ TEST(CurlPerformerTest, SystemModeConcurrentCallerJudgesItsOwnAttemptNotAnotherT
 
     std::thread threadB(
         [&]()
-    {
-        const auto response = performer.perform(HttpRequestSpec {});
-        EXPECT_EQ(TransportStatus::Ok, response.status)
+        {
+            const auto response = performer.perform(HttpRequestSpec {});
+            EXPECT_EQ(TransportStatus::Ok, response.status)
                 << "Thread B must retry against the fallback on its OWN evidence, not treat it as "
-                "already failed because thread A flipped the flag mid-flight.";
-    });
+                   "already failed because thread A flipped the flag mid-flight.";
+        });
 
     bEntered.wait(); // Do not start "thread A" until B is confirmed blocked inside its first
     // attempt -- otherwise which thread's factory call lands first is a race
@@ -1614,9 +1608,10 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchAFailedFallbackRegardlessOfPlatfor
         ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
 
         // Odd attempts are each call's first, even ones its fallback.
-        EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo,
-                                             callCount % 2 == 1 ? "/etc/ssl/certs/ca-certificates.crt"
-                                             : "/var/ossec/etc/certs/root-ca.pem"));
+        EXPECT_CALL(*handle,
+                    setOptionString(CurlOption::CaInfo,
+                                    callCount % 2 == 1 ? "/etc/ssl/certs/ca-certificates.crt"
+                                                       : "/var/ossec/etc/certs/root-ca.pem"));
         return handle;
     };
 
@@ -1661,8 +1656,8 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemainsRega
             // exercises m_budgetExhaustedWarned's WARN branch, the second its DEBUG1 branch.
             EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
             ON_CALL(*handle, perform())
-            .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {5000}); }),
-            Return(TransportStatus::TlsFail)));
+                .WillByDefault(DoAll(InvokeWithoutArgs([&clock] { clock.advance(std::chrono::milliseconds {5000}); }),
+                                     Return(TransportStatus::TlsFail)));
             ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
         }
         else
@@ -1777,11 +1772,7 @@ TEST(CurlPerformerTest, MissingBodyFileFailsWithoutPerforming)
 
 TEST(CurlPerformerTest, FactoryFailureYieldsOtherError)
 {
-    CurlPerformer performer {makeConfig(HC_VERIFY_NONE),
-                             []() -> std::unique_ptr<ICurlHandle>
-    {
-        return nullptr;
-    }};
+    CurlPerformer performer {makeConfig(HC_VERIFY_NONE), []() -> std::unique_ptr<ICurlHandle> { return nullptr; }};
     const auto response = performer.perform(HttpRequestSpec {});
     EXPECT_EQ(TransportStatus::OtherError, response.status);
     EXPECT_EQ(0, response.httpCode);
@@ -1796,20 +1787,20 @@ TEST(CurlPerformerTest, ResponseFilePathStreamsToTheFileNotMemory)
 
     std::FILE* sink = nullptr;
     EXPECT_CALL(*handle, captureResponseToFile(NotNull(), _))
-    .WillOnce(Invoke(
-                  [&](std::FILE * file, uint64_t) -> bool
-    {
-        sink = file;
-        return true;
-    }));
+        .WillOnce(Invoke(
+            [&](std::FILE* file, uint64_t) -> bool
+            {
+                sink = file;
+                return true;
+            }));
     EXPECT_CALL(*handle, captureResponseBody(_, _)).Times(0);
     EXPECT_CALL(*handle, perform())
-    .WillOnce(Invoke(
-                  [&]() -> TransportStatus
-    {
-        std::fwrite("CONFIG-BYTES", 1, 12, sink);
-        return TransportStatus::Ok;
-    }));
+        .WillOnce(Invoke(
+            [&]() -> TransportStatus
+            {
+                std::fwrite("CONFIG-BYTES", 1, 12, sink);
+                return TransportStatus::Ok;
+            }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 
     HttpRequestSpec spec;
@@ -1856,21 +1847,21 @@ TEST(CurlPerformerTest, RetryTruncatesThePreviousAttemptsPartialBody)
     {
         auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
         ON_CALL(*handle, captureResponseToFile(_, _))
-        .WillByDefault(Invoke(
-                           [&](std::FILE * file, uint64_t) -> bool
-        {
-            sink = file;
-            return true;
-        }));
+            .WillByDefault(Invoke(
+                [&](std::FILE* file, uint64_t) -> bool
+                {
+                    sink = file;
+                    return true;
+                }));
         ON_CALL(*handle, perform())
-        .WillByDefault(Invoke(
-                           [&]() -> TransportStatus
-        {
-            attempt++;
-            const char* bytes = (attempt == 1) ? "PARTIAL-GARBAGE" : "FULL";
-            std::fwrite(bytes, 1, std::strlen(bytes), sink);
-            return (attempt == 1) ? TransportStatus::Timeout : TransportStatus::Ok;
-        }));
+            .WillByDefault(Invoke(
+                [&]() -> TransportStatus
+                {
+                    attempt++;
+                    const char* bytes = (attempt == 1) ? "PARTIAL-GARBAGE" : "FULL";
+                    std::fwrite(bytes, 1, std::strlen(bytes), sink);
+                    return (attempt == 1) ? TransportStatus::Timeout : TransportStatus::Ok;
+                }));
         ON_CALL(*handle, responseCode()).WillByDefault(Return(attempt == 1 ? 0 : 200));
         return handle;
     };

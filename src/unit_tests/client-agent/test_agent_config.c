@@ -24,7 +24,7 @@
 static agent test_agt;
 static agent_server test_servers[3];
 
-static int setup_agent(void **state)
+static int setup_agent(void** state)
 {
     (void)state;
 
@@ -52,7 +52,7 @@ static int setup_agent(void **state)
     return 0;
 }
 
-static int teardown_agent(void **state)
+static int teardown_agent(void** state)
 {
     (void)state;
     agt = NULL;
@@ -77,83 +77,91 @@ static void with_servers(void)
     test_agt.server_count = 2;
 }
 
-static cJSON *get_agent_section(cJSON **root)
+static cJSON* get_agent_section(cJSON** root)
 {
     *root = getAgentConfig();
     assert_non_null(*root);
 
-    cJSON *section = cJSON_GetObjectItem(*root, "agent");
+    cJSON* section = cJSON_GetObjectItem(*root, "agent");
     assert_non_null(section);
 
     return section;
 }
 
-static void assert_string_field(const cJSON *object, const char *field, const char *expected)
+static void assert_string_field(const cJSON* object, const char* field, const char* expected)
 {
-    cJSON *item = cJSON_GetObjectItem(object, field);
+    cJSON* item = cJSON_GetObjectItem(object, field);
 
     assert_non_null(item);
     assert_string_equal(cJSON_GetStringValue(item), expected);
 }
 
-static void assert_number_field(const cJSON *object, const char *field, double expected)
+static void assert_number_field(const cJSON* object, const char* field, double expected)
 {
-    cJSON *item = cJSON_GetObjectItem(object, field);
+    cJSON* item = cJSON_GetObjectItem(object, field);
 
     assert_non_null(item);
     assert_true(cJSON_IsNumber(item));
     assert_true(item->valuedouble == expected);
 }
 
-static void assert_has_exactly(const cJSON *object, const char *const *expected, size_t count)
+static void assert_has_exactly(const cJSON* object, const char* const* expected, size_t count)
 {
     size_t reported = 0;
 
-    for (const cJSON *item = object->child; item; item = item->next) {
+    for (const cJSON* item = object->child; item; item = item->next)
+    {
         reported++;
     }
 
     assert_int_equal(reported, count);
 
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++)
+    {
         assert_non_null(cJSON_GetObjectItem(object, expected[i]));
     }
 }
 
 /* The document as a whole: a key silently dropped from the report is the defect this
  * whole issue is about, so the key set is asserted, not just the values. */
-static void test_reports_every_section(void **state)
+static void test_reports_every_section(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     with_servers();
     test_agt.profile = "ubuntu, ubuntu24";
 
-    const char *const expected[] = {
-        "config-profile", "notify_time", "time-reconnect",
-        "auto_restart", "remote_conf", "manager", "enrollment", "ssl", "batch",
-        "stats_report", "config_report"
-    };
+    const char* const expected[] = {"config-profile",
+                                    "notify_time",
+                                    "time-reconnect",
+                                    "auto_restart",
+                                    "remote_conf",
+                                    "manager",
+                                    "enrollment",
+                                    "ssl",
+                                    "batch",
+                                    "stats_report",
+                                    "config_report"};
 
-    cJSON *section = get_agent_section(&root);
+    cJSON* section = get_agent_section(&root);
 
     assert_has_exactly(section, expected, sizeof(expected) / sizeof(*expected));
 
     cJSON_Delete(root);
 }
 
-static void test_reports_scalars_and_flags(void **state)
+static void test_reports_scalars_and_flags(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.profile = "ubuntu, ubuntu24";
     test_agt.notify_time = 10;
     test_agt.max_time_reconnect_try = 60;
     test_agt.flags.remote_conf = 1;
 
-    cJSON *section = get_agent_section(&root);
+    cJSON* section = get_agent_section(&root);
 
     assert_string_field(section, "config-profile", "ubuntu, ubuntu24");
     assert_number_field(section, "notify_time", 10);
@@ -164,15 +172,15 @@ static void test_reports_scalars_and_flags(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_disabled_flags_as_no(void **state)
+static void test_reports_disabled_flags_as_no(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.flags.auto_restart = 0;
     test_agt.flags.remote_conf = 0;
 
-    cJSON *section = get_agent_section(&root);
+    cJSON* section = get_agent_section(&root);
 
     assert_string_field(section, "auto_restart", "no");
     assert_string_field(section, "remote_conf", "no");
@@ -181,26 +189,26 @@ static void test_reports_disabled_flags_as_no(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_every_manager(void **state)
+static void test_reports_every_manager(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     with_servers();
 
-    cJSON *managers = cJSON_GetObjectItem(get_agent_section(&root), "manager");
+    cJSON* managers = cJSON_GetObjectItem(get_agent_section(&root), "manager");
 
     assert_non_null(managers);
     assert_int_equal(cJSON_GetArraySize(managers), 2);
 
-    cJSON *first = cJSON_GetArrayItem(managers, 0);
+    cJSON* first = cJSON_GetArrayItem(managers, 0);
     assert_string_field(first, "address", "192.168.0.1");
     assert_number_field(first, "port", 1517);
     assert_number_field(first, "max_retries", 5);
     assert_number_field(first, "retry_interval", 10);
     assert_null(cJSON_GetObjectItem(first, "scope_id"));
 
-    cJSON *second = cJSON_GetArrayItem(managers, 1);
+    cJSON* second = cJSON_GetArrayItem(managers, 1);
     assert_string_field(second, "address", "192.168.0.2");
     assert_number_field(second, "port", 1518);
     assert_number_field(second, "scope_id", 3);
@@ -208,20 +216,20 @@ static void test_reports_every_manager(void **state)
     cJSON_Delete(root);
 }
 
-static void test_omits_manager_without_servers(void **state)
+static void test_omits_manager_without_servers(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     assert_null(cJSON_GetObjectItem(get_agent_section(&root), "manager"));
 
     cJSON_Delete(root);
 }
 
-static void test_reports_enrollment_with_every_optional_field(void **state)
+static void test_reports_enrollment_with_every_optional_field(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.enrollment.agent_name = "agent-01";
     test_agt.enrollment.groups = "default";
@@ -229,7 +237,7 @@ static void test_reports_enrollment_with_every_optional_field(void **state)
     test_agt.enrollment.use_source_ip = true;
     test_agt.enrollment.authorization_pass_path = "etc/authd.pass";
 
-    cJSON *enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
+    cJSON* enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
 
     assert_non_null(enrollment);
     assert_string_field(enrollment, "enabled", "yes");
@@ -243,14 +251,14 @@ static void test_reports_enrollment_with_every_optional_field(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_enrollment_without_optional_fields(void **state)
+static void test_reports_enrollment_without_optional_fields(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.enrollment.enabled = false;
 
-    cJSON *enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
+    cJSON* enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
 
     assert_non_null(enrollment);
     assert_string_field(enrollment, "enabled", "no");
@@ -267,12 +275,12 @@ static void test_reports_enrollment_without_optional_fields(void **state)
  * never be "unset" the way a null enrollment_cfg pointer used to be -- an
  * agent that never configured anything beyond ClientConf()'s own defaults
  * still reports the section, with the optional fields simply absent. */
-static void test_reports_default_enrollment_posture(void **state)
+static void test_reports_default_enrollment_posture(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
-    cJSON *enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
+    cJSON* enrollment = cJSON_GetObjectItem(get_agent_section(&root), "enrollment");
 
     assert_non_null(enrollment);
     assert_string_field(enrollment, "enabled", "yes");
@@ -286,10 +294,10 @@ static void test_reports_default_enrollment_posture(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_every_configured_ssl_field(void **state)
+static void test_reports_every_configured_ssl_field(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.ssl.verification_mode = AGENT_VERIFY_CERT;
     test_agt.ssl.certificate = "etc/agent.cert";
@@ -297,7 +305,7 @@ static void test_reports_every_configured_ssl_field(void **state)
     test_agt.ssl.certificate_authorities = "etc/root-ca.pem";
     test_agt.ssl.ciphers = "TLS_AES_256_GCM_SHA384";
 
-    cJSON *ssl = cJSON_GetObjectItem(get_agent_section(&root), "ssl");
+    cJSON* ssl = cJSON_GetObjectItem(get_agent_section(&root), "ssl");
 
     assert_non_null(ssl);
     assert_string_field(ssl, "verification_mode", "certificate");
@@ -311,12 +319,12 @@ static void test_reports_every_configured_ssl_field(void **state)
 
 /* An agent with no <ssl> block still runs with a posture, so the block is still
  * reported -- with the optional paths absent rather than empty. */
-static void test_reports_default_ssl_posture(void **state)
+static void test_reports_default_ssl_posture(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
-    cJSON *ssl = cJSON_GetObjectItem(get_agent_section(&root), "ssl");
+    cJSON* ssl = cJSON_GetObjectItem(get_agent_section(&root), "ssl");
 
     assert_non_null(ssl);
     assert_string_field(ssl, "verification_mode", "none");
@@ -328,10 +336,10 @@ static void test_reports_default_ssl_posture(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_full_verification_mode(void **state)
+static void test_reports_full_verification_mode(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.ssl.verification_mode = AGENT_VERIFY_FULL;
 
@@ -340,10 +348,10 @@ static void test_reports_full_verification_mode(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_system_verification_mode(void **state)
+static void test_reports_system_verification_mode(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.ssl.verification_mode = AGENT_VERIFY_SYSTEM;
 
@@ -352,15 +360,15 @@ static void test_reports_system_verification_mode(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_configured_batch_limits(void **state)
+static void test_reports_configured_batch_limits(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
     test_agt.batch.size = 2097152;
     test_agt.batch.interval = 15;
 
-    cJSON *batch = cJSON_GetObjectItem(get_agent_section(&root), "batch");
+    cJSON* batch = cJSON_GetObjectItem(get_agent_section(&root), "batch");
 
     assert_non_null(batch);
     assert_number_field(batch, "size", 2097152);
@@ -371,12 +379,12 @@ static void test_reports_configured_batch_limits(void **state)
 
 /* Unconfigured <size> is reported as the cap every reader applies to its zero, 1 MiB,
  * without seeding it into agt; <interval> is the value ClientConf() seeds. */
-static void test_reports_batch_defaults(void **state)
+static void test_reports_batch_defaults(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
-    cJSON *batch = cJSON_GetObjectItem(get_agent_section(&root), "batch");
+    cJSON* batch = cJSON_GetObjectItem(get_agent_section(&root), "batch");
 
     assert_non_null(batch);
     assert_number_field(batch, "size", 1048576);
@@ -385,14 +393,14 @@ static void test_reports_batch_defaults(void **state)
     cJSON_Delete(root);
 }
 
-static void test_reports_both_periodic_pushes(void **state)
+static void test_reports_both_periodic_pushes(void** state)
 {
     (void)state;
-    cJSON *root = NULL;
+    cJSON* root = NULL;
 
-    cJSON *section = get_agent_section(&root);
-    cJSON *stats = cJSON_GetObjectItem(section, "stats_report");
-    cJSON *config = cJSON_GetObjectItem(section, "config_report");
+    cJSON* section = get_agent_section(&root);
+    cJSON* stats = cJSON_GetObjectItem(section, "stats_report");
+    cJSON* config = cJSON_GetObjectItem(section, "config_report");
 
     assert_non_null(stats);
     assert_string_field(stats, "enabled", "no");
@@ -405,7 +413,7 @@ static void test_reports_both_periodic_pushes(void **state)
     cJSON_Delete(root);
 }
 
-static void test_no_config_returns_null(void **state)
+static void test_no_config_returns_null(void** state)
 {
     (void)state;
 

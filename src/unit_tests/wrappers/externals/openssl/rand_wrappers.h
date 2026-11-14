@@ -14,7 +14,7 @@
 
 /* First mock() value: non-zero -> pass through to the real RAND_bytes; zero -> return the next
  * mock_type(int) as RAND_bytes' result (1 = success, 0 = failure) without touching `buf`. */
-int __wrap_RAND_bytes(unsigned char *buf, int num);
-extern int __real_RAND_bytes(unsigned char *buf, int num);
+int __wrap_RAND_bytes(unsigned char* buf, int num);
+extern int __real_RAND_bytes(unsigned char* buf, int num);
 
 #endif

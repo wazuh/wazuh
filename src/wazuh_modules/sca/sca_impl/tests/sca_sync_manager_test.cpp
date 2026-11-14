@@ -14,17 +14,15 @@ namespace
     std::string makeTempPath()
     {
         const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
-        const auto path = std::filesystem::temp_directory_path() /
-                          ("sca_sync_manager_test_" + std::to_string(now));
+        const auto path = std::filesystem::temp_directory_path() / ("sca_sync_manager_test_" + std::to_string(now));
         return path.string();
     }
 
-    const std::string kCreateStatement =
-        "CREATE TABLE IF NOT EXISTS sca_check ("
-        "id TEXT PRIMARY KEY,"
-        "policy_id TEXT,"
-        "version INTEGER NOT NULL DEFAULT 1,"
-        "sync INTEGER NOT NULL DEFAULT 0);";
+    const std::string kCreateStatement = "CREATE TABLE IF NOT EXISTS sca_check ("
+                                         "id TEXT PRIMARY KEY,"
+                                         "policy_id TEXT,"
+                                         "version INTEGER NOT NULL DEFAULT 1,"
+                                         "sync INTEGER NOT NULL DEFAULT 0);";
 
     void insertCheck(const std::shared_ptr<IDBSync>& dbSync, const std::string& id, int syncValue = 0)
     {
@@ -51,13 +49,10 @@ namespace
     int getSyncFlag(const std::shared_ptr<IDBSync>& dbSync, const std::string& id)
     {
         int syncFlag = -1;
-        auto query = SelectQuery::builder()
-                     .table("sca_check")
-                     .columnList({"sync"})
-                     .rowFilter("WHERE id = '" + id + "'")
-                     .build();
+        auto query =
+            SelectQuery::builder().table("sca_check").columnList({"sync"}).rowFilter("WHERE id = '" + id + "'").build();
 
-        const auto callback = [&syncFlag](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+        const auto callback = [&syncFlag](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
         {
             if (returnTypeCallback == SELECTED && resultData.contains("sync"))
             {
@@ -73,33 +68,32 @@ namespace
     {
         return {{"id", id}, {"version", version}, {"sync", syncValue}};
     }
-}
+} // namespace
 
 class SCASyncManagerTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            LoggingHelper::setLogCallback(
-            [](const modules_log_level_t /* level */, const std::string& /* log */) {});
+protected:
+    void SetUp() override
+    {
+        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const std::string& /* log */) {});
 
-            m_dbPath = makeTempPath();
-            m_dbSync = std::make_shared<DBSync>(
-                           HostType::AGENT, DbEngineType::SQLITE3, m_dbPath, kCreateStatement, DbManagement::PERSISTENT);
+        m_dbPath = makeTempPath();
+        m_dbSync = std::make_shared<DBSync>(
+            HostType::AGENT, DbEngineType::SQLITE3, m_dbPath, kCreateStatement, DbManagement::PERSISTENT);
+    }
+
+    void TearDown() override
+    {
+        if (m_dbSync)
+        {
+            m_dbSync->closeAndDeleteDatabase();
         }
 
-        void TearDown() override
-        {
-            if (m_dbSync)
-            {
-                m_dbSync->closeAndDeleteDatabase();
-            }
+        m_dbSync.reset();
+    }
 
-            m_dbSync.reset();
-        }
-
-        std::string m_dbPath;
-        std::shared_ptr<IDBSync> m_dbSync;
+    std::string m_dbPath;
+    std::shared_ptr<IDBSync> m_dbSync;
 };
 
 TEST_F(SCASyncManagerTest, InitializeEnforcesLimitAndInsert)

@@ -16,28 +16,29 @@
 
 #include <filesystem_wrapper.hpp>
 
-const std::vector<std::string> EXTENSIONS_APP_DIRS_TO_EXCLUDE =
-{
+const std::vector<std::string> EXTENSIONS_APP_DIRS_TO_EXCLUDE = {
     "/Xcode.app",
     "/Safari.app",
 };
 
-SafariExtensionsProvider::SafariExtensionsProvider(
-    std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper,
-    std::unique_ptr<IFileSystemWrapper> fileSystemWrapper) :
-    m_browserExtensionsWrapper(std::move(browserExtensionsWrapper))
-    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>()) {}
+SafariExtensionsProvider::SafariExtensionsProvider(std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper,
+                                                   std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
+    : m_browserExtensionsWrapper(std::move(browserExtensionsWrapper))
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                            : std::make_unique<file_system::FileSystemWrapper>())
+{
+}
 
-SafariExtensionsProvider::SafariExtensionsProvider() :
-    m_browserExtensionsWrapper(std::make_shared<BrowserExtensionsWrapper>())
-    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>()) {}
+SafariExtensionsProvider::SafariExtensionsProvider()
+    : m_browserExtensionsWrapper(std::make_shared<BrowserExtensionsWrapper>())
+    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>())
+{
+}
 
 bool SafariExtensionsProvider::isValidPath(const std::string& path)
 {
-    if (path.empty() ||
-            path.find("..") != std::string::npos ||
-            path.find("//") != std::string::npos ||
-            path.length() > MAX_PATH_LENGTH)
+    if (path.empty() || path.find("..") != std::string::npos || path.find("//") != std::string::npos ||
+        path.length() > MAX_PATH_LENGTH)
     {
         return false;
     }
@@ -97,7 +98,8 @@ nlohmann::json SafariExtensionsProvider::collect()
             // For each app directory, exclude the ones in EXTENSIONS_APP_DIRS_TO_EXCLUDE
             std::string appName = "/" + std::filesystem::path(appPath).filename().string();
 
-            if (std::find(EXTENSIONS_APP_DIRS_TO_EXCLUDE.begin(), EXTENSIONS_APP_DIRS_TO_EXCLUDE.end(), appName) != EXTENSIONS_APP_DIRS_TO_EXCLUDE.end())
+            if (std::find(EXTENSIONS_APP_DIRS_TO_EXCLUDE.begin(), EXTENSIONS_APP_DIRS_TO_EXCLUDE.end(), appName) !=
+                EXTENSIONS_APP_DIRS_TO_EXCLUDE.end())
             {
                 continue;
             }

@@ -14,13 +14,12 @@
 
 class SysNormalizerTest : public ::testing::Test
 {
-    protected:
+protected:
+    SysNormalizerTest() = default;
+    virtual ~SysNormalizerTest() = default;
 
-        SysNormalizerTest() = default;
-        virtual ~SysNormalizerTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYS_NORMALIZER_TEST_H

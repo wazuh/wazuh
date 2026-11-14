@@ -24,24 +24,15 @@ namespace
 
         switch (target)
         {
-            case State::Starting:
-                break;
+            case State::Starting: break;
 
-            case State::Registered:
-                machine.onEvent(Event::StartupAccepted);
-                break;
+            case State::Registered: machine.onEvent(Event::StartupAccepted); break;
 
-            case State::Rejected:
-                machine.onEvent(Event::StartupRejected);
-                break;
+            case State::Rejected: machine.onEvent(Event::StartupRejected); break;
 
-            case State::AuthError:
-                machine.onEvent(Event::AuthFailed);
-                break;
+            case State::AuthError: machine.onEvent(Event::AuthFailed); break;
 
-            case State::Stopping:
-                machine.onEvent(Event::Stop);
-                break;
+            case State::Stopping: machine.onEvent(Event::Stop); break;
         }
 
         return machine;
@@ -129,10 +120,7 @@ TEST(ControlStateMachineTest, RegisteredVersionRejectionDemotesToRejected)
 
 TEST(ControlStateMachineTest, TransientFailureNeverChangesState)
 {
-    for (const auto state :
-            {
-                State::Starting, State::Registered, State::Rejected, State::AuthError
-            })
+    for (const auto state : {State::Starting, State::Registered, State::Rejected, State::AuthError})
     {
         auto machine = inState(state);
         const auto effects = machine.onEvent(Event::TransientFailure);
@@ -143,10 +131,7 @@ TEST(ControlStateMachineTest, TransientFailureNeverChangesState)
 
 TEST(ControlStateMachineTest, StopFromEveryStateGoesStopping)
 {
-    for (const auto state :
-            {
-                State::Starting, State::Registered, State::Rejected, State::AuthError
-            })
+    for (const auto state : {State::Starting, State::Registered, State::Rejected, State::AuthError})
     {
         auto machine = inState(state);
         machine.onEvent(Event::Stop);
@@ -186,17 +171,14 @@ TEST(ControlStateMachineTest, SettingsChangedInRegisteredArmsOneStartup)
 
     // The accepted refresh clears the request and returns to Notify.
     const auto refreshed = machine.onEvent(Event::StartupAccepted);
-    EXPECT_FALSE(refreshed.stateChanged); // Registered -> Registered.
+    EXPECT_FALSE(refreshed.stateChanged);  // Registered -> Registered.
     EXPECT_TRUE(refreshed.applyHandshake); // Fresh limits re-delivered.
     EXPECT_EQ(ActionKind::Notify, machine.nextAction());
 }
 
 TEST(ControlStateMachineTest, SettingsChangedOutsideRegisteredIsIgnored)
 {
-    for (const auto state :
-            {
-                State::Starting, State::Rejected
-            })
+    for (const auto state : {State::Starting, State::Rejected})
     {
         auto machine = inState(state);
         machine.onEvent(Event::SettingsChanged);
@@ -221,7 +203,7 @@ TEST(ControlStateMachineTest, TransientFailureKeepsAnArmedRefresh)
 {
     auto machine = inState(State::Registered);
     machine.onEvent(Event::SettingsChanged);
-    machine.onEvent(Event::TransientFailure); // The refresh Startup failed.
+    machine.onEvent(Event::TransientFailure);             // The refresh Startup failed.
     EXPECT_EQ(ActionKind::Startup, machine.nextAction()); // Retried next cycle.
 }
 
@@ -229,10 +211,7 @@ TEST(ControlStateMachineTest, DemotionClearsAnArmedRefresh)
 {
     // A refresh Startup answered 409/401 demotes; the slow re-Startup cadence
     // owns recovery and the one-shot refresh request must not linger.
-    for (const auto event :
-            {
-                Event::StartupRejected, Event::AuthFailed
-            })
+    for (const auto event : {Event::StartupRejected, Event::AuthFailed})
     {
         auto machine = inState(State::Registered);
         machine.onEvent(Event::SettingsChanged);

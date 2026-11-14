@@ -19,29 +19,36 @@ namespace
 {
     std::string lowered(std::string value)
     {
-        std::transform(value.begin(), value.end(), value.begin(),
-                       [](unsigned char character)
-        {
-            return std::tolower(character);
-        });
+        std::transform(
+            value.begin(), value.end(), value.begin(), [](unsigned char character) { return std::tolower(character); });
         return value;
     }
 } // namespace
 
-WpkFetcher::WpkFetcher(const ModuleConfig& config, IHttpPerformer& performer,
-                       const ISigner& signer, IClock& clock, IRandom& random,
-                       ISpoolFileFactory& spoolFactory, AuthGate& authGate,
+WpkFetcher::WpkFetcher(const ModuleConfig& config,
+                       IHttpPerformer& performer,
+                       const ISigner& signer,
+                       IClock& clock,
+                       IRandom& random,
+                       ISpoolFileFactory& spoolFactory,
+                       AuthGate& authGate,
                        CompressionGate& compressionGate)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+    , m_sender(performer,
+               signer,
+               clock,
+               m_backoff,
+               config.httpsCompressionEnabled,
+               &compressionGate,
+               &authGate,
                config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
 {
 }
 
-std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
-                                             const std::string& expectedSha1, Waiter& waiter)
+std::shared_ptr<SpoolFile>
+WpkFetcher::fetch(const std::string& wpkFile, const std::string& expectedSha1, Waiter& waiter)
 {
     std::shared_ptr<SpoolFile> spool = m_spoolFactory.spool(nullptr, 0); // Empty target file.
 
@@ -51,8 +58,7 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
         return nullptr;
     }
 
-    const std::string body =
-        R"({"resource_type":"wpk","resource_id":")" + wpkFile + R"("})";
+    const std::string body = R"({"resource_type":"wpk","resource_id":")" + wpkFile + R"("})";
     HttpRequestSpec spec;
     spec.target = "/download";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -65,9 +71,11 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "WPK download for '%s' failed (%s)%s; aborting the upgrade "
+        LOGFN_WARN(m_logFn,
+                   "WPK download for '%s' failed (%s)%s; aborting the upgrade "
                    "(no /control response is sent; fire-and-forget).",
-                   wpkFile.c_str(), outcomeName(result.outcome),
+                   wpkFile.c_str(),
+                   outcomeName(result.outcome),
                    transportReason(result.response.curlError).c_str());
         return nullptr;
     }
@@ -76,9 +84,12 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
 
     if (!actualSha1 || lowered(*actualSha1) != lowered(expectedSha1))
     {
-        LOGFN_WARN(m_logFn, "Downloaded WPK '%s' sha1 %s does not match the task's advertised "
-                   "%s; aborting the upgrade without installing.", wpkFile.c_str(),
-                   actualSha1 ? actualSha1->c_str() : "(unreadable)", expectedSha1.c_str());
+        LOGFN_WARN(m_logFn,
+                   "Downloaded WPK '%s' sha1 %s does not match the task's advertised "
+                   "%s; aborting the upgrade without installing.",
+                   wpkFile.c_str(),
+                   actualSha1 ? actualSha1->c_str() : "(unreadable)",
+                   expectedSha1.c_str());
         return nullptr; // RAII deletes the file.
     }
 

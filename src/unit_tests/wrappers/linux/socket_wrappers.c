@@ -27,108 +27,166 @@
  * failing call. Default 0 keeps the historical behaviour (errno untouched). */
 int test_wrap_send_errno = 0;
 
-int __wrap_socket(__attribute__((unused))int __domain, __attribute__((unused))int __type, __attribute__((unused))int __protocol) {
+int __wrap_socket(__attribute__((unused)) int __domain,
+                  __attribute__((unused)) int __type,
+                  __attribute__((unused)) int __protocol)
+{
     return mock();
 }
 
-int __wrap_bind(__attribute__((unused))int __fd, __attribute__((unused))__CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len) {
+int __wrap_bind(__attribute__((unused)) int __fd,
+                __attribute__((unused)) __CONST_SOCKADDR_ARG __addr,
+                __attribute__((unused)) socklen_t __len)
+{
     return mock();
 }
 
-int __wrap_setsockopt(__attribute__((unused))int __fd, __attribute__((unused))int __level, __attribute__((unused))int __optname, __attribute__((unused))const void *__optval, __attribute__((unused))socklen_t __optlen) {
+int __wrap_setsockopt(__attribute__((unused)) int __fd,
+                      __attribute__((unused)) int __level,
+                      __attribute__((unused)) int __optname,
+                      __attribute__((unused)) const void* __optval,
+                      __attribute__((unused)) socklen_t __optlen)
+{
     return mock();
 }
 
-int __wrap_getsockopt(__attribute__((unused))int __fd, __attribute__((unused))int __level, __attribute__((unused))int __optname, __attribute__((unused))void *__restrict __optval, __attribute__((unused))socklen_t *__restrict __optlen) {
+int __wrap_getsockopt(__attribute__((unused)) int __fd,
+                      __attribute__((unused)) int __level,
+                      __attribute__((unused)) int __optname,
+                      __attribute__((unused)) void* __restrict __optval,
+                      __attribute__((unused)) socklen_t* __restrict __optlen)
+{
 
     int number = 100000;
-    void *len = &number;
+    void* len = &number;
     memcpy((int*)__optval, (int*)len, sizeof(int));
 
     return mock();
 }
 
-int __wrap_listen(__attribute__((unused))int __fd, __attribute__((unused))int __n) {
+int __wrap_listen(__attribute__((unused)) int __fd, __attribute__((unused)) int __n)
+{
     return mock();
 }
 
-int __wrap_connect(__attribute__((unused))int __fd, __attribute__((unused))__CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len) {
+int __wrap_connect(__attribute__((unused)) int __fd,
+                   __attribute__((unused)) __CONST_SOCKADDR_ARG __addr,
+                   __attribute__((unused)) socklen_t __len)
+{
     return mock();
 }
 
-int __wrap_accept(__attribute__((unused))int __fd, struct sockaddr * __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
+int __wrap_accept(__attribute__((unused)) int __fd,
+                  struct sockaddr* __addr,
+                  __attribute__((unused)) socklen_t* __restrict __addr_len)
+{
     __addr->sa_family = mock();
     return mock();
 }
 
-ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
+ssize_t __wrap_send(__attribute__((unused)) int __fd,
+                    __attribute__((unused)) const void* __buf,
+                    __attribute__((unused)) size_t __n,
+                    __attribute__((unused)) int __flags)
+{
     ssize_t ret = mock();
-    if (ret < 0 && test_wrap_send_errno != 0) {
+    if (ret < 0 && test_wrap_send_errno != 0)
+    {
         errno = test_wrap_send_errno;
     }
     return ret;
 }
 
-ssize_t __wrap_sendto(__attribute__((unused)) int __fd, __attribute__((unused)) const void *__buf, __attribute__((unused)) size_t __n, __attribute__((unused)) int __flags,
-                      __attribute__((unused)) __CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len){
+ssize_t __wrap_sendto(__attribute__((unused)) int __fd,
+                      __attribute__((unused)) const void* __buf,
+                      __attribute__((unused)) size_t __n,
+                      __attribute__((unused)) int __flags,
+                      __attribute__((unused)) __CONST_SOCKADDR_ARG __addr,
+                      __attribute__((unused)) socklen_t __len)
+{
     return mock();
 }
 
-ssize_t __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
+ssize_t __wrap_recv(__attribute__((unused)) int __fd,
+                    __attribute__((unused)) void* __buf,
+                    __attribute__((unused)) size_t __n,
+                    __attribute__((unused)) int __flags)
+{
 
-    if(__fd == -1) {
+    if (__fd == -1)
+    {
         return mock();
     }
 
-    if(__fd == 3 || __fd == 4 || (__fd == 5 && __n == 13)) {
+    if (__fd == 3 || __fd == 4 || (__fd == 5 && __n == 13))
+    {
         char text[BUFFERSIZE];
         strcpy(text, SENDSTRING);
-        void *buffer = &text;
+        void* buffer = &text;
         memcpy((char*)__buf, (char*)buffer, sizeof(SENDSTRING));
-    } else if(__fd == 5 && __n != 13) {
+    }
+    else if (__fd == 5 && __n != 13)
+    {
         u_int32_t number = 13;
-        void *buffer = &number;
+        void* buffer = &number;
         memcpy((u_int32_t*)__buf, (u_int32_t*)buffer, sizeof(u_int32_t));
-    } else if(__fd == 7) {
+    }
+    else if (__fd == 7)
+    {
         char text[BUFFERSIZE];
         strcpy(text, "err --------");
-        void *buffertext = &text;
+        void* buffertext = &text;
         // Set the payload buffer size to simulate the cluster message format
         size_t payload_size = 9;
-        *(uint32_t *)(__buf+4) = wnet_order_big(payload_size);
-        memcpy((char*)__buf+8, (char*)buffertext, 12);
+        *(uint32_t*)(__buf + 4) = wnet_order_big(payload_size);
+        memcpy((char*)__buf + 8, (char*)buffertext, 12);
     }
 
     return mock();
 }
 
-ssize_t __wrap_recvfrom(__attribute__((unused))int __fd, __attribute__((unused))void *__restrict __buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
+ssize_t __wrap_recvfrom(__attribute__((unused)) int __fd,
+                        __attribute__((unused)) void* __restrict __buf,
+                        __attribute__((unused)) size_t __n,
+                        __attribute__((unused)) int __flags,
+                        __attribute__((unused)) __SOCKADDR_ARG __addr,
+                        __attribute__((unused)) socklen_t* __restrict __addr_len)
+{
 
-    if(__fd != -1) {
+    if (__fd != -1)
+    {
         char text[BUFFERSIZE];
         strcpy(text, SENDSTRING);
-        void *buffer = &text;
+        void* buffer = &text;
         memcpy((char*)__buf, (char*)buffer, sizeof(SENDSTRING));
     }
 
     return mock();
 }
 
-extern int __real_fcntl(__attribute__((unused))int __fd, __attribute__((unused))int __cmd, __attribute__((unused))unsigned long);
-int __wrap_fcntl(int __fd, int __cmd, ...) {
+extern int __real_fcntl(__attribute__((unused)) int __fd,
+                        __attribute__((unused)) int __cmd,
+                        __attribute__((unused)) unsigned long);
+int __wrap_fcntl(int __fd, int __cmd, ...)
+{
 
     va_list ap;
     va_start(ap, __cmd);
     unsigned long arg = va_arg(ap, unsigned long);
     va_end(ap);
 
-    if(!test_mode) {
+    if (!test_mode)
+    {
         return __real_fcntl(__fd, __cmd, arg);
     }
     return mock();
 }
 
-int __wrap_getaddrinfo(const char *node, __attribute__((unused))const char *service, __attribute__((unused))const struct addrinfo *hints, struct addrinfo **res) {
+int __wrap_getaddrinfo(const char* node,
+                       __attribute__((unused)) const char* service,
+                       __attribute__((unused)) const struct addrinfo* hints,
+                       struct addrinfo** res)
+{
     struct addrinfo* addr;
     int ret;
     check_expected(node);
@@ -138,7 +196,8 @@ int __wrap_getaddrinfo(const char *node, __attribute__((unused))const char *serv
 
     // Only allocate memory if the call will succeed (ret == 0)
     // Per POSIX, on error, the content of *res is undefined and should not be freed
-    if (ret == 0 && addr != NULL) {
+    if (ret == 0 && addr != NULL)
+    {
         *res = calloc(1, sizeof(struct addrinfo));
         memcpy(*res, addr, sizeof(struct addrinfo));
     }

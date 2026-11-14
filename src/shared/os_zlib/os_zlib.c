@@ -12,15 +12,10 @@
 
 #include <zlib.h>
 
-unsigned long int os_zlib_compress(const char *src, char *dst,
-                                   unsigned long int src_size,
-                                   unsigned long int dst_size)
+unsigned long int os_zlib_compress(const char* src, char* dst, unsigned long int src_size, unsigned long int dst_size)
 {
-    if (compress2((Bytef *)dst,
-                  &dst_size,
-                  (const Bytef *)src,
-                  src_size,
-                  Z_BEST_COMPRESSION) == Z_OK) {
+    if (compress2((Bytef*)dst, &dst_size, (const Bytef*)src, src_size, Z_BEST_COMPRESSION) == Z_OK)
+    {
         dst[dst_size] = '\0';
         return (dst_size);
     }
@@ -28,14 +23,10 @@ unsigned long int os_zlib_compress(const char *src, char *dst,
     return (0);
 }
 
-unsigned long int os_zlib_uncompress(const char *src, char *dst,
-                                     unsigned long int src_size,
-                                     unsigned long int dst_size)
+unsigned long int os_zlib_uncompress(const char* src, char* dst, unsigned long int src_size, unsigned long int dst_size)
 {
-    if (uncompress((Bytef *)dst,
-                   &dst_size,
-                   (const Bytef *)src,
-                   src_size) == Z_OK) {
+    if (uncompress((Bytef*)dst, &dst_size, (const Bytef*)src, src_size) == Z_OK)
+    {
         dst[dst_size] = '\0';
         return (dst_size);
     }

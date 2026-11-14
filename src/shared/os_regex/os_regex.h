@@ -19,11 +19,11 @@
 #include <pthread.h>
 
 /* OSRegex_Compile flags */
-#define OS_RETURN_SUBSTRING     0000200
-#define OS_CASE_SENSITIVE       0000400
+#define OS_RETURN_SUBSTRING 0000200
+#define OS_CASE_SENSITIVE   0000400
 
 /* Pattern maximum size */
-#define OS_PATTERN_MAXSIZE      20480
+#define OS_PATTERN_MAXSIZE 20480
 
 /* Error codes */
 #define OS_REGEX_REG_NULL       1
@@ -36,42 +36,46 @@
 #define OS_REGEX_NO_MATCH       8
 
 /* Size of dynamic variables */
-typedef struct regex_dynamic_size {
+typedef struct regex_dynamic_size
+{
     int sub_strings_size;
-    int *prts_str_size;
+    int* prts_str_size;
     int prts_str_alloc_size;
 } regex_dynamic_size;
 
 /* Structure to manage pattern matches */
-typedef struct regex_matching {
-    char **sub_strings;
-    const char ***prts_str;
+typedef struct regex_matching
+{
+    char** sub_strings;
+    const char*** prts_str;
     regex_dynamic_size d_size;
 } regex_matching;
 
 /* OSRegex structure */
-typedef struct _OSRegex {
+typedef struct _OSRegex
+{
     int error;
-    char *raw;
-    int *flags;
-    char **patterns;
-    const char ** *prts_closure;
+    char* raw;
+    int* flags;
+    char** patterns;
+    const char*** prts_closure;
     pthread_mutex_t mutex;
     bool mutex_initialised;
     // Dynamic variables
-    char **d_sub_strings;
-    const char ***d_prts_str;
+    char** d_sub_strings;
+    const char*** d_prts_str;
     regex_dynamic_size d_size;
 } OSRegex;
 
 /* OSmatch structure */
-typedef struct _OSMatch {
+typedef struct _OSMatch
+{
     short int negate;
-    char *raw;
+    char* raw;
     int error;
-    size_t *size;
-    char **patterns;
-    int (**match_fp)(const char *str, const char *str2, size_t str_len, size_t size);
+    size_t* size;
+    char** patterns;
+    int (**match_fp)(const char* str, const char* str2, size_t str_len, size_t size);
 } OSMatch;
 
 /*** Prototypes ***/
@@ -83,44 +87,44 @@ typedef struct _OSMatch {
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
+int OSRegex_Compile(const char* pattern, OSRegex* reg, int flags);
 
 /**
  * @brief Compares an already compiled OSRegex regular expression with a string
- * 
+ *
  * @warning Do not mix between `OSRegex_Execute` and `OSRegex_Execute_ex` calls for the same pointer `reg`
  * @param str string to test
  * @param reg compiled pattern
  * @return Returns the end of the string on success or NULL otherwise
  */
-const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnull(2)));
+const char* OSRegex_Execute(const char* str, OSRegex* reg) __attribute__((nonnull(2)));
 
 /**
  * @brief Compares an already compiled OSRegex regular expression with a string
- * 
+ *
  * Extension of OSRegex_Execute that allows to choose between external sub_strings and prts_str.
  * The regex_match structure handles match patterns and serves to parallelize the regex
- * 
- * @warning If any call to `OSRegex_Execute_ex` has a null `regex_match` argument then 
+ *
+ * @warning If any call to `OSRegex_Execute_ex` has a null `regex_match` argument then
  * all calls to with the same pointer `reg` must have a null regex_match argument (This limits the parallelism)
  * @warning Do not mix between `OSRegex_Execute_ex` and `OSRegex_Execute` calls for the same pointer `reg`
- * 
+ *
  * @param str string to test
  * @param reg compiled pattern
  * @param regex_match Structure to manage pattern matches
  * @return Returns the end of the string on success or NULL otherwise
  */
- const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match) __attribute__((nonnull(2)));
+const char* OSRegex_Execute_ex(const char* str, OSRegex* reg, regex_matching* regex_match) __attribute__((nonnull(2)));
 
 /* Release all the memory created by the compilation/execution phases */
-void OSRegex_FreePattern(OSRegex *reg);
+void OSRegex_FreePattern(OSRegex* reg);
 
 /* This function is a wrapper around the compile/execute
  * functions. It should only be used when the pattern is
  * only going to be used once.
  * Returns 1 on success or 0 on failure.
  */
-int OS_Regex(const char *pattern, const char *str);
+int OS_Regex(const char* pattern, const char* str);
 
 /* Compile a pattern to be used later.
  * Allowed flags are:
@@ -128,48 +132,48 @@ int OS_Regex(const char *pattern, const char *str);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
+int OSMatch_Compile(const char* pattern, OSMatch* reg, int flags);
 
 /* Compare an already compiled pattern with a not NULL string.
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
+int OSMatch_Execute(const char* str, size_t str_len, OSMatch* reg);
 
 /* Release all the memory created by the compilation/execution phases */
-void OSMatch_FreePattern(OSMatch *reg);
+void OSMatch_FreePattern(OSMatch* reg);
 
-int OS_Match2(const char *pattern, const char *str)  __attribute__((nonnull(2)));
+int OS_Match2(const char* pattern, const char* str) __attribute__((nonnull(2)));
 
 /* Searches for pattern in the string */
-int OS_WordMatch(const char *pattern, const char *str) __attribute__((nonnull));
+int OS_WordMatch(const char* pattern, const char* str) __attribute__((nonnull));
 #define OS_Match OS_WordMatch
 
 /* Split a string into multiples pieces, divided by a char "match".
  * Returns a NULL terminated array on success or NULL on error.
  */
-char **OS_StrBreak(char match, const char *str, size_t size);
+char** OS_StrBreak(char match, const char* str, size_t size);
 
 /* Returns the number of characters that both strings
  * have in similar (start at the beginning of them).
  */
-size_t OS_StrHowClosedMatch(const char *str1, const char *str2);
+size_t OS_StrHowClosedMatch(const char* str1, const char* str2);
 
 /** Inline prototypes **/
 
 /* Verifies if a string starts with the provided pattern.
  * Returns 1 on success or 0 on failure.
  */
-int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnull));
+int OS_StrStartsWith(const char* str, const char* pattern) __attribute__((nonnull));
 
 /* Checks if a specific string is numeric (like "129544") */
-int OS_StrIsNum(const char *str);
+int OS_StrIsNum(const char* str);
 
 /*
  * @brief Free memory of regex_matching struct
  * @param reg struct to remove
  */
-void OSRegex_free_regex_matching (regex_matching *reg);
+void OSRegex_free_regex_matching(regex_matching* reg);
 
 /* Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.

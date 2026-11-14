@@ -26,12 +26,12 @@
 #endif
 
 static const char* upgrade_messages[] = {[WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
-                                         [WM_UPGRADE_FAILED_INTERMEDIATE] = "Upgrade failed: intermediate version required",
+                                         [WM_UPGRADE_FAILED_INTERMEDIATE] =
+                                             "Upgrade failed: intermediate version required",
                                          [WM_UPGRADE_FAILED] = "Upgrade failed"};
 
-static const char* upgrade_statuses[] = {[WM_UPGRADE_SUCCESSFUL] = "Done",
-                                         [WM_UPGRADE_FAILED_INTERMEDIATE] = "Failed",
-                                         [WM_UPGRADE_FAILED] = "Failed"};
+static const char* upgrade_statuses[] = {
+    [WM_UPGRADE_SUCCESSFUL] = "Done", [WM_UPGRADE_FAILED_INTERMEDIATE] = "Failed", [WM_UPGRADE_FAILED] = "Failed"};
 
 // CA certificates
 char** wcom_ca_store = NULL;
@@ -90,7 +90,8 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd);
  * */
 STATIC void wm_upgrade_agent_send_result_event(int* queue_fd, wm_upgrade_agent_state state, unsigned int raw_code);
 
-void wm_agent_upgrade_start_agent_module(__attribute__((unused)) const wm_agent_configs* agent_config, const int enabled)
+void wm_agent_upgrade_start_agent_module(__attribute__((unused)) const wm_agent_configs* agent_config,
+                                         const int enabled)
 {
 
     // Check if module is enabled

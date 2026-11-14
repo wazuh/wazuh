@@ -17,12 +17,14 @@
 #include "os_net.h"
 #include "netcounter_wrappers.h"
 
-void __wrap_rem_setCounter(int fd, size_t counter) {
+void __wrap_rem_setCounter(int fd, size_t counter)
+{
     check_expected(fd);
     check_expected(counter);
 }
 
-size_t __wrap_rem_getCounter(int fd) {
+size_t __wrap_rem_getCounter(int fd)
+{
     check_expected(fd);
     return mock();
 }

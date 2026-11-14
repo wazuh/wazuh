@@ -9,7 +9,8 @@
 
 #include "shared.h"
 
-int atomic_int_get(atomic_int_t *atomic) {
+int atomic_int_get(atomic_int_t* atomic)
+{
     assert(atomic != NULL);
 
     int retval = 0;
@@ -21,7 +22,8 @@ int atomic_int_get(atomic_int_t *atomic) {
     return retval;
 }
 
-void atomic_int_set(atomic_int_t *atomic, int value) {
+void atomic_int_set(atomic_int_t* atomic, int value)
+{
     assert(atomic != NULL);
 
     w_mutex_lock(&atomic->mutex);
@@ -29,7 +31,8 @@ void atomic_int_set(atomic_int_t *atomic, int value) {
     w_mutex_unlock(&atomic->mutex);
 }
 
-int atomic_int_inc(atomic_int_t *atomic) {
+int atomic_int_inc(atomic_int_t* atomic)
+{
     assert(atomic != NULL);
 
     int retval = 0;
@@ -40,7 +43,8 @@ int atomic_int_inc(atomic_int_t *atomic) {
     return retval;
 };
 
-int atomic_int_dec(atomic_int_t *atomic) {
+int atomic_int_dec(atomic_int_t* atomic)
+{
     assert(atomic != NULL);
 
     int retval = 0;

@@ -43,11 +43,11 @@
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
 #include "ca_publication.h"
-#include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
-#include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
-#include "wmodules.h"    /* wmcom_send: the leg for every other module */
-#include "task_registry_client.h" /* durable task_id registry client */
-#include "vd_offset_client.h" /* durable VD feed offset registry client */
+#include "sha256_op.h"              /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
+#include "syscheck_op.h"            /* ag_send_syscheck: the FIM leg of the sync answer */
+#include "wmodules.h"               /* wmcom_send: the leg for every other module */
+#include "task_registry_client.h"   /* durable task_id registry client */
+#include "vd_offset_client.h"       /* durable VD feed offset registry client */
 #include "wm_agent_upgrade_agent.h" /* wm_agent_upgrade_process_command */
 #include "cJSON.h"
 #include "metadata_provider.h" /* metadata_provider_get(): host metadata for the Notify */
@@ -57,7 +57,7 @@
 #ifdef WIN32
 /* The queue os_execd pops from. Lived in receiver.c; the /control
  * active_response dispatch below is its only producer now. */
-w_queue_t *winexec_queue;
+w_queue_t* winexec_queue;
 
 /* asp_set_session_sender: registers this bridge's in-process /stateful session sender with
  * agent_sync_protocol, since Windows has no local socket for it to connect to (see
@@ -66,7 +66,7 @@ w_queue_t *winexec_queue;
 #include "agent_sync_protocol_c_interface.h"
 #endif
 
-static hc_handle *g_https_client = NULL;
+static hc_handle* g_https_client = NULL;
 
 /* Set once w_https_client_stop() starts tearing the client down; the re-
  * enroll thread (detached, so it can't be joined/cancelled) checks this
@@ -141,13 +141,14 @@ void w_agent_keys_write_unlock(void)
  *
  * @return true when a complete identity was copied; false when this agent has no entry at all --
  *         not an error, just nothing to sign with. */
-static bool bridge_copy_agent_identity(char *id_out, size_t id_size, char *key_out, size_t key_size)
+static bool bridge_copy_agent_identity(char* id_out, size_t id_size, char* key_out, size_t key_size)
 {
     bool copied = false;
 
     w_mutex_lock(&g_agent_keys_lock);
 
-    if (keys.keyentries && keys.keyentries[0] && keys.keyentries[0]->id && keys.keyentries[0]->raw_key) {
+    if (keys.keyentries && keys.keyentries[0] && keys.keyentries[0]->id && keys.keyentries[0]->raw_key)
+    {
         strncpy(id_out, keys.keyentries[0]->id, id_size - 1);
         id_out[id_size - 1] = '\0';
         strncpy(key_out, keys.keyentries[0]->raw_key, key_size - 1);
@@ -186,28 +187,32 @@ static bool bridge_stopping(void)
  * handle) instead of through the real w_create_thread/CreateThread, whose
  * test double intentionally never runs the function it's given.
  */
-void *bridge_reenroll_thread(void *arg)
+void* bridge_reenroll_thread(void* arg)
 {
-    hc_handle *handle = (hc_handle *)arg;
+    hc_handle* handle = (hc_handle*)arg;
     w_enroll_status_t enroll_result = W_ENROLL_ERR_TRANSPORT;
     int delay_sleep = 0;
 
-    while (enroll_result != W_ENROLL_OK) {
-        if (bridge_stopping()) {
+    while (enroll_result != W_ENROLL_OK)
+    {
+        if (bridge_stopping())
+        {
             mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
             return NULL;
         }
 
         enroll_result = try_enroll_to_server();
 
-        if (enroll_result != W_ENROLL_OK) {
+        if (enroll_result != W_ENROLL_OK)
+        {
             /* #39064: this loop used to run for ever on any failure, which is exactly the
              * behaviour the issue exists to remove -- an agent whose credential the manager has
              * definitively refused would re-ask at the top of the ramp until someone noticed.
              * Same policy function as the initial-enrollment loop, so the two answer identically;
              * it also shreds a dead re-enrollment secret, which is what lets the next attempt fall
              * back to the configured credential. */
-            if (w_enrollment_apply_policy(enroll_result) == W_ENROLL_ACTION_STOP) {
+            if (w_enrollment_apply_policy(enroll_result) == W_ENROLL_ACTION_STOP)
+            {
                 /* The agent keeps running: it still holds whatever key it had, and the AuthGate
                  * keeps traffic paused. That is a state an operator can see and fix -- unlike a
                  * silent retry loop, and unlike tearing the daemon down over a manager-side
@@ -220,7 +225,8 @@ void *bridge_reenroll_thread(void *arg)
 
             /* Same ramp as the initial-enrollment loop (start_agent.c), from the values
              * ClientConf() resolved, so the two cannot drift apart. */
-            if (delay_sleep < agt->enrollment.retry_max) {
+            if (delay_sleep < agt->enrollment.retry_max)
+            {
                 delay_sleep += agt->enrollment.retry_delta;
             }
             mdebug1("https_client: re-enrollment attempt failed; retrying in %d seconds.", delay_sleep);
@@ -235,7 +241,8 @@ void *bridge_reenroll_thread(void *arg)
      * hc_destroy(), until we release. */
     w_mutex_lock(&g_https_client_lock);
 
-    if (g_https_client_stopping) {
+    if (g_https_client_stopping)
+    {
         w_mutex_unlock(&g_https_client_lock);
         mdebug1("https_client: agent shutting down; not reloading the signing key.");
         return NULL;
@@ -258,7 +265,8 @@ void *bridge_reenroll_thread(void *arg)
         bridge_copy_agent_identity(reloaded_id, sizeof(reloaded_id), reloaded_key, sizeof(reloaded_key));
     const bool identity_ok = identity_copied && hc_set_agent_identity(handle, reloaded_id, reloaded_key);
 
-    if (!identity_ok) {
+    if (!identity_ok)
+    {
         merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
     }
 
@@ -275,7 +283,8 @@ void *bridge_reenroll_thread(void *arg)
      * nesting it inside g_https_client_lock would introduce a lock order nothing else in this
      * file establishes. Only on a valid identity -- when validation failed the module keeps
      * traffic paused, so there is nothing to stamp yet. */
-    if (identity_ok) {
+    if (identity_ok)
+    {
         w_agentd_populate_metadata();
     }
 
@@ -306,20 +315,22 @@ static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
  * "syscollector":{...},"sca":{...}},"cluster":{"name":...,"node":...},
  * "agent":{"groups":[...]}}. */
 
-static bool bridge_get_required_int(const cJSON *parent, const char *name, int *value)
+static bool bridge_get_required_int(const cJSON* parent, const char* name, int* value)
 {
-    cJSON *field = cJSON_GetObjectItem(parent, name);
-    if (!field || !cJSON_IsNumber(field)) {
+    cJSON* field = cJSON_GetObjectItem(parent, name);
+    if (!field || !cJSON_IsNumber(field))
+    {
         return false;
     }
     *value = field->valueint;
     return true;
 }
 
-static bool bridge_parse_fim_limits(const cJSON *limits_obj, fim_limits_t *fim)
+static bool bridge_parse_fim_limits(const cJSON* limits_obj, fim_limits_t* fim)
 {
-    cJSON *module = cJSON_GetObjectItem(limits_obj, "fim");
-    if (!module || !cJSON_IsObject(module)) {
+    cJSON* module = cJSON_GetObjectItem(limits_obj, "fim");
+    if (!module || !cJSON_IsObject(module))
+    {
         return false;
     }
 
@@ -328,10 +339,11 @@ static bool bridge_parse_fim_limits(const cJSON *limits_obj, fim_limits_t *fim)
            bridge_get_required_int(module, "registry_value", &fim->registry_value);
 }
 
-static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollector_limits_t *syscollector)
+static bool bridge_parse_syscollector_limits(const cJSON* limits_obj, syscollector_limits_t* syscollector)
 {
-    cJSON *module = cJSON_GetObjectItem(limits_obj, "syscollector");
-    if (!module || !cJSON_IsObject(module)) {
+    cJSON* module = cJSON_GetObjectItem(limits_obj, "syscollector");
+    if (!module || !cJSON_IsObject(module))
+    {
         return false;
     }
 
@@ -350,26 +362,29 @@ static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollect
            bridge_get_required_int(module, "browser_extensions", &syscollector->browser_extensions);
 }
 
-static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
+static bool bridge_parse_sca_limits(const cJSON* limits_obj, sca_limits_t* sca)
 {
-    cJSON *module = cJSON_GetObjectItem(limits_obj, "sca");
-    if (!module || !cJSON_IsObject(module)) {
+    cJSON* module = cJSON_GetObjectItem(limits_obj, "sca");
+    if (!module || !cJSON_IsObject(module))
+    {
         return false;
     }
 
     return bridge_get_required_int(module, "checks", &sca->checks);
 }
 
-static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
+static bool bridge_parse_limits(const cJSON* root, module_limits_t* limits)
 {
-    cJSON *limits_obj = cJSON_GetObjectItem(root, "limits");
-    if (!limits_obj || !cJSON_IsObject(limits_obj)) {
+    cJSON* limits_obj = cJSON_GetObjectItem(root, "limits");
+    if (!limits_obj || !cJSON_IsObject(limits_obj))
+    {
         return false;
     }
 
     if (!bridge_parse_fim_limits(limits_obj, &limits->fim) ||
         !bridge_parse_syscollector_limits(limits_obj, &limits->syscollector) ||
-        !bridge_parse_sca_limits(limits_obj, &limits->sca)) {
+        !bridge_parse_sca_limits(limits_obj, &limits->sca))
+    {
         return false;
     }
 
@@ -384,15 +399,17 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
  * HTTPS-side copy of this same rule) so the C side's global (which
  * agent-info/agcom and the shutdown message already read) agrees with what
  * the module itself believes. */
-static void bridge_apply_cluster_identity(const cJSON *root)
+static void bridge_apply_cluster_identity(const cJSON* root)
 {
-    const cJSON *cluster = cJSON_GetObjectItem(root, "cluster");
-    const char *name = NULL;
+    const cJSON* cluster = cJSON_GetObjectItem(root, "cluster");
+    const char* name = NULL;
 
-    if (cluster && cJSON_IsObject(cluster)) {
-        cJSON *name_field = cJSON_GetObjectItem(cluster, "name");
+    if (cluster && cJSON_IsObject(cluster))
+    {
+        cJSON* name_field = cJSON_GetObjectItem(cluster, "name");
 
-        if (name_field && cJSON_IsString(name_field) && name_field->valuestring) {
+        if (name_field && cJSON_IsString(name_field) && name_field->valuestring)
+        {
             name = name_field->valuestring;
         }
     }
@@ -405,25 +422,30 @@ static void bridge_apply_cluster_identity(const cJSON *root)
  * (ControlStream's rawGroupsCsv() reads it) rather than start_agent.c's flat
  * "agent_groups" array.
  * Builds the same CSV shape agent_agent_groups already holds for legacy. */
-static void bridge_apply_agent_groups(const cJSON *root)
+static void bridge_apply_agent_groups(const cJSON* root)
 {
-    const cJSON *agent = cJSON_GetObjectItem(root, "agent");
-    const cJSON *groups_array = agent ? cJSON_GetObjectItem(agent, "groups") : NULL;
-    cJSON *group_item = NULL;
+    const cJSON* agent = cJSON_GetObjectItem(root, "agent");
+    const cJSON* groups_array = agent ? cJSON_GetObjectItem(agent, "groups") : NULL;
+    cJSON* group_item = NULL;
     size_t offset = 0;
 
     agent_agent_groups[0] = '\0';
 
-    if (!groups_array || !cJSON_IsArray(groups_array)) {
+    if (!groups_array || !cJSON_IsArray(groups_array))
+    {
         return;
     }
 
-    cJSON_ArrayForEach(group_item, groups_array) {
-        if (cJSON_IsString(group_item) && group_item->valuestring && group_item->valuestring[0] != '\0') {
+    cJSON_ArrayForEach(group_item, groups_array)
+    {
+        if (cJSON_IsString(group_item) && group_item->valuestring && group_item->valuestring[0] != '\0')
+        {
             size_t group_len = strlen(group_item->valuestring);
             /* Space check: group + comma + null terminator. */
-            if (offset + group_len + 2 < sizeof(agent_agent_groups)) {
-                if (offset > 0) {
+            if (offset + group_len + 2 < sizeof(agent_agent_groups))
+            {
+                if (offset > 0)
+                {
                     agent_agent_groups[offset++] = ',';
                 }
                 strcpy(agent_agent_groups + offset, group_item->valuestring);
@@ -433,7 +455,8 @@ static void bridge_apply_agent_groups(const cJSON *root)
     }
     agent_agent_groups[offset] = '\0';
 
-    if (agent_agent_groups[0]) {
+    if (agent_agent_groups[0])
+    {
         mdebug1("https_client: agent groups -> %s.", agent_agent_groups);
     }
 }
@@ -442,18 +465,21 @@ static void bridge_apply_agent_groups(const cJSON *root)
  * task_types (active_response/agent_restart/agent_reload/remote_upgrade),
  * durable dedup via agent-info (task_registry_client.c), and the
  * remote_upgrade download/verify/install seam. */
-static void bridge_on_startup_result(bool accepted, const char *metadata_json, void *user_data)
+static void bridge_on_startup_result(bool accepted, const char* metadata_json, void* user_data)
 {
     (void)user_data;
-    mdebug1("https_client startup %s: %s", accepted ? "accepted" : "rejected",
+    mdebug1("https_client startup %s: %s",
+            accepted ? "accepted" : "rejected",
             metadata_json ? metadata_json : "(no metadata)");
 
-    if (!accepted || !metadata_json) {
+    if (!accepted || !metadata_json)
+    {
         return;
     }
 
-    cJSON *root = cJSON_Parse(metadata_json);
-    if (!root) {
+    cJSON* root = cJSON_Parse(metadata_json);
+    if (!root)
+    {
         mdebug2("https_client: startup metadata is not valid JSON; module limits and "
                 "cluster identity are unchanged.");
         return;
@@ -467,18 +493,25 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
      * not an unconditional reload on every accepted startup. */
     module_limits_t previous_limits = agent_module_limits;
 
-    if (bridge_parse_limits(root, &agent_module_limits)) {
+    if (bridge_parse_limits(root, &agent_module_limits))
+    {
         mdebug1("https_client: module limits received from manager.");
 
-        if (previous_limits.limits_received && module_limits_changed(&previous_limits, &agent_module_limits)) {
-            if (agt->flags.auto_restart) {
+        if (previous_limits.limits_received && module_limits_changed(&previous_limits, &agent_module_limits))
+        {
+            if (agt->flags.auto_restart)
+            {
                 minfo("Agent is reloading due to module limits changes.");
                 reloadAgent();
-            } else {
+            }
+            else
+            {
                 mdebug1("Module limits have been updated.");
             }
         }
-    } else {
+    }
+    else
+    {
         mdebug2("https_client: no valid 'limits' object in the startup response; "
                 "module limits are unchanged.");
     }
@@ -500,12 +533,13 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
     cJSON_Delete(root);
 }
 
-static void bridge_on_reenroll_required(void *user_data)
+static void bridge_on_reenroll_required(void* user_data)
 {
     (void)user_data;
     mwarn("https_client: credential rejected (401); re-enrolling.");
 
-    if (!agt->enrollment.enabled) {
+    if (!agt->enrollment.enabled)
+    {
         merror("https_client: re-enrollment required but auto-enrollment is disabled "
                "(<enrollment><enabled>); traffic stays paused until the key is fixed manually.");
         return;
@@ -527,16 +561,14 @@ static void bridge_on_reenroll_required(void *user_data)
  * match the .state semantics rather than prematurely reading NACTIVE. */
 static agent_status_t bridge_map_agent_status(int hc_state)
 {
-    switch (hc_state) {
-    case HC_STATE_REGISTERED:
-        return GA_STATUS_ACTIVE;
-    case HC_STATE_STARTING:
-        return GA_STATUS_PENDING;
-    case HC_STATE_STOPPED:
-    case HC_STATE_REJECTED:
-    case HC_STATE_AUTH_ERROR:
-    default:
-        return GA_STATUS_NACTIVE;
+    switch (hc_state)
+    {
+        case HC_STATE_REGISTERED: return GA_STATUS_ACTIVE;
+        case HC_STATE_STARTING: return GA_STATUS_PENDING;
+        case HC_STATE_STOPPED:
+        case HC_STATE_REJECTED:
+        case HC_STATE_AUTH_ERROR:
+        default: return GA_STATUS_NACTIVE;
     }
 }
 
@@ -551,24 +583,21 @@ static agent_status_t bridge_map_agent_status(int hc_state)
  * Fails closed both for a genuine duplicate and a registry error (do not
  * dispatch either way), but counts them separately -- a real registry failure
  * must never be miscounted as a duplicate. */
-static int bridge_check_and_record_task(const char *task_id, void *user_data)
+static int bridge_check_and_record_task(const char* task_id, void* user_data)
 {
     (void)user_data;
 
-    if (!task_id) {
+    if (!task_id)
+    {
         return -1;
     }
 
-    switch (task_registry_check_and_record(task_id)) {
-    case TASK_REGISTRY_RESULT_NEW:
-        return 1;
-    case TASK_REGISTRY_RESULT_DUPLICATE:
-        w_agentd_state_update(INCREMENT_TASK_DISCARDED_DUPLICATE, NULL);
-        return 0;
-    case TASK_REGISTRY_RESULT_ERROR:
-    default:
-        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
-        return 0;
+    switch (task_registry_check_and_record(task_id))
+    {
+        case TASK_REGISTRY_RESULT_NEW: return 1;
+        case TASK_REGISTRY_RESULT_DUPLICATE: w_agentd_state_update(INCREMENT_TASK_DISCARDED_DUPLICATE, NULL); return 0;
+        case TASK_REGISTRY_RESULT_ERROR:
+        default: w_agentd_state_update(INCREMENT_TASK_FAILED, NULL); return 0;
     }
 }
 
@@ -576,8 +605,8 @@ static int bridge_check_and_record_task(const char *task_id, void *user_data)
  * CONTROL thread (ControlStream::handleNotifyBody), once per accepted Notify
  * that carries a vd_feed_offset field. Same bounded-IPC-hop rationale as
  * bridge_check_and_record_task above. */
-static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out_pending,
-                                     uint64_t *out_pending_offset, void *user_data)
+static void bridge_vd_offset_observe(
+    uint64_t offset, int* out_changed, int* out_pending, uint64_t* out_pending_offset, void* user_data)
 {
     (void)user_data;
 
@@ -590,20 +619,23 @@ static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out
      * pending" rather than inventing a re-scan request. */
     vd_offset_client_observe(offset, &changed, &pending, &pending_offset);
 
-    if (out_changed) {
+    if (out_changed)
+    {
         *out_changed = changed ? 1 : 0;
     }
-    if (out_pending) {
+    if (out_pending)
+    {
         *out_pending = pending ? 1 : 0;
     }
-    if (out_pending_offset) {
+    if (out_pending_offset)
+    {
         *out_pending_offset = pending_offset;
     }
 }
 
 /* Synchronous IVdOffsetStore backing (hc_vd_offset_clear_pending_fn): called
  * only after a /scan/vd request succeeds (200 OK) -- see RescanRequester. */
-static int bridge_vd_offset_clear_pending(uint64_t offset, void *user_data)
+static int bridge_vd_offset_clear_pending(uint64_t offset, void* user_data)
 {
     (void)user_data;
     return vd_offset_client_clear_pending(offset) ? 1 : 0;
@@ -624,21 +656,23 @@ static int bridge_vd_offset_clear_pending(uint64_t offset, void *user_data)
  * payload is explicitly "the complete AR document"); a payload missing
  * "wazuh" at the top level means the task is genuinely malformed, not an
  * alternate valid shape to repair. */
-static void bridge_dispatch_active_response(const char *task_id, const char *payload_json)
+static void bridge_dispatch_active_response(const char* task_id, const char* payload_json)
 {
-    cJSON *payload = cJSON_Parse(payload_json ? payload_json : "");
+    cJSON* payload = cJSON_Parse(payload_json ? payload_json : "");
 
-    if (!payload || !cJSON_HasObjectItem(payload, "wazuh")) {
+    if (!payload || !cJSON_HasObjectItem(payload, "wazuh"))
+    {
         merror("https_client: active_response task %s has a malformed payload; dropping.", task_id);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         cJSON_Delete(payload); /* No-op if NULL (parse failure). */
         return;
     }
 
-    char *msg_str = cJSON_PrintUnformatted(payload);
+    char* msg_str = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
-    if (!msg_str) {
+    if (!msg_str)
+    {
         merror("https_client: active_response task %s could not be serialized; dropping.", task_id);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
@@ -655,28 +689,37 @@ static void bridge_dispatch_active_response(const char *task_id, const char *pay
      * queue with no such limit. */
     const size_t msg_len = strlen(msg_str);
 
-    if (msg_len > (size_t)AR_EXECQ_MAX_MSG_LEN) {
+    if (msg_len > (size_t)AR_EXECQ_MAX_MSG_LEN)
+    {
         merror("https_client: active_response task %s dropped: its document is %zu bytes, larger than "
                "the %d bytes wazuh-execd can receive. Shorten the response's extra_arguments.",
-               task_id, msg_len, AR_EXECQ_MAX_MSG_LEN);
+               task_id,
+               msg_len,
+               AR_EXECQ_MAX_MSG_LEN);
         os_free(msg_str);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
 #endif
 
-    if (agt->execdq >= 0) {
+    if (agt->execdq >= 0)
+    {
 #ifndef WIN32
-        if (OS_SendUnix(agt->execdq, msg_str, 0) < 0) {
+        if (OS_SendUnix(agt->execdq, msg_str, 0) < 0)
+        {
             mdebug1("https_client: active_response task %s: error communicating with execd.", task_id);
-        } else {
+        }
+        else
+        {
             sent = true;
         }
 #else
         queue_push_ex(winexec_queue, strdup(msg_str));
         sent = true;
 #endif
-    } else {
+    }
+    else
+    {
         mdebug1("https_client: active_response task %s dropped: execd queue not available.", task_id);
     }
 
@@ -692,23 +735,27 @@ static void bridge_dispatch_active_response(const char *task_id, const char *pay
  * callback contract) or every other queued callback behind it -- so this
  * runs on its own short-lived worker thread, the same idiom already used for
  * re-enrollment (bridge_reenroll_thread). */
-struct bridge_control_task_ctx {
-    char *task_id;
+struct bridge_control_task_ctx
+{
+    char* task_id;
     bool restart; /* true: agent_restart: false: agent_reload. */
 };
 
 /* Not static: unit-tested by calling it directly (synchronously), bypassing
  * w_create_thread, same convention as bridge_reenroll_thread above. */
-void *bridge_control_task_thread(void *arg)
+void* bridge_control_task_thread(void* arg)
 {
-    struct bridge_control_task_ctx *ctx = (struct bridge_control_task_ctx *)arg;
-    const char *type_name = ctx->restart ? "agent_restart" : "agent_reload";
+    struct bridge_control_task_ctx* ctx = (struct bridge_control_task_ctx*)arg;
+    const char* type_name = ctx->restart ? "agent_restart" : "agent_reload";
     bool ok = ctx->restart ? restartAgent() : reloadAgent();
 
-    if (ok) {
+    if (ok)
+    {
         minfo("https_client: task %s (%s) dispatched.", ctx->task_id, type_name);
         w_agentd_state_update(INCREMENT_TASK_DISPATCHED, NULL);
-    } else {
+    }
+    else
+    {
         merror("https_client: task %s (%s) failed to dispatch.", ctx->task_id, type_name);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
     }
@@ -726,9 +773,9 @@ static DWORD WINAPI bridge_control_task_thread_win(LPVOID arg)
 }
 #endif
 
-static void bridge_dispatch_control_task(const char *task_id, bool restart)
+static void bridge_dispatch_control_task(const char* task_id, bool restart)
 {
-    struct bridge_control_task_ctx *ctx;
+    struct bridge_control_task_ctx* ctx;
     os_malloc(sizeof(*ctx), ctx);
     os_strdup(task_id ? task_id : "", ctx->task_id);
     ctx->restart = restart;
@@ -740,34 +787,39 @@ static void bridge_dispatch_control_task(const char *task_id, bool restart)
 #endif
 }
 
-static void bridge_on_task(const char *task_id, const char *task_type, const char *payload_json,
-                           void *user_data)
+static void bridge_on_task(const char* task_id, const char* task_type, const char* payload_json, void* user_data)
 {
     (void)user_data;
-    mdebug1("https_client task received: id=%s type=%s", task_id ? task_id : "?",
-            task_type ? task_type : "?");
+    mdebug1("https_client task received: id=%s type=%s", task_id ? task_id : "?", task_type ? task_type : "?");
 
-    if (!task_id || !task_type) {
+    if (!task_id || !task_type)
+    {
         merror("https_client: task missing id/type; dropping.");
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
 
-    if (strcmp(task_type, "active_response") == 0) {
+    if (strcmp(task_type, "active_response") == 0)
+    {
         bridge_dispatch_active_response(task_id, payload_json);
-    } else if (strcmp(task_type, "agent_restart") == 0) {
+    }
+    else if (strcmp(task_type, "agent_restart") == 0)
+    {
         bridge_dispatch_control_task(task_id, true);
-    } else if (strcmp(task_type, "agent_reload") == 0) {
+    }
+    else if (strcmp(task_type, "agent_reload") == 0)
+    {
         bridge_dispatch_control_task(task_id, false);
-    } else {
+    }
+    else
+    {
         /* remote_upgrade is routed through on_remote_upgrade_ready instead
          * (it needs the module's own HTTP/download machinery, so ControlStream
          * intercepts it before this callback ever fires -- see controlStream.
          * cpp's dispatchPlannedTasks). Reaching this branch for "remote_upgrade"
          * would mean that interception broke; treat any other value as an
          * unknown/unsupported type either way. */
-        merror("https_client: task %s has an unknown/unsupported task_type '%s'; dropping.",
-               task_id, task_type);
+        merror("https_client: task %s has an unknown/unsupported task_type '%s'; dropping.", task_id, task_type);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
     }
 }
@@ -776,12 +828,13 @@ static void bridge_on_task(const char *task_id, const char *task_type, const cha
  * reach bridge_on_task()/bridge_on_remote_upgrade_ready() -- malformed payload, or (remote_
  * upgrade only) a WPK download/sha1 failure. Without this callback that category would go
  * uncounted, neither dispatched nor failed. */
-static void bridge_on_task_failed(const char *task_id, const char *task_type, const char *reason,
-                                  void *user_data)
+static void bridge_on_task_failed(const char* task_id, const char* task_type, const char* reason, void* user_data)
 {
     (void)user_data;
     merror("https_client: task %s (%s) failed before dispatch: %s",
-           task_id ? task_id : "?", task_type ? task_type : "?", reason ? reason : "?");
+           task_id ? task_id : "?",
+           task_type ? task_type : "?",
+           reason ? reason : "?");
     w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
 }
 
@@ -797,10 +850,11 @@ static void bridge_on_task_failed(const char *task_id, const char *task_type, co
  * into INCOMING_DIR synchronously, here, before anything is deferred; only
  * the (potentially slow, installer-running) dispatch to the upgrade module
  * moves to a worker thread. */
-struct bridge_upgrade_ctx {
-    char *task_id;
-    char *wpk_file;
-    char *installer;
+struct bridge_upgrade_ctx
+{
+    char* task_id;
+    char* wpk_file;
+    char* installer;
 };
 
 /* POSIX-only, confirmed via an actual winagent cross-compile (MinGW), not just by inspection:
@@ -834,23 +888,31 @@ struct bridge_upgrade_ctx {
  * retry because modulesd may not be up yet), execd is already running by the time an upgrade
  * task reaches this thread, and a stuck retry loop here would only delay the installer for no
  * benefit. */
-static void bridge_send_lock_restart(const char *task_id)
+static void bridge_send_lock_restart(const char* task_id)
 {
     int sock = OS_ConnectUnixDomain(COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
-    if (sock < 0) {
+    if (sock < 0)
+    {
         mwarn("https_client: remote_upgrade task %s: could not connect to '%s' to lock the "
               "agent's auto-restart: %s (%d). Proceeding without it.",
-              task_id, COM_LOCAL_SOCK, strerror(errno), errno);
+              task_id,
+              COM_LOCAL_SOCK,
+              strerror(errno),
+              errno);
         return;
     }
 
-    const char *lock_command = "lock_restart -1";
+    const char* lock_command = "lock_restart -1";
 
-    if (OS_SendSecureTCP(sock, strlen(lock_command), lock_command) < 0) {
+    if (OS_SendSecureTCP(sock, strlen(lock_command), lock_command) < 0)
+    {
         mwarn("https_client: remote_upgrade task %s: could not send lock_restart to '%s': %s "
               "(%d). Proceeding without it.",
-              task_id, COM_LOCAL_SOCK, strerror(errno), errno);
+              task_id,
+              COM_LOCAL_SOCK,
+              strerror(errno),
+              errno);
     }
 
     close(sock);
@@ -859,44 +921,52 @@ static void bridge_send_lock_restart(const char *task_id)
 
 /* Not static: unit-tested by calling it directly (synchronously), bypassing
  * w_create_thread, same convention as bridge_reenroll_thread above. */
-void *bridge_upgrade_thread(void *arg)
+void* bridge_upgrade_thread(void* arg)
 {
-    struct bridge_upgrade_ctx *ctx = (struct bridge_upgrade_ctx *)arg;
+    struct bridge_upgrade_ctx* ctx = (struct bridge_upgrade_ctx*)arg;
     bool ok = false;
 
 #ifndef WIN32
     bridge_send_lock_restart(ctx->task_id);
 #endif
 
-    cJSON *parameters = cJSON_CreateObject();
+    cJSON* parameters = cJSON_CreateObject();
     cJSON_AddStringToObject(parameters, "file", ctx->wpk_file);
     cJSON_AddStringToObject(parameters, "installer", ctx->installer);
-    cJSON *command = cJSON_CreateObject();
+    cJSON* command = cJSON_CreateObject();
     cJSON_AddStringToObject(command, "command", "upgrade");
     cJSON_AddItemToObject(command, "parameters", parameters);
-    char *command_str = cJSON_PrintUnformatted(command);
+    char* command_str = cJSON_PrintUnformatted(command);
     cJSON_Delete(command);
 
-    if (!command_str) {
+    if (!command_str)
+    {
         merror("https_client: remote_upgrade task %s: could not build the upgrade command.", ctx->task_id);
         goto done;
     }
 
-    char *output = NULL;
+    char* output = NULL;
 
 #ifndef WIN32
     int sock = OS_ConnectUnixDomain(AGENT_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
 
-    if (sock < 0) {
+    if (sock < 0)
+    {
         merror("https_client: remote_upgrade task %s: could not connect to '%s': %s (%d).",
-               ctx->task_id, AGENT_UPGRADE_SOCK, strerror(errno), errno);
+               ctx->task_id,
+               AGENT_UPGRADE_SOCK,
+               strerror(errno),
+               errno);
         os_free(command_str);
         goto done;
     }
 
-    if (OS_SendSecureTCP(sock, strlen(command_str), command_str) < 0) {
+    if (OS_SendSecureTCP(sock, strlen(command_str), command_str) < 0)
+    {
         merror("https_client: remote_upgrade task %s: OS_SendSecureTCP failed: %s (%d).",
-               ctx->task_id, strerror(errno), errno);
+               ctx->task_id,
+               strerror(errno),
+               errno);
         close(sock);
         os_free(command_str);
         goto done;
@@ -911,7 +981,8 @@ void *bridge_upgrade_thread(void *arg)
     ssize_t recv_len = OS_RecvSecureTCP(sock, response, OS_MAXSTR);
     close(sock);
 
-    if (recv_len > 0) {
+    if (recv_len > 0)
+    {
         response[recv_len < OS_MAXSTR ? recv_len : OS_MAXSTR] = '\0';
         os_strdup(response, output);
     }
@@ -922,31 +993,37 @@ void *bridge_upgrade_thread(void *arg)
 
     os_free(command_str);
 
-    if (!output) {
+    if (!output)
+    {
         merror("https_client: remote_upgrade task %s: no response from the upgrade module.", ctx->task_id);
         goto done;
     }
 
-    cJSON *ack = cJSON_Parse(output);
+    cJSON* ack = cJSON_Parse(output);
     int error_code = -1;
 
-    if (ack) {
-        cJSON *error_item = cJSON_GetObjectItem(ack, "error");
+    if (ack)
+    {
+        cJSON* error_item = cJSON_GetObjectItem(ack, "error");
 
-        if (error_item && cJSON_IsNumber(error_item)) {
+        if (error_item && cJSON_IsNumber(error_item))
+        {
             error_code = error_item->valueint;
         }
 
         cJSON_Delete(ack);
     }
 
-    if (error_code == 0) {
+    if (error_code == 0)
+    {
         minfo("https_client: remote_upgrade task %s dispatched to the upgrade module (installer "
-              "running; the agent may restart shortly). No /control response is sent.", ctx->task_id);
+              "running; the agent may restart shortly). No /control response is sent.",
+              ctx->task_id);
         ok = true;
-    } else {
-        merror("https_client: remote_upgrade task %s: upgrade module rejected the command: %s",
-               ctx->task_id, output);
+    }
+    else
+    {
+        merror("https_client: remote_upgrade task %s: upgrade module rejected the command: %s", ctx->task_id, output);
     }
 
     os_free(output);
@@ -968,13 +1045,13 @@ static DWORD WINAPI bridge_upgrade_thread_win(LPVOID arg)
 }
 #endif
 
-static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_file,
-                                           const char *wpk_path, const char *installer,
-                                           void *user_data)
+static void bridge_on_remote_upgrade_ready(
+    const char* task_id, const char* wpk_file, const char* wpk_path, const char* installer, void* user_data)
 {
     (void)user_data;
 
-    if (!task_id || !wpk_file || !wpk_path || !installer) {
+    if (!task_id || !wpk_file || !wpk_path || !installer)
+    {
         merror("https_client: remote_upgrade callback missing required fields; aborting.");
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
@@ -985,9 +1062,10 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
      * afterwards by w_fopen_nofollow()'s internal w_is_bare_filename() check on the destination
      * open -- by which point the unlink() has already run against that subdirectory path. Requiring
      * a bare filename here closes that gap before the unlink(). */
-    if (!w_is_bare_filename(wpk_file)) {
-        merror("https_client: remote_upgrade task %s: wpk_file '%s' is not a safe filename; aborting.",
-               task_id, wpk_file);
+    if (!w_is_bare_filename(wpk_file))
+    {
+        merror(
+            "https_client: remote_upgrade task %s: wpk_file '%s' is not a safe filename; aborting.", task_id, wpk_file);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
@@ -1005,17 +1083,22 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
      * which only needs write permission on the directory, not on whatever pre-existing file may
      * already be sitting at this path -- instead of an open-for-write on a file this process may
      * not own (#38833). */
-    if (unlink(dest_path) < 0 && errno != ENOENT) {
+    if (unlink(dest_path) < 0 && errno != ENOENT)
+    {
         merror("https_client: remote_upgrade task %s: could not remove stale WPK at '%s': %s (%d); aborting.",
-               task_id, dest_path, strerror(errno), errno);
+               task_id,
+               dest_path,
+               strerror(errno),
+               errno);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
 
-    FILE *fsrc = wfopen(wpk_path, "rb");
-    if (!fsrc) {
-        merror("https_client: remote_upgrade task %s: could not open downloaded WPK '%s'; aborting.",
-               task_id, wpk_path);
+    FILE* fsrc = wfopen(wpk_path, "rb");
+    if (!fsrc)
+    {
+        merror(
+            "https_client: remote_upgrade task %s: could not open downloaded WPK '%s'; aborting.", task_id, wpk_path);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
@@ -1023,16 +1106,22 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
     /* Not w_copy_file()/fopen(dst, "wb"): a symlink left under INCOMING_DIR would be followed and
      * its target overwritten with the WPK contents. Mirrors the hardening already applied to the
      * legacy path's WCOM uncompress() (os_execd/src/wcom.c, #38200). */
-    FILE *fdst = w_fopen_nofollow(INCOMING_DIR, wpk_file, "wb");
-    if (!fdst) {
+    FILE* fdst = w_fopen_nofollow(INCOMING_DIR, wpk_file, "wb");
+    if (!fdst)
+    {
         const int open_errno = errno;
         fclose(fsrc);
-        if (open_errno == ELOOP) {
-            merror("https_client: remote_upgrade task %s: refused to stage the WPK at '%s': the path is a symbolic link; aborting.",
-                   task_id, dest_path);
-        } else {
-            merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
-                   task_id, dest_path);
+        if (open_errno == ELOOP)
+        {
+            merror("https_client: remote_upgrade task %s: refused to stage the WPK at '%s': the path is a symbolic "
+                   "link; aborting.",
+                   task_id,
+                   dest_path);
+        }
+        else
+        {
+            merror(
+                "https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.", task_id, dest_path);
         }
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
@@ -1042,14 +1131,17 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
     size_t nread;
     bool copy_ok = true;
 
-    while (nread = fread(copy_buffer, 1, sizeof(copy_buffer), fsrc), nread > 0) {
-        if (fwrite(copy_buffer, 1, nread, fdst) != nread) {
+    while (nread = fread(copy_buffer, 1, sizeof(copy_buffer), fsrc), nread > 0)
+    {
+        if (fwrite(copy_buffer, 1, nread, fdst) != nread)
+        {
             copy_ok = false;
             break;
         }
     }
 
-    if (ferror(fsrc)) {
+    if (ferror(fsrc))
+    {
         copy_ok = false;
     }
 
@@ -1057,19 +1149,20 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
 
     /* A write failure that only surfaces at flush time (e.g. disk full right on close) must not
      * be swallowed: fclose()'s return value is the only place that shows up. */
-    if (fclose(fdst) != 0) {
+    if (fclose(fdst) != 0)
+    {
         copy_ok = false;
     }
 
-    if (!copy_ok) {
-        merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
-               task_id, dest_path);
+    if (!copy_ok)
+    {
+        merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.", task_id, dest_path);
         unlink(dest_path);
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return;
     }
 
-    struct bridge_upgrade_ctx *ctx;
+    struct bridge_upgrade_ctx* ctx;
     os_malloc(sizeof(*ctx), ctx);
     os_strdup(task_id, ctx->task_id);
     os_strdup(wpk_file, ctx->wpk_file);
@@ -1096,11 +1189,14 @@ static time_t bridge_rejected_config_warned_at;
 
 static void bridge_warn_rejected_config(time_t now)
 {
-    if (startup_gate_is_ready()) {
+    if (startup_gate_is_ready())
+    {
         mwarn("The shared configuration the manager provides (hash=%s) is invalid; the agent keeps "
               "its current configuration until the manager provides a valid one.",
               bridge_rejected_config_hash);
-    } else {
+    }
+    else
+    {
         mwarn("The shared configuration the manager provides (hash=%s) is invalid; the modules stay "
               "on hold until the manager provides a valid one.",
               bridge_rejected_config_hash);
@@ -1117,7 +1213,7 @@ static void bridge_warn_rejected_config(time_t now)
  * a direct SHA-256 comparison against the local merged.mg
  * (startup_gate_check_manager_config_hash(), which owns the real digest math;
  * this callback only forwards). */
-static void bridge_on_manager_config_hash(const char *config_hash, void *user_data)
+static void bridge_on_manager_config_hash(const char* config_hash, void* user_data)
 {
     (void)user_data;
 
@@ -1130,12 +1226,17 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
 
     startup_gate_check_manager_config_hash(config_hash);
 
-    if (bridge_rejected_config_hash[0]) {
-        if (config_hash && strcmp(config_hash, bridge_rejected_config_hash) == 0) {
-            if (now - bridge_rejected_config_warned_at >= BRIDGE_REJECTED_CONFIG_WARN_INTERVAL) {
+    if (bridge_rejected_config_hash[0])
+    {
+        if (config_hash && strcmp(config_hash, bridge_rejected_config_hash) == 0)
+        {
+            if (now - bridge_rejected_config_warned_at >= BRIDGE_REJECTED_CONFIG_WARN_INTERVAL)
+            {
                 bridge_warn_rejected_config(now);
             }
-        } else {
+        }
+        else
+        {
             // The manager moved on; whatever it advertises now is downloaded
             // and validated on its own.
             bridge_rejected_config_hash[0] = '\0';
@@ -1164,19 +1265,23 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
  * off from CA rotation. Falls back to the string compare when either stat() fails -- on a fresh
  * install the anchor does not exist yet, and then the spelling is all there is to go on.
  */
-static bool bridge_ca_path_is_the_agent_anchor(const char *ca_path) {
+static bool bridge_ca_path_is_the_agent_anchor(const char* ca_path)
+{
     struct stat configured;
     struct stat anchor;
 
-    if (ca_path == NULL || ca_path[0] == '\0') {
+    if (ca_path == NULL || ca_path[0] == '\0')
+    {
         return false;
     }
 
-    if (strcmp(ca_path, AGENT_ANCHOR_CA) == 0) {
+    if (strcmp(ca_path, AGENT_ANCHOR_CA) == 0)
+    {
         return true;
     }
 
-    if (stat(ca_path, &configured) != 0 || stat(AGENT_ANCHOR_CA, &anchor) != 0) {
+    if (stat(ca_path, &configured) != 0 || stat(AGENT_ANCHOR_CA, &anchor) != 0)
+    {
         return false;
     }
 
@@ -1196,35 +1301,39 @@ static bool bridge_ca_path_is_the_agent_anchor(const char *ca_path) {
  * <certificate_authorities> at their own path gets refreshes into that path, not into an anchor
  * nothing is reading.
  */
-static bool bridge_on_ca_bundle(const char *pem, size_t pem_len, int64_t generation,
-                                void *user_data) {
-    (void) user_data;
+static bool bridge_on_ca_bundle(const char* pem, size_t pem_len, int64_t generation, void* user_data)
+{
+    (void)user_data;
 
-    if (pem == NULL || pem_len == 0 || agt == NULL || agt->ssl.certificate_authorities == NULL) {
+    if (pem == NULL || pem_len == 0 || agt == NULL || agt->ssl.certificate_authorities == NULL)
+    {
         return false;
     }
 
     return w_ca_publication_install(agt->ssl.certificate_authorities, pem, pem_len, generation) == 0;
 }
 
-static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
+static void bridge_on_agent_groups(const char* groups_csv, void* user_data)
 {
     (void)user_data;
 
-    if (!groups_csv) {
+    if (!groups_csv)
+    {
         return;
     }
 
     bool changed = false;
 
     w_mutex_lock(&agent_handshake_mutex);
-    if (strcmp(agent_agent_groups, groups_csv) != 0) {
+    if (strcmp(agent_agent_groups, groups_csv) != 0)
+    {
         snprintf(agent_agent_groups, sizeof(agent_agent_groups), "%s", groups_csv);
         changed = true;
     }
     w_mutex_unlock(&agent_handshake_mutex);
 
-    if (changed) {
+    if (changed)
+    {
         mdebug1("https_client: agent groups -> %s.", agent_agent_groups[0] ? agent_agent_groups : "(none)");
         w_agentd_populate_metadata();
     }
@@ -1237,19 +1346,19 @@ static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
  * bundle is committed or SHAREDCFG_DIR is rebuilt from SHAREDCFG_FILE. Found at
  * startup, it means an apply was interrupted and the directory may hold a mix of
  * both bundles (see w_https_client_reconcile_shared_config()). */
-#define BRIDGE_SHAREDCFG_APPLYING_NAME  ".applying"
-#define BRIDGE_SHAREDCFG_APPLYING       SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_APPLYING_NAME
-#define BRIDGE_SHAREDCFG_FILE_TMP_NAME  SHAREDCFG_FILENAME ".tmp"
-#define BRIDGE_SHAREDCFG_FILE_TMP       SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_FILE_TMP_NAME
+#define BRIDGE_SHAREDCFG_APPLYING_NAME ".applying"
+#define BRIDGE_SHAREDCFG_APPLYING      SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_APPLYING_NAME
+#define BRIDGE_SHAREDCFG_FILE_TMP_NAME SHAREDCFG_FILENAME ".tmp"
+#define BRIDGE_SHAREDCFG_FILE_TMP      SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_FILE_TMP_NAME
 
 /* Unmerges a bundle into SHAREDCFG_DIR and removes whatever the bundle does not
  * carry, so the directory ends up holding exactly that bundle. A sweep failure
  * counts as a failure: a leftover file is one a configuration could still
  * reference. */
-static bool bridge_shared_unmerge(const char *bundle)
+static bool bridge_shared_unmerge(const char* bundle)
 {
-    char **keep;
-    os_calloc(4, sizeof(char *), keep);
+    char** keep;
+    os_calloc(4, sizeof(char*), keep);
     os_strdup(SHAREDCFG_FILENAME, keep[0]);
     os_strdup(BRIDGE_SHAREDCFG_FILE_TMP_NAME, keep[1]);
     os_strdup(BRIDGE_SHAREDCFG_APPLYING_NAME, keep[2]);
@@ -1261,7 +1370,8 @@ static bool bridge_shared_unmerge(const char *bundle)
      * would be rejected or cut short. */
     bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_BINARY, &keep) != 0;
 
-    if (ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)keep)) {
+    if (ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char**)keep))
+    {
         mwarn("Could not clean up the shared configuration directory.");
         ok = false;
     }
@@ -1276,13 +1386,15 @@ static bool bridge_shared_unmerge(const char *bundle)
  * directory is left empty. */
 static bool bridge_shared_rollback(void)
 {
-    const char *keep[] = { SHAREDCFG_FILENAME, BRIDGE_SHAREDCFG_APPLYING_NAME, NULL };
+    const char* keep[] = {SHAREDCFG_FILENAME, BRIDGE_SHAREDCFG_APPLYING_NAME, NULL};
 
-    if (cldir_ex_ignore(SHAREDCFG_DIR, keep)) {
+    if (cldir_ex_ignore(SHAREDCFG_DIR, keep))
+    {
         return false;
     }
 
-    if (IsFile(SHAREDCFG_FILE) == 0 && !bridge_shared_unmerge(SHAREDCFG_FILE)) {
+    if (IsFile(SHAREDCFG_FILE) == 0 && !bridge_shared_unmerge(SHAREDCFG_FILE))
+    {
         return false;
     }
 
@@ -1295,34 +1407,40 @@ static bool bridge_shared_rollback(void)
  * it, and resetting the module's hash downloads the manager's configuration
  * again, as on a freshly enrolled agent. BRIDGE_SHAREDCFG_APPLYING stays, so a
  * restart discards the directory before anything reads it. */
-static void bridge_shared_restore(hc_handle *handle)
+static void bridge_shared_restore(hc_handle* handle)
 {
-    if (bridge_shared_rollback()) {
+    if (bridge_shared_rollback())
+    {
         return;
     }
 
     merror("Could not restore '%s' from '%s'; discarding it so the manager's configuration is "
-           "downloaded and validated again.", SHAREDCFG_DIR, SHAREDCFG_FILE);
+           "downloaded and validated again.",
+           SHAREDCFG_DIR,
+           SHAREDCFG_FILE);
     unlink(SHAREDCFG_FILE);
 
-    if (handle) {
+    if (handle)
+    {
         hc_set_config_hash(handle, "");
     }
 }
 
 /* Unmerge failure: report it to the manager and make the module forget the hash
  * it optimistically adopted, so the next Notify mismatch downloads it again. */
-static void bridge_handle_unmerge_failure(hc_handle *handle)
+static void bridge_handle_unmerge_failure(hc_handle* handle)
 {
     merror("Failed to unmerge the downloaded configuration into '%s'; "
-           "restoring the previously applied configuration.", SHAREDCFG_DIR);
+           "restoring the previously applied configuration.",
+           SHAREDCFG_DIR);
 
     /* Manager-visible report, now over /stateless. */
     char unmerge_fail_msg[OS_MAXSTR];
     snprintf(unmerge_fail_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
     w_https_client_submit_event(unmerge_fail_msg, strlen(unmerge_fail_msg));
 
-    if (handle) {
+    if (handle)
+    {
         hc_set_config_hash(handle, "");
     }
 }
@@ -1337,10 +1455,11 @@ static void bridge_handle_unmerge_failure(hc_handle *handle)
  * during real-package validation). Copied next to SHAREDCFG_FILE and renamed
  * over it, so SHAREDCFG_FILE is always one bundle or the other, never part of
  * one. */
-static bool bridge_shared_commit(const char *bundle)
+static bool bridge_shared_commit(const char* bundle)
 {
     if (w_copy_file(bundle, BRIDGE_SHAREDCFG_FILE_TMP, 'b', NULL, 0) != 0 ||
-        rename_ex(BRIDGE_SHAREDCFG_FILE_TMP, SHAREDCFG_FILE) != 0) {
+        rename_ex(BRIDGE_SHAREDCFG_FILE_TMP, SHAREDCFG_FILE) != 0)
+    {
         unlink(BRIDGE_SHAREDCFG_FILE_TMP);
         return false;
     }
@@ -1351,29 +1470,36 @@ static bool bridge_shared_commit(const char *bundle)
 
 void w_https_client_reconcile_shared_config(void)
 {
-    const char *keep[] = { BRIDGE_SHAREDCFG_APPLYING_NAME, NULL };
-    const char *reason = NULL;
+    const char* keep[] = {BRIDGE_SHAREDCFG_APPLYING_NAME, NULL};
+    const char* reason = NULL;
 
     // Left by a commit that stopped between the copy and the rename.
     unlink(BRIDGE_SHAREDCFG_FILE_TMP);
 
-    if (IsFile(BRIDGE_SHAREDCFG_APPLYING) == 0) {
+    if (IsFile(BRIDGE_SHAREDCFG_APPLYING) == 0)
+    {
         reason = "an update of it was interrupted";
-    } else if (agt->flags.remote_conf && IsFile(SHAREDCFG_FILE) == 0 && verifyRemoteConf()) {
+    }
+    else if (agt->flags.remote_conf && IsFile(SHAREDCFG_FILE) == 0 && verifyRemoteConf())
+    {
         reason = "it does not pass validation";
     }
 
-    if (!reason) {
+    if (!reason)
+    {
         return;
     }
 
     mwarn("Discarding the shared configuration in '%s' because %s; the manager's configuration "
-          "will be downloaded and validated again.", SHAREDCFG_DIR, reason);
+          "will be downloaded and validated again.",
+          SHAREDCFG_DIR,
+          reason);
 
     // SHAREDCFG_FILE first: whatever is left, nothing can match its hash any more.
     unlink(SHAREDCFG_FILE);
 
-    if (cldir_ex_ignore(SHAREDCFG_DIR, keep)) {
+    if (cldir_ex_ignore(SHAREDCFG_DIR, keep))
+    {
         merror("Could not clean up '%s'; it is discarded again on the next start.", SHAREDCFG_DIR);
         return;
     }
@@ -1422,8 +1548,7 @@ void w_https_client_reconcile_shared_config(void)
  * to lean on, so the gate is released inline instead -- see
  * startup_gate_release_from_https_apply()'s own comment for why that is safe.
  */
-static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
-                                        void *user_data)
+static void bridge_on_config_downloaded(const char* config_hash, const char* file_path, void* user_data)
 {
     (void)user_data;
 
@@ -1431,21 +1556,25 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * bridge_on_reenroll_required's w_create_thread(..., g_https_client, ...)
      * already does -- a callback cannot be running concurrently with the
      * hc_destroy() that would invalidate this pointer. */
-    hc_handle *handle = g_https_client;
+    hc_handle* handle = g_https_client;
 
     mdebug1("https_client config downloaded (hash=%s, file=%s)",
-            config_hash ? config_hash : "?", file_path ? file_path : "?");
+            config_hash ? config_hash : "?",
+            file_path ? file_path : "?");
 
-    if (!file_path || !file_path[0]) {
+    if (!file_path || !file_path[0])
+    {
         merror("https_client: config downloaded callback fired without a file path; nothing to apply.");
         return;
     }
 
-    FILE *applying = wfopen(BRIDGE_SHAREDCFG_APPLYING, "w");
+    FILE* applying = wfopen(BRIDGE_SHAREDCFG_APPLYING, "w");
 
-    if (!applying) {
+    if (!applying)
+    {
         merror("Could not create '%s'; not applying the downloaded configuration.", BRIDGE_SHAREDCFG_APPLYING);
-        if (handle) {
+        if (handle)
+        {
             hc_set_config_hash(handle, "");
         }
         return;
@@ -1453,18 +1582,20 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
 
     fclose(applying);
 
-    if (!bridge_shared_unmerge(file_path)) {
+    if (!bridge_shared_unmerge(file_path))
+    {
         bridge_handle_unmerge_failure(handle);
         bridge_shared_restore(handle);
         return;
     }
 
-    if (agt->flags.remote_conf && verifyRemoteConf()) {
+    if (agt->flags.remote_conf && verifyRemoteConf())
+    {
         /* Invalid remote configuration: verifyRemoteConf() already reported it
          * to the manager (AG_IN_RCON). */
         bridge_shared_restore(handle);
-        snprintf(bridge_rejected_config_hash, sizeof(bridge_rejected_config_hash), "%s",
-                 config_hash ? config_hash : "?");
+        snprintf(
+            bridge_rejected_config_hash, sizeof(bridge_rejected_config_hash), "%s", config_hash ? config_hash : "?");
         bridge_warn_rejected_config(time(NULL));
         return;
     }
@@ -1478,13 +1609,15 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * or via reloadAgent()'s own completion) clears it. */
     startup_gate_mark_download_pending();
 
-    if (!bridge_shared_commit(file_path)) {
+    if (!bridge_shared_commit(file_path))
+    {
         merror("Could not write '%s'; the configuration will be downloaded again.", SHAREDCFG_FILE);
         /* No reload follows, so nothing else would clear it: a stale pending
          * flag would let a later, unrelated SIGUSR1 open the gate. */
         startup_gate_clear_download_pending();
         bridge_shared_restore(handle);
-        if (handle) {
+        if (handle)
+        {
             /* What's actually on disk is not config_hash: correct the module's
              * optimistic view so the next Notify mismatch re-triggers the
              * download instead of assuming we are in sync. */
@@ -1493,14 +1626,14 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         return;
     }
 
-    if (!agt->flags.remote_conf) {
+    if (!agt->flags.remote_conf)
+    {
         /* The files are in place either way, but nothing reloads or gates on
          * remote configuration when the agent has opted out of it. */
         return;
     }
 
-    mdebug1("Applying configuration downloaded over HTTPS (hash=%s).",
-            config_hash ? config_hash : "?");
+    mdebug1("Applying configuration downloaded over HTTPS (hash=%s).", config_hash ? config_hash : "?");
 
     /* A blocked gate means modules are still waiting in
      * startup_gate_wait_for_ready() for the configuration that just arrived:
@@ -1517,14 +1650,18 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * only an operator can close that gap. */
     const bool gate_was_blocked = !startup_gate_is_ready();
 
-    if (!agt->flags.auto_restart && !gate_was_blocked) {
+    if (!agt->flags.auto_restart && !gate_was_blocked)
+    {
         minfo("Agent must restart to apply the new shared configuration; auto_restart is disabled.");
         return;
     }
 
-    if (!agt->flags.auto_restart) {
+    if (!agt->flags.auto_restart)
+    {
         minfo("Agent is reloading to apply startup hash validated configuration.");
-    } else {
+    }
+    else
+    {
         minfo("Agent is reloading due to shared configuration changes.");
     }
 
@@ -1533,7 +1670,8 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * and could report the still-running old configuration under a falsely fresh timestamp. The
      * real "new config is live" signal is agentd.c's needs_config_reload (set from the SIGUSR1
      * wazuh-control sends once reloaded), so that's where the forced report belongs instead. */
-    if (!reloadAgent()) {
+    if (!reloadAgent())
+    {
         mdebug1("Could not dispatch the reload chain; releasing "
                 "the startup gate directly instead (no restart will arrive to do it).");
         startup_gate_release_from_https_apply();
@@ -1543,16 +1681,17 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
 /* Maps a producing module to the sync header its *com dispatch expects, and to
  * whether it lives behind syscheck's socket or the wmodules one. Same split
  * receiver.c makes for the legacy transport. */
-static const struct {
-    const char *module;
-    const char *header;
+static const struct
+{
+    const char* module;
+    const char* header;
     bool syscheck;
 } SYNC_ROUTES[] = {
-    {"fim",             FIM_SYNC_HEADER,            true},
-    {"syscollector",    SYSCOLECTOR_SYNC_HEADER,    false},
+    {"fim", FIM_SYNC_HEADER, true},
+    {"syscollector", SYSCOLECTOR_SYNC_HEADER, false},
     {"syscollector_vd", SYSCOLECTOR_VD_SYNC_HEADER, false},
-    {"sca",             SCA_SYNC_HEADER,            false},
-    {"agent-info",      AGENT_INFO_SYNC_HEADER,     false},
+    {"sca", SCA_SYNC_HEADER, false},
+    {"agent-info", AGENT_INFO_SYNC_HEADER, false},
 };
 
 /* The largest /stateful answer must fit a frame: header (under 32 bytes) + HCRESULT prefix (under 64). */
@@ -1562,16 +1701,19 @@ _Static_assert(HC_MAX_STATEFUL_RESPONSE_BODY + 32 + 64 < OS_MAXSTR,
 /* Session ids arrive as "<module>-<session>". Split on the LAST hyphen, not the
  * first: "agent-info" contains one of its own, and the session is always
  * decimal, so the last hyphen is unambiguous. */
-static const char *bridge_module_of_session(const char *session_id, size_t *module_len)
+static const char* bridge_module_of_session(const char* session_id, size_t* module_len)
 {
-    const char *dash = session_id ? strrchr(session_id, '-') : NULL;
+    const char* dash = session_id ? strrchr(session_id, '-') : NULL;
 
-    if (dash == NULL || dash == session_id || dash[1] == '\0') {
+    if (dash == NULL || dash == session_id || dash[1] == '\0')
+    {
         return NULL;
     }
 
-    for (const char *digit = dash + 1; *digit; digit++) {
-        if (!isdigit((unsigned char)*digit)) {
+    for (const char* digit = dash + 1; *digit; digit++)
+    {
+        if (!isdigit((unsigned char)*digit))
+        {
             return NULL;
         }
     }
@@ -1580,25 +1722,29 @@ static const char *bridge_module_of_session(const char *session_id, size_t *modu
     return session_id;
 }
 
-static void bridge_on_sync_response(const char *session_id, int result, const char *body,
-                                    size_t body_len, void *user_data)
+static void
+bridge_on_sync_response(const char* session_id, int result, const char* body, size_t body_len, void* user_data)
 {
     (void)user_data;
     mdebug1("https_client /stateful session=%s result=%d (%zu byte answer)",
-            session_id ? session_id : "?", result, body_len);
+            session_id ? session_id : "?",
+            result,
+            body_len);
 
     size_t module_len = 0;
-    const char *module = bridge_module_of_session(session_id, &module_len);
+    const char* module = bridge_module_of_session(session_id, &module_len);
 
-    if (module == NULL) {
+    if (module == NULL)
+    {
         mdebug2("https_client: session id '%s' carries no module to answer; dropping the result.",
                 session_id ? session_id : "?");
         return;
     }
 
-    for (size_t i = 0; i < sizeof(SYNC_ROUTES) / sizeof(SYNC_ROUTES[0]); i++) {
-        if (strlen(SYNC_ROUTES[i].module) != module_len ||
-            strncmp(module, SYNC_ROUTES[i].module, module_len) != 0) {
+    for (size_t i = 0; i < sizeof(SYNC_ROUTES) / sizeof(SYNC_ROUTES[0]); i++)
+    {
+        if (strlen(SYNC_ROUTES[i].module) != module_len || strncmp(module, SYNC_ROUTES[i].module, module_len) != 0)
+        {
             continue;
         }
 
@@ -1615,13 +1761,14 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
          * after the second colon: the receiving parser only looks for the first two
          * colons, so a JSON body containing its own colons is never misread. */
         const size_t header_len = strlen(SYNC_ROUTES[i].header);
-        const char *session_num = module + module_len + 1; /* points to numeric suffix */
+        const char* session_num = module + module_len + 1; /* points to numeric suffix */
 
         char prefix[64];
         int prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:%d:", session_num, result);
         size_t relayed_body_len = body_len;
 
-        if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix)) {
+        if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix))
+        {
             mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
                     session_id ? session_id : "?");
             return;
@@ -1629,27 +1776,34 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
 
         /* A module's local socket takes frames shorter than OS_MAXSTR. Keep that limit on every
          * platform; a larger answer reaches the module as no answer (code 0, no body). */
-        if (header_len + (size_t)prefix_len + body_len >= OS_MAXSTR) {
+        if (header_len + (size_t)prefix_len + body_len >= OS_MAXSTR)
+        {
             mwarn("https_client: the /stateful answer for session '%s' is too large to relay "
-                  "(%zu bytes); relaying it as no answer.", session_id, body_len);
+                  "(%zu bytes); relaying it as no answer.",
+                  session_id,
+                  body_len);
             prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:0:", session_num);
             relayed_body_len = 0;
         }
 
         const size_t payload_len = (size_t)prefix_len + relayed_body_len;
 
-        char *framed = NULL;
+        char* framed = NULL;
         os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
         memcpy(framed + header_len, prefix, (size_t)prefix_len);
-        if (relayed_body_len > 0) {
+        if (relayed_body_len > 0)
+        {
             memcpy(framed + header_len + (size_t)prefix_len, body, relayed_body_len);
         }
         framed[header_len + payload_len] = '\0';
 
-        if (SYNC_ROUTES[i].syscheck) {
+        if (SYNC_ROUTES[i].syscheck)
+        {
             ag_send_syscheck(framed, header_len + payload_len);
-        } else {
+        }
+        else
+        {
             wmcom_send(framed, header_len + payload_len);
         }
 
@@ -1657,35 +1811,29 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
         return;
     }
 
-    mdebug2("https_client: no sync route for module '%.*s'; dropping the result.",
-            (int)module_len, module);
+    mdebug2("https_client: no sync route for module '%.*s'; dropping the result.", (int)module_len, module);
 }
 
 /* Names the module's connection states for the log The numeric
  * value is kept alongside the name by the caller. */
-static const char *bridge_str_conn_state(int hc_state)
+static const char* bridge_str_conn_state(int hc_state)
 {
-    switch (hc_state) {
-    case HC_STATE_STOPPED:
-        return "stopped";
-    case HC_STATE_STARTING:
-        return "starting";
-    case HC_STATE_REGISTERED:
-        return "registered";
-    case HC_STATE_REJECTED:
-        return "rejected";
-    case HC_STATE_AUTH_ERROR:
-        return "auth_error";
-    default:
-        return "unknown";
+    switch (hc_state)
+    {
+        case HC_STATE_STOPPED: return "stopped";
+        case HC_STATE_STARTING: return "starting";
+        case HC_STATE_REGISTERED: return "registered";
+        case HC_STATE_REJECTED: return "rejected";
+        case HC_STATE_AUTH_ERROR: return "auth_error";
+        default: return "unknown";
     }
 }
 
-static void bridge_on_state_change(int state, void *user_data)
+static void bridge_on_state_change(int state, void* user_data)
 {
     (void)user_data;
     mdebug1("https_client connection state -> %s (%d)", bridge_str_conn_state(state), state);
-    w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
+    w_agentd_state_update(UPDATE_STATUS, (void*)bridge_map_agent_status(state));
 
     /* Clears a producer lock that outlived whatever armed it: a successful
      * registration means the manager just acknowledged us, so anything still on
@@ -1693,7 +1841,8 @@ static void bridge_on_state_change(int state, void *user_data)
      * left behind by an unclean exit -- on_producer_pause below cannot clear
      * the latter, since it only fires on a paused->running transition and each
      * run starts believing it has paused nothing. os_delwait() is idempotent. */
-    if (state == HC_STATE_REGISTERED) {
+    if (state == HC_STATE_REGISTERED)
+    {
         os_delwait();
     }
 }
@@ -1703,13 +1852,13 @@ static void bridge_on_state_change(int state, void *user_data)
  * is a fan-out over the component sockets, so it runs on the reporter's own
  * thread and cannot stall the other endpoints. */
 
-static char *bridge_collect_config(void *user_data)
+static char* bridge_collect_config(void* user_data)
 {
     (void)user_data;
     return w_agent_collect_config();
 }
 
-static char *bridge_collect_stats(void *user_data)
+static char* bridge_collect_stats(void* user_data)
 {
     (void)user_data;
     return w_agent_collect_stats();
@@ -1718,7 +1867,7 @@ static char *bridge_collect_stats(void *user_data)
 /* Runs on the module thread that hit the condition, so it only records it and wakes
  * bridge_fatal_exit_thread(): exiting here would run the atexit w_https_client_stop() on a thread
  * the module's teardown has to join, which aborts. */
-static void bridge_on_fatal(const char *reason, void *user_data)
+static void bridge_on_fatal(const char* reason, void* user_data)
 {
     (void)user_data;
 
@@ -1733,14 +1882,15 @@ static void bridge_on_fatal(const char *reason, void *user_data)
  * nor joins, and whatever the main thread happens to be blocked on. Started only after hc_start()
  * succeeds: a configuration hc_start() rejects is left to w_https_client_start()'s caller, which
  * exits on its own. Not static: tests run it directly. */
-void *bridge_fatal_exit_thread(void *arg)
+void* bridge_fatal_exit_thread(void* arg)
 {
     char reason[OS_SIZE_1024];
 
     (void)arg;
 
     w_mutex_lock(&g_https_client_fatal_lock);
-    while (!g_https_client_fatal) {
+    while (!g_https_client_fatal)
+    {
         w_cond_wait(&g_https_client_fatal_cond, &g_https_client_fatal_lock);
     }
     snprintf(reason, sizeof(reason), "%s", g_https_client_fatal_reason);
@@ -1759,14 +1909,16 @@ static DWORD WINAPI bridge_fatal_exit_thread_win(LPVOID arg)
 #endif
 
 /* Creates and starts the module, false (already logged) if either step fails. */
-static bool bridge_create_and_start(const hc_config_t *config, const hc_callbacks_t *callbacks)
+static bool bridge_create_and_start(const hc_config_t* config, const hc_callbacks_t* callbacks)
 {
     g_https_client = hc_create(config, callbacks);
-    if (!g_https_client) {
+    if (!g_https_client)
+    {
         merror("https_client: failed to create the client instance.");
         return false;
     }
-    if (!hc_start(g_https_client)) {
+    if (!hc_start(g_https_client))
+    {
         merror("https_client: failed to start (configuration rejected).");
         hc_destroy(g_https_client);
         g_https_client = NULL;
@@ -1776,22 +1928,28 @@ static bool bridge_create_and_start(const hc_config_t *config, const hc_callback
     return true;
 }
 
-static void bridge_on_producer_pause(bool paused, const char *reason, void *user_data)
+static void bridge_on_producer_pause(bool paused, const char* reason, void* user_data)
 {
     (void)user_data;
 
-    if (paused) {
-        if (reason && *reason) {
+    if (paused)
+    {
+        if (reason && *reason)
+        {
             mwarn(SERVER_UNAV " Reason: %s", reason);
-        } else {
+        }
+        else
+        {
             mwarn(SERVER_UNAV);
         }
         os_setwait();
-        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
-    } else {
+        w_agentd_state_update(UPDATE_STATUS, (void*)GA_STATUS_NACTIVE);
+    }
+    else
+    {
         minfo(SERVER_UP);
         os_delwait();
-        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void*)GA_STATUS_ACTIVE);
     }
 }
 
@@ -1804,16 +1962,16 @@ static int g_buffer_normal_level = 70;
  * here from buffer.c. It used to bypass the ring it reported on; the accumulator
  * is the only route out now, so a report can itself be dropped while the
  * accumulator is full -- the mwarn below always reaches the agent log. */
-static void bridge_send_buffer_status_event(const char *action, int severity)
+static void bridge_send_buffer_status_event(const char* action, int severity)
 {
     char msg[OS_MAXSTR];
-    cJSON *event = cJSON_CreateObject();
+    cJSON* event = cJSON_CreateObject();
     cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
     cJSON_AddStringToObject(event, "event.category", "change");
     cJSON_AddStringToObject(event, "event.dataset", "wazuh-agent.buffer");
     cJSON_AddNumberToObject(event, "event.severity", severity);
     cJSON_AddStringToObject(event, "event.action", action);
-    char *json_str = cJSON_PrintUnformatted(event);
+    char* json_str = cJSON_PrintUnformatted(event);
     cJSON_Delete(event);
     snprintf(msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
     os_free(json_str);
@@ -1824,34 +1982,33 @@ static void bridge_send_buffer_status_event(const char *action, int severity)
  * reported the ring it replaced (client-agent/src/buffer.c): the same log lines
  * and the same wazuh-agent.buffer state event, so the manager-side flood rules
  * keep firing now that the accumulator is what fills up. */
-static void bridge_on_buffer_level(int level, void *user_data)
+static void bridge_on_buffer_level(int level, void* user_data)
 {
     (void)user_data;
 
-    switch (level) {
-    case HC_BUFFER_WARNING:
-        mwarn(WARN_BUFFER, g_buffer_warn_level);
-        bridge_send_buffer_status_event("warning", 1);
-        break;
+    switch (level)
+    {
+        case HC_BUFFER_WARNING:
+            mwarn(WARN_BUFFER, g_buffer_warn_level);
+            bridge_send_buffer_status_event("warning", 1);
+            break;
 
-    case HC_BUFFER_FULL:
-        mwarn(FULL_BUFFER);
-        bridge_send_buffer_status_event("full", 2);
-        break;
+        case HC_BUFFER_FULL:
+            mwarn(FULL_BUFFER);
+            bridge_send_buffer_status_event("full", 2);
+            break;
 
-    case HC_BUFFER_FLOOD:
-        mwarn(FLOODED_BUFFER);
-        bridge_send_buffer_status_event("flooded", 3);
-        break;
+        case HC_BUFFER_FLOOD:
+            mwarn(FLOODED_BUFFER);
+            bridge_send_buffer_status_event("flooded", 3);
+            break;
 
-    case HC_BUFFER_NORMAL:
-        mdebug1(NORMAL_BUFFER, g_buffer_normal_level);
-        bridge_send_buffer_status_event("normal", 0);
-        break;
+        case HC_BUFFER_NORMAL:
+            mdebug1(NORMAL_BUFFER, g_buffer_normal_level);
+            bridge_send_buffer_status_event("normal", 0);
+            break;
 
-    default:
-        mdebug2("https_client: unknown buffer level %d.", level);
-        break;
+        default: mdebug2("https_client: unknown buffer level %d.", level); break;
     }
 }
 
@@ -1862,11 +2019,12 @@ static void bridge_on_buffer_level(int level, void *user_data)
  * manager socket (agt->sock is permanently -1), so the module adds host.ip from
  * the actual connection (CURLINFO_LOCAL_IP) instead. Runs on the module's
  * control thread; a shared-memory read, fast and non-blocking. */
-static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
+static void bridge_on_collect_host(char* json_out, size_t cap, void* user_data)
 {
     (void)user_data;
 
-    if (json_out == NULL || cap == 0) {
+    if (json_out == NULL || cap == 0)
+    {
         return;
     }
 
@@ -1874,42 +2032,51 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
 
     agent_metadata_t metadata = {0};
 
-    if (metadata_provider_get(&metadata) != 0) {
+    if (metadata_provider_get(&metadata) != 0)
+    {
         mdebug2("https_client: host metadata not available yet; sending Notify without host.");
         return;
     }
 
-    cJSON *host = cJSON_CreateObject();
+    cJSON* host = cJSON_CreateObject();
 
-    if (host == NULL) {
+    if (host == NULL)
+    {
         metadata_provider_free_metadata(&metadata);
         return;
     }
 
-    if (metadata.hostname[0]) {
+    if (metadata.hostname[0])
+    {
         cJSON_AddStringToObject(host, "hostname", metadata.hostname);
     }
-    if (metadata.architecture[0]) {
+    if (metadata.architecture[0])
+    {
         cJSON_AddStringToObject(host, "architecture", metadata.architecture);
     }
 
-    cJSON *os = cJSON_CreateObject();
-    if (metadata.os_name[0]) {
+    cJSON* os = cJSON_CreateObject();
+    if (metadata.os_name[0])
+    {
         cJSON_AddStringToObject(os, "name", metadata.os_name);
     }
-    if (metadata.os_version[0]) {
+    if (metadata.os_version[0])
+    {
         cJSON_AddStringToObject(os, "version", metadata.os_version);
     }
-    if (metadata.os_platform[0]) {
+    if (metadata.os_platform[0])
+    {
         cJSON_AddStringToObject(os, "platform", metadata.os_platform);
     }
-    if (metadata.os_type[0]) {
+    if (metadata.os_type[0])
+    {
         cJSON_AddStringToObject(os, "type", metadata.os_type);
     }
     cJSON_AddItemToObject(host, "os", os);
 
-    char *printed = cJSON_PrintUnformatted(host);
-    if (printed) {
+    char* printed = cJSON_PrintUnformatted(host);
+    if (printed)
+    {
         snprintf(json_out, cap, "%s", printed);
         os_free(printed);
     }
@@ -1922,14 +2089,15 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
  * cut mid-character into its char[256]. The module parses this JSON strictly,
  * and one ill-formed byte would drop the whole block, groups included, so the
  * bad bytes are removed here and only that value changes. */
-static cJSON *bridge_utf8_string(const char *value)
+static cJSON* bridge_utf8_string(const char* value)
 {
-    if (w_utf8_valid(value)) {
+    if (w_utf8_valid(value))
+    {
         return cJSON_CreateString(value);
     }
 
-    char *filtered = w_utf8_filter(value, false);
-    cJSON *item = cJSON_CreateString(filtered);
+    char* filtered = w_utf8_filter(value, false);
+    cJSON* item = cJSON_CreateString(filtered);
     os_free(filtered);
     return item;
 }
@@ -1954,11 +2122,12 @@ static cJSON *bridge_utf8_string(const char *value)
  * thread on every tick; a shared-memory read, fast and non-blocking. Readers
  * never block each other, and one that overlaps a writer gets "not available"
  * rather than a mixed record (metadata_provider_get()'s seqlock). */
-static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *user_data)
+static void bridge_on_collect_stateless_host(char* json_out, size_t cap, void* user_data)
 {
     (void)user_data;
 
-    if (json_out == NULL || cap == 0) {
+    if (json_out == NULL || cap == 0)
+    {
         return;
     }
 
@@ -1966,71 +2135,87 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
 
     agent_metadata_t metadata = {0};
 
-    if (metadata_provider_get(&metadata) != 0) {
-        mdebug2("https_client: agent metadata not available yet; /stateless H line and reports carry only the agent id.");
+    if (metadata_provider_get(&metadata) != 0)
+    {
+        mdebug2(
+            "https_client: agent metadata not available yet; /stateless H line and reports carry only the agent id.");
         return;
     }
 
-    cJSON *root = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
 
-    if (root == NULL) {
+    if (root == NULL)
+    {
         metadata_provider_free_metadata(&metadata);
         return;
     }
 
-    cJSON *agent = cJSON_CreateObject();
+    cJSON* agent = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "agent", agent);
 
-    if (metadata.agent_name[0]) {
+    if (metadata.agent_name[0])
+    {
         cJSON_AddItemToObject(agent, "name", bridge_utf8_string(metadata.agent_name));
     }
-    if (metadata.agent_version[0]) {
+    if (metadata.agent_version[0])
+    {
         cJSON_AddItemToObject(agent, "version", bridge_utf8_string(metadata.agent_version));
     }
 
-    if (metadata.groups_count > 0 && metadata.groups != NULL) {
-        cJSON *groups = cJSON_CreateArray();
-        for (size_t i = 0; i < metadata.groups_count; i++) {
-            if (metadata.groups[i] != NULL) {
+    if (metadata.groups_count > 0 && metadata.groups != NULL)
+    {
+        cJSON* groups = cJSON_CreateArray();
+        for (size_t i = 0; i < metadata.groups_count; i++)
+        {
+            if (metadata.groups[i] != NULL)
+            {
                 cJSON_AddItemToArray(groups, bridge_utf8_string(metadata.groups[i]));
             }
         }
         cJSON_AddItemToObject(agent, "groups", groups);
     }
 
-    cJSON *host = cJSON_CreateObject();
+    cJSON* host = cJSON_CreateObject();
     cJSON_AddItemToObject(agent, "host", host);
 
-    if (metadata.architecture[0]) {
+    if (metadata.architecture[0])
+    {
         cJSON_AddItemToObject(host, "architecture", bridge_utf8_string(metadata.architecture));
     }
-    if (metadata.hostname[0]) {
+    if (metadata.hostname[0])
+    {
         cJSON_AddItemToObject(host, "hostname", bridge_utf8_string(metadata.hostname));
     }
 
-    cJSON *os = cJSON_CreateObject();
-    if (metadata.os_name[0]) {
+    cJSON* os = cJSON_CreateObject();
+    if (metadata.os_name[0])
+    {
         cJSON_AddItemToObject(os, "name", bridge_utf8_string(metadata.os_name));
     }
-    if (metadata.os_version[0]) {
+    if (metadata.os_version[0])
+    {
         cJSON_AddItemToObject(os, "version", bridge_utf8_string(metadata.os_version));
     }
-    if (metadata.os_platform[0]) {
+    if (metadata.os_platform[0])
+    {
         cJSON_AddItemToObject(os, "platform", bridge_utf8_string(metadata.os_platform));
     }
-    if (metadata.os_type[0]) {
+    if (metadata.os_type[0])
+    {
         cJSON_AddItemToObject(os, "type", bridge_utf8_string(metadata.os_type));
     }
     cJSON_AddItemToObject(host, "os", os);
 
-    cJSON *cluster = cJSON_CreateObject();
-    if (metadata.cluster_name[0]) {
+    cJSON* cluster = cJSON_CreateObject();
+    if (metadata.cluster_name[0])
+    {
         cJSON_AddItemToObject(cluster, "name", bridge_utf8_string(metadata.cluster_name));
     }
     cJSON_AddItemToObject(root, "cluster", cluster);
 
-    char *printed = cJSON_PrintUnformatted(root);
-    if (printed) {
+    char* printed = cJSON_PrintUnformatted(root);
+    if (printed)
+    {
         snprintf(json_out, cap, "%s", printed);
         os_free(printed);
     }
@@ -2046,25 +2231,22 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
  * that convention from silently breaking if either enum is reordered. */
 static int bridge_map_verify_mode(int agent_verify_mode)
 {
-    switch (agent_verify_mode) {
-    case AGENT_VERIFY_CERT:
-        return HC_VERIFY_CERT;
-    case AGENT_VERIFY_NONE:
-        return HC_VERIFY_NONE;
-    case AGENT_VERIFY_SYSTEM:
-        return HC_VERIFY_SYSTEM;
-    case AGENT_VERIFY_UNSET:
-        // ClientConf() always resolves this to full, certificate or system before returning;
-        // reaching here means some other path built agt->ssl without going through that
-        // resolution step. Fail closed the same as an unrecognized value would, but say
-        // so loudly instead of silently blending into the FULL default below.
-        merror("https_client: verification_mode was still UNSET when the transport config was "
-               "built; defaulting to 'full'. This should never happen -- ClientConf() is supposed "
-               "to resolve it first.");
-        return HC_VERIFY_FULL;
-    case AGENT_VERIFY_FULL:
-    default:
-        return HC_VERIFY_FULL;
+    switch (agent_verify_mode)
+    {
+        case AGENT_VERIFY_CERT: return HC_VERIFY_CERT;
+        case AGENT_VERIFY_NONE: return HC_VERIFY_NONE;
+        case AGENT_VERIFY_SYSTEM: return HC_VERIFY_SYSTEM;
+        case AGENT_VERIFY_UNSET:
+            // ClientConf() always resolves this to full, certificate or system before returning;
+            // reaching here means some other path built agt->ssl without going through that
+            // resolution step. Fail closed the same as an unrecognized value would, but say
+            // so loudly instead of silently blending into the FULL default below.
+            merror("https_client: verification_mode was still UNSET when the transport config was "
+                   "built; defaulting to 'full'. This should never happen -- ClientConf() is supposed "
+                   "to resolve it first.");
+            return HC_VERIFY_FULL;
+        case AGENT_VERIFY_FULL:
+        default: return HC_VERIFY_FULL;
     }
 }
 
@@ -2075,19 +2257,23 @@ static int bridge_map_verify_mode(int agent_verify_mode)
  * never crashes anything), but that means a misconfigured key otherwise fails
  * every request silently forever with no startup error. Validate it here so a
  * broken client.keys is caught once, loudly, at start. */
-static bool bridge_key_is_valid(const char *raw_key)
+static bool bridge_key_is_valid(const char* raw_key)
 {
-    if (!raw_key) {
+    if (!raw_key)
+    {
         return false;
     }
 
-    if (strlen(raw_key) != 64) {
+    if (strlen(raw_key) != 64)
+    {
         return false;
     }
 
-    for (size_t i = 0; i < 64; i++) {
+    for (size_t i = 0; i < 64; i++)
+    {
         const char c = raw_key[i];
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+        {
             return false;
         }
     }
@@ -2103,11 +2289,12 @@ static bool bridge_key_is_valid(const char *raw_key)
  * config() also sets below. Shared by bridge_build_config() and
  * w_https_client_enroll(), so /enroll and every other endpoint dial the same
  * server/TLS material by construction, never two independently-built configs. */
-static void bridge_build_transport_config(hc_config_t *config)
+static void bridge_build_transport_config(hc_config_t* config)
 {
     memset(config, 0, sizeof(*config));
 
-    if (agt->server && agt->server[0].rip) {
+    if (agt->server && agt->server[0].rip)
+    {
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
         /* #38624: the IPv6 zone id, already resolved to a numeric scope by the config
@@ -2117,13 +2304,15 @@ static void bridge_build_transport_config(hc_config_t *config)
         /* #38492: shared with w_https_client_enroll() via this same function,
          * so the /enroll request target gets the configured <endpoint> path
          * segment exactly like every other request. */
-        if (agt->server[0].endpoint) {
+        if (agt->server[0].endpoint)
+        {
             strncpy(config->server_endpoint, agt->server[0].endpoint, sizeof(config->server_endpoint) - 1);
         }
     }
 
     config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);
-    if (agt->ssl.certificate_authorities) {
+    if (agt->ssl.certificate_authorities)
+    {
         strncpy(config->ca_path, agt->ssl.certificate_authorities, sizeof(config->ca_path) - 1);
     }
 
@@ -2133,16 +2322,20 @@ static void bridge_build_transport_config(hc_config_t *config)
      * already does at the actual handshake, not this bridge's. Left empty for every other
      * verify_mode, since the module only ever reads it under 'system' (moduleConfig.cpp,
      * curlPerformer.cpp). */
-    if (config->verify_mode == HC_VERIFY_SYSTEM && w_is_file(AGENT_ANCHOR_CA)) {
+    if (config->verify_mode == HC_VERIFY_SYSTEM && w_is_file(AGENT_ANCHOR_CA))
+    {
         strncpy(config->system_fallback_ca_path, AGENT_ANCHOR_CA, sizeof(config->system_fallback_ca_path) - 1);
     }
-    if (agt->ssl.certificate) {
+    if (agt->ssl.certificate)
+    {
         strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
     }
-    if (agt->ssl.key) {
+    if (agt->ssl.key)
+    {
         strncpy(config->client_key, agt->ssl.key, sizeof(config->client_key) - 1);
     }
-    if (agt->ssl.ciphers) {
+    if (agt->ssl.ciphers)
+    {
         strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
     }
 
@@ -2158,31 +2351,36 @@ static void bridge_build_transport_config(hc_config_t *config)
  * periodic reporters, buffer ladder, sync intake, config checksum). Returns
  * false (config left unusable) when the signing key fails validation; the
  * caller must not start the client in that case. */
-static bool bridge_build_config(hc_config_t *config)
+static bool bridge_build_config(hc_config_t* config)
 {
     bridge_build_transport_config(config);
 
-    const char *raw_key = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->raw_key : NULL;
+    const char* raw_key = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->raw_key : NULL;
     /* The NULL test is redundant with bridge_key_is_valid()'s own, and is here
      * so it is visible at the point of use: the static analyzer does not inline
      * the validator (its hex loop exhausts the inlining budget), so without a
      * local test it explores a path where the key is NULL and reports the
      * strncpy() below, plus the keys.keyentries[0]->id read above it. */
-    if (raw_key == NULL || !bridge_key_is_valid(raw_key)) {
+    if (raw_key == NULL || !bridge_key_is_valid(raw_key))
+    {
         /* keys.keysize == 0 means "never enrolled" (start_agent_prepare()
          * blocks on enrollment before this ever runs, so this should not be
          * reachable in practice -- kept as defense-in-depth against a future
          * ordering regression). A non-zero keysize with an invalid raw_key is
          * a genuinely corrupt client.keys, worth an ERROR. */
-        if (keys.keysize == 0) {
+        if (keys.keysize == 0)
+        {
             mdebug1("https_client: not enrolled yet (no client.keys); deferring start.");
-        } else {
+        }
+        else
+        {
             merror("https_client: agent key is missing or is not a valid HS256 key "
                    "(expected exactly 64 lowercase hex characters); refusing to start.");
         }
         return false;
     }
-    if (keys.keyentries[0]->id) {
+    if (keys.keyentries[0]->id)
+    {
         strncpy(config->agent_id, keys.keyentries[0]->id, sizeof(config->agent_id) - 1);
     }
     strncpy(config->agent_key, raw_key, sizeof(config->agent_key) - 1);
@@ -2219,8 +2417,7 @@ static bool bridge_build_config(hc_config_t *config)
      *
      * The module reads 0 as "use my default", and the defaults below are the
      * same numbers, so an unset option and an explicit default agree. */
-    config->request_timeout_ms =
-        (uint32_t)getDefine_Int_default("agent", "https_request_timeout", 1000, 600000, 10000);
+    config->request_timeout_ms = (uint32_t)getDefine_Int_default("agent", "https_request_timeout", 1000, 600000, 10000);
     config->stateful_timeout_ms =
         (uint32_t)getDefine_Int_default("agent", "https_stateful_timeout", 1000, 3600000, 90000);
     config->backoff_base_ms = (uint32_t)getDefine_Int_default("agent", "https_backoff_base", 100, 60000, 1000);
@@ -2280,7 +2477,8 @@ static bool bridge_build_config(hc_config_t *config)
      * manager-advertised hash -- preserving the original, correct first-boot behavior (force
      * exactly one bootstrap download when there is nothing meaningful on disk yet). */
     os_sha256 config_sha256;
-    if (OS_SHA256_File(SHAREDCFG_FILE, config_sha256, OS_BINARY) == 0) {
+    if (OS_SHA256_File(SHAREDCFG_FILE, config_sha256, OS_BINARY) == 0)
+    {
         strncpy(config->config_checksum, config_sha256, sizeof(config->config_checksum) - 1);
     }
 
@@ -2307,9 +2505,11 @@ static bool bridge_build_config(hc_config_t *config)
      * front costs that operator nothing they had: their CA is exactly what they put there. */
     config->ca_refresh_allowed = bridge_ca_path_is_the_agent_anchor(config->ca_path);
 
-    if (!config->ca_refresh_allowed && config->ca_path[0] != '\0') {
+    if (!config->ca_refresh_allowed && config->ca_path[0] != '\0')
+    {
         minfo("https_client: '%s' is not the agent's own trust anchor, so a CA bundle published "
-              "by the manager will not replace it.", config->ca_path);
+              "by the manager will not replace it.",
+              config->ca_path);
     }
 
     /* Stateful sync sessions arrive on a separate STREAM socket so a whole
@@ -2336,9 +2536,10 @@ static bool bridge_build_config(hc_config_t *config)
  * asp_set_session_sender() right after hc_start() succeeds below, deregistered before
  * hc_destroy() in w_https_client_stop() -- same lock discipline as
  * w_https_client_submit_event(), since both submit into the same running instance. */
-static bool bridge_submit_sync_session(const char *session_id, const uint8_t *buffer, size_t length)
+static bool bridge_submit_sync_session(const char* session_id, const uint8_t* buffer, size_t length)
 {
-    if (session_id == NULL) {
+    if (session_id == NULL)
+    {
         return false;
     }
 
@@ -2346,7 +2547,8 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
 
     w_mutex_lock(&g_https_client_lock);
 
-    if (g_https_client != NULL && !g_https_client_stopping) {
+    if (g_https_client != NULL && !g_https_client_stopping)
+    {
         ok = hc_submit_sync_session(g_https_client, session_id, buffer, length);
     }
 
@@ -2379,7 +2581,8 @@ bool w_https_client_start(void)
     bridge_rejected_config_warned_at = 0;
 
     hc_config_t config;
-    if (!bridge_build_config(&config)) {
+    if (!bridge_build_config(&config))
+    {
         return false; /* bridge_build_config already logged the reason. */
     }
 
@@ -2428,7 +2631,8 @@ bool w_https_client_start(void)
     pthread_sigmask(SIG_SETMASK, &previous_mask, NULL);
 #endif
 
-    if (!started) {
+    if (!started)
+    {
         return false;
     }
 
@@ -2460,7 +2664,8 @@ void w_https_client_stop(void)
     asp_set_session_sender(NULL);
 #endif
 
-    if (g_https_client) {
+    if (g_https_client)
+    {
         hc_destroy(g_https_client); /* Implies stop + join. */
         g_https_client = NULL;
     }
@@ -2473,16 +2678,18 @@ void w_https_client_notify_config_reload_completed(void)
      * read of g_https_client and the hc_notify_now() call below. */
     w_mutex_lock(&g_https_client_lock);
 
-    if (g_https_client != NULL && !g_https_client_stopping) {
+    if (g_https_client != NULL && !g_https_client_stopping)
+    {
         hc_notify_now(g_https_client);
     }
 
     w_mutex_unlock(&g_https_client_lock);
 }
 
-int w_https_client_submit_event(const char *frame, size_t length)
+int w_https_client_submit_event(const char* frame, size_t length)
 {
-    if (frame == NULL || length == 0) {
+    if (frame == NULL || length == 0)
+    {
         return -1;
     }
 
@@ -2496,15 +2703,17 @@ int w_https_client_submit_event(const char *frame, size_t length)
 
     const bool running = g_https_client != NULL && !g_https_client_stopping;
 
-    if (running) {
-        retval = hc_submit_event(g_https_client, (const uint8_t *)frame, length) ? 0 : -1;
+    if (running)
+    {
+        retval = hc_submit_event(g_https_client, (const uint8_t*)frame, length) ? 0 : -1;
     }
 
     w_mutex_unlock(&g_https_client_lock);
 
     /* Mirrors buffer.c's own drop trace, outside the lock: the accumulator is
      * full and applied drop-newest, exactly as the leaky bucket used to. */
-    if (running && retval != 0) {
+    if (running && retval != 0)
+    {
         mdebug2("https_client: unable to store new packet: buffer is full.");
     }
 
@@ -2516,8 +2725,11 @@ int w_https_client_submit_event(const char *frame, size_t length)
  * whether the full client is running (re-enroll, from bridge_reenroll_thread())
  * or does not exist yet (first boot, from start_agent.c, before
  * w_https_client_start() ever runs). */
-bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
-                           const char *enroll_key_hex, hc_enroll_result_t *result)
+bool w_https_client_enroll(const char* body_json,
+                           const char* password,
+                           const char* enroll_kid,
+                           const char* enroll_key_hex,
+                           hc_enroll_result_t* result)
 {
     hc_config_t config;
     bridge_build_transport_config(&config);
@@ -2525,16 +2737,19 @@ bool w_https_client_enroll(const char *body_json, const char *password, const ch
     hc_enroll_request_t request;
     memset(&request, 0, sizeof(request));
 
-    if (body_json) {
+    if (body_json)
+    {
         strncpy(request.body_json, body_json, sizeof(request.body_json) - 1);
     }
-    if (password) {
+    if (password)
+    {
         strncpy(request.password, password, sizeof(request.password) - 1);
     }
 
     /* Both or neither: the module mints the keyed bearer only when it has a `kid` AND a key, and
      * half a credential would silently fall through to the password instead (#39064). */
-    if (enroll_kid && enroll_key_hex) {
+    if (enroll_kid && enroll_key_hex)
+    {
         strncpy(request.enroll_kid, enroll_kid, sizeof(request.enroll_kid) - 1);
         strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);
     }

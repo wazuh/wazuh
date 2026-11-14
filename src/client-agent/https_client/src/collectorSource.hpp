@@ -26,14 +26,14 @@
  */
 class ICollectorSource
 {
-    public:
-        virtual ~ICollectorSource() = default;
-        virtual std::optional<std::string> collectStats() = 0;
-        virtual std::optional<std::string> collectConfig() = 0;
+public:
+    virtual ~ICollectorSource() = default;
+    virtual std::optional<std::string> collectStats() = 0;
+    virtual std::optional<std::string> collectConfig() = 0;
 
-        /// The same `{"agent":{...},"cluster":{...}}` JSON the /stateless H line
-        /// carries, or "" while the metadata is not available.
-        virtual std::string collectAgentMetadata() = 0;
+    /// The same `{"agent":{...},"cluster":{...}}` JSON the /stateless H line
+    /// carries, or "" while the metadata is not available.
+    virtual std::string collectAgentMetadata() = 0;
 };
 
 /**
@@ -43,50 +43,50 @@ class ICollectorSource
  */
 class CallbackCollectorSource final : public ICollectorSource
 {
-    public:
-        CallbackCollectorSource(const hc_callbacks_t& callbacks, std::function<std::string()> collectAgentMetadata)
-            : m_callbacks(callbacks)
-            , m_collectAgentMetadata(std::move(collectAgentMetadata))
+public:
+    CallbackCollectorSource(const hc_callbacks_t& callbacks, std::function<std::string()> collectAgentMetadata)
+        : m_callbacks(callbacks)
+        , m_collectAgentMetadata(std::move(collectAgentMetadata))
+    {
+    }
+
+    std::optional<std::string> collectStats() override
+    {
+        return invoke(m_callbacks.collect_stats);
+    }
+
+    std::optional<std::string> collectConfig() override
+    {
+        return invoke(m_callbacks.collect_config);
+    }
+
+    std::string collectAgentMetadata() override
+    {
+        return m_collectAgentMetadata ? m_collectAgentMetadata() : std::string();
+    }
+
+private:
+    std::optional<std::string> invoke(char* (*collector)(void*)) const
+    {
+        if (collector == nullptr)
         {
+            return std::nullopt;
         }
 
-        std::optional<std::string> collectStats() override
+        char* raw = collector(m_callbacks.user_data);
+
+        if (raw == nullptr)
         {
-            return invoke(m_callbacks.collect_stats);
+            return std::nullopt; // The collector chose to skip this cycle.
         }
 
-        std::optional<std::string> collectConfig() override
-        {
-            return invoke(m_callbacks.collect_config);
-        }
+        std::string document {raw};
+        std::free(raw); // Module owns the buffer; free after copying.
+        return document;
+    }
 
-        std::string collectAgentMetadata() override
-        {
-            return m_collectAgentMetadata ? m_collectAgentMetadata() : std::string();
-        }
-
-    private:
-        std::optional<std::string> invoke(char* (*collector)(void*)) const
-        {
-            if (collector == nullptr)
-            {
-                return std::nullopt;
-            }
-
-            char* raw = collector(m_callbacks.user_data);
-
-            if (raw == nullptr)
-            {
-                return std::nullopt; // The collector chose to skip this cycle.
-            }
-
-            std::string document {raw};
-            std::free(raw); // Module owns the buffer; free after copying.
-            return document;
-        }
-
-        hc_callbacks_t m_callbacks;
-        std::function<std::string()> m_collectAgentMetadata;
+    hc_callbacks_t m_callbacks;
+    std::function<std::string()> m_collectAgentMetadata;
 };
 
 #endif // _HC_COLLECTOR_SOURCE_HPP

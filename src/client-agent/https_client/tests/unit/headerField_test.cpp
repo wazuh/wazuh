@@ -16,9 +16,7 @@
 
 TEST(HeaderFieldTest, ReadsTheValueOfTheNamedFieldInAnyCase)
 {
-    for (const auto* line :
-            {"Retry-After: 30\r\n", "retry-after: 30\r\n", "RETRY-AFTER: 30\r\n"
-            })
+    for (const auto* line : {"Retry-After: 30\r\n", "retry-after: 30\r\n", "RETRY-AFTER: 30\r\n"})
     {
         const auto value = headerValue(line, "Retry-After");
         ASSERT_TRUE(value.has_value()) << line;
@@ -38,8 +36,7 @@ TEST(HeaderFieldTest, KeepsTheValueAsItCame)
 TEST(HeaderFieldTest, AnotherFieldIsNotIt)
 {
     for (const auto* line :
-            {"Dates: x\r\n", "Date-Header: x\r\n", "Date : x\r\n", "Date x\r\n", "XDate: x\r\n", "Da", ""
-            })
+         {"Dates: x\r\n", "Date-Header: x\r\n", "Date : x\r\n", "Date x\r\n", "XDate: x\r\n", "Da", ""})
     {
         EXPECT_FALSE(headerValue(line, "Date").has_value()) << line;
     }

@@ -18,34 +18,42 @@
 
 time_t current_time = 0;
 
-void __wrap_w_sleep_until(const time_t new_time){
+void __wrap_w_sleep_until(const time_t new_time)
+{
     current_time = new_time;
 }
 
-void __wrap_wm_sleep_until_interruptible(const time_t new_time){
+void __wrap_wm_sleep_until_interruptible(const time_t new_time)
+{
     current_time = new_time;
 }
 
-void __wrap_w_time_delay(unsigned long int msec){
-    current_time += (msec/1000);
+void __wrap_w_time_delay(unsigned long int msec)
+{
+    current_time += (msec / 1000);
 }
 
-char* __wrap_w_get_timestamp(time_t time) {
+char* __wrap_w_get_timestamp(time_t time)
+{
     check_expected(time);
 
     return mock_type(char*);
 }
 
-void __wrap_gettime(struct timespec *ts) {
+void __wrap_gettime(struct timespec* ts)
+{
     ts->tv_sec = mock_type(time_t);
 }
 
-double __wrap_time_diff(__attribute__((unused)) const struct timespec * a, __attribute__((unused)) const struct timespec * b) {
+double __wrap_time_diff(__attribute__((unused)) const struct timespec* a,
+                        __attribute__((unused)) const struct timespec* b)
+{
     return mock_type(double);
 }
 
 #ifdef WIN32
-long long __wrap_get_windows_file_time_epoch(FILETIME ftime) {
+long long __wrap_get_windows_file_time_epoch(FILETIME ftime)
+{
     check_expected(ftime.dwLowDateTime);
     check_expected(ftime.dwHighDateTime);
 

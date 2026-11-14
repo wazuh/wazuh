@@ -7,16 +7,16 @@ using namespace sca;
 
 class ParseRuleTypeTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+protected:
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback(
+            [](const modules_log_level_t /* level */, const char* /* log */)
             {
                 // Mock logging callback that does nothing
             });
-
-        }
+    }
 };
 
 // NOLINTBEGIN(bugprone-unchecked-optional-access, modernize-raw-string-literal)
@@ -327,4 +327,3 @@ TEST(PatternMatchesTest, REG_MULTI_SZtest)
 }
 
 // NOLINTEND(bugprone-unchecked-optional-access, modernize-raw-string-literal)
-

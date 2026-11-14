@@ -7,16 +7,15 @@
  * Foundation
  */
 
-
 #ifndef SDDL_WRAPPERS_H
 #define SDDL_WRAPPERS_H
 
 #include <windows.h>
 
-#undef  ConvertSidToStringSid
+#undef ConvertSidToStringSid
 #define ConvertSidToStringSid wrap_ConvertSidToStringSid
 
-WINBOOL wrap_ConvertSidToStringSid(PSID Sid, LPSTR *StringSid);
+WINBOOL wrap_ConvertSidToStringSid(PSID Sid, LPSTR* StringSid);
 
 void expect_ConvertSidToStringSid_call(LPSTR StringSid, int ret_value);
 

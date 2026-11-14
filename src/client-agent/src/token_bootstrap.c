@@ -17,20 +17,18 @@
 #include <openssl/crypto.h>
 
 #ifdef WAZUH_UNIT_TESTING
-    // Remove static qualifier when unit testing
-    #define STATIC
+// Remove static qualifier when unit testing
+#define STATIC
 #else
-    #define STATIC static
+#define STATIC static
 #endif
 
-STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
-                                                 const char **filename);
-STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
+STATIC int w_token_bootstrap_split_dir_filename(const char* path, char* buf, size_t buf_size, const char** filename);
+STATIC void w_token_bootstrap_ensure_parent_dir(const char* path, int gid);
 STATIC void w_token_bootstrap_mark_anchor_committed(int gid);
 #ifndef WIN32
-STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
-                                                  const char **filename);
-STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
+STATIC int w_token_bootstrap_open_parent_nofollow(const char* path, char* dir, size_t dir_size, const char** filename);
+STATIC int w_token_bootstrap_open_and_chown(const char* path, uid_t owner, gid_t group);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
 STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
 #endif
@@ -43,10 +41,12 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
  * @return A newly allocated, trimmed copy of the file's first line, or NULL when the file is
  *         missing, empty, unreadable, or holds a first line too long to fit.
  */
-char *w_agent_token_read_file(const char *path) {
-    FILE *fp = wfopen(path, "r");
+char* w_agent_token_read_file(const char* path)
+{
+    FILE* fp = wfopen(path, "r");
 
-    if (!fp) {
+    if (!fp)
+    {
         return NULL;
     }
 
@@ -54,10 +54,10 @@ char *w_agent_token_read_file(const char *path) {
      * comment) and 96 KB is far too much to put on a frame. Capacity is the bound itself, as it
      * was when this was an array of that size, so the longest line fgets() will return whole is
      * still W_ETOKEN_MAX_FILE_BYTES - 1 characters. */
-    char *buf;
+    char* buf;
     os_calloc(W_ETOKEN_MAX_FILE_BYTES, sizeof(char), buf);
 
-    char *read_ok = fgets(buf, W_ETOKEN_MAX_FILE_BYTES, fp);
+    char* read_ok = fgets(buf, W_ETOKEN_MAX_FILE_BYTES, fp);
 
     /* fgets() stops at a newline, at end of file, or because the buffer filled, and reports all
      * three the same way. Only the last is a problem: the token arrives quietly cut short and is
@@ -68,16 +68,19 @@ char *w_agent_token_read_file(const char *path) {
 
     fclose(fp);
 
-    char *token = NULL;
+    char* token = NULL;
 
-    if (read_ok && !truncated) {
+    if (read_ok && !truncated)
+    {
         size_t len = strlen(buf);
 
-        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+        {
             buf[--len] = '\0';
         }
 
-        if (len > 0) {
+        if (len > 0)
+        {
             os_strdup(buf, token);
         }
     }
@@ -89,23 +92,27 @@ char *w_agent_token_read_file(const char *path) {
 }
 
 /* Drops trailing newlines, carriage returns, spaces and tabs from the first `length` bytes */
-static void w_agent_token_trim(char *text, size_t length) {
-    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r' ||
-                          text[length - 1] == ' ' || text[length - 1] == '\t')) {
+static void w_agent_token_trim(char* text, size_t length)
+{
+    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r' || text[length - 1] == ' ' ||
+                          text[length - 1] == '\t'))
+    {
         text[--length] = '\0';
     }
 }
 
-w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text) {
+w_token_read_status_t w_agent_token_read_stream(FILE* in, char** text)
+{
     w_token_read_status_t status = W_TOKEN_READ_OK;
-    char *buf;
+    char* buf;
     size_t length;
 
     *text = NULL;
 
     /* A terminal will never produce a token, so blocking on it reads as a hang. Checked before
      * the buffer exists, so the common mistake costs nothing. */
-    if (isatty(fileno(in))) {
+    if (isatty(fileno(in)))
+    {
         return W_TOKEN_READ_TTY;
     }
 
@@ -116,11 +123,16 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text) {
     /* fread() never terminates what it reads */
     buf[length] = '\0';
 
-    if (ferror(in)) {
+    if (ferror(in))
+    {
         status = W_TOKEN_READ_IO;
-    } else if (length == W_ETOKEN_MAX_FILE_BYTES) {
+    }
+    else if (length == W_ETOKEN_MAX_FILE_BYTES)
+    {
         status = W_TOKEN_READ_TOO_BIG;
-    } else {
+    }
+    else
+    {
         w_agent_token_trim(buf, length);
         /* Handed back at its real size: a token is a few hundred bytes */
         os_strdup(buf, *text);
@@ -143,21 +155,23 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text) {
  * @param filename When non-NULL, set to the filename component (a pointer into @p buf).
  * @return 0 on success, -1 if @p path has no '/' (errno set to EINVAL).
  */
-STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, size_t buf_size,
-                                                 const char **filename) {
-    char *slash;
+STATIC int w_token_bootstrap_split_dir_filename(const char* path, char* buf, size_t buf_size, const char** filename)
+{
+    char* slash;
 
     strncpy(buf, path, buf_size - 1);
     buf[buf_size - 1] = '\0';
 
-    if ((slash = strrchr(buf, '/')) == NULL) {
+    if ((slash = strrchr(buf, '/')) == NULL)
+    {
         errno = EINVAL;
         return -1;
     }
 
     *slash = '\0';
 
-    if (filename != NULL) {
+    if (filename != NULL)
+    {
         *filename = slash + 1;
     }
 
@@ -200,23 +214,25 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
  *        reading it. Only mkdir_ex() runs there, and it still has to: the MSI does not ship a
  *        certs directory either, so TempFile()'s mkstemp() would have nowhere to land.
  */
-STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
+STATIC void w_token_bootstrap_ensure_parent_dir(const char* path, int gid)
+{
     char dir[OS_FLSIZE + 1];
 
 #ifdef WIN32
     (void)gid;
 #endif
 
-    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), NULL) != 0) {
+    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), NULL) != 0)
+    {
         return;
     }
 
     mkdir_ex(dir);
 
 #ifndef WIN32
-    if (chown(dir, 0, gid) != 0) {
-        merror("Could not set ownership of '%s': %s (%d).", dir,
-               strerror(errno), errno);
+    if (chown(dir, 0, gid) != 0)
+    {
+        merror("Could not set ownership of '%s': %s (%d).", dir, strerror(errno), errno);
     }
 
     /* 01770, not 0750: the agent replaces this anchor at runtime when the manager publishes a new
@@ -229,9 +245,9 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
      * unlink and rename-over to the owner of the file, so the agent can replace its own anchor
      * and still cannot touch anything root-owned that shares this directory -- the marker this
      * bootstrap writes beside the anchor among them. */
-    if (chmod(dir, 01770) == -1) {
-        merror("Could not set permissions on '%s': %s (%d).", dir,
-               strerror(errno), errno);
+    if (chmod(dir, 01770) == -1)
+    {
+        merror("Could not set permissions on '%s': %s (%d).", dir, strerror(errno), errno);
     }
 #endif /* !WIN32 */
 }
@@ -255,9 +271,10 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
  * @return A directory descriptor the caller must close, or -1 (errno set; ELOOP or ENOTDIR when
  *         a symlink was found where the directory should be).
  */
-STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
-                                                  const char **filename) {
-    if (w_token_bootstrap_split_dir_filename(path, dir, dir_size, filename) != 0) {
+STATIC int w_token_bootstrap_open_parent_nofollow(const char* path, char* dir, size_t dir_size, const char** filename)
+{
+    if (w_token_bootstrap_split_dir_filename(path, dir, dir_size, filename) != 0)
+    {
         return -1;
     }
 
@@ -279,21 +296,25 @@ STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, s
  * @return 0 on success, -1 on error (errno set: from open()/openat(), EINVAL when the resolved
  *         path is not a regular file, or EMLINK when it is a hard-linked one).
  */
-STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group) {
+STATIC int w_token_bootstrap_open_and_chown(const char* path, uid_t owner, gid_t group)
+{
     char dir[OS_FLSIZE + 1];
-    const char *filename;
+    const char* filename;
     int fd;
     int saved_errno;
 
-    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), &filename) != 0) {
+    if (w_token_bootstrap_split_dir_filename(path, dir, sizeof(dir), &filename) != 0)
+    {
         return -1;
     }
 
-    if ((fd = w_openat_nofollow_vetted(dir, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0)) < 0) {
+    if ((fd = w_openat_nofollow_vetted(dir, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0)) < 0)
+    {
         return -1;
     }
 
-    if (fchown(fd, owner, group) != 0) {
+    if (fchown(fd, owner, group) != 0)
+    {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;
@@ -309,8 +330,9 @@ STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t
  *        client.keys call sites read as one operation rather than repeating the owner pair.
  * @return 0 on success, -1 on error (errno set as w_token_bootstrap_open_and_chown()).
  */
-STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
-    return w_token_bootstrap_open_and_chown(KEYS_FILE, 0, (gid_t) gid);
+STATIC int w_token_bootstrap_open_and_chown_keys(int gid)
+{
+    return w_token_bootstrap_open_and_chown(KEYS_FILE, 0, (gid_t)gid);
 }
 
 /**
@@ -323,14 +345,21 @@ STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
  *        The fresh-enrollment call site passes false: that chown runs once per enrollment, not
  *        once per boot, so a failure there stays a one-time, visible error.
  */
-STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
-    if (w_token_bootstrap_open_and_chown_keys(gid) != 0) {
-        if (quiet_on_failure) {
+STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure)
+{
+    if (w_token_bootstrap_open_and_chown_keys(gid) != 0)
+    {
+        if (quiet_on_failure)
+        {
             mdebug1("Could not change ownership of '%s' (will retry on a later "
-                    "boot): %s (%d).", KEYS_FILE, strerror(errno), errno);
-        } else {
-            merror("Could not change ownership of '%s': %s (%d).", KEYS_FILE,
-                   strerror(errno), errno);
+                    "boot): %s (%d).",
+                    KEYS_FILE,
+                    strerror(errno),
+                    errno);
+        }
+        else
+        {
+            merror("Could not change ownership of '%s': %s (%d).", KEYS_FILE, strerror(errno), errno);
         }
     }
 }
@@ -342,7 +371,8 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
  * above has no Windows counterpart either -- w_openat_nofollow_vetted() is itself POSIX-only
  * (file_op.h). Kept as a real function rather than a macro so the three call sites below read
  * identically on both platforms. */
-STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
+STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure)
+{
     (void)gid;
     (void)quiet_on_failure;
 }
@@ -350,32 +380,26 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
 #endif /* WIN32 */
 
 /** One short, operator-facing sentence per failing step. Never NULL. */
-const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
-    switch (status) {
-        case W_TOKEN_ENROLL_OK:
-            return "enrolled";
-        case W_TOKEN_ENROLL_ERR_TOKEN:
-            return "the enrollment token was rejected";
-        case W_TOKEN_ENROLL_ERR_ANCHOR:
-            return "the manager's certificate authority could not be established";
-        case W_TOKEN_ENROLL_ERR_CREDENTIAL:
-            return "the token's credential could not be prepared";
-        case W_TOKEN_ENROLL_ERR_REQUEST:
-            return "the enrollment request could not be built";
-        case W_TOKEN_ENROLL_ERR_ENROLL:
-            return "the manager refused the enrollment";
-        case W_TOKEN_ENROLL_ERR_STORE:
-            return "the manager accepted the enrollment, but its answer could not be stored";
-        case W_TOKEN_ENROLL_ERR_COMMIT:
-            return "enrolled, but the result could not be committed to disk";
-        default:
-            return "unknown error";
+const char* w_agent_token_enroll_strerror(w_token_enroll_status_t status)
+{
+    switch (status)
+    {
+        case W_TOKEN_ENROLL_OK: return "enrolled";
+        case W_TOKEN_ENROLL_ERR_TOKEN: return "the enrollment token was rejected";
+        case W_TOKEN_ENROLL_ERR_ANCHOR: return "the manager's certificate authority could not be established";
+        case W_TOKEN_ENROLL_ERR_CREDENTIAL: return "the token's credential could not be prepared";
+        case W_TOKEN_ENROLL_ERR_REQUEST: return "the enrollment request could not be built";
+        case W_TOKEN_ENROLL_ERR_ENROLL: return "the manager refused the enrollment";
+        case W_TOKEN_ENROLL_ERR_STORE: return "the manager accepted the enrollment, but its answer could not be stored";
+        case W_TOKEN_ENROLL_ERR_COMMIT: return "enrolled, but the result could not be committed to disk";
+        default: return "unknown error";
     }
 }
 
 /* Appended to every marker-write failure: what the operator loses, in the terms they can act on. */
-#define AG_ANCHOR_MARKER_RISK "Without it, losing the trust anchor later would turn TLS verification off " \
-                              "instead of stopping the agent."
+#define AG_ANCHOR_MARKER_RISK                                                                                          \
+    "Without it, losing the trust anchor later would turn TLS verification off "                                       \
+    "instead of stopping the agent."
 
 /**
  * @brief Records that this install has committed a trust anchor, by creating AGENT_ANCHOR_MARKER
@@ -392,10 +416,12 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
  * both after a fresh commit and from the latch, so an install that predates #39321 -- or one
  * whose marker write failed once -- picks one up on a later boot.
  */
-STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
+STATIC void w_token_bootstrap_mark_anchor_committed(int gid)
+{
     int fd;
 
-    if (IsFile(AGENT_ANCHOR_MARKER) == 0) {
+    if (IsFile(AGENT_ANCHOR_MARKER) == 0)
+    {
         return;
     }
 
@@ -407,7 +433,7 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
     fd = open(AGENT_ANCHOR_MARKER, O_WRONLY | O_CREAT | O_EXCL, 0640);
 #else
     char dir[OS_FLSIZE + 1];
-    const char *filename;
+    const char* filename;
     int dirfd;
     int saved_errno;
 
@@ -415,10 +441,12 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
      * w_token_bootstrap_open_parent_nofollow() gives: O_EXCL|O_NOFOLLOW stops this root-owned
      * create landing on an existing file or a link, but on its own it would still let the
      * runtime user choose the DIRECTORY it lands in by swapping `certs`. */
-    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_MARKER, dir, sizeof(dir),
-                                                       &filename), dirfd < 0) {
-        mwarn("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d). "
-              AG_ANCHOR_MARKER_RISK, dir, strerror(errno), errno);
+    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_MARKER, dir, sizeof(dir), &filename), dirfd < 0)
+    {
+        mwarn("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d). " AG_ANCHOR_MARKER_RISK,
+              dir,
+              strerror(errno),
+              errno);
         return;
     }
 
@@ -428,20 +456,27 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
     errno = saved_errno;
 #endif
 
-    if (fd < 0) {
+    if (fd < 0)
+    {
         /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
-        if (errno != EEXIST) {
+        if (errno != EEXIST)
+        {
             mwarn("Token bootstrap: could not write '%s': %s (%d). " AG_ANCHOR_MARKER_RISK,
-                  AGENT_ANCHOR_MARKER, strerror(errno), errno);
+                  AGENT_ANCHOR_MARKER,
+                  strerror(errno),
+                  errno);
         }
 
         return;
     }
 
 #ifndef WIN32
-    if (fchown(fd, 0, gid) != 0) {
+    if (fchown(fd, 0, gid) != 0)
+    {
         mwarn("Token bootstrap: could not set ownership of '%s': %s (%d). " AG_ANCHOR_MARKER_RISK,
-              AGENT_ANCHOR_MARKER, strerror(errno), errno);
+              AGENT_ANCHOR_MARKER,
+              strerror(errno),
+              errno);
     }
 #else
     /* No second user to hand it to: the installation directory's own ACL already keeps
@@ -467,9 +502,10 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
  * about a chown that fails in a namespaced container without CAP_CHOWN -- the agent still works,
  * it just cannot refresh, and the refresh path logs that for itself when it tries.
  */
-STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
+STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid)
+{
     char dir[OS_FLSIZE + 1];
-    const char *filename;
+    const char* filename;
     struct stat statbuf;
     int dirfd;
     int fd;
@@ -482,21 +518,20 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
      * that. Opening each object once, with O_NOFOLLOW, and acting on the descriptor closes both:
      * a descriptor cannot be re-pointed after the fact, so there is no window between the check
      * and the change. */
-    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_CA, dir, sizeof(dir), &filename),
-            dirfd < 0) {
-        mdebug1("Token bootstrap: could not open '%s' to repair it: %s (%d).", dir,
-                strerror(errno), errno);
+    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_CA, dir, sizeof(dir), &filename), dirfd < 0)
+    {
+        mdebug1("Token bootstrap: could not open '%s' to repair it: %s (%d).", dir, strerror(errno), errno);
         return;
     }
 
-    if (fchown(dirfd, 0, (gid_t) gid) != 0) {
-        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", dir,
-                strerror(errno), errno);
+    if (fchown(dirfd, 0, (gid_t)gid) != 0)
+    {
+        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", dir, strerror(errno), errno);
     }
 
-    if (fchmod(dirfd, 01770) != 0) {
-        mdebug1("Token bootstrap: could not repair permissions on '%s': %s (%d).", dir,
-                strerror(errno), errno);
+    if (fchmod(dirfd, 01770) != 0)
+    {
+        mdebug1("Token bootstrap: could not repair permissions on '%s': %s (%d).", dir, strerror(errno), errno);
     }
 
     /* Not w_token_bootstrap_open_and_chown(): it opens its basedir by path, which is the half of
@@ -504,25 +539,36 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
      * descriptor instead, and vetted the same way it vets -- O_NOFOLLOW rules out a symlink,
      * S_ISREG the devices and FIFOs it does not, and a link count of one a hard link to a file
      * this agent has no business owning. */
-    if (fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK), fd < 0) {
+    if (fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK), fd < 0)
+    {
         mdebug1("Token bootstrap: could not open '%s' to repair its ownership: %s (%d).",
-                AGENT_ANCHOR_CA, strerror(errno), errno);
+                AGENT_ANCHOR_CA,
+                strerror(errno),
+                errno);
         close(dirfd);
         return;
     }
 
-    if (fstat(fd, &statbuf) != 0) {
+    if (fstat(fd, &statbuf) != 0)
+    {
         mdebug1("Token bootstrap: could not stat '%s' to repair its ownership: %s (%d).",
-                AGENT_ANCHOR_CA, strerror(errno), errno);
-    } else if (!S_ISREG(statbuf.st_mode) || statbuf.st_nlink != 1) {
+                AGENT_ANCHOR_CA,
+                strerror(errno),
+                errno);
+    }
+    else if (!S_ISREG(statbuf.st_mode) || statbuf.st_nlink != 1)
+    {
         /* Loud, unlike the failures around it: the anchor being something other than a plain,
          * singly-linked file is not an environment quirk, it is someone having put something
          * else there. */
         mwarn("Token bootstrap: '%s' is not a regular file with a single link; refusing to change "
-              "its ownership.", AGENT_ANCHOR_CA);
-    } else if (fchown(fd, (uid_t) uid, (gid_t) gid) != 0) {
-        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
-                strerror(errno), errno);
+              "its ownership.",
+              AGENT_ANCHOR_CA);
+    }
+    else if (fchown(fd, (uid_t)uid, (gid_t)gid) != 0)
+    {
+        mdebug1(
+            "Token bootstrap: could not repair ownership of '%s': %s (%d).", AGENT_ANCHOR_CA, strerror(errno), errno);
     }
 
     close(fd);
@@ -536,15 +582,20 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
 
 /* The anchor now in place supersedes a CA a WPK upgrade staged but could not validate; left
  * behind, a later upgrade would install that one over it. */
-static void token_discard_delivered_ca(void) {
+static void token_discard_delivered_ca(void)
+{
 #ifndef WIN32
-    if (unlink(AGENT_DELIVERED_CA) == 0) {
-        minfo("Removed the CA a remote upgrade left at '%s': the trust anchor supersedes it.",
-              AGENT_DELIVERED_CA);
-    } else if (errno != ENOENT) {
+    if (unlink(AGENT_DELIVERED_CA) == 0)
+    {
+        minfo("Removed the CA a remote upgrade left at '%s': the trust anchor supersedes it.", AGENT_DELIVERED_CA);
+    }
+    else if (errno != ENOENT)
+    {
         mwarn("Could not remove the CA a remote upgrade left at '%s': %s (%d). Remove it, or a "
-              "later upgrade may install it over the trust anchor.", AGENT_DELIVERED_CA,
-              strerror(errno), errno);
+              "later upgrade may install it over the trust anchor.",
+              AGENT_DELIVERED_CA,
+              strerror(errno),
+              errno);
     }
 #endif
 }
@@ -556,15 +607,17 @@ static void token_discard_delivered_ca(void) {
  * --certs-only return without touching anything at all. Compares content rather than a pin,
  * because a pin only says the certificate is the right one -- not that the file holding it is.
  */
-static bool token_anchor_matches(const char *candidate, size_t candidate_len) {
-    FILE *fp = wfopen(AGENT_ANCHOR_CA, "r");
+static bool token_anchor_matches(const char* candidate, size_t candidate_len)
+{
+    FILE* fp = wfopen(AGENT_ANCHOR_CA, "r");
     bool same = false;
 
-    if (fp == NULL) {
+    if (fp == NULL)
+    {
         return false;
     }
 
-    char *installed = NULL;
+    char* installed = NULL;
     os_calloc(candidate_len + 2, sizeof(char), installed);
     size_t read = fread(installed, 1, candidate_len + 1, fp);
     fclose(fp);
@@ -583,9 +636,10 @@ static bool token_anchor_matches(const char *candidate, size_t candidate_len) {
  * version snapshotted the anchor too and never restored it -- dead weight, and a second copy of
  * the trust anchor at rest for no benefit.
  */
-typedef struct {
-    char *keys_backup;      /**< mkstemp()-chosen path, or NULL when nothing was copied aside */
-    FILE *keys_backup_fp;   /**< Its stream, held open until the restore or the discard */
+typedef struct
+{
+    char* keys_backup;    /**< mkstemp()-chosen path, or NULL when nothing was copied aside */
+    FILE* keys_backup_fp; /**< Its stream, held open until the restore or the discard */
 } token_snapshot_t;
 
 /**
@@ -604,34 +658,39 @@ typedef struct {
  *
  * @return 0 on success, -1 when a backup was needed but could not be taken.
  */
-static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot) {
+static int token_snapshot(const w_token_enroll_opts_t* opts, token_snapshot_t* snapshot)
+{
     File backup = {NULL, NULL};
     int saved_errno;
 
     snapshot->keys_backup = NULL;
     snapshot->keys_backup_fp = NULL;
 
-    if (!opts->transactional || FileSize(KEYS_FILE) <= 0) {
+    if (!opts->transactional || FileSize(KEYS_FILE) <= 0)
+    {
         return 0;
     }
 
-    if (TempFile(&backup, KEYS_FILE, 1) < 0) {
-        merror("Could not copy the current agent key aside: %s (%d).",
-               strerror(errno), errno);
+    if (TempFile(&backup, KEYS_FILE, 1) < 0)
+    {
+        merror("Could not copy the current agent key aside: %s (%d).", strerror(errno), errno);
         return -1;
     }
 
     /* fflush() sets errno. A write stdio lost before it leaves only the stream's error flag, with
      * no errno of its own, so that one is reported as EIO rather than with whatever errno held. */
-    if (fflush(backup.fp) != 0) {
+    if (fflush(backup.fp) != 0)
+    {
         saved_errno = (errno != 0) ? errno : EIO;
-    } else {
+    }
+    else
+    {
         saved_errno = ferror(backup.fp) ? EIO : 0;
     }
 
-    if (saved_errno != 0) {
-        merror("Could not copy the current agent key aside: %s (%d).",
-               strerror(saved_errno), saved_errno);
+    if (saved_errno != 0)
+    {
+        merror("Could not copy the current agent key aside: %s (%d).", strerror(saved_errno), saved_errno);
         fclose(backup.fp);
         unlink(backup.name);
         os_free(backup.name);
@@ -652,7 +711,8 @@ static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *s
  * the meantime. Always true on Windows, which has no inode to compare and whose staged files carry
  * an explicit Administrators/SYSTEM DACL instead (mkstemp_ex()).
  */
-static bool token_backup_is_ours(const token_snapshot_t *snapshot) {
+static bool token_backup_is_ours(const token_snapshot_t* snapshot)
+{
 #ifdef WIN32
     (void)snapshot;
     return true;
@@ -662,8 +722,10 @@ static bool token_backup_is_ours(const token_snapshot_t *snapshot) {
 }
 
 /** Closes the backup's stream, which only token_backup_is_ours() needed. */
-static void token_snapshot_close(token_snapshot_t *snapshot) {
-    if (snapshot->keys_backup_fp != NULL) {
+static void token_snapshot_close(token_snapshot_t* snapshot)
+{
+    if (snapshot->keys_backup_fp != NULL)
+    {
         fclose(snapshot->keys_backup_fp);
         snapshot->keys_backup_fp = NULL;
     }
@@ -671,14 +733,17 @@ static void token_snapshot_close(token_snapshot_t *snapshot) {
 
 /** Closes the staged anchor's stream before its move: Windows will not move a file that still
  *  has a handle open on it. */
-static void token_anchor_close(File *anchor) {
+static void token_anchor_close(File* anchor)
+{
     fclose(anchor->fp);
     anchor->fp = NULL;
 }
 
 /** Drops the staged anchor: closes its stream if it is still open, removes it, frees its name. */
-static void token_anchor_discard(File *anchor) {
-    if (anchor->fp != NULL) {
+static void token_anchor_discard(File* anchor)
+{
+    if (anchor->fp != NULL)
+    {
         token_anchor_close(anchor);
     }
 
@@ -696,11 +761,13 @@ static void token_anchor_discard(File *anchor) {
  * the one of the file it replaces. The backup's name is checked first: whatever else stands there
  * is neither restored nor reported as the backup.
  */
-static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot,
-                           w_token_enroll_report_t *report) {
+static void
+token_rollback(const w_token_enroll_opts_t* opts, token_snapshot_t* snapshot, w_token_enroll_report_t* report)
+{
     bool ours;
 
-    if (snapshot->keys_backup == NULL) {
+    if (snapshot->keys_backup == NULL)
+    {
         /* Nothing was copied aside, so there is nothing to put back. The caller reports this as
          * the unrecoverable case it is. */
         return;
@@ -710,22 +777,28 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
     /* Closed before the move: Windows will not move a file that still has a handle open on it. */
     token_snapshot_close(snapshot);
 
-    if (ours && w_move_file_nofollow(snapshot->keys_backup, KEYS_FILE) == 0) {
-        if (opts->gid != -1) {
+    if (ours && w_move_file_nofollow(snapshot->keys_backup, KEYS_FILE) == 0)
+    {
+        if (opts->gid != -1)
+        {
             w_token_bootstrap_chown_keys_file(opts->gid, true);
         }
 
-        if (report != NULL) {
+        if (report != NULL)
+        {
             report->rolled_back = true;
         }
-    } else {
+    }
+    else
+    {
         merror("Could not restore the previous agent key. The agent now holds a "
                "key the configured manager does not know.");
 
         /* The backup outlives this process on purpose: it is the only remaining copy of a working
          * credential, and the caller prints its path so an operator can put it back by hand --
          * as long as that path still holds it. */
-        if (ours && report != NULL) {
+        if (ours && report != NULL)
+        {
             strncpy(report->keys_backup, snapshot->keys_backup, sizeof(report->keys_backup) - 1);
         }
     }
@@ -734,8 +807,10 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
 }
 
 /** Removes the backup once the enrollment has committed and it can no longer be needed. */
-static void token_snapshot_discard(token_snapshot_t *snapshot) {
-    if (snapshot->keys_backup == NULL) {
+static void token_snapshot_discard(token_snapshot_t* snapshot)
+{
+    if (snapshot->keys_backup == NULL)
+    {
         return;
     }
 
@@ -750,26 +825,30 @@ static void token_snapshot_discard(token_snapshot_t *snapshot) {
  *        widening w_enrollment_process_response()'s signature: a second parse of a small
  *        response costs less than the blast radius on enrollment.h and its tests.
  */
-static void token_report_identity(const hc_enroll_result_t *result,
-                                  w_token_enroll_report_t *report) {
-    if (report == NULL) {
+static void token_report_identity(const hc_enroll_result_t* result, w_token_enroll_report_t* report)
+{
+    if (report == NULL)
+    {
         return;
     }
 
-    cJSON *response = cJSON_Parse(result->body);
+    cJSON* response = cJSON_Parse(result->body);
 
-    if (response == NULL) {
+    if (response == NULL)
+    {
         return;
     }
 
-    const char *id = cJSON_GetStringValue(cJSON_GetObjectItem(response, "id"));
-    const char *name = cJSON_GetStringValue(cJSON_GetObjectItem(response, "name"));
+    const char* id = cJSON_GetStringValue(cJSON_GetObjectItem(response, "id"));
+    const char* name = cJSON_GetStringValue(cJSON_GetObjectItem(response, "name"));
 
-    if (id != NULL) {
+    if (id != NULL)
+    {
         strncpy(report->agent_id, id, sizeof(report->agent_id) - 1);
     }
 
-    if (name != NULL) {
+    if (name != NULL)
+    {
         strncpy(report->agent_name, name, sizeof(report->agent_name) - 1);
     }
 
@@ -782,7 +861,8 @@ static void token_report_identity(const hc_enroll_result_t *result,
  * One call per failure rather than a merror() beside a strncpy(), so the line the operator reads
  * and the line in the log cannot drift apart. NULL-safe in @p report: agentd passes none.
  */
-STATIC void token_report_fail(w_token_enroll_report_t *report, const char *fmt, ...) {
+STATIC void token_report_fail(w_token_enroll_report_t* report, const char* fmt, ...)
+{
     /* Sized for the log line, which carries libcurl's whole error text; the report's copy is
      * truncated to its own field. */
     char text[OS_SIZE_1024];
@@ -794,7 +874,8 @@ STATIC void token_report_fail(w_token_enroll_report_t *report, const char *fmt, 
 
     merror("%s", text);
 
-    if (report != NULL) {
+    if (report != NULL)
+    {
         strncpy(report->detail, text, sizeof(report->detail) - 1);
     }
 }
@@ -810,25 +891,32 @@ STATIC void token_report_fail(w_token_enroll_report_t *report, const char *fmt, 
  *
  * An empty element counts as not configured, as it does for the module (ModuleConfig).
  */
-static bool token_client_identity_usable(w_token_enroll_report_t *report) {
-    const char *cert = (agt != NULL) ? agt->ssl.certificate : NULL;
-    const char *key = (agt != NULL) ? agt->ssl.key : NULL;
+static bool token_client_identity_usable(w_token_enroll_report_t* report)
+{
+    const char* cert = (agt != NULL) ? agt->ssl.certificate : NULL;
+    const char* key = (agt != NULL) ? agt->ssl.key : NULL;
 
-    if (cert != NULL && cert[0] == '\0') {
+    if (cert != NULL && cert[0] == '\0')
+    {
         cert = NULL;
     }
-    if (key != NULL && key[0] == '\0') {
+    if (key != NULL && key[0] == '\0')
+    {
         key = NULL;
     }
 
-    if (cert == NULL && key == NULL) {
+    if (cert == NULL && key == NULL)
+    {
         return true;
     }
 
-    if (cert == NULL || key == NULL || IsFile(cert) != 0 || IsFile(key) != 0) {
-        token_report_fail(report, "The <agent><ssl> client certificate and key must be set together "
+    if (cert == NULL || key == NULL || IsFile(cert) != 0 || IsFile(key) != 0)
+    {
+        token_report_fail(report,
+                          "The <agent><ssl> client certificate and key must be set together "
                           "and name existing files (certificate: '%s', key: '%s').",
-                          cert != NULL ? cert : "", key != NULL ? key : "");
+                          cert != NULL ? cert : "",
+                          key != NULL ? key : "");
         return false;
     }
 
@@ -844,17 +932,22 @@ static bool token_client_identity_usable(w_token_enroll_report_t *report) {
  * 'full' rejects any handshake without a client certificate, /cacerts and /enroll included,
  * exactly like it does for the regular transport (bridge_build_transport_config()).
  */
-static void token_apply_client_identity(hc_config_t *config) {
-    if (agt == NULL) {
+static void token_apply_client_identity(hc_config_t* config)
+{
+    if (agt == NULL)
+    {
         return;
     }
-    if (agt->ssl.certificate) {
+    if (agt->ssl.certificate)
+    {
         strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
     }
-    if (agt->ssl.key) {
+    if (agt->ssl.key)
+    {
         strncpy(config->client_key, agt->ssl.key, sizeof(config->client_key) - 1);
     }
-    if (agt->ssl.ciphers) {
+    if (agt->ssl.ciphers)
+    {
         strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
     }
 }
@@ -873,36 +966,47 @@ static void token_apply_client_identity(hc_config_t *config) {
  * @param reason Receives the alert as OpenSSL names it, e.g. "tlsv13 alert certificate required".
  * @param size Size of @p reason.
  */
-STATIC bool token_tls_rejection(const char *transport_error, char *reason, size_t size) {
-    static const char *const alerts[] = {
-        "alert certificate required", "alert unknown ca", "alert bad certificate",
-        "alert certificate expired", "alert certificate revoked", "alert certificate unknown",
-        "alert unsupported certificate", "alert access denied",
+STATIC bool token_tls_rejection(const char* transport_error, char* reason, size_t size)
+{
+    static const char* const alerts[] = {
+        "alert certificate required",
+        "alert unknown ca",
+        "alert bad certificate",
+        "alert certificate expired",
+        "alert certificate revoked",
+        "alert certificate unknown",
+        "alert unsupported certificate",
+        "alert access denied",
     };
-    const char *match = NULL;
-    const char *start;
+    const char* match = NULL;
+    const char* start;
     size_t len;
 
-    if (transport_error == NULL || reason == NULL || size == 0) {
+    if (transport_error == NULL || reason == NULL || size == 0)
+    {
         return false;
     }
 
-    for (size_t i = 0; i < sizeof(alerts) / sizeof(alerts[0]) && match == NULL; i++) {
+    for (size_t i = 0; i < sizeof(alerts) / sizeof(alerts[0]) && match == NULL; i++)
+    {
         match = strstr(transport_error, alerts[i]);
     }
 
-    if (match == NULL) {
+    if (match == NULL)
+    {
         return false;
     }
 
     /* Back to the protocol prefix ("tlsv13 ", "sslv3 "), which OpenSSL puts after the last ':'. */
     start = match;
-    while (start > transport_error && start[-1] != ':') {
+    while (start > transport_error && start[-1] != ':')
+    {
         start--;
     }
 
     len = strcspn(start, ",");
-    if (len >= size) {
+    if (len >= size)
+    {
         len = size - 1;
     }
 
@@ -912,8 +1016,8 @@ STATIC bool token_tls_rejection(const char *transport_error, char *reason, size_
     return true;
 }
 
-w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
-                                             w_token_enroll_report_t *report) {
+w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t* opts, w_token_enroll_report_t* report)
+{
     w_etoken_t token;
     w_etoken_error_t decode_err;
     char host[HC_MAX_HOST] = {0};
@@ -921,7 +1025,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     int port = 0;
     bool port_present = false;
     uint32_t scope_id = 0;
-    const char *candidate_pem = NULL;
+    const char* candidate_pem = NULL;
     size_t candidate_len = 0;
     hc_cacerts_result_t fetch_result;
     /* The pin-matched certificate on its own, extracted from the fetched bundle. Sized like the
@@ -938,7 +1042,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     assert(opts != NULL);
     assert(opts->token_text != NULL);
 
-    if (report != NULL) {
+    if (report != NULL)
+    {
         memset(report, 0, sizeof(*report));
         report->had_anchor = (IsFile(AGENT_ANCHOR_CA) == 0);
         report->had_keys = (FileSize(KEYS_FILE) > 0);
@@ -946,20 +1051,22 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     decode_err = w_etoken_decode(opts->token_text, &token);
 
-    if (decode_err != ETOKEN_OK) {
-        merror("Could not decode the enrollment token: %s.",
-               w_etoken_strerror(decode_err));
+    if (decode_err != ETOKEN_OK)
+    {
+        merror("Could not decode the enrollment token: %s.", w_etoken_strerror(decode_err));
         return W_TOKEN_ENROLL_ERR_TOKEN;
     }
 
-    if (w_parse_agent_endpoint(token.adr, host, sizeof(host), &port, &port_present, endpoint,
-                               sizeof(endpoint), &scope_id) != 0) {
+    if (w_parse_agent_endpoint(
+            token.adr, host, sizeof(host), &port, &port_present, endpoint, sizeof(endpoint), &scope_id) != 0)
+    {
         token_report_fail(report, "The enrollment token's address is invalid.");
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_TOKEN;
     }
 
-    if (report != NULL) {
+    if (report != NULL)
+    {
         strncpy(report->host, host, sizeof(report->host) - 1);
         strncpy(report->endpoint, endpoint, sizeof(report->endpoint) - 1);
         report->port = port;
@@ -970,30 +1077,35 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * verified. Said before the CA is fetched and checked, so a pin or certificate failure does
      * not read as 'none' being ignored. Only an explicit 'none' -- an inferred one just means
      * there was no anchor yet. */
-    if (!opts->anchor_only && agt->ssl.verification_mode_explicit
-            && agt->ssl.verification_mode == AGENT_VERIFY_NONE) {
+    if (!opts->anchor_only && agt->ssl.verification_mode_explicit && agt->ssl.verification_mode == AGENT_VERIFY_NONE)
+    {
         /* The bootstrap retries, and the configuration cannot change between attempts. */
         static bool warned = false;
 
-        if (!warned) {
+        if (!warned)
+        {
             mwarn(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
             warned = true;
-        } else {
+        }
+        else
+        {
             mdebug1(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
         }
     }
 
     memset(&fetch_result, 0, sizeof(fetch_result));
 
-    if (token.has_pin) {
+    if (token.has_pin)
+    {
         hc_config_t fetch_config;
         hc_cacerts_request_t fetch_request;
-        char *pin_b64 = NULL;
+        char* pin_b64 = NULL;
         bool fetched;
 
         /* Checked per request rather than once up front: --certs-only with an embedded CA sends
          * nothing, so an identity it never presents must not stop it. */
-        if (!token_client_identity_usable(report)) {
+        if (!token_client_identity_usable(report))
+        {
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_REQUEST;
         }
@@ -1010,7 +1122,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
         fetched = hc_fetch_cacerts(&fetch_config, &fetch_request, &fetch_result);
 
-        if (!fetched || fetch_result.http_code != 200) {
+        if (!fetched || fetch_result.http_code != 200)
+        {
             /* The four-way /cacerts taxonomy: each cause gets its own greppable name, so a
              * misprovisioned manager (ca_mismatch) is never read as the one abort that actually
              * is hostile (a pin mismatch, logged separately below once a body is in hand to
@@ -1023,31 +1136,45 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             bool fetch_transient;
             char tls_alert[96];
 
-            if (fetch_result.http_code == 0
-                    && token_tls_rejection(fetch_result.transport_error, tls_alert, sizeof(tls_alert))) {
+            if (fetch_result.http_code == 0 &&
+                token_tls_rejection(fetch_result.transport_error, tls_alert, sizeof(tls_alert)))
+            {
                 fetch_transient = false;
-                token_report_fail(report, "/cacerts tls_rejected -- the manager refused the TLS handshake "
-                       "(%s): check the <agent><ssl> certificate and key against its "
-                       "remote.https verification_mode.", tls_alert);
-            } else if (fetch_result.http_code == 0) {
+                token_report_fail(report,
+                                  "/cacerts tls_rejected -- the manager refused the TLS handshake "
+                                  "(%s): check the <agent><ssl> certificate and key against its "
+                                  "remote.https verification_mode.",
+                                  tls_alert);
+            }
+            else if (fetch_result.http_code == 0)
+            {
                 fetch_transient = true;
-                token_report_fail(report, "/cacerts adr_unreachable -- could not reach the "
-                       "manager to fetch the certificate authority%s%s.",
-                       fetch_result.transport_error[0] != '\0' ? ": " : "",
-                       fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
-            } else if (fetch_result.http_code == 404) {
+                token_report_fail(report,
+                                  "/cacerts adr_unreachable -- could not reach the "
+                                  "manager to fetch the certificate authority%s%s.",
+                                  fetch_result.transport_error[0] != '\0' ? ": " : "",
+                                  fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
+            }
+            else if (fetch_result.http_code == 404)
+            {
                 fetch_transient = false;
-                token_report_fail(report, "/cacerts not_found -- the manager has no certificate "
-                       "authority configured (it may predate this feature).");
-            } else if (fetch_result.http_code == 429) {
+                token_report_fail(report,
+                                  "/cacerts not_found -- the manager has no certificate "
+                                  "authority configured (it may predate this feature).");
+            }
+            else if (fetch_result.http_code == 429)
+            {
                 /* Not a verdict on this agent: the route's rate limit is the whole node's, so a
                  * mass bootstrap -- or anyone else asking fast enough -- can exhaust it. Reading
                  * it as permanent would make agentd exit at startup over a condition that clears
                  * within seconds. */
                 fetch_transient = true;
-                token_report_fail(report, "/cacerts rate_limited -- the manager is serving the "
-                       "certificate authority at its configured rate; retrying later.");
-            } else if (fetch_result.http_code == 403) {
+                token_report_fail(report,
+                                  "/cacerts rate_limited -- the manager is serving the "
+                                  "certificate authority at its configured rate; retrying later.");
+            }
+            else if (fetch_result.http_code == 403)
+            {
                 /* /cacerts itself never answers 403; the HTTPS server does, under
                  * verification_mode=full, to a connection whose client certificate does not list
                  * the peer address (a proxy in between can too). Named here because the body that
@@ -1056,24 +1183,33 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                 fetch_transient = false;
                 /* Kept under report->detail's size: that copy, not the log line, is what
                  * wazuh-agent-auth prints. */
-                token_report_fail(report, "/cacerts forbidden -- the manager refused this "
-                       "connection (HTTP 403). Under remote.https verification_mode 'full', the "
-                       "<agent><ssl> client certificate must list the address the manager sees this "
-                       "agent connect from (behind a proxy, the proxy's).");
-            } else if (fetch_result.http_code == 503) {
+                token_report_fail(report,
+                                  "/cacerts forbidden -- the manager refused this "
+                                  "connection (HTTP 403). Under remote.https verification_mode 'full', the "
+                                  "<agent><ssl> client certificate must list the address the manager sees this "
+                                  "agent connect from (behind a proxy, the proxy's).");
+            }
+            else if (fetch_result.http_code == 503)
+            {
                 fetch_transient = true;
-                token_report_fail(report, "/cacerts ca_mismatch -- the manager's configured "
-                       "certificate authority does not sign its own listener certificate "
-                       "(misprovisioned, not necessarily hostile).");
-            } else {
+                token_report_fail(report,
+                                  "/cacerts ca_mismatch -- the manager's configured "
+                                  "certificate authority does not sign its own listener certificate "
+                                  "(misprovisioned, not necessarily hostile).");
+            }
+            else
+            {
                 fetch_transient = (fetch_result.http_code >= 500);
-                token_report_fail(report, "Fetching /cacerts from the manager failed: manager "
-                       "returned HTTP %ld instead of 200%s%s.", fetch_result.http_code,
-                       fetch_result.transport_error[0] != '\0' ? ": " : "",
-                       fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
+                token_report_fail(report,
+                                  "Fetching /cacerts from the manager failed: manager "
+                                  "returned HTTP %ld instead of 200%s%s.",
+                                  fetch_result.http_code,
+                                  fetch_result.transport_error[0] != '\0' ? ": " : "",
+                                  fetch_result.transport_error[0] != '\0' ? fetch_result.transport_error : "");
             }
 
-            if (report != NULL) {
+            if (report != NULL)
+            {
                 report->transient = fetch_transient;
             }
 
@@ -1085,15 +1221,19 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * off by this buffer hashes to nothing the token names, and would be reported as a
          * mismatch -- the message that says an attacker may be answering. A body this end
          * could not hold is our limit, not the manager's identity. */
-        if (fetch_result.body_truncated) {
-            token_report_fail(report, "The manager's /cacerts response is larger than the %d bytes "
-                   "this agent can read, so it cannot be checked against the enrollment token's "
-                   "pin.", HC_MAX_CACERTS_BODY);
+        if (fetch_result.body_truncated)
+        {
+            token_report_fail(report,
+                              "The manager's /cacerts response is larger than the %d bytes "
+                              "this agent can read, so it cannot be checked against the enrollment token's "
+                              "pin.",
+                              HC_MAX_CACERTS_BODY);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_ANCHOR;
         }
 
-        if ((pin_b64 = w_b64url_encode(token.pin, W_ETOKEN_PIN_BYTES)) == NULL) {
+        if ((pin_b64 = w_b64url_encode(token.pin, W_ETOKEN_PIN_BYTES)) == NULL)
+        {
             merror("Could not encode the enrollment token's pin.");
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_ANCHOR;
@@ -1107,10 +1247,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * satisfies the pin on its genuine half, and installing the whole thing would make the
          * attacker's half a trust anchor too, which the verified reconnect would then happily
          * accept a chain against. */
-        if (!hc_spki_pinned_certificate(fetch_result.body, candidate_len, pin_b64, pinned_pem,
-                                        sizeof(pinned_pem))) {
-            token_report_fail(report, "pin_mismatch -- fetched CA does not match the "
-                   "enrollment token's pin, refusing to trust it.");
+        if (!hc_spki_pinned_certificate(fetch_result.body, candidate_len, pin_b64, pinned_pem, sizeof(pinned_pem)))
+        {
+            token_report_fail(report,
+                              "pin_mismatch -- fetched CA does not match the "
+                              "enrollment token's pin, refusing to trust it.");
             os_free(pin_b64);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_ANCHOR;
@@ -1119,21 +1260,25 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         os_free(pin_b64);
         candidate_pem = pinned_pem;
         candidate_len = strlen(pinned_pem);
-    } else {
+    }
+    else
+    {
         candidate_pem = token.ca_pem;
         candidate_len = strlen(token.ca_pem);
     }
 
     anchor_changed = !token_anchor_matches(candidate_pem, candidate_len);
 
-    if (report != NULL) {
+    if (report != NULL)
+    {
         report->anchor_changed = anchor_changed;
     }
 
     /* Nothing to install and nothing to enroll: the anchor already holds exactly this
      * certificate. Returning here is what makes the command idempotent in a configuration
      * management loop rather than rewriting the same bytes on every run. */
-    if (opts->anchor_only && !anchor_changed) {
+    if (opts->anchor_only && !anchor_changed)
+    {
         w_etoken_free(&token);
         token_discard_delivered_ca();
         return W_TOKEN_ENROLL_OK;
@@ -1146,9 +1291,9 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * the account the agent runs as, and a predictable name there is a symlink waiting to be
      * planted. The anchor is committed by the rename below, and only once the enrollment has
      * succeeded, so a failed run leaves the installed anchor untouched. */
-    if (TempFile(&anchor_file, AGENT_ANCHOR_CA, 0) < 0) {
-        merror("Could not create a temporary file for the trust anchor: %s (%d).",
-               strerror(errno), errno);
+    if (TempFile(&anchor_file, AGENT_ANCHOR_CA, 0) < 0)
+    {
+        merror("Could not create a temporary file for the trust anchor: %s (%d).", strerror(errno), errno);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
@@ -1162,9 +1307,9 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * the inherited ACL of the directory w_token_bootstrap_ensure_parent_dir() created (see
      * its own comment), not a mode. */
 #ifndef WIN32
-    if (fchmod(fileno(anchor_file.fp), 0640) == -1) {
-        merror("Could not set permissions on '%s': %s (%d).", anchor_file.name,
-               strerror(errno), errno);
+    if (fchmod(fileno(anchor_file.fp), 0640) == -1)
+    {
+        merror("Could not set permissions on '%s': %s (%d).", anchor_file.name, strerror(errno), errno);
         token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
@@ -1173,8 +1318,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     /* Flushed now, because the enrollment below reads the anchor by name. The stream stays open:
      * the owner is set through its descriptor, and only once the enrollment has gone through. */
-    if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len ||
-            fflush(anchor_file.fp) != 0) {
+    if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len || fflush(anchor_file.fp) != 0)
+    {
         merror("Could not write the trust anchor to '%s'.", anchor_file.name);
         token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
@@ -1186,24 +1331,24 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * refresh what the agent verifies against while leaving its registration alone. Ownership is
      * fixed before the rename for the same reason it is on the enrolling path -- a crash between
      * them would leave the anchor on disk with the wrong group. */
-    if (opts->anchor_only) {
+    if (opts->anchor_only)
+    {
 #ifndef WIN32
         /* uid, not root: under the sticky etc/certs only the file's owner may rename over it,
          * so an anchor this path installs root-owned is one the runtime refresh (#39321) could
          * never replace. fchown() reads -1 as "leave this one alone", which is exactly what the
          * opts contract already means by it. */
-        if ((opts->uid != -1 || opts->gid != -1) &&
-                fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0) {
-            merror("Could not change ownership of '%s': %s (%d).",
-                   anchor_file.name, strerror(errno), errno);
+        if ((opts->uid != -1 || opts->gid != -1) && fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0)
+        {
+            merror("Could not change ownership of '%s': %s (%d).", anchor_file.name, strerror(errno), errno);
         }
 #endif
 
         token_anchor_close(&anchor_file);
 
-        if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
-            merror("Could not install the trust anchor at '%s'.",
-                   AGENT_ANCHOR_CA);
+        if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0)
+        {
+            merror("Could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
             token_anchor_discard(&anchor_file);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_ANCHOR;
@@ -1222,13 +1367,15 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         return W_TOKEN_ENROLL_OK;
     }
 
-    if (!token_client_identity_usable(report)) {
+    if (!token_client_identity_usable(report))
+    {
         token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_REQUEST;
     }
 
-    if (w_enrollment_build_request(&built_request) != 0) {
+    if (w_enrollment_build_request(&built_request) != 0)
+    {
         /* w_enrollment_build_request() already logged the specific reason. */
         token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
@@ -1264,9 +1411,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * Silently reusing a configured password here would misrepresent to the manager (and any
      * audit trail) what actually authenticated the request. */
 
-    if (token.has_key) {
+    if (token.has_key)
+    {
         uint8_t derived_key[W_ETOKEN_KEY_BYTES];
-        char *kid = NULL;
+        char* kid = NULL;
         bool credential_ready = false;
 
         /* A credential the token carries but the agent cannot prepare aborts the bootstrap. It
@@ -1274,21 +1422,29 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * anonymously instead -- and against a manager that does not require a password that
          * succeeds, so the agent would be enrolled without the credential the operator issued
          * it, with only a log line to say so. */
-        if (w_etoken_derive_key(token.secret, derived_key) != 0) {
+        if (w_etoken_derive_key(token.secret, derived_key) != 0)
+        {
             merror("Could not derive the enrollment token's signing key.");
-        } else if ((kid = w_b64url_encode(token.id, W_ETOKEN_ID_BYTES)) == NULL) {
+        }
+        else if ((kid = w_b64url_encode(token.id, W_ETOKEN_ID_BYTES)) == NULL)
+        {
             merror("Could not encode the enrollment token's identifier.");
-        } else {
+        }
+        else
+        {
             strncpy(enroll_request.enroll_kid, kid, sizeof(enroll_request.enroll_kid) - 1);
             os_free(kid);
-            print_hex_string((const char *) derived_key, (unsigned int) sizeof(derived_key),
-                             enroll_request.enroll_key_hex, (unsigned int) sizeof(enroll_request.enroll_key_hex));
+            print_hex_string((const char*)derived_key,
+                             (unsigned int)sizeof(derived_key),
+                             enroll_request.enroll_key_hex,
+                             (unsigned int)sizeof(enroll_request.enroll_key_hex));
             credential_ready = true;
         }
 
         memset(derived_key, 0, sizeof(derived_key));
 
-        if (!credential_ready) {
+        if (!credential_ready)
+        {
             w_enroll_request_destroy(&built_request);
             token_anchor_discard(&anchor_file);
             w_etoken_free(&token);
@@ -1302,59 +1458,71 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * replaces client.keys outright, and the anchor rename follows it. Every failure up to here
      * has left both untouched, so there was nothing worth copying until now. Refuses rather than
      * enrolling blind -- without a backup a failed commit strands the agent with no way back. */
-    if (token_snapshot(opts, &snapshot) != 0) {
+    if (token_snapshot(opts, &snapshot) != 0)
+    {
         /* Local, and nothing to do with the manager: the CA was fetched and pin-checked long
          * before this. The class stays ERR_ANCHOR because the anchor is what was not installed
          * and the exit codes are a published contract, but without naming the cause the operator
          * is sent to investigate a manager that is behaving perfectly. */
-        token_report_fail(report, "Could not copy the current agent key aside before enrolling, "
-                          "so the enrollment was not attempted: %s (%d).", strerror(errno), errno);
+        token_report_fail(report,
+                          "Could not copy the current agent key aside before enrolling, "
+                          "so the enrollment was not attempted: %s (%d).",
+                          strerror(errno),
+                          errno);
         w_enroll_request_destroy(&built_request);
         token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
 
-    if (!hc_enroll(&enroll_config, &enroll_request, &enroll_result) || enroll_result.http_code == 0) {
+    if (!hc_enroll(&enroll_config, &enroll_request, &enroll_result) || enroll_result.http_code == 0)
+    {
         char tls_alert[96];
-        const bool tls_rejected = (enroll_result.http_code == 0
-                && token_tls_rejection(enroll_result.transport_error, tls_alert, sizeof(tls_alert)));
+        const bool tls_rejected = (enroll_result.http_code == 0 &&
+                                   token_tls_rejection(enroll_result.transport_error, tls_alert, sizeof(tls_alert)));
 
         /* Reported, not only logged: wazuh-agent-auth silences the log's stderr echo, so the
          * operator would otherwise see the class and no cause. */
-        if (tls_rejected) {
-            token_report_fail(report, "/enroll tls_rejected -- the manager refused the TLS handshake "
+        if (tls_rejected)
+        {
+            token_report_fail(report,
+                              "/enroll tls_rejected -- the manager refused the TLS handshake "
                               "(%s): check the <agent><ssl> certificate and key against its "
-                              "remote.https verification_mode.", tls_alert);
-        } else {
-            token_report_fail(report, "The verified enrollment request could not be sent%s%s.",
+                              "remote.https verification_mode.",
+                              tls_alert);
+        }
+        else
+        {
+            token_report_fail(report,
+                              "The verified enrollment request could not be sent%s%s.",
                               enroll_result.transport_error[0] != '\0' ? ": " : "",
                               enroll_result.transport_error[0] != '\0' ? enroll_result.transport_error : "");
         }
 
-        if (report != NULL) {
+        if (report != NULL)
+        {
             /* Nothing answered, or the manager answered with its own trouble. Either may clear.
              * A refused client certificate does not. */
-            report->transient = !tls_rejected
-                                && (enroll_result.http_code == 0 || enroll_result.http_code >= 500);
+            report->transient = !tls_rejected && (enroll_result.http_code == 0 || enroll_result.http_code >= 500);
         }
 
         w_enroll_request_destroy(&built_request);
         token_anchor_discard(&anchor_file);
         token_snapshot_discard(&snapshot);
         w_etoken_free(&token);
-        return (enroll_result.http_code == 200) ? W_TOKEN_ENROLL_ERR_STORE
-                                                : W_TOKEN_ENROLL_ERR_ENROLL;
+        return (enroll_result.http_code == 200) ? W_TOKEN_ENROLL_ERR_STORE : W_TOKEN_ENROLL_ERR_ENROLL;
     }
 
-    if (report != NULL) {
+    if (report != NULL)
+    {
         report->http_code = enroll_result.http_code;
 
-        if (enroll_result.http_code != 200) {
+        if (enroll_result.http_code != 200)
+        {
             /* The same reading w_enrollment_process_response() logs from, so the reason
              * wazuh-agent-auth prints is the one in ossec.log, whichever envelope carried it. */
             w_enroll_error_t error;
-            const char *refusal;
+            const char* refusal;
 
             w_enrollment_parse_error(&enroll_result, &error);
 
@@ -1370,10 +1538,13 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             /* The manager's own message cannot name the token, and for an expired or revoked one
              * it does not even say which of the two. The class or code stays in the log, for the
              * operator; the person reading this line only needs what happened and what to do. */
-            if (refusal != NULL) {
-                snprintf(report->token_refusal, sizeof(report->token_refusal),
+            if (refusal != NULL)
+            {
+                snprintf(report->token_refusal,
+                         sizeof(report->token_refusal),
                          "enrollment token %s %s. Create a new enrollment token on the manager.",
-                         w_enrollment_token_id_or_unknown(enroll_request.enroll_kid), refusal);
+                         w_enrollment_token_id_or_unknown(enroll_request.enroll_kid),
+                         refusal);
             }
 
             /* Nothing readable in the body -- a load balancer's or proxy's own error page, or an
@@ -1382,28 +1553,32 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
              * fact left that tells "the manager said no" from "something in front of it failed".
              * A refused token is not that case even without a message: its class or code came
              * from the manager, and the refusal line already says what to do. */
-            if (error.message[0] == '\0' && report->detail[0] == '\0' && enroll_result.http_code == 404) {
+            if (error.message[0] == '\0' && report->detail[0] == '\0' && enroll_result.http_code == 404)
+            {
                 /* Except a 404, which points at the path, not at what sits in front of the manager:
                  * the manager always serves /enroll, and its router answers a route it does not
                  * serve with a bare {"error":"not_found"}, which carries no reason. With an
                  * embedded-CA token /cacerts is skipped, so a wrong prefix is first met here. The
                  * path is capped so the text always fits the field. */
-                snprintf(report->detail, sizeof(report->detail),
+                snprintf(report->detail,
+                         sizeof(report->detail),
                          "/enroll answered HTTP 404: nothing serves /enroll under the path '/%.*s'. That path must "
                          "match the prefix the manager serves.",
-                         100, report->endpoint);
-            } else if (refusal == NULL && error.message[0] == '\0' && report->detail[0] == '\0') {
-                snprintf(report->detail, sizeof(report->detail),
+                         100,
+                         report->endpoint);
+            }
+            else if (refusal == NULL && error.message[0] == '\0' && report->detail[0] == '\0')
+            {
+                snprintf(report->detail,
+                         sizeof(report->detail),
                          "/enroll answered HTTP %ld with no message the agent could read; it may not "
                          "have come from the manager itself (for example, a load balancer or proxy).",
                          enroll_result.http_code);
             }
 
-            report->clock_skew = (enroll_result.http_code == 401 &&
-                                  strcmp(error.auth_class, "stale_token") == 0);
+            report->clock_skew = (enroll_result.http_code == 401 && strcmp(error.auth_class, "stale_token") == 0);
             report->pending = report->clock_skew ||
-                              (enroll_result.http_code == 401 &&
-                               strcmp(error.auth_class, "token_unknown") == 0);
+                              (enroll_result.http_code == 401 && strcmp(error.auth_class, "token_unknown") == 0);
         }
     }
 
@@ -1412,19 +1587,19 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * w_enrollment_build_request() leaves NULL whenever there is no secret on disk. Passing it
      * named "unknown" in the one refusal an operator most needs to act on: the one telling them
      * which enrollment token to re-mint. */
-    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result,
-                                                                   enroll_request.enroll_kid);
+    w_enroll_status_t enroll_status = w_enrollment_process_response(&enroll_result, enroll_request.enroll_kid);
 
-    if (enroll_status != W_ENROLL_OK) {
+    if (enroll_status != W_ENROLL_OK)
+    {
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
          * are the manager's or the network's problem and may clear on their own. Every other
          * answer is one that repeating this exact request cannot change -- a malformed request, a
          * bad credential, enrollment disabled, a duplicate agent, or a 403 refusing the connection
          * itself (a client certificate that does not list the peer address stays that way until it
          * is reissued) -- except for report->pending and report->token_rejected, set above. */
-        if (report != NULL) {
-            report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
-                                 enroll_status == W_ENROLL_ERR_SERVER);
+        if (report != NULL)
+        {
+            report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT || enroll_status == W_ENROLL_ERR_SERVER);
         }
 
         w_enroll_request_destroy(&built_request);
@@ -1435,15 +1610,17 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * Discarding the backup there deletes the last copy of a working key and then reports
          * that none was ever taken. Anything else is the manager refusing, which writes nothing
          * locally, so the backup is genuinely surplus. */
-        if (enroll_result.http_code == 200) {
+        if (enroll_result.http_code == 200)
+        {
             token_rollback(opts, &snapshot, report);
-        } else {
+        }
+        else
+        {
             token_snapshot_discard(&snapshot);
         }
 
         w_etoken_free(&token);
-        return (enroll_result.http_code == 200) ? W_TOKEN_ENROLL_ERR_STORE
-                                                : W_TOKEN_ENROLL_ERR_ENROLL;
+        return (enroll_result.http_code == 200) ? W_TOKEN_ENROLL_ERR_STORE : W_TOKEN_ENROLL_ERR_ENROLL;
     }
 
     w_enroll_request_destroy(&built_request);
@@ -1464,15 +1641,16 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * Skipped on Windows for the same reason as the mode above: one service account throughout,
      * nothing to hand the file over to. */
 #ifndef WIN32
-    if (fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0) {
-        merror("Could not change ownership of '%s': %s (%d).", anchor_file.name,
-               strerror(errno), errno);
+    if (fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0)
+    {
+        merror("Could not change ownership of '%s': %s (%d).", anchor_file.name, strerror(errno), errno);
     }
 #endif
 
     token_anchor_close(&anchor_file);
 
-    if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
+    if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0)
+    {
         merror("Could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
         token_rollback(opts, &snapshot, report);
         /* The rename is what failed, so the staged anchor is still on disk holding the new CA.
@@ -1519,10 +1697,9 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * established alone rather than guessing at it. */
 #ifndef WIN32
     if (opts->uid != -1 && FileSize(AGENT_REENROLL_SECRET) > 0 &&
-            w_token_bootstrap_open_and_chown(AGENT_REENROLL_SECRET, (uid_t) opts->uid,
-                                             (gid_t) opts->gid) != 0) {
-        merror("Could not change ownership of '%s': %s (%d).", AGENT_REENROLL_SECRET,
-               strerror(errno), errno);
+        w_token_bootstrap_open_and_chown(AGENT_REENROLL_SECRET, (uid_t)opts->uid, (gid_t)opts->gid) != 0)
+    {
+        merror("Could not change ownership of '%s': %s (%d).", AGENT_REENROLL_SECRET, strerror(errno), errno);
     }
 #endif
 
@@ -1532,17 +1709,17 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     /* The "Token bootstrap: " prefix is not decoration. The end-to-end check in
      * tools/devContainer/e2e/agents/verify_agents.sh greps ossec.log for this exact
      * phrase to decide whether an agent enrolled over POST /enroll. */
-    minfo(anchor_changed
-              ? "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor."
-              : "Token bootstrap: enrollment succeeded; the agent's trust anchor is unchanged.");
+    minfo(anchor_changed ? "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor."
+                         : "Token bootstrap: enrollment succeeded; the agent's trust anchor is unchanged.");
 
     return W_TOKEN_ENROLL_OK;
 }
 
-w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
+w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid)
+{
     w_token_enroll_opts_t opts = {0};
     w_token_enroll_report_t report = {0};
-    char *token_text = NULL;
+    char* token_text = NULL;
 
 #ifdef WIN32
     /* On Windows nothing is chowned at all, so the gid is unused too -- local_start() passes
@@ -1555,7 +1732,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
      * on the success path, so a reinstall over an enrolled agent left it sitting at rest
      * indefinitely with nothing left that would consume it. Removing it is not conditional on
      * having used it; it is conditional on it no longer being usable. */
-    if (IsFile(AGENT_ANCHOR_CA) == 0) {
+    if (IsFile(AGENT_ANCHOR_CA) == 0)
+    {
         /* Latch: an anchor already on disk means a previous boot already completed the
          * bootstrap. Never re-fetch once one is committed.
          *
@@ -1565,7 +1743,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * rename and that chown leaves the anchor committed with client.keys still root:root.
          * Every later boot trips this latch and returns before ever reaching the branch below,
          * so this is the only place left that can retry the fix. */
-        if (FileSize(KEYS_FILE) > 0) {
+        if (FileSize(KEYS_FILE) > 0)
+        {
             w_token_bootstrap_chown_keys_file(gid, true);
         }
 
@@ -1581,7 +1760,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         return W_TOKEN_BOOTSTRAP_DONE;
     }
 
-    if (FileSize(KEYS_FILE) > 0) {
+    if (FileSize(KEYS_FILE) > 0)
+    {
         /* Reached when client.keys already has content but no anchor was ever installed -- most
          * often because the agent was enrolled by some means other than this token bootstrap
          * (classic authd, manual registration), but also reachable from a crash inside this very
@@ -1592,7 +1772,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * cheap and idempotent. */
         w_token_bootstrap_chown_keys_file(gid, true);
 
-        if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+        if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0)
+        {
             return W_TOKEN_BOOTSTRAP_DONE;
         }
 
@@ -1601,18 +1782,21 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         minfo("Token bootstrap: this agent is already enrolled; installing the manager's CA "
               "without re-enrolling.");
         opts.anchor_only = true;
-    } else if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+    }
+    else if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0)
+    {
         /* Legacy install, no token provided: not an error. */
         return W_TOKEN_BOOTSTRAP_DONE;
     }
 
-    if ((token_text = w_agent_token_read_file(AGENT_ENROLLMENT_TOKEN_FILE)) == NULL) {
-        merror("Could not read the enrollment token file '%s'.",
-               AGENT_ENROLLMENT_TOKEN_FILE);
+    if ((token_text = w_agent_token_read_file(AGENT_ENROLLMENT_TOKEN_FILE)) == NULL)
+    {
+        merror("Could not read the enrollment token file '%s'.", AGENT_ENROLLMENT_TOKEN_FILE);
 
         /* Rereading it cannot change the answer, and an enrolled agent has nothing to protect
          * here: it starts as it did before the token arrived. */
-        if (opts.anchor_only) {
+        if (opts.anchor_only)
+        {
             unlink(AGENT_ENROLLMENT_TOKEN_FILE);
             return W_TOKEN_BOOTSTRAP_DONE;
         }
@@ -1627,17 +1811,20 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
      * key, which it never touches. */
     opts.transactional = false;
 
-    if (w_agent_token_enroll(&opts, &report) != W_TOKEN_ENROLL_OK) {
+    if (w_agent_token_enroll(&opts, &report) != W_TOKEN_ENROLL_OK)
+    {
         os_free(token_text);
 
         /* An enrolled agent has no enrollment here to protect: it keeps its registration and runs
          * as it did before the token arrived. Only a transient failure keeps the token, so the
          * next start tries again. */
-        if (opts.anchor_only) {
+        if (opts.anchor_only)
+        {
             merror("Token bootstrap: the manager's CA could not be installed; the agent keeps its "
                    "registration and runs without a trust anchor.");
 
-            if (!report.transient) {
+            if (!report.transient)
+            {
                 unlink(AGENT_ENROLLMENT_TOKEN_FILE);
             }
 
@@ -1651,11 +1838,13 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * trips next boot), so
          * keeping it would hand the same dead credential to the same refusal on every restart.
          * Disposal is the caller's business, which is why the core only reports the verdict. */
-        if (report.token_rejected) {
+        if (report.token_rejected)
+        {
             unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         }
 
-        if (report.pending) {
+        if (report.pending)
+        {
             return W_TOKEN_BOOTSTRAP_PENDING;
         }
 
@@ -1670,23 +1859,28 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     return W_TOKEN_BOOTSTRAP_DONE;
 }
 
-w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result,
-                                                           time_t *pending_since, time_t now) {
-    if (result != W_TOKEN_BOOTSTRAP_PENDING) {
+w_token_bootstrap_result_t
+w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result, time_t* pending_since, time_t now)
+{
+    if (result != W_TOKEN_BOOTSTRAP_PENDING)
+    {
         return result;
     }
 
-    if (*pending_since == 0) {
+    if (*pending_since == 0)
+    {
         *pending_since = now;
     }
 
-    if (now - *pending_since < W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S) {
+    if (now - *pending_since < W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S)
+    {
         return W_TOKEN_BOOTSTRAP_TRANSIENT;
     }
 
     merror("The manager still does not accept the enrollment token after %ld seconds. It may not "
            "have reached this node, or it was deleted: mint a new token, or restart the agent to "
-           "try again.", (long)(now - *pending_since));
+           "try again.",
+           (long)(now - *pending_since));
 
     return W_TOKEN_BOOTSTRAP_PERMANENT;
 }

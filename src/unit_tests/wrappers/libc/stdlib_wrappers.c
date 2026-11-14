@@ -16,42 +16,49 @@
 #include <limits.h>
 #include "../common.h"
 
-
 extern int __real_atexit(void (*callback)(void));
-int __wrap_atexit(void (*callback)(void)) {
-    if(test_mode)
+int __wrap_atexit(void (*callback)(void))
+{
+    if (test_mode)
         return 0;
     else
         return __real_atexit(callback);
 }
 
-char *__wrap_realpath(const char *path, char *resolved_path) {
+char* __wrap_realpath(const char* path, char* resolved_path)
+{
     check_expected(path);
-    if (resolved_path != NULL) {
-        char *aux = mock_type(char *);
-        if (aux == NULL) {
+    if (resolved_path != NULL)
+    {
+        char* aux = mock_type(char*);
+        if (aux == NULL)
+        {
             return NULL;
         }
         snprintf(resolved_path, PATH_MAX, "%s", aux);
         return resolved_path;
     }
 
-    return mock_type(char *);
+    return mock_type(char*);
 }
 
 // Wrapper for fortified version used with -O2
-char *__wrap___realpath_chk(const char *path, char *resolved_path, size_t resolved_len __attribute__((unused))) {
+char* __wrap___realpath_chk(const char* path, char* resolved_path, size_t resolved_len __attribute__((unused)))
+{
     return __wrap_realpath(path, resolved_path);
 }
 
-int __wrap_system(__attribute__((unused))const char *__command) {
+int __wrap_system(__attribute__((unused)) const char* __command)
+{
     return mock();
 }
 
-void expect_system(int ret) {
+void expect_system(int ret)
+{
     will_return(__wrap_system, ret);
 }
 
-int __wrap_mkstemp(__attribute__((unused)) char *template) {
+int __wrap_mkstemp(__attribute__((unused)) char* template)
+{
     return mock();
 }

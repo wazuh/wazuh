@@ -23,88 +23,88 @@
  */
 class FakeVdOffsetStore final : public IVdOffsetStore
 {
-    public:
-        VdOffsetObservation observe(uint64_t offset) override
+public:
+    VdOffsetObservation observe(uint64_t offset) override
+    {
+        m_observeCalls.push_back(offset);
+
+        VdOffsetObservation result;
+
+        if (m_hasOffset && offset <= m_offset)
         {
-            m_observeCalls.push_back(offset);
-
-            VdOffsetObservation result;
-
-            if (m_hasOffset && offset <= m_offset)
-            {
-                result.pending = m_pending;
-                result.pendingOffset = m_pendingOffset;
-                return result;
-            }
-
-            m_hasOffset = true;
-            m_offset = offset;
-            result.changed = true;
-
-            if (m_vdFirstDone)
-            {
-                m_pending = true;
-                m_pendingOffset = offset;
-            }
-
             result.pending = m_pending;
             result.pendingOffset = m_pendingOffset;
             return result;
         }
 
-        bool clearPending(uint64_t offset) override
+        m_hasOffset = true;
+        m_offset = offset;
+        result.changed = true;
+
+        if (m_vdFirstDone)
         {
-            m_clearPendingCalls.push_back(offset);
-
-            if (!m_pending || m_pendingOffset != offset)
-            {
-                return false;
-            }
-
-            m_pending = false;
-            return true;
+            m_pending = true;
+            m_pendingOffset = offset;
         }
 
-        /// Defaults to true so a test that doesn't care about Q5's gate sees a
-        /// re-scan requested as soon as the offset advances.
-        void setVDFirstDone(bool done)
+        result.pending = m_pending;
+        result.pendingOffset = m_pendingOffset;
+        return result;
+    }
+
+    bool clearPending(uint64_t offset) override
+    {
+        m_clearPendingCalls.push_back(offset);
+
+        if (!m_pending || m_pendingOffset != offset)
         {
-            m_vdFirstDone = done;
+            return false;
         }
 
-        bool pending() const
-        {
-            return m_pending;
-        }
+        m_pending = false;
+        return true;
+    }
 
-        uint64_t pendingOffset() const
-        {
-            return m_pendingOffset;
-        }
+    /// Defaults to true so a test that doesn't care about Q5's gate sees a
+    /// re-scan requested as soon as the offset advances.
+    void setVDFirstDone(bool done)
+    {
+        m_vdFirstDone = done;
+    }
 
-        uint64_t offset() const
-        {
-            return m_offset;
-        }
+    bool pending() const
+    {
+        return m_pending;
+    }
 
-        const std::vector<uint64_t>& observeCalls() const
-        {
-            return m_observeCalls;
-        }
+    uint64_t pendingOffset() const
+    {
+        return m_pendingOffset;
+    }
 
-        const std::vector<uint64_t>& clearPendingCalls() const
-        {
-            return m_clearPendingCalls;
-        }
+    uint64_t offset() const
+    {
+        return m_offset;
+    }
 
-    private:
-        bool m_hasOffset {false};
-        uint64_t m_offset {0};
-        bool m_vdFirstDone {true};
-        bool m_pending {false};
-        uint64_t m_pendingOffset {0};
-        std::vector<uint64_t> m_observeCalls;
-        std::vector<uint64_t> m_clearPendingCalls;
+    const std::vector<uint64_t>& observeCalls() const
+    {
+        return m_observeCalls;
+    }
+
+    const std::vector<uint64_t>& clearPendingCalls() const
+    {
+        return m_clearPendingCalls;
+    }
+
+private:
+    bool m_hasOffset {false};
+    uint64_t m_offset {0};
+    bool m_vdFirstDone {true};
+    bool m_pending {false};
+    uint64_t m_pendingOffset {0};
+    std::vector<uint64_t> m_observeCalls;
+    std::vector<uint64_t> m_clearPendingCalls;
 };
 
 #endif // _HC_FAKE_VD_OFFSET_STORE_HPP

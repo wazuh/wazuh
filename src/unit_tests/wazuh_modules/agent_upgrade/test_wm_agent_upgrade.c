@@ -25,21 +25,25 @@
 
 void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
 void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
-cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
+cJSON* wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 // Setup / teardown
 
-static int setup_group(void **state) {
-    wm_agent_upgrade *config = NULL;
+static int setup_group(void** state)
+{
+    wm_agent_upgrade* config = NULL;
     os_calloc(1, sizeof(wm_agent_upgrade), config);
     *state = config;
     return 0;
 }
 
-static int teardown_group(void **state) {
-    wm_agent_upgrade *config = *state;
-    if (wcom_ca_store) {
-        for (int i=0; wcom_ca_store[i]; i++) {
+static int teardown_group(void** state)
+{
+    wm_agent_upgrade* config = *state;
+    if (wcom_ca_store)
+    {
+        for (int i = 0; wcom_ca_store[i]; i++)
+        {
             os_free(wcom_ca_store[i]);
         }
         os_free(wcom_ca_store);
@@ -48,9 +52,11 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int teardown_json(void **state) {
-    if (state[1]) {
-        cJSON *json = state[1];
+static int teardown_json(void** state)
+{
+    if (state[1])
+    {
+        cJSON* json = state[1];
         cJSON_Delete(json);
     }
     return 0;
@@ -58,9 +64,9 @@ static int teardown_json(void **state) {
 
 // Tests
 
-void test_wm_agent_upgrade_dump_enabled(void **state)
+void test_wm_agent_upgrade_dump_enabled(void** state)
 {
-    wm_agent_upgrade *config = *state;
+    wm_agent_upgrade* config = *state;
 
     config->enabled = 1;
 
@@ -69,58 +75,59 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
     wcom_ca_store[1] = NULL;
 
-    cJSON *ret = wm_agent_upgrade_dump(config);
+    cJSON* ret = wm_agent_upgrade_dump(config);
 
     state[1] = ret;
 
     assert_non_null(ret);
-    cJSON *conf = cJSON_GetObjectItem(ret, "agent-upgrade");
+    cJSON* conf = cJSON_GetObjectItem(ret, "agent-upgrade");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
     assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "enabled")));
     assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
     assert_true(cJSON_IsTrue(cJSON_GetObjectItem(conf, "ca_verification")));
-    cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
+    cJSON* certs = cJSON_GetObjectItem(conf, "ca_store");
     assert_non_null(certs);
     assert_int_equal(cJSON_GetArraySize(certs), 1);
     assert_string_equal(cJSON_GetArrayItem(certs, 0)->valuestring, DEF_CA_STORE);
     assert_null(cJSON_GetArrayItem(certs, 1));
 }
 
-void test_wm_agent_upgrade_dump_disabled(void **state)
+void test_wm_agent_upgrade_dump_disabled(void** state)
 {
-    wm_agent_upgrade *config = *state;
+    wm_agent_upgrade* config = *state;
 
     config->enabled = 0;
 
     config->agent_config.enable_ca_verification = 0;
-    if (wcom_ca_store) {
-        for (int i=0; wcom_ca_store[i]; i++) {
+    if (wcom_ca_store)
+    {
+        for (int i = 0; wcom_ca_store[i]; i++)
+        {
             os_free(wcom_ca_store[i]);
         }
         os_free(wcom_ca_store);
     }
 
-    cJSON *ret = wm_agent_upgrade_dump(config);
+    cJSON* ret = wm_agent_upgrade_dump(config);
 
     state[1] = ret;
 
     assert_non_null(ret);
-    cJSON *conf = cJSON_GetObjectItem(ret, "agent-upgrade");
+    cJSON* conf = cJSON_GetObjectItem(ret, "agent-upgrade");
     assert_non_null(conf);
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
     assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "enabled")));
     assert_non_null(cJSON_GetObjectItem(conf, "ca_verification"));
     assert_true(cJSON_IsFalse(cJSON_GetObjectItem(conf, "ca_verification")));
-    cJSON *certs = cJSON_GetObjectItem(conf, "ca_store");
+    cJSON* certs = cJSON_GetObjectItem(conf, "ca_store");
     assert_null(certs);
 }
 
-void test_wm_agent_upgrade_destroy(void **state)
+void test_wm_agent_upgrade_destroy(void** state)
 {
-    wm_agent_upgrade *config = NULL;
+    wm_agent_upgrade* config = NULL;
     os_calloc(1, sizeof(wm_agent_upgrade), config);
-
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8154): Module Agent Upgrade finished.");
@@ -128,32 +135,34 @@ void test_wm_agent_upgrade_destroy(void **state)
     wm_agent_upgrade_destroy(config);
 }
 
-void test_wm_agent_upgrade_main_ok(void **state)
+void test_wm_agent_upgrade_main_ok(void** state)
 {
-    wm_agent_upgrade *config = *state;
+    wm_agent_upgrade* config = *state;
 
     config->enabled = 1;
 
-    expect_memory(__wrap_wm_agent_upgrade_start_agent_module, agent_config, &config->agent_config, sizeof(&config->agent_config));
+    expect_memory(
+        __wrap_wm_agent_upgrade_start_agent_module, agent_config, &config->agent_config, sizeof(&config->agent_config));
     expect_value(__wrap_wm_agent_upgrade_start_agent_module, enabled, config->enabled);
 
     wm_agent_upgrade_main(config);
 }
 
-void test_wm_agent_upgrade_main_disabled(void **state)
+void test_wm_agent_upgrade_main_disabled(void** state)
 {
-    wm_agent_upgrade *config = *state;
+    wm_agent_upgrade* config = *state;
 
     config->enabled = 0;
 
-    expect_memory(__wrap_wm_agent_upgrade_start_agent_module, agent_config, &config->agent_config, sizeof(&config->agent_config));
+    expect_memory(
+        __wrap_wm_agent_upgrade_start_agent_module, agent_config, &config->agent_config, sizeof(&config->agent_config));
     expect_value(__wrap_wm_agent_upgrade_start_agent_module, enabled, config->enabled);
 
     wm_agent_upgrade_main(config);
 }
 
-
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_dump
         cmocka_unit_test_teardown(test_wm_agent_upgrade_dump_enabled, teardown_json),

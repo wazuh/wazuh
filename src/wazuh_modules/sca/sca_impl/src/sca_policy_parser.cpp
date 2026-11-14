@@ -24,11 +24,8 @@ namespace
         }
     }
 
-    const std::unordered_set<std::string> ALLOWED_COMPLIANCE_KEYS =
-    {
-        "cmmc", "fedramp", "gdpr", "hipaa", "iso_27001",
-        "nis2", "nist_800_171", "nist_800_53", "pci_dss", "tsc"
-    };
+    const std::unordered_set<std::string> ALLOWED_COMPLIANCE_KEYS = {
+        "cmmc", "fedramp", "gdpr", "hipaa", "iso_27001", "nis2", "nist_800_171", "nist_800_53", "pci_dss", "tsc"};
 
     void ValidateComplianceKeys(nlohmann::json& checkJson, const std::string& checkId)
     {
@@ -46,8 +43,7 @@ namespace
                 if (ALLOWED_COMPLIANCE_KEYS.find(key) == ALLOWED_COMPLIANCE_KEYS.end())
                 {
                     LoggingHelper::getInstance().log(
-                        LOG_WARNING,
-                        "Invalid compliance key '" + key + "' in check " + checkId + ", ignoring");
+                        LOG_WARNING, "Invalid compliance key '" + key + "' in check " + checkId + ", ignoring");
                     keysToRemove.push_back(key);
                 }
             }
@@ -59,15 +55,17 @@ namespace
         }
         else if (!checkJson["compliance"].is_null())
         {
-            LoggingHelper::getInstance().log(
-                LOG_WARNING,
-                "Unexpected compliance format in check " + checkId + ", ignoring");
+            LoggingHelper::getInstance().log(LOG_WARNING,
+                                             "Unexpected compliance format in check " + checkId + ", ignoring");
             checkJson.erase("compliance");
         }
     }
 } // namespace
 
-PolicyParser::PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, YamlToJsonFunc yamlToJsonFunc)
+PolicyParser::PolicyParser(const std::filesystem::path& filename,
+                           const int commandsTimeout,
+                           const bool commandsEnabled,
+                           YamlToJsonFunc yamlToJsonFunc)
     : m_filename(filename)
     , m_commandsTimeout(commandsTimeout)
     , m_commandsEnabled(commandsEnabled)
@@ -94,7 +92,7 @@ PolicyParser::PolicyParser(const std::filesystem::path& filename, const int comm
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error parsing YAML file: ") + e.what());
-        m_jsonDocument = nlohmann::json{};
+        m_jsonDocument = nlohmann::json {};
     }
 }
 
@@ -199,7 +197,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
         {
             LoggingHelper::getInstance().log(LOG_ERROR,
                                              "Failed to parse the requirements of policy file '" + m_filename.string() +
-                                             "'. Error: " + e.what());
+                                                 "'. Error: " + e.what());
             return nullptr;
         }
     }
@@ -265,7 +263,8 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                         {
                             const std::string ruleStr = rule.get<std::string>();
 
-                            if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled))
+                            if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(
+                                    ruleStr, m_commandsTimeout, m_commandsEnabled))
                             {
                                 check.rules.push_back(std::move(ruleEvaluator));
                                 checkWithValidRules["rules"].push_back(ruleStr);
@@ -290,7 +289,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             {
                 LoggingHelper::getInstance().log(LOG_ERROR,
                                                  "Failed to parse check " + checkLabel + " of policy file '" +
-                                                 m_filename.string() + "'. Skipping it. Error: " + e.what());
+                                                     m_filename.string() + "'. Skipping it. Error: " + e.what());
                 continue;
             }
         }

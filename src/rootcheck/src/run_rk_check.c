@@ -16,17 +16,25 @@
 static void log_realtime_status_rk(int next);
 
 /* Report a problem */
-int notify_rk(int rk_type, const char *msg)
+int notify_rk(int rk_type, const char* msg)
 {
     /* Non-queue notification */
-    if (rootcheck.notify != QUEUE) {
-        if (rk_type == ALERT_OK) {
+    if (rootcheck.notify != QUEUE)
+    {
+        if (rk_type == ALERT_OK)
+        {
             printf("[OK]: %s\n", msg);
-        } else if (rk_type == ALERT_SYSTEM_ERR) {
+        }
+        else if (rk_type == ALERT_SYSTEM_ERR)
+        {
             printf("[ERR]: %s\n", msg);
-        } else if (rk_type == ALERT_POLICY_VIOLATION) {
+        }
+        else if (rk_type == ALERT_POLICY_VIOLATION)
+        {
             printf("[INFO]: %s\n", msg);
-        } else {
+        }
+        else
+        {
             printf("[FAILED]: %s\n", msg);
         }
 
@@ -35,20 +43,25 @@ int notify_rk(int rk_type, const char *msg)
     }
 
     /* No need to alert on that to the server */
-    if (rk_type <= ALERT_SYSTEM_ERR) {
+    if (rk_type <= ALERT_SYSTEM_ERR)
+    {
         return (0);
     }
 
 #ifdef OSSECHIDS
     /* When running inside the Wazuh daemons, send problem to the rootcheck queue */
-    if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
+    if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0)
+    {
         mtdebug1(ARGV0, QUEUE_SEND);
 
-        if ((rootcheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+        if ((rootcheck.queue =
+                 StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0)
+        {
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
 
-        if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
+        if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0)
+        {
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
     }
@@ -72,19 +85,24 @@ void run_rk_check()
 #endif
 
     /* Set basedir */
-    if (rootcheck.basedir == NULL || !strlen(rootcheck.basedir)) {
+    if (rootcheck.basedir == NULL || !strlen(rootcheck.basedir))
+    {
         free(rootcheck.basedir);
         rootcheck.basedir = strdup(basedir);
-    } else {
-        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == '/') {
-            rootcheck.basedir[strlen(rootcheck.basedir)-1] = '\0';
+    }
+    else
+    {
+        if (rootcheck.basedir[strlen(rootcheck.basedir) - 1] == '/')
+        {
+            rootcheck.basedir[strlen(rootcheck.basedir) - 1] = '\0';
         }
     }
 
     time1 = time(0);
 
     /* Initial message */
-    if (rootcheck.notify != QUEUE) {
+    if (rootcheck.notify != QUEUE)
+    {
         printf("\n");
         printf("** Starting Rootcheck v0.9 by Daniel B. Cid        **\n");
         printf("** http://www.ossec.net/en/about.html#dev-team     **\n");
@@ -100,30 +118,35 @@ void run_rk_check()
 
     /* Send scan start message */
     notify_rk(ALERT_POLICY_VIOLATION, "Starting rootcheck scan.");
-    if (rootcheck.notify == QUEUE) {
+    if (rootcheck.notify == QUEUE)
+    {
         mtinfo(ARGV0, "Starting rootcheck scan.");
     }
 
     /* Check for files in the /dev filesystem */
-    if (rootcheck.checks.rc_dev) {
+    if (rootcheck.checks.rc_dev)
+    {
         mtdebug1(ARGV0, "Going into check_rc_dev");
         check_rc_dev(rootcheck.basedir);
     }
 
     /* Scan the whole system for additional issues */
-    if (rootcheck.checks.rc_sys) {
+    if (rootcheck.checks.rc_sys)
+    {
         mtdebug1(ARGV0, "Going into check_rc_sys");
         check_rc_sys(rootcheck.basedir);
     }
 
     /* Check processes */
-    if (rootcheck.checks.rc_pids) {
+    if (rootcheck.checks.rc_pids)
+    {
         mtdebug1(ARGV0, "Going into check_rc_pids");
         check_rc_pids();
     }
 
     /* Check all ports */
-    if (rootcheck.checks.rc_ports) {
+    if (rootcheck.checks.rc_ports)
+    {
         mtdebug1(ARGV0, "Going into check_rc_ports");
         check_rc_ports();
 
@@ -133,7 +156,8 @@ void run_rk_check()
     }
 
     /* Check interfaces */
-    if (rootcheck.checks.rc_if) {
+    if (rootcheck.checks.rc_if)
+    {
         mtdebug1(ARGV0, "Going into check_rc_if");
         check_rc_if();
     }
@@ -143,9 +167,10 @@ void run_rk_check()
     /* Clean the global memory */
     {
         int li;
-        for (li = 0; li <= rk_sys_count; li++) {
-            if (!rk_sys_file[li] ||
-                    !rk_sys_name[li]) {
+        for (li = 0; li <= rk_sys_count; li++)
+        {
+            if (!rk_sys_file[li] || !rk_sys_name[li])
+            {
                 break;
             }
 
@@ -157,16 +182,20 @@ void run_rk_check()
     /* Final message */
     time2 = time(0);
 
-    if (rootcheck.notify != QUEUE) {
+    if (rootcheck.notify != QUEUE)
+    {
         printf("\n");
         printf("- Scan completed in %d seconds.\n\n", (int)(time2 - time1));
-    } else {
+    }
+    else
+    {
         sleep(5);
     }
 
     /* Send scan ending message */
     notify_rk(ALERT_POLICY_VIOLATION, "Ending rootcheck scan.");
-    if (rootcheck.notify == QUEUE) {
+    if (rootcheck.notify == QUEUE)
+    {
         mtinfo(ARGV0, "Rootcheck scan ended.");
     }
 
@@ -175,20 +204,25 @@ void run_rk_check()
 }
 
 #ifdef WIN32
-DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void * args){
+DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void* args)
+{
 #else
-void * w_rootcheck_thread(__attribute__((unused)) void * args) {
+void* w_rootcheck_thread(__attribute__((unused)) void* args)
+{
 #endif
     time_t curr_time = 0;
     time_t prev_time_rk = 0;
-    syscheck_config *syscheck = args;
+    syscheck_config* syscheck = args;
 
-    while (1) {
+    while (1)
+    {
         curr_time = time(0);
 
         /* If time elapsed is higher than the rootcheck_time, run it */
-        if (syscheck->rootcheck) {
-            if ((curr_time - prev_time_rk) > rootcheck.time) {
+        if (syscheck->rootcheck)
+        {
+            if ((curr_time - prev_time_rk) > rootcheck.time)
+            {
                 log_realtime_status_rk(2);
                 run_rk_check();
                 prev_time_rk = time(0);
@@ -202,7 +236,8 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
 #endif
 }
 
-void log_realtime_status_rk(int next) {
+void log_realtime_status_rk(int next)
+{
     /*
      * 0: stop (initial)
      * 1: run
@@ -211,23 +246,27 @@ void log_realtime_status_rk(int next) {
 
     static int status = 0;
 
-    switch (status) {
-    case 0:
-        if (next == 1) {
-            minfo("Starting rootcheck real-time monitoring.");
-            status = next;
-        }
-        break;
-    case 1:
-        if (next == 2) {
-            minfo("Pausing rootcheck real-time monitoring.");
-            status = next;
-        }
-        break;
-    case 2:
-        if (next == 1) {
-            minfo("Resuming rootcheck real-time monitoring.");
-            status = next;
-        }
+    switch (status)
+    {
+        case 0:
+            if (next == 1)
+            {
+                minfo("Starting rootcheck real-time monitoring.");
+                status = next;
+            }
+            break;
+        case 1:
+            if (next == 2)
+            {
+                minfo("Pausing rootcheck real-time monitoring.");
+                status = next;
+            }
+            break;
+        case 2:
+            if (next == 1)
+            {
+                minfo("Resuming rootcheck real-time monitoring.");
+                status = next;
+            }
     }
 }

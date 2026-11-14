@@ -32,7 +32,7 @@
  * The resolver probes the anchor eagerly, exactly once per call, whatever the mode. So every
  * resolver test queues exactly one expect_anchor(), including the rows that discard it. */
 
-static agent make_config(int verification_mode, char *ca)
+static agent make_config(int verification_mode, char* ca)
 {
     agent cfg = {0};
 
@@ -44,7 +44,7 @@ static agent make_config(int verification_mode, char *ca)
 
 /* The resolver writes cfg.ssl.certificate_authorities, so its tests cannot hand it a string
  * literal the way the validator's can. */
-static agent make_config_heap(int verification_mode, const char *ca)
+static agent make_config_heap(int verification_mode, const char* ca)
 {
     agent cfg = {0};
 
@@ -53,19 +53,20 @@ static agent make_config_heap(int verification_mode, const char *ca)
      * a config that said nothing. The resolver needs the difference for 'none', where a value
      * it produced itself and one an operator wrote are otherwise indistinguishable. */
     cfg.ssl.verification_mode_explicit = (verification_mode != AGENT_VERIFY_UNSET);
-    if (ca != NULL) {
+    if (ca != NULL)
+    {
         os_strdup(ca, cfg.ssl.certificate_authorities);
     }
 
     return cfg;
 }
 
-static void free_config(agent *cfg)
+static void free_config(agent* cfg)
 {
     os_free(cfg->ssl.certificate_authorities);
 }
 
-static void expect_ca_readable(const char *path, int readable)
+static void expect_ca_readable(const char* path, int readable)
 {
     expect_string(__wrap_w_is_file, file, path);
     will_return(__wrap_w_is_file, readable);
@@ -74,14 +75,14 @@ static void expect_ca_readable(const char *path, int readable)
 /* The parse check w_agent_validate_ssl_ca() makes after w_is_file(): wrapped because the paths
  * in this suite are names, not files on disk, so the real loader would refuse every one of them.
  * w_x509_free_all comes along because the sentinels below are not certificates to free. */
-X509 **__wrap_w_x509_load_all_pem(const char *path, size_t *count)
+X509** __wrap_w_x509_load_all_pem(const char* path, size_t* count)
 {
     check_expected(path);
     *count = (size_t)mock();
-    return mock_ptr_type(X509 **);
+    return mock_ptr_type(X509**);
 }
 
-void __wrap_w_x509_free_all(X509 **certs, size_t count)
+void __wrap_w_x509_free_all(X509** certs, size_t count)
 {
     (void)certs;
     (void)count;
@@ -89,18 +90,18 @@ void __wrap_w_x509_free_all(X509 **certs, size_t count)
 
 /* Non-NULL sentinels: the code only tests the array against NULL, reads the count, and hands
  * the pair straight to w_x509_free_all(). */
-static X509 *PARSED_OK[2] = {(X509 *)0x1, (X509 *)0x2};
+static X509* PARSED_OK[2] = {(X509*)0x1, (X509*)0x2};
 
 /* @param count How many certificates the loader reports; 0 means it refused the file outright,
  *              which is the only way w_x509_load_all_pem() reports a malformed block. */
-static void expect_ca_parses_count(const char *path, size_t count)
+static void expect_ca_parses_count(const char* path, size_t count)
 {
     expect_string(__wrap_w_x509_load_all_pem, path, path);
     will_return(__wrap_w_x509_load_all_pem, count);
     will_return(__wrap_w_x509_load_all_pem, count > 0 ? PARSED_OK : NULL);
 }
 
-static void expect_ca_parses(const char *path, int ok)
+static void expect_ca_parses(const char* path, int ok)
 {
     expect_ca_parses_count(path, ok ? 1 : 0);
 }
@@ -113,7 +114,8 @@ static void expect_anchor_deletion_guard(int anchor_present, int marker_present)
     expect_string(__wrap_w_is_file, file, AGENT_ANCHOR_CA);
     will_return(__wrap_w_is_file, anchor_present);
 
-    if (!anchor_present) {
+    if (!anchor_present)
+    {
         expect_string(__wrap_w_is_file, file, AGENT_ANCHOR_MARKER);
         will_return(__wrap_w_is_file, marker_present);
     }
@@ -125,7 +127,8 @@ static void expect_delivered_ca(int present)
     expect_string(__wrap_IsFile, file, AGENT_DELIVERED_CA);
     will_return(__wrap_IsFile, present ? 0 : -1);
 
-    if (present) {
+    if (present)
+    {
         expect_string(__wrap_IsLink, file, AGENT_DELIVERED_CA);
         will_return(__wrap_IsLink, -1);
     }
@@ -148,7 +151,8 @@ static void expect_anchor(int present)
  * rather than a copy, so a formatted buffer has to outlive the call and a local one does not. */
 static void expect_none_ignores_anchor(void)
 {
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(4122): <ssl><verification_mode> is 'none' and the trust anchor '" AGENT_ANCHOR_CA
                   "' is present: TLS verification stays disabled, as configured, and the anchor is "
                   "not used. Remove <verification_mode>none</verification_mode> to verify against it.");
@@ -156,14 +160,15 @@ static void expect_none_ignores_anchor(void)
 
 static void expect_inferred_certificate(void)
 {
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "The '<ssl><certificate_authorities>' option is configured but "
                   "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
 }
 
 /* --- verification_mode none: never fatal, but never silent about a bad path --- */
 
-static void test_none_without_ca_starts_quietly(void **state)
+static void test_none_without_ca_starts_quietly(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -176,7 +181,7 @@ static void test_none_without_ca_starts_quietly(void **state)
 
 /* Queues no expectation on purpose: under 'none' the path is inert, so the validator must not
  * probe it. cmocka fails on an unexpected call to a wrapped symbol, which is what pins that. */
-static void test_none_with_readable_ca_is_not_probed(void **state)
+static void test_none_with_readable_ca_is_not_probed(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, "etc/operator-ca.pem");
@@ -190,7 +195,7 @@ static void test_none_with_readable_ca_is_not_probed(void **state)
 /* The case the shipped template creates: a CA path that parses cleanly and is never read.
  * It stays silent, because 'none' means the value has no effect -- it becomes a (4118)
  * refusal the moment someone turns verification on, and not before. */
-static void test_none_with_unreadable_ca_is_not_probed_either(void **state)
+static void test_none_with_unreadable_ca_is_not_probed_either(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, "PATH");
@@ -203,7 +208,7 @@ static void test_none_with_unreadable_ca_is_not_probed_either(void **state)
 
 /* --- verifying modes: an unusable CA must stop the start, not be worked around --- */
 
-static void test_full_with_readable_ca_starts(void **state)
+static void test_full_with_readable_ca_starts(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, "etc/operator-ca.pem");
@@ -217,13 +222,14 @@ static void test_full_with_readable_ca_starts(void **state)
 /* The case the marker exists for: an agent that has committed an anchor, and no longer has one.
  * Nobody asked for 'none' -- the resolver inferred it from the absence the deletion created --
  * so starting would mean this agent silently stopped verifying its manager. */
-static void test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start(void **state)
+static void test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
 
     expect_anchor_deletion_guard(0, 1);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4125): the trust anchor 'etc/certs/root-ca.pem' is gone but this agent has "
                   "held one ('etc/certs/.anchor-committed' is still there). Verification would "
                   "silently fall back to 'none', so the start is refused. Restore the anchor, "
@@ -236,7 +242,7 @@ static void test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start(void
 /* An operator who writes 'none' has said what they want, and 4122 already warns them about an
  * anchor they are ignoring. The guard is about a 'none' nobody chose, so it does not probe at
  * all here -- an unqueued w_is_file() would fail this test, which is the point. */
-static void test_explicit_none_with_a_marker_but_no_anchor_still_starts(void **state)
+static void test_explicit_none_with_a_marker_but_no_anchor_still_starts(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -247,17 +253,18 @@ static void test_explicit_none_with_a_marker_but_no_anchor_still_starts(void **s
 }
 
 /* An upgrade that could not validate the delivered CA left it staged: still a start, but say so. */
-static void test_inferred_none_with_a_pending_delivered_ca_warns(void **state)
+static void test_inferred_none_with_a_pending_delivered_ca_warns(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
 
     expect_anchor_deletion_guard(0, 0);
     expect_delivered_ca(1);
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "(4126): TLS verification is disabled: there is no trust anchor at '" AGENT_ANCHOR_CA
-                  "', but a CA delivered by the manager during a remote upgrade is waiting at '"
-                  AGENT_DELIVERED_CA "' and was never installed (logs/upgrade.log says why; usually "
+                  "', but a CA delivered by the manager during a remote upgrade is waiting at '" AGENT_DELIVERED_CA
+                  "' and was never installed (logs/upgrade.log says why; usually "
                   "the 'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth "
                   "--certs-only' with an enrollment token to install the anchor.");
 
@@ -265,7 +272,7 @@ static void test_inferred_none_with_a_pending_delivered_ca_warns(void **state)
 }
 
 /* The installer refuses a symlinked CA, so one planted in var/incoming is not reported either. */
-static void test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn(void **state)
+static void test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -280,7 +287,7 @@ static void test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn(void 
 }
 
 /* A vanished anchor is refused before the staged CA is even looked at. */
-static void test_inferred_none_with_a_marker_does_not_probe_the_delivered_ca(void **state)
+static void test_inferred_none_with_a_marker_does_not_probe_the_delivered_ca(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -292,7 +299,7 @@ static void test_inferred_none_with_a_marker_does_not_probe_the_delivered_ca(voi
 }
 
 /* An anchor on disk means the staged CA is moot: no probe, no warning. */
-static void test_inferred_none_with_an_anchor_does_not_probe_the_delivered_ca(void **state)
+static void test_inferred_none_with_an_anchor_does_not_probe_the_delivered_ca(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -306,14 +313,15 @@ static void test_inferred_none_with_an_anchor_does_not_probe_the_delivered_ca(vo
  * truncated or corrupt anchor -- the shape an interrupted bootstrap write leaves -- passes
  * w_is_file() and would otherwise resolve to a verifying mode, then fail at the first
  * handshake with nothing pointing back here. */
-static void test_full_with_unparseable_ca_fails(void **state)
+static void test_full_with_unparseable_ca_fails(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, "etc/truncated-ca.pem");
 
     expect_ca_readable("etc/truncated-ca.pem", 1);
     expect_ca_parses("etc/truncated-ca.pem", 0);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4123): <certificate_authorities> 'etc/truncated-ca.pem' is readable but holds "
                   "no certificate this agent can parse. Nothing would verify against it, so the "
                   "start is refused here rather than at the first handshake.");
@@ -323,14 +331,15 @@ static void test_full_with_unparseable_ca_fails(void **state)
 
 /* A rotation hands the agent two anchors in one file. Before #39321 the check stopped at the
  * first certificate, so this passed for the wrong reason -- it never looked at the second. */
-static void test_full_with_a_two_certificate_bundle_starts(void **state)
+static void test_full_with_a_two_certificate_bundle_starts(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, "etc/certs/root-ca.pem");
 
     expect_ca_readable("etc/certs/root-ca.pem", 1);
     expect_ca_parses_count("etc/certs/root-ca.pem", 2);
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "(9503): <certificate_authorities> 'etc/certs/root-ca.pem' holds 2 certificates: "
                   "the agent will verify the manager against any of them.");
 
@@ -341,14 +350,15 @@ static void test_full_with_a_two_certificate_bundle_starts(void **state)
  * FIRST block is a good certificate and whose second is truncated used to start, then failed at a
  * handshake against whichever anchor the manager had rotated to. w_x509_load_all_pem() reads to
  * the end of the file and yields nothing when any block fails to decode, so it is refused here. */
-static void test_full_with_a_bundle_whose_second_block_is_corrupt_fails(void **state)
+static void test_full_with_a_bundle_whose_second_block_is_corrupt_fails(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, "etc/certs/root-ca.pem");
 
     expect_ca_readable("etc/certs/root-ca.pem", 1);
     expect_ca_parses_count("etc/certs/root-ca.pem", 0);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4123): <certificate_authorities> 'etc/certs/root-ca.pem' is readable but holds "
                   "no certificate this agent can parse. Nothing would verify against it, so the "
                   "start is refused here rather than at the first handshake.");
@@ -358,7 +368,7 @@ static void test_full_with_a_bundle_whose_second_block_is_corrupt_fails(void **s
 
 /* One certificate is the ordinary case and says nothing: (9503) is reserved for a real bundle,
  * so a single-anchor start stays as quiet as it was. */
-static void test_full_with_a_single_certificate_logs_nothing(void **state)
+static void test_full_with_a_single_certificate_logs_nothing(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, "etc/certs/root-ca.pem");
@@ -369,13 +379,14 @@ static void test_full_with_a_single_certificate_logs_nothing(void **state)
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
 
-static void test_full_with_unreadable_ca_fails(void **state)
+static void test_full_with_unreadable_ca_fails(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, "PATH");
 
     expect_ca_readable("PATH", 0);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: 'PATH'.");
 
@@ -384,25 +395,27 @@ static void test_full_with_unreadable_ca_fails(void **state)
 
 /* No CA at all under a verifying mode: reported as the empty path rather than
  * dereferenced, and still fatal. */
-static void test_full_without_ca_fails(void **state)
+static void test_full_without_ca_fails(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: ''.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
 }
 
-static void test_certificate_with_unreadable_ca_fails(void **state)
+static void test_certificate_with_unreadable_ca_fails(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_CERT, "PATH");
 
     expect_ca_readable("PATH", 0);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: 'PATH'.");
 
@@ -411,7 +424,7 @@ static void test_certificate_with_unreadable_ca_fails(void **state)
 
 /* --- verification_mode system: trusts the OS store, never a configured CA --- */
 
-static void test_system_without_ca_starts_when_bundle_found(void **state)
+static void test_system_without_ca_starts_when_bundle_found(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
@@ -428,7 +441,7 @@ static void test_system_without_ca_starts_when_bundle_found(void **state)
 
 /* Same as above, but with the anchor present and parseable: bundle found makes it not
  * load-bearing for startup to succeed, but it is still checked whenever it is there. */
-static void test_system_with_bundle_found_and_anchor_present_starts(void **state)
+static void test_system_with_bundle_found_and_anchor_present_starts(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
@@ -445,30 +458,32 @@ static void test_system_with_bundle_found_and_anchor_present_starts(void **state
  * checked (and, on failure, refused) before the OS bundle is even probed: whether one exists
  * is irrelevant once the anchor itself, which curlPerformer.cpp's fallback would still reach
  * whenever it is present, is known to be unusable. */
-static void test_system_fails_when_anchor_is_unparseable(void **state)
+static void test_system_fails_when_anchor_is_unparseable(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
 
     expect_anchor(1);
     expect_ca_parses(AGENT_ANCHOR_CA, 0);
-    expect_string(__wrap__merror, formatted_msg,
-                  "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '"
-                  AGENT_ANCHOR_CA "' is readable but holds no certificate this agent can parse. "
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '" AGENT_ANCHOR_CA
+                  "' is readable but holds no certificate this agent can parse. "
                   "The https_client module's fallback (#39123) would never verify against it, "
                   "so the start is refused here rather than at the first handshake that reaches it.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
 }
 
-static void test_system_without_ca_fails_when_no_bundle_and_no_anchor(void **state)
+static void test_system_without_ca_fails_when_no_bundle_and_no_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
 
     expect_os_find_ca_bundle(NULL);
     expect_anchor(0);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4121): <ssl><verification_mode> is 'system' but no OS CA bundle was found "
                   "on this host, and no local trust anchor is present to fall back to either.");
 
@@ -479,7 +494,7 @@ static void test_system_without_ca_fails_when_no_bundle_and_no_anchor(void **sta
  * OS store first regardless and only falls back to AGENT_ANCHOR_CA if that store turns out
  * not to vouch for this specific manager (curlPerformer.cpp), so refusing here would never
  * give that fallback a chance to run. */
-static void test_system_without_ca_starts_when_no_bundle_but_anchor_present(void **state)
+static void test_system_without_ca_starts_when_no_bundle_but_anchor_present(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
@@ -493,12 +508,13 @@ static void test_system_without_ca_starts_when_no_bundle_but_anchor_present(void
 
 /* A configured CA would simply go unused under 'system' -- reject rather than
  * silently ignore what looks like a real operator intent. */
-static void test_system_with_ca_set_fails(void **state)
+static void test_system_with_ca_set_fails(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, "etc/operator-ca.pem");
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4120): <ssl><verification_mode> is 'system' but <certificate_authorities> is "
                   "set: 'etc/operator-ca.pem'. Remove it, or choose a different "
                   "verification_mode; the OS trust store is used instead.");
@@ -510,7 +526,7 @@ static void test_system_with_ca_set_fails(void **state)
 
 /* Nothing configured and no anchor: there is no trust material, so there is nothing to
  * verify against. 'system' would only refuse to connect against a stock manager. */
-static void test_resolve_unset_without_ca_without_anchor_is_none(void **state)
+static void test_resolve_unset_without_ca_without_anchor_is_none(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, NULL);
@@ -524,7 +540,7 @@ static void test_resolve_unset_without_ca_without_anchor_is_none(void **state)
     free_config(&cfg);
 }
 
-static void test_resolve_unset_without_ca_with_anchor_is_full_on_the_anchor(void **state)
+static void test_resolve_unset_without_ca_with_anchor_is_full_on_the_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, NULL);
@@ -540,7 +556,7 @@ static void test_resolve_unset_without_ca_with_anchor_is_full_on_the_anchor(void
 
 /* A configured CA is the operator saying what to trust, so it settles the mode before the
  * anchor is considered -- with or without an anchor on disk. */
-static void test_resolve_unset_with_ca_is_certificate_without_anchor(void **state)
+static void test_resolve_unset_with_ca_is_certificate_without_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, "etc/operator-ca.pem");
@@ -555,7 +571,7 @@ static void test_resolve_unset_with_ca_is_certificate_without_anchor(void **stat
     free_config(&cfg);
 }
 
-static void test_resolve_unset_with_ca_is_certificate_with_anchor(void **state)
+static void test_resolve_unset_with_ca_is_certificate_with_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, "etc/operator-ca.pem");
@@ -572,7 +588,7 @@ static void test_resolve_unset_with_ca_is_certificate_with_anchor(void **state)
 
 /* <certificate_authorities/> parses into an empty string, which is not a CA: it must not
  * infer 'certificate', and it must not block the anchor from filling the gap. */
-static void test_resolve_unset_with_empty_ca_is_none(void **state)
+static void test_resolve_unset_with_empty_ca_is_none(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, "");
@@ -586,7 +602,7 @@ static void test_resolve_unset_with_empty_ca_is_none(void **state)
     free_config(&cfg);
 }
 
-static void test_resolve_unset_with_empty_ca_and_anchor_replaces_it(void **state)
+static void test_resolve_unset_with_empty_ca_and_anchor_replaces_it(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, "");
@@ -602,7 +618,7 @@ static void test_resolve_unset_with_empty_ca_and_anchor_replaces_it(void **state
 
 /* --- explicit verifying modes: honoured, and the anchor only fills a missing CA --- */
 
-static void test_resolve_full_with_ca_is_untouched(void **state)
+static void test_resolve_full_with_ca_is_untouched(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_FULL, "etc/operator-ca.pem");
@@ -617,7 +633,7 @@ static void test_resolve_full_with_ca_is_untouched(void **state)
 }
 
 /* The state w_agent_validate_ssl_ca() turns into (4118). */
-static void test_resolve_full_without_ca_without_anchor_stays_bare(void **state)
+static void test_resolve_full_without_ca_without_anchor_stays_bare(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_FULL, NULL);
@@ -631,7 +647,7 @@ static void test_resolve_full_without_ca_without_anchor_stays_bare(void **state)
     free_config(&cfg);
 }
 
-static void test_resolve_full_without_ca_with_anchor_gets_the_anchor(void **state)
+static void test_resolve_full_without_ca_with_anchor_gets_the_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_FULL, NULL);
@@ -647,7 +663,7 @@ static void test_resolve_full_without_ca_with_anchor_gets_the_anchor(void **stat
 
 /* Separate from the 'full' row above: the injection covers both verifying modes, and a
  * condition written for FULL alone is the obvious way to get this wrong. */
-static void test_resolve_certificate_without_ca_with_anchor_gets_the_anchor(void **state)
+static void test_resolve_certificate_without_ca_with_anchor_gets_the_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_CERT, NULL);
@@ -661,7 +677,7 @@ static void test_resolve_certificate_without_ca_with_anchor_gets_the_anchor(void
     free_config(&cfg);
 }
 
-static void test_resolve_certificate_with_ca_is_untouched(void **state)
+static void test_resolve_certificate_with_ca_is_untouched(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_CERT, "etc/operator-ca.pem");
@@ -677,7 +693,7 @@ static void test_resolve_certificate_with_ca_is_untouched(void **state)
 
 /* 'system' anchors on the OS store, and a CA set alongside it is a hard (4120) refusal --
  * so injecting the anchor here would stop every agent that holds one from starting. */
-static void test_resolve_system_never_takes_the_anchor(void **state)
+static void test_resolve_system_never_takes_the_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_SYSTEM, NULL);
@@ -693,7 +709,7 @@ static void test_resolve_system_never_takes_the_anchor(void **state)
 
 /* --- an explicit 'none' with an anchor on disk: honoured, and said out loud --- */
 
-static void test_resolve_none_without_anchor_is_kept(void **state)
+static void test_resolve_none_without_anchor_is_kept(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
@@ -709,7 +725,7 @@ static void test_resolve_none_without_anchor_is_kept(void **state)
 
 /* The anchor is a default, not an override: an operator who asks for 'none' gets 'none',
  * without also having to delete the file. (4122) records that the host could have verified. */
-static void test_resolve_none_with_anchor_is_still_none(void **state)
+static void test_resolve_none_with_anchor_is_still_none(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
@@ -729,7 +745,7 @@ static void test_resolve_none_with_anchor_is_still_none(void **state)
  * 'none' here is this function's own earlier answer rather than anybody's choice, so the
  * anchor is adopted -- otherwise the rest of that first boot talks to the manager unverified
  * with the anchor already on disk, and only a restart notices. */
-static void test_resolve_resolved_none_with_anchor_adopts_it(void **state)
+static void test_resolve_resolved_none_with_anchor_adopts_it(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
@@ -749,7 +765,7 @@ static void test_resolve_resolved_none_with_anchor_adopts_it(void **state)
  * path nobody maintains, because under 'none' it was never read. Both survive untouched --
  * the resolver injects nothing into a mode that opens no CA, so a later switch to 'full'
  * verifies against the operator's own path and not against something put there for them. */
-static void test_resolve_none_with_anchor_keeps_the_configured_ca(void **state)
+static void test_resolve_none_with_anchor_keeps_the_configured_ca(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, "etc/operator-ca.pem");
@@ -766,7 +782,7 @@ static void test_resolve_none_with_anchor_keeps_the_configured_ca(void **state)
 
 /* Nothing calls it twice today. A phase-2 caller that re-resolves after writing the anchor
  * will, and must not double-allocate or re-log. */
-static void test_resolve_is_idempotent(void **state)
+static void test_resolve_is_idempotent(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, NULL);
@@ -786,7 +802,7 @@ static void test_resolve_is_idempotent(void **state)
 
 /* Both probes carry AGENT_ANCHOR_CA: the resolver's, then the validator's on the path the
  * resolver just injected. One expectation would fail on the second call. */
-static void test_anchor_default_posture_starts(void **state)
+static void test_anchor_default_posture_starts(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_UNSET, NULL);
@@ -803,7 +819,7 @@ static void test_anchor_default_posture_starts(void **state)
 }
 
 /* No second probe: the validator short-circuits on a NULL CA before reaching w_is_file(). */
-static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
+static void test_full_without_ca_without_anchor_refuses_to_start(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_FULL, NULL);
@@ -811,7 +827,8 @@ static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
     expect_anchor(0);
     w_agent_resolve_ssl_posture(&cfg);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: ''.");
 
@@ -825,7 +842,7 @@ static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
  * refusing to start here would never give that fallback a chance to run. Still just the
  * anchor's own <certificate_authorities> is untouched (never AGENT_VERIFY_SYSTEM), matching
  * test_resolve_system_never_takes_the_anchor above. */
-static void test_system_with_anchor_starts_without_an_os_bundle(void **state)
+static void test_system_with_anchor_starts_without_an_os_bundle(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_SYSTEM, NULL);
@@ -845,7 +862,7 @@ static void test_system_with_anchor_starts_without_an_os_bundle(void **state)
 
 /* An anchor on disk must not become a reason to refuse, in either direction: the agent
  * starts, and it starts with verification off, because that is what was configured. */
-static void test_none_with_anchor_starts_without_verifying(void **state)
+static void test_none_with_anchor_starts_without_verifying(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_NONE, NULL);
@@ -865,7 +882,7 @@ static void test_none_with_anchor_starts_without_verifying(void **state)
  * verifying mode names a CA that cannot be opened. The named (4118) wins -- silently
  * verifying against an anchor the operator never pointed at would hide the broken path
  * instead of reporting it. */
-static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void **state)
+static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void** state)
 {
     (void)state;
     agent cfg = make_config_heap(AGENT_VERIFY_FULL, "etc/operator-ca.pem");
@@ -876,7 +893,8 @@ static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void **sta
     assert_string_equal(cfg.ssl.certificate_authorities, "etc/operator-ca.pem");
 
     expect_ca_readable("etc/operator-ca.pem", 0);
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> "
                   "is missing or unreadable: 'etc/operator-ca.pem'.");
 
@@ -886,14 +904,14 @@ static void test_full_with_unreadable_ca_still_refuses_with_an_anchor(void **sta
 
 /* --- w_agent_warn_unverified_without_anchor(): an inferred 'none' says why --- */
 
-#define AG_SSL_NONE_NO_ANCHOR_TEXT                                                                     \
-    "(4129): TLS verification is disabled: <ssl><verification_mode> is not set and there is no "      \
-    "readable trust anchor at '" AGENT_ANCHOR_CA "', so the manager's certificate is not checked. "   \
-    "Run 'wazuh-agent-auth --certs-only' with an enrollment token to install the anchor, or set "     \
+#define AG_SSL_NONE_NO_ANCHOR_TEXT                                                                                     \
+    "(4129): TLS verification is disabled: <ssl><verification_mode> is not set and there is no "                       \
+    "readable trust anchor at '" AGENT_ANCHOR_CA "', so the manager's certificate is not checked. "                    \
+    "Run 'wazuh-agent-auth --certs-only' with an enrollment token to install the anchor, or set "                      \
     "<verification_mode>none</verification_mode> if this is intended."
 
 /* No anchor, no marker and nothing staged: the agent connects unverified, and now names the file. */
-static void test_warn_inferred_none_without_anchor_names_it(void **state)
+static void test_warn_inferred_none_without_anchor_names_it(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -906,7 +924,7 @@ static void test_warn_inferred_none_without_anchor_names_it(void **state)
 }
 
 /* An operator who wrote 'none' chose it: nothing is probed and nothing is said. */
-static void test_warn_explicit_none_is_silent(void **state)
+static void test_warn_explicit_none_is_silent(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -916,7 +934,7 @@ static void test_warn_explicit_none_is_silent(void **state)
 }
 
 /* A verifying mode is not this warning's business, whatever is on disk. */
-static void test_warn_verifying_mode_is_silent(void **state)
+static void test_warn_verifying_mode_is_silent(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_FULL, NULL);
@@ -926,7 +944,7 @@ static void test_warn_verifying_mode_is_silent(void **state)
 
 /* An anchor on disk with an inferred 'none' cannot come out of the resolver, but if it did there
  * would be no missing file to name. */
-static void test_warn_inferred_none_with_anchor_is_silent(void **state)
+static void test_warn_inferred_none_with_anchor_is_silent(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
@@ -937,7 +955,7 @@ static void test_warn_inferred_none_with_anchor_is_silent(void **state)
 }
 
 /* (4126) already named the anchor and a better fix for a CA an upgrade left staged. */
-static void test_warn_inferred_none_with_a_pending_delivered_ca_is_silent(void **state)
+static void test_warn_inferred_none_with_a_pending_delivered_ca_is_silent(void** state)
 {
     (void)state;
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);

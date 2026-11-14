@@ -30,16 +30,16 @@ int main(int argc, const char* argv[])
     {
         CmdLineArgs cmdLineArgs(argc, argv);
 
-        const auto actions { cmdLineArgs.actions() };
+        const auto actions {cmdLineArgs.actions()};
 
         // dbsync configuration data
-        std::ifstream configFile{ cmdLineArgs.configFile() };
-        const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
-        const std::string dbName{ jsonConfigFile.at("db_name").get_ref<const std::string&>() };
-        const std::string dbType{ jsonConfigFile.at("db_type").get_ref<const std::string&>() };
-        const std::string hostType{ jsonConfigFile.at("host_type").get_ref<const std::string&>() };
-        const std::string persistance{ jsonConfigFile.at("persistance").get_ref<const std::string&>() };
-        const std::string sqlStmt{ jsonConfigFile.at("sql_statement").get_ref<const std::string&>() };
+        std::ifstream configFile {cmdLineArgs.configFile()};
+        const auto& jsonConfigFile {nlohmann::json::parse(configFile)};
+        const std::string dbName {jsonConfigFile.at("db_name").get_ref<const std::string&>()};
+        const std::string dbType {jsonConfigFile.at("db_type").get_ref<const std::string&>()};
+        const std::string hostType {jsonConfigFile.at("host_type").get_ref<const std::string&>()};
+        const std::string persistance {jsonConfigFile.at("persistance").get_ref<const std::string&>()};
+        const std::string sqlStmt {jsonConfigFile.at("sql_statement").get_ref<const std::string&>()};
 
         dbsync_initialize(loggerFunction);
 
@@ -47,12 +47,12 @@ int main(int argc, const char* argv[])
 
         if (persistance.compare("1") == 0)
         {
-            handle = dbsync_create_persistent((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
-                                              (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
-                                              dbName.c_str(),
-                                              sqlStmt.c_str(),
-                                              nullptr);
-
+            handle =
+                dbsync_create_persistent((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
+                                         (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                                         dbName.c_str(),
+                                         sqlStmt.c_str(),
+                                         nullptr);
         }
         else
         {
@@ -64,7 +64,7 @@ int main(int argc, const char* argv[])
 
         if (0 != handle)
         {
-            std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
+            std::unique_ptr<TestContext> testContext {std::make_unique<TestContext>()};
             testContext->handle = handle;
             testContext->outputPath = cmdLineArgs.outputFolder();
 
@@ -72,11 +72,11 @@ int main(int argc, const char* argv[])
             for (size_t idx = 0; idx < actions.size(); ++idx)
             {
                 testContext->currentId = idx;
-                const std::string inputFile{ actions[idx] };
-                std::ifstream actionsIdxFile{ inputFile };
+                const std::string inputFile {actions[idx]};
+                std::ifstream actionsIdxFile {inputFile};
                 std::cout << "Processing file: " << inputFile << std::endl;
-                const auto& jsonAction { nlohmann::json::parse(actionsIdxFile) };
-                auto action { FactoryAction::create(jsonAction["action"].get<std::string>()) };
+                const auto& jsonAction {nlohmann::json::parse(actionsIdxFile)};
+                auto action {FactoryAction::create(jsonAction["action"].get<std::string>())};
                 action->execute(testContext, jsonAction);
             }
 
@@ -85,7 +85,9 @@ int main(int argc, const char* argv[])
         }
         else
         {
-            std::cout << std::endl << "Something went wrong configuring the database. Please, check the config file data" << std::endl;
+            std::cout << std::endl
+                      << "Something went wrong configuring the database. Please, check the config file data"
+                      << std::endl;
         }
     }
     catch (const std::exception& ex)

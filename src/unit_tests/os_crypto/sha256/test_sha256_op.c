@@ -17,21 +17,24 @@
 #include "shared.h"
 
 /* setups/teardowns */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
     return 0;
 }
 
 // Tests
 
-void test_sha256_string() {
-    const char *string = "teststring";
-    const char *string_sha256 = "3c8727e019a42b444667a587b6001251becadabbb36bfed8087a92c18882d111";
+void test_sha256_string()
+{
+    const char* string = "teststring";
+    const char* string_sha256 = "3c8727e019a42b444667a587b6001251becadabbb36bfed8087a92c18882d111";
     os_sha256 buffer;
 
     OS_SHA256_String(string, buffer);
@@ -39,9 +42,10 @@ void test_sha256_string() {
     assert_string_equal(buffer, string_sha256);
 }
 
-void test_sha256_string_sized() {
-    const char *string = "teststring";
-    const char *string_sha256_chopped = "3c8727e019";
+void test_sha256_string_sized()
+{
+    const char* string = "teststring";
+    const char* string_sha256_chopped = "3c8727e019";
     int chopped_size = 10;
     os_sha256 buffer;
 
@@ -50,9 +54,10 @@ void test_sha256_string_sized() {
     assert_string_equal(buffer, string_sha256_chopped);
 }
 
-void test_sha256_file() {
-    const char *string = "teststring";
-    const char *string_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+void test_sha256_file()
+{
+    const char* string = "teststring";
+    const char* string_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     char path[] = "path/to/file";
 
     expect_value(__wrap_wfopen, path, path);
@@ -71,7 +76,8 @@ void test_sha256_file() {
     assert_string_equal(buffer, string_sha256);
 }
 
-void test_sha256_file_fail() {
+void test_sha256_file_fail()
+{
     char path[] = "path/to/non-existing/file";
 
     expect_value(__wrap_wfopen, path, path);

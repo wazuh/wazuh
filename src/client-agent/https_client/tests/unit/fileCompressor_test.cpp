@@ -76,9 +76,9 @@ namespace
 
     class FileCompressorTest : public ::testing::Test
     {
-        protected:
-            ZstdFileCompressor m_compressor;
-            std::string m_spoolDir = ::testing::TempDir();
+    protected:
+        ZstdFileCompressor m_compressor;
+        std::string m_spoolDir = ::testing::TempDir();
     };
 } // namespace
 
@@ -100,8 +100,8 @@ TEST_F(FileCompressorTest, RoundTripCompressesAndDecompressesBackToTheSource)
     ASSERT_EQ(compressedSize, compressedBytes.size());
 
     std::vector<char> decompressed(plain.size());
-    const size_t decompressedSize = ZSTD_decompress(decompressed.data(), decompressed.size(),
-                                                    compressedBytes.data(), compressedBytes.size());
+    const size_t decompressedSize =
+        ZSTD_decompress(decompressed.data(), decompressed.size(), compressedBytes.data(), compressedBytes.size());
     ASSERT_FALSE(ZSTD_isError(decompressedSize));
     ASSERT_EQ(plain.size(), decompressedSize);
     EXPECT_EQ(plain, std::string(decompressed.begin(), decompressed.end()));
@@ -125,8 +125,7 @@ TEST_F(FileCompressorTest, CompressedFrameDeclaresThePledgedContentSize)
 
 TEST_F(FileCompressorTest, UnreadableSourceReturnsNullopt)
 {
-    const auto result =
-        m_compressor.compress("/nonexistent/hc-spool/session.bin", 4, m_spoolDir, nullptr);
+    const auto result = m_compressor.compress("/nonexistent/hc-spool/session.bin", 4, m_spoolDir, nullptr);
     EXPECT_FALSE(result.has_value());
 }
 
@@ -184,8 +183,8 @@ TEST_F(FileCompressorTest, EmptySourceProducesAValidMinimalFrame)
     ASSERT_TRUE(result.has_value());
     const std::string compressedBytes = readWholeFile(result->first->path());
     std::vector<char> decompressed(1);
-    const size_t decompressedSize = ZSTD_decompress(decompressed.data(), decompressed.size(),
-                                                    compressedBytes.data(), compressedBytes.size());
+    const size_t decompressedSize =
+        ZSTD_decompress(decompressed.data(), decompressed.size(), compressedBytes.data(), compressedBytes.size());
     ASSERT_FALSE(ZSTD_isError(decompressedSize));
     EXPECT_EQ(0u, decompressedSize);
 }

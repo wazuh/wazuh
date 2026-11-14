@@ -11,7 +11,7 @@
 #ifndef RANDOMBYTES_H
 #define RANDOMBYTES_H
 
-void randombytes(void *ptr, size_t length);
+void randombytes(void* ptr, size_t length);
 void srandom_init(void);
 int os_random(void);
 

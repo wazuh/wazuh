@@ -22,7 +22,8 @@ char ui_server_info[2048 + 1];
 int gen_server_info(HWND hwnd)
 {
     memset(ui_server_info, '\0', 2048 + 1);
-    snprintf(ui_server_info, 2048,
+    snprintf(ui_server_info,
+             2048,
              "Agent: %s (%s)  -  %s\r\n\r\n"
              "Status: %s",
              config_inst.agentname,
@@ -31,7 +32,8 @@ int gen_server_info(HWND hwnd)
              config_inst.status);
 
     /* Initialize top */
-    if (config_inst.version) {
+    if (config_inst.version)
+    {
         SetDlgItemText(hwnd, UI_SERVER_TOP, config_inst.version);
         SetDlgItemText(hwnd, UI_SERVER_INFO, ui_server_info);
     }
@@ -43,8 +45,9 @@ int gen_server_info(HWND hwnd)
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
     /* Set status data */
-    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
-    if (config_inst.revision) {
+    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM) "https://wazuh.com");
+    if (config_inst.revision)
+    {
         SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.revision);
     }
 
@@ -52,35 +55,43 @@ int gen_server_info(HWND hwnd)
 }
 
 /* Read the first line of a specific file  --must free after */
-char *cat_file(char *file, FILE *fp2)
+char* cat_file(char* file, FILE* fp2)
 {
-    FILE *fp;
+    FILE* fp;
 
-    if (!fp2) {
+    if (!fp2)
+    {
         fp = wfopen(file, "r");
-    } else {
+    }
+    else
+    {
         fp = fp2;
     }
 
-    if (fp) {
+    if (fp)
+    {
         char buf[1024 + 1];
-        char *ret = NULL;
+        char* ret = NULL;
 
         buf[1024] = '\0';
-        if (fgets(buf, 1024, fp) != NULL) {
+        if (fgets(buf, 1024, fp) != NULL)
+        {
             ret = strchr(buf, '\n');
-            if (ret) {
+            if (ret)
+            {
                 *ret = '\0';
             }
             ret = strchr(buf, '\r');
-            if (ret) {
+            if (ret)
+            {
                 *ret = '\0';
             }
 
             ret = strdup(buf);
         }
 
-        if (!fp2) {
+        if (!fp2)
+        {
             fclose(fp);
         }
         return (ret);
@@ -89,13 +100,13 @@ char *cat_file(char *file, FILE *fp2)
     return (NULL);
 }
 
-
 /* Check if a file exists */
-int is_file(char *file)
+int is_file(char* file)
 {
-    FILE *fp;
+    FILE* fp;
     fp = wfopen(file, "r");
-    if (fp) {
+    if (fp)
+    {
         fclose(fp);
         return (1);
     }
@@ -105,31 +116,38 @@ int is_file(char *file)
 /* Clear configuration */
 void config_clear()
 {
-    if (config_inst.version) {
+    if (config_inst.version)
+    {
         free(config_inst.version);
     }
 
-    if (config_inst.key) {
+    if (config_inst.key)
+    {
         free(config_inst.key);
     }
 
-    if (config_inst.agentid) {
+    if (config_inst.agentid)
+    {
         free(config_inst.agentid);
     }
 
-    if (config_inst.server) {
+    if (config_inst.server)
+    {
         free(config_inst.server);
     }
 
-    if (config_inst.revision) {
+    if (config_inst.revision)
+    {
         free(config_inst.revision);
     }
 
-    if (config_inst.agentname) {
+    if (config_inst.agentname)
+    {
         free(config_inst.agentname);
     }
 
-    if (config_inst.agentip) {
+    if (config_inst.agentip)
+    {
         free(config_inst.agentip);
     }
 
@@ -169,34 +187,37 @@ void init_config()
     config_inst.admin_access = 1;
 
     /* Check if ui is on the right path and has the proper permissions */
-    if (!is_file(CONFIG)) {
-        if (chdir(DEFDIR)) {
+    if (!is_file(CONFIG))
+    {
+        if (chdir(DEFDIR))
+        {
             config_inst.admin_access = 0;
         }
 
-        if (!is_file(CONFIG)) {
+        if (!is_file(CONFIG))
+        {
             config_inst.admin_access = 0;
         }
     }
 }
 
 /* Read version/revision from JSON file */
-char *read_version_file_field(const char *field_name)
+char* read_version_file_field(const char* field_name)
 {
-    cJSON *root = json_fread(VERSION_FILE, 0);
+    cJSON* root = json_fread(VERSION_FILE, 0);
     if (!root)
     {
         return NULL;
     }
 
-    cJSON *version_json = cJSON_GetObjectItemCaseSensitive(root, field_name);
+    cJSON* version_json = cJSON_GetObjectItemCaseSensitive(root, field_name);
     if (!cJSON_IsString(version_json) || (version_json->valuestring == NULL))
     {
         cJSON_Delete(root);
         return NULL;
     }
 
-    char *version_copy = strdup(version_json->valuestring);
+    char* version_copy = strdup(version_json->valuestring);
     cJSON_Delete(root);
 
     return version_copy;
@@ -205,16 +226,19 @@ char *read_version_file_field(const char *field_name)
 /* Read ossec config */
 int config_read(__attribute__((unused)) HWND hwnd)
 {
-    char *tmp_str;
+    char* tmp_str;
     char buffer[4096];
 
     /* Clear config */
     config_clear();
 
     /* Get OSSEC status */
-    if (CheckServiceRunning()) {
+    if (CheckServiceRunning())
+    {
         config_inst.status = ST_RUNNING;
-    } else {
+    }
+    else
+    {
         config_inst.status = ST_STOPPED;
     }
 
@@ -222,12 +246,15 @@ int config_read(__attribute__((unused)) HWND hwnd)
     if ((tmp_str = read_version_file_field("version"), tmp_str))
     {
         // The old VERSION file had a 'v' prefix. The new VERSION.json does not.
-        if (tmp_str[0] != 'v') {
+        if (tmp_str[0] != 'v')
+        {
             size_t len = strlen(tmp_str);
             char prefixed_version[len + 2];
             snprintf(prefixed_version, sizeof(prefixed_version), "v%s", tmp_str);
             snprintf(buffer, sizeof(buffer), "Wazuh %s", prefixed_version);
-        } else {
+        }
+        else
+        {
             snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
         }
 
@@ -235,7 +262,8 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     free(tmp_str);
-    if (tmp_str = read_version_file_field("stage"), tmp_str) {
+    if (tmp_str = read_version_file_field("stage"), tmp_str)
+    {
         snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
         os_strdup(buffer, config_inst.revision);
     }
@@ -243,16 +271,19 @@ int config_read(__attribute__((unused)) HWND hwnd)
     free(tmp_str);
     /* Get number of messages sent */
     tmp_str = cat_file(SENDER_FILE, NULL);
-    if (tmp_str) {
+    if (tmp_str)
+    {
         unsigned long int tmp_val = 0;
-        char *to_free = tmp_str;
+        char* to_free = tmp_str;
 
         tmp_val = atol(tmp_str);
-        if (tmp_val) {
+        if (tmp_val)
+        {
             config_inst.msg_sent = tmp_val * 9999;
 
             tmp_str = strchr(tmp_str, ':');
-            if (tmp_str) {
+            if (tmp_str)
+            {
                 tmp_str++;
                 tmp_val = atol(tmp_str);
                 config_inst.msg_sent += tmp_val;
@@ -264,12 +295,14 @@ int config_read(__attribute__((unused)) HWND hwnd)
 
     /* Get agent ID, name and IP */
     tmp_str = cat_file(KEYS_FILE, NULL);
-    if (tmp_str) {
-        char *to_free = tmp_str;
+    if (tmp_str)
+    {
+        char* to_free = tmp_str;
         /* Get base 64 */
         free(config_inst.key);
         config_inst.key = encode_base64(strlen(tmp_str), tmp_str);
-        if (config_inst.key == NULL) {
+        if (config_inst.key == NULL)
+        {
             config_inst.key = strdup(FL_NOKEY);
         }
 
@@ -277,14 +310,16 @@ int config_read(__attribute__((unused)) HWND hwnd)
         config_inst.agentid = tmp_str;
 
         tmp_str = strchr(tmp_str, ' ');
-        if (tmp_str) {
+        if (tmp_str)
+        {
             *tmp_str = '\0';
             tmp_str++;
 
             /* Get name */
             config_inst.agentname = tmp_str;
             tmp_str = strchr(tmp_str, ' ');
-            if (tmp_str) {
+            if (tmp_str)
+            {
                 *tmp_str = '\0';
                 tmp_str++;
 
@@ -292,7 +327,8 @@ int config_read(__attribute__((unused)) HWND hwnd)
                 config_inst.agentip = tmp_str;
 
                 tmp_str = strchr(tmp_str, ' ');
-                if (tmp_str) {
+                if (tmp_str)
+                {
                     *tmp_str = '\0';
                 }
             }
@@ -304,7 +340,8 @@ int config_read(__attribute__((unused)) HWND hwnd)
         free(to_free);
     }
 
-    if (config_inst.agentip == NULL) {
+    if (config_inst.agentip == NULL)
+    {
         config_inst.agentid = strdup(ST_NOTSET);
         config_inst.agentname = strdup("Auth key not imported.");
         config_inst.agentip = strdup(ST_NOTSET);
@@ -313,10 +350,14 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     /* Get server IP */
-    if (!get_ossec_server()) {
-        if (strcmp(config_inst.status, ST_MISSING_IMPORT) == 0) {
+    if (!get_ossec_server())
+    {
+        if (strcmp(config_inst.status, ST_MISSING_IMPORT) == 0)
+        {
             config_inst.status = ST_MISSING_ALL;
-        } else {
+        }
+        else
+        {
             config_inst.status = ST_MISSING_SERVER;
         }
     }
@@ -329,20 +370,23 @@ int config_read(__attribute__((unused)) HWND hwnd)
  * ship "MANAGER_IP". The agent refuses to start with either host, or with an empty one
  * (Validate_Address() in client-config.c), so the GUI treats the same values as "nothing
  * configured yet", whatever port or prefix follows the host. */
-static int is_placeholder_server(const char *target)
+static int is_placeholder_server(const char* target)
 {
-    static const char *const placeholder_hosts[] = {"0.0.0.0", "MANAGER_IP"};
+    static const char* const placeholder_hosts[] = {"0.0.0.0", "MANAGER_IP"};
     size_t i;
 
-    if (target[0] == '\0') {
+    if (target[0] == '\0')
+    {
         return 1;
     }
 
-    for (i = 0; i < sizeof(placeholder_hosts) / sizeof(placeholder_hosts[0]); i++) {
+    for (i = 0; i < sizeof(placeholder_hosts) / sizeof(placeholder_hosts[0]); i++)
+    {
         const size_t len = strlen(placeholder_hosts[i]);
 
-        if (strncmp(target, placeholder_hosts[i], len) == 0
-            && (target[len] == '\0' || target[len] == ':' || target[len] == '/')) {
+        if (strncmp(target, placeholder_hosts[i], len) == 0 &&
+            (target[len] == '\0' || target[len] == ':' || target[len] == '/'))
+        {
             return 1;
         }
     }
@@ -354,7 +398,7 @@ static int is_placeholder_server(const char *target)
 int get_ossec_server()
 {
     OS_XML xml;
-    char *str = NULL;
+    char* str = NULL;
     int success = 0;
 
     /* Definitions. <endpoint> is the canonical 5.x spelling (#38624) and is checked
@@ -365,20 +409,22 @@ int get_ossec_server()
      * writes <endpoint> under whichever block a preserved 4.x file already has
      * (InstallerScripts.vbs), matching Read_Legacy_Client()'s own precedence.
      */
-    const char *(xml_agentendpoint[]) = {"ossec_config", "agent", "manager", "endpoint", NULL};
-    const char *(xml_serverendpoint[]) = {"ossec_config", "client", "server", "endpoint", NULL};
-    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "manager", "address", NULL};
-    const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
-    const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
-    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
+    const char*(xml_agentendpoint[]) = {"ossec_config", "agent", "manager", "endpoint", NULL};
+    const char*(xml_serverendpoint[]) = {"ossec_config", "client", "server", "endpoint", NULL};
+    const char*(xml_agentaddr[]) = {"ossec_config", "agent", "manager", "address", NULL};
+    const char*(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
+    const char*(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
+    const char*(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
 
     /* Read XML */
-    if (OS_ReadXML(CONFIG, &xml) < 0) {
+    if (OS_ReadXML(CONFIG, &xml) < 0)
+    {
         return (0);
     }
 
     /* We need to remove the entry for the server */
-    if (config_inst.server) {
+    if (config_inst.server)
+    {
         free(config_inst.server);
         config_inst.server = NULL;
     }
@@ -395,7 +441,8 @@ int get_ossec_server()
 
     /* Displayed verbatim: the endpoint is not an address, so it is always
      * SERVER_HOST_USED regardless of what its host portion looks like. */
-    if (str = OS_GetOneContentforElement(&xml, xml_agentendpoint), str) {
+    if (str = OS_GetOneContentforElement(&xml, xml_agentendpoint), str)
+    {
         config_inst.server_type = SERVER_HOST_USED;
         config_inst.server = str;
         success = 1;
@@ -403,26 +450,32 @@ int get_ossec_server()
     }
 
     /* Get IP address of the server */
-    if (str = OS_GetOneContentforElement(&xml, xml_agentaddr), str) {
+    if (str = OS_GetOneContentforElement(&xml, xml_agentaddr), str)
+    {
         config_inst.server_type = OS_IsValidIP(str, NULL) == 1 ? SERVER_IP_USED : SERVER_HOST_USED;
         config_inst.server = str;
         success = 1;
         goto ret;
     }
 
-    if (str = OS_GetOneContentforElement(&xml, xml_serverendpoint), str) {
+    if (str = OS_GetOneContentforElement(&xml, xml_serverendpoint), str)
+    {
         config_inst.server_type = SERVER_HOST_USED;
         config_inst.server = str;
         success = 1;
         goto ret;
     }
-    if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str) {
-        if (OS_IsValidIP(str, NULL) == 1) {
+    if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str)
+    {
+        if (OS_IsValidIP(str, NULL) == 1)
+        {
             config_inst.server_type = SERVER_IP_USED;
             config_inst.server = str;
             success = 1;
             goto ret;
-        } else {
+        }
+        else
+        {
             /* If we don't find the IP, get the server hostname */
             config_inst.server_type = SERVER_HOST_USED;
             config_inst.server = str;
@@ -430,15 +483,18 @@ int get_ossec_server()
             goto ret;
         }
     }
-    if (str = OS_GetOneContentforElement(&xml, xml_serverip), str) {
-        if (OS_IsValidIP(str, NULL) == 1) {
+    if (str = OS_GetOneContentforElement(&xml, xml_serverip), str)
+    {
+        if (OS_IsValidIP(str, NULL) == 1)
+        {
             config_inst.server_type = SERVER_IP_USED;
             config_inst.server = str;
             success = 1;
             goto ret;
         }
     }
-    if (str = OS_GetOneContentforElement(&xml, xml_serverhost), str) {
+    if (str = OS_GetOneContentforElement(&xml, xml_serverhost), str)
+    {
         config_inst.server_type = SERVER_HOST_USED;
         config_inst.server = str;
         success = 1;
@@ -448,8 +504,9 @@ int get_ossec_server()
     /* Set up final server name when not available */
     config_inst.server = strdup(FL_NOSERVER);
 
-    ret:
-    if (success && is_placeholder_server(config_inst.server)) {
+ret:
+    if (success && is_placeholder_server(config_inst.server))
+    {
         free(config_inst.server);
         config_inst.server = strdup(FL_NOSERVER);
         config_inst.server_type = 0;
@@ -459,4 +516,3 @@ int get_ossec_server()
     OS_ClearXML(&xml);
     return success;
 }
-

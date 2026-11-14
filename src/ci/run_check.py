@@ -105,89 +105,28 @@ def runASAN(moduleName, testToolConfig):
     utils.printGreen(msg="[ASAN: PASSED]")
 
 
-def runAStyleCheck(moduleName):
+def runClangFormat(moduleName, fix=False):
     """
-    Execute AStyle coding style analysis for the library
-    code failing when one or more files need to be modified.
+    Execute clang-format on the module's C and C++ files.
 
     Args:
-        - moduleName: Library to be analyzed using AStyle coding style
-                      analysis tool.
-    Returns:
-        - None
-
-    Raises:
-        - ValueError: Raises an exception when fails for some reason.
-    """
-    foldersToScan = utils.getFoldersToAStyle(moduleName=moduleName)
-    astyleCommand = "astyle --options=ci/input/astyle.config --dry-run \
-                    {}".format(foldersToScan)
-    out = subprocess.run(
-        astyleCommand,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-        check=False,
-    )
-    if out.returncode == 0 and not out.stderr:
-        stdoutString = str(out.stdout)
-
-        if stdoutString.find("Formatted") != -1:
-            utils.printFail(
-                msg="One or more files do not follow the Coding \
-                                 Style convention."
-            )
-            utils.printFail(
-                msg='Execute astyle \
-                                 --options=ci/input/astyle.config \
-                                 "{0}/*.h" "{0}/*.hpp" "{0}/*.cpp" \
-                                 for further information.'.format(moduleName)
-            )
-
-            utils.printFail(msg="[AStyle: FAILED]")
-            raise ValueError(
-                "Code is not complaint with the expected \
-                              guidelines"
-            )
-    else:
-        print(out.stderr.decode("utf-8", "replace"))
-        utils.printFail(msg="[AStyle Check: FAILED]")
-        errorString = "Error Running AStyle: {}".format(out.returncode)
-        raise ValueError(errorString)
-    utils.printGreen(msg="[AStyle Check: PASSED]")
-
-
-def runAStyleFormat(moduleName):
-    """
-    Execute AStyle coding style analysis tool for the library code
-    formatting all needed files.
-
-    Args:
-        - moduleName: Library to be formated using AStyle coding style
-                      analysis tool.
+        - moduleName: Library to be analyzed.
+        - fix: Format the files in place instead of checking them.
 
     Returns:
         - None
 
     Raises:
-        - ValueError: Raises an exception when fails for some reason.
+        - ValueError: Raises an exception when one or more files do not follow the coding style.
     """
-    foldersToScan = utils.getFoldersToAStyle(moduleName=moduleName)
-    astyleCommand = "astyle --options=ci/input/astyle.config {}".format(foldersToScan)
-    out = subprocess.run(
-        astyleCommand,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-        check=False,
-    )
-    if out.returncode == 0 and not out.stderr:
-        utils.printGreen(msg="[AStyle Format: PASSED]")
-    else:
-        print(out.stderr.decode("utf-8", "replace"))
-        utils.printFail(msg="[AStyle Format: FAILED]")
-        errorString = "Error Running AStyle Format: {}".format(out.returncode)
-        raise ValueError(errorString)
+    utils.printHeader(moduleName=moduleName, headerKey="clangformat")
+    files = subprocess.run(["git", "ls-files", "--"] + ["{}/*.{}".format(moduleName, ext) for ext in ("c", "h", "cpp", "hpp")],
+                           stdout=subprocess.PIPE, check=True, text=True).stdout.split()
+    mode = ["-i"] if fix else ["--dry-run", "--Werror"]
+    if subprocess.run(["clang-format"] + mode + files).returncode != 0:
+        utils.printFail(msg="[ClangFormat: FAILED]")
+        raise ValueError("Code is not compliant with the expected guidelines. Run python3 build.py --sformat {}".format(moduleName))
+    utils.printGreen(msg="[ClangFormat: PASSED]")
 
 
 def runCoverage(moduleName, target="agent"):
@@ -362,7 +301,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
-    runAStyleCheck(moduleName=moduleName)
+    runClangFormat(moduleName=moduleName)
 
     # Making a full clean, downloading external dependencies and
     # building the corresponding target with tests flag enabled

@@ -15,6 +15,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-char * wrap_get_agent_ip_legacy_win32() {
-    return mock_type(char *);
+char* wrap_get_agent_ip_legacy_win32()
+{
+    return mock_type(char*);
 }

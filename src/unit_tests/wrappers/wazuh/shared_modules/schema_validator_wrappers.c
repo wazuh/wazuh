@@ -14,21 +14,23 @@
 #include <cmocka.h>
 #include <stdint.h>
 
-bool __wrap_schema_validator_is_initialized(void) {
+bool __wrap_schema_validator_is_initialized(void)
+{
     return mock_type(bool);
 }
 
-bool __wrap_schema_validator_initialize(void) {
+bool __wrap_schema_validator_initialize(void)
+{
     return mock_type(bool);
 }
 
-bool __wrap_schema_validator_validate(const char* indexPattern,
-                                      const char* message,
-                                      char** errorMessage) {
+bool __wrap_schema_validator_validate(const char* indexPattern, const char* message, char** errorMessage)
+{
     check_expected_ptr(indexPattern);
     check_expected_ptr(message);
 
-    if (errorMessage != NULL) {
+    if (errorMessage != NULL)
+    {
         *errorMessage = mock_ptr_type(char*);
     }
 

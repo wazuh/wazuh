@@ -13,15 +13,17 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
-int __wrap_closedir(__attribute__((unused)) DIR *dirp) {
+int __wrap_closedir(__attribute__((unused)) DIR* dirp)
+{
     return mock();
 }
 
-DIR * __wrap_opendir(__attribute__((unused)) const char *name) {
-    return mock_type(DIR *);
+DIR* __wrap_opendir(__attribute__((unused)) const char* name)
+{
+    return mock_type(DIR*);
 }
 
-struct dirent * __wrap_readdir(__attribute__((unused)) DIR *dirp) {
-    return mock_type(struct dirent *);
+struct dirent* __wrap_readdir(__attribute__((unused)) DIR* dirp)
+{
+    return mock_type(struct dirent*);
 }

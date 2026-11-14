@@ -24,7 +24,7 @@
  * @return ERROR_SUCCESS if the signature is valid, ERROR_INVALID_PARAMETER if the file is not a PE file,
  *         ERROR_FILE_NOT_FOUND if the file does not exist, or another error code.
  */
-DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_message_size);
+DWORD verify_pe_signature(const wchar_t* path, char* error_message, int error_message_size);
 
 /**
  * @brief Verify the signature of a file using the Windows Catalog.
@@ -34,7 +34,7 @@ DWORD verify_pe_signature(const wchar_t *path, char* error_message, int error_me
  * @param error_message_size Size of the error_message buffer.
  * @return int ERROR_SUCCESS on success otherwise error code.
  */
-DWORD verify_hash_catalog(wchar_t *path, char* error_message, int error_message_size);
+DWORD verify_hash_catalog(wchar_t* path, char* error_message, int error_message_size);
 
 /**
  * @brief Calculate the SHA256 hash of a file.
@@ -46,7 +46,7 @@ DWORD verify_hash_catalog(wchar_t *path, char* error_message, int error_message_
  * @param error_message_size Size of the error_message buffer.
  * @return int ERROR_SUCCESS on success otherwise error code.
  */
-DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size, char* error_message, int error_message_size);
+DWORD get_file_hash(const wchar_t* path, BYTE** hash, DWORD* hash_size, char* error_message, int error_message_size);
 
 /**
  * @brief Verify the authenticity of a file by both its signature and hash. The file is not trusted if both method fail.
@@ -54,7 +54,7 @@ DWORD get_file_hash(const wchar_t *path, BYTE **hash, DWORD *hash_size, char* er
  * @param file_path The path to the file to verify its auhtenticity.
  * @return w_err_t Returns OS_SUCCESS if at least one of the methods succeed, otherwise OS_INVALID.
  */
-w_err_t verify_hash_and_pe_signature(wchar_t *file_path);
+w_err_t verify_hash_and_pe_signature(wchar_t* file_path);
 
 /**
  * @brief Check if the CA is available.

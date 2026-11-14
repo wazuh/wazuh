@@ -18,10 +18,7 @@
 
 constexpr auto DB_DEFAULT_PATH {"temp.db"};
 constexpr auto DB_MEMORY {":memory:"};
-constexpr auto DB_PERMISSIONS
-{
-    0640
-};
+constexpr auto DB_PERMISSIONS {0640};
 
 /// @brief How long a connection waits on a busy/locked database before giving up.
 constexpr int DB_BUSY_TIMEOUT_MS {5000};
@@ -29,25 +26,18 @@ constexpr int DB_BUSY_TIMEOUT_MS {5000};
 using namespace SQLite;
 using ExpandedSQLPtr = std::unique_ptr<char, CustomDeleter<decltype(&sqlite3_free), sqlite3_free>>;
 
-static void checkSqliteResult(const int result,
-                              const std::string& exceptionString)
+static void checkSqliteResult(const int result, const std::string& exceptionString)
 {
     if (SQLITE_OK != result)
     {
-        throw sqlite_error
-        {
-            std::make_pair(result, exceptionString)
-        };
+        throw sqlite_error {std::make_pair(result, exceptionString)};
     }
 }
 
 static sqlite3* openSQLiteDb(const std::string& path, const int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
 {
-    sqlite3* pDb{ nullptr };
-    const auto result
-    {
-        sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)
-    };
+    sqlite3* pDb {nullptr};
+    const auto result {sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)};
 
     if (SQLITE_OK != result)
     {
@@ -61,39 +51,27 @@ static sqlite3* openSQLiteDb(const std::string& path, const int flags = SQLITE_O
             sqlite3_close_v2(pDb);
         }
 
-        throw sqlite_error
-        {
-            std::make_pair(result, errorMsg)
-        };
+        throw sqlite_error {std::make_pair(result, errorMsg)};
     }
 
     return pDb;
 }
 
 Connection::Connection(const std::string& path)
-    : m_db{ openSQLiteDb(path), [](sqlite3 * p)
-{
-    sqlite3_close_v2(p);
-} }
+    : m_db {openSQLiteDb(path), [](sqlite3* p) { sqlite3_close_v2(p); }}
 {
 #ifndef _WIN32
 
     if (path.compare(DB_MEMORY) != 0)
     {
-        const auto result { chmod(path.c_str(), DB_PERMISSIONS) };
+        const auto result {chmod(path.c_str(), DB_PERMISSIONS)};
 
         if (result != 0)
         {
-            throw sqlite_error
-            {
-                std::make_pair(result, "Error changing permissions of SQLite database.")
-            };
+            throw sqlite_error {std::make_pair(result, "Error changing permissions of SQLite database.")};
         }
 
-        m_db.reset(openSQLiteDb(path, SQLITE_OPEN_READWRITE), [](sqlite3 * p)
-        {
-            sqlite3_close_v2(p);
-        });
+        m_db.reset(openSQLiteDb(path, SQLITE_OPEN_READWRITE), [](sqlite3* p) { sqlite3_close_v2(p); });
     }
 
 #endif
@@ -112,22 +90,17 @@ const std::shared_ptr<sqlite3>& Connection::db() const
 
 Connection::Connection()
     : Connection(DB_DEFAULT_PATH)
-{}
+{
+}
 
 void Connection::execute(const std::string& query)
 {
     if (!m_db)
     {
-        throw sqlite_error
-        {
-            SQLITE_CONNECTION_ERROR
-        };
+        throw sqlite_error {SQLITE_CONNECTION_ERROR};
     }
 
-    const auto result
-    {
-        sqlite3_exec(m_db.get(), query.c_str(), 0, 0, nullptr)
-    };
+    const auto result {sqlite3_exec(m_db.get(), query.c_str(), 0, 0, nullptr)};
 
     checkSqliteResult(result, query + ". " + sqlite3_errmsg(m_db.get()));
 }
@@ -146,18 +119,19 @@ Transaction::~Transaction()
             m_connection->execute("ROLLBACK TRANSACTION");
         }
     }
-    //dtor should never throw
-    // LCOV_EXCL_START
+    // dtor should never throw
+    //  LCOV_EXCL_START
     catch (...)
-    {}
+    {
+    }
 
     // LCOV_EXCL_STOP
 }
 
 Transaction::Transaction(std::shared_ptr<IConnection>& connection)
-    : m_connection{ connection }
-    , m_rolledBack{ false }
-    , m_commited{ false }
+    : m_connection {connection}
+    , m_rolledBack {false}
+    , m_commited {false}
 {
     m_connection->execute("BEGIN TRANSACTION");
 }
@@ -181,10 +155,11 @@ void Transaction::rollback()
             m_connection->execute("ROLLBACK TRANSACTION");
         }
     }
-    //rollback can be called in a catch statement to unwind things so it shouldn't throw
-    // LCOV_EXCL_START
+    // rollback can be called in a catch statement to unwind things so it shouldn't throw
+    //  LCOV_EXCL_START
     catch (...)
-    {}
+    {
+    }
 
     // LCOV_EXCL_STOP
 }
@@ -199,32 +174,25 @@ bool Transaction::isRolledBack() const
     return m_rolledBack;
 }
 
-static sqlite3_stmt* prepareSQLiteStatement(std::shared_ptr<IConnection>& connection,
-                                            const std::string& query)
+static sqlite3_stmt* prepareSQLiteStatement(std::shared_ptr<IConnection>& connection, const std::string& query)
 {
-    sqlite3_stmt* pStatement{ nullptr };
-    const auto result
-    {
-        sqlite3_prepare_v2(connection->db().get(), query.c_str(), -1, &pStatement, nullptr)
-    };
+    sqlite3_stmt* pStatement {nullptr};
+    const auto result {sqlite3_prepare_v2(connection->db().get(), query.c_str(), -1, &pStatement, nullptr)};
     checkSqliteResult(result, sqlite3_errmsg(connection->db().get()));
     return pStatement;
 }
 
-Statement::Statement(std::shared_ptr<IConnection>& connection,
-                     const std::string& query)
-    : m_connection{ connection }
-    , m_stmt{ prepareSQLiteStatement(m_connection, query), [](sqlite3_stmt * p)
+Statement::Statement(std::shared_ptr<IConnection>& connection, const std::string& query)
+    : m_connection {connection}
+    , m_stmt {prepareSQLiteStatement(m_connection, query), [](sqlite3_stmt* p) { sqlite3_finalize(p); }}
+    , m_bindParametersCount {sqlite3_bind_parameter_count(m_stmt.get())}
+    , m_bindParametersIndex {0}
 {
-    sqlite3_finalize(p);
-} }
-, m_bindParametersCount{ sqlite3_bind_parameter_count(m_stmt.get()) }
-, m_bindParametersIndex{ 0 }
-{}
+}
 
 int32_t Statement::step()
 {
-    auto ret { SQLITE_ERROR };
+    auto ret {SQLITE_ERROR};
 
     if (m_bindParametersIndex == m_bindParametersCount)
     {
@@ -247,38 +215,31 @@ void Statement::reset()
 
 void Statement::bind(const int32_t index, const int32_t value)
 {
-    const auto result{ sqlite3_bind_int(m_stmt.get(), index, value) };
+    const auto result {sqlite3_bind_int(m_stmt.get(), index, value)};
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
     ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const uint64_t value)
 {
-    const auto result{ sqlite3_bind_int64(m_stmt.get(), index, value) };
+    const auto result {sqlite3_bind_int64(m_stmt.get(), index, value)};
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
     ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const int64_t value)
 {
-    const auto result{ sqlite3_bind_int64(m_stmt.get(), index, value) };
+    const auto result {sqlite3_bind_int64(m_stmt.get(), index, value)};
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
     ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const std::string& value)
 {
-    const auto result
-    {
-        sqlite3_bind_text(m_stmt.get(),
-                          index,
-                          value.c_str(),
-                          value.length(),
-                          SQLITE_TRANSIENT)
-    };
+    const auto result {sqlite3_bind_text(m_stmt.get(), index, value.c_str(), value.length(), SQLITE_TRANSIENT)};
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
     ++m_bindParametersIndex;
 }
 void Statement::bind(const int32_t index, const double_t value)
 {
-    const auto result{ sqlite3_bind_double(m_stmt.get(), index, value) };
+    const auto result {sqlite3_bind_double(m_stmt.get(), index, value)};
     checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
     ++m_bindParametersIndex;
 }
@@ -299,11 +260,11 @@ int Statement::columnsCount() const
 {
     return sqlite3_column_count(m_stmt.get());
 }
-Column::Column(std::shared_ptr<sqlite3_stmt>& stmt,
-               const int32_t index)
-    : m_stmt{ stmt }
-    , m_index{ index }
-{}
+Column::Column(std::shared_ptr<sqlite3_stmt>& stmt, const int32_t index)
+    : m_stmt {stmt}
+    , m_index {index}
+{
+}
 
 bool Column::hasValue() const
 {
@@ -335,6 +296,6 @@ double_t Column::value(const double_t&) const
 }
 std::string Column::value(const std::string&) const
 {
-    const auto str { reinterpret_cast<const char*>(sqlite3_column_text(m_stmt.get(), m_index)) };
+    const auto str {reinterpret_cast<const char*>(sqlite3_column_text(m_stmt.get(), m_index))};
     return nullptr != str ? str : "";
 }

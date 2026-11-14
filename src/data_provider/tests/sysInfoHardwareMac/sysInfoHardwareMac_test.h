@@ -16,12 +16,12 @@
 
 class SysInfoHardwareMacTest : public ::testing::Test
 {
-    protected:
-        SysInfoHardwareMacTest() = default;
-        virtual ~SysInfoHardwareMacTest() = default;
+protected:
+    SysInfoHardwareMacTest() = default;
+    virtual ~SysInfoHardwareMacTest() = default;
 
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYSINFO_HARDWARE_MAC_TEST_H

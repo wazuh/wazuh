@@ -34,118 +34,97 @@ namespace Utils
     };
     class HashData final
     {
-        public:
-            HashData(const HashType hashType = HashType::Sha1)
-                : m_spCtx{createContext()}
-            {
-                initializeContext(hashType, m_spCtx);
-            }
+    public:
+        HashData(const HashType hashType = HashType::Sha1)
+            : m_spCtx {createContext()}
+        {
+            initializeContext(hashType, m_spCtx);
+        }
+        // LCOV_EXCL_START
+        ~HashData() = default;
+        // LCOV_EXCL_STOP
+        void update(const void* data, const size_t size)
+        {
+            const auto ret {EVP_DigestUpdate(m_spCtx.get(), data, size)};
+
             // LCOV_EXCL_START
-            ~HashData() = default;
+            if (!ret)
+            {
+                throw std::runtime_error {"Error getting digest final."};
+            }
+
             // LCOV_EXCL_STOP
-            void update(const void* data, const size_t size)
+        }
+        std::vector<unsigned char> hash()
+        {
+            unsigned char digest[EVP_MAX_MD_SIZE] {0};
+            unsigned int digestSize {0};
+            const auto ret {EVP_DigestFinal_ex(m_spCtx.get(), digest, &digestSize)};
+
+            // LCOV_EXCL_START
+            if (!ret)
             {
-                const auto ret
-                {
-                    EVP_DigestUpdate(m_spCtx.get(), data, size)
-                };
-
-                // LCOV_EXCL_START
-                if (!ret)
-                {
-                    throw std::runtime_error
-                    {
-                        "Error getting digest final."
-                    };
-                }
-
-                // LCOV_EXCL_STOP
+                throw std::runtime_error {"Error getting digest final."};
             }
-            std::vector<unsigned char> hash()
+
+            // LCOV_EXCL_STOP
+            return {digest, digest + digestSize};
+        }
+
+    private:
+        struct EvpContextDeleter final
+        {
+            void operator()(EVP_MD_CTX* ctx)
             {
-                unsigned char digest[EVP_MAX_MD_SIZE] {0};
-                unsigned int digestSize{0};
-                const auto ret
-                {
-                    EVP_DigestFinal_ex(m_spCtx.get(), digest, &digestSize)
-                };
-
-                // LCOV_EXCL_START
-                if (!ret)
-                {
-                    throw std::runtime_error
-                    {
-                        "Error getting digest final."
-                    };
-                }
-
-                // LCOV_EXCL_STOP
-                return {digest, digest + digestSize};
+                EVP_MD_CTX_destroy(ctx);
             }
-        private:
-            struct EvpContextDeleter final
+        };
+
+        static EVP_MD_CTX* createContext()
+        {
+            auto ctx {EVP_MD_CTX_create()};
+
+            // LCOV_EXCL_START
+            if (!ctx)
             {
-                void operator()(EVP_MD_CTX* ctx)
-                {
-                    EVP_MD_CTX_destroy(ctx);
-                }
-            };
-
-            static EVP_MD_CTX* createContext()
-            {
-                auto ctx{ EVP_MD_CTX_create() };
-
-                // LCOV_EXCL_START
-                if (!ctx)
-                {
-                    throw std::runtime_error
-                    {
-                        "Error creating EVP_MD_CTX."
-                    };
-                }
-
-                // LCOV_EXCL_STOP
-                return ctx;
+                throw std::runtime_error {"Error creating EVP_MD_CTX."};
             }
-            static void initializeContext(const HashType hashType, std::unique_ptr<EVP_MD_CTX, EvpContextDeleter>& spCtx)
+
+            // LCOV_EXCL_STOP
+            return ctx;
+        }
+        static void initializeContext(const HashType hashType, std::unique_ptr<EVP_MD_CTX, EvpContextDeleter>& spCtx)
+        {
+            // std::call_once guarantees OPENSSL_init_crypto runs exactly once process-wide
+            // and that every concurrent caller blocks until it's done — a plain static bool
+            // guard here previously let multiple threads race past the check before either
+            // set it, so EVP_DigestInit below could transiently fail on the first-ever
+            // HashData construction (e.g. syscollector fanning out several RSync-backed
+            // checksum computations across its thread pool on its first evaluation cycle).
+            static std::once_flag cryptoInitFlag;
+            std::call_once(cryptoInitFlag,
+                           []()
+                           {
+                               OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS |
+                                                       OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT,
+                                                   nullptr);
+                           });
+
+            auto ret {0};
+
+            switch (hashType)
             {
-                // std::call_once guarantees OPENSSL_init_crypto runs exactly once process-wide
-                // and that every concurrent caller blocks until it's done — a plain static bool
-                // guard here previously let multiple threads race past the check before either
-                // set it, so EVP_DigestInit below could transiently fail on the first-ever
-                // HashData construction (e.g. syscollector fanning out several RSync-backed
-                // checksum computations across its thread pool on its first evaluation cycle).
-                static std::once_flag cryptoInitFlag;
-                std::call_once(cryptoInitFlag,
-                               []()
-                               {
-                                   OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS |
-                                                           OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT,
-                                                       nullptr);
-                               });
+                case HashType::Sha1: ret = EVP_DigestInit(spCtx.get(), EVP_sha1()); break;
 
-                auto ret{0};
-
-                switch (hashType)
-                {
-                    case HashType::Sha1:
-                        ret = EVP_DigestInit(spCtx.get(), EVP_sha1());
-                        break;
-
-                    case HashType::Sha256:
-                        ret = EVP_DigestInit(spCtx.get(), EVP_sha256());
-                        break;
-                }
-
-                if (!ret)
-                {
-                    throw std::runtime_error
-                    {
-                        "Error initializing EVP_MD_CTX."
-                    };
-                }
+                case HashType::Sha256: ret = EVP_DigestInit(spCtx.get(), EVP_sha256()); break;
             }
-            std::unique_ptr<EVP_MD_CTX, EvpContextDeleter> m_spCtx;
+
+            if (!ret)
+            {
+                throw std::runtime_error {"Error initializing EVP_MD_CTX."};
+            }
+        }
+        std::unique_ptr<EVP_MD_CTX, EvpContextDeleter> m_spCtx;
     };
 
     /**

@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
-// Excluding from coverage since these are simple wrappers for their C++ counterparts, which are already included in the coverage.
-// LCOV_EXCL_START
+// Excluding from coverage since these are simple wrappers for their C++ counterparts, which are already included in the
+// coverage. LCOV_EXCL_START
 namespace
 {
     SyncModuleResult_t toCSyncModuleResult(const SyncModuleResult& cppResult)
@@ -45,17 +45,11 @@ namespace
 
         switch (cppResult.status)
         {
-            case IntegrityCheckStatus::VALID:
-                cResult.status = INTEGRITY_CHECK_VALID;
-                break;
+            case IntegrityCheckStatus::VALID: cResult.status = INTEGRITY_CHECK_VALID; break;
 
-            case IntegrityCheckStatus::MISMATCH:
-                cResult.status = INTEGRITY_CHECK_MISMATCH;
-                break;
+            case IntegrityCheckStatus::MISMATCH: cResult.status = INTEGRITY_CHECK_MISMATCH; break;
 
-            default:
-                cResult.status = INTEGRITY_CHECK_NOT_CHECKED;
-                break;
+            default: cResult.status = INTEGRITY_CHECK_NOT_CHECKED; break;
         }
 
         strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
@@ -82,8 +76,9 @@ namespace
     {
         if (value > MAX_QUEUE_OPTION)
         {
-            logger(LOG_WARNING, std::string("Value of ") + name + " (" + std::to_string(value) +
-                   ") exceeds the maximum of " + std::to_string(MAX_QUEUE_OPTION) + ". Using the default.");
+            logger(LOG_WARNING,
+                   std::string("Value of ") + name + " (" + std::to_string(value) + ") exceeds the maximum of " +
+                       std::to_string(MAX_QUEUE_OPTION) + ". Using the default.");
             return std::nullopt;
         }
 
@@ -91,7 +86,8 @@ namespace
     }
 } // namespace
 
-extern "C" {
+extern "C"
+{
 
     void asp_set_session_max_bytes(uint64_t max_session_bytes)
     {
@@ -108,16 +104,20 @@ extern "C" {
         return AgentSyncProtocol::currentAgentId();
     }
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
-                                        uint64_t flush_batch_size, uint64_t flush_interval_ms,
-                                        uint64_t wal_autocheckpoint_pages, uint64_t cache_size_kib)
+    AgentSyncProtocolHandle* asp_create(const char* module,
+                                        const char* db_path,
+                                        asp_logger_t logger,
+                                        uint64_t flush_batch_size,
+                                        uint64_t flush_interval_ms,
+                                        uint64_t wal_autocheckpoint_pages,
+                                        uint64_t cache_size_kib)
     {
         try
         {
-            if (!module || !logger) return nullptr;
+            if (!module || !logger)
+                return nullptr;
 
-            LoggerFunc logger_wrapper =
-                [logger](modules_log_level_t level, const std::string & msg)
+            LoggerFunc logger_wrapper = [logger](modules_log_level_t level, const std::string& msg)
             {
                 logger(level, msg.c_str());
             };
@@ -126,7 +126,8 @@ extern "C" {
 
             const auto flushBatchSize = validQueueOption(flush_batch_size, "flush_batch_size", logger_wrapper);
             const auto flushInterval = validQueueOption(flush_interval_ms, "flush_interval_ms", logger_wrapper);
-            const auto walAutocheckpointPages = validQueueOption(wal_autocheckpoint_pages, "wal_autocheckpoint_pages", logger_wrapper);
+            const auto walAutocheckpointPages =
+                validQueueOption(wal_autocheckpoint_pages, "wal_autocheckpoint_pages", logger_wrapper);
             const auto cacheSizeKiB = validQueueOption(cache_size_kib, "cache_size_kib", logger_wrapper);
 
             std::optional<std::size_t> flushBatchSizeOpt =
@@ -134,12 +135,18 @@ extern "C" {
             std::optional<std::chrono::milliseconds> flushIntervalOpt =
                 flushInterval ? std::make_optional(std::chrono::milliseconds(*flushInterval)) : std::nullopt;
             std::optional<int32_t> walAutocheckpointPagesOpt =
-                walAutocheckpointPages ? std::make_optional(static_cast<int32_t>(*walAutocheckpointPages)) : std::nullopt;
+                walAutocheckpointPages ? std::make_optional(static_cast<int32_t>(*walAutocheckpointPages))
+                                       : std::nullopt;
             std::optional<int32_t> cacheSizeKiBOpt =
                 cacheSizeKiB ? std::make_optional(static_cast<int32_t>(*cacheSizeKiB)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper), flushBatchSizeOpt, flushIntervalOpt,
-                                                                                           walAutocheckpointPagesOpt, cacheSizeKiBOpt));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module,
+                                                                                           std::move(dbPathOpt),
+                                                                                           std::move(logger_wrapper),
+                                                                                           flushBatchSizeOpt,
+                                                                                           flushIntervalOpt,
+                                                                                           walAutocheckpointPagesOpt,
+                                                                                           cacheSizeKiBOpt));
         }
         catch (const std::exception& ex)
         {
@@ -176,12 +183,11 @@ extern "C" {
     {
         try
         {
-            if (!handle || !id || !index || !data) return;
+            if (!handle || !id || !index || !data)
+                return;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->persistDifference(id,
-                                             static_cast<Operation>(operation),
-                                             index, data, version);
+            wrapper->impl->persistDifference(id, static_cast<Operation>(operation), index, data, version);
         }
         catch (const std::exception& ex)
         {
@@ -193,12 +199,12 @@ extern "C" {
         }
     }
 
-    SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
-                                       Mode_t mode)
+    SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle, Mode_t mode)
     {
         try
         {
-            if (!handle) return {};
+            if (!handle)
+                return {};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -214,18 +220,17 @@ extern "C" {
         }
     }
 
-    SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
-                                               Mode_t mode,
-                                               uint32_t max_blocks)
+    SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle, Mode_t mode, uint32_t max_blocks)
     {
         try
         {
-            if (!handle) return {false, {}, false, false, 0};
+            if (!handle)
+                return {false, {}, false, false, 0};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-            return toCSyncModuleResult(wrapper->impl->synchronizeModuleBounded(static_cast<Mode>(mode),
-                                                                               static_cast<size_t>(max_blocks)));
+            return toCSyncModuleResult(
+                wrapper->impl->synchronizeModuleBounded(static_cast<Mode>(mode), static_cast<size_t>(max_blocks)));
         }
         catch (const std::exception& ex)
         {
@@ -237,9 +242,8 @@ extern "C" {
         }
     }
 
-    IntegrityCheckResult_t asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                                  const char* index,
-                                                  const char* checksum)
+    IntegrityCheckResult_t
+    asp_requires_full_sync(AgentSyncProtocolHandle* handle, const char* index, const char* checksum)
     {
         IntegrityCheckResult cppResult;
 
@@ -273,7 +277,8 @@ extern "C" {
     {
         try
         {
-            if (!handle || !data) return false;
+            if (!handle || !data)
+                return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
             return wrapper->impl->parseResponseBuffer(data, length);
@@ -296,7 +301,8 @@ extern "C" {
     {
         try
         {
-            if (!handle || !indices || indices_count == 0) return {};
+            if (!handle || !indices || indices_count == 0)
+                return {};
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
@@ -311,13 +317,13 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return {};
+            if (indices_vec.empty())
+                return {};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-            SyncModuleResult cppResult = wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
-                                                                                    indices_vec,
-                                                                                    global_version);
+            SyncModuleResult cppResult =
+                wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode), indices_vec, global_version);
 
             SyncModuleResult_t cResult;
 
@@ -351,13 +357,12 @@ extern "C" {
         }
     }
 
-    bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
-                               const char** indices,
-                               size_t indices_count)
+    bool asp_notify_data_clean(AgentSyncProtocolHandle* handle, const char** indices, size_t indices_count)
     {
         try
         {
-            if (!handle || !indices || indices_count == 0) return false;
+            if (!handle || !indices || indices_count == 0)
+                return false;
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
@@ -371,7 +376,8 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return false;
+            if (indices_vec.empty())
+                return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
             return wrapper->impl->notifyDataClean(indices_vec).success;
@@ -390,7 +396,8 @@ extern "C" {
     {
         try
         {
-            if (!handle) return;
+            if (!handle)
+                return;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
             wrapper->impl->deleteDatabase();
@@ -409,7 +416,8 @@ extern "C" {
     {
         try
         {
-            if (!handle) return;
+            if (!handle)
+                return;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
             wrapper->impl->stop();
@@ -428,7 +436,8 @@ extern "C" {
     {
         try
         {
-            if (!handle) return;
+            if (!handle)
+                return;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
             wrapper->impl->reset();
@@ -447,7 +456,8 @@ extern "C" {
     {
         try
         {
-            if (!handle) return false;
+            if (!handle)
+                return false;
 
             auto* wrapper = reinterpret_cast<const AgentSyncProtocolWrapper*>(handle);
             return wrapper->impl->shouldStop();

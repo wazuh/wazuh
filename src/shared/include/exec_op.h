@@ -16,18 +16,19 @@
 #include <sys/types.h>
 #endif
 
-#define W_BIND_STDOUT   001
-#define W_BIND_STDERR   002
-#define W_CHECK_WRITE   004
-#define W_BIND_STDIN    020
+#define W_BIND_STDOUT 001
+#define W_BIND_STDERR 002
+#define W_CHECK_WRITE 004
+#define W_BIND_STDIN  020
 
 #ifdef WIN32
 #define WEXITSTATUS(x) x
 #endif
 
-typedef struct wfd_t {
-    FILE * file_in;
-    FILE * file_out;
+typedef struct wfd_t
+{
+    FILE* file_in;
+    FILE* file_out;
 #ifdef WIN32
     PROCESS_INFORMATION pinfo;
 #else
@@ -36,12 +37,12 @@ typedef struct wfd_t {
 } wfd_t;
 
 // Open a stream from a process without shell (execvp form)
-wfd_t * wpopenv(const char * path, char * const * argv, int flags);
+wfd_t* wpopenv(const char* path, char* const* argv, int flags);
 
 // Open a stream from a process without shell (execlp form)
-wfd_t * wpopenl(const char * path, int flags, ...);
+wfd_t* wpopenl(const char* path, int flags, ...);
 
 // Close stream and return exit status
-int wpclose(wfd_t * wfd);
+int wpclose(wfd_t* wfd);
 
 #endif // EXEC_OP_H

@@ -35,18 +35,17 @@
 #undef fopen
 #define fopen wrap_fopen
 
-
-char * wrap_fgets(char * __s, int __n, FILE * __stream);
-int wrap_fprintf(FILE *__stream, const char *__format, ...);
-int wrap_snprintf(char * s, size_t n, const char *__format, ...);
-int wrap_fstat (int __fd, struct stat *__buf);
-int wrap_fileno(FILE *fp);
-int wrap_fclose(FILE *fp);
-int wrap_fwrite(char *src, int n, size_t size, FILE *fp);
-int wrap_fseek(FILE *fp, int seek,  int flag);
-void * wrap_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
-int wrap_munmap (void *mem, size_t size);
-FILE * wrap_tmpfile();
-FILE * wrap_fopen (const char* path, const char* mode);
+char* wrap_fgets(char* __s, int __n, FILE* __stream);
+int wrap_fprintf(FILE* __stream, const char* __format, ...);
+int wrap_snprintf(char* s, size_t n, const char* __format, ...);
+int wrap_fstat(int __fd, struct stat* __buf);
+int wrap_fileno(FILE* fp);
+int wrap_fclose(FILE* fp);
+int wrap_fwrite(char* src, int n, size_t size, FILE* fp);
+int wrap_fseek(FILE* fp, int seek, int flag);
+void* wrap_mmap(void* start, size_t length, int prot, int flags, int fd, off_t offset);
+int wrap_munmap(void* mem, size_t size);
+FILE* wrap_tmpfile();
+FILE* wrap_fopen(const char* path, const char* mode);
 
 #endif

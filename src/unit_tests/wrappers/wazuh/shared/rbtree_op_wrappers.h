@@ -7,16 +7,15 @@
  * Foundation
  */
 
-
 #ifndef RBTREE_OP_WRAPPERS_H
 #define RBTREE_OP_WRAPPERS_H
 
 #include <rbtree_op.h>
 
-void * __wrap_rbtree_insert(rb_tree * tree, const char * key, void * value);
+void* __wrap_rbtree_insert(rb_tree* tree, const char* key, void* value);
 
-char **__wrap_rbtree_keys(const rb_tree *tree);
+char** __wrap_rbtree_keys(const rb_tree* tree);
 
-void *__wrap_rbtree_get(const rb_tree *tree, const char * key);
+void* __wrap_rbtree_get(const rb_tree* tree, const char* key);
 
 #endif

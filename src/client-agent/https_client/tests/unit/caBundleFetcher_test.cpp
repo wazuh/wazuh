@@ -30,34 +30,34 @@ namespace
     /// Advances only when told to, so a due time is reached deliberately rather than by waiting.
     class SteppedClock : public IClock
     {
-        public:
-            std::time_t wallSeconds() const override
-            {
-                return 1789000000;
-            }
+    public:
+        std::time_t wallSeconds() const override
+        {
+            return 1789000000;
+        }
 
-            std::chrono::steady_clock::time_point steadyNow() const override
-            {
-                return m_now;
-            }
+        std::chrono::steady_clock::time_point steadyNow() const override
+        {
+            return m_now;
+        }
 
-            void advance(std::chrono::milliseconds by)
-            {
-                m_now += by;
-            }
+        void advance(std::chrono::milliseconds by)
+        {
+            m_now += by;
+        }
 
-        private:
-            std::chrono::steady_clock::time_point m_now {std::chrono::steady_clock::now()};
+    private:
+        std::chrono::steady_clock::time_point m_now {std::chrono::steady_clock::now()};
     };
 
     /// Always the top of the jitter window, so the delay is known and long.
     class MaxRandom : public IRandom
     {
-        public:
-            double uniform01() override
-            {
-                return 1.0;
-            }
+    public:
+        double uniform01() override
+        {
+            return 1.0;
+        }
     };
 
     ModuleConfig makeConfig()
@@ -124,41 +124,47 @@ namespace
 
     class Fixture
     {
-        public:
-            Fixture()
-                : m_config(makeConfig())
-                , m_state(HELD)
-                , m_fetcher(m_config, m_performer, m_fsProbe, m_clock, m_random, m_state,
-                            [this](const std::string & pem, std::int64_t generation)
-            {
-                m_installs.calls.emplace_back(pem, generation);
-                return m_installs.answer;
-            },
-            TEST_LOG)
-            {
-                ON_CALL(m_fsProbe, isReadableFile(_)).WillByDefault(Return(true));
-            }
+    public:
+        Fixture()
+            : m_config(makeConfig())
+            , m_state(HELD)
+            , m_fetcher(
+                  m_config,
+                  m_performer,
+                  m_fsProbe,
+                  m_clock,
+                  m_random,
+                  m_state,
+                  [this](const std::string& pem, std::int64_t generation)
+                  {
+                      m_installs.calls.emplace_back(pem, generation);
+                      return m_installs.answer;
+                  },
+                  TEST_LOG)
+        {
+            ON_CALL(m_fsProbe, isReadableFile(_)).WillByDefault(Return(true));
+        }
 
-            /// Arms a refresh, sits out the jitter window, and runs the attempt.
-            void runDueRefresh(std::int64_t advertised = PUBLISHED)
-            {
-                m_state.observe(advertised);
-                m_fetcher.tick(m_waiter);            // Schedules the wait.
-                m_clock.advance(std::chrono::seconds {3600});
-                m_fetcher.tick(m_waiter);            // Performs it.
-            }
+        /// Arms a refresh, sits out the jitter window, and runs the attempt.
+        void runDueRefresh(std::int64_t advertised = PUBLISHED)
+        {
+            m_state.observe(advertised);
+            m_fetcher.tick(m_waiter); // Schedules the wait.
+            m_clock.advance(std::chrono::seconds {3600});
+            m_fetcher.tick(m_waiter); // Performs it.
+        }
 
-            NiceMock<MockHttpPerformer> m_performer;
-            NiceMock<MockFsProbe> m_fsProbe;
-            SteppedClock m_clock;
-            MaxRandom m_random;
-            ModuleConfig m_config;
-            CaPublicationState m_state;
-            Installs m_installs;
-            Waiter m_waiter;
-            CaBundleFetcher m_fetcher;
+        NiceMock<MockHttpPerformer> m_performer;
+        NiceMock<MockFsProbe> m_fsProbe;
+        SteppedClock m_clock;
+        MaxRandom m_random;
+        ModuleConfig m_config;
+        CaPublicationState m_state;
+        Installs m_installs;
+        Waiter m_waiter;
+        CaBundleFetcher m_fetcher;
     };
-}
+} // namespace
 
 TEST(CaBundleFetcher, NothingPendingSendsNothing)
 {
@@ -187,7 +193,7 @@ TEST(CaBundleFetcher, AVettedBundleIsInstalledAndBecomesTheLocalPublication)
 {
     Fixture f;
     EXPECT_CALL(f.m_performer, perform(_))
-    .WillOnce(Return(bundleResponse(200, "-----BEGIN CERTIFICATE-----\nAA\n", PUBLISHED)));
+        .WillOnce(Return(bundleResponse(200, "-----BEGIN CERTIFICATE-----\nAA\n", PUBLISHED)));
 
     f.runDueRefresh();
 
@@ -202,12 +208,11 @@ TEST(CaBundleFetcher, AVettedBundleIsInstalledAndBecomesTheLocalPublication)
 TEST(CaBundleFetcher, TheHighestPublicationSeenDuringTheWaitIsTheOneFetched)
 {
     Fixture f;
-    EXPECT_CALL(f.m_performer, perform(_))
-    .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED + 5)));
+    EXPECT_CALL(f.m_performer, perform(_)).WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED + 5)));
 
     f.m_state.observe(PUBLISHED);
-    f.m_fetcher.tick(f.m_waiter);       // Schedules against PUBLISHED.
-    f.m_state.observe(PUBLISHED + 5);   // ...and the manager publishes again.
+    f.m_fetcher.tick(f.m_waiter);     // Schedules against PUBLISHED.
+    f.m_state.observe(PUBLISHED + 5); // ...and the manager publishes again.
     f.m_clock.advance(std::chrono::seconds {3600});
     f.m_fetcher.tick(f.m_waiter);
 
@@ -233,23 +238,23 @@ TEST_P(CaBundleFetcherRefusal, NothingIsInstalledAndTheTargetStaysArmed)
     EXPECT_EQ(PUBLISHED, f.m_state.pending());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    EveryDiscardReason, CaBundleFetcherRefusal,
-    ::testing::Values(
-        // No servable bundle on that node.
-        bundleResponse(404, R"({"error":"not_found"})", 0),
-        // Its bundle does not sign the certificate it serves.
-        bundleResponse(503, R"({"error":"ca_mismatch"})", 0),
-        // Rate limited.
-        bundleResponse(429, "", 0),
-        // A body at the client's cap was cut off in transit.
-        bundleResponse(200, std::string(8192, 'x'), PUBLISHED),
-        // The node served a bundle it does not vouch for.
-        bundleResponse(200, "PEM", 0),
-        // A lagging node behind a load balancer, answering with an older bundle.
-        bundleResponse(200, "PEM", HELD),
-        // 200 with nothing in it.
-        bundleResponse(200, "", PUBLISHED)));
+INSTANTIATE_TEST_SUITE_P(EveryDiscardReason,
+                         CaBundleFetcherRefusal,
+                         ::testing::Values(
+                             // No servable bundle on that node.
+                             bundleResponse(404, R"({"error":"not_found"})", 0),
+                             // Its bundle does not sign the certificate it serves.
+                             bundleResponse(503, R"({"error":"ca_mismatch"})", 0),
+                             // Rate limited.
+                             bundleResponse(429, "", 0),
+                             // A body at the client's cap was cut off in transit.
+                             bundleResponse(200, std::string(8192, 'x'), PUBLISHED),
+                             // The node served a bundle it does not vouch for.
+                             bundleResponse(200, "PEM", 0),
+                             // A lagging node behind a load balancer, answering with an older bundle.
+                             bundleResponse(200, "PEM", HELD),
+                             // 200 with nothing in it.
+                             bundleResponse(200, "", PUBLISHED)));
 
 /* The consumer has the last word: the module cannot parse X.509, so a body it could not turn
  * into a trust store leaves the module's own notion of the installed publication alone. */
@@ -257,8 +262,7 @@ TEST(CaBundleFetcher, AConsumerRefusalLeavesTheStateUntouched)
 {
     Fixture f;
     f.m_installs.answer = false;
-    EXPECT_CALL(f.m_performer, perform(_))
-    .WillOnce(Return(bundleResponse(200, "not a certificate", PUBLISHED)));
+    EXPECT_CALL(f.m_performer, perform(_)).WillOnce(Return(bundleResponse(200, "not a certificate", PUBLISHED)));
 
     f.runDueRefresh();
 
@@ -272,10 +276,7 @@ TEST(CaBundleFetcher, AConsumerRefusalLeavesTheStateUntouched)
  * OS's rather than the agent's to replace. */
 TEST(CaBundleFetcher, NoRefreshWhenVerificationIsOffOrDelegatedToTheOs)
 {
-    for (const hc_verify_mode_t mode :
-            {
-                HC_VERIFY_NONE, HC_VERIFY_SYSTEM
-            })
+    for (const hc_verify_mode_t mode : {HC_VERIFY_NONE, HC_VERIFY_SYSTEM})
     {
         Fixture f;
         f.m_config.verifyMode = mode;
@@ -317,8 +318,7 @@ TEST(CaBundleFetcher, APublicationThatNeverInstallsIsEventuallyAbandoned)
 {
     Fixture f;
     f.m_installs.answer = false; // The consumer refuses every time, as an unwritable store does.
-    ON_CALL(f.m_performer, perform(_))
-    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
 
     f.m_state.observe(PUBLISHED);
 
@@ -344,8 +344,7 @@ TEST(CaBundleFetcher, AnAbandonedPublicationIsTriedAgainOnceTheCooldownLifts)
 {
     Fixture f;
     f.m_installs.answer = false;
-    ON_CALL(f.m_performer, perform(_))
-    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
 
     f.m_state.observe(PUBLISHED);
 
@@ -360,9 +359,9 @@ TEST(CaBundleFetcher, AnAbandonedPublicationIsTriedAgainOnceTheCooldownLifts)
     // Whatever refused it stops being true -- an operator makes the store writable.
     f.m_installs.answer = true;
     f.m_clock.advance(std::chrono::hours {2});
-    f.m_fetcher.tick(f.m_waiter);   // Cooldown is up: schedules the wait again.
+    f.m_fetcher.tick(f.m_waiter); // Cooldown is up: schedules the wait again.
     f.m_clock.advance(std::chrono::minutes {2});
-    f.m_fetcher.tick(f.m_waiter);   // ...and performs it.
+    f.m_fetcher.tick(f.m_waiter); // ...and performs it.
 
     EXPECT_EQ(6u, f.m_installs.calls.size());
     EXPECT_EQ(PUBLISHED, f.m_state.local());
@@ -387,11 +386,10 @@ TEST(CaBundleFetcher, AManagerThatWasNeverReachedDoesNotSpendTheBudget)
         f.m_fetcher.tick(f.m_waiter);
     }
 
-    EXPECT_TRUE(f.m_installs.calls.empty());   // Nothing ever came back to install.
+    EXPECT_TRUE(f.m_installs.calls.empty()); // Nothing ever came back to install.
 
     // The manager returns, still advertising the same publication, and the agent adopts it.
-    ON_CALL(f.m_performer, perform(_))
-    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
     f.m_clock.advance(std::chrono::minutes {2});
     f.m_fetcher.tick(f.m_waiter);
 
@@ -414,14 +412,13 @@ TEST(CaBundleFetcher, AFetchAbortedByShutdownDoesNotSpendTheBudget)
         f.m_fetcher.tick(f.m_waiter);
     }
 
-    ON_CALL(f.m_performer, perform(_))
-    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
     // Two ticks, not one: an abort clears the due time outright rather than re-arming it on the
     // ramp, because a shutdown is not something to back off from. The next start re-jitters.
     f.m_clock.advance(std::chrono::minutes {2});
-    f.m_fetcher.tick(f.m_waiter);   // Schedules the wait again.
+    f.m_fetcher.tick(f.m_waiter); // Schedules the wait again.
     f.m_clock.advance(std::chrono::minutes {2});
-    f.m_fetcher.tick(f.m_waiter);   // ...and performs it.
+    f.m_fetcher.tick(f.m_waiter); // ...and performs it.
 
     ASSERT_EQ(1u, f.m_installs.calls.size());
     EXPECT_EQ(PUBLISHED, f.m_state.local());
@@ -433,8 +430,7 @@ TEST(CaBundleFetcher, AHigherPublicationIsTriedAfterOneWasAbandoned)
 {
     Fixture f;
     f.m_installs.answer = false;
-    ON_CALL(f.m_performer, perform(_))
-    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED)));
 
     f.m_state.observe(PUBLISHED);
 
@@ -449,8 +445,7 @@ TEST(CaBundleFetcher, AHigherPublicationIsTriedAfterOneWasAbandoned)
     ASSERT_EQ(5u, f.m_installs.calls.size());
 
     f.m_installs.answer = true;
-    ON_CALL(f.m_performer, perform(_))
-    .WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED + 1)));
+    ON_CALL(f.m_performer, perform(_)).WillByDefault(Return(bundleResponse(200, "PEM", PUBLISHED + 1)));
 
     f.m_state.observe(PUBLISHED + 1);
     f.m_clock.advance(std::chrono::seconds {3600});
@@ -474,10 +469,10 @@ TEST(CaBundleFetcher, RetryAfterDefersTheNextAttemptBeyondTheRamp)
     Fixture f;
 
     EXPECT_CALL(f.m_performer, perform(_))
-    .WillOnce(Return(rateLimited(30)))
-    .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
+        .WillOnce(Return(rateLimited(30)))
+        .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
 
-    f.runDueRefresh();                              // First attempt: 429.
+    f.runDueRefresh(); // First attempt: 429.
     EXPECT_TRUE(f.m_installs.calls.empty());
 
     // Well past the ramp, nowhere near what the server asked for: nothing may go out yet.
@@ -500,8 +495,8 @@ TEST(CaBundleFetcher, AnAbsurdRetryAfterIsCappedAtTheAgentMaximum)
     Fixture f;
 
     EXPECT_CALL(f.m_performer, perform(_))
-    .WillOnce(Return(rateLimited(86400)))           // A full day.
-    .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
+        .WillOnce(Return(rateLimited(86400))) // A full day.
+        .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
 
     f.runDueRefresh();
     EXPECT_TRUE(f.m_installs.calls.empty());
@@ -523,16 +518,13 @@ TEST(CaBundleFetcher, AnAbsurdRetryAfterIsCappedAtTheAgentMaximum)
  * here is the fixture's 1 s, so the assertions straddle that rather than the server's value. */
 TEST(CaBundleFetcher, AnAbsentOrNegativeRetryAfterLeavesTheRampInCharge)
 {
-    for (const long header :
-            {
-                0L, -1L, -86400L
-            })
+    for (const long header : {0L, -1L, -86400L})
     {
         Fixture f;
 
         EXPECT_CALL(f.m_performer, perform(_))
-        .WillOnce(Return(rateLimited(header)))
-        .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
+            .WillOnce(Return(rateLimited(header)))
+            .WillOnce(Return(bundleResponse(200, "PEM", PUBLISHED)));
 
         f.runDueRefresh();
         ASSERT_TRUE(f.m_installs.calls.empty()) << "header " << header;

@@ -1,8 +1,7 @@
 #ifndef TEST_INPUTS_H
 #define TEST_INPUTS_H
 
-constexpr auto input1
-{
+constexpr auto input1 {
     R"(
 [
 	{
@@ -8938,11 +8937,9 @@ constexpr auto input1
 		"utime": 0,
 		"vm_size": 0
 	}
-])"
-};
+])"};
 
-constexpr auto input2
-{
+constexpr auto input2 {
     R"(
 [
 	{
@@ -17878,11 +17875,9 @@ constexpr auto input2
 		"utime": 0,
 		"vm_size": 0
 	}
-])"
-};
+])"};
 
-constexpr auto diffResult
-{
+constexpr auto diffResult {
     R"(
 [
   {
@@ -18185,7 +18180,6 @@ constexpr auto diffResult
     "utime": 0,
     "vm_size": 0
   }
-])"
-};
+])"};
 
-#endif //TEST_INPUTS_H
+#endif // TEST_INPUTS_H

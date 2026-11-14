@@ -34,7 +34,7 @@
 #define STATIC static
 #endif
 
-static const char *pidfile = NULL;
+static const char* pidfile = NULL;
 
 // Lock-free, so the store below is async-signal-safe and the loads in other threads need no lock.
 // Relaxed is enough: the flag only ever goes false -> true and carries no other data.
@@ -46,18 +46,22 @@ STATIC volatile int sig_pipe_wr = -1;
 STATIC volatile sig_atomic_t sig_received = 0;
 STATIC void (*volatile sig_shutdown_func)(void) = NULL;
 
-bool w_shutdown_requested(void) {
+bool w_shutdown_requested(void)
+{
     return atomic_load_explicit(&shutdown_requested, memory_order_relaxed) != 0;
 }
 
-void w_shutdown_requested_set(bool value) {
+void w_shutdown_requested_set(bool value)
+{
     atomic_store_explicit(&shutdown_requested, value ? 1 : 0, memory_order_relaxed);
 }
 
-void HandleExit() {
+void HandleExit()
+{
     DeletePID(pidfile);
 
-    if (strcmp(__local_name, "unset")) {
+    if (strcmp(__local_name, "unset"))
+    {
         DeleteState();
     }
 }
@@ -74,15 +78,19 @@ void HandleSIG(int sig)
     // live, and the wazuh-db client reads this flag to tell a peer stopped alongside from a lost one.
     w_shutdown_requested_set(true);
 
-    if (sig_pipe_wr < 0) {
+    if (sig_pipe_wr < 0)
+    {
         minfo(SIGNAL_RECV, sig, strsignal(sig));
         exit(1);
     }
 
-    if (sig_received == 0) {
+    if (sig_received == 0)
+    {
         sig_received = sig;
 
-        while (write(sig_pipe_wr, "", 1) < 0 && errno == EINTR) {}
+        while (write(sig_pipe_wr, "", 1) < 0 && errno == EINTR)
+        {
+        }
     }
 
     errno = saved_errno;
@@ -96,7 +104,8 @@ STATIC void SIGShutdown(void)
 
     minfo(SIGNAL_RECV, sig, strsignal(sig));
 
-    if (func) {
+    if (func)
+    {
         func();
     }
 
@@ -104,14 +113,17 @@ STATIC void SIGShutdown(void)
     _exit(1);
 }
 
-STATIC void *SIGShutdownThread(__attribute__((unused)) void *arg)
+STATIC void* SIGShutdownThread(__attribute__((unused)) void* arg)
 {
     char buf;
     ssize_t len;
 
-    while (len = read(sig_pipe_rd, &buf, 1), len < 0 && errno == EINTR) {}
+    while (len = read(sig_pipe_rd, &buf, 1), len < 0 && errno == EINTR)
+    {
+    }
 
-    if (len != 1) {
+    if (len != 1)
+    {
         /* The pipe is unusable, so no signal can wake this thread: fall back to the legacy exit() path */
         sig_pipe_wr = -1;
         merror("The shutdown pipe is unusable. Termination signals will exit directly.");
@@ -123,14 +135,13 @@ STATIC void *SIGShutdownThread(__attribute__((unused)) void *arg)
     return NULL;
 }
 
-
 /* To avoid client-server communication problems */
 void HandleSIGPIPE(__attribute__((unused)) int sig)
 {
     return;
 }
 
-void StartSIG(const char *process_name)
+void StartSIG(const char* process_name)
 {
     pidfile = process_name;
 
@@ -144,7 +155,7 @@ void StartSIG(const char *process_name)
     atexit(HandleExit);
 }
 
-void StartSIG2(const char *process_name, void (*func)(int))
+void StartSIG2(const char* process_name, void (*func)(int))
 {
     pidfile = process_name;
 
@@ -162,8 +173,11 @@ void StartSIGShutdownThread()
 {
     int fds[2];
 
-    if (pipe(fds) < 0) {
-        merror("Could not create the shutdown pipe: %s (%d). Termination signals will exit directly.", strerror(errno), errno);
+    if (pipe(fds) < 0)
+    {
+        merror("Could not create the shutdown pipe: %s (%d). Termination signals will exit directly.",
+               strerror(errno),
+               errno);
         return;
     }
 

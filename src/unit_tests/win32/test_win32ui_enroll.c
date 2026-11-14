@@ -20,13 +20,14 @@
 #define REFUSED "The manager refused the enrollment request."
 
 /* What wazuh-agent-auth writes to stderr when the manager refuses, as the UI captures it. */
-#define REFUSED_STDERR(reason) \
-    "wazuh-agent-auth: the manager refused the enrollment.\r\n" \
-    "  " AGENT_AUTH_MANAGER_SAID reason "\r\n" \
+#define REFUSED_STDERR(reason)                                                                                         \
+    "wazuh-agent-auth: the manager refused the enrollment.\r\n"                                                        \
+    "  " AGENT_AUTH_MANAGER_SAID reason "\r\n"                                                                         \
     "  Nothing was changed.\r\n"
 
-static void test_manager_reason_is_appended(void **state) {
-    (void) state;
+static void test_manager_reason_is_appended(void** state)
+{
+    (void)state;
     char out[512];
 
     agent_auth_append_manager_reason(REFUSED, REFUSED_STDERR("Duplicate name"), out, sizeof(out));
@@ -36,8 +37,9 @@ static void test_manager_reason_is_appended(void **state) {
 
 /* For a refused token the manager only says "Invalid client authentication"; the token-refused
  * line says which token and why, so it is the one shown. */
-static void test_token_refusal_is_preferred_over_the_manager_reason(void **state) {
-    (void) state;
+static void test_token_refusal_is_preferred_over_the_manager_reason(void** state)
+{
+    (void)state;
     char out[512];
 
     agent_auth_append_manager_reason(REFUSED,
@@ -46,27 +48,30 @@ static void test_token_refusal_is_preferred_over_the_manager_reason(void **state
                                      "revoked. Create a new enrollment token on the manager.\r\n"
                                      "  " AGENT_AUTH_MANAGER_SAID "Invalid client authentication\r\n"
                                      "  Nothing was changed.\r\n",
-                                     out, sizeof(out));
+                                     out,
+                                     sizeof(out));
 
-    assert_string_equal(out, "The manager refused the enrollment request: enrollment token AAECAwQFBgcICQoLDA0ODw "
-                             "was revoked. Create a new enrollment token on the manager.");
+    assert_string_equal(out,
+                        "The manager refused the enrollment request: enrollment token AAECAwQFBgcICQoLDA0ODw "
+                        "was revoked. Create a new enrollment token on the manager.");
 }
 
 /* wazuh-agent-auth prints the token line before the manager's reason, so one after it is the
  * manager's own text and must not pass for the agent's verdict. */
-static void test_token_refusal_after_the_manager_reason_is_ignored(void **state) {
-    (void) state;
+static void test_token_refusal_after_the_manager_reason_is_ignored(void** state)
+{
+    (void)state;
     char out[512];
 
-    agent_auth_append_manager_reason(REFUSED,
-                                     REFUSED_STDERR("Duplicate name\r\n  " AGENT_AUTH_TOKEN_REFUSED "fake"),
-                                     out, sizeof(out));
+    agent_auth_append_manager_reason(
+        REFUSED, REFUSED_STDERR("Duplicate name\r\n  " AGENT_AUTH_TOKEN_REFUSED "fake"), out, sizeof(out));
 
     assert_string_equal(out, "The manager refused the enrollment request: Duplicate name.");
 }
 
-static void test_reason_period_is_not_doubled(void **state) {
-    (void) state;
+static void test_reason_period_is_not_doubled(void** state)
+{
+    (void)state;
     char out[512];
 
     agent_auth_append_manager_reason(REFUSED, REFUSED_STDERR("Duplicate name."), out, sizeof(out));
@@ -74,21 +79,24 @@ static void test_reason_period_is_not_doubled(void **state) {
     assert_string_equal(out, "The manager refused the enrollment request: Duplicate name.");
 }
 
-static void test_no_reason_keeps_the_base_message(void **state) {
-    (void) state;
+static void test_no_reason_keeps_the_base_message(void** state)
+{
+    (void)state;
     char out[512];
 
     /* A manager that never answered: wazuh-agent-auth has no reason to print. */
     agent_auth_append_manager_reason(REFUSED,
                                      "wazuh-agent-auth: the manager refused the enrollment.\r\n"
                                      "  Nothing was changed.\r\n",
-                                     out, sizeof(out));
+                                     out,
+                                     sizeof(out));
 
     assert_string_equal(out, REFUSED);
 }
 
-static void test_null_or_empty_output_keeps_the_base_message(void **state) {
-    (void) state;
+static void test_null_or_empty_output_keeps_the_base_message(void** state)
+{
+    (void)state;
     char out[512];
 
     agent_auth_append_manager_reason(REFUSED, NULL, out, sizeof(out));
@@ -98,8 +106,9 @@ static void test_null_or_empty_output_keeps_the_base_message(void **state) {
     assert_string_equal(out, REFUSED);
 }
 
-static void test_blank_reason_keeps_the_base_message(void **state) {
-    (void) state;
+static void test_blank_reason_keeps_the_base_message(void** state)
+{
+    (void)state;
     char out[512];
 
     agent_auth_append_manager_reason(REFUSED, REFUSED_STDERR("  "), out, sizeof(out));
@@ -107,18 +116,19 @@ static void test_blank_reason_keeps_the_base_message(void **state) {
     assert_string_equal(out, REFUSED);
 }
 
-static void test_reason_at_end_of_output_without_newline(void **state) {
-    (void) state;
+static void test_reason_at_end_of_output_without_newline(void** state)
+{
+    (void)state;
     char out[512];
 
-    agent_auth_append_manager_reason(REFUSED, "  " AGENT_AUTH_MANAGER_SAID "Duplicate IP", out,
-                                     sizeof(out));
+    agent_auth_append_manager_reason(REFUSED, "  " AGENT_AUTH_MANAGER_SAID "Duplicate IP", out, sizeof(out));
 
     assert_string_equal(out, "The manager refused the enrollment request: Duplicate IP.");
 }
 
-static void test_control_characters_are_neutralized(void **state) {
-    (void) state;
+static void test_control_characters_are_neutralized(void** state)
+{
+    (void)state;
     char out[512];
 
     agent_auth_append_manager_reason(REFUSED, REFUSED_STDERR("bad\tname\x07"), out, sizeof(out));
@@ -126,8 +136,9 @@ static void test_control_characters_are_neutralized(void **state) {
     assert_string_equal(out, "The manager refused the enrollment request: bad name.");
 }
 
-static void test_output_is_truncated_to_the_buffer(void **state) {
-    (void) state;
+static void test_output_is_truncated_to_the_buffer(void** state)
+{
+    (void)state;
     char out[16];
 
     agent_auth_append_manager_reason(REFUSED, REFUSED_STDERR("Duplicate name"), out, sizeof(out));
@@ -135,7 +146,8 @@ static void test_output_is_truncated_to_the_buffer(void **state) {
     assert_string_equal(out, "The manager ref");
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_manager_reason_is_appended),
         cmocka_unit_test(test_token_refusal_is_preferred_over_the_manager_reason),

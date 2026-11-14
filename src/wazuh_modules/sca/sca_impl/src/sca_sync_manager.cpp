@@ -35,7 +35,7 @@ namespace
         Utils::replaceAll(input, "'", "''");
         return input;
     }
-}
+} // namespace
 
 SCASyncManager::SCASyncManager(std::shared_ptr<IDBSync> dbSync)
     : m_dBSync(std::move(dbSync))
@@ -91,20 +91,15 @@ void SCASyncManager::prepareBatchAllowedIds()
         return;
     }
 
-    const auto limit =
-        static_cast<uint32_t>(std::min<uint64_t>(m_syncLimit, std::numeric_limits<uint32_t>::max()));
+    const auto limit = static_cast<uint32_t>(std::min<uint64_t>(m_syncLimit, std::numeric_limits<uint32_t>::max()));
 
     std::unordered_set<std::string> windowIds;
     windowIds.reserve(limit);
 
-    auto query = SelectQuery::builder()
-                 .table("sca_check")
-                 .columnList({"id"})
-                 .orderByOpt("rowid")
-                 .countOpt(limit)
-                 .build();
+    auto query =
+        SelectQuery::builder().table("sca_check").columnList({"id"}).orderByOpt("rowid").countOpt(limit).build();
 
-    const auto callback = [&windowIds](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    const auto callback = [&windowIds](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -168,13 +163,15 @@ bool SCASyncManager::shouldSyncInsert(const nlohmann::json& checkData)
             const std::string escapedId = escapeSqlString(checkId);
             uint64_t rowRank = 0;
 
-            auto countQuery = SelectQuery::builder()
-                              .table("sca_check")
-                              .columnList({"COUNT(*) AS count"})
-                              .rowFilter("WHERE rowid <= (SELECT rowid FROM sca_check WHERE id = '" + escapedId + "')")
-                              .build();
+            auto countQuery =
+                SelectQuery::builder()
+                    .table("sca_check")
+                    .columnList({"COUNT(*) AS count"})
+                    .rowFilter("WHERE rowid <= (SELECT rowid FROM sca_check WHERE id = '" + escapedId + "')")
+                    .build();
 
-            const auto countCallback = [&rowRank](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+            const auto countCallback =
+                [&rowRank](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
             {
                 if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
                 {
@@ -260,9 +257,8 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
         m_syncedIds.insert(checkId);
         ++m_syncedCount;
 
-        LoggingHelper::getInstance().log(
-            LOG_DEBUG_VERBOSE,
-            "SCA sync limit promotion: promoted check " + checkId + " on modify");
+        LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
+                                         "SCA sync limit promotion: promoted check " + checkId + " on modify");
 
         return true;
     }
@@ -276,12 +272,12 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
     bool existsInDb = false;
 
     auto existsQuery = SelectQuery::builder()
-                       .table("sca_check")
-                       .columnList({"COUNT(*) AS count"})
-                       .rowFilter("WHERE id = '" + escapeSqlString(checkId) + "'")
-                       .build();
+                           .table("sca_check")
+                           .columnList({"COUNT(*) AS count"})
+                           .rowFilter("WHERE id = '" + escapeSqlString(checkId) + "'")
+                           .build();
 
-    const auto existsCallback = [&existsInDb](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    const auto existsCallback = [&existsInDb](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
     {
         if (returnTypeCallback == SELECTED && resultData.contains("count") && resultData["count"].is_number())
         {
@@ -303,8 +299,7 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
 
     if (!checkData.contains("version"))
     {
-        LoggingHelper::getInstance().log(LOG_ERROR,
-                                         "SCA sync manager: modify without version for check " + checkId);
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA sync manager: modify without version for check " + checkId);
         return false;
     }
 
@@ -312,9 +307,8 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
     m_syncedIds.insert(checkId);
     ++m_syncedCount;
 
-    LoggingHelper::getInstance().log(
-        LOG_DEBUG_VERBOSE,
-        "SCA sync limit promotion: promoted check " + checkId + " on modify");
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
+                                     "SCA sync limit promotion: promoted check " + checkId + " on modify");
 
     return true;
 }
@@ -389,9 +383,7 @@ SCASyncManager::DeleteResult SCASyncManager::handleDelete(const nlohmann::json& 
     if (!result.promotedIds.empty())
     {
         LoggingHelper::getInstance().log(
-            LOG_DEBUG,
-            "SCA sync limit promotion: promoted " + std::to_string(result.promotedIds.size()) +
-            " check(s)");
+            LOG_DEBUG, "SCA sync limit promotion: promoted " + std::to_string(result.promotedIds.size()) + " check(s)");
     }
 
     return result;
@@ -442,7 +434,6 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
         {
             m_syncedIds.insert(checkId);
             ++m_syncedCount;
-
         }
 
         int currentSync = 0;
@@ -469,17 +460,14 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
 
     if (m_syncLimit == 0)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG,
-                                         "SCA sync limit disabled; syncing " + std::to_string(m_syncedCount) +
-                                         " check(s)");
+        LoggingHelper::getInstance().log(
+            LOG_DEBUG, "SCA sync limit disabled; syncing " + std::to_string(m_syncedCount) + " check(s)");
     }
     else
     {
-        LoggingHelper::getInstance().log(
-            LOG_DEBUG,
-            "SCA sync limit enforced: limit=" + std::to_string(m_syncLimit) +
-            " synced=" + std::to_string(m_syncedCount) +
-            " total=" + std::to_string(m_totalCount));
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "SCA sync limit enforced: limit=" + std::to_string(m_syncLimit) + " synced=" +
+                                             std::to_string(m_syncedCount) + " total=" + std::to_string(m_totalCount));
     }
 
     return result;
@@ -545,10 +533,8 @@ std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filt
         return rows;
     }
 
-    auto builder = SelectQuery::builder()
-                   .table("sca_check")
-                   .columnList({"rowid", "id", "version", "sync"})
-                   .orderByOpt("rowid");
+    auto builder =
+        SelectQuery::builder().table("sca_check").columnList({"rowid", "id", "version", "sync"}).orderByOpt("rowid");
 
     if (!filter.empty())
     {
@@ -562,7 +548,7 @@ std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filt
 
     auto query = builder.build();
 
-    const auto callback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    const auto callback = [&rows](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
     {
         if (returnTypeCallback == SELECTED)
         {

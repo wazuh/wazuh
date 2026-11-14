@@ -14,20 +14,22 @@
 #include "shared.h"
 #include <stdatomic.h>
 
-typedef struct agent_flags_t {
-    unsigned int auto_restart:1;
-    unsigned int remote_conf:1;
+typedef struct agent_flags_t
+{
+    unsigned int auto_restart : 1;
+    unsigned int remote_conf : 1;
 } agent_flags_t;
 
-typedef struct agent_server {
-    char * rip;      ///< Host parsed out of <endpoint> (#38624): IPv4, hostname, or a bare
-                     ///< (unbracketed) IPv6 literal, which ModuleConfig::baseUrl() re-brackets.
-    int port;        ///< Port from <endpoint>, or DEFAULT_HTTPS_REMOTE_PORT when omitted.
-    char * endpoint; ///< Reverse-proxy path prefix from <endpoint> (#38492/#38624), normalized
-                     ///< (no leading/trailing '/'); NULL when the operator opted out of a prefix.
-    uint32_t scope_id; ///< IPv6 zone id from <endpoint> (#38624), resolved through
-                       ///< if_nametoindex(); 0 when the address carries no zone.
-    int max_retries; ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
+typedef struct agent_server
+{
+    char* rip;          ///< Host parsed out of <endpoint> (#38624): IPv4, hostname, or a bare
+                        ///< (unbracketed) IPv6 literal, which ModuleConfig::baseUrl() re-brackets.
+    int port;           ///< Port from <endpoint>, or DEFAULT_HTTPS_REMOTE_PORT when omitted.
+    char* endpoint;     ///< Reverse-proxy path prefix from <endpoint> (#38492/#38624), normalized
+                        ///< (no leading/trailing '/'); NULL when the operator opted out of a prefix.
+    uint32_t scope_id;  ///< IPv6 zone id from <endpoint> (#38624), resolved through
+                        ///< if_nametoindex(); 0 when the address carries no zone.
+    int max_retries;    ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
     int retry_interval; ///< Time interval between connection attempts (legacy TCP; removed with the cutover).
 } agent_server;
 
@@ -45,7 +47,8 @@ typedef struct agent_server {
  *
  * No other transition exists: an explicit <verification_mode> is carried through untouched,
  * 'none' included, so the resolver never overrides an operator's choice. */
-typedef enum agent_verify_mode_t {
+typedef enum agent_verify_mode_t
+{
     AGENT_VERIFY_FULL = 0,   ///< Verify peer against the CA and check the hostname.
     AGENT_VERIFY_CERT = 1,   ///< Verify peer against the CA only.
     AGENT_VERIFY_NONE = 2,   ///< No TLS verification (explicit operator opt-out only).
@@ -54,21 +57,22 @@ typedef enum agent_verify_mode_t {
 } agent_verify_mode_t;
 
 /* Agent-side HTTPS transport TLS settings: the <agent><ssl> block (FR10 / #37702 §10). */
-typedef struct agent_ssl {
-    char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
-    char * key;                     ///< <key>: optional client (mTLS) private key.
-    char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
-                                    ///< Written by w_agent_resolve_ssl_posture() too, which defaults it
-                                    ///< to AGENT_ANCHOR_CA for a verifying mode that configured no CA.
-    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t. Resolved by
-                                    ///< w_agent_resolve_ssl_posture(): SYSTEM with nothing else
-                                    ///< configured, FULL when a trust anchor is present.
+typedef struct agent_ssl
+{
+    char* certificate;               ///< <certificate>: optional client (mTLS) certificate.
+    char* key;                       ///< <key>: optional client (mTLS) private key.
+    char* certificate_authorities;   ///< <certificate_authorities>: CA bundle used to verify the manager.
+                                     ///< Written by w_agent_resolve_ssl_posture() too, which defaults it
+                                     ///< to AGENT_ANCHOR_CA for a verifying mode that configured no CA.
+    int verification_mode;           ///< <verification_mode>: agent_verify_mode_t. Resolved by
+                                     ///< w_agent_resolve_ssl_posture(): SYSTEM with nothing else
+                                     ///< configured, FULL when a trust anchor is present.
     bool verification_mode_explicit; ///< Whether <verification_mode> was written in the config,
-                                    ///< as opposed to resolved. Once resolution has run, 'none'
-                                    ///< means either, and only this tells them apart -- which
-                                    ///< decides whether an anchor appearing afterwards may be
-                                    ///< adopted or must be left unused.
-    char * ciphers;                 ///< <ciphers>: optional cipher list.
+                                     ///< as opposed to resolved. Once resolution has run, 'none'
+                                     ///< means either, and only this tells them apart -- which
+                                     ///< decides whether an anchor appearing afterwards may be
+                                     ///< adopted or must be left unused.
+    char* ciphers;                   ///< <ciphers>: optional cipher list.
 } agent_ssl;
 
 /**
@@ -78,7 +82,8 @@ typedef struct agent_ssl {
  * stateless traffic. Zero means "unset": the transport module applies its own
  * default (1 MiB, 10 s).
  */
-typedef struct agent_batch {
+typedef struct agent_batch
+{
     long long size; ///< <size>: max /stateless request payload, in bytes.
     long interval;  ///< <interval>: longest an event waits before a flush, seconds.
 } agent_batch;
@@ -97,7 +102,8 @@ typedef struct agent_batch {
  * zero-means-unset fallback would otherwise be the only place that default
  * was visible.
  */
-typedef struct agent_report {
+typedef struct agent_report
+{
     unsigned char enabled; ///< <enabled>: whether to push at all.
     long interval;         ///< <interval>: seconds between pushes.
 } agent_report;
@@ -119,19 +125,20 @@ typedef struct agent_report {
  * socket read (enrollment_op.c), which no longer exists; the /enroll request
  * timeout comes from the shared hc_config_t, like every other endpoint's.
  */
-typedef struct agent_enrollment {
-    bool enabled;                     ///< <enabled>: auto-enrollment on/off.
-    char *agent_name;                 ///< <agent_name>: NULL -> local hostname.
-    char *groups;                     ///< <groups>: comma-joined group list, or NULL.
-    char *agent_address;              ///< <agent_address>: explicit source IP override, or NULL.
-    bool use_source_ip;               ///< <use_source_ip>: force the connection's own source IP.
-    char *authorization_pass_path;    ///< <authorization_pass_path>: password FILE PATH (default
-                                       ///< AUTHD_PASS); re-read on every attempt, never cached here.
-    time_t delay_after_enrollment;    ///< <delay_after_enrollment>: seconds to wait post-enrollment.
+typedef struct agent_enrollment
+{
+    bool enabled;                  ///< <enabled>: auto-enrollment on/off.
+    char* agent_name;              ///< <agent_name>: NULL -> local hostname.
+    char* groups;                  ///< <groups>: comma-joined group list, or NULL.
+    char* agent_address;           ///< <agent_address>: explicit source IP override, or NULL.
+    bool use_source_ip;            ///< <use_source_ip>: force the connection's own source IP.
+    char* authorization_pass_path; ///< <authorization_pass_path>: password FILE PATH (default
+                                   ///< AUTHD_PASS); re-read on every attempt, never cached here.
+    time_t delay_after_enrollment; ///< <delay_after_enrollment>: seconds to wait post-enrollment.
     /* Not XML: internal options, resolved once by ClientConf() and read from here by both
      * enrollment loops. */
-    int retry_max;                    ///< agent.enrollment_retry_max: retry delay ceiling, seconds.
-    int retry_delta;                  ///< agent.enrollment_retry_delta: delay growth per failure, seconds.
+    int retry_max;   ///< agent.enrollment_retry_max: retry delay ceiling, seconds.
+    int retry_delta; ///< agent.enrollment_retry_delta: delay growth per failure, seconds.
     /* Not XML: set when the block was read from <agent>, so the legacy <client> spelling of
      * it is skipped. Lives here rather than in a parser local because one file may hold
      * several <ossec_config> roots, each read by its own pass. */
@@ -139,46 +146,49 @@ typedef struct agent_enrollment {
 } agent_enrollment;
 
 /* Configuration structure */
-typedef struct _agent {
-    agent_server * server;
+typedef struct _agent
+{
+    agent_server* server;
     int m_queue;
     _Atomic int sock;
     int execdq;
-    int rip_id; ///< Holds the index of the current connected server
+    int rip_id;       ///< Holds the index of the current connected server
     int server_count; ///< Holds the total amount of servers
     int notify_time;
     int max_time_reconnect_try;
-    char *profile;
+    char* profile;
     int package_uninstallation;
     agent_flags_t flags;
-    agent_ssl ssl;     ///< HTTPS transport TLS settings (<agent><ssl>).
-    agent_batch batch; ///< /stateless batching limits (<agent><batch>).
-    agent_report stats_report;  ///< Periodic /stats push (<agent><stats_report>).
-    agent_report config_report; ///< Periodic /config push (<agent><config_report>).
+    agent_ssl ssl;               ///< HTTPS transport TLS settings (<agent><ssl>).
+    agent_batch batch;           ///< /stateless batching limits (<agent><batch>).
+    agent_report stats_report;   ///< Periodic /stats push (<agent><stats_report>).
+    agent_report config_report;  ///< Periodic /config push (<agent><config_report>).
     agent_enrollment enrollment; ///< Agent-side enrollment over HTTPS (<agent><enrollment>).
 } agent;
 
 /* Anti tampering config */
-typedef struct _anti_tampering {
+typedef struct _anti_tampering
+{
     bool package_uninstallation;
 } anti_tampering;
 
 /* Frees the agent struct  */
-void Free_Agent(agent * config);
+void Free_Agent(agent* config);
 
 /**
  * @brief Check if address has default values
  * @param servers Server(s) configuration block in agent ossec.conf
  * @return Returns true if successful and false if not success
  */
-bool Validate_Address(agent_server *servers);
+bool Validate_Address(agent_server* servers);
 
 /**
- * @brief Checks if at least one <manager> block is not a link-local ipv6 address or it has a network interface configured.
+ * @brief Checks if at least one <manager> block is not a link-local ipv6 address or it has a network interface
+ * configured.
  * @param servers Server(s) configuration block in agent ossec.conf
  * @return Returns true if successful and false if not success.
  */
-bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
+bool Validate_IPv6_Link_Local_Interface(agent_server* servers);
 
 /**
  * @brief Read the <agent><batch> limits, for daemons that do not own the block.
@@ -192,7 +202,7 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
  * @param sharedcfg Centralized configuration file, or NULL to skip it.
  * @param batch Limits to fill; each value is left alone when unconfigured.
  */
-void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch);
+void w_read_agent_batch(const char* cfgfile, const char* sharedcfg, agent_batch* batch);
 
 /**
  * @brief Parse a combined <endpoint>-grammar value into host, port, prefix and scope id (#38624).
@@ -213,11 +223,16 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
  * @param scope_id Receives the IPv6 scope id, or 0 when there is no zone id.
  * @return 0 on success, OS_INVALID on any grammar violation.
  */
-int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
-                           bool *port_present, char *endpoint, size_t endpoint_size,
-                           uint32_t *scope_id);
+int w_parse_agent_endpoint(const char* raw,
+                           char* host,
+                           size_t host_size,
+                           int* port,
+                           bool* port_present,
+                           char* endpoint,
+                           size_t endpoint_size,
+                           uint32_t* scope_id);
 
-#define DEFAULT_MAX_RETRIES 5
+#define DEFAULT_MAX_RETRIES    5
 #define DEFAULT_RETRY_INTERVAL 10
 
 /* The /stateless payload cap that applies when <agent><batch><size> is unset. Both

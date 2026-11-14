@@ -26,7 +26,8 @@
 
 SudoersProvider::SudoersProvider(std::string fileName, std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_sudoFile(std::move(fileName))
-    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                            : std::make_unique<file_system::FileSystemWrapper>())
 {
 }
 
@@ -45,10 +46,7 @@ nlohmann::json SudoersProvider::collect()
     return results;
 }
 
-
-void SudoersProvider::genSudoersFile(const std::string& fileName,
-                                     unsigned int level,
-                                     nlohmann::json& results)
+void SudoersProvider::genSudoersFile(const std::string& fileName, unsigned int level, nlohmann::json& results)
 {
     // sudoers(5): No more than 128 files are allowed to be nested.
     static const unsigned int kMaxNest = 128;
@@ -82,9 +80,8 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
     }
 
     bool isLongLine = false;
-    auto contents = std::string((std::istreambuf_iterator<char>(file)),
-                                std::istreambuf_iterator<char>());
-    auto lines{Utils::split(contents, '\n')};
+    auto contents = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    auto lines {Utils::split(contents, '\n')};
 
     for (auto& line : lines)
     {
@@ -115,7 +112,6 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             lastLine["rule_details"] = lastLine["rule_details"].get<std::string>() + " " + lineToAppend;
             continue;
         }
-
 
         // Find the rule header.
         auto headerLen = line.find_first_of("\t\v ");
@@ -195,9 +191,8 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
 
                 // Per sudoers(5): Any files in the included directory that
                 // contain a '.' or end with '~' are ignored.
-                if (incBasename.empty() ||
-                        incBasename.find('.') != std::string::npos ||
-                        (!incBasename.empty() && incBasename.back() == '~'))
+                if (incBasename.empty() || incBasename.find('.') != std::string::npos ||
+                    (!incBasename.empty() && incBasename.back() == '~'))
                 {
                     continue;
                 }
@@ -228,11 +223,14 @@ namespace
 
     bool isDirectiveHeader(const std::string& header)
     {
-        static const std::set<std::string> DIRECTIVE_HEADERS
-        {
-            "User_Alias", "Runas_Alias", "Host_Alias", "Cmnd_Alias",
-            "#include", "@include", "#includedir", "@includedir"
-        };
+        static const std::set<std::string> DIRECTIVE_HEADERS {"User_Alias",
+                                                              "Runas_Alias",
+                                                              "Host_Alias",
+                                                              "Cmnd_Alias",
+                                                              "#include",
+                                                              "@include",
+                                                              "#includedir",
+                                                              "@includedir"};
 
         // "Defaults" also takes the qualified forms Defaults@host, Defaults:user, Defaults!cmnd
         // and Defaults>runas, none of which grant anything either.
@@ -366,8 +364,8 @@ namespace
 
         if (alias != userAliases.end())
         {
-            return depth < MAX_ALIAS_DEPTH
-                   && userListGrants(alias->second, userName, userGroups, userAliases, depth + 1);
+            return depth < MAX_ALIAS_DEPTH &&
+                   userListGrants(alias->second, userName, userGroups, userAliases, depth + 1);
         }
 
         return entry == userName;
@@ -413,7 +411,7 @@ namespace
     {
         return userListMatchState(userList, userName, userGroups, userAliases, depth) == ListMatchState::Granted;
     }
-}
+} // namespace
 
 std::map<std::string, std::string> SudoersProvider::collectUserAliases(const nlohmann::json& sudoers)
 {

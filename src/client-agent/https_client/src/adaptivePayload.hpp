@@ -26,33 +26,33 @@
  */
 class AdaptivePayload final
 {
-    public:
-        explicit AdaptivePayload(uint64_t maxBytes)
-            : m_max(maxBytes == 0 ? 1 : maxBytes)
-            , m_effective(m_max)
-        {
-        }
+public:
+    explicit AdaptivePayload(uint64_t maxBytes)
+        : m_max(maxBytes == 0 ? 1 : maxBytes)
+        , m_effective(m_max)
+    {
+    }
 
-        uint64_t effectiveBytes() const
-        {
-            return m_effective;
-        }
+    uint64_t effectiveBytes() const
+    {
+        return m_effective;
+    }
 
-        /// A 413: shrink so the next batch carries fewer events (never zero).
-        void onPayloadTooLarge()
-        {
-            m_effective = std::max<uint64_t>(1, m_effective / 2);
-        }
+    /// A 413: shrink so the next batch carries fewer events (never zero).
+    void onPayloadTooLarge()
+    {
+        m_effective = std::max<uint64_t>(1, m_effective / 2);
+    }
 
-        /// A successful send: ramp back toward the configured max.
-        void onSuccess()
-        {
-            m_effective = std::min(m_max, m_effective * 2);
-        }
+    /// A successful send: ramp back toward the configured max.
+    void onSuccess()
+    {
+        m_effective = std::min(m_max, m_effective * 2);
+    }
 
-    private:
-        uint64_t m_max;
-        uint64_t m_effective;
+private:
+    uint64_t m_max;
+    uint64_t m_effective;
 };
 
 #endif // _HC_ADAPTIVE_PAYLOAD_HPP

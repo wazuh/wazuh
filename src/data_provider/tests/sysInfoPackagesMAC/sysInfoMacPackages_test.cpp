@@ -25,34 +25,34 @@ void SysInfoMacPackagesTest::SetUp() {};
 void SysInfoMacPackagesTest::TearDown() {};
 
 using ::testing::_;
-using ::testing::Return;
 using ::testing::An;
 using ::testing::ByMove;
+using ::testing::Return;
 
-class SysInfoMacPackagesWrapperMock: public IPackageWrapper
+class SysInfoMacPackagesWrapperMock : public IPackageWrapper
 {
-    public:
-        SysInfoMacPackagesWrapperMock() = default;
-        virtual ~SysInfoMacPackagesWrapperMock() = default;
-        MOCK_METHOD(std::string, name, (), (const override));
-        MOCK_METHOD(std::string, version, (), (const override));
-        MOCK_METHOD(std::string, groups, (), (const override));
-        MOCK_METHOD(std::string, description, (), (const override));
-        MOCK_METHOD(std::string, architecture, (), (const override));
-        MOCK_METHOD(std::string, format, (), (const override));
-        MOCK_METHOD(std::string, osPatch, (), (const override));
-        MOCK_METHOD(std::string, source, (), (const override));
-        MOCK_METHOD(std::string, location, (), (const override));
-        MOCK_METHOD(std::string, priority, (), (const override));
-        MOCK_METHOD((std::optional<int64_t>), size, (), (const override));
-        MOCK_METHOD(std::string, vendor, (), (const override));
-        MOCK_METHOD(std::string, install_time, (), (const override));
-        MOCK_METHOD(std::string, multiarch, (), (const override));
+public:
+    SysInfoMacPackagesWrapperMock() = default;
+    virtual ~SysInfoMacPackagesWrapperMock() = default;
+    MOCK_METHOD(std::string, name, (), (const override));
+    MOCK_METHOD(std::string, version, (), (const override));
+    MOCK_METHOD(std::string, groups, (), (const override));
+    MOCK_METHOD(std::string, description, (), (const override));
+    MOCK_METHOD(std::string, architecture, (), (const override));
+    MOCK_METHOD(std::string, format, (), (const override));
+    MOCK_METHOD(std::string, osPatch, (), (const override));
+    MOCK_METHOD(std::string, source, (), (const override));
+    MOCK_METHOD(std::string, location, (), (const override));
+    MOCK_METHOD(std::string, priority, (), (const override));
+    MOCK_METHOD((std::optional<int64_t>), size, (), (const override));
+    MOCK_METHOD(std::string, vendor, (), (const override));
+    MOCK_METHOD(std::string, install_time, (), (const override));
+    MOCK_METHOD(std::string, multiarch, (), (const override));
 };
 
 TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
 {
-    auto mock { std::make_shared<SysInfoMacPackagesWrapperMock>() };
+    auto mock {std::make_shared<SysInfoMacPackagesWrapperMock>()};
     nlohmann::json packages {};
     EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return("1"));
     EXPECT_CALL(*mock, version()).Times(1).WillOnce(Return("2"));
@@ -93,27 +93,23 @@ TEST_F(SysInfoMacPackagesTest, macPortsSizeSumsTheRegistryFileList)
     const std::string base {std::string(cwd) + "/input_files/Cellar/testpkg/1.0.0"};
 
     // char(1) is what the query uses to join the paths, because a path may contain a newline.
-    const std::string paths
-    {
-        base + "/bin/tool" + '\x01' + base + "/lib/data.bin" + '\x01' +
-        base + "/does/not/exist"
-    };
+    const std::string paths {base + "/bin/tool" + '\x01' + base + "/lib/data.bin" + '\x01' + base + "/does/not/exist"};
 
-    auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockStatement {std::make_unique<MockStatement>()};
     EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
-    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    auto mockColumn_1 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("testpkg"));
-    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    auto mockColumn_2 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("1.0.0"));
-    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    auto mockColumn_3 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
-    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    auto mockColumn_4 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
-    .WillOnce(Return("/opt/local/var/macports/software/testpkg/testpkg-1.0.0.darwin_25.arm64.tbz2"));
-    auto mockColumn_5 { std::make_unique<MockColumn>() };
+        .WillOnce(Return("/opt/local/var/macports/software/testpkg/testpkg-1.0.0.darwin_25.arm64.tbz2"));
+    auto mockColumn_5 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("arm64"));
-    auto mockColumn_6 { std::make_unique<MockColumn>() };
+    auto mockColumn_6 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_6, value(An<const std::string&>())).WillOnce(Return(paths));
 
     EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
@@ -144,7 +140,7 @@ TEST_F(SysInfoMacPackagesTest, macPortsSizeSkipsSymlinksInTheFileList)
     char cwd[PATH_MAX] {};
     ASSERT_NE(::getcwd(cwd, sizeof(cwd)), nullptr);
     const std::string base {std::string(cwd) + "/input_files/Cellar/testpkg/1.0.0"};
-    const std::string realFile {base + "/lib/data.bin"};          // 250 bytes
+    const std::string realFile {base + "/lib/data.bin"}; // 250 bytes
     const std::string link {base + "/lib/data_alias.bin"};
 
     std::error_code ec;
@@ -158,20 +154,20 @@ TEST_F(SysInfoMacPackagesTest, macPortsSizeSkipsSymlinksInTheFileList)
 
     const std::string paths {realFile + '\x01' + link};
 
-    auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockStatement {std::make_unique<MockStatement>()};
     EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
-    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    auto mockColumn_1 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("testpkg"));
-    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    auto mockColumn_2 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("1.0.0"));
-    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    auto mockColumn_3 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
-    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    auto mockColumn_4 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>())).WillOnce(Return("/opt/local/x.tbz2"));
-    auto mockColumn_5 { std::make_unique<MockColumn>() };
+    auto mockColumn_5 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("arm64"));
-    auto mockColumn_6 { std::make_unique<MockColumn>() };
+    auto mockColumn_6 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_6, value(An<const std::string&>())).WillOnce(Return(paths));
 
     EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
@@ -198,20 +194,20 @@ TEST_F(SysInfoMacPackagesTest, macPortsSizeSkipsSymlinksInTheFileList)
 
 TEST_F(SysInfoMacPackagesTest, macPortsSizeIsUnknownWhenTheFileListIsAbsent)
 {
-    auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockStatement {std::make_unique<MockStatement>()};
     EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
-    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    auto mockColumn_1 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("testpkg"));
-    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    auto mockColumn_2 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("1.0.0"));
-    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    auto mockColumn_3 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
-    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    auto mockColumn_4 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>())).WillOnce(Return("/opt/local/x.tbz2"));
-    auto mockColumn_5 { std::make_unique<MockColumn>() };
+    auto mockColumn_5 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("arm64"));
-    auto mockColumn_6 { std::make_unique<MockColumn>() };
+    auto mockColumn_6 {std::make_unique<MockColumn>()};
 
     EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
     EXPECT_CALL(*mockColumn_2, hasValue()).WillOnce(Return(true));
@@ -235,26 +231,22 @@ TEST_F(SysInfoMacPackagesTest, macPortsSizeIsUnknownWhenTheFileListIsAbsent)
 
 TEST_F(SysInfoMacPackagesTest, macPortsValidData)
 {
-    auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockStatement {std::make_unique<MockStatement>()};
     EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
-    auto mockColumn_1 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>()))
-    .WillOnce(Return("neovim"));
-    auto mockColumn_2 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>()))
-    .WillOnce(Return("0.8.1"));
-    auto mockColumn_3 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>()))
-    .WillOnce(Return(1690831043));
-    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    auto mockColumn_1 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("neovim"));
+    auto mockColumn_2 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("0.8.1"));
+    auto mockColumn_3 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
+    auto mockColumn_4 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
-    .WillOnce(Return("/opt/local/var/macports/software/neovim/neovim-0.8.1.tgz"));
-    auto mockColumn_6 {std::make_unique<MockColumn>() };
+        .WillOnce(Return("/opt/local/var/macports/software/neovim/neovim-0.8.1.tgz"));
+    auto mockColumn_6 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
-    auto mockColumn_5 {std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>()))
-    .WillOnce(Return("x86_64"));
+    auto mockColumn_5 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("x86_64"));
 
     EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
     EXPECT_CALL(*mockColumn_2, hasValue()).WillOnce(Return(true));
@@ -280,26 +272,21 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidData)
 
 TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
 {
-    auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockStatement {std::make_unique<MockStatement>()};
     EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
-    auto mockColumn_1 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>()))
-    .WillOnce(Return("neovim"));
-    auto mockColumn_2 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>()))
-    .WillOnce(Return(""));
-    auto mockColumn_3 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>()))
-    .WillOnce(Return(0));
-    auto mockColumn_4 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
-    .WillOnce(Return(""));
-    auto mockColumn_6 {std::make_unique<MockColumn>() };
+    auto mockColumn_1 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("neovim"));
+    auto mockColumn_2 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return(""));
+    auto mockColumn_3 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(0));
+    auto mockColumn_4 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_4, value(An<const std::string&>())).WillOnce(Return(""));
+    auto mockColumn_6 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
-    auto mockColumn_5 {std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>()))
-    .WillOnce(Return(""));
+    auto mockColumn_5 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return(""));
 
     EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
     EXPECT_CALL(*mockColumn_2, hasValue()).WillOnce(Return(true));
@@ -326,26 +313,22 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
 
 TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyName)
 {
-    auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockStatement {std::make_unique<MockStatement>()};
     EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
-    auto mockColumn_1 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>()))
-    .WillOnce(Return(""));
-    auto mockColumn_2 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>()))
-    .WillOnce(Return("0.8.1"));
-    auto mockColumn_3 { std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>()))
-    .WillOnce(Return(1690831043));
-    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    auto mockColumn_1 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return(""));
+    auto mockColumn_2 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("0.8.1"));
+    auto mockColumn_3 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
+    auto mockColumn_4 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
-    .WillOnce(Return("/opt/local/var/macports/software/neovim/neovim-0.8.1.tgz"));
-    auto mockColumn_6 {std::make_unique<MockColumn>() };
+        .WillOnce(Return("/opt/local/var/macports/software/neovim/neovim-0.8.1.tgz"));
+    auto mockColumn_6 {std::make_unique<MockColumn>()};
     EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
-    auto mockColumn_5 {std::make_unique<MockColumn>() };
-    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>()))
-    .WillOnce(Return("x86_64"));
+    auto mockColumn_5 {std::make_unique<MockColumn>()};
+    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("x86_64"));
 
     EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
     EXPECT_CALL(*mockColumn_2, hasValue()).WillOnce(Return(true));
@@ -371,7 +354,7 @@ namespace
     void writeAppInfoPlist(const std::string& infoPlistPath, const std::string& bundleName)
     {
         std::filesystem::create_directories(std::filesystem::path(infoPlistPath).parent_path());
-        std::ofstream out { infoPlistPath, std::ios::trunc };
+        std::ofstream out {infoPlistPath, std::ios::trunc};
         out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             << "<plist version=\"1.0\">\n"
             << "<dict>\n"
@@ -380,30 +363,30 @@ namespace
             << "</dict>\n"
             << "</plist>\n";
     }
-}
+} // namespace
 
 class GetPackagesFromPathTest : public ::testing::Test
 {
-    protected:
-        std::string m_tempDir;
+protected:
+    std::string m_tempDir;
 
-        void SetUp() override
+    void SetUp() override
+    {
+        char tmpl[] = "/tmp/getpkgpath_test_XXXXXX";
+
+        if (const char* dir = ::mkdtemp(tmpl))
         {
-            char tmpl[] = "/tmp/getpkgpath_test_XXXXXX";
-
-            if (const char* dir = ::mkdtemp(tmpl))
-            {
-                m_tempDir = dir;
-            }
+            m_tempDir = dir;
         }
+    }
 
-        void TearDown() override
+    void TearDown() override
+    {
+        if (!m_tempDir.empty())
         {
-            if (!m_tempDir.empty())
-            {
-                std::filesystem::remove_all(m_tempDir);
-            }
+            std::filesystem::remove_all(m_tempDir);
         }
+    }
 };
 
 TEST_F(GetPackagesFromPathTest, FindsAnAppOneLevelDeepInAVendorSubfolder)
@@ -411,10 +394,7 @@ TEST_F(GetPackagesFromPathTest, FindsAnAppOneLevelDeepInAVendorSubfolder)
     writeAppInfoPlist(m_tempDir + "/Vendor/App.app/Contents/Info.plist", "VendorApp");
 
     std::vector<nlohmann::json> found;
-    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
-    {
-        found.push_back(package);
-    }, true);
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json& package) { found.push_back(package); }, true);
 
     ASSERT_EQ(found.size(), 1u);
     EXPECT_EQ(found[0].at("name").get<std::string>(), "VendorApp");
@@ -426,10 +406,7 @@ TEST_F(GetPackagesFromPathTest, SkipsASubfolderStartingWithADot)
     writeAppInfoPlist(m_tempDir + "/.HiddenVendor/App.app/Contents/Info.plist", "HiddenApp");
 
     std::vector<nlohmann::json> found;
-    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
-    {
-        found.push_back(package);
-    }, true);
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json& package) { found.push_back(package); }, true);
 
     EXPECT_TRUE(found.empty());
 }
@@ -440,10 +417,7 @@ TEST_F(GetPackagesFromPathTest, RejectsASymlinkedAppEntryWhenRejectingSymlinks)
     ASSERT_EQ(0, ::symlink((m_tempDir + "/Real.app").c_str(), (m_tempDir + "/Linked.app").c_str()));
 
     std::vector<nlohmann::json> found;
-    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
-    {
-        found.push_back(package);
-    }, true);
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json& package) { found.push_back(package); }, true);
 
     // Only the real bundle is reported; the symlinked alias to the same bundle is not,
     // so the same install is not double-counted under a second path.
@@ -457,10 +431,7 @@ TEST_F(GetPackagesFromPathTest, RejectsASymlinkedVendorSubfolderWhenRejectingSym
     ASSERT_EQ(0, ::symlink((m_tempDir + "/RealVendor").c_str(), (m_tempDir + "/VendorLink").c_str()));
 
     std::vector<nlohmann::json> found;
-    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
-    {
-        found.push_back(package);
-    }, true);
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json& package) { found.push_back(package); }, true);
 
     // The app is found once, through the real vendor folder; the symlinked alias to that
     // same folder is not descended into, so it is not reported a second time.
@@ -478,10 +449,7 @@ TEST_F(GetPackagesFromPathTest, FollowsASymlinkedAppEntryWhenNotRejectingSymlink
     ASSERT_EQ(0, ::symlink((m_tempDir + "/Real.app").c_str(), (m_tempDir + "/Linked.app").c_str()));
 
     std::vector<nlohmann::json> found;
-    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
-    {
-        found.push_back(package);
-    }, false);
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json& package) { found.push_back(package); }, false);
 
     ASSERT_EQ(found.size(), 2u);
 }

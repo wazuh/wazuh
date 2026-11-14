@@ -24,13 +24,13 @@
 struct cJSON;
 
 /** @brief Returns one section of the effective document as cJSON (caller frees) or NULL. */
-typedef struct cJSON *(*w_mconf_section_fn)(const char *section);
+typedef struct cJSON* (*w_mconf_section_fn)(const char* section);
 
 /** @brief Register (or clear, with NULL) the section provider. */
 void w_mconf_hook_set(w_mconf_section_fn fn);
 
 /** @brief The section through the registered provider; NULL without provider, section or document. */
-struct cJSON *w_mconf_hook_section(const char *section);
+struct cJSON* w_mconf_hook_section(const char* section);
 
 #endif /* CLIENT */
 

@@ -4,7 +4,11 @@ ARG CMOCKA_BRANCH=stable-1.1
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git curl make cmake gcc g++ gcc-mingw-w64-i686 g++-mingw-w64-i686 nsis libcmocka-dev clang-tools python3 lcov wine32 cppcheck astyle valgrind && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git curl make cmake gcc g++ gcc-mingw-w64-i686 g++-mingw-w64-i686 nsis libcmocka-dev clang-tools python3 lcov wine32 cppcheck valgrind && \
+    mkdir -p /opt/clang-format && \
+    curl -fsSL https://packages.wazuh.com/utils/clang-format/clang-format.tar.gz | tar -xz -C /opt/clang-format && \
+    ln -s /opt/clang-format/bin/clang-format /usr/local/bin/clang-format && \
+    clang-format --version && \
     rm -rf /var/lib/apt/lists/* && \
     git clone -b ${CMOCKA_BRANCH} https://git.cryptomilk.org/projects/cmocka.git /root/cmocka && \
     sed -Ei 's/(BUILD_SHARED_LIBS .+) ON/\1 OFF/' /root/cmocka/DefineOptions.cmake && \

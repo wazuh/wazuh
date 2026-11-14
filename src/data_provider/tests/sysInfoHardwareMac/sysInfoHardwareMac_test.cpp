@@ -19,23 +19,23 @@ void SysInfoHardwareMacTest::TearDown() {};
 
 using ::testing::Return;
 
-class OSHardwareWrapperMacMock: public IOSHardwareWrapper
+class OSHardwareWrapperMacMock : public IOSHardwareWrapper
 {
-    public:
-        OSHardwareWrapperMacMock() = default;
-        virtual ~OSHardwareWrapperMacMock() = default;
-        MOCK_METHOD(std::string, boardSerial, (), (const, override));
-        MOCK_METHOD(std::string, cpuName, (), (const, override));
-        MOCK_METHOD(int, cpuCores, (), (const, override));
-        MOCK_METHOD(double, cpuMhz, (), (override));
-        MOCK_METHOD(uint64_t, ramTotal, (), (const, override));
-        MOCK_METHOD(uint64_t, ramFree, (), (const, override));
-        MOCK_METHOD(uint64_t, ramUsage, (), (const, override));
+public:
+    OSHardwareWrapperMacMock() = default;
+    virtual ~OSHardwareWrapperMacMock() = default;
+    MOCK_METHOD(std::string, boardSerial, (), (const, override));
+    MOCK_METHOD(std::string, cpuName, (), (const, override));
+    MOCK_METHOD(int, cpuCores, (), (const, override));
+    MOCK_METHOD(double, cpuMhz, (), (override));
+    MOCK_METHOD(uint64_t, ramTotal, (), (const, override));
+    MOCK_METHOD(uint64_t, ramFree, (), (const, override));
+    MOCK_METHOD(uint64_t, ramUsage, (), (const, override));
 };
 
 TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_Succeed)
 {
-    auto mock { std::make_shared<OSHardwareWrapperMacMock>() };
+    auto mock {std::make_shared<OSHardwareWrapperMacMock>()};
     nlohmann::json hardware {};
     EXPECT_CALL(*mock, boardSerial()).WillOnce(Return("H2WH91N3Q6NY"));
     EXPECT_CALL(*mock, cpuName()).WillOnce(Return("Macmini9,1"));

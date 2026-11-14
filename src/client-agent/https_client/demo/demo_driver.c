@@ -31,11 +31,11 @@ static struct timespec g_start;
 
 /* For hc_set_config_hash inside on_config_downloaded (the one hc_* call that
  * IS callback-safe). */
-static hc_handle *g_handle;
+static hc_handle* g_handle;
 
 /* The key the mock rotates to at ROTATE_KEY_AT; the re-enroll callback swaps
  * to it (matches mock_manager.py ROTATED_KEY). */
-static const char *g_rotated_key = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";
+static const char* g_rotated_key = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110";
 
 /* Set by SIGINT/SIGTERM: ends sustained mode early with the clean drain. */
 static atomic_int g_stop;
@@ -53,7 +53,7 @@ static long elapsed_ms(void)
     return (now.tv_sec - g_start.tv_sec) * 1000 + (now.tv_nsec - g_start.tv_nsec) / 1000000;
 }
 
-static const char *state_name(int state)
+static const char* state_name(int state)
 {
     switch (state)
     {
@@ -66,8 +66,8 @@ static const char *state_name(int state)
 }
 
 /* full_log_fnc_t: the module's internal LOGFN_* calls land here. */
-static void on_log(int level, const char *tag, const char *file, int line, const char *func,
-                   const char *msg, va_list args)
+static void
+on_log(int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
     (void)tag;
     (void)file;
@@ -79,11 +79,13 @@ static void on_log(int level, const char *tag, const char *file, int line, const
     fflush(stdout);
 }
 
-static void on_startup_result(bool accepted, const char *handshake_json, void *user_data)
+static void on_startup_result(bool accepted, const char* handshake_json, void* user_data)
 {
     (void)user_data;
-    printf("[+%7ld ms] >> STARTUP %s; manager metadata: %s\n", elapsed_ms(),
-           accepted ? "ACCEPTED" : "REJECTED", handshake_json ? handshake_json : "(none)");
+    printf("[+%7ld ms] >> STARTUP %s; manager metadata: %s\n",
+           elapsed_ms(),
+           accepted ? "ACCEPTED" : "REJECTED",
+           handshake_json ? handshake_json : "(none)");
     fflush(stdout);
 }
 
@@ -92,21 +94,20 @@ static void on_startup_result(bool accepted, const char *handshake_json, void *u
  * key under the same identity ("001", this driver's own agent_id) via
  * hc_set_agent_identity (callback-safe), which clears the pause and
  * re-registers. */
-static void on_reenroll_required(void *user_data)
+static void on_reenroll_required(void* user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] >> RE-ENROLL REQUIRED (401): swapping to the new key via "
-           "hc_set_agent_identity -> %s\n", elapsed_ms(),
+           "hc_set_agent_identity -> %s\n",
+           elapsed_ms(),
            hc_set_agent_identity(g_handle, "001", g_rotated_key) ? "accepted" : "rejected");
     fflush(stdout);
 }
 
-static void on_task(const char *task_id, const char *task_type, const char *payload_json,
-                    void *user_data)
+static void on_task(const char* task_id, const char* task_type, const char* payload_json, void* user_data)
 {
     (void)user_data;
-    printf("[+%7ld ms] >> TASK received: id=%s type=%s payload=%s\n", elapsed_ms(), task_id,
-           task_type, payload_json);
+    printf("[+%7ld ms] >> TASK received: id=%s type=%s payload=%s\n", elapsed_ms(), task_id, task_type, payload_json);
     fflush(stdout);
     /* All four contract types are fire-and-forget (#37733): nothing is
      * reported back; a real agent routes them to their handlers here. */
@@ -115,10 +116,10 @@ static void on_task(const char *task_id, const char *task_type, const char *payl
 /* The new-config delivery: the file lives only until this returns, so a real
  * consumer copies it here, applies it (write merged.mg, unmerge, reload) and
  * corrects the module's hash view if the apply fails. */
-static void on_config_downloaded(const char *config_hash, const char *file_path, void *user_data)
+static void on_config_downloaded(const char* config_hash, const char* file_path, void* user_data)
 {
     (void)user_data;
-    FILE *file = fopen(file_path, "rb");
+    FILE* file = fopen(file_path, "rb");
     long size = 0;
     char first_line[96] = "(empty)";
     if (file)
@@ -132,7 +133,10 @@ static void on_config_downloaded(const char *config_hash, const char *file_path,
         fclose(file);
     }
     printf("[+%7ld ms] >> CONFIG DOWNLOADED: hash=%.12s.. %ld B, first line: %s\n",
-           elapsed_ms(), config_hash, size, first_line);
+           elapsed_ms(),
+           config_hash,
+           size,
+           first_line);
     printf("[+%7ld ms]    (a real agent would write merged.mg, unmerge and reload here;\n"
            "                demonstrating the callback-safe hc_set_config_hash: %s)\n",
            elapsed_ms(),
@@ -140,24 +144,26 @@ static void on_config_downloaded(const char *config_hash, const char *file_path,
     fflush(stdout);
 }
 
-static void on_sync_response(const char *session_id, int result, const char *body, size_t body_len,
-                             void *user_data)
+static void on_sync_response(const char* session_id, int result, const char* body, size_t body_len, void* user_data)
 {
     (void)user_data;
     (void)body; /* A binary FlatBuffer now, not printable text. */
-    printf("[+%7ld ms] >> STATEFUL result: session=%s result=%d (%zu-byte answer)\n", elapsed_ms(),
-           session_id, result, body_len);
+    printf("[+%7ld ms] >> STATEFUL result: session=%s result=%d (%zu-byte answer)\n",
+           elapsed_ms(),
+           session_id,
+           result,
+           body_len);
     fflush(stdout);
 }
 
-static void on_state_change(int state, void *user_data)
+static void on_state_change(int state, void* user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] ~~ connection state -> %s\n", elapsed_ms(), state_name(state));
     fflush(stdout);
 }
 
-static void on_buffer_level(int level, void *user_data)
+static void on_buffer_level(int level, void* user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] ~~ buffer level -> %d\n", elapsed_ms(), level);
@@ -173,7 +179,7 @@ static void nap(int ms)
 /* Reporter collectors (#37843): run on the module's reporter thread, return a
  * malloc'd JSON object the module owns (frees) after stamping identity. A real
  * agent aggregates every module's stats/config here. */
-static char *collect_stats(void *user_data)
+static char* collect_stats(void* user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] >> COLLECT stats\n", elapsed_ms());
@@ -181,7 +187,7 @@ static char *collect_stats(void *user_data)
     return strdup("{\"uptime\":86400,\"events_received\":12543,\"queue_usage\":15.2}");
 }
 
-static char *collect_config(void *user_data)
+static char* collect_config(void* user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] >> COLLECT config\n", elapsed_ms());
@@ -190,7 +196,7 @@ static char *collect_config(void *user_data)
 }
 
 /* Deterministic hex filler (xorshift-style) for the fake file hashes. */
-static void fake_hex(char *dst, size_t hex_chars, uint64_t seed)
+static void fake_hex(char* dst, size_t hex_chars, uint64_t seed)
 {
     static const char digits[] = "0123456789abcdef";
     for (size_t i = 0; i < hex_chars; i++)
@@ -204,25 +210,32 @@ static void fake_hex(char *dst, size_t hex_chars, uint64_t seed)
 /* Builds a FIM full-sync session: "FULLSESSION:fim:" followed by one JSON
  * entry per monitored file (path, attributes, md5/sha1/sha256), one per line.
  * The shape mirrors what syscheck reports; the content is generated. */
-static unsigned char *build_fim_full_sync(size_t entries, size_t *out_len)
+static unsigned char* build_fim_full_sync(size_t entries, size_t* out_len)
 {
     const size_t cap = 32 + entries * 420;
-    unsigned char *buf = malloc(cap);
-    size_t len = (size_t)snprintf((char *)buf, cap, "FULLSESSION:fim:");
+    unsigned char* buf = malloc(cap);
+    size_t len = (size_t)snprintf((char*)buf, cap, "FULLSESSION:fim:");
     char md5[33], sha1[41], sha256[65];
     for (size_t i = 0; i < entries; i++)
     {
         fake_hex(md5, 32, i * 3 + 1);
         fake_hex(sha1, 40, i * 3 + 2);
         fake_hex(sha256, 64, i * 3 + 3);
-        len += (size_t)snprintf((char *)buf + len, cap - len,
+        len += (size_t)snprintf((char*)buf + len,
+                                cap - len,
                                 "{\"path\":\"/usr/lib/pkg-%05zu/libcomponent-%zu.so\","
                                 "\"attributes\":{\"type\":\"file\",\"size\":%zu,"
                                 "\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\","
                                 "\"inode\":%zu,\"mtime\":%ld,\"hash_md5\":\"%s\","
                                 "\"hash_sha1\":\"%s\",\"hash_sha256\":\"%s\"}}\n",
-                                i / 20, i, 4096 + i % 65536, 100000 + i,
-                                1784500000L + (long)(i % 86400), md5, sha1, sha256);
+                                i / 20,
+                                i,
+                                4096 + i % 65536,
+                                100000 + i,
+                                1784500000L + (long)(i % 86400),
+                                md5,
+                                sha1,
+                                sha256);
     }
     *out_len = len;
     return buf;
@@ -231,7 +244,7 @@ static unsigned char *build_fim_full_sync(size_t entries, size_t *out_len)
 /* Cheap integrity witness both sides can compute: sum of all bytes mod 2^32.
  * The mock prints the same over what it received; equal values on screen mean
  * the multi-MB session survived socket -> spool -> HTTPS byte-exact. */
-static uint32_t additive_checksum(const unsigned char *data, size_t len)
+static uint32_t additive_checksum(const unsigned char* data, size_t len)
 {
     uint32_t sum = 0;
     for (size_t i = 0; i < len; i++)
@@ -247,11 +260,11 @@ static uint32_t additive_checksum(const unsigned char *data, size_t len)
  * that ever needs a real parser here. Tolerates an optional space after the
  * colon: Python's json.dumps default separators put one there
  * (`"key": "..."`), which a naive `"key":"` needle would silently miss. */
-static bool extract_json_string_field(const char *json, const char *field, char *out, size_t out_cap)
+static bool extract_json_string_field(const char* json, const char* field, char* out, size_t out_cap)
 {
     char needle[64];
     snprintf(needle, sizeof needle, "\"%s\":", field);
-    const char *start = strstr(json, needle);
+    const char* start = strstr(json, needle);
     if (!start)
     {
         return false;
@@ -266,7 +279,7 @@ static bool extract_json_string_field(const char *json, const char *field, char 
         return false;
     }
     start += 1;
-    const char *end = strchr(start, '"');
+    const char* end = strchr(start, '"');
     if (!end || (size_t)(end - start) >= out_cap)
     {
         return false;
@@ -281,8 +294,7 @@ static bool extract_json_string_field(const char *json, const char *field, char 
  * be empty (open mode: no Authorization header, mock_manager.py must be
  * started without --enroll-password for this to succeed). On success, fills
  * key_out with the client.keys-shaped hex key the mock minted. */
-static bool enroll_agent(const char *host, uint16_t port, const char *password,
-                         char *key_out, size_t key_out_cap)
+static bool enroll_agent(const char* host, uint16_t port, const char* password, char* key_out, size_t key_out_cap)
 {
     hc_config_t enroll_config;
     memset(&enroll_config, 0, sizeof enroll_config);
@@ -293,13 +305,11 @@ static bool enroll_agent(const char *host, uint16_t port, const char *password,
 
     hc_enroll_request_t request;
     memset(&request, 0, sizeof request);
-    snprintf(request.body_json, sizeof request.body_json,
-             "{\"name\":\"demo-agent\",\"version\":\"5.1.0\"}");
+    snprintf(request.body_json, sizeof request.body_json, "{\"name\":\"demo-agent\",\"version\":\"5.1.0\"}");
     strncpy(request.password, password, sizeof request.password - 1);
     request.log = on_log;
 
-    printf("== enrolling (POST /enroll, %s mode) ==\n",
-           password[0] ? "password" : "open");
+    printf("== enrolling (POST /enroll, %s mode) ==\n", password[0] ? "password" : "open");
     fflush(stdout);
 
     hc_enroll_result_t result;
@@ -326,16 +336,14 @@ static bool enroll_agent(const char *host, uint16_t port, const char *password,
     return true;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     if (argc < 4)
     {
-        fprintf(stderr,
-                "usage: %s <host> <port> <key_hex>|enroll[:<password>] [sync_socket_path]\n",
-                argv[0]);
+        fprintf(stderr, "usage: %s <host> <port> <key_hex>|enroll[:<password>] [sync_socket_path]\n", argv[0]);
         return 2;
     }
-    const char *sync_socket = argc > 4 ? argv[4] : NULL;
+    const char* sync_socket = argc > 4 ? argv[4] : NULL;
     clock_gettime(CLOCK_MONOTONIC, &g_start);
 
     struct sigaction action;
@@ -350,10 +358,10 @@ int main(int argc, char **argv)
      * pre-provisioned key, exactly as agentd's try_enroll_to_server() does
      * before hc_create() ever runs. */
     char enrolled_key[HC_MAX_KEY];
-    const char *agent_key = argv[3];
+    const char* agent_key = argv[3];
     if (strncmp(argv[3], "enroll", 6) == 0 && (argv[3][6] == '\0' || argv[3][6] == ':'))
     {
-        const char *password = argv[3][6] == ':' ? argv[3] + 7 : "";
+        const char* password = argv[3][6] == ':' ? argv[3] + 7 : "";
         if (!enroll_agent(argv[1], server_port, password, enrolled_key, sizeof enrolled_key))
         {
             return 1;
@@ -373,9 +381,9 @@ int main(int argc, char **argv)
     config.request_timeout_ms = 10000;   /* a multi-MB /stateful takes a moment */
     config.backoff_base_ms = 200;
     config.backoff_cap_ms = 2000;
-    config.stats_enabled = true;          /* push /stats every few seconds     */
+    config.stats_enabled = true; /* push /stats every few seconds     */
     config.stats_interval_s = 3;
-    config.config_report_enabled = true;  /* push /config on its own cadence    */
+    config.config_report_enabled = true; /* push /config on its own cadence    */
     config.config_report_interval_s = 5;
     strncpy(config.version, "5.1.0", sizeof config.version - 1);
     /* SHA-256 of the empty merged.mg the mock starts with: in sync at boot,
@@ -402,7 +410,7 @@ int main(int argc, char **argv)
     callbacks.collect_config = collect_config;
 
     printf("== creating + starting the https_client (target %s:%s) ==\n", argv[1], argv[2]);
-    hc_handle *handle = hc_create(&config, &callbacks);
+    hc_handle* handle = hc_create(&config, &callbacks);
     g_handle = handle;
     if (!handle || !hc_start(handle))
     {
@@ -418,7 +426,7 @@ int main(int argc, char **argv)
     {
         char frame[64];
         int n = snprintf(frame, sizeof frame, "1:/var/log/syslog:demo event %d", i);
-        hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
+        hc_submit_event(handle, (const uint8_t*)frame, (size_t)n);
     }
 
     printf("== submitting a small /stateful sync session (in-memory) ==\n");
@@ -427,7 +435,7 @@ int main(int argc, char **argv)
     memset(session + 25, 'D', sizeof session - 25);
     hc_submit_sync_session(handle, "demo-sess-1", session, sizeof session);
 
-    unsigned char *fim_session = NULL;
+    unsigned char* fim_session = NULL;
     size_t fim_len = 0;
     if (sync_socket)
     {
@@ -440,7 +448,9 @@ int main(int argc, char **argv)
         fflush(stdout);
         fim_session = build_fim_full_sync(entries, &fim_len);
         printf("== streaming the FIM full sync over the intake socket: %zu entries, "
-               "%.2f MB, checksum 0x%08x ==\n", entries, fim_len / (1024.0 * 1024.0),
+               "%.2f MB, checksum 0x%08x ==\n",
+               entries,
+               fim_len / (1024.0 * 1024.0),
                additive_checksum(fim_session, fim_len));
         fflush(stdout);
         if (!hc_send_sync_session(sync_socket, "fim-full-sync-1", fim_session, fim_len))
@@ -466,19 +476,20 @@ int main(int argc, char **argv)
      * Notify + /stateless traffic stays visible, and re-running the FIM full
      * sync every 60 s. SIGINT/SIGTERM (Ctrl-C, docker stop) ends it early
      * through the same clean drain. */
-    const char *extra = getenv("DEMO_SECONDS");
+    const char* extra = getenv("DEMO_SECONDS");
     const long extra_s = extra ? strtol(extra, NULL, 10) : 0;
     if (extra_s > 0)
     {
         printf("== sustained mode: ~%ld s of keepalive traffic, FIM full re-sync "
-               "every 60 s (Ctrl-C stops cleanly) ==\n", extra_s);
+               "every 60 s (Ctrl-C stops cleanly) ==\n",
+               extra_s);
         fflush(stdout);
         int fim_round = 1;
         for (long tick = 0; tick * 2 < extra_s && !atomic_load(&g_stop); tick++)
         {
             char frame[80];
             int n = snprintf(frame, sizeof frame, "1:/var/log/syslog:sustained event %ld", tick);
-            hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
+            hc_submit_event(handle, (const uint8_t*)frame, (size_t)n);
 
             /* Every 10 s, burst enough events to exceed the mock's /stateless
              * payload cap, so the 413 -> split -> resend path is visible. */
@@ -490,17 +501,15 @@ int main(int argc, char **argv)
                 for (int burst = 0; burst < 120; burst++)
                 {
                     char big[96];
-                    int m = snprintf(big, sizeof big,
-                                     "1:/var/log/burst:event %ld-%d payload-padding", tick, burst);
-                    hc_submit_event(handle, (const uint8_t *)big, (size_t)m);
+                    int m = snprintf(big, sizeof big, "1:/var/log/burst:event %ld-%d payload-padding", tick, burst);
+                    hc_submit_event(handle, (const uint8_t*)big, (size_t)m);
                 }
             }
             if (fim_session && tick > 0 && tick % 30 == 0)
             {
                 char sid[48];
                 snprintf(sid, sizeof sid, "fim-full-sync-%d", ++fim_round);
-                printf("== periodic FIM full re-sync (%s, %.2f MB) ==\n", sid,
-                       fim_len / (1024.0 * 1024.0));
+                printf("== periodic FIM full re-sync (%s, %.2f MB) ==\n", sid, fim_len / (1024.0 * 1024.0));
                 fflush(stdout);
                 hc_send_sync_session(sync_socket, sid, fim_session, fim_len);
             }

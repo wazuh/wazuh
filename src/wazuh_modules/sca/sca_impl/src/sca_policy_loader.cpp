@@ -16,7 +16,7 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
                                  std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
                                  std::shared_ptr<IDBSync> dBSync)
     : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                          : std::make_shared<file_system::FileSystemWrapper>())
+                                            : std::make_shared<file_system::FileSystemWrapper>())
     , m_dBSync(std::move(dBSync))
 {
     const auto loadPoliciesPathsFromConfig = [this](const std::vector<sca::PolicyData>& policiesStrPaths)
@@ -42,7 +42,9 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
 }
 
 std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int commandsTimeout,
-                                                                       const bool remoteEnabled, const CreateEventsFunc& createEvents, const YamlToJsonFunc& yamlToJsonFunc) const
+                                                                       const bool remoteEnabled,
+                                                                       const CreateEventsFunc& createEvents,
+                                                                       const YamlToJsonFunc& yamlToJsonFunc) const
 {
     std::vector<std::unique_ptr<ISCAPolicy>> policies;
     nlohmann::json policiesAndChecks;
@@ -70,7 +72,8 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int
             }
             catch (const std::exception& e)
             {
-                LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + pol.path + ": " + e.what());
+                LoggingHelper::getInstance().log(LOG_WARNING,
+                                                 "Failed to parse policy from  " + pol.path + ": " + e.what());
             }
         }
         else
@@ -160,8 +163,8 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
                     }
                     catch (const std::exception& e)
                     {
-                        LoggingHelper::getInstance().log(LOG_ERROR,
-                                                         std::string("Failed to mark check as Not run after policy change: ") + e.what());
+                        LoggingHelper::getInstance().log(
+                            LOG_ERROR, std::string("Failed to mark check as Not run after policy change: ") + e.what());
                     }
                 }
             }
@@ -193,53 +196,53 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
     }
 
     // LCOV_EXCL_START
-    const auto callback {[](ReturnTypeCallback result, const nlohmann::json & rowData)
-    {
-        if (result != DB_ERROR)
-        {
-            std::string id;
+    const auto callback {[](ReturnTypeCallback result, const nlohmann::json& rowData)
+                         {
+                             if (result != DB_ERROR)
+                             {
+                                 std::string id;
 
-            if (result == MODIFIED && rowData.contains("new") && rowData["new"].is_object())
-            {
-                if (rowData["new"].contains("id"))
-                {
-                    if (rowData["new"]["id"].is_string())
-                    {
-                        id = rowData["new"]["id"];
-                    }
-                    else if (rowData["new"]["id"].is_number())
-                    {
-                        id = std::to_string(rowData["new"]["id"].get<int>());
-                    }
-                }
-            }
-            else if ((result == INSERTED || result == DELETED) && rowData.contains("id"))
-            {
-                if (rowData["id"].is_string())
-                {
-                    id = rowData["id"];
-                }
-                else if (rowData["id"].is_number())
-                {
-                    id = std::to_string(rowData["id"].get<int>());
-                }
-            }
+                                 if (result == MODIFIED && rowData.contains("new") && rowData["new"].is_object())
+                                 {
+                                     if (rowData["new"].contains("id"))
+                                     {
+                                         if (rowData["new"]["id"].is_string())
+                                         {
+                                             id = rowData["new"]["id"];
+                                         }
+                                         else if (rowData["new"]["id"].is_number())
+                                         {
+                                             id = std::to_string(rowData["new"]["id"].get<int>());
+                                         }
+                                     }
+                                 }
+                                 else if ((result == INSERTED || result == DELETED) && rowData.contains("id"))
+                                 {
+                                     if (rowData["id"].is_string())
+                                     {
+                                         id = rowData["id"];
+                                     }
+                                     else if (rowData["id"].is_number())
+                                     {
+                                         id = std::to_string(rowData["id"].get<int>());
+                                     }
+                                 }
 
-            if (!id.empty())
-            {
-                modifiedDataMap[id] = nlohmann::json {{"result", result}, {"data", rowData}};
-            }
-            else
-            {
-                LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
-            }
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR,
-                                             "Failed to parse policy from  " + rowData.dump());
-        }
-    }};
+                                 if (!id.empty())
+                                 {
+                                     modifiedDataMap[id] = nlohmann::json {{"result", result}, {"data", rowData}};
+                                 }
+                                 else
+                                 {
+                                     LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
+                                 }
+                             }
+                             else
+                             {
+                                 LoggingHelper::getInstance().log(LOG_ERROR,
+                                                                  "Failed to parse policy from  " + rowData.dump());
+                             }
+                         }};
     // LCOV_EXCL_STOP
 
     try
@@ -262,8 +265,7 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR,
-                                         std::string("Error synchronizing data with DBSync: ") + e.what());
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error synchronizing data with DBSync: ") + e.what());
     }
 
     return modifiedDataMap;

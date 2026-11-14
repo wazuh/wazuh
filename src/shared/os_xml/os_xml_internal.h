@@ -11,16 +11,16 @@
 #ifndef OS_XML_INTERNAL_H
 #define OS_XML_INTERNAL_H
 
-#define _R_CONFS    '<'
-#define _R_CONFE    '>'
-#define _R_COM      '!'
+#define _R_CONFS '<'
+#define _R_CONFE '>'
+#define _R_COM   '!'
 
-#define LEOF        -2
+#define LEOF -2
 
-#define XML_MAXSIZE           20480
-#define XML_MAX_ATTR_DEPTH    48
+#define XML_MAXSIZE        20480
+#define XML_MAX_ATTR_DEPTH 48
 
-//#define XML_ELEM                101
-//#define XML_ATTR                102
+// #define XML_ELEM                101
+// #define XML_ATTR                102
 
 #endif /* OS_XML_INTERNAL_H */

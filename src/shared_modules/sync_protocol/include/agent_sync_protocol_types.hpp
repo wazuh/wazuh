@@ -22,52 +22,52 @@ enum class SyncResult
     SUCCESS,             ///< Operation completed successfully
     COMMUNICATION_ERROR, ///< Failed to communicate with the manager
     CHECKSUM_ERROR,      ///< Checksum validation failed
-    START_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the Start message
-    END_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the End message
-    PROTOCOL_ERROR,       ///< Manager sent an unexpected or invalid response
+    START_TIMEOUT_ERROR, ///< Exceeded maximum retries waiting for a response for the Start message
+    END_TIMEOUT_ERROR,   ///< Exceeded maximum retries waiting for a response for the End message
+    PROTOCOL_ERROR,      ///< Manager sent an unexpected or invalid response
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
     PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
     ///< budget (HTTP 413); the session must be split and resent smaller.
-    FEED_NOT_READY,      ///< Manager's vulnerability feed is not loaded yet (HTTP 503 "vulnerability
+    FEED_NOT_READY, ///< Manager's vulnerability feed is not loaded yet (HTTP 503 "vulnerability
     ///< feed not ready"); the session is resent on the next cycle.
 };
 
 struct SyncModuleResult
 {
-    bool success{false};
+    bool success {false};
     std::string failureReason;
     /// @brief True when the operation was aborted because a stop/shutdown was requested.
     /// Lets the calling module demote an expected shutdown-time failure from WARNING to
     /// INFO/DEBUG.
-    bool stopped{false};
+    bool stopped {false};
     /// @brief True when the manager did not answer the handshake, or answered that it cannot serve
     /// this agent yet (Offline). This describes what happened, not whether it is harmless: the same
     /// condition covers a brief window after an agent restart and a lasting outage (for example the
     /// manager having no indexer available). Use it together with @ref consecutiveFailures to decide
     /// the log level.
-    bool managerNotReady{false};
+    bool managerNotReady {false};
     /// @brief Number of consecutive failed synchronizations for this module, including this one.
     /// Reset to zero on the first success. A single failure that recovers on the next cycle is an
     /// expected hiccup; a growing count means the condition is not clearing and deserves a WARNING.
-    unsigned int consecutiveFailures{0};
+    unsigned int consecutiveFailures {0};
     /// @brief True when the sync was aborted because a prerequisite the manager has to supply
     /// first (the assigned groups) has not arrived yet. Same
     /// intent as @ref stopped: lets the calling module demote this from WARNING to INFO/DEBUG,
     /// since it is expected and normally clears within the next cycle or two (e.g. right after
     /// an agent restart, before the first /control round trip completes).
-    bool awaitingPrerequisite{false};
+    bool awaitingPrerequisite {false};
     /// @brief True when the local sync intake itself could not be reached (wazuh-agentd's
     /// https_client not done starting yet). Deliberately distinct from @ref managerNotReady: this
     /// never got far enough to hear anything from the manager, so it must not be described as a
     /// manager-side condition. Same idea as managerNotReady otherwise -- use it together with
     /// @ref consecutiveFailures to tell a restart hiccup from a lasting local problem.
-    bool localTransportUnavailable{false};
+    bool localTransportUnavailable {false};
     /// @brief True when this call ran no session at all because another synchronization was
     /// already in flight on the same instance (the periodic cycle and a flush colliding, for
     /// example). Reported as a success -- the in-flight sync is draining the same queue -- but
     /// a caller that records something about the session that was sent must not do so for a
     /// call that sent nothing.
-    bool sessionSkipped{false};
+    bool sessionSkipped {false};
 
     /// @brief True when at least one block of queued items was actually sent to the manager.
     ///
@@ -103,7 +103,7 @@ struct SyncModuleResult
     ///
     /// Always false for metadata and group synchronizations, which send no queued items by
     /// construction.
-    bool sentAnything{false};
+    bool sentAnything {false};
 
     /// @brief True when the manager answered that its vulnerability feed is not loaded yet (HTTP
     /// 503 "vulnerability feed not ready"). Only a vulnerability-detection data session gets this
@@ -115,7 +115,7 @@ struct SyncModuleResult
     /// before.
     ///
     /// Not part of the C interface's SyncModuleResult_t: its modules never send those sessions.
-    bool feedNotReady{false};
+    bool feedNotReady {false};
 };
 
 /// @brief Outcome of a module integrity check (IAgentSyncProtocol::requiresFullSync()).
@@ -133,17 +133,17 @@ enum class IntegrityCheckStatus
 /// decision; the detail below lets it say why the check did not complete.
 struct IntegrityCheckResult
 {
-    IntegrityCheckStatus status{IntegrityCheckStatus::NOT_CHECKED};
+    IntegrityCheckStatus status {IntegrityCheckStatus::NOT_CHECKED};
     /// @brief Why the check did not complete. Empty unless status is NOT_CHECKED.
     std::string failureReason;
     /// @brief True when the check was abandoned because a stop/shutdown was requested. Expected
     /// during shutdown, so callers should not report it as a failure.
-    bool stopped{false};
+    bool stopped {false};
     /// @brief Same meaning as SyncModuleResult::managerNotReady.
-    bool managerNotReady{false};
+    bool managerNotReady {false};
     /// @brief Same meaning as SyncModuleResult::localTransportUnavailable.
-    bool localTransportUnavailable{false};
+    bool localTransportUnavailable {false};
     /// @brief True when the manager had already reported a mismatch (409) that was still being
     /// confirmed when the check stopped. That mismatch is not acted on, so a caller should say so.
-    bool mismatchUnconfirmed{false};
+    bool mismatchUnconfirmed {false};
 };

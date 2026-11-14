@@ -26,71 +26,69 @@ namespace Utils
 {
     class NetworkHelper final
     {
-        public:
-            static std::string getNetworkTypeStringCode(const int value, const std::map<std::pair<int, int>, std::string>& interfaceTypeData)
+    public:
+        static std::string getNetworkTypeStringCode(const int value,
+                                                    const std::map<std::pair<int, int>, std::string>& interfaceTypeData)
+        {
+            std::string retVal;
+
+            const auto it {
+                std::find_if(interfaceTypeData.begin(),
+                             interfaceTypeData.end(),
+                             [value](const std::pair<std::pair<int, int>, std::string>& paramValue)
+                             { return paramValue.first.first >= value && paramValue.first.second <= value; })};
+
+            if (interfaceTypeData.end() != it)
             {
-                std::string retVal;
-
-                const auto it
-                {
-                    std::find_if(interfaceTypeData.begin(), interfaceTypeData.end(),
-                                 [value](const std::pair<std::pair<int, int>, std::string>& paramValue)
-                    {
-                        return paramValue.first.first >= value && paramValue.first.second <= value;
-                    })
-                };
-
-                if (interfaceTypeData.end() != it)
-                {
-                    retVal = it->second;
-                }
-
-                return retVal;
+                retVal = it->second;
             }
 
-            template <class T>
-            static std::string IAddressToBinary(const int family, const T address)
-            {
-                std::string retVal;
-                const auto broadcastAddrPlain { std::make_unique<char[]>(NI_MAXHOST) };
+            return retVal;
+        }
 
-                if (inet_ntop(family, address, broadcastAddrPlain.get(), NI_MAXHOST))
+        template<class T>
+        static std::string IAddressToBinary(const int family, const T address)
+        {
+            std::string retVal;
+            const auto broadcastAddrPlain {std::make_unique<char[]>(NI_MAXHOST)};
+
+            if (inet_ntop(family, address, broadcastAddrPlain.get(), NI_MAXHOST))
+            {
+                retVal = broadcastAddrPlain.get();
+                // Sanitize IPv6 addresses by replacing ":::" with "::"
+                if (family == AF_INET6)
                 {
-                    retVal = broadcastAddrPlain.get();
-                    // Sanitize IPv6 addresses by replacing ":::" with "::"
-                    if (family == AF_INET6)
+                    size_t pos = 0;
+                    while ((pos = retVal.find(":::", pos)) != std::string::npos)
                     {
-                        size_t pos = 0;
-                        while ((pos = retVal.find(":::", pos)) != std::string::npos)
-                        {
-                            retVal.replace(pos, 3, "::");
-                            pos += 2;
-                        }
+                        retVal.replace(pos, 3, "::");
+                        pos += 2;
                     }
                 }
-
-                return retVal;
             }
 
-            static std::string getBroadcast(const std::string& ipAddress, const std::string& netmask)
+            return retVal;
+        }
+
+        static std::string getBroadcast(const std::string& ipAddress, const std::string& netmask)
+        {
+            struct in_addr host;
+            struct in_addr mask;
+            struct in_addr broadcast;
+
+            std::string broadcastAddr;
+
+            if (inet_pton(AF_INET, ipAddress.c_str(), &host) == 1 && inet_pton(AF_INET, netmask.c_str(), &mask) == 1)
             {
-                struct in_addr host;
-                struct in_addr mask;
-                struct in_addr broadcast;
 
-                std::string broadcastAddr;
-
-                if (inet_pton(AF_INET, ipAddress.c_str(), &host) == 1 && inet_pton(AF_INET, netmask.c_str(), &mask) == 1)
-                {
-
-                    broadcast.s_addr = host.s_addr | ~mask.s_addr;
-                    broadcastAddr = IAddressToBinary(AF_INET, &broadcast);
-                }
-
-                return broadcastAddr;
+                broadcast.s_addr = host.s_addr | ~mask.s_addr;
+                broadcastAddr = IAddressToBinary(AF_INET, &broadcast);
             }
+
+            return broadcastAddr;
+        }
     };
-}
+} // namespace Utils
 
 #pragma GCC diagnostic pop
 

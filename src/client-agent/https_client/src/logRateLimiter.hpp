@@ -35,86 +35,86 @@
  */
 class LogRateLimiter final
 {
-    public:
-        /// One window per condition. 90 s matches LogThrottle::kDefaultWindow's precedent.
-        static constexpr std::chrono::nanoseconds kDefaultWindow {std::chrono::seconds {90}};
+public:
+    /// One window per condition. 90 s matches LogThrottle::kDefaultWindow's precedent.
+    static constexpr std::chrono::nanoseconds kDefaultWindow {std::chrono::seconds {90}};
 
-        explicit LogRateLimiter(IClock& clock, std::chrono::nanoseconds window = kDefaultWindow) noexcept
-            : m_clock(clock)
-            , m_window(window)
+    explicit LogRateLimiter(IClock& clock, std::chrono::nanoseconds window = kDefaultWindow) noexcept
+        : m_clock(clock)
+        , m_window(window)
+    {
+    }
+
+    LogRateLimiter(const LogRateLimiter&) = delete;
+    LogRateLimiter& operator=(const LogRateLimiter&) = delete;
+
+    /// @brief What the caller should do about this occurrence.
+    struct Decision
+    {
+        bool emit {false};            ///< True for exactly one caller per window.
+        std::uint64_t suppressed {0}; ///< Occurrences NOT logged since the last emission.
+        std::uint64_t total {0};      ///< suppressed + 1: how many occurrences this line stands for.
+
+        /// @brief Lets a Decision be used directly in an `if`.
+        explicit operator bool() const noexcept
         {
+            return emit;
+        }
+    };
+
+    /**
+     * @brief Count this occurrence and decide whether the caller should log it now.
+     *
+     * The FIRST occurrence since construction or the last reset() always emits (total ==
+     * 1): an operator must not have to wait a whole window for the first sign of trouble.
+     * Afterwards, at most one caller per window gets `emit == true`, carrying the full
+     * count of occurrences its line represents.
+     */
+    Decision record() noexcept
+    {
+        ++m_pending;
+
+        const auto now = m_clock.steadyNow();
+
+        if (m_hasEmitted && (now - m_lastEmit) < m_window)
+        {
+            return {};
         }
 
-        LogRateLimiter(const LogRateLimiter&) = delete;
-        LogRateLimiter& operator=(const LogRateLimiter&) = delete;
+        m_hasEmitted = true;
+        m_lastEmit = now;
 
-        /// @brief What the caller should do about this occurrence.
-        struct Decision
-        {
-            bool emit {false};            ///< True for exactly one caller per window.
-            std::uint64_t suppressed {0}; ///< Occurrences NOT logged since the last emission.
-            std::uint64_t total {0};      ///< suppressed + 1: how many occurrences this line stands for.
+        const auto total = m_pending;
+        m_pending = 0;
+        return {true, total > 0 ? total - 1 : 0, total};
+    }
 
-            /// @brief Lets a Decision be used directly in an `if`.
-            explicit operator bool() const noexcept
-            {
-                return emit;
-            }
-        };
+    /// Clears the window state: the NEXT record() emits immediately, regardless of how
+    /// recently the last one did. Called on recovery, so a fresh incident later is
+    /// reported at once rather than possibly landing inside the old incident's tail
+    /// window.
+    void reset() noexcept
+    {
+        m_hasEmitted = false;
+        m_pending = 0;
+    }
 
-        /**
-         * @brief Count this occurrence and decide whether the caller should log it now.
-         *
-         * The FIRST occurrence since construction or the last reset() always emits (total ==
-         * 1): an operator must not have to wait a whole window for the first sign of trouble.
-         * Afterwards, at most one caller per window gets `emit == true`, carrying the full
-         * count of occurrences its line represents.
-         */
-        Decision record() noexcept
-        {
-            ++m_pending;
-
-            const auto now = m_clock.steadyNow();
-
-            if (m_hasEmitted && (now - m_lastEmit) < m_window)
-            {
-                return {};
-            }
-
-            m_hasEmitted = true;
-            m_lastEmit = now;
-
-            const auto total = m_pending;
-            m_pending = 0;
-            return {true, total > 0 ? total - 1 : 0, total};
-        }
-
-        /// Clears the window state: the NEXT record() emits immediately, regardless of how
-        /// recently the last one did. Called on recovery, so a fresh incident later is
-        /// reported at once rather than possibly landing inside the old incident's tail
-        /// window.
-        void reset() noexcept
-        {
-            m_hasEmitted = false;
-            m_pending = 0;
-        }
-
-        /// The suffix a line this limits carries for what it stands for: " (N more suppressed in the
-        /// last W s)", W being this limiter's window, or nothing when it stands for itself alone.
-        std::string suppressedNote(const Decision& decision) const
-        {
-            return decision.suppressed > 0
+    /// The suffix a line this limits carries for what it stands for: " (N more suppressed in the
+    /// last W s)", W being this limiter's window, or nothing when it stands for itself alone.
+    std::string suppressedNote(const Decision& decision) const
+    {
+        return decision.suppressed > 0
                    ? " (" + std::to_string(decision.suppressed) + " more suppressed in the last " +
-                   std::to_string(std::chrono::duration_cast<std::chrono::seconds>(m_window).count()) + "s)"
+                         std::to_string(std::chrono::duration_cast<std::chrono::seconds>(m_window).count()) + "s)"
                    : std::string();
-        }
+    }
 
-    private:
-        IClock& m_clock;
-        const std::chrono::nanoseconds m_window;
-        bool m_hasEmitted {false};
-        std::chrono::steady_clock::time_point m_lastEmit {};
-        std::uint64_t m_pending {0};
+private:
+    IClock& m_clock;
+    const std::chrono::nanoseconds m_window;
+    bool m_hasEmitted {false};
+    std::chrono::steady_clock::time_point m_lastEmit {};
+    std::uint64_t m_pending {0};
 };
 
 #endif // _HC_LOG_RATE_LIMITER_HPP

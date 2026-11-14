@@ -54,15 +54,15 @@ TEST(CacertsClientTest, SendsAGetWithNoBodyToTheLiteralCacertsTarget)
     CacertsClient client {baseConfig(), performer, fsProbe, TEST_LOG, true};
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_EQ("/cacerts", spec.target);
-        EXPECT_EQ(HttpMethod::Get, spec.method);
-        EXPECT_EQ(nullptr, spec.body);
-        EXPECT_EQ(0u, spec.bodyLength);
-        return okResponse("-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n");
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_EQ("/cacerts", spec.target);
+                EXPECT_EQ(HttpMethod::Get, spec.method);
+                EXPECT_EQ(nullptr, spec.body);
+                EXPECT_EQ(0u, spec.bodyLength);
+                return okResponse("-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n");
+            }));
 
     const auto response = client.fetch();
     EXPECT_EQ(TransportStatus::Ok, response.status);
@@ -82,12 +82,12 @@ TEST(CacertsClientTest, ConfiguredEndpointPrefixIsFoldedIntoTheTarget)
     CacertsClient client {config, performer, fsProbe, TEST_LOG, true};
 
     EXPECT_CALL(performer, perform(_))
-    .WillOnce(Invoke(
-                  [&](const HttpRequestSpec & spec)
-    {
-        EXPECT_EQ("/wazuh-manager/cacerts", spec.target);
-        return okResponse("cert-body");
-    }));
+        .WillOnce(Invoke(
+            [&](const HttpRequestSpec& spec)
+            {
+                EXPECT_EQ("/wazuh-manager/cacerts", spec.target);
+                return okResponse("cert-body");
+            }));
 
     client.fetch();
 }

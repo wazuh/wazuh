@@ -14,15 +14,16 @@
 #include <string.h>
 #include <cmocka.h>
 
-
 extern void write_date_storage();
 
-int __wrap_wpclose(__attribute__((unused)) wfd_t * wfd) {
+int __wrap_wpclose(__attribute__((unused)) wfd_t* wfd)
+{
     return mock();
 }
 
-wfd_t *__wrap_wpopenl(__attribute__((unused)) const char * path, __attribute__((unused)) int flags, ...) {
-    return mock_type(wfd_t *);
+wfd_t* __wrap_wpopenl(__attribute__((unused)) const char* path, __attribute__((unused)) int flags, ...)
+{
+    return mock_type(wfd_t*);
 }
 
 // Passive record of the most recent wpopenv() call's argv, for tests that
@@ -38,32 +39,39 @@ static int wpopenv_argv_capture_count = 0;
 
 static int wpopenv_captured_flags_value = 0;
 
-int wpopenv_captured_flags(void) {
+int wpopenv_captured_flags(void)
+{
     return wpopenv_captured_flags_value;
 }
 
-int wpopenv_captured_argc(void) {
+int wpopenv_captured_argc(void)
+{
     return wpopenv_argv_capture_count;
 }
 
-const char *wpopenv_captured_argv(int index) {
-    if (index < 0 || index >= wpopenv_argv_capture_count) {
+const char* wpopenv_captured_argv(int index)
+{
+    if (index < 0 || index >= wpopenv_argv_capture_count)
+    {
         return NULL;
     }
     return wpopenv_argv_capture[index];
 }
 
-wfd_t *__wrap_wpopenv(__attribute__((unused)) const char * path,
-                      char * const * argv,
-                      int flags) {
+wfd_t* __wrap_wpopenv(__attribute__((unused)) const char* path, char* const* argv, int flags)
+{
     wpopenv_captured_flags_value = flags;
     wpopenv_argv_capture_count = 0;
-    if (argv) {
-        while (argv[wpopenv_argv_capture_count] != NULL && wpopenv_argv_capture_count < WPOPENV_ARGV_CAPTURE_MAX) {
-            strncpy(wpopenv_argv_capture[wpopenv_argv_capture_count], argv[wpopenv_argv_capture_count], WPOPENV_ARGV_CAPTURE_LEN - 1);
+    if (argv)
+    {
+        while (argv[wpopenv_argv_capture_count] != NULL && wpopenv_argv_capture_count < WPOPENV_ARGV_CAPTURE_MAX)
+        {
+            strncpy(wpopenv_argv_capture[wpopenv_argv_capture_count],
+                    argv[wpopenv_argv_capture_count],
+                    WPOPENV_ARGV_CAPTURE_LEN - 1);
             wpopenv_argv_capture[wpopenv_argv_capture_count][WPOPENV_ARGV_CAPTURE_LEN - 1] = '\0';
             wpopenv_argv_capture_count++;
         }
     }
-    return mock_type(wfd_t *);
+    return mock_type(wfd_t*);
 }

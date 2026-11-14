@@ -31,32 +31,37 @@
  * (mirrors test_localfile-config.c's own group setup/teardown). */
 void w_test_pcre2_wrappers(bool enable);
 
-static int group_setup(void **state) {
-    (void) state;
+static int group_setup(void** state)
+{
+    (void)state;
     w_test_pcre2_wrappers(false);
     return 0;
 }
 
-static int group_teardown(void **state) {
-    (void) state;
+static int group_teardown(void** state)
+{
+    (void)state;
     w_test_pcre2_wrappers(true);
     return 0;
 }
 
-static int setup(void **state) {
-    (void) state;
+static int setup(void** state)
+{
+    (void)state;
 
     memset(&config_inst, 0, sizeof(config_inst));
 
     return 0;
 }
 
-static int teardown(void **state) {
-    (void) state;
+static int teardown(void** state)
+{
+    (void)state;
 
     unlink(CONFIG);
 
-    if (config_inst.server) {
+    if (config_inst.server)
+    {
         free(config_inst.server);
         config_inst.server = NULL;
     }
@@ -64,17 +69,21 @@ static int teardown(void **state) {
     return 0;
 }
 
-static void write_conf(const char *body) {
-    FILE *f = fopen(CONFIG, "w");
+static void write_conf(const char* body)
+{
+    FILE* f = fopen(CONFIG, "w");
     assert_non_null(f);
     fputs(body, f);
     fclose(f);
 }
 
-static void test_agent_manager_endpoint_is_read_verbatim(void **state) {
-    (void) state;
+static void test_agent_manager_endpoint_is_read_verbatim(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>manager.example.com:1517/wazuh-manager/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf(
+        "<ossec_config>\n  <agent>\n    <manager>\n      "
+        "<endpoint>manager.example.com:1517/wazuh-manager/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
     assert_string_equal(config_inst.server, "manager.example.com:1517/wazuh-manager/");
@@ -83,10 +92,12 @@ static void test_agent_manager_endpoint_is_read_verbatim(void **state) {
 
 /* The shape InstallerScripts.vbs writes into a preserved 4.x file that has no <agent>
  * block: <client><server><endpoint>, not <client><server><address>. */
-static void test_client_server_endpoint_upgraded_4x_file_is_read(void **state) {
-    (void) state;
+static void test_client_server_endpoint_upgraded_4x_file_is_read(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <client>\n    <server>\n      <endpoint>10.0.0.5:1517/</endpoint>\n    </server>\n  </client>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <client>\n    <server>\n      <endpoint>10.0.0.5:1517/</endpoint>\n    </server>\n  "
+               "</client>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
     assert_string_equal(config_inst.server, "10.0.0.5:1517/");
@@ -94,10 +105,12 @@ static void test_client_server_endpoint_upgraded_4x_file_is_read(void **state) {
 
 /* A genuine, untouched 4.x file: no <endpoint> anywhere, only the deprecated
  * <client><server><address>. Already worked before this change; must keep working. */
-static void test_legacy_client_server_address_still_works(void **state) {
-    (void) state;
+static void test_legacy_client_server_address_still_works(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <client>\n    <server>\n      <address>192.168.1.10</address>\n    </server>\n  </client>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <client>\n    <server>\n      <address>192.168.1.10</address>\n    </server>\n  "
+               "</client>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
     assert_string_equal(config_inst.server, "192.168.1.10");
@@ -106,10 +119,12 @@ static void test_legacy_client_server_address_still_works(void **state) {
 
 /* <endpoint> wins over <address> whenever both are present, mirroring
  * client-config.c's Read_Agent_Manager() precedence. */
-static void test_endpoint_wins_over_address_when_both_present(void **state) {
-    (void) state;
+static void test_endpoint_wins_over_address_when_both_present(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <address>203.0.113.1</address>\n      <endpoint>203.0.113.1:1517/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <address>203.0.113.1</address>\n      "
+               "<endpoint>203.0.113.1:1517/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
     assert_string_equal(config_inst.server, "203.0.113.1:1517/");
@@ -120,13 +135,15 @@ static void test_endpoint_wins_over_address_when_both_present(void **state) {
  * block without cleaning up the old one. <agent> must win, matching
  * Read_Legacy_Client()'s address_taken gate (client-config.c), which skips
  * the legacy <server> block entirely once <agent> has resolved anything. */
-static void test_agent_block_wins_over_legacy_client_block_when_both_present(void **state) {
-    (void) state;
+static void test_agent_block_wins_over_legacy_client_block_when_both_present(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n"
-               "  <agent>\n    <manager>\n      <endpoint>five-x.example.com:1517/</endpoint>\n    </manager>\n  </agent>\n"
-               "  <client>\n    <server>\n      <address>10.0.0.9</address>\n    </server>\n  </client>\n"
-               "</ossec_config>\n");
+    write_conf(
+        "<ossec_config>\n"
+        "  <agent>\n    <manager>\n      <endpoint>five-x.example.com:1517/</endpoint>\n    </manager>\n  </agent>\n"
+        "  <client>\n    <server>\n      <address>10.0.0.9</address>\n    </server>\n  </client>\n"
+        "</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
     assert_string_equal(config_inst.server, "five-x.example.com:1517/");
@@ -137,12 +154,14 @@ static void test_agent_block_wins_over_legacy_client_block_when_both_present(voi
  * precedence must still win over tag precedence -- <agent>'s address is
  * shown, not <client>'s endpoint -- exactly as Read_Legacy_Client() would:
  * it never even looks at <client><server> once <agent> supplied anything. */
-static void test_agent_address_wins_over_legacy_client_endpoint(void **state) {
-    (void) state;
+static void test_agent_address_wins_over_legacy_client_endpoint(void** state)
+{
+    (void)state;
 
     write_conf("<ossec_config>\n"
                "  <agent>\n    <manager>\n      <address>203.0.113.9</address>\n    </manager>\n  </agent>\n"
-               "  <client>\n    <server>\n      <endpoint>stale-legacy.example.com:1517/</endpoint>\n    </server>\n  </client>\n"
+               "  <client>\n    <server>\n      <endpoint>stale-legacy.example.com:1517/</endpoint>\n    </server>\n  "
+               "</client>\n"
                "</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
@@ -150,8 +169,9 @@ static void test_agent_address_wins_over_legacy_client_endpoint(void **state) {
     assert_int_equal(config_inst.server_type, SERVER_IP_USED);
 }
 
-static void test_no_manager_configuration_returns_no_server(void **state) {
-    (void) state;
+static void test_no_manager_configuration_returns_no_server(void** state)
+{
+    (void)state;
 
     write_conf("<ossec_config>\n</ossec_config>\n");
 
@@ -162,39 +182,47 @@ static void test_no_manager_configuration_returns_no_server(void **state) {
 /* The endpoint the Windows ossec.conf ships until an enrollment token replaces it:
  * 0.0.0.0 is not a manager, so the GUI reports that none is configured instead of
  * showing the placeholder as if it were one. */
-static void test_shipped_placeholder_endpoint_returns_no_server(void **state) {
-    (void) state;
+static void test_shipped_placeholder_endpoint_returns_no_server(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>0.0.0.0:1517/wazuh-manager/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>0.0.0.0:1517/wazuh-manager/</endpoint>\n    "
+               "</manager>\n  </agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 0);
     assert_string_equal(config_inst.server, FL_NOSERVER);
     assert_int_equal(config_inst.server_type, 0);
 }
 
-static void test_placeholder_address_returns_no_server(void **state) {
-    (void) state;
+static void test_placeholder_address_returns_no_server(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <address>0.0.0.0</address>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <address>0.0.0.0</address>\n    </manager>\n  "
+               "</agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 0);
     assert_string_equal(config_inst.server, FL_NOSERVER);
 }
 
 /* The Linux packages' placeholder: the agent refuses it too, e.g. in an ossec.conf copied by hand. */
-static void test_linux_placeholder_endpoint_returns_no_server(void **state) {
-    (void) state;
+static void test_linux_placeholder_endpoint_returns_no_server(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>MANAGER_IP</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>MANAGER_IP</endpoint>\n    </manager>\n  "
+               "</agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 0);
     assert_string_equal(config_inst.server, FL_NOSERVER);
 }
 
-static void test_empty_endpoint_returns_no_server(void **state) {
-    (void) state;
+static void test_empty_endpoint_returns_no_server(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint></endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint></endpoint>\n    </manager>\n  "
+               "</agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 0);
     assert_string_equal(config_inst.server, FL_NOSERVER);
@@ -202,22 +230,26 @@ static void test_empty_endpoint_returns_no_server(void **state) {
 
 /* Only a host that is exactly 0.0.0.0 is the placeholder: a real host that merely
  * starts with those characters is still shown as the manager. */
-static void test_host_starting_with_placeholder_is_kept(void **state) {
-    (void) state;
+static void test_host_starting_with_placeholder_is_kept(void** state)
+{
+    (void)state;
 
-    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>0.0.0.0.example.com:1517/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>0.0.0.0.example.com:1517/</endpoint>\n    "
+               "</manager>\n  </agent>\n</ossec_config>\n");
 
     assert_int_equal(get_ossec_server(), 1);
     assert_string_equal(config_inst.server, "0.0.0.0.example.com:1517/");
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_agent_manager_endpoint_is_read_verbatim, setup, teardown),
         cmocka_unit_test_setup_teardown(test_client_server_endpoint_upgraded_4x_file_is_read, setup, teardown),
         cmocka_unit_test_setup_teardown(test_legacy_client_server_address_still_works, setup, teardown),
         cmocka_unit_test_setup_teardown(test_endpoint_wins_over_address_when_both_present, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_agent_block_wins_over_legacy_client_block_when_both_present, setup, teardown),
+        cmocka_unit_test_setup_teardown(
+            test_agent_block_wins_over_legacy_client_block_when_both_present, setup, teardown),
         cmocka_unit_test_setup_teardown(test_agent_address_wins_over_legacy_client_endpoint, setup, teardown),
         cmocka_unit_test_setup_teardown(test_no_manager_configuration_returns_no_server, setup, teardown),
         cmocka_unit_test_setup_teardown(test_shipped_placeholder_endpoint_returns_no_server, setup, teardown),

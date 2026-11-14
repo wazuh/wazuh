@@ -20,28 +20,28 @@
 /// and to convert UUIDs to their string representations.
 class UUIDWrapper : public IUUIDWrapper
 {
-    public:
-        /// @brief Converts a UID to a UUID.
-        /// @param uid The user ID to convert.
-        /// @param uuid Output parameter that will contain the corresponding UUID.
-        void uidToUUID(uid_t uid, uuid_t& uuid) override
-        {
-            mbr_uid_to_uuid(uid, uuid);
-        }
+public:
+    /// @brief Converts a UID to a UUID.
+    /// @param uid The user ID to convert.
+    /// @param uuid Output parameter that will contain the corresponding UUID.
+    void uidToUUID(uid_t uid, uuid_t& uuid) override
+    {
+        mbr_uid_to_uuid(uid, uuid);
+    }
 
-        /// @brief Converts a GID to a UUID.
-        /// @param gid The group ID to convert.
-        /// @param uuid Output parameter that will contain the corresponding UUID.
-        void gidToUUID(gid_t gid, uuid_t& uuid) override
-        {
-            mbr_gid_to_uuid(gid, uuid);
-        }
+    /// @brief Converts a GID to a UUID.
+    /// @param gid The group ID to convert.
+    /// @param uuid Output parameter that will contain the corresponding UUID.
+    void gidToUUID(gid_t gid, uuid_t& uuid) override
+    {
+        mbr_gid_to_uuid(gid, uuid);
+    }
 
-        /// @brief Converts a UUID to its string representation.
-        /// @param uuid The UUID to convert.
-        /// @param str Output buffer that will contain the string representation.
-        void uuidToString(const uuid_t& uuid, uuid_string_t& str) override
-        {
-            uuid_unparse(uuid, str);
-        }
+    /// @brief Converts a UUID to its string representation.
+    /// @param uuid The UUID to convert.
+    /// @param str Output buffer that will contain the string representation.
+    void uuidToString(const uuid_t& uuid, uuid_string_t& str) override
+    {
+        uuid_unparse(uuid, str);
+    }
 };

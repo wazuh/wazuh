@@ -13,12 +13,15 @@
 
 #include "json.hpp"
 
-UsersProvider::UsersProvider(
-    std::shared_ptr<IUsersHelper> usersHelper)
-    : m_usersHelper(std::move(usersHelper)) {}
+UsersProvider::UsersProvider(std::shared_ptr<IUsersHelper> usersHelper)
+    : m_usersHelper(std::move(usersHelper))
+{
+}
 
 UsersProvider::UsersProvider()
-    : m_usersHelper(std::make_shared<UsersHelper>()) {}
+    : m_usersHelper(std::make_shared<UsersHelper>())
+{
+}
 
 nlohmann::json UsersProvider::collect()
 {
@@ -28,8 +31,8 @@ nlohmann::json UsersProvider::collect()
 nlohmann::json UsersProvider::collectWithConstraints(const std::set<std::uint32_t>& uids)
 {
     std::set<std::string> processed_sids;
-    auto  local = m_usersHelper->processLocalAccounts(processed_sids);
-    auto  roaming = m_usersHelper->processRoamingProfiles(processed_sids);
+    auto local = m_usersHelper->processLocalAccounts(processed_sids);
+    auto roaming = m_usersHelper->processRoamingProfiles(processed_sids);
     local.insert(local.end(), roaming.begin(), roaming.end());
 
     nlohmann::json result;

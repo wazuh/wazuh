@@ -21,30 +21,30 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void *hc_create(const void *config, const void *callbacks)
+void* hc_create(const void* config, const void* callbacks)
 {
     (void)config;
     (void)callbacks;
     return NULL;
 }
 
-bool hc_start(void *handle)
+bool hc_start(void* handle)
 {
     (void)handle;
     return false;
 }
 
-void hc_stop(void *handle)
+void hc_stop(void* handle)
 {
     (void)handle;
 }
 
-void hc_destroy(void *handle)
+void hc_destroy(void* handle)
 {
     (void)handle;
 }
 
-bool hc_submit_event(void *handle, const uint8_t *frame, size_t length)
+bool hc_submit_event(void* handle, const uint8_t* frame, size_t length)
 {
     (void)handle;
     (void)frame;
@@ -52,7 +52,7 @@ bool hc_submit_event(void *handle, const uint8_t *frame, size_t length)
     return false;
 }
 
-bool hc_submit_sync_session(void *handle, const char *session_id, const uint8_t *buffer, size_t length)
+bool hc_submit_sync_session(void* handle, const char* session_id, const uint8_t* buffer, size_t length)
 {
     (void)handle;
     (void)session_id;
@@ -61,19 +61,19 @@ bool hc_submit_sync_session(void *handle, const char *session_id, const uint8_t 
     return false;
 }
 
-void hc_notify_now(void *handle)
+void hc_notify_now(void* handle)
 {
     (void)handle;
 }
 
-bool hc_set_config_hash(void *handle, const char *config_hash)
+bool hc_set_config_hash(void* handle, const char* config_hash)
 {
     (void)handle;
     (void)config_hash;
     return false;
 }
 
-bool hc_set_agent_identity(void *handle, const char *agent_id, const char *key_hex)
+bool hc_set_agent_identity(void* handle, const char* agent_id, const char* key_hex)
 {
     (void)handle;
     (void)agent_id;
@@ -81,13 +81,13 @@ bool hc_set_agent_identity(void *handle, const char *agent_id, const char *key_h
     return false;
 }
 
-int hc_get_state(const void *handle)
+int hc_get_state(const void* handle)
 {
     (void)handle;
     return 0;
 }
 
-bool hc_enroll(const void *config, const void *request, void *result)
+bool hc_enroll(const void* config, const void* request, void* result)
 {
     (void)config;
     (void)request;
@@ -95,7 +95,7 @@ bool hc_enroll(const void *config, const void *request, void *result)
     return false;
 }
 
-bool hc_fetch_cacerts(const void *config, const void *request, void *result)
+bool hc_fetch_cacerts(const void* config, const void* request, void* result)
 {
     (void)config;
     (void)request;
@@ -103,8 +103,8 @@ bool hc_fetch_cacerts(const void *config, const void *request, void *result)
     return false;
 }
 
-bool hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len, const char *pin_b64url,
-                                char *matched_pem, size_t matched_pem_size)
+bool hc_spki_pinned_certificate(
+    const char* cacerts_body, size_t body_len, const char* pin_b64url, char* matched_pem, size_t matched_pem_size)
 {
     (void)cacerts_body;
     (void)body_len;

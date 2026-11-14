@@ -31,7 +31,8 @@
  * is what lets a test check the REQUEST, not only the response -- and the url in particular, which
  * libcurl requires to be absolute and which no mock will complain about on its own.
  */
-typedef struct {
+typedef struct
+{
     char url[512];
     char unix_socket_path[512];
     char content_type[128];

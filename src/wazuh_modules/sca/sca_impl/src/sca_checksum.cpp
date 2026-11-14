@@ -95,9 +95,18 @@ namespace sca
 
         const std::string regexType = checkData.value("regex_type", "");
 
-        return calculateChecksum(
-                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, mitre, rules, regexType
-               );
+        return calculateChecksum(id,
+                                 policyId,
+                                 name,
+                                 description,
+                                 rationale,
+                                 remediation,
+                                 refs,
+                                 condition,
+                                 compliance,
+                                 mitre,
+                                 rules,
+                                 regexType);
     }
 
     std::string calculateChecksum(const std::string& id,
@@ -132,7 +141,7 @@ namespace sca
 
         if (size < 0)
         {
-            throw std::runtime_error{"Error calculating checksum size."}; // LCOV_EXCL_LINE
+            throw std::runtime_error {"Error calculating checksum size."}; // LCOV_EXCL_LINE
         }
 
         // Allocate buffer and format the string
@@ -165,7 +174,7 @@ namespace sca
         // LCOV_EXCL_START
         catch (const std::exception& e)
         {
-            throw std::runtime_error{"Error calculating checksum: " + std::string(e.what())};
+            throw std::runtime_error {"Error calculating checksum: " + std::string(e.what())};
         }
 
         // LCOV_EXCL_STOP

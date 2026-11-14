@@ -37,13 +37,13 @@
  * base64url character and reject the whole token over.
  *
  * Returns the token text, or NULL. */
-static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
+static char* w_agent_show_token_read(FILE* in, FILE* err, const char* progname)
 {
-    char *text = NULL;
+    char* text = NULL;
 
-    switch (w_agent_token_read_stream(in, &text)) {
-        case W_TOKEN_READ_OK:
-            break;
+    switch (w_agent_token_read_stream(in, &text))
+    {
+        case W_TOKEN_READ_OK: break;
         case W_TOKEN_READ_TTY:
             /* A terminal will never produce a token, so blocking on it reads as a hang. */
             fprintf(err, "%s: no token given. Redirect one in, or pipe it:\n", progname);
@@ -52,9 +52,7 @@ static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
         case W_TOKEN_READ_TOO_BIG:
             fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
             break;
-        case W_TOKEN_READ_IO:
-            fprintf(err, "%s: could not read the enrollment token.\n", progname);
-            break;
+        case W_TOKEN_READ_IO: fprintf(err, "%s: could not read the enrollment token.\n", progname); break;
     }
 
     return text;
@@ -74,21 +72,23 @@ static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
  * Returns 0 on success, ETOKEN_SHOW_REJECTED when the token is bad, and 1 when it could not
  * be read at all.
  */
-int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
+int w_agent_show_token(FILE* in, FILE* out, FILE* err, const char* progname)
 {
-    char *text;
+    char* text;
     w_etoken_t token;
     w_etoken_error_t error;
-    char *description = NULL;
+    char* description = NULL;
 
-    if ((text = w_agent_show_token_read(in, err, progname)) == NULL) {
+    if ((text = w_agent_show_token_read(in, err, progname)) == NULL)
+    {
         return 1;
     }
 
     error = w_etoken_decode(text, &token);
     os_free(text);
 
-    if (error != ETOKEN_OK) {
+    if (error != ETOKEN_OK)
+    {
         fprintf(err, "%s: invalid enrollment token: %s.\n", progname, w_etoken_strerror(error));
         return ETOKEN_SHOW_REJECTED;
     }
@@ -96,7 +96,8 @@ int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
     description = w_etoken_describe(&token);
     w_etoken_free(&token);
 
-    if (description == NULL) {
+    if (description == NULL)
+    {
         fprintf(err, "%s: could not render the enrollment token.\n", progname);
         return 1;
     }

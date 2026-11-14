@@ -38,48 +38,48 @@ namespace
     template<typename T, T Invalid, int (*Close)(T)>
     class UniqueDescriptor final
     {
-        public:
-            explicit UniqueDescriptor(T value)
-                : m_value(value)
+    public:
+        explicit UniqueDescriptor(T value)
+            : m_value(value)
+        {
+        }
+
+        ~UniqueDescriptor()
+        {
+            if (m_value != Invalid)
             {
+                Close(m_value);
             }
+        }
 
-            ~UniqueDescriptor()
-            {
-                if (m_value != Invalid)
-                {
-                    Close(m_value);
-                }
-            }
+        UniqueDescriptor(UniqueDescriptor&& other) noexcept
+            : m_value(other.release())
+        {
+        }
 
-            UniqueDescriptor(UniqueDescriptor&& other) noexcept
-                : m_value(other.release())
-            {
-            }
+        UniqueDescriptor(const UniqueDescriptor&) = delete;
+        UniqueDescriptor& operator=(const UniqueDescriptor&) = delete;
+        UniqueDescriptor& operator=(UniqueDescriptor&&) = delete;
 
-            UniqueDescriptor(const UniqueDescriptor&) = delete;
-            UniqueDescriptor& operator=(const UniqueDescriptor&) = delete;
-            UniqueDescriptor& operator=(UniqueDescriptor&&) = delete;
+        T get() const
+        {
+            return m_value;
+        }
 
-            T get() const
-            {
-                return m_value;
-            }
+        T release()
+        {
+            const auto value {m_value};
+            m_value = Invalid;
+            return value;
+        }
 
-            T release()
-            {
-                const auto value {m_value};
-                m_value = Invalid;
-                return value;
-            }
+        explicit operator bool() const
+        {
+            return m_value != Invalid;
+        }
 
-            explicit operator bool() const
-            {
-                return m_value != Invalid;
-            }
-
-        private:
-            T m_value;
+    private:
+        T m_value;
     };
 
 #ifdef _WIN32
@@ -115,7 +115,7 @@ namespace
         FILE_ID_INFO secondId {};
 
         if (GetFileInformationByHandleEx(first, FileIdInfo, &firstId, sizeof(firstId)) &&
-                GetFileInformationByHandleEx(second, FileIdInfo, &secondId, sizeof(secondId)))
+            GetFileInformationByHandleEx(second, FileIdInfo, &secondId, sizeof(secondId)))
         {
             return firstId.VolumeSerialNumber == secondId.VolumeSerialNumber &&
                    std::memcmp(&firstId.FileId, &secondId.FileId, sizeof(firstId.FileId)) == 0;
@@ -131,7 +131,7 @@ namespace
             return false;
         }
 
-        const auto index = [](const BY_HANDLE_FILE_INFORMATION & info)
+        const auto index = [](const BY_HANDLE_FILE_INFORMATION& info)
         {
             return (static_cast<std::uint64_t>(info.nFileIndexHigh) << 32) | info.nFileIndexLow;
         };
@@ -180,7 +180,7 @@ namespace
         FILE_ATTRIBUTE_TAG_INFO tagInfo {};
 
         if (isReparsePoint &&
-                !GetFileInformationByHandleEx(handle.get(), FileAttributeTagInfo, &tagInfo, sizeof(tagInfo)))
+            !GetFileInformationByHandleEx(handle.get(), FileAttributeTagInfo, &tagInfo, sizeof(tagInfo)))
         {
             status = RegularFileStatus::OpenFailed;
             return UniqueHandle {nullptr};
@@ -194,7 +194,7 @@ namespace
         }
 
         if ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 ||
-                (isReparsePoint && !isPlainReparseTag(tagInfo.ReparseTag)))
+            (isReparsePoint && !isPlainReparseTag(tagInfo.ReparseTag)))
         {
             status = RegularFileStatus::NotRegular;
             return UniqueHandle {nullptr};
@@ -436,10 +436,10 @@ namespace file_io
         const auto status {readRegularFile(filePath,
                                            followSymlinks,
                                            [&content](const char* data, std::size_t size)
-        {
-            content.append(data, size);
-            return true;
-        })};
+                                           {
+                                               content.append(data, size);
+                                               return true;
+                                           })};
 
         if (status != RegularFileStatus::Read)
         {
@@ -449,9 +449,10 @@ namespace file_io
         return status;
     }
 
-    RegularFileStatus FileIOUtils::readRegularFileLineByLine(const std::filesystem::path& filePath,
-                                                             bool followSymlinks,
-                                                             const std::function<bool(const std::string&)>& callback) const
+    RegularFileStatus
+    FileIOUtils::readRegularFileLineByLine(const std::filesystem::path& filePath,
+                                           bool followSymlinks,
+                                           const std::function<bool(const std::string&)>& callback) const
     {
         // Lines are split as std::getline does: a last line without a newline still counts, an empty file has none
         std::string line;
@@ -459,26 +460,26 @@ namespace file_io
         const auto status {readRegularFile(filePath,
                                            followSymlinks,
                                            [&](const char* data, std::size_t size)
-        {
-            const char* const end {data + size};
+                                           {
+                                               const char* const end {data + size};
 
-            while (keepReading)
-            {
-                const char* const newline {std::find(data, end, '\n')};
-                line.append(data, newline);
+                                               while (keepReading)
+                                               {
+                                                   const char* const newline {std::find(data, end, '\n')};
+                                                   line.append(data, newline);
 
-                if (newline == end)
-                {
-                    break;
-                }
+                                                   if (newline == end)
+                                                   {
+                                                       break;
+                                                   }
 
-                keepReading = callback(line);
-                line.clear();
-                data = newline + 1;
-            }
+                                                   keepReading = callback(line);
+                                                   line.clear();
+                                                   data = newline + 1;
+                                               }
 
-            return keepReading;
-        })};
+                                               return keepReading;
+                                           })};
 
         if (status == RegularFileStatus::Read && keepReading && !line.empty())
         {

@@ -34,9 +34,8 @@ constexpr std::size_t HOST_METADATA_JSON_MAX_BYTES = 4096;
  * threads, and 64 KiB is too much for their stacks. It is not zero-filled:
  * the real JSON is a few hundred bytes, and only the two ends need a NUL.
  */
-inline std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*),
-                                                          void* userData,
-                                                          std::size_t cap)
+inline std::function<std::string()>
+makeMetadataCollector(void (*fn)(char*, size_t, void*), void* userData, std::size_t cap)
 {
     return [fn, userData, cap]() -> std::string
     {

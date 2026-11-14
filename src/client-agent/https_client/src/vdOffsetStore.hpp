@@ -37,20 +37,20 @@ struct VdOffsetObservation
  */
 class IVdOffsetStore
 {
-    public:
-        virtual ~IVdOffsetStore() = default;
+public:
+    virtual ~IVdOffsetStore() = default;
 
-        /// Observe an offset reported by the manager. Monotonic: an offset not
-        /// newer than the stored value is a no-op that still reports the
-        /// current pending state (this is what lets a restart resume an
-        /// outstanding request for free -- see RescanRequester).
-        virtual VdOffsetObservation observe(uint64_t offset) = 0;
+    /// Observe an offset reported by the manager. Monotonic: an offset not
+    /// newer than the stored value is a no-op that still reports the
+    /// current pending state (this is what lets a restart resume an
+    /// outstanding request for free -- see RescanRequester).
+    virtual VdOffsetObservation observe(uint64_t offset) = 0;
 
-        /// Clear the pending flag, but only if it is still pending for exactly
-        /// this offset. Call only after a /scan/vd request for `offset`
-        /// returns 200 OK -- never on a 409 or transport failure.
-        /// @return true if the pending flag was actually cleared.
-        virtual bool clearPending(uint64_t offset) = 0;
+    /// Clear the pending flag, but only if it is still pending for exactly
+    /// this offset. Call only after a /scan/vd request for `offset`
+    /// returns 200 OK -- never on a 409 or transport failure.
+    /// @return true if the pending flag was actually cleared.
+    virtual bool clearPending(uint64_t offset) = 0;
 };
 
 #endif // _HC_VD_OFFSET_STORE_HPP

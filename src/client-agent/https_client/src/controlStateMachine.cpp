@@ -38,34 +38,34 @@ ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
     switch (event)
     {
         case Event::StartupAccepted:
-            {
-                m_startupRequested = false; // A refresh, if armed, is done.
-                auto effects = transitionTo(State::Registered);
-                effects.releaseGate = true;
-                effects.applyHandshake = true;
-                effects.resetCadence = true;
-                return effects;
-            }
+        {
+            m_startupRequested = false; // A refresh, if armed, is done.
+            auto effects = transitionTo(State::Registered);
+            effects.releaseGate = true;
+            effects.applyHandshake = true;
+            effects.resetCadence = true;
+            return effects;
+        }
 
         case Event::StartupRejected:
-            {
-                m_startupRequested = false; // The slow re-Startup takes over.
-                auto effects = transitionTo(State::Rejected);
-                effects.slowCadence = true;
-                return effects;
-            }
+        {
+            m_startupRequested = false; // The slow re-Startup takes over.
+            auto effects = transitionTo(State::Rejected);
+            effects.slowCadence = true;
+            return effects;
+        }
 
         case Event::AuthFailed:
-            {
-                // The credential is dead -- which since #39064 means a 401 naming `unknown_agent`,
-                // and nothing else: ControlStream raises this event only for an incident the
-                // AuthGate latched (from any sender, even one already renewed), so the other seven
-                // classes arrive as TransientFailure and never get here. All traffic pauses (via
-                // the AuthGate); recovery is hc_set_agent_identity -> CredentialRenewed, NOT a slow
-                // re-sign. An armed settings refresh is dropped.
-                m_startupRequested = false;
-                return transitionTo(State::AuthError);
-            }
+        {
+            // The credential is dead -- which since #39064 means a 401 naming `unknown_agent`,
+            // and nothing else: ControlStream raises this event only for an incident the
+            // AuthGate latched (from any sender, even one already renewed), so the other seven
+            // classes arrive as TransientFailure and never get here. All traffic pauses (via
+            // the AuthGate); recovery is hc_set_agent_identity -> CredentialRenewed, NOT a slow
+            // re-sign. An armed settings refresh is dropped.
+            m_startupRequested = false;
+            return transitionTo(State::AuthError);
+        }
 
         case Event::CredentialRenewed:
             // A new key is in place: leave AuthError and re-register.

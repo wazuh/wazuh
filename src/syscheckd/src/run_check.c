@@ -8,7 +8,6 @@
  * Foundation
  */
 
-
 // SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
 #include "agent_sync_protocol_c_interface_types.h"
 #include "debug_op.h"
@@ -89,18 +88,18 @@ static DWORD fim_sync_thread_id = 0;
 pthread_rwlock_t fim_sync_handle_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
-atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
-atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
+atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0); // 0 = idle, 1 = flush active
+atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);      // 0 = success, -1 = error
 
 #define FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
 
 // Prototypes
 #ifdef WIN32
-DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
-DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args);
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void* args);
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void* args);
 #else
-void * fim_run_realtime(__attribute__((unused)) void * args);
-void * fim_run_integrity(__attribute__((unused)) void * args);
+void* fim_run_realtime(__attribute__((unused)) void* args);
+void* fim_run_integrity(__attribute__((unused)) void* args);
 #endif
 
 int fim_whodata_initialize();
@@ -110,11 +109,11 @@ STATIC void set_priority_windows_thread();
 STATIC void set_whodata_mode_changes();
 #endif
 #else
-static void *symlink_checker_thread(__attribute__((unused)) void * data);
-STATIC void fim_link_update(const char *new_path, directory_t *configuration);
-STATIC void fim_link_check_delete(directory_t *configuration);
-STATIC void fim_link_silent_scan(const char *path, directory_t *configuration);
-STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration);
+static void* symlink_checker_thread(__attribute__((unused)) void* data);
+STATIC void fim_link_update(const char* new_path, directory_t* configuration);
+STATIC void fim_link_check_delete(directory_t* configuration);
+STATIC void fim_link_silent_scan(const char* path, directory_t* configuration);
+STATIC void fim_link_reload_broken_link(char* path, directory_t* configuration);
 #endif
 
 volatile bool is_fim_shutdown = false;
@@ -127,9 +126,12 @@ volatile bool is_fim_shutdown = false;
  * @param name Scan name for the log line.
  * @return true with the mutex held, false if a scan still holds it.
  */
-static bool fim_teardown_wait_for_scan_mutex(pthread_mutex_t *mutex, const char *name) {
-    for (int waited = 0; waited < FIM_SCAN_MUTEX_WAIT_MS; waited += FIM_SCAN_MUTEX_POLL_MS) {
-        if (pthread_mutex_trylock(mutex) == 0) {
+static bool fim_teardown_wait_for_scan_mutex(pthread_mutex_t* mutex, const char* name)
+{
+    for (int waited = 0; waited < FIM_SCAN_MUTEX_WAIT_MS; waited += FIM_SCAN_MUTEX_POLL_MS)
+    {
+        if (pthread_mutex_trylock(mutex) == 0)
+        {
             return true;
         }
 
@@ -149,7 +151,8 @@ static bool fim_teardown_wait_for_scan_mutex(pthread_mutex_t *mutex, const char 
  *
  * @return Whether fim.db can be torn down as well.
  */
-static bool fim_sync_teardown(void) {
+static bool fim_sync_teardown(void)
+{
     HANDLE sync_thread = NULL;
 
     /* Abort any in-flight synchronization first, like fim_shutdown_waiter() does, so the wait
@@ -162,18 +165,21 @@ static bool fim_sync_teardown(void) {
      * neither wait for nor destroy what it is using, so it leaves both databases open. */
     w_rwlock_rdlock(&fim_sync_handle_rwlock);
     bool self = (fim_sync_thread_id != 0 && GetCurrentThreadId() == fim_sync_thread_id);
-    if (syscheck.sync_handle) {
+    if (syscheck.sync_handle)
+    {
         asp_stop(syscheck.sync_handle);
     }
     w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-    if (self) {
+    if (self)
+    {
         /* Nothing here can wait for this thread, but the handle can still be released: closing it
          * only drops this reference, the thread keeps running. */
         w_rwlock_wrlock(&fim_sync_handle_rwlock);
         is_fim_shutdown = true;
         fim_sync_module_running = 0;
-        if (fim_sync_thread_handle != NULL) {
+        if (fim_sync_thread_handle != NULL)
+        {
             CloseHandle(fim_sync_thread_handle);
             fim_sync_thread_handle = NULL;
         }
@@ -195,14 +201,16 @@ static bool fim_sync_teardown(void) {
     fim_sync_thread_id = 0;
     w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-    if (sync_thread != NULL) {
+    if (sync_thread != NULL)
+    {
         /* Bounded because destroying the handle under a live thread is a use-after-free, and
          * shorter than the POSIX bound because this runs inside the service control handler. */
         DWORD wait_result = WaitForSingleObject(sync_thread, FIM_SYNC_EXIT_TIMEOUT_WIN_MS);
 
         CloseHandle(sync_thread);
 
-        if (wait_result != WAIT_OBJECT_0) {
+        if (wait_result != WAIT_OBJECT_0)
+        {
             mwarn("The FIM inventory synchronization thread did not exit in time: skipping the database teardown.");
             return false;
         }
@@ -210,7 +218,8 @@ static bool fim_sync_teardown(void) {
 
     // The write lock excludes the handle users that take it for reading around each asp_ call.
     w_rwlock_wrlock(&fim_sync_handle_rwlock);
-    if (syscheck.sync_handle) {
+    if (syscheck.sync_handle)
+    {
         asp_destroy(syscheck.sync_handle);
         syscheck.sync_handle = NULL;
     }
@@ -218,11 +227,13 @@ static bool fim_sync_teardown(void) {
 
     fim_syscom_cleanup_pause();
 
-    if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_scan_mutex, "file")) {
+    if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_scan_mutex, "file"))
+    {
         return false;
     }
 
-    if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_registry_scan_mutex, "registry")) {
+    if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_registry_scan_mutex, "registry"))
+    {
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         return false;
     }
@@ -233,12 +244,14 @@ static bool fim_sync_teardown(void) {
     return true;
 }
 
-void fim_sync_register_teardown_hook(void) {
+void fim_sync_register_teardown_hook(void)
+{
     fim_db_set_teardown_hook(fim_sync_teardown);
 }
 #endif
 
-bool fim_shutdown_process_on() {
+bool fim_shutdown_process_on()
+{
     bool ret = is_fim_shutdown;
     return ret;
 }
@@ -248,26 +261,32 @@ bool fim_shutdown_process_on() {
  *
  * @return true with mutexes held, false if shutdown is in progress.
  */
-static bool fim_sync_lock_scan_mutex(void) {
-    while (true) {
-        if (!fim_sync_module_running || fim_shutdown_process_on()) {
+static bool fim_sync_lock_scan_mutex(void)
+{
+    while (true)
+    {
+        if (!fim_sync_module_running || fim_shutdown_process_on())
+        {
             mdebug2("Stop in progress: skipping the FIM integrity validation process.");
             return false;
         }
 
-        if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) != 0) {
+        if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) != 0)
+        {
             sleep(1);
             continue;
         }
 
-        if (pthread_mutex_trylock(&syscheck.fim_realtime_mutex) != 0) {
+        if (pthread_mutex_trylock(&syscheck.fim_realtime_mutex) != 0)
+        {
             w_mutex_unlock(&syscheck.fim_scan_mutex);
             sleep(1);
             continue;
         }
 
 #ifdef WIN32
-        if (pthread_mutex_trylock(&syscheck.fim_registry_scan_mutex) != 0) {
+        if (pthread_mutex_trylock(&syscheck.fim_registry_scan_mutex) != 0)
+        {
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
             w_mutex_unlock(&syscheck.fim_scan_mutex);
             sleep(1);
@@ -275,7 +294,8 @@ static bool fim_sync_lock_scan_mutex(void) {
         }
 #endif
 
-        if (!fim_sync_module_running || fim_shutdown_process_on()) {
+        if (!fim_sync_module_running || fim_shutdown_process_on())
+        {
 #ifdef WIN32
             w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
 #endif
@@ -294,19 +314,23 @@ static bool fim_sync_lock_scan_mutex(void) {
  *
  * @return true if there are configured directories (non-wildcard), false otherwise
  */
-STATIC bool fim_has_configured_directories(void) {
-    if (syscheck.directories == NULL) {
+STATIC bool fim_has_configured_directories(void)
+{
+    if (syscheck.directories == NULL)
+    {
         return false;
     }
 
-    OSListNode *node_it;
-    directory_t *dir_it;
+    OSListNode* node_it;
+    directory_t* dir_it;
 
     w_rwlock_rdlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         // Count non-wildcard directories (explicitly configured)
-        if (!dir_it->is_wildcard) {
+        if (!dir_it->is_wildcard)
+        {
             w_rwlock_unlock(&syscheck.directories_lock);
             return true;
         }
@@ -322,14 +346,17 @@ STATIC bool fim_has_configured_directories(void) {
  *
  * @return true if there are configured registries, false otherwise
  */
-STATIC bool fim_has_configured_registries(void) {
+STATIC bool fim_has_configured_registries(void)
+{
     // Wildcard patterns are expanded on every registry scan, so they count as configuration
     // even when no key matches them yet.
-    if (syscheck.registry_wildcards != NULL) {
+    if (syscheck.registry_wildcards != NULL)
+    {
         return true;
     }
 
-    if (syscheck.registry == NULL) {
+    if (syscheck.registry == NULL)
+    {
         return false;
     }
 
@@ -342,7 +369,8 @@ STATIC bool fim_has_configured_registries(void) {
  *
  * @return true if there are configured paths, false otherwise
  */
-STATIC bool fim_has_configured_paths(void) {
+STATIC bool fim_has_configured_paths(void)
+{
     bool has_directories = fim_has_configured_directories();
 
 #ifdef WIN32
@@ -358,9 +386,11 @@ STATIC bool fim_has_configured_paths(void) {
  *
  * @return true if database has entries, false otherwise
  */
-STATIC bool fim_has_data_in_database(void) {
+STATIC bool fim_has_data_in_database(void)
+{
     int files_count = fim_db_get_count_file_entry();
-    if (files_count > 0) {
+    if (files_count > 0)
+    {
         return true;
     }
 
@@ -368,7 +398,8 @@ STATIC bool fim_has_data_in_database(void) {
     int registry_keys_count = fim_db_get_count_registry_key();
     int registry_values_count = fim_db_get_count_registry_data();
 
-    if (registry_keys_count > 0 || registry_values_count > 0) {
+    if (registry_keys_count > 0 || registry_values_count > 0)
+    {
         return true;
     }
 #endif
@@ -382,11 +413,13 @@ STATIC bool fim_has_data_in_database(void) {
  * @param indices Array to store indices (must have at least 3 elements)
  * @param indices_count Pointer to store the number of indices added
  */
-STATIC void prepare_data_clean_indices(const char* indices[3], size_t* indices_count) {
+STATIC void prepare_data_clean_indices(const char* indices[3], size_t* indices_count)
+{
     *indices_count = 0;
 
     int files_count = fim_db_get_count_file_entry();
-    if (files_count > 0) {
+    if (files_count > 0)
+    {
         indices[(*indices_count)++] = FIM_FILES_SYNC_INDEX;
         mdebug1("Found %d file entries to clean.", files_count);
     }
@@ -395,11 +428,13 @@ STATIC void prepare_data_clean_indices(const char* indices[3], size_t* indices_c
     int registry_keys_count = fim_db_get_count_registry_key();
     int registry_values_count = fim_db_get_count_registry_data();
 
-    if (registry_keys_count > 0) {
+    if (registry_keys_count > 0)
+    {
         indices[(*indices_count)++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
         mdebug1("Found %d registry key entries to clean.", registry_keys_count);
     }
-    if (registry_values_count > 0) {
+    if (registry_values_count > 0)
+    {
         indices[(*indices_count)++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
         mdebug1("Found %d registry value entries to clean.", registry_values_count);
     }
@@ -413,24 +448,33 @@ STATIC void prepare_data_clean_indices(const char* indices[3], size_t* indices_c
  * @param indices_count Number of indices in the array
  * @return true if DataClean was sent successfully, false if aborted due to shutdown
  */
-STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_count) {
+STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_count)
+{
     bool dataCleanSent = false;
 
-    while (!dataCleanSent && !fim_shutdown_process_on()) {
+    while (!dataCleanSent && !fim_shutdown_process_on())
+    {
         w_rwlock_rdlock(&fim_sync_handle_rwlock);
-        if (syscheck.sync_handle) {
+        if (syscheck.sync_handle)
+        {
             dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
-        if (!dataCleanSent) {
-            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
-            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
+        if (!dataCleanSent)
+        {
+            mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...",
+                    syscheck.sync_interval);
+            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++)
+            {
                 sleep(1);
             }
-        } else {
+        }
+        else
+        {
             mdebug1("DataClean notification sent successfully.");
             w_rwlock_rdlock(&fim_sync_handle_rwlock);
-            if (syscheck.sync_handle) {
+            if (syscheck.sync_handle)
+            {
                 asp_delete_database(syscheck.sync_handle);
             }
             w_rwlock_unlock(&fim_sync_handle_rwlock);
@@ -454,15 +498,18 @@ STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_cou
  *
  * @return true if DataClean was sent and handled successfully (or no data to clean), false otherwise
  */
-STATIC bool handle_all_paths_removed(void) {
-    if (!fim_has_data_in_database()) {
+STATIC bool handle_all_paths_removed(void)
+{
+    if (!fim_has_data_in_database())
+    {
         mdebug1("No monitored paths configured and no data in database. Nothing to clean.");
         return true;
     }
 
     mdebug1("All monitored paths removed from configuration but database has data. Initiating DataClean process.");
 
-    if (!syscheck.sync_handle) {
+    if (!syscheck.sync_handle)
+    {
         minfo("Sync protocol not initialized, cannot send DataClean notification.");
         return false;
     }
@@ -471,16 +518,19 @@ STATIC bool handle_all_paths_removed(void) {
     size_t indices_count = 0;
     prepare_data_clean_indices(indices, &indices_count);
 
-    if (indices_count == 0) {
+    if (indices_count == 0)
+    {
         mdebug1("No indices to clean.");
         return true;
     }
 
-    minfo("All monitored paths removed from configuration. FIM database has entries. Proceeding with DataClean notification.");
+    minfo("All monitored paths removed from configuration. FIM database has entries. Proceeding with DataClean "
+          "notification.");
 
     bool dataCleanSent = send_data_clean_with_retry(indices, indices_count);
 
-    if (fim_shutdown_process_on() && !dataCleanSent) {
+    if (fim_shutdown_process_on() && !dataCleanSent)
+    {
         mdebug1("DataClean notification aborted due to module shutdown.");
         return false;
     }
@@ -497,18 +547,23 @@ STATIC bool handle_all_paths_removed(void) {
  * 3. Sends data clean notifications to the server with retry logic
  * 4. Resets the database tables after successful notification
  */
-STATIC void handle_fim_disabled(void) {
+STATIC void handle_fim_disabled(void)
+{
     const char* indices[3] = {NULL, NULL, NULL};
     size_t indices_count = 0;
     prepare_data_clean_indices(indices, &indices_count);
 
-    if (indices_count > 0) {
+    if (indices_count > 0)
+    {
         minfo("Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
         send_data_clean_with_retry(indices, indices_count);
-    } else {
+    }
+    else
+    {
         minfo("Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
         w_rwlock_rdlock(&fim_sync_handle_rwlock);
-        if (syscheck.sync_handle) {
+        if (syscheck.sync_handle)
+        {
             asp_delete_database(syscheck.sync_handle);
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
@@ -518,49 +573,60 @@ STATIC void handle_fim_disabled(void) {
 }
 
 // Send a message
-STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
-    if (fim_shutdown_process_on()) {
+STATIC void fim_send_msg(char mq, const char* location, const char* msg)
+{
+    if (fim_shutdown_process_on())
+    {
         return;
     }
 
-    if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
+    if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0)
+    {
         mdebug1(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+        if ((syscheck.queue =
+                 StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0)
+        {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         // Try to send it again
-        if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
+        if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0)
+        {
             merror("Failed to send message after reopening queue");
         }
     }
 }
 
 // Send a message related to syscheck change/addition
-void send_syscheck_msg(const cJSON *_msg) {
-    char *msg = cJSON_PrintUnformatted(_msg);
+void send_syscheck_msg(const cJSON* _msg)
+{
+    char* msg = cJSON_PrintUnformatted(_msg);
 
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
 
     os_free(msg);
 
-    if (syscheck.max_eps == 0) {
+    if (syscheck.max_eps == 0)
+    {
         return;
     }
 
     static atomic_int_t n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 
-    if (atomic_int_inc(&n_msg_sent) >= syscheck.max_eps) {
+    if (atomic_int_inc(&n_msg_sent) >= syscheck.max_eps)
+    {
         sleep(1);
         atomic_int_set(&n_msg_sent, 0);
     }
 }
 
 // Persist a syscheck message
-void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg, uint64_t version) {
-    if (syscheck.enable_synchronization) {
+void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version)
+{
+    if (syscheck.enable_synchronization)
+    {
         char* msg = cJSON_PrintUnformatted(_msg);
 
         mdebug2(FIM_PERSIST, msg);
@@ -568,38 +634,42 @@ void persist_syscheck_msg(const char *id, Operation_t operation, const char *ind
         // Validation is now done before DBSync insertion in the callbacks
         // This function just persists the already-validated data
         w_rwlock_rdlock(&fim_sync_handle_rwlock);
-        if (syscheck.sync_handle) {
+        if (syscheck.sync_handle)
+        {
             asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
 
         os_free(msg);
-    } else {
+    }
+    else
+    {
         mdebug2("FIM synchronization is disabled");
     }
 }
 
 // Validate and persist a FIM event with schema validation
-bool validate_and_persist_fim_event(
-    const cJSON* stateful_event,
-    const char* id,
-    Operation_t operation,
-    const char* index,
-    uint64_t document_version,
-    const char* item_description,
-    bool mark_for_deletion,
-    OSList* failed_list,
-    void* failed_item_data,
-    int sync_flag
-) {
+bool validate_and_persist_fim_event(const cJSON* stateful_event,
+                                    const char* id,
+                                    Operation_t operation,
+                                    const char* index,
+                                    uint64_t document_version,
+                                    const char* item_description,
+                                    bool mark_for_deletion,
+                                    OSList* failed_list,
+                                    void* failed_item_data,
+                                    int sync_flag)
+{
     bool validation_passed = true;
 
     // Only validate if synchronization is enabled and schema validator is initialized
-    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
+    if (syscheck.enable_synchronization && schema_validator_is_initialized())
+    {
         char* msg = cJSON_PrintUnformatted(stateful_event);
         char* errorMessage = NULL;
 
-        if (!schema_validator_validate(index, msg, &errorMessage)) {
+        if (!schema_validator_validate(index, msg, &errorMessage))
+        {
             // A schema-validation failure observed while the agent is shutting down is not
             // trustworthy: HandleSIG() calls exit(), which tears down the schema validator's
             // process-static state (e.g. the ISO8601 regex) while this scan thread may still be
@@ -607,7 +677,8 @@ bool validate_and_persist_fim_event(
             // surface it as an error and do not act on the untrustworthy result (no deletion, no
             // persistence): the agent is stopping and the event is re-evaluated on the next start.
             // See issue #37654.
-            if (fim_shutdown_process_on()) {
+            if (fim_shutdown_process_on())
+            {
                 mdebug1("Ignoring schema validation failure for %s during shutdown%s%s",
                         item_description,
                         (errorMessage && errorMessage[0]) ? ": " : "",
@@ -618,9 +689,10 @@ bool validate_and_persist_fim_event(
             }
 
             // Validation failed - log errors
-            if (errorMessage) {
-                merror("Schema validation failed for %s (index: %s). Errors: %s",
-                       item_description, index, errorMessage);
+            if (errorMessage)
+            {
+                merror(
+                    "Schema validation failed for %s (index: %s). Errors: %s", item_description, index, errorMessage);
                 os_free(errorMessage);
             }
 
@@ -629,7 +701,8 @@ bool validate_and_persist_fim_event(
             validation_passed = false;
 
             // Mark for deletion from DBSync if requested and this is an INSERT or MODIFY operation
-            if (mark_for_deletion && failed_list && failed_item_data) {
+            if (mark_for_deletion && failed_list && failed_item_data)
+            {
                 mdebug1("Marking %s for deletion from DBSync due to validation failure", item_description);
                 OSList_AddData(failed_list, failed_item_data);
             }
@@ -639,7 +712,8 @@ bool validate_and_persist_fim_event(
     }
 
     // Persist stateful event only if validation passed (or validation is disabled) AND sync_flag is 1
-    if (validation_passed && sync_flag == 1) {
+    if (validation_passed && sync_flag == 1)
+    {
         persist_syscheck_msg(id, operation, index, stateful_event, document_version);
     }
 
@@ -647,13 +721,16 @@ bool validate_and_persist_fim_event(
 }
 
 // Clean up files that failed schema validation
-void cleanup_failed_fim_files(OSList* failed_paths) {
-    if (!failed_paths) {
+void cleanup_failed_fim_files(OSList* failed_paths)
+{
+    if (!failed_paths)
+    {
         return;
     }
 
     OSListNode* node;
-    OSList_foreach(node, failed_paths) {
+    OSList_foreach(node, failed_paths)
+    {
         const char* failed_path = (const char*)node->data;
         mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
         fim_db_file_delete(failed_path);
@@ -661,16 +738,20 @@ void cleanup_failed_fim_files(OSList* failed_paths) {
 }
 
 // Clean up registry keys that failed schema validation
-void cleanup_failed_registry_keys(OSList* failed_keys) {
+void cleanup_failed_registry_keys(OSList* failed_keys)
+{
 #ifdef WIN32
-    if (!failed_keys) {
+    if (!failed_keys)
+    {
         return;
     }
 
     OSListNode* node;
-    OSList_foreach(node, failed_keys) {
+    OSList_foreach(node, failed_keys)
+    {
         failed_registry_key_t* failed_key = (failed_registry_key_t*)node->data;
-        if (failed_key && failed_key->path) {
+        if (failed_key && failed_key->path)
+        {
             mdebug1("Deleting registry key %s from DBSync due to validation failure", failed_key->path);
             fim_db_registry_key_delete(failed_key->path, failed_key->arch);
         }
@@ -681,18 +762,23 @@ void cleanup_failed_registry_keys(OSList* failed_keys) {
 }
 
 // Clean up registry values that failed schema validation
-void cleanup_failed_registry_values(OSList* failed_values) {
+void cleanup_failed_registry_values(OSList* failed_values)
+{
 #ifdef WIN32
-    if (!failed_values) {
+    if (!failed_values)
+    {
         return;
     }
 
     OSListNode* node;
-    OSList_foreach(node, failed_values) {
+    OSList_foreach(node, failed_values)
+    {
         failed_registry_value_t* failed_value = (failed_registry_value_t*)node->data;
-        if (failed_value && failed_value->path && failed_value->value) {
+        if (failed_value && failed_value->path && failed_value->value)
+        {
             mdebug1("Deleting registry value %s:%s from DBSync due to validation failure",
-                    failed_value->path, failed_value->value);
+                    failed_value->path,
+                    failed_value->value);
             fim_db_registry_value_delete(failed_value->path, failed_value->value, failed_value->arch);
         }
     }
@@ -701,8 +787,8 @@ void cleanup_failed_registry_values(OSList* failed_values) {
 #endif
 }
 
-
-void check_max_fps() {
+void check_max_fps()
+{
 #ifndef WAZUH_UNIT_TESTING
     static unsigned int files_read = 0;
     static time_t last_time = 0;
@@ -711,18 +797,21 @@ void check_max_fps() {
     static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
     struct timespec wait_time = {0, 0};
 
-    if (syscheck.max_files_per_second == 0) {
+    if (syscheck.max_files_per_second == 0)
+    {
         return;
     }
     w_mutex_lock(&fps_mutex);
     gettime(&wait_time);
 
-    if (wait_time.tv_sec != last_time) {
+    if (wait_time.tv_sec != last_time)
+    {
         files_read = 0;
         last_time = wait_time.tv_sec;
     }
 
-    if (files_read < syscheck.max_files_per_second) {
+    if (files_read < syscheck.max_files_per_second)
+    {
         files_read++;
         w_mutex_unlock(&fps_mutex);
         return;
@@ -732,13 +821,17 @@ void check_max_fps() {
     wait_time.tv_sec += 1;
 
     // Wait for one second or until the thread is unlocked using w_cond_broadcast
-    while (files_read >= syscheck.max_files_per_second) {
+    while (files_read >= syscheck.max_files_per_second)
+    {
         int rt = pthread_cond_timedwait(&cond, &fps_mutex, &wait_time);
-        if (rt == ETIMEDOUT) {
+        if (rt == ETIMEDOUT)
+        {
             files_read = 0;
             w_cond_broadcast(&cond);
             break;
-        } else if (rt != 0) {
+        }
+        else if (rt != 0)
+        {
             mdebug2("pthread_cond_timedwait failed: %s", strerror(rt));
             break;
         }
@@ -749,13 +842,12 @@ void check_max_fps() {
 
 // LCOV_EXCL_START
 // Send a message related to logs
-int send_log_msg(const char * msg)
+int send_log_msg(const char* msg)
 {
     fim_send_msg(LOCALFILE_MQ, SYSCHECK, msg);
     return (0);
 }
 // LCOV_EXCL_STOP
-
 
 // LCOV_EXCL_START
 // Periodically run the integrity checker
@@ -763,15 +855,18 @@ int send_log_msg(const char * msg)
 // first sync already completed in a previous run, this lets syscom report
 // first_sync_completed=true immediately so agent-info does not defer coordination during
 // the startup baseline-scan window (before fim_run_integrity sets the flag itself).
-STATIC void prime_fim_first_sync_from_marker(void) {
-    if (fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0) {
+STATIC void prime_fim_first_sync_from_marker(void)
+{
+    if (fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0)
+    {
         atomic_int_set(&syscheck.fim_first_sync_completed, 1);
     }
 }
 
 void start_daemon()
 {
-    if (fim_shutdown_process_on()) {
+    if (fim_shutdown_process_on())
+    {
         return;
     }
 
@@ -780,7 +875,7 @@ void start_daemon()
     time_t curr_time = 0;
     time_t prev_time_sk = 0;
     char curr_hour[12];
-    struct tm tm_result = { .tm_sec = 0 };
+    struct tm tm_result = {.tm_sec = 0};
 
     // Some time to settle
     memset(curr_hour, '\0', 12);
@@ -789,7 +884,8 @@ void start_daemon()
 #ifndef WIN32
     mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
 
-    if (nice(syscheck.process_priority) == -1) {
+    if (nice(syscheck.process_priority) == -1)
+    {
         merror(NICE_ERROR, strerror(errno), errno);
     }
 #else
@@ -800,13 +896,15 @@ void start_daemon()
     // Launch rootcheck thread
     w_create_thread(w_rootcheck_thread, &syscheck);
 #else
-    if (CreateThread(NULL, 0, w_rootcheck_thread, &syscheck, 0, NULL) == NULL) {
+    if (CreateThread(NULL, 0, w_rootcheck_thread, &syscheck, 0, NULL) == NULL)
+    {
         merror(THREAD_ERROR);
     }
 #endif
 
     // If the scan time/day is set, reset the syscheck.time/rootcheck.time
-    if (syscheck.scan_time || syscheck.scan_day) {
+    if (syscheck.scan_time || syscheck.scan_day)
+    {
         // At least once a week
         syscheck.time = 604800;
     }
@@ -816,26 +914,30 @@ void start_daemon()
     char diff_registry_dir[PATH_MAX];
     char diff_local_dir[PATH_MAX];
 
-
     // The contents of the report_changes diff directory must be deleted whenever the agent is started.
     // Directory used for files.
     snprintf(diff_file_dir, PATH_MAX, "%s/file/", DIFF_DIR);
-    if (cldir_ex(diff_file_dir) == -1 && errno != ENOENT) {
+    if (cldir_ex(diff_file_dir) == -1 && errno != ENOENT)
+    {
         merror("Unable to clear directory '%s': %s (%d)", diff_file_dir, strerror(errno), errno);
     }
     // Directory used for registries.
     snprintf(diff_registry_dir, PATH_MAX, "%s/registry/", DIFF_DIR);
-    if (cldir_ex(diff_registry_dir) == -1 && errno != ENOENT) {
+    if (cldir_ex(diff_registry_dir) == -1 && errno != ENOENT)
+    {
         merror("Unable to clear directory '%s': %s (%d)", diff_registry_dir, strerror(errno), errno);
     }
     // Old directory used by report_changes, may be leftover from an old installation
     snprintf(diff_local_dir, PATH_MAX, "%s/local/", DIFF_DIR);
-    if (cldir_ex(diff_local_dir) == -1 && errno != ENOENT) {
+    if (cldir_ex(diff_local_dir) == -1 && errno != ENOENT)
+    {
         merror("Unable to clear directory '%s': %s (%d)", diff_local_dir, strerror(errno), errno);
     }
 
-    if (syscheck.disabled) {
-        if (fim_shutdown_process_on()) {
+    if (syscheck.disabled)
+    {
+        if (fim_shutdown_process_on())
+        {
             atomic_int_set(&syscheck.fim_first_sync_completed, 1);
             return;
         }
@@ -847,7 +949,8 @@ void start_daemon()
 
     // Check for the scenario where syscheck is enabled but has no configured paths
     // This handles the case when all directories/registries are removed from configuration
-    if (!fim_has_configured_paths()) {
+    if (!fim_has_configured_paths())
+    {
         mdebug1("Syscheck enabled but no monitored paths configured. Checking for orphaned data.");
         handle_all_paths_removed();
         atomic_int_set(&syscheck.fim_first_sync_completed, 1);
@@ -857,16 +960,22 @@ void start_daemon()
 
     minfo(FIM_DAEMON_STARTED);
 
-    if (syscheck.file_limit_enabled) {
+    if (syscheck.file_limit_enabled)
+    {
         mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_entry_limit);
-    } else {
+    }
+    else
+    {
         mdebug2(FIM_LIMIT_UNLIMITED, "file");
     }
 
 #ifdef WIN32
-    if (syscheck.registry_limit_enabled) {
+    if (syscheck.registry_limit_enabled)
+    {
         mdebug2(FIM_REGISTRY_LIMIT_VALUE, syscheck.db_entry_registry_limit);
-    } else {
+    }
+    else
+    {
         mdebug2(FIM_LIMIT_UNLIMITED, "registry");
     }
 #endif
@@ -887,7 +996,8 @@ void start_daemon()
     // Launch symbolic links checker thread
     w_create_thread(symlink_checker_thread, NULL);
 
-    if (syscheck.enable_synchronization) {
+    if (syscheck.enable_synchronization)
+    {
         // Launch the inventory synchronization thread as joinable so the shutdown waiter
         // can wait for it before destroying the sync protocol handle (issue #37334). The
         // creation and fim_sync_thread_initialized are published under the handle write
@@ -895,57 +1005,75 @@ void start_daemon()
         // visible there and joined before the handle is destroyed, or the waiter ran
         // first and the shutdown check below keeps the thread from being created at all.
         w_rwlock_wrlock(&fim_sync_handle_rwlock);
-        if (fim_shutdown_process_on()) {
+        if (fim_shutdown_process_on())
+        {
             mdebug1("Shutdown in progress: not launching the FIM inventory synchronization thread.");
-        } else {
+        }
+        else
+        {
             fim_sync_module_running = 1;
-            if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0) {
+            if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0)
+            {
                 merror(THREAD_ERROR);
                 fim_sync_module_running = 0;
-            } else {
+            }
+            else
+            {
                 fim_sync_thread_initialized = true;
             }
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
-    } else {
+    }
+    else
+    {
         mdebug1("FIM inventory synchronization is disabled");
     }
 #else
-    if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
+    if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL)
+    {
 
         merror(THREAD_ERROR);
     }
 
-    if (syscheck.enable_synchronization) {
+    if (syscheck.enable_synchronization)
+    {
         // Same protocol as the POSIX branch above (issue #37334): the creation is published under
         // the handle write lock the teardown also takes, so either the thread is visible there and
         // waited for before the handle is destroyed, or the teardown ran first and the shutdown
         // check keeps the thread from being created at all.
         w_rwlock_wrlock(&fim_sync_handle_rwlock);
-        if (fim_shutdown_process_on()) {
+        if (fim_shutdown_process_on())
+        {
             mdebug1("Shutdown in progress: not launching the FIM inventory synchronization thread.");
-        } else {
+        }
+        else
+        {
             fim_sync_module_running = 1;
             fim_sync_thread_handle = CreateThread(NULL, 0, fim_run_integrity, NULL, 0, &fim_sync_thread_id);
-            if (fim_sync_thread_handle == NULL) {
+            if (fim_sync_thread_handle == NULL)
+            {
                 merror(THREAD_ERROR);
                 fim_sync_module_running = 0;
                 fim_sync_thread_id = 0;
             }
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
-    } else {
+    }
+    else
+    {
         mdebug1("FIM inventory synchronization is disabled");
     }
 #endif
 
     // Launch Whodata audit real-time thread
-    if (syscheck.enable_whodata && syscheck.whodata_provider == AUDIT_PROVIDER) {
+    if (syscheck.enable_whodata && syscheck.whodata_provider == AUDIT_PROVIDER)
+    {
         fim_whodata_initialize();
     }
 
     // Launch Whodata ebpf real-time thread
-    if (syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER) {
+    if (syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER)
+    {
 #if defined(__linux__) && defined(ENABLE_AUDIT)
         w_create_thread(ebpf_whodata, NULL);
 #else
@@ -957,77 +1085,92 @@ void start_daemon()
     prev_time_sk = time(0);
 
     // If the scan_time or scan_day is set, we need to handle the current day/time on the loop.
-    if (syscheck.scan_time || syscheck.scan_day) {
+    if (syscheck.scan_time || syscheck.scan_day)
+    {
         curr_time = time(0);
         localtime_r(&curr_time, &tm_result);
 
         // Assign hour/min/sec values
-        snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                 tm_result.tm_hour,
-                 tm_result.tm_min,
-                 tm_result.tm_sec);
+        snprintf(curr_hour, 9, "%02d:%02d:%02d", tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
         curr_day = tm_result.tm_mday;
 
-        if (syscheck.scan_time && syscheck.scan_day) {
-            if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                    (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
+        if (syscheck.scan_time && syscheck.scan_day)
+        {
+            if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) && (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)))
+            {
                 day_scanned = 1;
             }
-        } else if (syscheck.scan_time) {
-            if (OS_IsAfterTime(curr_hour, syscheck.scan_time)) {
+        }
+        else if (syscheck.scan_time)
+        {
+            if (OS_IsAfterTime(curr_hour, syscheck.scan_time))
+            {
                 day_scanned = 1;
             }
-        } else if (syscheck.scan_day) {
-            if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
+        }
+        else if (syscheck.scan_day)
+        {
+            if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))
+            {
                 day_scanned = 1;
             }
         }
     }
 
     // Check every SYSCHECK_WAIT
-    while (1) {
+    while (1)
+    {
         int run_now = 0;
         curr_time = time(0);
 
         // Check for shutdown before processing
-        if (fim_shutdown_process_on()) {
+        if (fim_shutdown_process_on())
+        {
             break;
         }
 
         // Check if a day_time or scan_time is set
-        if (syscheck.scan_time || syscheck.scan_day) {
+        if (syscheck.scan_time || syscheck.scan_day)
+        {
             localtime_r(&curr_time, &tm_result);
 
             // Day changed
-            if (curr_day != tm_result.tm_mday) {
+            if (curr_day != tm_result.tm_mday)
+            {
                 day_scanned = 0;
                 curr_day = tm_result.tm_mday;
             }
 
             // Check for the time of the scan
-            if (!day_scanned && syscheck.scan_time && syscheck.scan_day) {
+            if (!day_scanned && syscheck.scan_time && syscheck.scan_day)
+            {
                 // Assign hour/min/sec values
-                snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
+                snprintf(curr_hour, 9, "%02d:%02d:%02d", tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                        (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
+                    (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)))
+                {
                     day_scanned = 1;
                     run_now = 1;
                 }
-            } else if (!day_scanned && syscheck.scan_time) {
+            }
+            else if (!day_scanned && syscheck.scan_time)
+            {
                 // Assign hour/min/sec values
-                snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
+                snprintf(curr_hour, 9, "%02d:%02d:%02d", tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
-                if (OS_IsAfterTime(curr_hour, syscheck.scan_time)) {
+                if (OS_IsAfterTime(curr_hour, syscheck.scan_time))
+                {
                     run_now = 1;
                     day_scanned = 1;
                 }
-            } else if (!day_scanned && syscheck.scan_day) {
+            }
+            else if (!day_scanned && syscheck.scan_day)
+            {
                 // Check for the day of the scan
-                if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
+                if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))
+                {
                     run_now = 1;
                     day_scanned = 1;
                 }
@@ -1037,16 +1180,19 @@ void start_daemon()
         /* Reset sync protocol stop flag if scheduled scan is triggered. Not while shutting down:
          * asp_reset() clears the stop flag asp_stop() just set, and the teardown's bounded wait for
          * this thread depends on it staying set. */
-        if (run_now && !fim_shutdown_process_on()) {
+        if (run_now && !fim_shutdown_process_on())
+        {
             w_rwlock_rdlock(&fim_sync_handle_rwlock);
-            if (syscheck.sync_handle) {
+            if (syscheck.sync_handle)
+            {
                 asp_reset(syscheck.sync_handle);
             }
             w_rwlock_unlock(&fim_sync_handle_rwlock);
         }
 
         // If time elapsed is higher than the syscheck time, run syscheck time
-        if (!fim_shutdown_process_on() && (((curr_time - prev_time_sk) > syscheck.time) || run_now)) {
+        if (!fim_shutdown_process_on() && (((curr_time - prev_time_sk) > syscheck.time) || run_now))
+        {
             prev_time_sk = fim_scan();
         }
         sleep(SYSCHECK_WAIT);
@@ -1056,50 +1202,62 @@ void start_daemon()
 
 // Starting Real-time thread
 #if defined WIN32
-DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
-    directory_t *dir_it;
-    OSListNode *node_it;
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void* args)
+{
+    directory_t* dir_it;
+    OSListNode* node_it;
     int watches;
 
-    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); // Disable virtual redirection to 64bits folder due this is a x86 process
     set_priority_windows_thread();
     // Directories in Windows configured with real-time add recursive watches
     w_rwlock_wrlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (dir_it->options & REALTIME_ACTIVE) {
+        if (dir_it->options & REALTIME_ACTIVE)
+        {
             realtime_adddir(dir_it->path, dir_it);
         }
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
     watches = get_realtime_watches();
-    if (watches != 0) {
+    if (watches != 0)
+    {
         mdebug2(FIM_NUM_WATCHES, watches);
     }
 
-    while (FOREVER()) {
+    while (FOREVER())
+    {
 
 #ifdef WIN_WHODATA
-        if (syscheck.realtime_change) {
+        if (syscheck.realtime_change)
+        {
             set_whodata_mode_changes();
         }
 #endif
-        if (get_realtime_watches() > 0) {
+        if (get_realtime_watches() > 0)
+        {
             log_realtime_status(1);
 
-            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
+            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED)
+            {
                 merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
             }
-        } else {
+        }
+        else
+        {
             sleep(SYSCHECK_WAIT);
         }
 
         // Directories in Windows configured with real-time add recursive watches
         w_rwlock_wrlock(&syscheck.directories_lock);
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            if (dir_it->options & REALTIME_ACTIVE) {
+            if (dir_it->options & REALTIME_ACTIVE)
+            {
                 realtime_adddir(dir_it->path, dir_it);
             }
         }
@@ -1109,19 +1267,23 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
 }
 
 #elif defined INOTIFY_ENABLED
-void *fim_run_realtime(__attribute__((unused)) void * args) {
+void* fim_run_realtime(__attribute__((unused)) void* args)
+{
     int nfds = -1;
 
     fim_realtime_print_watches();
 
-    while (FOREVER()) {
+    while (FOREVER())
+    {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+        if (syscheck.realtime && (syscheck.realtime->fd >= 0))
+        {
             nfds = syscheck.realtime->fd;
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
-        if (nfds >= 0) {
+        if (nfds >= 0)
+        {
             log_realtime_status(1);
             struct timeval selecttime;
             fd_set rfds;
@@ -1131,19 +1293,25 @@ void *fim_run_realtime(__attribute__((unused)) void * args) {
             selecttime.tv_usec = 0;
 
             // zero-out the fd_set
-            FD_ZERO (&rfds);
+            FD_ZERO(&rfds);
             FD_SET(nfds, &rfds);
             run_now = select(nfds + 1, &rfds, NULL, NULL, &selecttime);
 
-            if (run_now < 0) {
+            if (run_now < 0)
+            {
                 merror(FIM_ERROR_SELECT);
-            } else if (run_now == 0) {
+            }
+            else if (run_now == 0)
+            {
                 // Timeout
-            } else if (FD_ISSET (nfds, &rfds)) {
+            }
+            else if (FD_ISSET(nfds, &rfds))
+            {
                 realtime_process();
             }
-
-        } else {
+        }
+        else
+        {
             sleep(SYSCHECK_WAIT);
         }
     }
@@ -1151,13 +1319,16 @@ void *fim_run_realtime(__attribute__((unused)) void * args) {
 }
 
 #else
-void * fim_run_realtime(__attribute__((unused)) void * args) {
-    directory_t *dir_it;
-    OSListNode *node_it;
+void* fim_run_realtime(__attribute__((unused)) void* args)
+{
+    directory_t* dir_it;
+    OSListNode* node_it;
     w_rwlock_rdlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (dir_it->options & REALTIME_ACTIVE) {
+        if (dir_it->options & REALTIME_ACTIVE)
+        {
             mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
             break;
         }
@@ -1170,9 +1341,11 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
 
 #ifdef WIN32
-DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
+DWORD WINAPI fim_run_integrity(__attribute__((unused)) void* args)
+{
 #else
-void * fim_run_integrity(__attribute__((unused)) void * args) {
+void* fim_run_integrity(__attribute__((unused)) void* args)
+{
 #endif
     bool first_sync_completed = fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0;
     bool skip_initial_wait = !first_sync_completed;
@@ -1185,25 +1358,37 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
 #endif
 
-    if (first_sync_completed) {
+    if (first_sync_completed)
+    {
         atomic_int_set(&syscheck.fim_first_sync_completed, 1);
-        mdebug1("FIM first synchronization already completed in a previous run. Keeping startup synchronization delay.");
-    } else {
+        mdebug1(
+            "FIM first synchronization already completed in a previous run. Keeping startup synchronization delay.");
+    }
+    else
+    {
         mdebug1("Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
     }
 
-    while (fim_sync_module_running) {
+    while (fim_sync_module_running)
+    {
         bool flush_request_detected = false;
 
-        if (atomic_int_get(&fim_flush_in_progress)) {
+        if (atomic_int_get(&fim_flush_in_progress))
+        {
             flush_request_detected = true;
-        } else if (skip_initial_wait) {
+        }
+        else if (skip_initial_wait)
+        {
             skip_initial_wait = false;
-        } else {
+        }
+        else
+        {
             // Wait for sync_interval, checking for pause and flush requests
-            for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+            for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++)
+            {
                 // Check for flush request
-                if (atomic_int_get(&fim_flush_in_progress)) {
+                if (atomic_int_get(&fim_flush_in_progress))
+                {
                     flush_request_detected = true;
                     mdebug1("Flush request detected during sync wait, breaking early");
                     break;
@@ -1214,7 +1399,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         }
 
         // Check if we should stop
-        if (!fim_sync_module_running) {
+        if (!fim_sync_module_running)
+        {
             break;
         }
 
@@ -1222,13 +1408,15 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
 
         // Handle pause: if paused and no flush, skip this iteration
-        if (pause_requested && !flush_request_detected) {
+        if (pause_requested && !flush_request_detected)
+        {
             mdebug2("FIM is paused, skipping sync iteration");
             continue;
         }
 
         // If paused and flush requested, sync without mutexes
-        if (pause_requested && flush_request_detected) {
+        if (pause_requested && flush_request_detected)
+        {
             minfo("Starting FIM synchronization requested by agent-info.");
 
             // No identity check and no integrity loop in this branch, by construction: it is
@@ -1236,38 +1424,51 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // mutex both of them need. They stay in the branch below and fire on the first
             // cycle after FIM resumes -- the same availability the integrity loop has always
             // had, and the identity marker is untouched meanwhile, so nothing is lost.
-            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
-                                               MODE_DELTA);
+            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
 
-            if (sync_result.success) {
+            if (sync_result.success)
+            {
                 // #38601: the same distinction the ordinary path below makes -- success with an
                 // empty queue never opened a session, so it cannot mean the manager took data.
-                if (sync_result.sent_anything) {
+                if (sync_result.sent_anything)
+                {
                     minfo("FIM synchronization requested by agent-info finished successfully.");
-                } else {
+                }
+                else
+                {
                     minfo("FIM synchronization requested by agent-info finished: nothing to send.");
                 }
-            } else if (sync_result.stopped || fim_shutdown_process_on()) {
+            }
+            else if (sync_result.stopped || fim_shutdown_process_on())
+            {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
                 minfo("FIM synchronization requested by agent-info aborted: FIM is stopping.");
-            } else if (sync_result.awaiting_prerequisite) {
+            }
+            else if (sync_result.awaiting_prerequisite)
+            {
                 // Not a real failure either: the manager hasn't synchronized this agent's groups
                 // yet, most commonly right after enrollment/restart. Expected to clear on its own.
-                minfo("FIM synchronization requested by agent-info deferred: %s",
-                      sync_result.failure_reason);
-            } else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable)
-                       && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+                minfo("FIM synchronization requested by agent-info deferred: %s", sync_result.failure_reason);
+            }
+            else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable) &&
+                     sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
                 // Either the manager is not ready for this agent yet, or the local sync intake
                 // itself isn't reachable yet -- both mostly right after a restart -- and the sync
                 // has not failed enough times in a row to suspect it will not clear.
                 minfo("FIM synchronization requested by agent-info deferred: %s Will retry next cycle.",
                       sync_result.failure_reason);
-            } else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable) {
+            }
+            else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable)
+            {
                 // Neither condition has cleared for several cycles in a row.
                 mwarn("FIM synchronization requested by agent-info failed %u times in a row: %s",
-                      sync_result.consecutive_failures, sync_result.failure_reason);
-            } else {
+                      sync_result.consecutive_failures,
+                      sync_result.failure_reason);
+            }
+            else
+            {
                 mwarn("FIM synchronization requested by agent-info failed%s%s",
                       sync_result.failure_reason[0] != '\0' ? ": " : "",
                       sync_result.failure_reason);
@@ -1282,19 +1483,23 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // queue takes the same early-success path as a delivered one. sent_anything is
             // this durable marker's only valid proof of a round trip (see its own doc comment
             // in agent_sync_protocol_types.hpp).
-            if (sync_result.success && sync_result.sent_anything && !first_sync_completed) {
+            if (sync_result.success && sync_result.sent_anything && !first_sync_completed)
+            {
                 fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                 first_sync_completed = true;
                 atomic_int_set(&syscheck.fim_first_sync_completed, 1);
             }
-        } else {
+        }
+        else
+        {
             // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
             // This prevents deadlocks that occur when different code paths acquire locks in different orders.
             w_rwlock_rdlock(&syscheck.directories_lock);
-            OSList *directories_snapshot = fim_copy_directory_list(syscheck.directories);
+            OSList* directories_snapshot = fim_copy_directory_list(syscheck.directories);
             w_rwlock_unlock(&syscheck.directories_lock);
 
-            if (directories_snapshot == NULL) {
+            if (directories_snapshot == NULL)
+            {
                 merror("Failed to create snapshot of directories list. Aborting synchronization cycle.");
                 mdebug1("FIM synchronization aborted, waiting for %d seconds before next run.", syscheck.sync_interval);
                 continue;
@@ -1302,51 +1507,69 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             minfo("Starting FIM synchronization.");
 
-            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
-                                               MODE_DELTA);
-            if (sync_result.success) {
+            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
+            if (sync_result.success)
+            {
                 // #38601: success alone cannot tell "the manager took everything" from "there
                 // was nothing queued, so no session was opened". Both are fine outcomes, but
                 // only one of them means the manager has our data.
-                if (sync_result.sent_anything) {
+                if (sync_result.sent_anything)
+                {
                     minfo("FIM synchronization finished successfully.");
-                } else {
+                }
+                else
+                {
                     minfo("FIM synchronization finished: nothing to send.");
                 }
 
                 // #38899: same reasoning as the flush branch above -- sent_anything is the only
                 // proof this cycle actually reached the manager, so it gates the durable marker.
-                if (sync_result.sent_anything && !first_sync_completed) {
+                if (sync_result.sent_anything && !first_sync_completed)
+                {
                     fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                     first_sync_completed = true;
                     atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
-            } else if (sync_result.stopped || fim_shutdown_process_on()) {
+            }
+            else if (sync_result.stopped || fim_shutdown_process_on())
+            {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
                 minfo("FIM synchronization aborted: FIM is stopping.");
-            } else if (sync_result.awaiting_prerequisite) {
+            }
+            else if (sync_result.awaiting_prerequisite)
+            {
                 // Not a real failure either: the manager hasn't synchronized this agent's groups
                 // yet, most commonly right after enrollment/restart. Expected to clear on its own.
                 minfo("FIM synchronization deferred: %s", sync_result.failure_reason);
-            } else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable)
-                       && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+            }
+            else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable) &&
+                     sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
                 // Either the manager is not ready for this agent yet, or the local sync intake
                 // itself isn't reachable yet -- both mostly right after a restart -- and the sync
                 // has not failed enough times in a row to suspect it will not clear.
                 minfo("FIM synchronization deferred: %s Will retry next cycle.", sync_result.failure_reason);
-            } else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable) {
+            }
+            else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable)
+            {
                 // Neither condition has cleared for several cycles in a row.
                 mwarn("FIM synchronization failed %u times in a row: %s",
-                      sync_result.consecutive_failures, sync_result.failure_reason);
-            } else {
-                mwarn("FIM synchronization failed%s%s", sync_result.failure_reason[0] != '\0' ? ": " : "", sync_result.failure_reason);
+                      sync_result.consecutive_failures,
+                      sync_result.failure_reason);
+            }
+            else
+            {
+                mwarn("FIM synchronization failed%s%s",
+                      sync_result.failure_reason[0] != '\0' ? ": " : "",
+                      sync_result.failure_reason);
             }
 
             // If a flush was triggered while paused but processed here (after resume),
             // clear the flush state so pollFlushCompletion() can return "completed".
             // Touches only atomics, so it stays outside the scan mutex.
-            if (flush_request_detected) {
+            if (flush_request_detected)
+            {
                 int result = sync_result.success ? 0 : -1;
                 atomic_int_set(&fim_flush_result, result);
                 atomic_int_set(&fim_flush_in_progress, 0);
@@ -1356,8 +1579,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // Lock FIM's scheduled and realtime scans only for the recovery/integrity
             // process, which reads and writes the file_entry table. Skipped once shutdown
             // is in progress.
-            if (sync_result.success && fim_sync_module_running &&
-                fim_sync_lock_scan_mutex()) {
+            if (sync_result.success && fim_sync_module_running && fim_sync_lock_scan_mutex())
+            {
                 // #38601: identity before integrity. If this agent's id changed, the manager
                 // holds nothing under it and the per-table checksum loop below would only
                 // rediscover that one table at a time, an integrity_interval apart each.
@@ -1370,8 +1593,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // the same primitive under the same mutexes, and after a re-enrollment every
                 // table mismatches, so it did the same work later rather than less of it.
                 // Shrinking that critical section around the manager round trip is #38705.
-                if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count,
-                                                  directories_snapshot)) {
+                if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count, directories_snapshot))
+                {
                     // Both markers move together, and only once the resync above proved the
                     // manager accepted it. first_sync_completed is normally already set here,
                     // but not always: an agent deleted before its very first sync finished
@@ -1382,12 +1605,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
 
-                fim_recovery_run_integrity_checks(syscheck.sync_handle, table_names, table_count,
-                                                  directories_snapshot, syscheck.integrity_interval);
+                fim_recovery_run_integrity_checks(
+                    syscheck.sync_handle, table_names, table_count, directories_snapshot, syscheck.integrity_interval);
 
-                #ifdef WIN32
+#ifdef WIN32
                 w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-                #endif
+#endif
                 w_mutex_unlock(&syscheck.fim_realtime_mutex);
                 w_mutex_unlock(&syscheck.fim_scan_mutex);
             }
@@ -1403,8 +1626,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #else
     // Report the exit to the shutdown waiter so its bounded wait on the exit pipe
     // returns immediately and it can join this thread without an unbounded stall.
-    if (fim_sync_exit_pipe[1] >= 0) {
-        while (write(fim_sync_exit_pipe[1], "", 1) < 0 && errno == EINTR) {}
+    if (fim_sync_exit_pipe[1] >= 0)
+    {
+        while (write(fim_sync_exit_pipe[1], "", 1) < 0 && errno == EINTR)
+        {
+        }
     }
 
     return NULL;
@@ -1413,17 +1639,19 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 // LCOV_EXCL_STOP
 
 #ifdef WIN32
-void set_priority_windows_thread() {
-    DWORD dwCreationFlags = syscheck.process_priority <= -10 ? THREAD_PRIORITY_HIGHEST :
-                      syscheck.process_priority <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL :
-                      syscheck.process_priority <= 0 ? THREAD_PRIORITY_NORMAL :
-                      syscheck.process_priority <= 5 ? THREAD_PRIORITY_BELOW_NORMAL :
-                      syscheck.process_priority <= 10 ? THREAD_PRIORITY_LOWEST :
-                      THREAD_PRIORITY_IDLE;
+void set_priority_windows_thread()
+{
+    DWORD dwCreationFlags = syscheck.process_priority <= -10  ? THREAD_PRIORITY_HIGHEST
+                            : syscheck.process_priority <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL
+                            : syscheck.process_priority <= 0  ? THREAD_PRIORITY_NORMAL
+                            : syscheck.process_priority <= 5  ? THREAD_PRIORITY_BELOW_NORMAL
+                            : syscheck.process_priority <= 10 ? THREAD_PRIORITY_LOWEST
+                                                              : THREAD_PRIORITY_IDLE;
 
     mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
 
-    if(!SetThreadPriority(GetCurrentThread(), dwCreationFlags)) {
+    if (!SetThreadPriority(GetCurrentThread(), dwCreationFlags))
+    {
         int dwError = GetLastError();
         merror("Can't set thread priority: %d", dwError);
     }
@@ -1431,21 +1659,25 @@ void set_priority_windows_thread() {
 #endif
 
 #ifdef WIN_WHODATA
-int fim_whodata_initialize() {
+int fim_whodata_initialize()
+{
     int retval = 0;
     long unsigned int t_id;
     HANDLE t_hdle;
-    directory_t *dir_it;
-    OSListNode *node_it;
+    directory_t* dir_it;
+    OSListNode* node_it;
 
     w_rwlock_wrlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
+        if ((dir_it->options & WHODATA_ACTIVE) == 0)
+        {
             continue;
         }
 
-        if (realtime_adddir(dir_it->path, dir_it) == -2) {
+        if (realtime_adddir(dir_it->path, dir_it) == -2)
+        {
             dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
             dir_it->dirs_status.status |= WD_CHECK_REALTIME;
             dir_it->options &= ~WHODATA_ACTIVE;
@@ -1454,10 +1686,13 @@ int fim_whodata_initialize() {
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    if (syscheck.wdata.fd == NULL) {
-        OSList_foreach(node_it, syscheck.wildcards) {
+    if (syscheck.wdata.fd == NULL)
+    {
+        OSList_foreach(node_it, syscheck.wildcards)
+        {
             dir_it = node_it->data;
-            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA)
+            {
                 whodata_audit_start();
                 break;
             }
@@ -1466,12 +1701,16 @@ int fim_whodata_initialize() {
 
     /* If the initialization of the Whodata engine fails,
     Wazuh must monitor files/directories in Realtime mode. */
-    if (!run_whodata_scan()) {
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+    if (!run_whodata_scan())
+    {
+        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle)
+        {
             merror(FIM_ERROR_CHECK_THREAD);
             retval = -1;
         }
-    } else {
+    }
+    else
+    {
         merror(FIM_ERROR_WHODATA_INIT);
 
         // In case SACLs and policies have been set, restore them.
@@ -1479,7 +1718,8 @@ int fim_whodata_initialize() {
 
         w_rwlock_wrlock(&syscheck.directories_lock);
         // Add proper flags for the realtime thread monitors the directories/files.
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
             dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
             dir_it->dirs_status.status |= WD_CHECK_REALTIME;
@@ -1495,21 +1735,23 @@ int fim_whodata_initialize() {
 }
 
 #elif defined ENABLE_AUDIT
-int fim_whodata_initialize() {
+int fim_whodata_initialize()
+{
     audit_set_db_consistency();
 
     return 0;
 }
 
 #else
-int fim_whodata_initialize() {
+int fim_whodata_initialize()
+{
     mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
     return -1;
 }
 #endif
 
-
-void log_realtime_status(int next) {
+void log_realtime_status(int next)
+{
     /*
      * 0: stop (initial)
      * 1: run
@@ -1518,76 +1760,95 @@ void log_realtime_status(int next) {
 
     static int status = 0;
 
-    switch (status) {
-    case 0:
-        if (next == 1) {
-            minfo(FIM_REALTIME_STARTED);
-            status = next;
-        }
-        break;
-    case 1:
-        if (next == 2) {
-            minfo(FIM_REALTIME_PAUSED);
-            status = next;
-        }
-        break;
-    case 2:
-        if (next == 1) {
-            minfo(FIM_REALTIME_RESUMED);
-            status = next;
-        }
+    switch (status)
+    {
+        case 0:
+            if (next == 1)
+            {
+                minfo(FIM_REALTIME_STARTED);
+                status = next;
+            }
+            break;
+        case 1:
+            if (next == 2)
+            {
+                minfo(FIM_REALTIME_PAUSED);
+                status = next;
+            }
+            break;
+        case 2:
+            if (next == 1)
+            {
+                minfo(FIM_REALTIME_RESUMED);
+                status = next;
+            }
     }
 }
 
 #ifndef WIN32
 // LCOV_EXCL_START
-static void *symlink_checker_thread(__attribute__((unused)) void * data) {
-    char *real_path;
-    directory_t *dir_it;
-    OSListNode *node_it;
+static void* symlink_checker_thread(__attribute__((unused)) void* data)
+{
+    char* real_path;
+    directory_t* dir_it;
+    OSListNode* node_it;
 
     mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
-    while (1) {
+    while (1)
+    {
         sleep(syscheck.sym_checker_interval);
         mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
         w_rwlock_rdlock(&syscheck.directories_lock);
 
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            if ((dir_it->options & CHECK_FOLLOW) == 0) {
+            if ((dir_it->options & CHECK_FOLLOW) == 0)
+            {
                 continue;
             }
 
             real_path = realpath(dir_it->path, NULL);
 
-            if (dir_it->symbolic_links) {
-                if (real_path) {
+            if (dir_it->symbolic_links)
+            {
+                if (real_path)
+                {
                     // Check if link has changed
-                    if (strcmp(real_path, dir_it->symbolic_links) != 0) {
+                    if (strcmp(real_path, dir_it->symbolic_links) != 0)
+                    {
                         mdebug2(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
                         fim_link_update(real_path, dir_it);
-                    } else {
+                    }
+                    else
+                    {
                         mdebug2(FIM_LINKCHECK_NOCHANGE, dir_it->symbolic_links);
                     }
-                } else {
+                }
+                else
+                {
                     // Broken link
                     char path[PATH_MAX];
 
                     snprintf(path, PATH_MAX, "%s", dir_it->symbolic_links);
                     fim_link_check_delete(dir_it);
 
-                    directory_t *config = fim_configuration_directory(path, true, syscheck.directories);
+                    directory_t* config = fim_configuration_directory(path, true, syscheck.directories);
 
-                    if (config != NULL) {
+                    if (config != NULL)
+                    {
                         fim_link_silent_scan(path, config);
                     }
                 }
-            } else {
+            }
+            else
+            {
                 // Check real_path to reload broken link.
-                if (real_path && strcmp(real_path, dir_it->path) != 0) {
+                if (real_path && strcmp(real_path, dir_it->path) != 0)
+                {
                     fim_link_reload_broken_link(real_path, dir_it);
                 }
             }
@@ -1607,31 +1868,37 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 }
 // LCOV_EXCL_STOP
 
-STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
+STATIC void fim_link_update(const char* new_path, directory_t* configuration)
+{
     int in_configuration = false;
     int is_new_link = true;
-    directory_t *dir_it;
-    OSListNode *node_it;
+    directory_t* dir_it;
+    OSListNode* node_it;
 
     // Check if the previously pointed folder is in the configuration
     // and delete its database entries if it isn't
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (dir_it == configuration) {
+        if (dir_it == configuration)
+        {
             // This is the link being changed
             continue;
         }
 
-        if (strcmp(configuration->symbolic_links, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0) {
+        if (strcmp(configuration->symbolic_links, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0)
+        {
             in_configuration = true;
             break;
         }
     }
 
-    if (in_configuration == false) {
+    if (in_configuration == false)
+    {
 #ifdef ENABLE_AUDIT
         // Remove the audit rule for the previous link only if the path is not configured in other entry.
-        if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER) {
+        if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER)
+        {
             remove_audit_rule_syscheck(configuration->symbolic_links);
         }
 #endif
@@ -1639,20 +1906,26 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
     }
 
     // Check if the updated path of the link is already in the configuration
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (dir_it == configuration) {
-            if (strcmp(new_path, dir_it->path) == 0) {
+        if (dir_it == configuration)
+        {
+            if (strcmp(new_path, dir_it->path) == 0)
+            {
                 // We were monitoring a link, now we are monitoring the actual directory
 #ifdef ENABLE_AUDIT
-                if ((dir_it->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER) {
+                if ((dir_it->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER)
+                {
                     add_whodata_directory(dir_it->path);
                 }
 #endif
                 is_new_link = false;
                 break;
             }
-        } else if (strcmp(new_path, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0) {
+        }
+        else if (strcmp(new_path, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0)
+        {
             mdebug2(FIM_LINK_ALREADY_ADDED, dir_it->path);
             is_new_link = false;
             break;
@@ -1662,24 +1935,30 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
     w_mutex_lock(&syscheck.fim_symlink_mutex);
     os_free(configuration->symbolic_links);
 
-    if (is_new_link) {
+    if (is_new_link)
+    {
         os_strdup(new_path, configuration->symbolic_links);
     }
 
     w_mutex_unlock(&syscheck.fim_symlink_mutex);
-    if (is_new_link) {
+    if (is_new_link)
+    {
         // Add new entries without alert.
         fim_link_silent_scan(new_path, configuration);
     }
 }
 
-STATIC void fim_link_check_delete(directory_t *configuration) {
+STATIC void fim_link_check_delete(directory_t* configuration)
+{
     struct stat statbuf;
 
-    if (w_lstat(configuration->symbolic_links, &statbuf) < 0) {
-        if (errno == ENOENT) {
+    if (w_lstat(configuration->symbolic_links, &statbuf) < 0)
+    {
+        if (errno == ENOENT)
+        {
 #ifdef ENABLE_AUDIT
-            if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER) {
+            if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER)
+            {
                 remove_audit_rule_syscheck(configuration->symbolic_links);
             }
 #endif
@@ -1690,13 +1969,16 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
         }
 
         mdebug1(FIM_STAT_FAILED, configuration->symbolic_links, errno, strerror(errno));
-    } else {
+    }
+    else
+    {
         fim_link_delete_range(configuration);
 
         fim_realtime_delete_watches(configuration);
 
 #ifdef ENABLE_AUDIT
-        if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER) {
+        if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER)
+        {
             remove_audit_rule_syscheck(configuration->symbolic_links);
         }
 #endif
@@ -1706,27 +1988,32 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
     }
 }
 
-STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false };
+STATIC void fim_link_silent_scan(const char* path, directory_t* configuration)
+{
+    event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false};
 
     fim_checker(path, &evt_data, configuration, NULL, NULL);
 
     realtime_adddir(path, configuration);
 #ifdef ENABLE_AUDIT
-    if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER) {
+    if ((configuration->options & WHODATA_ACTIVE) && syscheck.whodata_provider == AUDIT_PROVIDER)
+    {
         // Just in case, we need to remove the configured directory if it was previously monitored
         remove_audit_rule_syscheck(configuration->path);
     }
 #endif
 }
 
-STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) {
-    directory_t *dir_it;
-    OSListNode *node_it;
+STATIC void fim_link_reload_broken_link(char* path, directory_t* configuration)
+{
+    directory_t* dir_it;
+    OSListNode* node_it;
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (strcmp(path, dir_it->path) == 0) {
+        if (strcmp(path, dir_it->path) == 0)
+        {
             // If a configuration directory exists don't reload
             mdebug2(FIM_LINK_ALREADY_ADDED, dir_it->path);
             return;
@@ -1745,26 +2032,33 @@ STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) 
 
 #endif
 #ifdef WIN_WHODATA
-void set_whodata_mode_changes() {
-    directory_t *dir_it;
-    OSListNode *node_it;
+void set_whodata_mode_changes()
+{
+    directory_t* dir_it;
+    OSListNode* node_it;
 
-    if (syscheck.realtime == NULL) {
+    if (syscheck.realtime == NULL)
+    {
         realtime_start();
     }
 
     syscheck.realtime_change = 0;
 
     w_rwlock_rdlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (dir_it->dirs_status.status & WD_CHECK_REALTIME) {
+        if (dir_it->dirs_status.status & WD_CHECK_REALTIME)
+        {
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             dir_it->dirs_status.status &= ~WD_CHECK_REALTIME;
             dir_it->options |= REALTIME_ACTIVE;
-            if (realtime_adddir(dir_it->path, dir_it) != 1) {
+            if (realtime_adddir(dir_it->path, dir_it) != 1)
+            {
                 merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, dir_it->path);
-            } else {
+            }
+            else
+            {
                 mdebug1(FIM_REALTIME_MONITORING, dir_it->path);
             }
         }

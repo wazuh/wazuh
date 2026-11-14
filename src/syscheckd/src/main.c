@@ -25,7 +25,7 @@
 
 #include <poll.h>
 
-#define Q(x) #x
+#define Q(x)     #x
 #define QUOTE(x) Q(x)
 
 // LCOV_EXCL_START
@@ -68,7 +68,7 @@ static volatile sig_atomic_t fim_shutdown_sig = SIGTERM;
  * termination signal (signal() leaves the other signals unblocked while the handler
  * runs) could re-enter the handler, skip the join and free the handle under the live
  * synchronization thread. */
-static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
+static void* fim_shutdown_waiter(__attribute__((unused)) void* arg)
 {
     char buf;
 
@@ -120,10 +120,12 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
          * through fim_sync_exit_pipe well within this timeout. If it does not, skip the
          * join and the teardown below — destroying the handle under a live thread is the
          * use-after-free this waiter exists to prevent — and proceed to _exit(). */
-        struct pollfd sync_exit_poll = { .fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0 };
+        struct pollfd sync_exit_poll = {.fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0};
         int poll_ret;
 
-        while ((poll_ret = poll(&sync_exit_poll, 1, FIM_SYNC_EXIT_TIMEOUT_MS)) < 0 && errno == EINTR) {}
+        while ((poll_ret = poll(&sync_exit_poll, 1, FIM_SYNC_EXIT_TIMEOUT_MS)) < 0 && errno == EINTR)
+        {
+        }
 
         if (poll_ret > 0)
         {
@@ -132,7 +134,8 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         else
         {
             sync_thread_exited = false;
-            mwarn("The FIM inventory synchronization thread did not exit in time: skipping the synchronization database teardown.");
+            mwarn("The FIM inventory synchronization thread did not exit in time: skipping the synchronization "
+                  "database teardown.");
         }
     }
 
@@ -189,61 +192,57 @@ static void fim_shutdown(int sig)
     if (fim_shutdown_pipe[1] >= 0)
     {
         /* Wake the shutdown waiter; write() is async-signal-safe */
-        while (write(fim_shutdown_pipe[1], "", 1) < 0 && errno == EINTR) {}
+        while (write(fim_shutdown_pipe[1], "", 1) < 0 && errno == EINTR)
+        {
+        }
     }
 
     errno = saved_errno;
 }
 
 /* Syscheck unix main */
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    const char *cfg = WAZUHCONF;
+    const char* cfg = WAZUHCONF;
     gid_t gid;
-    const char *group = QUOTE(GROUPGLOBAL);
-    directory_t *dir_it = NULL;
+    const char* group = QUOTE(GROUPGLOBAL);
+    directory_t* dir_it = NULL;
     int start_realtime = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
 
-    char * home_path = w_homedir(argv[0]);
+    char* home_path = w_homedir(argv[0]);
 
-    while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
-        switch (c) {
-            case 'V':
-                print_version();
-                break;
-            case 'h':
-                help_syscheckd();
-                break;
+    while ((c = getopt(argc, argv, "Vtdhfc:")) != -1)
+    {
+        switch (c)
+        {
+            case 'V': print_version(); break;
+            case 'h': help_syscheckd(); break;
             case 'd':
                 nowDebug();
-                debug_level ++;
+                debug_level++;
                 break;
-            case 'f':
-                run_foreground = 1;
-                break;
+            case 'f': run_foreground = 1; break;
             case 'c':
-                if (!optarg) {
+                if (!optarg)
+                {
                     merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
-            case 't':
-                test_config = 1;
-                break;
-            default:
-                help_syscheckd();
-                break;
+            case 't': test_config = 1; break;
+            default: help_syscheckd(); break;
         }
     }
 
     /* Change current working directory */
-    if (chdir(home_path) == -1) {
+    if (chdir(home_path) == -1)
+    {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
@@ -252,12 +251,14 @@ int main(int argc, char **argv)
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
+    if (gid == (gid_t)-1)
+    {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(gid) < 0)
+    {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
@@ -268,7 +269,8 @@ int main(int argc, char **argv)
     read_internal(debug_level);
 
     /* Check if the configuration is present */
-    if (File_DateofChange(cfg) < 0) {
+    if (File_DateofChange(cfg) < 0)
+    {
         merror_exit(NO_CONFIG, cfg);
     }
 
@@ -277,11 +279,12 @@ int main(int argc, char **argv)
      * that bounds a /stateless request. The block belongs to the agent rather than
      * to this daemon, and the protocol reads no configuration of its own, so it is
      * read here and handed down before fim_initialize() builds the instance. */
-    agent_batch batch = { .size = 0, .interval = 0 };
+    agent_batch batch = {.size = 0, .interval = 0};
     w_read_agent_batch(WAZUHCONF, AGENTCONFIG, &batch);
     asp_set_session_max_bytes((uint64_t)batch.size);
 
-    if (batch.size > 0) {
+    if (batch.size > 0)
+    {
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
     }
 
@@ -290,35 +293,46 @@ int main(int argc, char **argv)
     const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
     asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
 
-    if (sync_max_blocks > 0) {
+    if (sync_max_blocks > 0)
+    {
         mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
     }
 #endif
 
     /* Read syscheck config */
-    if ((r = Read_Syscheck_Config(cfg)) < 0) {
+    if ((r = Read_Syscheck_Config(cfg)) < 0)
+    {
         mwarn(RCONFIG_ERROR, SYSCHECK, cfg);
         syscheck.disabled = 1;
-    } else if ((r == 1) || (syscheck.disabled == 1)) {
-        if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
-            if (!test_config) {
+    }
+    else if ((r == 1) || (syscheck.disabled == 1))
+    {
+        if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL)
+        {
+            if (!test_config)
+            {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }
         }
 
-        if (!syscheck.ignore) {
-            os_calloc(1, sizeof(char *), syscheck.ignore);
-        } else {
+        if (!syscheck.ignore)
+        {
+            os_calloc(1, sizeof(char*), syscheck.ignore);
+        }
+        else
+        {
             os_free(syscheck.ignore[0]);
         }
 
-        if (!test_config) {
+        if (!test_config)
+        {
             minfo(FIM_DISABLED);
         }
     }
 
     /* Exit if testing config */
-    if (test_config) {
+    if (test_config)
+    {
         // Validate rootcheck config too, from the same file; rootcheck_init()
         // with test_config=1 only parses and exits without emitting STARTUP_MSG.
         // Both sections are read before failing so that every error is reported.
@@ -327,7 +341,8 @@ int main(int argc, char **argv)
         // without FIM or rootcheck and wazuh-control would report success.
         const int rootcheck_r = rootcheck_init(test_config, cfg);
 
-        if (r < 0 || rootcheck_r != 0) {
+        if (r < 0 || rootcheck_r != 0)
+        {
             mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
         }
 
@@ -339,14 +354,16 @@ int main(int argc, char **argv)
     init_magic(&magic_cookie);
 #endif
 
-    if (!run_foreground) {
+    if (!run_foreground)
+    {
         nowDaemon();
         goDaemon();
     }
 
     /* Spawn the shutdown waiter before registering the termination signal handler
      * that wakes it through the pipe (issue #37334) */
-    if (pipe(fim_shutdown_pipe) < 0 || pipe(fim_sync_exit_pipe) < 0) {
+    if (pipe(fim_shutdown_pipe) < 0 || pipe(fim_sync_exit_pipe) < 0)
+    {
         merror_exit("Could not create the shutdown pipes: %s (%d)", strerror(errno), errno);
     }
 
@@ -357,7 +374,8 @@ int main(int argc, char **argv)
     cloexec_ret |= fcntl(fim_shutdown_pipe[1], F_SETFD, FD_CLOEXEC);
     cloexec_ret |= fcntl(fim_sync_exit_pipe[0], F_SETFD, FD_CLOEXEC);
     cloexec_ret |= fcntl(fim_sync_exit_pipe[1], F_SETFD, FD_CLOEXEC);
-    if (cloexec_ret < 0) {
+    if (cloexec_ret < 0)
+    {
         mwarn("Could not set FD_CLOEXEC on the shutdown pipes: %s (%d)", strerror(errno), errno);
     }
 
@@ -370,11 +388,13 @@ int main(int argc, char **argv)
     w_create_thread(syscom_main, NULL);
 
     /* Create pid */
-    if (CreatePID(ARGV0, getpid()) < 0) {
+    if (CreatePID(ARGV0, getpid()) < 0)
+    {
         merror_exit(PID_ERROR);
     }
 
-    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY)
+    {
         mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
         exit(0);
     }
@@ -384,92 +404,113 @@ int main(int argc, char **argv)
     // INFO: Started"); running it before the gate would make rootcheck
     // appear as "Started" while every module is in fact still blocked
     // waiting for the manager's merged.mg hash to validate (issue 36239).
-    if (rootcheck_init(0, cfg) == 0) {
+    if (rootcheck_init(0, cfg) == 0)
+    {
         syscheck.rootcheck = 1;
-    } else {
+    }
+    else
+    {
         syscheck.rootcheck = 0;
     }
 
-    if (syscheck.rootcheck) {
+    if (syscheck.rootcheck)
+    {
         rootcheck_connect();
     }
 
     /* Connect to the queue */
 
-    if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+    if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0)
+    {
         /* A termination signal aborted the connection: fim_shutdown_waiter() ends the process */
-        if (fim_shutdown_process_on()) {
-            while (1) {
+        if (fim_shutdown_process_on())
+        {
+            while (1)
+            {
                 pause();
             }
         }
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
-    if (!syscheck.disabled) {
-        OSListNode *node_it;
+    if (!syscheck.disabled)
+    {
+        OSListNode* node_it;
 
         /* Start up message */
         minfo(STARTUP_MSG, (int)getpid());
 
         /* Print directories to be monitored */
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            char optstr[ 1024 ];
+            char optstr[1024];
 
-            if (dir_it->symbolic_links == NULL) {
-                mdebug1(FIM_MONITORING_DIRECTORY, dir_it->path,
-                      syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
-            } else {
-                mdebug1(FIM_MONITORING_LDIRECTORY, dir_it->path, dir_it->symbolic_links,
-                      syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+            if (dir_it->symbolic_links == NULL)
+            {
+                mdebug1(
+                    FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+            }
+            else
+            {
+                mdebug1(FIM_MONITORING_LDIRECTORY,
+                        dir_it->path,
+                        dir_it->symbolic_links,
+                        syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
             }
 
             if (dir_it->tag != NULL)
                 mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
 
             // Print diff file size limit
-            if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+            if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled)
+            {
                 mdebug2(FIM_DIFF_FILE_SIZE_LIMIT, dir_it->diff_size_limit, dir_it->path);
             }
         }
 
-        if (!syscheck.file_size_enabled) {
+        if (!syscheck.file_size_enabled)
+        {
             minfo(FIM_FILE_SIZE_LIMIT_DISABLED);
         }
 
         // Print maximum disk quota to be used by the queue/diff/local folder
-        if (syscheck.disk_quota_enabled) {
+        if (syscheck.disk_quota_enabled)
+        {
             mdebug2(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
         }
-        else {
+        else
+        {
             minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
         }
 
         /* Print ignores. */
-        if(syscheck.ignore)
-            for (r = 0; syscheck.ignore[r] != NULL; r++)
-                mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+        if (syscheck.ignore)
+            for (r = 0; syscheck.ignore[r] != NULL; r++) mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
-        if(syscheck.ignore_regex)
+        if (syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
                 mdebug1(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print files with no diff. */
-        if (syscheck.nodiff){
+        if (syscheck.nodiff)
+        {
             r = 0;
-            while (syscheck.nodiff[r] != NULL) {
+            while (syscheck.nodiff[r] != NULL)
+            {
                 mdebug1(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }
 
         /* Check directories set for real time */
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            if (dir_it->options & REALTIME_ACTIVE) {
-#if defined (INOTIFY_ENABLED) || defined (WIN32)
+            if (dir_it->options & REALTIME_ACTIVE)
+            {
+#if defined(INOTIFY_ENABLED) || defined(WIN32)
                 minfo(FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
                 start_realtime = 1;
 #else
@@ -480,10 +521,12 @@ int main(int argc, char **argv)
             }
         }
 
-        OSList_foreach(node_it, syscheck.wildcards) {
+        OSList_foreach(node_it, syscheck.wildcards)
+        {
             dir_it = node_it->data;
-            if (dir_it->options & REALTIME_ACTIVE) {
-#if defined (INOTIFY_ENABLED) || defined (WIN32)
+            if (dir_it->options & REALTIME_ACTIVE)
+            {
+#if defined(INOTIFY_ENABLED) || defined(WIN32)
                 start_realtime = 1;
                 break;
 #else
@@ -497,12 +540,14 @@ int main(int argc, char **argv)
 
     fim_initialize();
 
-    if (!syscheck.disabled && start_realtime == 1) {
+    if (!syscheck.disabled && start_realtime == 1)
+    {
         realtime_start();
     }
 
     // Launch Whodata ebpf real-time thread
-    if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER) {
+    if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == EBPF_PROVIDER)
+    {
 #if defined(__linux__) && defined(ENABLE_AUDIT)
         check_ebpf_availability();
 #else
@@ -511,38 +556,48 @@ int main(int argc, char **argv)
     }
 
     // Audit events thread
-    if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == AUDIT_PROVIDER) {
+    if (!syscheck.disabled && syscheck.enable_whodata && syscheck.whodata_provider == AUDIT_PROVIDER)
+    {
 #ifdef ENABLE_AUDIT
-        if (audit_init() < 0) {
-            directory_t *dir_it;
-            OSListNode *node_it;
+        if (audit_init() < 0)
+        {
+            directory_t* dir_it;
+            OSListNode* node_it;
 
             mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
 
             // Switch who-data to real-time mode
 
-            OSList_foreach(node_it, syscheck.directories) {
+            OSList_foreach(node_it, syscheck.directories)
+            {
                 dir_it = node_it->data;
-                if ((dir_it->options & WHODATA_ACTIVE)) {
+                if ((dir_it->options & WHODATA_ACTIVE))
+                {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }
             }
 
-            OSList_foreach(node_it, syscheck.wildcards) {
+            OSList_foreach(node_it, syscheck.wildcards)
+            {
                 dir_it = node_it->data;
-                if ((dir_it->options & WHODATA_ACTIVE)) {
+                if ((dir_it->options & WHODATA_ACTIVE))
+                {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }
             }
 
             w_mutex_lock(&syscheck.fim_realtime_mutex);
-            if (syscheck.realtime == NULL) {
-                if (realtime_start() < 0) {
-                    OSList_foreach(node_it, syscheck.directories) {
+            if (syscheck.realtime == NULL)
+            {
+                if (realtime_start() < 0)
+                {
+                    OSList_foreach(node_it, syscheck.directories)
+                    {
                         dir_it = node_it->data;
-                        if (dir_it->options & REALTIME_ACTIVE) {
+                        if (dir_it->options & REALTIME_ACTIVE)
+                        {
                             dir_it->options &= ~REALTIME_ACTIVE;
                             dir_it->options |= SCHEDULED_ACTIVE;
                         }
@@ -550,14 +605,14 @@ int main(int argc, char **argv)
                 }
             }
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
-
         }
 #else
         merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif
     }
 #ifdef ENABLE_AUDIT
-    else {
+    else
+    {
         audit_remove_plugin_config();
     }
 #endif
@@ -566,7 +621,8 @@ int main(int argc, char **argv)
     start_daemon();
 
     // We shouldn't reach this point unless syscheck is disabled
-    while(1) {
+    while (1)
+    {
         pause();
     }
 

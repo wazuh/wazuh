@@ -15,15 +15,16 @@
 
 #include "shared.h"
 
-#define OS_TRIMCRLF_ARRAY_SIZE 11
+#define OS_TRIMCRLF_ARRAY_SIZE   11
 #define OS_TRIMCRLF_MAX_STR_SIZE 8
 
-char * w_tolower_str(const char *string);
+char* w_tolower_str(const char* string);
 
 /* setup/teardown */
 
-int teardown_free_paths(void **state) {
-    char **paths = *state;
+int teardown_free_paths(void** state)
+{
+    char** paths = *state;
     free_strarray(paths);
 
     return 0;
@@ -32,38 +33,35 @@ int teardown_free_paths(void **state) {
 /* tests */
 
 /* w_tolower_str */
-void test_w_tolower_str_NULL(void **state)
+void test_w_tolower_str_NULL(void** state)
 {
-    char * string = NULL;
+    char* string = NULL;
 
     char* ret = w_tolower_str(string);
     assert_null(ret);
-
 }
 
-void test_w_tolower_str_empty(void **state)
+void test_w_tolower_str_empty(void** state)
 {
-    char * string = "";
+    char* string = "";
 
     char* ret = w_tolower_str(string);
     assert_string_equal(ret, "");
 
     os_free(ret);
-
 }
 
-void test_w_tolower_str_caps(void **state)
+void test_w_tolower_str_caps(void** state)
 {
-    char * string = "TEST";
+    char* string = "TEST";
 
     char* ret = w_tolower_str(string);
     assert_string_equal(ret, "test");
 
     os_free(ret);
-
 }
 
-void test_os_snprintf_short(void **state)
+void test_os_snprintf_short(void** state)
 {
     int ret;
     size_t size = 10;
@@ -73,18 +71,18 @@ void test_os_snprintf_short(void **state)
     assert_int_equal(ret, 8);
 }
 
-void test_os_snprintf_long(void **state)
+void test_os_snprintf_long(void** state)
 {
     int ret;
     size_t size = 5;
     char str[size + 1];
 
-    expect_string(__wrap__mwarn, formatted_msg,"String may be truncated because it is too long.");
+    expect_string(__wrap__mwarn, formatted_msg, "String may be truncated because it is too long.");
     ret = os_snprintf(str, size, "%s%3d", "agent", 1);
     assert_int_equal(ret, 8);
 }
 
-void test_os_snprintf_more_parameters(void **state)
+void test_os_snprintf_more_parameters(void** state)
 {
     int ret;
     size_t size = 100;
@@ -96,32 +94,31 @@ void test_os_snprintf_more_parameters(void **state)
 
 /* w_remove_substr */
 
-void test_w_remove_substr_null_sub(void **state)
+void test_w_remove_substr_null_sub(void** state)
 {
     int i;
-    char * ret;
-    char * sub = NULL;
-    char * str = "This is a test";
+    char* ret;
+    char* sub = NULL;
+    char* str = "This is a test";
 
     ret = w_remove_substr(str, sub);
     assert_null(ret);
 }
 
-void test_w_remove_substr_success(void **state)
+void test_w_remove_substr_success(void** state)
 {
     int i;
-    char * ret;
-    char * strings[] = {
-        "remove thisThis is the principal string.",
-        "This is the principal string.remove this",
-        "This isremove this the principal string."
-    };
+    char* ret;
+    char* strings[] = {"remove thisThis is the principal string.",
+                       "This is the principal string.remove this",
+                       "This isremove this the principal string."};
     int size_array = sizeof(strings) / sizeof(strings[0]);
-    char * substr = "remove this";
-    char * string;
-    char * str_cpy;
+    char* substr = "remove this";
+    char* string;
+    char* str_cpy;
 
-    for (i = 0; i < size_array; i++) {
+    for (i = 0; i < size_array; i++)
+    {
         w_strdup(strings[i], string);
         str_cpy = string;
         ret = w_remove_substr(str_cpy, substr);
@@ -132,13 +129,13 @@ void test_w_remove_substr_success(void **state)
 
 // Tests W_JSON_AddField
 
-void test_W_JSON_AddField_nest_object(void **state)
+void test_W_JSON_AddField_nest_object(void** state)
 {
-    cJSON * root = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
     cJSON_AddObjectToObject(root, "test");
-    const char * key = "test.files";
-    const char * value = "[\"file1\",\"file2\",\"file3\"]";
-    char * output = NULL;
+    const char* key = "test.files";
+    const char* value = "[\"file1\",\"file2\",\"file3\"]";
+    char* output = NULL;
 
     W_JSON_AddField(root, key, value);
     output = cJSON_PrintUnformatted(root);
@@ -148,12 +145,12 @@ void test_W_JSON_AddField_nest_object(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_AddField_nest_no_object(void **state)
+void test_W_JSON_AddField_nest_no_object(void** state)
 {
-    cJSON * root = cJSON_CreateObject();
-    const char * key = "test.files";
-    const char * value = "[\"file1\",\"file2\",\"file3\"]";
-    char * output = NULL;
+    cJSON* root = cJSON_CreateObject();
+    const char* key = "test.files";
+    const char* value = "[\"file1\",\"file2\",\"file3\"]";
+    char* output = NULL;
 
     W_JSON_AddField(root, key, value);
     output = cJSON_PrintUnformatted(root);
@@ -163,12 +160,12 @@ void test_W_JSON_AddField_nest_no_object(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_AddField_JSON_valid(void **state)
+void test_W_JSON_AddField_JSON_valid(void** state)
 {
-    cJSON * root = cJSON_CreateObject();
-    const char * key = "files";
-    const char * value = "[\"file1\",\"file2\",\"file3\"]";
-    char * output = NULL;
+    cJSON* root = cJSON_CreateObject();
+    const char* key = "files";
+    const char* value = "[\"file1\",\"file2\",\"file3\"]";
+    char* output = NULL;
 
     W_JSON_AddField(root, key, value);
     output = cJSON_PrintUnformatted(root);
@@ -178,12 +175,12 @@ void test_W_JSON_AddField_JSON_valid(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_AddField_JSON_invalid(void **state)
+void test_W_JSON_AddField_JSON_invalid(void** state)
 {
-    cJSON * root = cJSON_CreateObject();
-    const char * key = "files";
-    const char * value = "[\"file1\",\"file2\"],\"file3\"]";
-    char * output = NULL;
+    cJSON* root = cJSON_CreateObject();
+    const char* key = "files";
+    const char* value = "[\"file1\",\"file2\"],\"file3\"]";
+    char* output = NULL;
 
     W_JSON_AddField(root, key, value);
     output = cJSON_PrintUnformatted(root);
@@ -193,12 +190,12 @@ void test_W_JSON_AddField_JSON_invalid(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_AddField_string_time(void **state)
+void test_W_JSON_AddField_string_time(void** state)
 {
-    cJSON * root = cJSON_CreateObject();
-    const char * key = "time";
-    const char * value = "[28/Oct/2020:10:22:11 +0000]";
-    char * output = NULL;
+    cJSON* root = cJSON_CreateObject();
+    const char* key = "time";
+    const char* value = "[28/Oct/2020:10:22:11 +0000]";
+    char* output = NULL;
 
     W_JSON_AddField(root, key, value);
     output = cJSON_PrintUnformatted(root);
@@ -208,10 +205,10 @@ void test_W_JSON_AddField_string_time(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_AddField_keeps_existing_value(void **state)
+void test_W_JSON_AddField_keeps_existing_value(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"env\":\"from_line\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"env\":\"from_line\"}");
+    char* output = NULL;
 
     W_JSON_AddField(root, "env", "configured");
     output = cJSON_PrintUnformatted(root);
@@ -223,10 +220,10 @@ void test_W_JSON_AddField_keeps_existing_value(void **state)
 
 // Tests W_JSON_RemoveField
 
-void test_W_JSON_RemoveField_no_match(void **state)
+void test_W_JSON_RemoveField_no_match(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"msg\":\"hello\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"msg\":\"hello\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "env");
     output = cJSON_PrintUnformatted(root);
@@ -236,10 +233,10 @@ void test_W_JSON_RemoveField_no_match(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_removes_member(void **state)
+void test_W_JSON_RemoveField_removes_member(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"env\":\"from_line\",\"msg\":\"hello\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"env\":\"from_line\",\"msg\":\"hello\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "env");
     output = cJSON_PrintUnformatted(root);
@@ -249,10 +246,10 @@ void test_W_JSON_RemoveField_removes_member(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_removes_every_case_insensitive_match(void **state)
+void test_W_JSON_RemoveField_removes_every_case_insensitive_match(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"ENV\":\"a\",\"msg\":\"hello\",\"env\":\"b\",\"Env\":{\"x\":1}}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"ENV\":\"a\",\"msg\":\"hello\",\"env\":\"b\",\"Env\":{\"x\":1}}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "env");
     output = cJSON_PrintUnformatted(root);
@@ -262,10 +259,10 @@ void test_W_JSON_RemoveField_removes_every_case_insensitive_match(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_does_not_match_prefix(void **state)
+void test_W_JSON_RemoveField_does_not_match_prefix(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"environment\":\"a\",\"en\":\"b\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"environment\":\"a\",\"en\":\"b\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "env");
     output = cJSON_PrintUnformatted(root);
@@ -275,10 +272,10 @@ void test_W_JSON_RemoveField_does_not_match_prefix(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_nest_removes_leaf_only(void **state)
+void test_W_JSON_RemoveField_nest_removes_leaf_only(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"tags\":{\"env\":\"from_line\",\"team\":\"a\"},\"msg\":\"hello\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"tags\":{\"env\":\"from_line\",\"team\":\"a\"},\"msg\":\"hello\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "tags.env");
     output = cJSON_PrintUnformatted(root);
@@ -288,10 +285,10 @@ void test_W_JSON_RemoveField_nest_removes_leaf_only(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_nest_removes_non_object(void **state)
+void test_W_JSON_RemoveField_nest_removes_non_object(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"tags\":\"x\",\"msg\":\"hello\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"tags\":\"x\",\"msg\":\"hello\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "tags.env");
     output = cJSON_PrintUnformatted(root);
@@ -301,10 +298,11 @@ void test_W_JSON_RemoveField_nest_removes_non_object(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_nest_keeps_every_object(void **state)
+void test_W_JSON_RemoveField_nest_keeps_every_object(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"TAGS\":{\"team\":\"a\",\"env\":\"1\"},\"tags\":\"x\",\"Tags\":{\"owner\":\"b\",\"ENV\":\"2\"}}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse(
+        "{\"TAGS\":{\"team\":\"a\",\"env\":\"1\"},\"tags\":\"x\",\"Tags\":{\"owner\":\"b\",\"ENV\":\"2\"}}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "tags.env");
     output = cJSON_PrintUnformatted(root);
@@ -314,10 +312,10 @@ void test_W_JSON_RemoveField_nest_keeps_every_object(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_multi_level_nest(void **state)
+void test_W_JSON_RemoveField_multi_level_nest(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"a\":{\"b\":\"from_line\",\"c\":1}}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"a\":{\"b\":\"from_line\",\"c\":1}}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "a.b.c");
     output = cJSON_PrintUnformatted(root);
@@ -327,10 +325,10 @@ void test_W_JSON_RemoveField_multi_level_nest(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_dotted_member_name(void **state)
+void test_W_JSON_RemoveField_dotted_member_name(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"tags.env\":\"x\",\"TAGS.ENV\":\"y\",\"msg\":\"m\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"tags.env\":\"x\",\"TAGS.ENV\":\"y\",\"msg\":\"m\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "tags.env");
     output = cJSON_PrintUnformatted(root);
@@ -340,10 +338,10 @@ void test_W_JSON_RemoveField_dotted_member_name(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_dotted_member_prefix_object(void **state)
+void test_W_JSON_RemoveField_dotted_member_prefix_object(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"a.b\":{\"c\":1,\"d\":2}}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"a.b\":{\"c\":1,\"d\":2}}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "a.b.c");
     output = cJSON_PrintUnformatted(root);
@@ -353,10 +351,10 @@ void test_W_JSON_RemoveField_dotted_member_prefix_object(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_dotted_member_prefix_non_object(void **state)
+void test_W_JSON_RemoveField_dotted_member_prefix_non_object(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"a.b\":\"x\",\"msg\":\"m\"}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"a.b\":\"x\",\"msg\":\"m\"}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "a.b.c");
     output = cJSON_PrintUnformatted(root);
@@ -366,10 +364,10 @@ void test_W_JSON_RemoveField_dotted_member_prefix_non_object(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_dotted_member_not_on_boundary(void **state)
+void test_W_JSON_RemoveField_dotted_member_not_on_boundary(void** state)
 {
-    cJSON * root = cJSON_Parse("{\"tag\":1,\"tags.environment\":2,\"tags.envx\":3}");
-    char * output = NULL;
+    cJSON* root = cJSON_Parse("{\"tag\":1,\"tags.environment\":2,\"tags.envx\":3}");
+    char* output = NULL;
 
     W_JSON_RemoveField(root, "tags.env");
     output = cJSON_PrintUnformatted(root);
@@ -379,13 +377,14 @@ void test_W_JSON_RemoveField_dotted_member_not_on_boundary(void **state)
     cJSON_Delete(root);
 }
 
-void test_W_JSON_RemoveField_many_duplicates(void **state)
+void test_W_JSON_RemoveField_many_duplicates(void** state)
 {
-    cJSON * root = cJSON_CreateObject();
-    cJSON * item = NULL;
+    cJSON* root = cJSON_CreateObject();
+    cJSON* item = NULL;
     char name[16];
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 1000; i++)
+    {
         snprintf(name, sizeof(name), "f%d", i);
         cJSON_AddStringToObject(root, name, "value");
         cJSON_AddStringToObject(root, i % 2 ? "env" : "ENV", "from_line");
@@ -393,7 +392,8 @@ void test_W_JSON_RemoveField_many_duplicates(void **state)
 
     W_JSON_RemoveField(root, "env");
 
-    cJSON_ArrayForEach(item, root) {
+    cJSON_ArrayForEach(item, root)
+    {
         assert_int_not_equal(strcasecmp(item->string, "env"), 0);
     }
 
@@ -403,28 +403,29 @@ void test_W_JSON_RemoveField_many_duplicates(void **state)
 }
 
 /* w_strndup */
-void test_w_strndup_null_str(void ** state)
+void test_w_strndup_null_str(void** state)
 {
-    const char * str = NULL;
+    const char* str = NULL;
     assert_null(w_strndup(NULL, 5));
 }
 
-void test_w_strndup_str_less_than_n(void ** state)
+void test_w_strndup_str_less_than_n(void** state)
 {
-    const char * str = "Test";
-    const char * expected_str = "Test";
-    char * retval;
+    const char* str = "Test";
+    const char* expected_str = "Test";
+    char* retval;
 
-    retval = w_strndup(str, strlen(str)+10);
+    retval = w_strndup(str, strlen(str) + 10);
     assert_string_equal(retval, expected_str);
     assert_int_equal(strlen(retval), strlen(expected_str));
     os_free(retval);
 }
 
-void test_w_strndup_str_greater_than_n(void ** state) {
-    const char * str = "Test Test Test Test";
-    const char * expected_str = "Test Test ";
-    char * retval;
+void test_w_strndup_str_greater_than_n(void** state)
+{
+    const char* str = "Test Test Test Test";
+    const char* expected_str = "Test Test ";
+    char* retval;
 
     retval = w_strndup(str, 10);
     assert_string_equal(retval, expected_str);
@@ -432,10 +433,11 @@ void test_w_strndup_str_greater_than_n(void ** state) {
     os_free(retval);
 }
 
-void test_w_strndup_str_equal_to_n(void ** state) {
-    const char * str = "Test Test Test Test";
-    const char * expected_str = "Test Test Test Test";
-    char * retval;
+void test_w_strndup_str_equal_to_n(void** state)
+{
+    const char* str = "Test Test Test Test";
+    const char* expected_str = "Test Test Test Test";
+    char* retval;
 
     retval = w_strndup(str, strlen(expected_str));
     assert_string_equal(retval, expected_str);
@@ -443,11 +445,11 @@ void test_w_strndup_str_equal_to_n(void ** state) {
     os_free(retval);
 }
 
-
-void test_w_strndup_str_zero_n(void ** state) {
-    const char * str = "Test Test Test Test";
-    const char * expected_str = "Test Test Test Test";
-    char * retval;
+void test_w_strndup_str_zero_n(void** state)
+{
+    const char* str = "Test Test Test Test";
+    const char* expected_str = "Test Test Test Test";
+    char* retval;
 
     retval = w_strndup(str, 0);
     assert_string_equal(retval, "");
@@ -455,18 +457,20 @@ void test_w_strndup_str_zero_n(void ** state) {
     os_free(retval);
 }
 
-void test_w_strcat_null_input(void ** state) {
-    const char * B = "Hello World";
-    char * a = w_strcat(NULL, B, strlen(B));
+void test_w_strcat_null_input(void** state)
+{
+    const char* B = "Hello World";
+    char* a = w_strcat(NULL, B, strlen(B));
 
     assert_string_equal(a, B);
 
     free(a);
 }
 
-void test_w_strcat_string_input(void ** state) {
-    char * a = strdup("Hello");
-    const char * B = "World";
+void test_w_strcat_string_input(void** state)
+{
+    char* a = strdup("Hello");
+    const char* B = "World";
     a = w_strcat(a, B, strlen(B));
 
     assert_string_equal(a, "HelloWorld");
@@ -474,8 +478,9 @@ void test_w_strcat_string_input(void ** state) {
     free(a);
 }
 
-void test_w_strarray_append(void ** state) {
-    char ** array = NULL;
+void test_w_strarray_append(void** state)
+{
+    char** array = NULL;
     char *a, *b;
     int n = 0;
 
@@ -492,21 +497,24 @@ void test_w_strarray_append(void ** state) {
     free_strarray(array);
 }
 
-void test_w_strtok_empty(void ** state) {
-    char ** array = w_strtok("");
+void test_w_strtok_empty(void** state)
+{
+    char** array = w_strtok("");
     assert_null(array[0]);
     free_strarray(array);
 }
 
-void test_w_strtok_nospaces(void ** state) {
-    char ** array = w_strtok("Hello");
+void test_w_strtok_nospaces(void** state)
+{
+    char** array = w_strtok("Hello");
     assert_string_equal(array[0], "Hello");
     assert_null(array[1]);
     free_strarray(array);
 }
 
-void test_w_strtok_string(void ** state) {
-    char ** array = w_strtok("BB\"B BBB BBE\" \"\" F \"\\\"G\\\"\" \"BB\"B BB\\\\E\\ GGF D B");
+void test_w_strtok_string(void** state)
+{
+    char** array = w_strtok("BB\"B BBB BBE\" \"\" F \"\\\"G\\\"\" \"BB\"B BB\\\\E\\ GGF D B");
     assert_string_equal(array[0], "BBB BBB BBE");
     assert_string_equal(array[1], "");
     assert_string_equal(array[2], "F");
@@ -519,58 +527,63 @@ void test_w_strtok_string(void ** state) {
     free_strarray(array);
 }
 
-void test_w_string_split_str_null(void ** state) {
-    const char *str = NULL;
-    char **paths = NULL;
-    const char *delim = ",";
+void test_w_string_split_str_null(void** state)
+{
+    const char* str = NULL;
+    char** paths = NULL;
+    const char* delim = ",";
 
     paths = w_string_split(str, delim, 0);
     *state = paths;
     assert_null(paths[0]);
 }
 
-void test_w_string_split_delim_null(void ** state) {
-    const char *str = "test1,test2,test3";
-    char **paths = NULL;
-    const char *delim = NULL;
+void test_w_string_split_delim_null(void** state)
+{
+    const char* str = "test1,test2,test3";
+    char** paths = NULL;
+    const char* delim = NULL;
 
     paths = w_string_split(str, delim, 0);
     *state = paths;
     assert_null(paths[0]);
 }
 
-void test_w_string_split_normal(void ** state) {
-    const char *str = "test1,test2,test3";
-    char *expected_str[] = {"test1","test2","test3"};
-    char **paths = NULL;
-    const char *delim = ",";
+void test_w_string_split_normal(void** state)
+{
+    const char* str = "test1,test2,test3";
+    char* expected_str[] = {"test1", "test2", "test3"};
+    char** paths = NULL;
+    const char* delim = ",";
 
     paths = w_string_split(str, delim, 0);
     *state = paths;
 
     assert_non_null(paths[0]);
-    for (int i = 0; paths[i]; i++){
+    for (int i = 0; paths[i]; i++)
+    {
         assert_string_equal(paths[i], expected_str[i]);
     }
 }
 
-void test_w_string_split_max_array_size(void ** state) {
-    const char *str = "test1,test2,test3,outofarray";
-    char *expected_str[] = {"test1","test2","test3"};
-    char **paths = NULL;
-    const char *delim = ",";
+void test_w_string_split_max_array_size(void** state)
+{
+    const char* str = "test1,test2,test3,outofarray";
+    char* expected_str[] = {"test1", "test2", "test3"};
+    char** paths = NULL;
+    const char* delim = ",";
 
     paths = w_string_split(str, delim, 3);
     *state = paths;
 
     assert_non_null(paths[0]);
-    for (int i = 0; paths[i]; i++){
+    for (int i = 0; paths[i]; i++)
+    {
         assert_string_equal(paths[i], expected_str[i]);
     }
 }
 
-
-void test_strnspn_escaped(void ** state)
+void test_strnspn_escaped(void** state)
 {
     assert_int_equal(strcspn_escaped("ABC\\D ", ' '), 5);
     assert_int_equal(strcspn_escaped("ABC\\ D", ' '), 6);
@@ -582,27 +595,35 @@ void test_strnspn_escaped(void ** state)
     assert_int_equal(strcspn_escaped("ABCDE", ' '), 5);
 }
 
-void test_json_escape(void ** state)
+void test_json_escape(void** state)
 {
-    const char * INPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", NULL };
-    const char * EXPECTED_OUTPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", NULL };
+    const char* INPUTS[] = {"\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", NULL};
+    const char* EXPECTED_OUTPUTS[] = {
+        "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", NULL};
     int i;
 
-    for (i = 0; INPUTS[i] != NULL; i++) {
-        char * output = wstr_escape_json(INPUTS[i]);
+    for (i = 0; INPUTS[i] != NULL; i++)
+    {
+        char* output = wstr_escape_json(INPUTS[i]);
         assert_string_equal(output, EXPECTED_OUTPUTS[i]);
         free(output);
     }
 }
 
-void test_json_unescape(void ** state)
+void test_json_unescape(void** state)
 {
-    const char * INPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", "Hello \\World", "Hello World\\", NULL };
-    const char * EXPECTED_OUTPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", "Hello \\World", "Hello World\\", NULL };
+    const char* INPUTS[] = {"\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\",
+                            "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.",
+                            "Hello \\World",
+                            "Hello World\\",
+                            NULL};
+    const char* EXPECTED_OUTPUTS[] = {
+        "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", "Hello \\World", "Hello World\\", NULL};
     int i;
 
-    for (i = 0; INPUTS[i] != NULL; i++) {
-        char * output = wstr_unescape_json(INPUTS[i]);
+    for (i = 0; INPUTS[i] != NULL; i++)
+    {
+        char* output = wstr_unescape_json(INPUTS[i]);
         assert_string_equal(output, EXPECTED_OUTPUTS[i]);
         free(output);
     }
@@ -610,13 +631,13 @@ void test_json_unescape(void ** state)
 
 /* Test for wstr_replace */
 
-void test_wstr_replace_valid(void **state)
+void test_wstr_replace_valid(void** state)
 {
-    const char * search = "$file";
-    const char * replace = "/var";
+    const char* search = "$file";
+    const char* replace = "/var";
     const char EXPECTED_OUTPUT[] = "echo /var";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $file", subject);
     ret = wstr_replace(subject, search, replace);
@@ -626,13 +647,13 @@ void test_wstr_replace_valid(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_double_$(void **state)
+void test_wstr_replace_double_$(void** state)
 {
-    const char * search = "$file";
-    const char * replace = "/var";
+    const char* search = "$file";
+    const char* replace = "/var";
     const char EXPECTED_OUTPUT[] = "echo $/var";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $$file", subject);
     ret = wstr_replace(subject, search, replace);
@@ -642,13 +663,13 @@ void test_wstr_replace_double_$(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_surround_$(void **state)
+void test_wstr_replace_surround_$(void** state)
 {
-    const char * search = "$file";
-    const char * replace = "/var";
+    const char* search = "$file";
+    const char* replace = "/var";
     const char EXPECTED_OUTPUT[] = "echo $/var$";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $$file$", subject);
     ret = wstr_replace(subject, search, replace);
@@ -658,13 +679,13 @@ void test_wstr_replace_surround_$(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_multiples_variable(void **state)
+void test_wstr_replace_multiples_variable(void** state)
 {
-    const char * search = "$file";
-    const char * replace = "/var";
+    const char* search = "$file";
+    const char* replace = "/var";
     const char EXPECTED_OUTPUT[] = "echo /var /var";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $file $file", subject);
     ret = wstr_replace(subject, search, replace);
@@ -673,13 +694,13 @@ void test_wstr_replace_multiples_variable(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_multiples_variables_surround_$(void **state)
+void test_wstr_replace_multiples_variables_surround_$(void** state)
 {
-    const char * search = "$file";
-    const char * replace = "/var";
+    const char* search = "$file";
+    const char* replace = "/var";
     const char EXPECTED_OUTPUT[] = "echo /var$ $/var$";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $file$ $$file$", subject);
     ret = wstr_replace(subject, search, replace);
@@ -688,17 +709,18 @@ void test_wstr_replace_multiples_variables_surround_$(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_different_variables(void **state)
+void test_wstr_replace_different_variables(void** state)
 {
-    const char * INPUTS[] = {"$file","$home",NULL};
-    const char * replace[] = {"/var","/home"};
+    const char* INPUTS[] = {"$file", "$home", NULL};
+    const char* replace[] = {"/var", "/home"};
     const char EXPECTED_OUTPUT[] = "echo /var /home";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $file $home", subject);
 
-    for (int i = 0; INPUTS[i] != NULL; i++) {
+    for (int i = 0; INPUTS[i] != NULL; i++)
+    {
         ret = wstr_replace(subject, INPUTS[i], replace[i]);
         os_free(subject);
         subject = ret;
@@ -707,17 +729,18 @@ void test_wstr_replace_different_variables(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_different_variables_surround_$(void **state)
+void test_wstr_replace_different_variables_surround_$(void** state)
 {
-    const char * INPUTS[] = {"$file","$home",NULL};
-    const char * replace[] = {"/var","/home"};
+    const char* INPUTS[] = {"$file", "$home", NULL};
+    const char* replace[] = {"/var", "/home"};
     const char EXPECTED_OUTPUT[] = "echo $/var$ /home$";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $$file$ $home$", subject);
 
-    for (int i = 0; INPUTS[i] != NULL; i++) {
+    for (int i = 0; INPUTS[i] != NULL; i++)
+    {
         ret = wstr_replace(subject, INPUTS[i], replace[i]);
         os_free(subject);
         subject = ret;
@@ -726,17 +749,18 @@ void test_wstr_replace_different_variables_surround_$(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_different_variables_$(void **state)
+void test_wstr_replace_different_variables_$(void** state)
 {
-    const char * INPUTS[] = {"$file","$home","$$",NULL};
-    const char * replace[] = {"/var","/home","/etc"};
+    const char* INPUTS[] = {"$file", "$home", "$$", NULL};
+    const char* replace[] = {"/var", "/home", "/etc"};
     const char EXPECTED_OUTPUT[] = "echo $/var /home/etc /etc";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $$file $home$$ $$", subject);
 
-    for (int i = 0; INPUTS[i] != NULL; i++) {
+    for (int i = 0; INPUTS[i] != NULL; i++)
+    {
         ret = wstr_replace(subject, INPUTS[i], replace[i]);
         os_free(subject);
         subject = ret;
@@ -745,17 +769,18 @@ void test_wstr_replace_different_variables_$(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_different_variables_empty(void **state)
+void test_wstr_replace_different_variables_empty(void** state)
 {
-    const char * INPUTS[] = {"$file","$home","$empty",NULL};
-    const char * replace[] = {"/var","/home",""};
+    const char* INPUTS[] = {"$file", "$home", "$empty", NULL};
+    const char* replace[] = {"/var", "/home", ""};
     const char EXPECTED_OUTPUT[] = "echo /var /home ";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $file $home $empty", subject);
 
-    for (int i = 0; INPUTS[i] != NULL; i++) {
+    for (int i = 0; INPUTS[i] != NULL; i++)
+    {
         ret = wstr_replace(subject, INPUTS[i], replace[i]);
         os_free(subject);
         subject = ret;
@@ -764,17 +789,18 @@ void test_wstr_replace_different_variables_empty(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_contained_variables(void **state)
+void test_wstr_replace_contained_variables(void** state)
 {
-    const char * INPUTS[] = {"$file_new","$file",NULL};
-    const char * replace[] = {"/var","/home",""};
+    const char* INPUTS[] = {"$file_new", "$file", NULL};
+    const char* replace[] = {"/var", "/home", ""};
     const char EXPECTED_OUTPUT[] = "echo /var";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $file_new", subject);
 
-    for (int i = 0; INPUTS[i] != NULL; i++) {
+    for (int i = 0; INPUTS[i] != NULL; i++)
+    {
         ret = wstr_replace(subject, INPUTS[i], replace[i]);
         os_free(subject);
         subject = ret;
@@ -783,13 +809,13 @@ void test_wstr_replace_contained_variables(void **state)
     os_free(subject);
 }
 
-void test_wstr_replace_not_found(void **state)
+void test_wstr_replace_not_found(void** state)
 {
-    const char * search = "$file";
-    const char * replace = "/var";
+    const char* search = "$file";
+    const char* replace = "/var";
     const char EXPECTED_OUTPUT[] = "echo $fake";
-    char * subject = NULL;
-    char * ret = NULL;
+    char* subject = NULL;
+    char* ret = NULL;
 
     os_strdup("echo $fake", subject);
     ret = wstr_replace(subject, search, replace);
@@ -798,30 +824,33 @@ void test_wstr_replace_not_found(void **state)
     os_free(subject);
 }
 
-void test_w_strcat_list_null_list(void ** state) {
+void test_w_strcat_list_null_list(void** state)
+{
 
-    char ** list = NULL;
-    char * retstr;
-
-    retstr = w_strcat_list(list, ' ');
-
-    assert_null(retstr);
-}
-
-void test_w_strcat_list_empty_list(void ** state) {
-
-    char ** list = {NULL};
-    char * retstr;
+    char** list = NULL;
+    char* retstr;
 
     retstr = w_strcat_list(list, ' ');
 
     assert_null(retstr);
 }
 
-void test_w_strcat_list_one_element_list(void ** state) {
+void test_w_strcat_list_empty_list(void** state)
+{
 
-    char * list[] = {"TestString", NULL};
-    char * retstr;
+    char** list = {NULL};
+    char* retstr;
+
+    retstr = w_strcat_list(list, ' ');
+
+    assert_null(retstr);
+}
+
+void test_w_strcat_list_one_element_list(void** state)
+{
+
+    char* list[] = {"TestString", NULL};
+    char* retstr;
 
     retstr = w_strcat_list(list, ' ');
 
@@ -831,10 +860,11 @@ void test_w_strcat_list_one_element_list(void ** state) {
     os_free(retstr);
 }
 
-void test_w_strcat_list_large_list(void ** state) {
+void test_w_strcat_list_large_list(void** state)
+{
 
-    char * list[] = {"A", "large", "test", "string", "to", "be", "concatenated", "in", "this", "function", NULL};
-    char * retstr;
+    char* list[] = {"A", "large", "test", "string", "to", "be", "concatenated", "in", "this", "function", NULL};
+    char* retstr;
 
     retstr = w_strcat_list(list, ' ');
 
@@ -846,59 +876,51 @@ void test_w_strcat_list_large_list(void ** state) {
 
 // Test os_shell_escape
 
-void test_os_shell_escape_already_escaped(void ** state) {
+void test_os_shell_escape_already_escaped(void** state)
+{
 
-    const char *src = "\\'";  // to scape: \'
+    const char* src = "\\'"; // to scape: \'
 
-    char * ret = os_shell_escape(src);
+    char* ret = os_shell_escape(src);
 
     assert_non_null(ret);
-    assert_string_equal(ret, "\\'");  // espected: \'
+    assert_string_equal(ret, "\\'"); // espected: \'
 
     os_free(ret);
 }
 
-void test_os_shell_escape_not_escaped(void ** state) {
+void test_os_shell_escape_not_escaped(void** state)
+{
 
-    const char *src = "\'";  // to escape: '
+    const char* src = "\'"; // to escape: '
 
-    char * ret = os_shell_escape(src);
+    char* ret = os_shell_escape(src);
 
     assert_non_null(ret);
-    assert_string_equal(ret, "\\\'");  // espected: \'
+    assert_string_equal(ret, "\\\'"); // espected: \'
 
     os_free(ret);
 }
 
-void test_os_shell_escape_border(void ** state) {
+void test_os_shell_escape_border(void** state)
+{
 
-    const char *src = "$ border case `";  // to scape: $ border case `
+    const char* src = "$ border case `"; // to scape: $ border case `
 
-    char * ret = os_shell_escape(src);
+    char* ret = os_shell_escape(src);
 
     assert_non_null(ret);
-    assert_string_equal(ret, "\\$ border case \\`");  // espected: \$ border case \`
+    assert_string_equal(ret, "\\$ border case \\`"); // espected: \$ border case \`
 
     os_free(ret);
 }
 
-void test_os_shell_escape_all(void ** state) {
+void test_os_shell_escape_all(void** state)
+{
 
-    const char *src = "\" \' \t ; ` > < | # * [ ] { } & $ ! : ( )";
+    const char* src = "\" \' \t ; ` > < | # * [ ] { } & $ ! : ( )";
 
-    char * ret = os_shell_escape(src);
-
-    assert_non_null(ret);
-    assert_string_equal(ret, "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)");
-
-    os_free(ret);
-}
-
-void test_os_shell_avoid_escape_all(void ** state) {
-
-    const char *src = "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)";
-
-    char * ret = os_shell_escape(src);
+    char* ret = os_shell_escape(src);
 
     assert_non_null(ret);
     assert_string_equal(ret, "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)");
@@ -906,11 +928,25 @@ void test_os_shell_avoid_escape_all(void ** state) {
     os_free(ret);
 }
 
-void test_os_shell_escape_backslash(void ** state) {
+void test_os_shell_avoid_escape_all(void** state)
+{
 
-    const char *src = "\a \t \\a \\t";
+    const char* src = "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)";
 
-    char * ret = os_shell_escape(src);
+    char* ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)");
+
+    os_free(ret);
+}
+
+void test_os_shell_escape_backslash(void** state)
+{
+
+    const char* src = "\a \t \\a \\t";
+
+    char* ret = os_shell_escape(src);
 
     assert_non_null(ret);
     assert_string_equal(ret, "\a \\\t \\\\a \\\\t");
@@ -918,15 +954,16 @@ void test_os_shell_escape_backslash(void ** state) {
     os_free(ret);
 }
 
-void test_os_shell_double_escape(void ** state) {
+void test_os_shell_double_escape(void** state)
+{
 
-    const char *src = "\" \' \t ; ` > < | # * [ ] { } & $ ! : ( )";
+    const char* src = "\" \' \t ; ` > < | # * [ ] { } & $ ! : ( )";
 
-    char * ret1 = os_shell_escape(src);
+    char* ret1 = os_shell_escape(src);
 
     assert_non_null(ret1);
 
-    char * ret2 = os_shell_escape(ret1);
+    char* ret2 = os_shell_escape(ret1);
 
     assert_non_null(ret2);
     assert_string_equal(ret1, ret2);
@@ -935,27 +972,32 @@ void test_os_shell_double_escape(void ** state) {
     os_free(ret2);
 }
 
-void test_strarray_size_null(void ** state) {
+void test_strarray_size_null(void** state)
+{
     assert_int_equal(strarray_size(0), 0);
 }
 
-void test_strarray_size_zero(void ** state) {
-    char *str_array[] = {0};
+void test_strarray_size_zero(void** state)
+{
+    char* str_array[] = {0};
     assert_int_equal(strarray_size(str_array), 0);
 }
 
-void test_strarray_size(void ** state) {
-    char *str_array[] = {"one", "two", "three", "four", "five", 0};
+void test_strarray_size(void** state)
+{
+    char* str_array[] = {"one", "two", "three", "four", "five", 0};
     assert_int_equal(strarray_size(str_array), 5);
 }
 
-void test_wstr_escape_dststr_null(void ** state) {
+void test_wstr_escape_dststr_null(void** state)
+{
 
     ssize_t ret = wstr_escape(NULL, 0, "test string without colons", '\\', ':');
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wstr_escape_str_null(void ** state) {
+void test_wstr_escape_str_null(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -963,7 +1005,8 @@ void test_wstr_escape_str_null(void ** state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wstr_escape_not_escape(void ** state) {
+void test_wstr_escape_not_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -972,7 +1015,8 @@ void test_wstr_escape_not_escape(void ** state) {
     assert_int_equal(ret, 26);
 }
 
-void test_wstr_escape_colons_escape(void ** state) {
+void test_wstr_escape_colons_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -981,7 +1025,8 @@ void test_wstr_escape_colons_escape(void ** state) {
     assert_int_equal(ret, 30);
 }
 
-void test_wstr_escape_corner_colons_escape(void ** state) {
+void test_wstr_escape_corner_colons_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -990,7 +1035,8 @@ void test_wstr_escape_corner_colons_escape(void ** state) {
     assert_int_equal(ret, 44);
 }
 
-void test_wstr_escape_backslash_and_colons_escape(void ** state) {
+void test_wstr_escape_backslash_and_colons_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -999,7 +1045,8 @@ void test_wstr_escape_backslash_and_colons_escape(void ** state) {
     assert_int_equal(ret, 18);
 }
 
-void test_wstr_escape_at_sign_and_asterisk(void ** state) {
+void test_wstr_escape_at_sign_and_asterisk(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1008,7 +1055,8 @@ void test_wstr_escape_at_sign_and_asterisk(void ** state) {
     assert_int_equal(ret, 23);
 }
 
-void test_wstr_escape_buff_overflow(void ** state) {
+void test_wstr_escape_buff_overflow(void** state)
+{
 
     char dststr[10];
 
@@ -1017,7 +1065,8 @@ void test_wstr_escape_buff_overflow(void ** state) {
     assert_int_equal(ret, 9);
 }
 
-void test_wstr_escape_buff_overflow_escape_same_size(void ** state) {
+void test_wstr_escape_buff_overflow_escape_same_size(void** state)
+{
 
     char dststr[9];
 
@@ -1026,8 +1075,8 @@ void test_wstr_escape_buff_overflow_escape_same_size(void ** state) {
     assert_int_equal(ret, 8);
 }
 
-
-void test_wstr_escape_buff_overflow_escape_same_size_colons(void ** state) {
+void test_wstr_escape_buff_overflow_escape_same_size_colons(void** state)
+{
 
     char dststr[9];
 
@@ -1036,7 +1085,8 @@ void test_wstr_escape_buff_overflow_escape_same_size_colons(void ** state) {
     assert_int_equal(ret, 8);
 }
 
-void test_wstr_escape_buff_overflow_escape_same_size_before_last_colons(void ** state) {
+void test_wstr_escape_buff_overflow_escape_same_size_before_last_colons(void** state)
+{
 
     char dststr[9];
 
@@ -1045,7 +1095,8 @@ void test_wstr_escape_buff_overflow_escape_same_size_before_last_colons(void ** 
     assert_int_equal(ret, 7);
 }
 
-void test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons(void ** state) {
+void test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons(void** state)
+{
 
     char dststr[9];
 
@@ -1054,7 +1105,8 @@ void test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons(voi
     assert_int_equal(ret, 7);
 }
 
-void test_wstr_escape_buff_overflow_escape_same_size_multi_colons(void ** state) {
+void test_wstr_escape_buff_overflow_escape_same_size_multi_colons(void** state)
+{
 
     char dststr[9];
 
@@ -1063,7 +1115,8 @@ void test_wstr_escape_buff_overflow_escape_same_size_multi_colons(void ** state)
     assert_int_equal(ret, 8);
 }
 
-void test_wstr_escape_buff_overflow_escape(void ** state) {
+void test_wstr_escape_buff_overflow_escape(void** state)
+{
 
     char dststr[10];
 
@@ -1072,7 +1125,8 @@ void test_wstr_escape_buff_overflow_escape(void ** state) {
     assert_int_equal(ret, 9);
 }
 
-void test_wstr_escape_one_scape(void ** state) {
+void test_wstr_escape_one_scape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1081,13 +1135,15 @@ void test_wstr_escape_one_scape(void ** state) {
     assert_int_equal(ret, 2);
 }
 
-void test_wstr_unescape_dststr_null(void ** state) {
+void test_wstr_unescape_dststr_null(void** state)
+{
 
     ssize_t ret = wstr_unescape(NULL, 0, "test string without colons", '\\');
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wstr_unescape_str_null(void ** state) {
+void test_wstr_unescape_str_null(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1095,7 +1151,8 @@ void test_wstr_unescape_str_null(void ** state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wstr_unescape_not_escape(void ** state) {
+void test_wstr_unescape_not_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1104,7 +1161,8 @@ void test_wstr_unescape_not_escape(void ** state) {
     assert_int_equal(ret, 26);
 }
 
-void test_wstr_unescape_colons_escape(void ** state) {
+void test_wstr_unescape_colons_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1113,7 +1171,8 @@ void test_wstr_unescape_colons_escape(void ** state) {
     assert_int_equal(ret, 29);
 }
 
-void test_wstr_unescape_corner_colons_escape(void ** state) {
+void test_wstr_unescape_corner_colons_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1122,7 +1181,8 @@ void test_wstr_unescape_corner_colons_escape(void ** state) {
     assert_int_equal(ret, 37);
 }
 
-void test_wstr_unescape_backslash_and_colons_escape(void ** state) {
+void test_wstr_unescape_backslash_and_colons_escape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1131,7 +1191,8 @@ void test_wstr_unescape_backslash_and_colons_escape(void ** state) {
     assert_int_equal(ret, 11);
 }
 
-void test_wstr_unescape_at_sign_and_asterisk(void ** state) {
+void test_wstr_unescape_at_sign_and_asterisk(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1140,7 +1201,8 @@ void test_wstr_unescape_at_sign_and_asterisk(void ** state) {
     assert_int_equal(ret, 15);
 }
 
-void test_wstr_unescape_buff_overflow(void ** state) {
+void test_wstr_unescape_buff_overflow(void** state)
+{
 
     char dststr[10];
 
@@ -1149,7 +1211,8 @@ void test_wstr_unescape_buff_overflow(void ** state) {
     assert_int_equal(ret, 9);
 }
 
-void test_wstr_unescape_buff_overflow_same_size(void ** state) {
+void test_wstr_unescape_buff_overflow_same_size(void** state)
+{
 
     char dststr[9];
 
@@ -1158,7 +1221,8 @@ void test_wstr_unescape_buff_overflow_same_size(void ** state) {
     assert_int_equal(ret, 8);
 }
 
-void test_wstr_unescape_buff_overflow_same_size_last_escape(void ** state) {
+void test_wstr_unescape_buff_overflow_same_size_last_escape(void** state)
+{
 
     char dststr[9];
 
@@ -1167,7 +1231,8 @@ void test_wstr_unescape_buff_overflow_same_size_last_escape(void ** state) {
     assert_int_equal(ret, 8);
 }
 
-void test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk(void ** state) {
+void test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk(void** state)
+{
 
     char dststr[9];
 
@@ -1176,7 +1241,8 @@ void test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk(void ** sta
     assert_int_equal(ret, 8);
 }
 
-void test_wstr_unescape_buff_overflow_escape(void ** state) {
+void test_wstr_unescape_buff_overflow_escape(void** state)
+{
 
     char dststr[10];
 
@@ -1185,7 +1251,8 @@ void test_wstr_unescape_buff_overflow_escape(void ** state) {
     assert_int_equal(ret, 9);
 }
 
-void test_wstr_unescape_one_scape(void ** state) {
+void test_wstr_unescape_one_scape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1194,7 +1261,8 @@ void test_wstr_unescape_one_scape(void ** state) {
     assert_int_equal(ret, 1);
 }
 
-void test_wstr_unescape_end_scape(void ** state) {
+void test_wstr_unescape_end_scape(void** state)
+{
 
     char dststr[OS_BUFFER_SIZE];
 
@@ -1203,106 +1271,120 @@ void test_wstr_unescape_end_scape(void ** state) {
     assert_int_equal(ret, 9);
 }
 
-void test_wstr_chr_str_eof(void ** state) {
+void test_wstr_chr_str_eof(void** state)
+{
 
-    char * ret = wstr_chr_escape("\0", ':', '\\');
+    char* ret = wstr_chr_escape("\0", ':', '\\');
     assert_null(ret);
 }
 
-void test_wstr_chr_str_without_character(void ** state) {
+void test_wstr_chr_str_without_character(void** state)
+{
 
     char str[OS_BUFFER_SIZE] = "test string without colons";
-    char * ret = wstr_chr_escape(str, ':', '\\');
+    char* ret = wstr_chr_escape(str, ':', '\\');
     assert_null(ret);
 }
 
-void test_wstr_chr_str_without_escaped_colons(void ** state) {
+void test_wstr_chr_str_without_escaped_colons(void** state)
+{
 
     char str[OS_BUFFER_SIZE] = "test string with : escaped colons";
-    char * ret = wstr_chr_escape(str, ':', '\\');
+    char* ret = wstr_chr_escape(str, ':', '\\');
     assert_non_null(ret);
-    assert_ptr_equal(ret, str+17);
+    assert_ptr_equal(ret, str + 17);
     assert_int_equal(*ret, str[17]);
 }
 
-void test_wstr_chr_str_with_escaped_colons(void ** state) {
+void test_wstr_chr_str_with_escaped_colons(void** state)
+{
 
     char str[OS_BUFFER_SIZE] = "test string with \\: escaped : colons";
-    char * ret = wstr_chr_escape(str, ':', '\\');
+    char* ret = wstr_chr_escape(str, ':', '\\');
     assert_non_null(ret);
-    assert_ptr_equal(ret, str+28);
+    assert_ptr_equal(ret, str + 28);
     assert_int_equal(*ret, str[28]);
 }
 
-void test_print_hex_string_ok(void ** state) {
-    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+void test_print_hex_string_ok(void** state)
+{
+    char* str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
     char hex[OS_SIZE_2048 + 1] = {0};
     int ret = print_hex_string(str, 40, hex, sizeof(hex));
     assert_int_equal(ret, OS_SUCCESS);
     assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d41444a466a333230396461732e3b6131325b27322e7a");
 }
 
-void test_print_hex_string_partial_ok(void ** state) {
-    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+void test_print_hex_string_partial_ok(void** state)
+{
+    char* str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
     char hex[OS_SIZE_2048 + 1] = {0};
     int ret = print_hex_string(str, 20, hex, sizeof(hex));
     assert_int_equal(ret, OS_SUCCESS);
     assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d4144");
 }
 
-void test_print_hex_string_equal_dest_ok(void ** state) {
-    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+void test_print_hex_string_equal_dest_ok(void** state)
+{
+    char* str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
     char hex[80 + 1] = {0};
     int ret = print_hex_string(str, 40, hex, sizeof(hex));
     assert_int_equal(ret, OS_SUCCESS);
     assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d41444a466a333230396461732e3b6131325b27322e7a");
 }
 
-void test_print_hex_string_miss_last_dest_ok(void ** state) {
-    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+void test_print_hex_string_miss_last_dest_ok(void** state)
+{
+    char* str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
     char hex[80] = {0};
     int ret = print_hex_string(str, 40, hex, sizeof(hex));
     assert_int_equal(ret, OS_SUCCESS);
     assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d41444a466a333230396461732e3b6131325b27322e");
 }
 
-void test_print_hex_string_null_src_err(void ** state) {
-    char *str = NULL;
+void test_print_hex_string_null_src_err(void** state)
+{
+    char* str = NULL;
     char hex[OS_SIZE_2048 + 1] = {0};
     int ret = print_hex_string(str, 40, hex, sizeof(hex));
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_print_hex_string_null_dst_err(void ** state) {
-    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
-    char *hex = NULL;
+void test_print_hex_string_null_dst_err(void** state)
+{
+    char* str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+    char* hex = NULL;
     int ret = print_hex_string(str, 40, hex, sizeof(hex));
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_print_hex_string_zero_src_size(void ** state) {
-    char *str = "test";
+void test_print_hex_string_zero_src_size(void** state)
+{
+    char* str = "test";
     char hex[OS_SIZE_2048 + 1] = {0};
     int ret = print_hex_string(str, 0, hex, sizeof(hex));
     assert_int_equal(ret, OS_SUCCESS);
     assert_string_equal(hex, "");
 }
 
-void test_print_hex_string_zero_dst_size(void ** state) {
-    char *str = "test";
+void test_print_hex_string_zero_dst_size(void** state)
+{
+    char* str = "test";
     char hex[1] = {0};
     int ret = print_hex_string(str, 4, hex, 0);
     assert_int_equal(ret, OS_INVALID);
     assert_string_equal(hex, "");
 }
 
-void test_os_substr_failure(void **state) {
-    char *srcs[] = {"TEST STRING", NULL, "SHORT"};
+void test_os_substr_failure(void** state)
+{
+    char* srcs[] = {"TEST STRING", NULL, "SHORT"};
     int expected_results[] = {-3, -2, -1};
     int length[] = {-5, 3, 10};
     char dest[20];
 
-    for (int i = 0; i < sizeof(srcs)/sizeof(srcs[0]); i++) {
+    for (int i = 0; i < sizeof(srcs) / sizeof(srcs[0]); i++)
+    {
         dest[0] = '\0';
         int result = os_substr(dest, srcs[i], 6, length[i]);
         assert_int_equal(result, expected_results[i]);
@@ -1310,12 +1392,14 @@ void test_os_substr_failure(void **state) {
     }
 }
 
-void test_os_substr_success(void **state) {
-    char *srcs[] = {"TEST STRING", "ANOTHER TEST STRING", NULL};
-    char *expected_dests[] = {"STRING", "ER TES"};
+void test_os_substr_success(void** state)
+{
+    char* srcs[] = {"TEST STRING", "ANOTHER TEST STRING", NULL};
+    char* expected_dests[] = {"STRING", "ER TES"};
     char dest[20];
 
-    for (int i = 0; srcs[i] != NULL; i++) {
+    for (int i = 0; srcs[i] != NULL; i++)
+    {
         dest[0] = '\0';
         int result = os_substr(dest, srcs[i], 5, 6);
         assert_int_equal(result, 0);
@@ -1325,92 +1409,68 @@ void test_os_substr_success(void **state) {
 
 // Tests os_strcnt
 
-void test_os_strcnt(void **state) {
+void test_os_strcnt(void** state)
+{
     (void)state;
 
     // NULL parameter handling
     assert_int_equal(os_strcnt(NULL, 'a'), 0);
 
     // Matrix of combinations covering all cases
-    const char *haystacks[] = {
-        "hello world",
-        "hello",
-        "",
-        "a",
-        "aaaaaa",
-        "abc",
-        "test\nstring"
-    };
+    const char* haystacks[] = {"hello world", "hello", "", "a", "aaaaaa", "abc", "test\nstring"};
 
-    const char needles[] = { 'l', 'o', 'z', 'a', ' ', '\n' };
+    const char needles[] = {'l', 'o', 'z', 'a', ' ', '\n'};
 
     const size_t expected[][6] = {
         // haystacks[i] × needles[j]: 'l', 'o', 'z', 'a', ' ', '\n'
-        { 3, 2, 0, 0, 1, 0 }, // "hello world"
-        { 2, 1, 0, 0, 0, 0 }, // "hello"
-        { 0, 0, 0, 0, 0, 0 }, // ""
-        { 0, 0, 0, 1, 0, 0 }, // "a"
-        { 0, 0, 0, 6, 0, 0 }, // "aaaaaa"
-        { 0, 0, 0, 1, 0, 0 }, // "abc"
-        { 0, 0, 0, 0, 0, 1 }, // "test\nstring"
+        {3, 2, 0, 0, 1, 0}, // "hello world"
+        {2, 1, 0, 0, 0, 0}, // "hello"
+        {0, 0, 0, 0, 0, 0}, // ""
+        {0, 0, 0, 1, 0, 0}, // "a"
+        {0, 0, 0, 6, 0, 0}, // "aaaaaa"
+        {0, 0, 0, 1, 0, 0}, // "abc"
+        {0, 0, 0, 0, 0, 1}, // "test\nstring"
     };
 
-    for (size_t i = 0; i < sizeof(haystacks)/sizeof(haystacks[0]); ++i) {
-        for (size_t j = 0; j < sizeof(needles)/sizeof(needles[0]); ++j) {
+    for (size_t i = 0; i < sizeof(haystacks) / sizeof(haystacks[0]); ++i)
+    {
+        for (size_t j = 0; j < sizeof(needles) / sizeof(needles[0]); ++j)
+        {
             assert_int_equal(os_strcnt(haystacks[i], needles[j]), expected[i][j]);
         }
     }
 }
 /* os_trimcrlf  */
 
-void test_os_trimcrlf(void **state) {
+void test_os_trimcrlf(void** state)
+{
     char initial_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
-        "",
-        "TEST",
-        "\n",
-        "\r",
-        "TEST\n",
-        "TEST\r",
-        "TEST\n\r",
-        "TE\nST",
-        "TE\rST",
-        "TEST\n\n",
-        "TEST\r\r"
-    };
+        "", "TEST", "\n", "\r", "TEST\n", "TEST\r", "TEST\n\r", "TE\nST", "TE\rST", "TEST\n\n", "TEST\r\r"};
 
     char result_value_array[OS_TRIMCRLF_ARRAY_SIZE][OS_TRIMCRLF_MAX_STR_SIZE] = {
-        "",
-        "TEST",
-        "",
-        "",
-        "TEST",
-        "TEST",
-        "TEST",
-        "TE\nST",
-        "TE\rST",
-        "TEST",
-        "TEST"
-    };
+        "", "TEST", "", "", "TEST", "TEST", "TEST", "TE\nST", "TE\rST", "TEST", "TEST"};
 
-    for (int idx = 0; idx < OS_TRIMCRLF_ARRAY_SIZE; ++idx) {
+    for (int idx = 0; idx < OS_TRIMCRLF_ARRAY_SIZE; ++idx)
+    {
         os_trimcrlf(initial_value_array[idx]);
         assert_string_equal(initial_value_array[idx], result_value_array[idx]);
     }
-
 }
 
-void test_os_trimcrlf_NULL(void **state) {
-    char *str = NULL;
+void test_os_trimcrlf_NULL(void** state)
+{
+    char* str = NULL;
     os_trimcrlf(str);
     assert_null(str);
 }
 
 /* Tests */
 
-int main(void) {
+int main(void)
+{
 
     const struct CMUnitTest tests[] = {
-        //Tests w_tolower_str
+        // Tests w_tolower_str
         cmocka_unit_test(test_w_tolower_str_NULL),
         cmocka_unit_test(test_w_tolower_str_empty),
         cmocka_unit_test(test_w_tolower_str_caps),
@@ -1547,8 +1607,7 @@ int main(void) {
         cmocka_unit_test(test_os_strcnt),
         // Test os_trimcrlf
         cmocka_unit_test(test_os_trimcrlf),
-        cmocka_unit_test(test_os_trimcrlf_NULL)
-    };
+        cmocka_unit_test(test_os_trimcrlf_NULL)};
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

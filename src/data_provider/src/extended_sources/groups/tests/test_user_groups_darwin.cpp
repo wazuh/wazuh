@@ -15,54 +15,54 @@
 #include "user_groups_darwin.hpp"
 #include "json.hpp"
 
-using ::testing::Return;
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::SetArgPointee;
 using ::testing::Invoke;
+using ::testing::Return;
+using ::testing::SetArgPointee;
 
 class MockGroupWrapper : public IGroupWrapperDarwin
 {
-    public:
-        MOCK_METHOD(struct group*, getgrgid, (gid_t gid), (const, override));
-        MOCK_METHOD(struct group*, getgrnam, (const char* name), (const, override));
-        MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
-        MOCK_METHOD(int, getgroupcount, (const char* user, gid_t group), (const, override));
+public:
+    MOCK_METHOD(struct group*, getgrgid, (gid_t gid), (const, override));
+    MOCK_METHOD(struct group*, getgrnam, (const char* name), (const, override));
+    MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
+    MOCK_METHOD(int, getgroupcount, (const char* user, gid_t group), (const, override));
 };
 
 class MockPasswdWrapper : public IPasswdWrapperDarwin
 {
-    public:
-        MOCK_METHOD(void, setpwent, (), (override));
-        MOCK_METHOD(void, endpwent, (), (override));
-        MOCK_METHOD(struct passwd*, getpwent, (), (override));
-        MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (override));
-        MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (override));
+public:
+    MOCK_METHOD(void, setpwent, (), (override));
+    MOCK_METHOD(void, endpwent, (), (override));
+    MOCK_METHOD(struct passwd*, getpwent, (), (override));
+    MOCK_METHOD(struct passwd*, getpwuid, (uid_t uid), (override));
+    MOCK_METHOD(struct passwd*, getpwnam, (const char* name), (override));
 };
 
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
-        using StringBoolMap = std::map<std::string, bool>;
-        using StringJsonMap = std::map<std::string, nlohmann::json>;
+    using StringBoolMap = std::map<std::string, bool>;
+    using StringJsonMap = std::map<std::string, nlohmann::json>;
 
-    public:
-        MOCK_METHOD(void,
-                    genEntries,
-                    (const std::string& recordType, const std::string* record, StringBoolMap& usernames),
-                    (override));
-        MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
-        MOCK_METHOD(void, genPasswordData, (StringJsonMap& passwordData), (override));
-        MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string>& disabledUsers), (override));
+public:
+    MOCK_METHOD(void,
+                genEntries,
+                (const std::string& recordType, const std::string* record, StringBoolMap& usernames),
+                (override));
+    MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
+    MOCK_METHOD(void, genPasswordData, (StringJsonMap & passwordData), (override));
+    MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string> & disabledUsers), (override));
 };
 
 // Test fixture to ensure cache is reset before each test
 class UserGroupsProviderDarwinTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            UserGroupsProvider::resetCache();
-        }
+protected:
+    void SetUp() override
+    {
+        UserGroupsProvider::resetCache();
+    }
 };
 
 struct passwd* createFakePasswd(const char* name, uid_t uid, gid_t gid)
@@ -88,16 +88,16 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithUIDReturnsExpectedGroups)
     passwd* fakePwd = createFakePasswd(username, testUid, testGid);
     EXPECT_CALL(*mockPasswd, getpwuid(testUid)).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), testGid))
-    .WillOnce(Return(2));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), testGid)).WillOnce(Return(2));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("testuser"), testGid, _, _))
-    .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
-    {
-        groups[0] = 2000;
-        groups[1] = 3000;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [](const std::string&, gid_t, gid_t* groups, int* /*ngroups*/)
+            {
+                groups[0] = 2000;
+                groups[1] = 3000;
+                return 0;
+            }));
 
     std::set<uid_t> uids = {testUid};
     nlohmann::json result = provider.collect(uids);
@@ -125,23 +125,21 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithoutUID_ReturnsExpectedGroups)
     std::map<std::string, bool> fakeUsers = {{username, true}};
 
     EXPECT_CALL(*mockODWrapper, genEntries("dsRecTypeStandard:Users", nullptr, _))
-    .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& output)
-    {
-        output = fakeUsers;
-    }));
+        .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& output)
+                         { output = fakeUsers; }));
 
     passwd* fakePwd = createFakePasswd(username, testUid, testGid);
     EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username))).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), testGid))
-    .WillOnce(Return(1));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), testGid)).WillOnce(Return(1));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), testGid, _, _))
-    .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
-    {
-        groups[0] = 3001;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [](const std::string&, gid_t, gid_t* groups, int* /*ngroups*/)
+            {
+                groups[0] = 3001;
+                return 0;
+            }));
 
     std::set<uid_t> emptyUids;
     nlohmann::json result = provider.collect(emptyUids);
@@ -171,24 +169,21 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidSingleGidReturnsCorrectUse
     passwd* fakePwd = createFakePasswd(username, uid, primaryGid);
 
     EXPECT_CALL(*mockODWrapper, genEntries("dsRecTypeStandard:Users", nullptr, _))
-    .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& out)
-    {
-        out = fakeUsers;
-    }));
+        .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& out)
+                         { out = fakeUsers; }));
 
-    EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username)))
-    .WillOnce(Return(fakePwd));
+    EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username))).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), primaryGid))
-    .WillOnce(Return(2));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), primaryGid)).WillOnce(Return(2));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), primaryGid, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = primaryGid;
-        groups[1] = extraGid;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [=](const char*, gid_t, gid_t* groups, int*)
+            {
+                groups[0] = primaryGid;
+                groups[1] = extraGid;
+                return 0;
+            }));
 
     nlohmann::json result = provider.getUserNamesByGid(targetGids);
 
@@ -217,30 +212,27 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidMultipleGidsReturnsGrouped
     passwd* fakePwd = createFakePasswd(username, uid, gid1);
 
     EXPECT_CALL(*mockODWrapper, genEntries("dsRecTypeStandard:Users", nullptr, _))
-    .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& out)
-    {
-        out = fakeUsers;
-    }));
+        .WillOnce(Invoke([&fakeUsers](const std::string&, const void*, std::map<std::string, bool>& out)
+                         { out = fakeUsers; }));
 
-    EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username)))
-    .WillOnce(Return(fakePwd));
+    EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username))).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), gid1))
-    .WillOnce(Return(2));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), gid1)).WillOnce(Return(2));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), gid1, testing::NotNull(), _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int* ngroups)
-    {
-        if (*ngroups >= 2)
-        {
-            groups[0] = gid1;
-            groups[1] = gid2;
-            *ngroups = 2;
-            return 0;
-        }
+        .WillOnce(Invoke(
+            [=](const char*, gid_t, gid_t* groups, int* ngroups)
+            {
+                if (*ngroups >= 2)
+                {
+                    groups[0] = gid1;
+                    groups[1] = gid2;
+                    *ngroups = 2;
+                    return 0;
+                }
 
-        return -1;
-    }));
+                return -1;
+            }));
 
     auto result = provider.getUserNamesByGid(gids);
 
@@ -263,10 +255,8 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGid_NoMatch_ReturnsEmpty)
 
     std::map<std::string, bool> emptyUsers;
     EXPECT_CALL(*mockODWrapper, genEntries("dsRecTypeStandard:Users", nullptr, _))
-    .WillOnce(Invoke([&emptyUsers](const std::string&, const void*, std::map<std::string, bool>& out)
-    {
-        out = emptyUsers;
-    }));
+        .WillOnce(Invoke([&emptyUsers](const std::string&, const void*, std::map<std::string, bool>& out)
+                         { out = emptyUsers; }));
 
     auto result = provider.getUserNamesByGid({1234});
     ASSERT_TRUE(result.empty());
@@ -287,19 +277,18 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidSingleUidReturnsGroupName
 
     passwd* fakePwd = createFakePasswd(username, uid, primaryGid);
 
-    EXPECT_CALL(*mockPasswd, getpwuid(uid))
-    .WillOnce(Return(fakePwd));
+    EXPECT_CALL(*mockPasswd, getpwuid(uid)).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), primaryGid))
-    .WillOnce(Return(2));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), primaryGid)).WillOnce(Return(2));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), primaryGid, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = primaryGid;
-        groups[1] = extraGid;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [=](const char*, gid_t, gid_t* groups, int*)
+            {
+                groups[0] = primaryGid;
+                groups[1] = extraGid;
+                return 0;
+            }));
 
     struct group* fakeGroup1 = new group();
     fakeGroup1->gr_name = strdup("staff");
@@ -348,18 +337,20 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidMultipleUidsReturnsGroupe
     EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(user2), gid2)).WillOnce(Return(1));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(user1), gid1, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = gid1;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [=](const char*, gid_t, gid_t* groups, int*)
+            {
+                groups[0] = gid1;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(user2), gid2, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = gid2;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [=](const char*, gid_t, gid_t* groups, int*)
+            {
+                groups[0] = gid2;
+                return 0;
+            }));
 
     struct group* grp1 = new group();
     grp1->gr_name = strdup("staff");

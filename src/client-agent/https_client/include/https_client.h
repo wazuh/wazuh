@@ -44,572 +44,569 @@ extern "C"
 
 #include "commonDefs.h" // full_log_fnc_t
 
-/* TLS verification modes (DEC-6: configured CA file + hostname).
- * HC_VERIFY_FULL is deliberately 0 so that a zero-initialized configuration
- * fails closed instead of silently disabling verification. */
-typedef enum hc_verify_mode_t
-{
-    HC_VERIFY_FULL = 0,  ///< Verify peer against the CA and check the hostname.
-    HC_VERIFY_CERT = 1,  ///< Verify peer against the CA only.
-    HC_VERIFY_NONE = 2,  ///< No TLS verification (explicit opt-out).
-    HC_VERIFY_SYSTEM = 3 ///< Verify peer + hostname against the OS trust store, not ca_path.
-} hc_verify_mode_t;
+    /* TLS verification modes (DEC-6: configured CA file + hostname).
+     * HC_VERIFY_FULL is deliberately 0 so that a zero-initialized configuration
+     * fails closed instead of silently disabling verification. */
+    typedef enum hc_verify_mode_t
+    {
+        HC_VERIFY_FULL = 0,  ///< Verify peer against the CA and check the hostname.
+        HC_VERIFY_CERT = 1,  ///< Verify peer against the CA only.
+        HC_VERIFY_NONE = 2,  ///< No TLS verification (explicit opt-out).
+        HC_VERIFY_SYSTEM = 3 ///< Verify peer + hostname against the OS trust store, not ca_path.
+    } hc_verify_mode_t;
 
-/* Connection state, surfaced to the C core (feeds the .state metrics). */
-typedef enum hc_conn_state_t
-{
-    HC_STATE_STOPPED = 0,  ///< Not started, or stopped.
-    HC_STATE_STARTING,     ///< Started; Startup not accepted yet.
-    HC_STATE_REGISTERED,   ///< Startup accepted; streams running.
-    HC_STATE_REJECTED,     ///< Startup rejected (e.g. version); slow retry.
-    HC_STATE_AUTH_ERROR    ///< Credential rejected (401): all traffic paused
-    ///< until hc_set_agent_identity() supplies a new identity.
-} hc_conn_state_t;
+    /* Connection state, surfaced to the C core (feeds the .state metrics). */
+    typedef enum hc_conn_state_t
+    {
+        HC_STATE_STOPPED = 0, ///< Not started, or stopped.
+        HC_STATE_STARTING,    ///< Started; Startup not accepted yet.
+        HC_STATE_REGISTERED,  ///< Startup accepted; streams running.
+        HC_STATE_REJECTED,    ///< Startup rejected (e.g. version); slow retry.
+        HC_STATE_AUTH_ERROR   ///< Credential rejected (401): all traffic paused
+        ///< until hc_set_agent_identity() supplies a new identity.
+    } hc_conn_state_t;
 
-/* Occupancy level of the stateless accumulator. Replaces the legacy client
- * buffer levels so the manager-side flood alerts (rules 202-205 analogues)
- * keep working. */
-typedef enum hc_buffer_level_t
-{
-    HC_BUFFER_NORMAL = 0,
-    HC_BUFFER_WARNING,
-    HC_BUFFER_FULL,
-    HC_BUFFER_FLOOD
-} hc_buffer_level_t;
+    /* Occupancy level of the stateless accumulator. Replaces the legacy client
+     * buffer levels so the manager-side flood alerts (rules 202-205 analogues)
+     * keep working. */
+    typedef enum hc_buffer_level_t
+    {
+        HC_BUFFER_NORMAL = 0,
+        HC_BUFFER_WARNING,
+        HC_BUFFER_FULL,
+        HC_BUFFER_FLOOD
+    } hc_buffer_level_t;
 
-/* Outcome classes of a request/submission (D9 classification), part of the
- * stable ABI surface. on_sync_response no longer carries this type (see its
- * own doc comment): the /stateful contract needs the real HTTP status code,
- * not this coarser classification, so retry/backoff decisions inside the
- * transport layer use the internal (C++-only) OutcomeClass instead. */
-typedef enum hc_result_t
-{
-    HC_RESULT_OK = 0,
-    HC_RESULT_RETRYABLE,
-    HC_RESULT_BACKPRESSURE,
-    HC_RESULT_AUTH_FAIL,
-    HC_RESULT_PERMANENT,
-    HC_RESULT_ERROR
-} hc_result_t;
+    /* Outcome classes of a request/submission (D9 classification), part of the
+     * stable ABI surface. on_sync_response no longer carries this type (see its
+     * own doc comment): the /stateful contract needs the real HTTP status code,
+     * not this coarser classification, so retry/backoff decisions inside the
+     * transport layer use the internal (C++-only) OutcomeClass instead. */
+    typedef enum hc_result_t
+    {
+        HC_RESULT_OK = 0,
+        HC_RESULT_RETRYABLE,
+        HC_RESULT_BACKPRESSURE,
+        HC_RESULT_AUTH_FAIL,
+        HC_RESULT_PERMANENT,
+        HC_RESULT_ERROR
+    } hc_result_t;
 
-#define HC_MAX_HOST 256
-#define HC_MAX_ID 16
-#define HC_MAX_KEY 256
-#define HC_MAX_PATH 1024
-#define HC_MAX_CIPHERS 256
-#define HC_MAX_VERSION 64
+#define HC_MAX_HOST     256
+#define HC_MAX_ID       16
+#define HC_MAX_KEY      256
+#define HC_MAX_PATH     1024
+#define HC_MAX_CIPHERS  256
+#define HC_MAX_VERSION  64
 #define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
 #define HC_MAX_ENDPOINT 256 /* #38492: reverse-proxy path segment, normalized (no leading/trailing '/'). */
 
-/**
- * @brief Configuration passed from the agent (C) to the C++ module.
- *
- * POD struct with fixed-size buffers so the ABI is stable and it compiles
- * cleanly both as C99 and C++17. The struct is owned by the caller; the
- * module deep-copies it during hc_create(). Numeric fields left at 0 take
- * the module defaults (documented per field).
- */
-typedef struct hc_config_t
-{
-    char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2): IPv4,
-    ///< hostname, or a bare, unbracketed IPv6 literal, which baseUrl() brackets for the wire.
-    uint16_t server_port;          ///< Manager HTTPS port.
-    uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint> (#38624), appended
-    ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;
-    ///< 0 -> no zone, which is every IPv4 and non-link-local address.
-    char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
-    ///< prepended to every request target (e.g. "/endpoint/stateless");
-    ///< empty -> unprefixed, today's behavior. A routing matter only: the
-    ///< manager routes on the literal wire request-target, prefix included,
-    ///< and the bearer token does not bind the target (a mismatch is a 404).
-    char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
-    char agent_key[HC_MAX_KEY];    ///< The client.keys secret as hex: exactly 64 lowercase hex
-    ///< chars, decoded verbatim into the 32-byte HS256 key every
-    ///< `wazuh-agent+jwt` bearer token is signed with.
-    int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
-    char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
-    char system_fallback_ca_path[HC_MAX_PATH]; ///< verify_mode=system only (#39123): the
-    ///< agent's own trust anchor, tried only once the OS trust store has actually
-    ///< failed to verify the manager. Empty -> the fallback never engages (today's
-    ///< behavior). Ignored for every other verify_mode.
-    char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
-    char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
-    char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
+    /**
+     * @brief Configuration passed from the agent (C) to the C++ module.
+     *
+     * POD struct with fixed-size buffers so the ABI is stable and it compiles
+     * cleanly both as C99 and C++17. The struct is owned by the caller; the
+     * module deep-copies it during hc_create(). Numeric fields left at 0 take
+     * the module defaults (documented per field).
+     */
+    typedef struct hc_config_t
+    {
+        char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2): IPv4,
+        ///< hostname, or a bare, unbracketed IPv6 literal, which baseUrl() brackets for the wire.
+        uint16_t server_port;     ///< Manager HTTPS port.
+        uint32_t server_scope_id; ///< IPv6 zone id resolved from <endpoint> (#38624), appended
+        ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;
+        ///< 0 -> no zone, which is every IPv4 and non-link-local address.
+        char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
+        ///< prepended to every request target (e.g. "/endpoint/stateless");
+        ///< empty -> unprefixed, today's behavior. A routing matter only: the
+        ///< manager routes on the literal wire request-target, prefix included,
+        ///< and the bearer token does not bind the target (a mismatch is a 404).
+        char agent_id[HC_MAX_ID];   ///< Agent id from client.keys.
+        char agent_key[HC_MAX_KEY]; ///< The client.keys secret as hex: exactly 64 lowercase hex
+        ///< chars, decoded verbatim into the 32-byte HS256 key every
+        ///< `wazuh-agent+jwt` bearer token is signed with.
+        int verify_mode;                           ///< hc_verify_mode_t; 0 = full (fail closed).
+        char ca_path[HC_MAX_PATH];                 ///< certificate_authorities file path.
+        char system_fallback_ca_path[HC_MAX_PATH]; ///< verify_mode=system only (#39123): the
+        ///< agent's own trust anchor, tried only once the OS trust store has actually
+        ///< failed to verify the manager. Empty -> the fallback never engages (today's
+        ///< behavior). Ignored for every other verify_mode.
+        char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
+        char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
+        char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
 
-    uint64_t batch_size_bytes;      ///< Max /stateless payload per request
-    ///< (adaptive: halves on 413, ramps back on
-    ///< success); 0 -> 1 MiB.
-    uint32_t batch_interval_ms;     ///< <batch><interval>; 0 -> 10000.
-    uint32_t buffer_cap_multiplier; ///< Accumulator cap = N x batch size; 0 -> 4.
+        uint64_t batch_size_bytes; ///< Max /stateless payload per request
+        ///< (adaptive: halves on 413, ramps back on
+        ///< success); 0 -> 1 MiB.
+        uint32_t batch_interval_ms;     ///< <batch><interval>; 0 -> 10000.
+        uint32_t buffer_cap_multiplier; ///< Accumulator cap = N x batch size; 0 -> 4.
 
-    /* Occupancy ladder, mirroring the legacy client buffer's internal options
-     * so the manager-side flood rules keep firing on the same thresholds.
-     * Note the struct's zero-means-default convention: agent.normal_level and
-     * agent.tolerance accept a literal 0, which is indistinguishable from
-     * "unset" here and takes the default instead. */
-    uint32_t buffer_warn_level;        ///< agent.warn_level, percent; 0 -> 90.
-    uint32_t buffer_normal_level;      ///< agent.normal_level, percent; 0 -> 70.
-    uint32_t buffer_flood_tolerance_s; ///< agent.tolerance: seconds FULL must
-    ///< hold before FLOOD; 0 -> 15.
+        /* Occupancy ladder, mirroring the legacy client buffer's internal options
+         * so the manager-side flood rules keep firing on the same thresholds.
+         * Note the struct's zero-means-default convention: agent.normal_level and
+         * agent.tolerance accept a literal 0, which is indistinguishable from
+         * "unset" here and takes the default instead. */
+        uint32_t buffer_warn_level;        ///< agent.warn_level, percent; 0 -> 90.
+        uint32_t buffer_normal_level;      ///< agent.normal_level, percent; 0 -> 70.
+        uint32_t buffer_flood_tolerance_s; ///< agent.tolerance: seconds FULL must
+        ///< hold before FLOOD; 0 -> 15.
 
-    uint32_t notify_interval_s;         ///< notify_time; 0 -> 10.
-    uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
+        uint32_t notify_interval_s;         ///< notify_time; 0 -> 10.
+        uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
-    /// Safety bound for a remote_upgrade WPK download; 0 -> 200 MiB.
-    uint64_t wpk_max_download_bytes;
+        /// Safety bound for a remote_upgrade WPK download; 0 -> 200 MiB.
+        uint64_t wpk_max_download_bytes;
 
-    char version[HC_MAX_VERSION];       ///< Product version for Startup.
-    char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg SHA-256 seed. Compared
-    ///< against the manager-reported
-    ///< agent.config_hash on every Notify;
-    ///< a mismatch triggers /download.
+        char version[HC_MAX_VERSION];          ///< Product version for Startup.
+        char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg SHA-256 seed. Compared
+        ///< against the manager-reported
+        ///< agent.config_hash on every Notify;
+        ///< a mismatch triggers /download.
 
-    bool ca_refresh_allowed;      ///< Whether a published CA bundle may replace the file named
-    ///< by ca_path. Set only when that file is the agent's own
-    ///< trust anchor: an operator who points
-    ///< <certificate_authorities> at their own CA manages it
-    ///< themselves, and the agent must neither surprise them by
-    ///< rewriting it nor retry an install it can never complete.
+        bool ca_refresh_allowed; ///< Whether a published CA bundle may replace the file named
+        ///< by ca_path. Set only when that file is the agent's own
+        ///< trust anchor: an operator who points
+        ///< <certificate_authorities> at their own CA manages it
+        ///< themselves, and the agent must neither surprise them by
+        ///< rewriting it nor retry an install it can never complete.
 
-    int64_t ca_publication;       ///< Publication recorded with the installed CA bundle, or -1
-    ///< when it carries none (a fresh install, a store placed
-    ///< out of band, or one written before #39321). Compared
-    ///< against the manager-reported ca_generation on every
-    ///< Notify; a higher one triggers a verified /cacerts
-    ///< refresh. The seed only: the module tracks it from
-    ///< here on, since it changes when a bundle is adopted.
+        int64_t ca_publication; ///< Publication recorded with the installed CA bundle, or -1
+        ///< when it carries none (a fresh install, a store placed
+        ///< out of band, or one written before #39321). Compared
+        ///< against the manager-reported ca_generation on every
+        ///< Notify; a higher one triggers a verified /cacerts
+        ///< refresh. The seed only: the module tracks it from
+        ///< here on, since it changes when a bundle is adopted.
 
-    uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
-    uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
-    ///< 0 -> 90000.
-    uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
-    uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
-    uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
+        uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
+        uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
+        ///< 0 -> 90000.
+        uint32_t backoff_base_ms;  ///< Full-jitter base; 0 -> 1000.
+        uint32_t backoff_cap_ms;   ///< Full-jitter cap; 0 -> 60000.
+        uint32_t drain_timeout_ms; ///< Shutdown drain window; 0 -> 5000.
 
-    /* Per-stream retry budgets. An attempt count is the TOTAL number of tries,
-     * not the number of retries after the first: 1 means "send once, never
-     * retry". Only Retryable and BackPressure outcomes consume an attempt.
-     * These bound how long one step can take against the manager's own
-     * deadlines, so they are part of the agent/manager timing contract rather
-     * than free-form tuning. */
-    uint32_t control_max_attempts;    ///< /control; 0 -> 4.
-    uint32_t stateless_max_attempts;  ///< /stateless; 0 -> 5.
-    uint32_t stateful_max_attempts;   ///< /stateful; 0 -> 5.
-    uint32_t download_max_attempts;   ///< POST /download, config and WPK alike; 0 -> 2.
+        /* Per-stream retry budgets. An attempt count is the TOTAL number of tries,
+         * not the number of retries after the first: 1 means "send once, never
+         * retry". Only Retryable and BackPressure outcomes consume an attempt.
+         * These bound how long one step can take against the manager's own
+         * deadlines, so they are part of the agent/manager timing contract rather
+         * than free-form tuning. */
+        uint32_t control_max_attempts;   ///< /control; 0 -> 4.
+        uint32_t stateless_max_attempts; ///< /stateless; 0 -> 5.
+        uint32_t stateful_max_attempts;  ///< /stateful; 0 -> 5.
+        uint32_t download_max_attempts;  ///< POST /download, config and WPK alike; 0 -> 2.
 
-    /// Consecutive undeliverable /control steps before event producers are
-    /// paused; a single deliverable step resets the streak. 0 -> 2.
-    uint32_t producer_pause_threshold;
+        /// Consecutive undeliverable /control steps before event producers are
+        /// paused; a single deliverable step resets the streak. 0 -> 2.
+        uint32_t producer_pause_threshold;
 
-    char spool_dir[HC_MAX_PATH];  ///< Spool dir for temp files; empty -> system tmp.
+        char spool_dir[HC_MAX_PATH]; ///< Spool dir for temp files; empty -> system tmp.
 
-    /// Local STREAM socket for the stateful sync intake (large sessions bypass
-    /// the 64 KB DGRAM event queue). Empty -> the intake is not started.
-    char sync_socket_path[HC_MAX_PATH];
+        /// Local STREAM socket for the stateful sync intake (large sessions bypass
+        /// the 64 KB DGRAM event queue). Empty -> the intake is not started.
+        char sync_socket_path[HC_MAX_PATH];
 
-    /// Periodic reporters (#37843), both OFF by default. When on, the module
-    /// collects the corresponding snapshot on its interval, stamps agent_id +
-    /// the manager-authoritative cluster, signs and POSTs to /stats resp.
-    /// /config.
-    bool stats_enabled;
-    uint32_t stats_interval_s;         ///< 0 -> 60.
-    bool config_report_enabled;
-    uint32_t config_report_interval_s; ///< 0 -> 3600.
+        /// Periodic reporters (#37843), both OFF by default. When on, the module
+        /// collects the corresponding snapshot on its interval, stamps agent_id +
+        /// the manager-authoritative cluster, signs and POSTs to /stats resp.
+        /// /config.
+        bool stats_enabled;
+        uint32_t stats_interval_s; ///< 0 -> 60.
+        bool config_report_enabled;
+        uint32_t config_report_interval_s; ///< 0 -> 3600.
 
-    /// zstd-compress in-memory request bodies before signing/sending.
-    /// internal_options.conf (agent.https_compression_enabled), not a <client>
-    /// XML setting -- ON by default.
-    bool https_compression_enabled;
-} hc_config_t;
+        /// zstd-compress in-memory request bodies before signing/sending.
+        /// internal_options.conf (agent.https_compression_enabled), not a <client>
+        /// XML setting -- ON by default.
+        bool https_compression_enabled;
+    } hc_config_t;
 
-/**
- * @brief Environment injected by the C core.
- *
- * Every callback except log fires from the module's single dispatcher
- * thread, serialized in submission order; callbacks must not block for
- * long and must not call back into hc_* functions. log follows the
- * remoted_module contract (agentd passes mtLoggingFunctionsWrapper) and
- * may fire from any module thread.
- */
-/// Synchronous check-and-record against the durable agent-info task_id
-/// registry. Called on the CONTROL thread (not the dispatcher),
-/// once per fresh task_id in a Notify batch, before batch planning and
-/// before any dispatch -- this ordering is what makes remote_upgrade
-/// idempotent across the restart it triggers. Must be fast and bounded (a
-/// local IPC round-trip with its own timeout): it briefly delays the next
-/// Notify, which is judged acceptable against agent-info (a local,
-/// normally-responsive process) -- unlike task EXECUTION, which stays off
-/// this thread via on_task/on_remote_upgrade_ready.
-/// @return 1 the id is new (now durably recorded); 0 it is a duplicate;
-///         -1 the registry could not be reached/confirmed (treat as
-///         non-dispatchable -- fail closed).
-typedef int (*hc_check_and_record_task_fn)(const char* task_id, void* user_data);
+    /**
+     * @brief Environment injected by the C core.
+     *
+     * Every callback except log fires from the module's single dispatcher
+     * thread, serialized in submission order; callbacks must not block for
+     * long and must not call back into hc_* functions. log follows the
+     * remoted_module contract (agentd passes mtLoggingFunctionsWrapper) and
+     * may fire from any module thread.
+     */
+    /// Synchronous check-and-record against the durable agent-info task_id
+    /// registry. Called on the CONTROL thread (not the dispatcher),
+    /// once per fresh task_id in a Notify batch, before batch planning and
+    /// before any dispatch -- this ordering is what makes remote_upgrade
+    /// idempotent across the restart it triggers. Must be fast and bounded (a
+    /// local IPC round-trip with its own timeout): it briefly delays the next
+    /// Notify, which is judged acceptable against agent-info (a local,
+    /// normally-responsive process) -- unlike task EXECUTION, which stays off
+    /// this thread via on_task/on_remote_upgrade_ready.
+    /// @return 1 the id is new (now durably recorded); 0 it is a duplicate;
+    ///         -1 the registry could not be reached/confirmed (treat as
+    ///         non-dispatchable -- fail closed).
+    typedef int (*hc_check_and_record_task_fn)(const char* task_id, void* user_data);
 
-/// Observe a VD feed offset reported by the manager (a /control Notify's
-/// vd_feed_offset field), persisting it in agent-info's durable `vd_feed_state`
-/// table and deciding -- via agent-info's own VDFirst-completion check --
-/// whether a /scan/vd request is actually needed. Monotonic: an offset not
-/// newer than the stored one is a no-op that still reports the current
-/// pending state, which is what lets a restart resume an outstanding request
-/// for free (no separate recovery call needed).
-/// Called on the CONTROL thread, synchronously, once per accepted Notify that
-/// carries the field. Must be fast and bounded (a local IPC round-trip with
-/// its own timeout).
-/// @param offset The offset value received from the manager.
-/// @param out_changed Set to 1 if the offset advanced, 0 otherwise.
-/// @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise.
-/// @param out_pending_offset Set to the offset a pending request refers to
-///        (valid only when *out_pending is 1).
-typedef void (*hc_vd_offset_observe_fn)(uint64_t offset, int* out_changed, int* out_pending,
-                                        uint64_t* out_pending_offset, void* user_data);
+    /// Observe a VD feed offset reported by the manager (a /control Notify's
+    /// vd_feed_offset field), persisting it in agent-info's durable `vd_feed_state`
+    /// table and deciding -- via agent-info's own VDFirst-completion check --
+    /// whether a /scan/vd request is actually needed. Monotonic: an offset not
+    /// newer than the stored one is a no-op that still reports the current
+    /// pending state, which is what lets a restart resume an outstanding request
+    /// for free (no separate recovery call needed).
+    /// Called on the CONTROL thread, synchronously, once per accepted Notify that
+    /// carries the field. Must be fast and bounded (a local IPC round-trip with
+    /// its own timeout).
+    /// @param offset The offset value received from the manager.
+    /// @param out_changed Set to 1 if the offset advanced, 0 otherwise.
+    /// @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise.
+    /// @param out_pending_offset Set to the offset a pending request refers to
+    ///        (valid only when *out_pending is 1).
+    typedef void (*hc_vd_offset_observe_fn)(
+        uint64_t offset, int* out_changed, int* out_pending, uint64_t* out_pending_offset, void* user_data);
 
-/// Clear the pending VD re-scan flag, but only if it is still pending for
-/// exactly this offset (a stale confirmation is a no-op). Call only after a
-/// /scan/vd request for `offset` returns 200 OK -- never on a 409 or
-/// transport failure, so the request stays durable across a restart until it
-/// actually succeeds.
-/// @return 1 if the pending flag was cleared, 0 otherwise (stale / nothing
-///         pending / registry unreachable).
-typedef int (*hc_vd_offset_clear_pending_fn)(uint64_t offset, void* user_data);
+    /// Clear the pending VD re-scan flag, but only if it is still pending for
+    /// exactly this offset (a stale confirmation is a no-op). Call only after a
+    /// /scan/vd request for `offset` returns 200 OK -- never on a 409 or
+    /// transport failure, so the request stays durable across a restart until it
+    /// actually succeeds.
+    /// @return 1 if the pending flag was cleared, 0 otherwise (stale / nothing
+    ///         pending / registry unreachable).
+    typedef int (*hc_vd_offset_clear_pending_fn)(uint64_t offset, void* user_data);
 
-typedef struct hc_callbacks_t
-{
-    full_log_fnc_t log;
-    /// The running module hit a condition it can never recover from: what it would
-    /// otherwise log at critical level, which the agent's log callback turns into exit().
-    /// The reason is logged at error level instead and reported here, at most once per
-    /// hc_create(), from whichever module thread hit it. Record it and stop the process
-    /// from a thread the module does not own: exiting on this one would run an atexit
-    /// hc_destroy() on a thread it has to join. Before hc_start() and after hc_stop(), a
-    /// critical message still reaches log unchanged (before start, startup is single
-    /// threaded). Optional: when null, every critical message reaches log unchanged.
-    void (*on_fatal)(const char* reason, void* user_data);
-    void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
-    /// The signing credential was rejected (401 on any endpoint), so the
-    /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
-    /// Fired once per incident from the dispatcher thread. Re-enroll out of
-    /// band (the /enroll flow, caller-owned retries) and call
-    /// hc_set_agent_identity() with the new id/key to resume.
-    void (*on_reenroll_required)(void* user_data);
-    void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
-                    void* user_data);
-    /// See hc_check_and_record_task_fn. Mandatory in practice: a null value
-    /// makes every task look non-dispatchable (fail closed), same as an
-    /// error return.
-    hc_check_and_record_task_fn check_and_record_task;
-    /// See hc_vd_offset_observe_fn / hc_vd_offset_clear_pending_fn. Optional: a
-    /// null observe callback makes every Notify's vd_feed_offset a no-op
-    /// (VdOffsetStoreAdapter reports no change, nothing pending), so this
-    /// feature degrades to "never re-scans on offset change" rather than
-    /// failing, on a build/config where agent-info's VD support isn't wired up.
-    hc_vd_offset_observe_fn vd_offset_observe;
-    hc_vd_offset_clear_pending_fn vd_offset_clear_pending;
-    /// A remote_upgrade task's WPK was downloaded via /download and its
-    /// wpk_sha1 verified: wpk_path is ready to hand to the upgrade
-    /// module together with installer. Fires from the dispatcher thread,
-    /// same as on_task; wpk_path is a module-owned temp file valid ONLY
-    /// until this callback returns (copy/move it inside the callback, same
-    /// convention as on_config_downloaded). The task_id was already durably
-    /// recorded (check_and_record_task) before this ever fires, so the
-    /// installer this callback goes on to run is safe to execute even though
-    /// it restarts the agent: a post-restart re-delivery is discarded
-    /// upstream and never reaches here again.
-    void (*on_remote_upgrade_ready)(const char* task_id, const char* wpk_file,
-                                    const char* wpk_path, const char* installer, void* user_data);
-    /// A task's durable record already happened (check_and_record_task), but it will NEVER
-    /// reach on_task/on_remote_upgrade_ready: its payload was malformed, or (remote_upgrade
-    /// only) the WPK download/sha1 verification failed. Distinct from a duplicate, so a
-    /// consumer can count it as a real failure. Optional: a null value just means this
-    /// category of failure goes uncounted.
-    void (*on_task_failed)(const char* task_id, const char* task_type, const char* reason,
-                           void* user_data);
-    /// A Notify reported a merged-config hash differing from the local one;
-    /// the module fetched the new configuration via POST /download and
-    /// verified its SHA-256. file_path is a module-owned temp file valid ONLY
-    /// until this callback returns (the module deletes it afterwards):
-    /// read/copy it inside the callback. Writing merged.mg, unmerging and
-    /// reloading is the consumer's job. If applying fails, call
-    /// hc_set_config_hash() with the hash actually on disk.
-    void (*on_config_downloaded)(const char* config_hash, const char* file_path,
-                                 void* user_data);
-    /// The config hash the manager reported on the last accepted Notify,
-    /// whether or not it differed from ours. Fired on every Notify so a
-    /// consumer holding a gate on the manager-validated configuration (the
-    /// agent's startup hash gate) can reconcile it even when nothing needs
-    /// downloading. Empty when the manager reported none.
-    void (*on_manager_config_hash)(const char* config_hash, void* user_data);
-    /// The agent's current group set as the manager reported it on the last
-    /// accepted Notify (comma-joined, manager's own order) -- fired only when it
-    /// differs from what was last reported (Startup included), so a consumer
-    /// doesn't republish identity data on every Notify for nothing. Empty is a
-    /// valid, meaningful value (no groups), not a placeholder for "default": no
-    /// fallback is substituted here. This is the agent's group IDENTITY, and it is
-    /// unrelated to the configuration download, which the manager addresses on its
-    /// own with the opaque agent.config_token.
-    void (*on_agent_groups)(const char* groups_csv, void* user_data);
+    typedef struct hc_callbacks_t
+    {
+        full_log_fnc_t log;
+        /// The running module hit a condition it can never recover from: what it would
+        /// otherwise log at critical level, which the agent's log callback turns into exit().
+        /// The reason is logged at error level instead and reported here, at most once per
+        /// hc_create(), from whichever module thread hit it. Record it and stop the process
+        /// from a thread the module does not own: exiting on this one would run an atexit
+        /// hc_destroy() on a thread it has to join. Before hc_start() and after hc_stop(), a
+        /// critical message still reaches log unchanged (before start, startup is single
+        /// threaded). Optional: when null, every critical message reaches log unchanged.
+        void (*on_fatal)(const char* reason, void* user_data);
+        void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
+        /// The signing credential was rejected (401 on any endpoint), so the
+        /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
+        /// Fired once per incident from the dispatcher thread. Re-enroll out of
+        /// band (the /enroll flow, caller-owned retries) and call
+        /// hc_set_agent_identity() with the new id/key to resume.
+        void (*on_reenroll_required)(void* user_data);
+        void (*on_task)(const char* task_id, const char* task_type, const char* payload_json, void* user_data);
+        /// See hc_check_and_record_task_fn. Mandatory in practice: a null value
+        /// makes every task look non-dispatchable (fail closed), same as an
+        /// error return.
+        hc_check_and_record_task_fn check_and_record_task;
+        /// See hc_vd_offset_observe_fn / hc_vd_offset_clear_pending_fn. Optional: a
+        /// null observe callback makes every Notify's vd_feed_offset a no-op
+        /// (VdOffsetStoreAdapter reports no change, nothing pending), so this
+        /// feature degrades to "never re-scans on offset change" rather than
+        /// failing, on a build/config where agent-info's VD support isn't wired up.
+        hc_vd_offset_observe_fn vd_offset_observe;
+        hc_vd_offset_clear_pending_fn vd_offset_clear_pending;
+        /// A remote_upgrade task's WPK was downloaded via /download and its
+        /// wpk_sha1 verified: wpk_path is ready to hand to the upgrade
+        /// module together with installer. Fires from the dispatcher thread,
+        /// same as on_task; wpk_path is a module-owned temp file valid ONLY
+        /// until this callback returns (copy/move it inside the callback, same
+        /// convention as on_config_downloaded). The task_id was already durably
+        /// recorded (check_and_record_task) before this ever fires, so the
+        /// installer this callback goes on to run is safe to execute even though
+        /// it restarts the agent: a post-restart re-delivery is discarded
+        /// upstream and never reaches here again.
+        void (*on_remote_upgrade_ready)(
+            const char* task_id, const char* wpk_file, const char* wpk_path, const char* installer, void* user_data);
+        /// A task's durable record already happened (check_and_record_task), but it will NEVER
+        /// reach on_task/on_remote_upgrade_ready: its payload was malformed, or (remote_upgrade
+        /// only) the WPK download/sha1 verification failed. Distinct from a duplicate, so a
+        /// consumer can count it as a real failure. Optional: a null value just means this
+        /// category of failure goes uncounted.
+        void (*on_task_failed)(const char* task_id, const char* task_type, const char* reason, void* user_data);
+        /// A Notify reported a merged-config hash differing from the local one;
+        /// the module fetched the new configuration via POST /download and
+        /// verified its SHA-256. file_path is a module-owned temp file valid ONLY
+        /// until this callback returns (the module deletes it afterwards):
+        /// read/copy it inside the callback. Writing merged.mg, unmerging and
+        /// reloading is the consumer's job. If applying fails, call
+        /// hc_set_config_hash() with the hash actually on disk.
+        void (*on_config_downloaded)(const char* config_hash, const char* file_path, void* user_data);
+        /// The config hash the manager reported on the last accepted Notify,
+        /// whether or not it differed from ours. Fired on every Notify so a
+        /// consumer holding a gate on the manager-validated configuration (the
+        /// agent's startup hash gate) can reconcile it even when nothing needs
+        /// downloading. Empty when the manager reported none.
+        void (*on_manager_config_hash)(const char* config_hash, void* user_data);
+        /// The agent's current group set as the manager reported it on the last
+        /// accepted Notify (comma-joined, manager's own order) -- fired only when it
+        /// differs from what was last reported (Startup included), so a consumer
+        /// doesn't republish identity data on every Notify for nothing. Empty is a
+        /// valid, meaningful value (no groups), not a placeholder for "default": no
+        /// fallback is substituted here. This is the agent's group IDENTITY, and it is
+        /// unrelated to the configuration download, which the manager addresses on its
+        /// own with the opaque agent.config_token.
+        void (*on_agent_groups)(const char* groups_csv, void* user_data);
 
-    /// Install @p pem as the agent's trust store, recording @p generation with it, or refuse.
-    ///
-    /// The module has already established everything it can about the body: the connection was
-    /// verified against the CA the agent currently trusts, the response was a 200, it was not
-    /// truncated, and the node's Wazuh-CA-Generation matched the publication being adopted. What
-    /// it cannot judge is the PEM itself -- parsing X.509 lives on the C side (the module links
-    /// no libwazuh by design) -- so the consumer validates the bytes and owns the write.
-    ///
-    /// Wholesale: the bundle replaces the trust store rather than merging into it, which is how
-    /// an operator retires a CA. The write must be atomic, since a torn store is one the agent
-    /// cannot verify anything against.
-    ///
-    /// @return true when the store now holds @p pem at @p generation. False on any refusal --
-    ///         a body that is not certificates, a write that failed -- and the module then
-    ///         leaves its own notion of the installed publication alone, so the next
-    ///         advertisement retries rather than believing something that never landed.
-    bool (*on_ca_bundle)(const char* pem, size_t pem_len, int64_t generation, void* user_data);
-    /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
-    /// header, `result` here is the RAW HTTP status code the manager answered with
-    /// (200, 400, 403, 409, 413, 500, 503...), not an hc_result_t - the /stateful
-    /// contract's numeric-code meanings are its own (a 409 means checksum mismatch,
-    /// not the version-rejection a control-plane 409 would mean) and are interpreted
-    /// by the sync protocol module, not by this transport layer. `result == 0` means
-    /// no HTTP response was received at all (timeout/connect/TLS failure/abort);
-    /// treat it like a 503. `body` carries the raw JSON response body and may be
-    /// empty.
-    void (*on_sync_response)(const char* session_id, int result, const char* body,
-                             size_t body_len, void* user_data);
-    void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
-    void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
-    /// Periodic collectors for the /stats and /config reporters (#37843).
-    /// Unlike every other callback these run on the module's REPORTER thread
-    /// (not the dispatcher): they must return promptly and must NOT call hc_*
-    /// functions. Return either NULL (skip this cycle) or a NUL-terminated
-    /// JSON OBJECT allocated with malloc() from the module's C runtime; the
-    /// module takes ownership and frees it. Before sending, the module stamps
-    /// "agent_id", the manager-authoritative "cluster" {"name"} and the
-    /// "agent" object of on_collect_stateless_host into the object
-    /// (overwriting same-named members; "agent" is dropped when that callback
-    /// has nothing). A non-object return is logged and the cycle skipped.
-    char* (*collect_stats)(void* user_data);
-    char* (*collect_config)(void* user_data);
+        /// Install @p pem as the agent's trust store, recording @p generation with it, or refuse.
+        ///
+        /// The module has already established everything it can about the body: the connection was
+        /// verified against the CA the agent currently trusts, the response was a 200, it was not
+        /// truncated, and the node's Wazuh-CA-Generation matched the publication being adopted. What
+        /// it cannot judge is the PEM itself -- parsing X.509 lives on the C side (the module links
+        /// no libwazuh by design) -- so the consumer validates the bytes and owns the write.
+        ///
+        /// Wholesale: the bundle replaces the trust store rather than merging into it, which is how
+        /// an operator retires a CA. The write must be atomic, since a torn store is one the agent
+        /// cannot verify anything against.
+        ///
+        /// @return true when the store now holds @p pem at @p generation. False on any refusal --
+        ///         a body that is not certificates, a write that failed -- and the module then
+        ///         leaves its own notion of the installed publication alone, so the next
+        ///         advertisement retries rather than believing something that never landed.
+        bool (*on_ca_bundle)(const char* pem, size_t pem_len, int64_t generation, void* user_data);
+        /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
+        /// header, `result` here is the RAW HTTP status code the manager answered with
+        /// (200, 400, 403, 409, 413, 500, 503...), not an hc_result_t - the /stateful
+        /// contract's numeric-code meanings are its own (a 409 means checksum mismatch,
+        /// not the version-rejection a control-plane 409 would mean) and are interpreted
+        /// by the sync protocol module, not by this transport layer. `result == 0` means
+        /// no HTTP response was received at all (timeout/connect/TLS failure/abort);
+        /// treat it like a 503. `body` carries the raw JSON response body and may be
+        /// empty.
+        void (*on_sync_response)(
+            const char* session_id, int result, const char* body, size_t body_len, void* user_data);
+        void (*on_state_change)(int state, void* user_data); ///< hc_conn_state_t
+        void (*on_buffer_level)(int level, void* user_data); ///< hc_buffer_level_t
+        /// Periodic collectors for the /stats and /config reporters (#37843).
+        /// Unlike every other callback these run on the module's REPORTER thread
+        /// (not the dispatcher): they must return promptly and must NOT call hc_*
+        /// functions. Return either NULL (skip this cycle) or a NUL-terminated
+        /// JSON OBJECT allocated with malloc() from the module's C runtime; the
+        /// module takes ownership and frees it. Before sending, the module stamps
+        /// "agent_id", the manager-authoritative "cluster" {"name"} and the
+        /// "agent" object of on_collect_stateless_host into the object
+        /// (overwriting same-named members; "agent" is dropped when that callback
+        /// has nothing). A non-object return is logged and the cycle skipped.
+        char* (*collect_stats)(void* user_data);
+        char* (*collect_config)(void* user_data);
 
-    /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
-    /// object for the /control Notify: {"hostname":..,"architecture":..,"ip":..,
-    /// "os":{"name":..,"version":..,"platform":..,"type":..}}. Write an empty
-    /// string when metadata is not yet available; the Notify then omits host.
-    /// Called on the control thread before each Notify (not the dispatcher), so
-    /// it must be a fast, non-blocking read. Null means no host block is sent.
-    void (*on_collect_host)(char* json_out, size_t cap, void* user_data);
+        /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
+        /// object for the /control Notify: {"hostname":..,"architecture":..,"ip":..,
+        /// "os":{"name":..,"version":..,"platform":..,"type":..}}. Write an empty
+        /// string when metadata is not yet available; the Notify then omits host.
+        /// Called on the control thread before each Notify (not the dispatcher), so
+        /// it must be a fast, non-blocking read. Null means no host block is sent.
+        void (*on_collect_host)(char* json_out, size_t cap, void* user_data);
 
-    /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
-    /// object for the /stateless H line: {"agent":{"name":..,"version":..,
-    /// "groups":[..],"host":{"hostname":..,"architecture":..,"os":{"name":..,
-    /// "version":..,"platform":..,"type":..}}},"cluster":{"name":..}}.
-    /// This exact nesting -- groups/host/os under agent, cluster as agent's
-    /// sibling -- is not arbitrary: it mirrors what the legacy manager's own
-    /// append_header() (remoted/src/secure.c) already builds and indexes
-    /// today, and the indexer's wazuh.* mapping is strict_allow_templates
-    /// (an unmapped path is rejected, not ignored), so this is the only shape
-    /// that will actually index. cluster.name comes from the same
-    /// agent_metadata_t cluster_name that /stateful's Start table
-    /// uses, so the two transports never disagree on cluster identity. A
-    /// separate callback from on_collect_host (not reused) so the /stateless
-    /// and /control host blocks can carry different fields without either
-    /// risking the other's already-shipped contract. Write an empty string
-    /// when metadata is not yet available; the H line then carries only
-    /// agent.id, as it always has. Called on the stateless sender thread
-    /// before each flush and on the reporter thread on every tick (never the
-    /// dispatcher), possibly at the same time, so it must be a fast,
-    /// non-blocking read that is safe on both threads and never returns a
-    /// record a writer was changing (write "" instead). cap is large enough for
-    /// the maximum group list. Null means the H line carries only agent.id and
-    /// the reports carry no "agent" object.
-    void (*on_collect_stateless_host)(char* json_out, size_t cap, void* user_data);
+        /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
+        /// object for the /stateless H line: {"agent":{"name":..,"version":..,
+        /// "groups":[..],"host":{"hostname":..,"architecture":..,"os":{"name":..,
+        /// "version":..,"platform":..,"type":..}}},"cluster":{"name":..}}.
+        /// This exact nesting -- groups/host/os under agent, cluster as agent's
+        /// sibling -- is not arbitrary: it mirrors what the legacy manager's own
+        /// append_header() (remoted/src/secure.c) already builds and indexes
+        /// today, and the indexer's wazuh.* mapping is strict_allow_templates
+        /// (an unmapped path is rejected, not ignored), so this is the only shape
+        /// that will actually index. cluster.name comes from the same
+        /// agent_metadata_t cluster_name that /stateful's Start table
+        /// uses, so the two transports never disagree on cluster identity. A
+        /// separate callback from on_collect_host (not reused) so the /stateless
+        /// and /control host blocks can carry different fields without either
+        /// risking the other's already-shipped contract. Write an empty string
+        /// when metadata is not yet available; the H line then carries only
+        /// agent.id, as it always has. Called on the stateless sender thread
+        /// before each flush and on the reporter thread on every tick (never the
+        /// dispatcher), possibly at the same time, so it must be a fast,
+        /// non-blocking read that is safe on both threads and never returns a
+        /// record a writer was changing (write "" instead). cap is large enough for
+        /// the maximum group list. Null means the H line carries only agent.id and
+        /// the reports carry no "agent" object.
+        void (*on_collect_stateless_host)(char* json_out, size_t cap, void* user_data);
 
-    /// /control has been unreachable at the TRANSPORT level for a threshold
-    /// number of consecutive attempts (paused=true), or has succeeded again
-    /// (paused=false). The consumer arms/disarms its producer lock so modules
-    /// stop generating events they cannot deliver.
-    /// reason: why the transport failed, in libcurl's own words. Empty when
-    /// there is none to give -- always on paused=false, and whenever the manager
-    /// answered and refused rather than going silent.
-    void (*on_producer_pause)(bool paused, const char* reason, void* user_data);
-    void* user_data;
-} hc_callbacks_t;
+        /// /control has been unreachable at the TRANSPORT level for a threshold
+        /// number of consecutive attempts (paused=true), or has succeeded again
+        /// (paused=false). The consumer arms/disarms its producer lock so modules
+        /// stop generating events they cannot deliver.
+        /// reason: why the transport failed, in libcurl's own words. Empty when
+        /// there is none to give -- always on paused=false, and whenever the manager
+        /// answered and refused rather than going silent.
+        void (*on_producer_pause)(bool paused, const char* reason, void* user_data);
+        void* user_data;
+    } hc_callbacks_t;
 
-typedef struct hc_handle hc_handle;
+    typedef struct hc_handle hc_handle;
 
-/* ---- lifecycle (the module owns its threads; stop is cooperative + join) ---- */
+    /* ---- lifecycle (the module owns its threads; stop is cooperative + join) ---- */
 
-/**
- * @brief Create a client instance. Copies the configuration and callback
- *        table; spawns nothing yet. Returns NULL on invalid arguments or
- *        internal failure.
- */
-HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t* callbacks);
+    /**
+     * @brief Create a client instance. Copies the configuration and callback
+     *        table; spawns nothing yet. Returns NULL on invalid arguments or
+     *        internal failure.
+     */
+    HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t* callbacks);
 
-/**
- * @brief Start the client: validates the configuration (TLS settings fail
- *        closed) and launches the worker threads. Returns false and starts
- *        nothing when validation fails. A second start while running is
- *        ignored (true). Single-shot: once hc_stop() has run, start returns
- *        false -- create a new instance to run again.
- */
-HC_EXPORTED bool hc_start(hc_handle* handle);
+    /**
+     * @brief Start the client: validates the configuration (TLS settings fail
+     *        closed) and launches the worker threads. Returns false and starts
+     *        nothing when validation fails. A second start while running is
+     *        ignored (true). Single-shot: once hc_stop() has run, start returns
+     *        false -- create a new instance to run again.
+     */
+    HC_EXPORTED bool hc_start(hc_handle* handle);
 
-/**
- * @brief Stop the client: drains within the configured window (stateless
- *        flush + final Notify), aborts in-flight requests explicitly and
- *        joins every thread. No callback fires after this returns. Terminal
- *        (single-shot): the instance cannot be restarted afterwards. Safe
- *        without a prior start.
- */
-HC_EXPORTED void hc_stop(hc_handle* handle);
+    /**
+     * @brief Stop the client: drains within the configured window (stateless
+     *        flush + final Notify), aborts in-flight requests explicitly and
+     *        joins every thread. No callback fires after this returns. Terminal
+     *        (single-shot): the instance cannot be restarted afterwards. Safe
+     *        without a prior start.
+     */
+    HC_EXPORTED void hc_stop(hc_handle* handle);
 
-/** @brief Destroy the instance. Implies hc_stop(). NULL-safe. */
-HC_EXPORTED void hc_destroy(hc_handle* handle);
+    /** @brief Destroy the instance. Implies hc_stop(). NULL-safe. */
+    HC_EXPORTED void hc_destroy(hc_handle* handle);
 
-/* ---- data plane (called from agentd's EventForward seam) ---- */
+    /* ---- data plane (called from agentd's EventForward seam) ---- */
 
-/**
- * @brief Submit one event frame ("queue:location:message" bytes) for the
- *        /stateless batch. Returns false when the client is not running
- *        or the accumulator is full (drop-newest; the occupancy ladder is
- *        surfaced via on_buffer_level).
- */
-HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length);
+    /**
+     * @brief Submit one event frame ("queue:location:message" bytes) for the
+     *        /stateless batch. Returns false when the client is not running
+     *        or the accumulator is full (drop-newest; the occupancy ladder is
+     *        surfaced via on_buffer_level).
+     */
+    HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length);
 
-/**
- * @brief Submit a whole sync session for /stateful. Asynchronous: the
- *        outcome arrives via on_sync_response with the same session_id.
- *        Returns false when the client is not running or the session
- *        queue is full.
- */
-HC_EXPORTED bool hc_submit_sync_session(hc_handle* handle, const char* session_id,
-                                        const uint8_t* buffer, size_t length);
+    /**
+     * @brief Submit a whole sync session for /stateful. Asynchronous: the
+     *        outcome arrives via on_sync_response with the same session_id.
+     *        Returns false when the client is not running or the session
+     *        queue is full.
+     */
+    HC_EXPORTED bool
+    hc_submit_sync_session(hc_handle* handle, const char* session_id, const uint8_t* buffer, size_t length);
 
-/**
- * @brief Submit a whole sync session that is ALREADY spooled to a file (the
- *        intake streamed it off the local sync socket, so a multi-MB session
- *        never sat in memory). The module adopts the file and deletes it once
- *        the session is sent. Asynchronous, like hc_submit_sync_session.
- *        Returns false when the client is not running or the queue is full.
- */
-HC_EXPORTED bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id,
-                                             const char* file_path, uint64_t size);
+    /**
+     * @brief Submit a whole sync session that is ALREADY spooled to a file (the
+     *        intake streamed it off the local sync socket, so a multi-MB session
+     *        never sat in memory). The module adopts the file and deletes it once
+     *        the session is sent. Asynchronous, like hc_submit_sync_session.
+     *        Returns false when the client is not running or the queue is full.
+     */
+    HC_EXPORTED bool
+    hc_submit_sync_session_file(hc_handle* handle, const char* session_id, const char* file_path, uint64_t size);
 
-/**
- * @brief Producer-side helper: stream a whole sync session to the agent's
- *        sync intake socket (the STREAM socket that bypasses the 64 KB DGRAM
- *        cap). Standalone (no handle) — a producer process calls this in place
- *        of chunked DGRAM sends. Returns false on connect/write failure.
- *        Unix-only.
- */
-HC_EXPORTED bool hc_send_sync_session(const char* socket_path, const char* session_id,
-                                      const uint8_t* body, size_t length);
+    /**
+     * @brief Producer-side helper: stream a whole sync session to the agent's
+     *        sync intake socket (the STREAM socket that bypasses the 64 KB DGRAM
+     *        cap). Standalone (no handle) — a producer process calls this in place
+     *        of chunked DGRAM sends. Returns false on connect/write failure.
+     *        Unix-only.
+     */
+    HC_EXPORTED bool
+    hc_send_sync_session(const char* socket_path, const char* session_id, const uint8_t* body, size_t length);
 
-/* ---- control plane ---- */
+    /* ---- control plane ---- */
 
-/** @brief Force an out-of-cycle Notify (config change, restart...). */
-HC_EXPORTED void hc_notify_now(hc_handle* handle);
+    /** @brief Force an out-of-cycle Notify (config change, restart...). */
+    HC_EXPORTED void hc_notify_now(hc_handle* handle);
 
-/**
- * @brief Correct the module's view of the local merged-config hash (after a
- *        failed or divergent apply of a downloaded configuration). Unlike the
- *        other hc_* functions this one IS safe to call from inside callbacks:
- *        it only touches an internal guarded string. Returns false on a NULL
- *        handle or hash.
- */
-HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
+    /**
+     * @brief Correct the module's view of the local merged-config hash (after a
+     *        failed or divergent apply of a downloaded configuration). Unlike the
+     *        other hc_* functions this one IS safe to call from inside callbacks:
+     *        it only touches an internal guarded string. Returns false on a NULL
+     *        handle or hash.
+     */
+    HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
 
-/**
- * @brief Swap the agent id and signing key at runtime (key: 64 hex chars =
- *        32 bytes) after a re-enrollment (#38465's POST /enroll
- *        response can hand back a different numeric id along with the new
- *        key -- the two are set together so no request is ever signed with
- *        one half stale). Like hc_set_config_hash this is callback-safe (it
- *        only touches internal guarded state). It clears the auth pause and
- *        forces a fresh Startup (re-registration). Returns false on a NULL
- *        handle, NULL id, or invalid key material, leaving the previous
- *        identity in place.
- */
-HC_EXPORTED bool hc_set_agent_identity(hc_handle* handle, const char* agent_id, const char* key_hex);
+    /**
+     * @brief Swap the agent id and signing key at runtime (key: 64 hex chars =
+     *        32 bytes) after a re-enrollment (#38465's POST /enroll
+     *        response can hand back a different numeric id along with the new
+     *        key -- the two are set together so no request is ever signed with
+     *        one half stale). Like hc_set_config_hash this is callback-safe (it
+     *        only touches internal guarded state). It clears the auth pause and
+     *        forces a fresh Startup (re-registration). Returns false on a NULL
+     *        handle, NULL id, or invalid key material, leaving the previous
+     *        identity in place.
+     */
+    HC_EXPORTED bool hc_set_agent_identity(hc_handle* handle, const char* agent_id, const char* key_hex);
 
-/** @brief Current connection state (hc_conn_state_t). NULL -> STOPPED. */
-HC_EXPORTED int hc_get_state(const hc_handle* handle);
+    /** @brief Current connection state (hc_conn_state_t). NULL -> STOPPED. */
+    HC_EXPORTED int hc_get_state(const hc_handle* handle);
 
-/* ---- enrollment (#38465) ---- */
+    /* ---- enrollment (#38465) ---- */
 
-#define HC_MAX_ENROLL_BODY 4096
+#define HC_MAX_ENROLL_BODY     4096
 #define HC_MAX_ENROLL_PASSWORD 256
 /// Sized so a transport reason never needs truncating: libcurl's longest error
 /// string is around 60 bytes and the detail it appends is capped by
 /// CURL_ERROR_SIZE (256), leaving room to spare.
 #define HC_MAX_TRANSPORT_ERROR 512
 
-/**
- * @brief One /enroll request (#38438's contract), built entirely by the C
- *        caller (client-agent/src/enrollment.c): the module treats body_json
- *        as opaque bytes and never inspects its fields.
- */
-typedef struct hc_enroll_request_t
-{
-    char body_json[HC_MAX_ENROLL_BODY];    ///< The already-validated JSON body.
-    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no `wazuh-enroll+jwt` bearer
-    ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
-    ///< a password may both be set; there is no precedence between them,
-    ///< each authenticates independently (confirmed with the server team).
-    /// `kid` of a keyed `wazuh-enroll+jwt` bearer, or empty for password/open mode.
-    /// Two credentials travel through this one pair of fields, and the profile tells
-    /// them apart by the SHAPE of the `kid` alone (jwtEnrollProfileV1.hpp; the manager
-    /// classifies it the same way, in JwtEnrollTokenVerifier::peekKid()):
-    ///   - an enrollment token: 22 canonical base64url characters, the token's id;
-    ///   - a re-enrolling agent: its own canonical agent id ("001", <= 10 digits).
-    /// Both this and enroll_key_hex must be non-empty for the bearer to be minted; it
-    /// then takes priority over `password` (a keyed enrollment must not also sign with
-    /// a possibly-unrelated configured authd.pass).
-    char enroll_kid[24];
-    /// The credential's HKDF-derived 32-byte key, as 64 lowercase hex characters + NUL
-    /// -- same hex convention as hc_config_t::agent_key. The label the key was derived
-    /// under is the caller's business and is implied by the `kid`'s shape
-    /// (WAZUH-ENROLL-TOKEN-KEY for a token, WAZUH-REENROLL-KEY for an agent); this
-    /// field carries only the result. Empty means no keyed bearer (see enroll_kid).
-    char enroll_key_hex[65];
-    full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
-    ///< hc_create() ever does (first-boot enrollment has no handle yet), so
-    ///< it cannot rely on a sink already being assigned.
-} hc_enroll_request_t;
+    /**
+     * @brief One /enroll request (#38438's contract), built entirely by the C
+     *        caller (client-agent/src/enrollment.c): the module treats body_json
+     *        as opaque bytes and never inspects its fields.
+     */
+    typedef struct hc_enroll_request_t
+    {
+        char body_json[HC_MAX_ENROLL_BODY];    ///< The already-validated JSON body.
+        char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no `wazuh-enroll+jwt` bearer
+        ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
+        ///< a password may both be set; there is no precedence between them,
+        ///< each authenticates independently (confirmed with the server team).
+        /// `kid` of a keyed `wazuh-enroll+jwt` bearer, or empty for password/open mode.
+        /// Two credentials travel through this one pair of fields, and the profile tells
+        /// them apart by the SHAPE of the `kid` alone (jwtEnrollProfileV1.hpp; the manager
+        /// classifies it the same way, in JwtEnrollTokenVerifier::peekKid()):
+        ///   - an enrollment token: 22 canonical base64url characters, the token's id;
+        ///   - a re-enrolling agent: its own canonical agent id ("001", <= 10 digits).
+        /// Both this and enroll_key_hex must be non-empty for the bearer to be minted; it
+        /// then takes priority over `password` (a keyed enrollment must not also sign with
+        /// a possibly-unrelated configured authd.pass).
+        char enroll_kid[24];
+        /// The credential's HKDF-derived 32-byte key, as 64 lowercase hex characters + NUL
+        /// -- same hex convention as hc_config_t::agent_key. The label the key was derived
+        /// under is the caller's business and is implied by the `kid`'s shape
+        /// (WAZUH-ENROLL-TOKEN-KEY for a token, WAZUH-REENROLL-KEY for an agent); this
+        /// field carries only the result. Empty means no keyed bearer (see enroll_kid).
+        char enroll_key_hex[65];
+        full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
+        ///< hc_create() ever does (first-boot enrollment has no handle yet), so
+        ///< it cannot rely on a sink already being assigned.
+    } hc_enroll_request_t;
 
-/** @brief Result of one /enroll attempt. */
-typedef struct hc_enroll_result_t
-{
-    long http_code;           ///< 0 = no HTTP response at all (transport/config
-    ///< failure -- see hc_enroll()'s return value).
-    long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
-    char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
-    /// Why the request failed below HTTP, in libcurl's own words (same contract as
-    /// on_producer_pause's reason). Usually paired with http_code == 0, but a
-    /// failure after the status line (a dropped body, a response-size cap) leaves
-    /// both this and a real http_code set. Empty when the attempt never got as far
-    /// as libcurl -- notably a transport config the fail-closed TLS policy rejected.
-    char transport_error[HC_MAX_TRANSPORT_ERROR];
-} hc_enroll_result_t;
+    /** @brief Result of one /enroll attempt. */
+    typedef struct hc_enroll_result_t
+    {
+        long http_code; ///< 0 = no HTTP response at all (transport/config
+        ///< failure -- see hc_enroll()'s return value).
+        long retry_after_seconds;      ///< Parsed Retry-After header (0 = absent).
+        char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
+        /// Why the request failed below HTTP, in libcurl's own words (same contract as
+        /// on_producer_pause's reason). Usually paired with http_code == 0, but a
+        /// failure after the status line (a dropped body, a response-size cap) leaves
+        /// both this and a real http_code set. Empty when the attempt never got as far
+        /// as libcurl -- notably a transport config the fail-closed TLS policy rejected.
+        char transport_error[HC_MAX_TRANSPORT_ERROR];
+    } hc_enroll_result_t;
 
-/**
- * @brief Perform exactly one /enroll HTTP request. Handle-less and
- *        synchronous, like hc_send_sync_session: usable before hc_create()
- *        (first-boot enrollment) or standalone (re-enrollment after a 401).
- *        No retry loop and no shared CompressionGate/AuthGate -- the C
- *        caller already owns backoff/retry one layer up.
- * @param config Only the transport half is read (host, port, TLS material,
- *        timeout, compression toggle); agent_id/agent_key are ignored, since
- *        an enrolling agent has neither yet.
- * @return true once a request was actually sent and answered, whatever the
- *         HTTP status (including 4xx/5xx: result->http_code carries it, for
- *         the caller to interpret). false when nothing was ever sent -- an
- *         invalid transport config (fail-closed TLS policy) or a NULL
- *         argument; result->http_code stays 0 in that case.
- */
-HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
-                           hc_enroll_result_t* result);
+    /**
+     * @brief Perform exactly one /enroll HTTP request. Handle-less and
+     *        synchronous, like hc_send_sync_session: usable before hc_create()
+     *        (first-boot enrollment) or standalone (re-enrollment after a 401).
+     *        No retry loop and no shared CompressionGate/AuthGate -- the C
+     *        caller already owns backoff/retry one layer up.
+     * @param config Only the transport half is read (host, port, TLS material,
+     *        timeout, compression toggle); agent_id/agent_key are ignored, since
+     *        an enrolling agent has neither yet.
+     * @return true once a request was actually sent and answered, whatever the
+     *         HTTP status (including 4xx/5xx: result->http_code carries it, for
+     *         the caller to interpret). false when nothing was ever sent -- an
+     *         invalid transport config (fail-closed TLS policy) or a NULL
+     *         argument; result->http_code stays 0 in that case.
+     */
+    HC_EXPORTED bool
+    hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request, hc_enroll_result_t* result);
 
 /* ---- POST /stateful ---- */
 
@@ -624,81 +621,80 @@ HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t*
 /// larger than an /enroll JSON reply.
 #define HC_MAX_CACERTS_BODY 8192
 
-/**
- * @brief One GET /cacerts request, built entirely by the C caller.
- *        Handle-less, exactly like hc_enroll_request_t: this fetch step runs
- *        before any hc_handle exists (the same first-boot bootstrap moment
- *        /enroll runs at).
- */
-typedef struct hc_cacerts_request_t
-{
-    full_log_fnc_t log; ///< This call's log sink; may run before hc_create() ever does.
-} hc_cacerts_request_t;
+    /**
+     * @brief One GET /cacerts request, built entirely by the C caller.
+     *        Handle-less, exactly like hc_enroll_request_t: this fetch step runs
+     *        before any hc_handle exists (the same first-boot bootstrap moment
+     *        /enroll runs at).
+     */
+    typedef struct hc_cacerts_request_t
+    {
+        full_log_fnc_t log; ///< This call's log sink; may run before hc_create() ever does.
+    } hc_cacerts_request_t;
 
-/** @brief Result of one GET /cacerts attempt. */
-typedef struct hc_cacerts_result_t
-{
-    long http_code;                     ///< 0 = no HTTP response at all (transport/config
-    ///< failure -- see hc_fetch_cacerts()'s return value).
-    char body[HC_MAX_CACERTS_BODY];     ///< Raw response body (the CA bundle on 200).
-    /// Whether the manager's body did not fit in `body` and was cut short. Reported rather
-    /// than left to be inferred: the certificate the token pins can sit past the cut, and a
-    /// caller that just hashed what arrived would call that a pin mismatch -- announcing an
-    /// attack when the real fault is a buffer this end chose.
-    bool body_truncated;
-    /// Same contract as hc_enroll_result_t::transport_error.
-    char transport_error[HC_MAX_TRANSPORT_ERROR];
-} hc_cacerts_result_t;
+    /** @brief Result of one GET /cacerts attempt. */
+    typedef struct hc_cacerts_result_t
+    {
+        long http_code; ///< 0 = no HTTP response at all (transport/config
+        ///< failure -- see hc_fetch_cacerts()'s return value).
+        char body[HC_MAX_CACERTS_BODY]; ///< Raw response body (the CA bundle on 200).
+        /// Whether the manager's body did not fit in `body` and was cut short. Reported rather
+        /// than left to be inferred: the certificate the token pins can sit past the cut, and a
+        /// caller that just hashed what arrived would call that a pin mismatch -- announcing an
+        /// attack when the real fault is a buffer this end chose.
+        bool body_truncated;
+        /// Same contract as hc_enroll_result_t::transport_error.
+        char transport_error[HC_MAX_TRANSPORT_ERROR];
+    } hc_cacerts_result_t;
 
-/**
- * @brief Perform exactly one GET /cacerts HTTP request, UNVERIFIED: the
- *        whole point of this call is to fetch a trust anchor the agent does
- *        not have yet, so there is nothing to verify the connection against.
- *        This function forces the transport's TLS verification off for this
- *        one request regardless of what `config->verify_mode` carries --
- *        callers must treat the returned body as untrusted input until a
- *        separate pin-compare step (not part of this function) validates it
- *        against the enrollment token's pin.
- * @param config Only the transport half is read (host, port, timeout,
- *        compression toggle, and the client_cert/client_key/ciphers identity,
- *        which a manager that requires client certificates checks on this
- *        request too); verify_mode/ca_path are ignored, since this call always
- *        fetches unverified.
- * @return true once a request was actually sent and answered, whatever the
- *         HTTP status. false when nothing was ever sent (an invalid
- *         transport config -- e.g. a mismatched client cert/key pair -- or a
- *         NULL argument); result->http_code stays 0 in that case.
- */
-HC_EXPORTED bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
-                                  hc_cacerts_result_t* result);
+    /**
+     * @brief Perform exactly one GET /cacerts HTTP request, UNVERIFIED: the
+     *        whole point of this call is to fetch a trust anchor the agent does
+     *        not have yet, so there is nothing to verify the connection against.
+     *        This function forces the transport's TLS verification off for this
+     *        one request regardless of what `config->verify_mode` carries --
+     *        callers must treat the returned body as untrusted input until a
+     *        separate pin-compare step (not part of this function) validates it
+     *        against the enrollment token's pin.
+     * @param config Only the transport half is read (host, port, timeout,
+     *        compression toggle, and the client_cert/client_key/ciphers identity,
+     *        which a manager that requires client certificates checks on this
+     *        request too); verify_mode/ca_path are ignored, since this call always
+     *        fetches unverified.
+     * @return true once a request was actually sent and answered, whatever the
+     *         HTTP status. false when nothing was ever sent (an invalid
+     *         transport config -- e.g. a mismatched client cert/key pair -- or a
+     *         NULL argument); result->http_code stays 0 in that case.
+     */
+    HC_EXPORTED bool
+    hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request, hc_cacerts_result_t* result);
 
-/**
- * @brief Extracts, from a /cacerts PEM bundle, the single certificate whose SPKI matches an
- *        enrollment token's pin -- the only certificate in that body a caller may trust.
- *
- * Deliberately not a "does it match" predicate. hc_fetch_cacerts() answers over a connection
- * nothing has verified yet, so every byte of that body was chosen by whoever replied; the pin
- * vouches for one certificate in it and says nothing about the rest. A caller that installed
- * the whole body as its trust anchor would take a second anchor from an attacker who simply
- * appended the genuine certificate -- which is published at /cacerts, so it is no secret --
- * and could then present a chain of its own that verifies. Returning the matched certificate
- * on its own is what keeps the anchor to exactly what the token named.
- *
- * @param cacerts_body The raw /cacerts response body (hc_cacerts_result_t::body).
- * @param body_len Its length. Must be built with strnlen(body, HC_MAX_CACERTS_BODY), never
- *        strlen(): the buffer is a fixed char[] with no length field of its own.
- * @param pin_b64url The token's pin, as 43 canonical unpadded base64url characters.
- * @param matched_pem Receives the matched certificate alone, re-encoded as PEM and NUL
- *        terminated. Untouched unless this returns true.
- * @param matched_pem_size Size of @a matched_pem. HC_MAX_CACERTS_BODY is always enough: one
- *        certificate cannot exceed the bundle it came from.
- * @return true when exactly the pinned certificate was found and written. false on no match, a
- *         malformed pin, an unparseable bundle, a destination too small, or a NULL argument --
- *         fail closed in every case.
- */
-HC_EXPORTED bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len,
-                                            const char* pin_b64url, char* matched_pem,
-                                            size_t matched_pem_size);
+    /**
+     * @brief Extracts, from a /cacerts PEM bundle, the single certificate whose SPKI matches an
+     *        enrollment token's pin -- the only certificate in that body a caller may trust.
+     *
+     * Deliberately not a "does it match" predicate. hc_fetch_cacerts() answers over a connection
+     * nothing has verified yet, so every byte of that body was chosen by whoever replied; the pin
+     * vouches for one certificate in it and says nothing about the rest. A caller that installed
+     * the whole body as its trust anchor would take a second anchor from an attacker who simply
+     * appended the genuine certificate -- which is published at /cacerts, so it is no secret --
+     * and could then present a chain of its own that verifies. Returning the matched certificate
+     * on its own is what keeps the anchor to exactly what the token named.
+     *
+     * @param cacerts_body The raw /cacerts response body (hc_cacerts_result_t::body).
+     * @param body_len Its length. Must be built with strnlen(body, HC_MAX_CACERTS_BODY), never
+     *        strlen(): the buffer is a fixed char[] with no length field of its own.
+     * @param pin_b64url The token's pin, as 43 canonical unpadded base64url characters.
+     * @param matched_pem Receives the matched certificate alone, re-encoded as PEM and NUL
+     *        terminated. Untouched unless this returns true.
+     * @param matched_pem_size Size of @a matched_pem. HC_MAX_CACERTS_BODY is always enough: one
+     *        certificate cannot exceed the bundle it came from.
+     * @return true when exactly the pinned certificate was found and written. false on no match, a
+     *         malformed pin, an unparseable bundle, a destination too small, or a NULL argument --
+     *         fail closed in every case.
+     */
+    HC_EXPORTED bool hc_spki_pinned_certificate(
+        const char* cacerts_body, size_t body_len, const char* pin_b64url, char* matched_pem, size_t matched_pem_size);
 
 #ifdef __cplusplus
 }

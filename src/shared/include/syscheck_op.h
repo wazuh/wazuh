@@ -18,44 +18,44 @@
 #include <grp.h>
 
 // Windows file attributes
-#define FILE_ATTRIBUTE_READONLY                 0x00000001
-#define FILE_ATTRIBUTE_HIDDEN                   0x00000002
-#define FILE_ATTRIBUTE_SYSTEM                   0x00000004
-#define FILE_ATTRIBUTE_DIRECTORY                0x00000010
-#define FILE_ATTRIBUTE_ARCHIVE                  0x00000020
-#define FILE_ATTRIBUTE_DEVICE                   0x00000040
-#define FILE_ATTRIBUTE_NORMAL                   0x00000080
-#define FILE_ATTRIBUTE_TEMPORARY                0x00000100
-#define FILE_ATTRIBUTE_SPARSE_FILE              0x00000200
-#define FILE_ATTRIBUTE_REPARSE_POINT            0x00000400
-#define FILE_ATTRIBUTE_COMPRESSED               0x00000800
-#define FILE_ATTRIBUTE_OFFLINE                  0x00001000
-#define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED      0x00002000
-#define FILE_ATTRIBUTE_ENCRYPTED                0x00004000
-#define FILE_ATTRIBUTE_VIRTUAL                  0x00010000
+#define FILE_ATTRIBUTE_READONLY            0x00000001
+#define FILE_ATTRIBUTE_HIDDEN              0x00000002
+#define FILE_ATTRIBUTE_SYSTEM              0x00000004
+#define FILE_ATTRIBUTE_DIRECTORY           0x00000010
+#define FILE_ATTRIBUTE_ARCHIVE             0x00000020
+#define FILE_ATTRIBUTE_DEVICE              0x00000040
+#define FILE_ATTRIBUTE_NORMAL              0x00000080
+#define FILE_ATTRIBUTE_TEMPORARY           0x00000100
+#define FILE_ATTRIBUTE_SPARSE_FILE         0x00000200
+#define FILE_ATTRIBUTE_REPARSE_POINT       0x00000400
+#define FILE_ATTRIBUTE_COMPRESSED          0x00000800
+#define FILE_ATTRIBUTE_OFFLINE             0x00001000
+#define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED 0x00002000
+#define FILE_ATTRIBUTE_ENCRYPTED           0x00004000
+#define FILE_ATTRIBUTE_VIRTUAL             0x00010000
 
 // Permissions
 // Generic rights
-#define GENERIC_READ                            0x80000000
-#define GENERIC_WRITE                           0x40000000
-#define GENERIC_EXECUTE                         0x20000000
-#define GENERIC_ALL                             0x10000000
+#define GENERIC_READ    0x80000000
+#define GENERIC_WRITE   0x40000000
+#define GENERIC_EXECUTE 0x20000000
+#define GENERIC_ALL     0x10000000
 // Standard rights
-#define DELETE                                  0x00010000
-#define READ_CONTROL                            0x00020000
-#define WRITE_DAC                               0x00040000
-#define WRITE_OWNER                             0x00080000
-#define SYNCHRONIZE                             0x00100000
+#define DELETE       0x00010000
+#define READ_CONTROL 0x00020000
+#define WRITE_DAC    0x00040000
+#define WRITE_OWNER  0x00080000
+#define SYNCHRONIZE  0x00100000
 
 // Specific rights
-#define FILE_READ_DATA                          0x00000001
-#define FILE_WRITE_DATA                         0x00000002
-#define FILE_APPEND_DATA                        0x00000004
-#define FILE_READ_EA                            0x00000008
-#define FILE_WRITE_EA                           0x00000010
-#define FILE_EXECUTE                            0x00000020
-#define FILE_READ_ATTRIBUTES                    0x00000080
-#define FILE_WRITE_ATTRIBUTES                   0x00000100
+#define FILE_READ_DATA        0x00000001
+#define FILE_WRITE_DATA       0x00000002
+#define FILE_APPEND_DATA      0x00000004
+#define FILE_READ_EA          0x00000008
+#define FILE_WRITE_EA         0x00000010
+#define FILE_EXECUTE          0x00000020
+#define FILE_READ_ATTRIBUTES  0x00000080
+#define FILE_WRITE_ATTRIBUTES 0x00000100
 
 #else
 
@@ -64,23 +64,24 @@
 #include <sddl.h>
 #include <winreg.h>
 
-#define BUFFER_LEN 1024
+#define BUFFER_LEN                1024
 
-//Windows registers
-#define STR_HKEY_CLASSES_ROOT                   "HKEY_CLASSES_ROOT"
-#define STR_HKEY_CURRENT_CONFIG                 "HKEY_CURRENT_CONFIG"
-#define STR_HKEY_CURRENT_USER                   "HKEY_CURRENT_USER"
-#define STR_HKEY_LOCAL_MACHINE                  "HKEY_LOCAL_MACHINE"
-#define STR_HKEY_PERFORMANCE_DATA               "HKEY_PERFORMANCE_DATA"
-#define STR_HKEY_USERS                          "HKEY_USERS"
-#define check_wildcard(x)                       strchr(x,'*') || strchr(x,'?')
+// Windows registers
+#define STR_HKEY_CLASSES_ROOT     "HKEY_CLASSES_ROOT"
+#define STR_HKEY_CURRENT_CONFIG   "HKEY_CURRENT_CONFIG"
+#define STR_HKEY_CURRENT_USER     "HKEY_CURRENT_USER"
+#define STR_HKEY_LOCAL_MACHINE    "HKEY_LOCAL_MACHINE"
+#define STR_HKEY_PERFORMANCE_DATA "HKEY_PERFORMANCE_DATA"
+#define STR_HKEY_USERS            "HKEY_USERS"
+#define check_wildcard(x)         strchr(x, '*') || strchr(x, '?')
 
 /* Results of a registry wildcard expansion */
-#define FIM_REG_EXPAND_TRUNCATED                0x1     /* More matches than the expansion can hold */
-#define FIM_REG_EXPAND_FAILED                   0x2     /* A key could not be listed */
+#define FIM_REG_EXPAND_TRUNCATED  0x1 /* More matches than the expansion can hold */
+#define FIM_REG_EXPAND_FAILED     0x2 /* A key could not be listed */
 
 /* Fields for paths */
-typedef struct _reg_path_struct {
+typedef struct _reg_path_struct
+{
     char* path;
     int has_wildcard;
     int checked;
@@ -91,10 +92,10 @@ typedef struct _reg_path_struct {
 #include "syscheck.h"
 #include "os_net.h"
 
-#define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
-#define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
-#define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
-#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
+#define FILE_ATTRIBUTE_INTEGRITY_STREAM      0x00008000
+#define FILE_ATTRIBUTE_NO_SCRUB_DATA         0x00020000
+#define FILE_ATTRIBUTE_RECALL_ON_OPEN        0x00040000
+#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS 0x00400000
 
 /**
  * @brief Delete from path to parent all empty folders
@@ -102,7 +103,7 @@ typedef struct _reg_path_struct {
  * @param path The path from which to delete
  * @return 0 on success, -1 on failure
  */
-int remove_empty_folders(const char *path);
+int remove_empty_folders(const char* path);
 
 #ifndef WIN32
 
@@ -112,7 +113,7 @@ int remove_empty_folders(const char *path);
  * @param uid The user ID
  * @return The user name on success, NULL on failure
  */
-char *get_user(int uid);
+char* get_user(int uid);
 
 /**
  * @brief Retrieves the group name from a group ID in UNIX
@@ -120,7 +121,7 @@ char *get_user(int uid);
  * @param gid The group ID
  * @return The group name on success, an empty string on failure
  */
-char *get_group(int gid);
+char* get_group(int gid);
 
 #else
 
@@ -136,7 +137,7 @@ char *get_group(int gid);
  *
  * @return The user name on success, an empty string on failure.
  */
-char *get_registry_user(const char *path, char **sid, HANDLE hndl);
+char* get_registry_user(const char* path, char** sid, HANDLE hndl);
 
 /**
  * @brief Retrieves the user name of the owner of a file in Windows.
@@ -149,7 +150,7 @@ char *get_registry_user(const char *path, char **sid, HANDLE hndl);
  *
  * @return The user name on success, an empty string on failure.
  */
-char *get_file_user(const char *path, char **sid);
+char* get_file_user(const char* path, char** sid);
 
 /**
  * @brief Retrieves the user name of the owner of a file or registry in Windows.
@@ -164,7 +165,7 @@ char *get_file_user(const char *path, char **sid);
  *
  * @return The user name on success, an empty string on failure.
  */
-char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type);
+char* get_user(const char* path, char** sid, HANDLE hndl, SE_OBJECT_TYPE object_type);
 
 /**
  * @brief Check if a directory exists
@@ -172,7 +173,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
  * @param path Path of the directory to check
  * @return The FILE_ATTRIBUTE_DIRECTORY bit mask on success, 0 on failure
  */
-unsigned int w_directory_exists(const char *path);
+unsigned int w_directory_exists(const char* path);
 
 /**
  * @brief Retrieves the attributes of a specific file (Windows)
@@ -180,7 +181,7 @@ unsigned int w_directory_exists(const char *path);
  * @param file_path The path of the file to check the attributes of
  * @return The bit mask of the file attributes on success, 0 on failure
  */
-unsigned int w_get_file_attrs(const char *file_path);
+unsigned int w_get_file_attrs(const char* file_path);
 
 /**
  * @brief Retrieves the permissions of a specific file (Windows)
@@ -191,14 +192,14 @@ unsigned int w_get_file_attrs(const char *file_path);
  * @retval -1 if the cJSON object could not be initialized.
  * @retval An error code retrieved from `GetLastError` otherwise.
  */
-int w_get_file_permissions(const char *file_path, cJSON **output_acl);
+int w_get_file_permissions(const char* file_path, cJSON** output_acl);
 
 /**
  * @brief Retrieves the group name from a group ID in windows
  *
  * @return The group name on success, an empty string on failure
  */
-char *get_group(__attribute__((unused)) int gid);
+char* get_group(__attribute__((unused)) int gid);
 
 /**
  * @brief Retrieves the group name and gid of a registry key.
@@ -208,8 +209,8 @@ char *get_group(__attribute__((unused)) int gid);
  * @param hndl Handle for the registry to check the group of.
  *
  * @return The user name on success, NULL on failure.
-*/
-char *get_registry_group(char **sid, HANDLE hndl);
+ */
+char* get_registry_group(char** sid, HANDLE hndl);
 
 /**
  * @brief Retrieves the permissions of a registry key.
@@ -219,8 +220,8 @@ char *get_registry_group(char **sid, HANDLE hndl);
  * @retval 0 on success.
  * @retval -1 if the cJSON object could not be initialized.
  * @retval An error code retrieved from `GetLastError` otherwise.
-*/
-DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl);
+ */
+DWORD get_registry_permissions(HKEY hndl, cJSON** output_acl);
 
 /**
  * @brief Get last modification time from registry key.
@@ -228,7 +229,7 @@ DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl);
  * @param hndl Handle for the registry key to check the permissions of.
  *
  * @return Last modification time of registry key in POSIX format.
-*/
+ */
 unsigned int get_registry_mtime(HKEY hndl);
 
 /**
@@ -239,7 +240,7 @@ unsigned int get_registry_mtime(HKEY hndl);
  * @param [out] account_domain Buffer in which the account domain is written
  * @return 0 on success, error code on failure
  */
-int w_get_account_info(SID *sid, char **account_name, char **account_domain);
+int w_get_account_info(SID* sid, char** account_name, char** account_domain);
 
 /**
  * @brief Checks if at least one structure exists whose path has a wildcard  (Windows)
@@ -248,7 +249,7 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain);
  * @retval 1 on success.
  * @retval 0 if there is not more wildcards.
  */
-int w_is_still_a_wildcard(reg_path_struct **array_struct);
+int w_is_still_a_wildcard(reg_path_struct** array_struct);
 
 /**
  * @brief Returns the HKEY corresponding to the root key name  (Windows)
@@ -268,7 +269,7 @@ HKEY w_switch_root_key(char* str_rootkey);
  * @param [out] failed Set to 1 when the subkeys could not be listed completely. A missing key is not a failure.
  * @retval A non empty array of string on success.
  */
-char** w_list_all_keys(HKEY root_key, char* str_subkey, int arch, int *failed);
+char** w_list_all_keys(HKEY root_key, char* str_subkey, int arch, int* failed);
 
 /**
  * @brief Generate all valid paths that contains a * or ? (Windows)
@@ -279,8 +280,7 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey, int arch, int *failed);
  * @param [in] arch ARCH_32BIT or ARCH_64BIT, the registry view to list.
  * @retval FIM_REG_EXPAND_* flags, 0 if every match was added.
  */
-int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items, int arch);
-
+int w_expand_by_wildcard(reg_path_struct** array_struct, char wildcard_chr, int max_items, int arch);
 
 /**
  * @brief Extract the subkey from path (Windows)
@@ -308,14 +308,14 @@ int expand_wildcard_registers(char* entry, char** paths, int arch);
  * @param [out] str Buffer to be written
  * @param [in] attrs Bit mask to be converted
  */
-void decode_win_attributes(char *str, unsigned int attrs);
+void decode_win_attributes(char* str, unsigned int attrs);
 
 /**
  * @brief Decodes a permission string and converts it to a human readable format
  *
  * @param [out] acl_json A cJSON with the permissions to decode
  */
-void decode_win_acl_json(cJSON *acl_json);
+void decode_win_acl_json(cJSON* acl_json);
 
 /**
  * @brief Send a one-way message to Syscheck
@@ -323,6 +323,6 @@ void decode_win_acl_json(cJSON *acl_json);
  * @param message Payload.
  * @param length Length in bytes of the input message
  */
-void ag_send_syscheck(char * message, size_t length);
+void ag_send_syscheck(char* message, size_t length);
 
 #endif /* SYSCHECK_OP_H */

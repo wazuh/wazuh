@@ -23,7 +23,8 @@
 /* Read_Agent_Manager validates every <address> through OS_IsValidIP; queue one
  * "valid IPv4, no expansion needed" expectation per <address> in the fragment
  * before calling parse_agent(). */
-static void expect_valid_ip(const char *ip) {
+static void expect_valid_ip(const char* ip)
+{
     expect_string(__wrap_OS_IsValidIP, ip_address, ip);
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
@@ -32,19 +33,23 @@ static void expect_valid_ip(const char *ip) {
 /* Parses `xml_str` as the body of <agent>...</agent> into a fresh agent
  * struct via the real Read_Agent. Caller must Free_Agent + OS_ClearNode +
  * OS_ClearXML the outputs. */
-static int parse_agent_into(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
-    if (OS_ReadXMLString(xml_str, xml) != 0) {
+static int parse_agent_into(const char* xml_str, OS_XML* xml, xml_node*** nodes, agent* cfg)
+{
+    if (OS_ReadXMLString(xml_str, xml) != 0)
+    {
         return OS_INVALID;
     }
 
-    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL) {
+    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL)
+    {
         return OS_INVALID;
     }
 
     return Read_Agent(xml, *nodes, cfg, NULL);
 }
 
-static int parse_agent(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+static int parse_agent(const char* xml_str, OS_XML* xml, xml_node*** nodes, agent* cfg)
+{
     memset(cfg, 0, sizeof(*cfg));
 
     return parse_agent_into(xml_str, xml, nodes, cfg);
@@ -52,19 +57,23 @@ static int parse_agent(const char *xml_str, OS_XML *xml, xml_node ***nodes, agen
 
 /* Parses `xml_str` as the body of a legacy 4.x <client>...</client>. Does not reset
  * cfg, so it can run after parse_agent() on the same struct. */
-static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
-    if (OS_ReadXMLString(xml_str, xml) != 0) {
+static int parse_legacy_client(const char* xml_str, OS_XML* xml, xml_node*** nodes, agent* cfg)
+{
+    if (OS_ReadXMLString(xml_str, xml) != 0)
+    {
         return OS_INVALID;
     }
 
-    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL) {
+    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL)
+    {
         return OS_INVALID;
     }
 
     return Read_Legacy_Client(xml, *nodes, cfg, NULL);
 }
 
-static void cleanup(OS_XML *xml, xml_node **nodes, agent *cfg) {
+static void cleanup(OS_XML* xml, xml_node** nodes, agent* cfg)
+{
     Free_Agent(cfg);
     OS_ClearNode(nodes);
     OS_ClearXML(xml);
@@ -72,20 +81,20 @@ static void cleanup(OS_XML *xml, xml_node **nodes, agent *cfg) {
 
 /* <ssl> block */
 
-static void test_ssl_full_verification_mode(void **state) {
+static void test_ssl_full_verification_mode(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl>"
-        "<certificate>/etc/wazuh/agent.pem</certificate>"
-        "<key>/etc/wazuh/agent.key</key>"
-        "<certificate_authorities>/etc/wazuh/ca.pem</certificate_authorities>"
-        "<verification_mode>full</verification_mode>"
-        "<ciphers>TLS_AES_256_GCM_SHA384</ciphers>"
-        "</ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl>"
+                          "<certificate>/etc/wazuh/agent.pem</certificate>"
+                          "<key>/etc/wazuh/agent.key</key>"
+                          "<certificate_authorities>/etc/wazuh/ca.pem</certificate_authorities>"
+                          "<verification_mode>full</verification_mode>"
+                          "<ciphers>TLS_AES_256_GCM_SHA384</ciphers>"
+                          "</ssl>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -103,14 +112,14 @@ static void test_ssl_full_verification_mode(void **state) {
  * constrain a session, which is the whole reason it is rejected here rather
  * than being handed to OpenSSL to ignore. */
 
-static void test_ssl_ciphers_accepts_a_tls13_suite_list(void **state) {
+static void test_ssl_ciphers_accepts_a_tls13_suite_list(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers></ssl>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.ssl.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
@@ -118,35 +127,33 @@ static void test_ssl_ciphers_accepts_a_tls13_suite_list(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_ciphers_rejects_a_tls12_cipher_string(void **state) {
+static void test_ssl_ciphers_rejects_a_tls12_cipher_string(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><ciphers>HIGH:!aNULL</ciphers></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><ciphers>HIGH:!aNULL</ciphers></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_ciphers_rejects_a_list_of_separators(void **state) {
+static void test_ssl_ciphers_rejects_a_list_of_separators(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* Every element is empty, so there is no suite at all. */
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><ciphers>:::</ciphers></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><ciphers>:::</ciphers></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid 'ciphers' option: ':::' has an empty cipher suite name.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid 'ciphers' option: ':::' has an empty cipher suite name.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -156,16 +163,17 @@ static void test_ssl_ciphers_rejects_a_list_of_separators(void **state) {
 /* A separator run names a suite that is not there. strtok_r() collapses these,
  * so each position -- leading, trailing and interior -- gets its own case. */
 
-static void test_ssl_ciphers_rejects_a_leading_separator(void **state) {
+static void test_ssl_ciphers_rejects_a_leading_separator(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><ciphers>:TLS_AES_128_GCM_SHA256</ciphers></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><ciphers>:TLS_AES_128_GCM_SHA256</ciphers></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Invalid 'ciphers' option: ':TLS_AES_128_GCM_SHA256' has an empty cipher suite name.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -173,16 +181,17 @@ static void test_ssl_ciphers_rejects_a_leading_separator(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_ciphers_rejects_a_trailing_separator(void **state) {
+static void test_ssl_ciphers_rejects_a_trailing_separator(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><ciphers>TLS_AES_128_GCM_SHA256:</ciphers></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><ciphers>TLS_AES_128_GCM_SHA256:</ciphers></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256:' has an empty cipher suite name.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -190,16 +199,17 @@ static void test_ssl_ciphers_rejects_a_trailing_separator(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
+static void test_ssl_ciphers_rejects_a_doubled_separator(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><ciphers>TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384</ciphers></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><ciphers>TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384</ciphers></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384' "
                   "has an empty cipher suite name.");
 
@@ -208,14 +218,14 @@ static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_certificate_verification_mode(void **state) {
+static void test_ssl_certificate_verification_mode(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><verification_mode>certificate</verification_mode></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><verification_mode>certificate</verification_mode></ssl>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_CERT);
@@ -223,14 +233,14 @@ static void test_ssl_certificate_verification_mode(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_none_verification_mode(void **state) {
+static void test_ssl_none_verification_mode(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><verification_mode>none</verification_mode></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><verification_mode>none</verification_mode></ssl>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
@@ -238,14 +248,14 @@ static void test_ssl_none_verification_mode(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_system_verification_mode(void **state) {
+static void test_ssl_system_verification_mode(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><verification_mode>system</verification_mode></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><verification_mode>system</verification_mode></ssl>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_SYSTEM);
@@ -253,15 +263,16 @@ static void test_ssl_system_verification_mode(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_zero_initialized_reads_as_full(void **state) {
+static void test_ssl_zero_initialized_reads_as_full(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* No <ssl> block at all: a zero-initialized struct reads as FULL
      * (AGENT_VERIFY_FULL == 0), so a caller that never sets a default still
      * fails closed rather than silently disabling verification. */
-    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
@@ -269,9 +280,10 @@ static void test_ssl_zero_initialized_reads_as_full(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
+static void test_ssl_absent_keeps_the_default_the_caller_set(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* The parser never invents a verification mode -- with no <ssl> block, the
@@ -279,7 +291,7 @@ static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
      * ClientConf() own the actual default (w_agent_resolve_ssl_posture() settles
      * AGENT_VERIFY_UNSET once parsing finishes, reading the trust anchor on disk as
      * well as the block) instead of the parser guessing one on its own. */
-    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     memset(&cfg, 0, sizeof(cfg));
     cfg.ssl.verification_mode = AGENT_VERIFY_NONE;
@@ -290,34 +302,32 @@ static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_invalid_verification_mode_is_rejected(void **state) {
+static void test_ssl_invalid_verification_mode_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><verification_mode>bogus</verification_mode></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><verification_mode>bogus</verification_mode></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'verification_mode': bogus.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'verification_mode': bogus.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_invalid_tag_is_rejected(void **state) {
+static void test_ssl_invalid_tag_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><bogus_tag>x</bogus_tag></ssl>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><bogus_tag>x</bogus_tag></ssl>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'bogus_tag'.");
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'bogus_tag'.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -326,13 +336,13 @@ static void test_ssl_invalid_tag_is_rejected(void **state) {
 
 /* <manager> naming and the endpoint it carries */
 
-static void test_manager_address_and_explicit_port(void **state) {
+static void test_manager_address_and_explicit_port(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.1:8443</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:8443</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -343,15 +353,15 @@ static void test_manager_address_and_explicit_port(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_server_tag_is_rejected(void **state) {
+static void test_server_tag_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<server><address>10.0.0.1</address></server>";
+    const char* xml_str = "<server><address>10.0.0.1</address></server>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'server'.");
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'server'.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -360,17 +370,16 @@ static void test_server_tag_is_rejected(void **state) {
 
 /* Single <manager>: the last one prevails (#37702 restriction 2) */
 
-static void test_second_manager_block_prevails_with_warning(void **state) {
+static void test_second_manager_block_prevails_with_warning(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1514</endpoint></manager>"
-        "<manager><endpoint>10.0.0.2:8443</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1514</endpoint></manager>"
+                          "<manager><endpoint>10.0.0.2:8443</endpoint></manager>";
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "Only one <manager> block is supported; the last one prevails.");
+    expect_string(__wrap__mwarn, formatted_msg, "Only one <manager> block is supported; the last one prevails.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -383,13 +392,13 @@ static void test_second_manager_block_prevails_with_warning(void **state) {
 
 /* <agent><manager> and the one value still read from a legacy <client> (#38103) */
 
-static void test_agent_manager_address_and_port_are_parsed(void **state) {
+static void test_agent_manager_address_and_port_are_parsed(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5:1600</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1600</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -400,15 +409,16 @@ static void test_agent_manager_address_and_port_are_parsed(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_port_defaults_to_1517(void **state) {
+static void test_agent_manager_port_defaults_to_1517(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "No port in <agent><manager><endpoint>. Using the default port 1517.");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
@@ -418,15 +428,16 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
 
 /* <agent><manager><endpoint> (#38492) */
 
-static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(void **state) {
+static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "No port in <agent><manager><endpoint>. Using the default port 1517.");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -437,12 +448,13 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
 /* <endpoint> carries the whole target -- host, optional port, optional URL prefix.
  * Only the host is mandatory. */
 
-static void test_agent_manager_endpoint_accepts_a_hostname(void **state) {
+static void test_agent_manager_endpoint_accepts_a_hostname(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>manager.example.com:8443/proxy</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>manager.example.com:8443/proxy</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].rip, "manager.example.com");
@@ -456,12 +468,13 @@ static void test_agent_manager_endpoint_accepts_a_hostname(void **state) {
  * verbatim and a bare address is the common spelling. When present it must be the
  * one transport actually served. */
 
-static void test_agent_manager_endpoint_tolerates_an_https_scheme(void **state) {
+static void test_agent_manager_endpoint_tolerates_an_https_scheme(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>HttPS://10.0.0.5:8443/gateway</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>HttPS://10.0.0.5:8443/gateway</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
@@ -471,14 +484,16 @@ static void test_agent_manager_endpoint_tolerates_an_https_scheme(void **state) 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_a_non_https_scheme(void **state) {
+static void test_agent_manager_endpoint_rejects_a_non_https_scheme(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>http://10.0.0.5/gateway</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>http://10.0.0.5/gateway</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Invalid endpoint 'http://10.0.0.5/gateway': unsupported scheme 'http'; "
                   "only https is served.");
 
@@ -492,12 +507,13 @@ static void test_agent_manager_endpoint_rejects_a_non_https_scheme(void **state)
  * (#38614). curl cannot tell these apart -- CURLUPART_PATH reports "/" for both --
  * so losing it would silently reinstate the default and undo #38658's fix. */
 
-static void test_agent_manager_endpoint_trailing_slash_opts_out(void **state) {
+static void test_agent_manager_endpoint_trailing_slash_opts_out(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5:1517/</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
@@ -507,13 +523,14 @@ static void test_agent_manager_endpoint_trailing_slash_opts_out(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_no_slash_keeps_the_default_prefix(void **state) {
+static void test_agent_manager_endpoint_no_slash_keeps_the_default_prefix(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* Same address as the opt-out case above, one character apart. */
-    const char *xml_str = "<manager><endpoint>10.0.0.5:1517</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -525,12 +542,13 @@ static void test_agent_manager_endpoint_no_slash_keeps_the_default_prefix(void *
  * The brackets are dropped from rip: OS_IsValidIP does not match a bracketed literal
  * and ModuleConfig::baseUrl() re-brackets it for the wire. */
 
-static void test_agent_manager_endpoint_accepts_a_bracketed_ipv6(void **state) {
+static void test_agent_manager_endpoint_accepts_a_bracketed_ipv6(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>[2001:db8::1]:8443/gateway</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>[2001:db8::1]:8443/gateway</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     /* Brackets are stripped, then OS_ExpandIPv6() writes the literal out in full --
@@ -542,14 +560,15 @@ static void test_agent_manager_endpoint_accepts_a_bracketed_ipv6(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_resolves_a_numeric_ipv6_zone(void **state) {
+static void test_agent_manager_endpoint_resolves_a_numeric_ipv6_zone(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* A numeric zone passes through without consulting the interface table, so this
      * asserts a fixed scope id without depending on the host's interface names. */
-    const char *xml_str = "<manager><endpoint>[fe80::1%257]:1517</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>[fe80::1%257]:1517</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].rip, "FE80:0000:0000:0000:0000:0000:0000:0001");
@@ -558,16 +577,16 @@ static void test_agent_manager_endpoint_resolves_a_numeric_ipv6_zone(void **stat
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_an_unknown_ipv6_zone(void **state) {
+static void test_agent_manager_endpoint_rejects_an_unknown_ipv6_zone(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>[fe80::1%25wz-no-such-if]:1517</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>[fe80::1%25wz-no-such-if]:1517</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint: no network interface named 'wz-no-such-if' on this host.");
+    expect_string(
+        __wrap__merror, formatted_msg, "Invalid endpoint: no network interface named 'wz-no-such-if' on this host.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -577,27 +596,29 @@ static void test_agent_manager_endpoint_rejects_an_unknown_ipv6_zone(void **stat
 /* A configuration value has to be exact, so a component this grammar has no slot for
  * is an error rather than something quietly dropped. */
 
-static void test_agent_manager_endpoint_rejects_a_query_string(void **state) {
+static void test_agent_manager_endpoint_rejects_a_query_string(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5/gateway?debug=1</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5/gateway?debug=1</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint '10.0.0.5/gateway?debug=1': a query string is not allowed.");
+    expect_string(
+        __wrap__merror, formatted_msg, "Invalid endpoint '10.0.0.5/gateway?debug=1': a query string is not allowed.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_embedded_credentials(void **state) {
+static void test_agent_manager_endpoint_rejects_embedded_credentials(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>user:pass@10.0.0.5:1517</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>user:pass@10.0.0.5:1517</endpoint></manager>";
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -606,12 +627,13 @@ static void test_agent_manager_endpoint_rejects_embedded_credentials(void **stat
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_an_out_of_range_port(void **state) {
+static void test_agent_manager_endpoint_rejects_an_out_of_range_port(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5:99999</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:99999</endpoint></manager>";
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -620,14 +642,15 @@ static void test_agent_manager_endpoint_rejects_an_out_of_range_port(void **stat
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_a_missing_host(void **state) {
+static void test_agent_manager_endpoint_rejects_a_missing_host(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* The 5.0.0 prefix-only spelling, arriving without the <address> that used to
      * accompany it: there is no host to connect to. */
-    const char *xml_str = "<manager><endpoint>/wazuh-manager/</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>/wazuh-manager/</endpoint></manager>";
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -636,14 +659,13 @@ static void test_agent_manager_endpoint_rejects_a_missing_host(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_is_parsed(void **state) {
+static void test_agent_manager_endpoint_is_parsed(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.5:1517/wazuh-manager</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/wazuh-manager</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -651,14 +673,13 @@ static void test_agent_manager_endpoint_is_parsed(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_strips_leading_and_trailing_slashes(void **state) {
+static void test_agent_manager_endpoint_strips_leading_and_trailing_slashes(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.5:1517/wazuh-manager/</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/wazuh-manager/</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -666,13 +687,13 @@ static void test_agent_manager_endpoint_strips_leading_and_trailing_slashes(void
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **state) {
+static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5:1517/</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_null(cfg.server[0].endpoint);
@@ -689,45 +710,45 @@ static void test_agent_manager_endpoint_of_just_slashes_is_no_endpoint(void **st
  * and silently defaults. Every installer parser rejects both, so the agent must too or
  * the same value means different things either side of the install boundary. */
 
-static void test_agent_manager_endpoint_rejects_port_zero(void **state) {
+static void test_agent_manager_endpoint_rejects_port_zero(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5:0</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:0</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint '10.0.0.5:0': port 0 is out of the range 1-65535.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid endpoint '10.0.0.5:0': port 0 is out of the range 1-65535.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_a_trailing_colon(void **state) {
+static void test_agent_manager_endpoint_rejects_a_trailing_colon(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.5:</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint '10.0.0.5:': a ':' must be followed by a port.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid endpoint '10.0.0.5:': a ':' must be followed by a port.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_empty_endpoint_is_rejected(void **state) {
+static void test_agent_manager_empty_endpoint_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint></endpoint></manager>";
+    const char* xml_str = "<manager><endpoint></endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint '': a manager address is required.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid endpoint '': a manager address is required.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -738,17 +759,18 @@ static void test_agent_manager_empty_endpoint_is_rejected(void **state) {
  * they appear in -- the 5.0.0 spelling that put only a prefix here never shipped, so a
  * value like "gateway/foo" is a host and a path, not a bare prefix. */
 
-static void test_agent_manager_endpoint_outranks_the_deprecated_pair(void **state) {
+static void test_agent_manager_endpoint_outranks_the_deprecated_pair(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><address>10.0.0.5</address><port>8443</port>"
-        "<endpoint>proxy.example:9000/gateway/foo</endpoint></manager>";
+    const char* xml_str = "<manager><address>10.0.0.5</address><port>8443</port>"
+                          "<endpoint>proxy.example:9000/gateway/foo</endpoint></manager>";
 
     expect_valid_ip("10.0.0.5");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<agent><manager><address> and <port> are ignored when <endpoint> is "
                   "configured; <endpoint> carries the whole target.");
 
@@ -763,17 +785,18 @@ static void test_agent_manager_endpoint_outranks_the_deprecated_pair(void **stat
 /* Document order must not decide the winner: the same block with <endpoint> written
  * first resolves identically. */
 
-static void test_agent_manager_endpoint_outranks_the_pair_whatever_the_order(void **state) {
+static void test_agent_manager_endpoint_outranks_the_pair_whatever_the_order(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>proxy.example:9000/gateway/foo</endpoint>"
-        "<address>10.0.0.5</address><port>8443</port></manager>";
+    const char* xml_str = "<manager><endpoint>proxy.example:9000/gateway/foo</endpoint>"
+                          "<address>10.0.0.5</address><port>8443</port></manager>";
 
     expect_valid_ip("10.0.0.5");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<agent><manager><address> and <port> are ignored when <endpoint> is "
                   "configured; <endpoint> carries the whole target.");
 
@@ -789,16 +812,17 @@ static void test_agent_manager_endpoint_outranks_the_pair_whatever_the_order(voi
  * the port when pasted back. rip is the OS_ExpandIPv6'd form, which is what the agent is
  * actually using, so the suggestion stays behaviour-preserving. */
 
-static void test_agent_manager_deprecation_notice_brackets_an_ipv6_address(void **state) {
+static void test_agent_manager_deprecation_notice_brackets_an_ipv6_address(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><address>2001:db8::1</address><port>8443</port></manager>";
+    const char* xml_str = "<manager><address>2001:db8::1</address><port>8443</port></manager>";
 
     expect_valid_ip("2001:db8::1");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent><manager><address> and <port> are deprecated. Replace them with a "
                   "single <endpoint>[2001:0DB8:0000:0000:0000:0000:0000:0001]:8443"
                   "/wazuh-manager</endpoint>");
@@ -809,14 +833,13 @@ static void test_agent_manager_deprecation_notice_brackets_an_ipv6_address(void 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_accepts_multiple_segments(void **state) {
+static void test_agent_manager_endpoint_accepts_multiple_segments(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.5:1517/gateway/wazuh-manager</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/gateway/wazuh-manager</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].endpoint, "gateway/wazuh-manager");
@@ -824,15 +847,16 @@ static void test_agent_manager_endpoint_accepts_multiple_segments(void **state) 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_an_invalid_character(void **state) {
+static void test_agent_manager_endpoint_rejects_an_invalid_character(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.5:1517/wazuh~manager</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/wazuh~manager</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Invalid endpoint 'wazuh~manager': only letters, digits, '-', '_', '.', "
                   "and '/' (as a segment separator) are allowed.");
 
@@ -841,41 +865,42 @@ static void test_agent_manager_endpoint_rejects_an_invalid_character(void **stat
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_a_doubled_slash(void **state) {
+static void test_agent_manager_endpoint_rejects_a_doubled_slash(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.5:1517/gateway//wazuh</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/gateway//wazuh</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint 'gateway//wazuh': empty path segment (repeated '/').");
+    expect_string(
+        __wrap__merror, formatted_msg, "Invalid endpoint 'gateway//wazuh': empty path segment (repeated '/').");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_rejects_a_dot_dot_segment(void **state) {
+static void test_agent_manager_endpoint_rejects_a_dot_dot_segment(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.5:1517/../etc</endpoint></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.5:1517/../etc</endpoint></manager>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "Invalid endpoint '../etc': '.' and '..' are not allowed path segments.");
+    expect_string(
+        __wrap__merror, formatted_msg, "Invalid endpoint '../etc': '.' and '..' are not allowed path segments.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
+static void test_agent_manager_endpoint_too_long_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
     char long_endpoint[130];
     char xml_str[256]; // Must fit the whole fragment; long_endpoint alone is 129 chars.
@@ -883,12 +908,9 @@ static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
 
     memset(long_endpoint, 'a', sizeof(long_endpoint) - 1);
     long_endpoint[sizeof(long_endpoint) - 1] = '\0';
-    snprintf(xml_str, sizeof(xml_str),
-             "<manager><endpoint>10.0.0.5:1517/%s</endpoint></manager>",
-             long_endpoint);
+    snprintf(xml_str, sizeof(xml_str), "<manager><endpoint>10.0.0.5:1517/%s</endpoint></manager>", long_endpoint);
     // Built from the same long_endpoint, not hand-typed, so the 'a' count can never drift from it.
-    snprintf(expected_msg, sizeof(expected_msg), "Invalid endpoint '%s': longer than 128 characters.",
-             long_endpoint);
+    snprintf(expected_msg, sizeof(expected_msg), "Invalid endpoint '%s': longer than 128 characters.", long_endpoint);
 
     expect_string(__wrap__merror, formatted_msg, expected_msg);
 
@@ -897,20 +919,22 @@ static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_legacy_client_address_is_the_fallback(void **state) {
+static void test_legacy_client_address_is_the_fallback(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
-    assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
-                                         &xml, &nodes, &cfg), 0);
+    assert_int_equal(
+        parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>", &xml, &nodes, &cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.1");
@@ -924,15 +948,16 @@ static void test_legacy_client_address_is_the_fallback(void **state) {
  * target, writes the endpoint into <client><server>. Reading only <address> there left
  * the upgraded agent with no manager at all and refusing to start. */
 
-static void test_legacy_client_reads_an_endpoint(void **state) {
+static void test_legacy_client_reads_an_endpoint(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    assert_int_equal(parse_legacy_client(
-        "<server><endpoint>10.0.0.5:8443/gateway</endpoint></server>", &xml, &nodes, &cfg), 0);
+    assert_int_equal(
+        parse_legacy_client("<server><endpoint>10.0.0.5:8443/gateway</endpoint></server>", &xml, &nodes, &cfg), 0);
     assert_non_null(cfg.server);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
     assert_int_equal(cfg.server[0].port, 8443);
@@ -943,15 +968,15 @@ static void test_legacy_client_reads_an_endpoint(void **state) {
 
 /* Bare host: the port and prefix fall back to the same defaults <agent><manager> uses. */
 
-static void test_legacy_client_endpoint_defaults_port_and_prefix(void **state) {
+static void test_legacy_client_endpoint_defaults_port_and_prefix(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    assert_int_equal(parse_legacy_client(
-        "<server><endpoint>10.0.0.5</endpoint></server>", &xml, &nodes, &cfg), 0);
+    assert_int_equal(parse_legacy_client("<server><endpoint>10.0.0.5</endpoint></server>", &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
     assert_int_equal(cfg.server[0].port, 1517);
     assert_string_equal(cfg.server[0].endpoint, "wazuh-manager");
@@ -959,32 +984,36 @@ static void test_legacy_client_endpoint_defaults_port_and_prefix(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_legacy_client_reads_nothing_but_the_address_and_enrollment(void **state) {
+static void test_legacy_client_reads_nothing_but_the_address_and_enrollment(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<server><address>10.0.0.1</address><port>1514</port><protocol>tcp</protocol></server>"
-        "<crypto_method>aes</crypto_method>"
-        "<config-profile>ubuntu, ubuntu22</config-profile>"
-        "<notify_time>77</notify_time>";
+    const char* xml_str = "<server><address>10.0.0.1</address><port>1514</port><protocol>tcp</protocol></server>"
+                          "<crypto_method>aes</crypto_method>"
+                          "<config-profile>ubuntu, ubuntu22</config-profile>"
+                          "<notify_time>77</notify_time>";
 
     memset(&cfg, 0, sizeof(cfg));
 
     /* Queued in document order: cmocka matches per wrapped function, and all three
      * land on __wrap__mwarn. */
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<crypto_method> inside the legacy <client> block is ignored: only <server> "
                   "and <enrollment> are read from it.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<config-profile> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<notify_time> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
@@ -1004,27 +1033,28 @@ static void test_legacy_client_reads_nothing_but_the_address_and_enrollment(void
 
 /* The identity an in-place 4.x upgrade has to keep: the whole <enrollment> block is
  * read out of the legacy <client> spelling, not just the address beside it. */
-static void test_legacy_client_reads_the_enrollment_identity(void **state) {
+static void test_legacy_client_reads_the_enrollment_identity(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
-        "<enrollment>"
-        "<enabled>yes</enabled>"
-        "<agent_name>vm-ubuntu</agent_name>"
-        "<groups>web-servers,linux</groups>"
-        "<agent_address>10.0.0.15</agent_address>"
-        "<authorization_pass_path>/var/ossec/etc/custom.pass</authorization_pass_path>"
-        "<delay_after_enrollment>30</delay_after_enrollment>"
-        "</enrollment>";
+    const char* xml_str = "<server><address>10.0.0.1</address></server>"
+                          "<enrollment>"
+                          "<enabled>yes</enabled>"
+                          "<agent_name>vm-ubuntu</agent_name>"
+                          "<groups>web-servers,linux</groups>"
+                          "<agent_address>10.0.0.15</agent_address>"
+                          "<authorization_pass_path>/var/ossec/etc/custom.pass</authorization_pass_path>"
+                          "<delay_after_enrollment>30</delay_after_enrollment>"
+                          "</enrollment>";
 
     memset(&cfg, 0, sizeof(cfg));
 
     expect_valid_ip("10.0.0.15");
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
@@ -1043,19 +1073,23 @@ static void test_legacy_client_reads_the_enrollment_identity(void **state) {
 
 /* The address is the only thing <agent> takes over: an enrollment block it did not
  * itself carry is still read out of the legacy one. */
-static void test_legacy_client_enrollment_is_read_once_agent_set_the_address(void **state) {
+static void test_legacy_client_enrollment_is_read_once_agent_set_the_address(void** state)
+{
     OS_XML agent_xml = {0};
     OS_XML legacy_xml = {0};
-    xml_node **agent_nodes;
-    xml_node **legacy_nodes;
+    xml_node** agent_nodes;
+    xml_node** legacy_nodes;
     agent cfg;
 
-    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
-                                 &agent_xml, &agent_nodes, &cfg), 0);
+    assert_int_equal(
+        parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>", &agent_xml, &agent_nodes, &cfg), 0);
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address></server>"
                                          "<enrollment><agent_name>vm-ubuntu</agent_name></enrollment>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+                                         &legacy_xml,
+                                         &legacy_nodes,
+                                         &cfg),
+                     0);
 
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
     assert_int_equal(cfg.server[0].port, 1600);
@@ -1068,18 +1102,23 @@ static void test_legacy_client_enrollment_is_read_once_agent_set_the_address(voi
 
 /* An <enrollment> under <agent> is the whole identity: a legacy block listed after it
  * is skipped rather than merged, so no field of it can leak into the 5.x one. */
-static void test_agent_enrollment_wins_over_a_legacy_one(void **state) {
+static void test_agent_enrollment_wins_over_a_legacy_one(void** state)
+{
     OS_XML agent_xml = {0};
     OS_XML legacy_xml = {0};
-    xml_node **agent_nodes;
-    xml_node **legacy_nodes;
+    xml_node** agent_nodes;
+    xml_node** legacy_nodes;
     agent cfg;
 
     assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
                                  "<enrollment><agent_name>from-agent</agent_name></enrollment>",
-                                 &agent_xml, &agent_nodes, &cfg), 0);
+                                 &agent_xml,
+                                 &agent_nodes,
+                                 &cfg),
+                     0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<enrollment> inside the legacy <client> block is ignored: <agent> already "
                   "supplies it. Keep the identity in one of the two blocks.");
 
@@ -1087,7 +1126,10 @@ static void test_agent_enrollment_wins_over_a_legacy_one(void **state) {
                                          "<agent_name>from-client</agent_name>"
                                          "<groups>leaked</groups>"
                                          "</enrollment>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+                                         &legacy_xml,
+                                         &legacy_nodes,
+                                         &cfg),
+                     0);
 
     assert_string_equal(cfg.enrollment.agent_name, "from-agent");
     assert_null(cfg.enrollment.groups);
@@ -1100,11 +1142,12 @@ static void test_agent_enrollment_wins_over_a_legacy_one(void **state) {
 /* Read the other way round, an <agent> block still wins every field it sets -- but only
  * those: the legacy block was already applied, so what <agent> leaves out stays. This is
  * the one order in which the two do combine, asserted rather than left to chance. */
-static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state) {
+static void test_agent_enrollment_overrides_a_legacy_one_read_first(void** state)
+{
     OS_XML agent_xml = {0};
     OS_XML legacy_xml = {0};
-    xml_node **agent_nodes;
-    xml_node **legacy_nodes;
+    xml_node** agent_nodes;
+    xml_node** legacy_nodes;
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
@@ -1113,11 +1156,17 @@ static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state
                                          "<agent_name>from-client</agent_name>"
                                          "<groups>from-client-too</groups>"
                                          "</enrollment>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+                                         &legacy_xml,
+                                         &legacy_nodes,
+                                         &cfg),
+                     0);
 
     assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
                                       "<enrollment><agent_name>from-agent</agent_name></enrollment>",
-                                      &agent_xml, &agent_nodes, &cfg), 0);
+                                      &agent_xml,
+                                      &agent_nodes,
+                                      &cfg),
+                     0);
 
     assert_string_equal(cfg.enrollment.agent_name, "from-agent");
     assert_string_equal(cfg.enrollment.groups, "from-client-too");
@@ -1130,23 +1179,30 @@ static void test_agent_enrollment_overrides_a_legacy_one_read_first(void **state
 /* An empty 5.x block still claims the identity: it is how an operator says the
  * enrollment settings live nowhere, and OS_GetElementsbyNode() hands back NULL for it,
  * so nothing inside the block's own branch can be what records it. */
-static void test_an_empty_agent_enrollment_still_wins(void **state) {
+static void test_an_empty_agent_enrollment_still_wins(void** state)
+{
     OS_XML agent_xml = {0};
     OS_XML legacy_xml = {0};
-    xml_node **agent_nodes;
-    xml_node **legacy_nodes;
+    xml_node** agent_nodes;
+    xml_node** legacy_nodes;
     agent cfg;
 
     assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>"
                                  "<enrollment></enrollment>",
-                                 &agent_xml, &agent_nodes, &cfg), 0);
+                                 &agent_xml,
+                                 &agent_nodes,
+                                 &cfg),
+                     0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<enrollment> inside the legacy <client> block is ignored: <agent> already "
                   "supplies it. Keep the identity in one of the two blocks.");
 
-    assert_int_equal(parse_legacy_client("<enrollment><agent_name>from-client</agent_name></enrollment>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+    assert_int_equal(
+        parse_legacy_client(
+            "<enrollment><agent_name>from-client</agent_name></enrollment>", &legacy_xml, &legacy_nodes, &cfg),
+        0);
 
     assert_null(cfg.enrollment.agent_name);
 
@@ -1157,21 +1213,22 @@ static void test_an_empty_agent_enrollment_still_wins(void **state) {
 
 /* Contradictory addressing is settled against the file, not on every enrollment attempt:
  * the explicit address stands and the source-IP request is dropped. */
-static void test_enrollment_agent_address_beats_use_source_ip(void **state) {
+static void test_enrollment_agent_address_beats_use_source_ip(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<enrollment>"
-        "<agent_address>10.0.0.15</agent_address>"
-        "<use_source_ip>yes</use_source_ip>"
-        "</enrollment>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<enrollment>"
+                          "<agent_address>10.0.0.15</agent_address>"
+                          "<use_source_ip>yes</use_source_ip>"
+                          "</enrollment>";
 
     expect_valid_ip("10.0.0.15");
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<use_source_ip> under <enrollment> is ignored: <agent_address> already "
                   "forces the address '10.0.0.15'. Configure only one of the two.");
 
@@ -1185,24 +1242,26 @@ static void test_enrollment_agent_address_beats_use_source_ip(void **state) {
 
 /* The 4.x-only options inside a legacy <enrollment> must not stop the agent: an
  * upgrade never rewrites ossec.conf, so a file still carrying them is expected. */
-static void test_legacy_client_enrollment_ignores_the_4x_only_options(void **state) {
+static void test_legacy_client_enrollment_ignores_the_4x_only_options(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<enrollment>"
-        "<auto_method>no</auto_method>"
-        "<manager_address>old-manager.example</manager_address>"
-        "<agent_name>vm-ubuntu</agent_name>"
-        "</enrollment>";
+    const char* xml_str = "<enrollment>"
+                          "<auto_method>no</auto_method>"
+                          "<manager_address>old-manager.example</manager_address>"
+                          "<agent_name>vm-ubuntu</agent_name>"
+                          "</enrollment>";
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<auto_method> under <enrollment> is no longer used: enrollment always "
                   "negotiates TLS 1.3. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<manager_address> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
 
@@ -1216,19 +1275,18 @@ static void test_legacy_client_enrollment_ignores_the_4x_only_options(void **sta
 /* A key that was invalid in 4.x too stays fatal, so a typo cannot quietly cost the
  * agent its name. The <server> block comes first, so the address collected before the
  * rejection has to be released on the way out. */
-static void test_legacy_client_enrollment_unknown_option_is_rejected(void **state) {
+static void test_legacy_client_enrollment_unknown_option_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
-        "<enrollment><agent_nmae>vm-ubuntu</agent_nmae></enrollment>";
+    const char* xml_str = "<server><address>10.0.0.1</address></server>"
+                          "<enrollment><agent_nmae>vm-ubuntu</agent_nmae></enrollment>";
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'agent_nmae'.");
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'agent_nmae'.");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -1239,41 +1297,48 @@ static void test_legacy_client_enrollment_unknown_option_is_rejected(void **stat
 
 /* Every direct child that is neither <server> nor <enrollment> is named, whether or
  * not 5.x has somewhere to put it, and none of them reaches the struct. */
-static void test_legacy_client_warns_for_every_ignored_option(void **state) {
+static void test_legacy_client_warns_for_every_ignored_option(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<local_ip>10.0.0.9</local_ip>"
-        "<disable-active-response>yes</disable-active-response>"
-        "<time-reconnect>60</time-reconnect>"
-        "<force_reconnect_interval>0</force_reconnect_interval>"
-        "<ip_update_interval>10</ip_update_interval>"
-        "<auto_restart>yes</auto_restart>"
-        "<port>1514</port>";
+    const char* xml_str = "<local_ip>10.0.0.9</local_ip>"
+                          "<disable-active-response>yes</disable-active-response>"
+                          "<time-reconnect>60</time-reconnect>"
+                          "<force_reconnect_interval>0</force_reconnect_interval>"
+                          "<ip_update_interval>10</ip_update_interval>"
+                          "<auto_restart>yes</auto_restart>"
+                          "<port>1514</port>";
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<local_ip> inside the legacy <client> block is ignored: only <server> "
                   "and <enrollment> are read from it.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<disable-active-response> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<time-reconnect> inside the legacy <client> block is ignored: only <server> "
                   "and <enrollment> are read from it.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<force_reconnect_interval> inside the legacy <client> block is ignored: only "
                   "<server> and <enrollment> are read from it.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<ip_update_interval> inside the legacy <client> block is ignored: only "
                   "<server> and <enrollment> are read from it.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<auto_restart> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<port> inside the legacy <client> block is ignored: only <server> "
                   "and <enrollment> are read from it.");
 
@@ -1288,18 +1353,19 @@ static void test_legacy_client_warns_for_every_ignored_option(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_legacy_client_takes_the_last_address(void **state) {
+static void test_legacy_client_takes_the_last_address(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
-        "<server><address>10.0.0.2</address></server>";
+    const char* xml_str = "<server><address>10.0.0.1</address></server>"
+                          "<server><address>10.0.0.2</address></server>";
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.2:1517/wazuh-manager</endpoint>");
@@ -1312,19 +1378,20 @@ static void test_legacy_client_takes_the_last_address(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_legacy_client_without_an_address_sets_no_server(void **state) {
+static void test_legacy_client_without_an_address_sets_no_server(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "<config-profile> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
 
-    assert_int_equal(parse_legacy_client("<config-profile>ubuntu</config-profile>",
-                                         &xml, &nodes, &cfg), 0);
+    assert_int_equal(parse_legacy_client("<config-profile>ubuntu</config-profile>", &xml, &nodes, &cfg), 0);
 
     assert_null(cfg.server);
     assert_int_equal(cfg.server_count, 0);
@@ -1332,28 +1399,31 @@ static void test_legacy_client_without_an_address_sets_no_server(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_block_replaces_a_legacy_address(void **state) {
+static void test_agent_block_replaces_a_legacy_address(void** state)
+{
     OS_XML legacy_xml = {0};
     OS_XML agent_xml = {0};
-    xml_node **legacy_nodes;
-    xml_node **agent_nodes;
+    xml_node** legacy_nodes;
+    xml_node** agent_nodes;
     agent cfg;
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
 
-    assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+    assert_int_equal(
+        parse_legacy_client(
+            "<server><address>10.0.0.1</address><port>1517</port></server>", &legacy_xml, &legacy_nodes, &cfg),
+        0);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "Only one <manager> block is supported; the last one prevails.");
+    expect_string(__wrap__mwarn, formatted_msg, "Only one <manager> block is supported; the last one prevails.");
 
-    assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
-                                      &agent_xml, &agent_nodes, &cfg), 0);
+    assert_int_equal(
+        parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>", &agent_xml, &agent_nodes, &cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
@@ -1364,18 +1434,21 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
     cleanup(&agent_xml, agent_nodes, &cfg);
 }
 
-static void test_legacy_client_is_ignored_once_agent_set_the_address(void **state) {
+static void test_legacy_client_is_ignored_once_agent_set_the_address(void** state)
+{
     OS_XML agent_xml = {0};
     OS_XML legacy_xml = {0};
-    xml_node **agent_nodes;
-    xml_node **legacy_nodes;
+    xml_node** agent_nodes;
+    xml_node** legacy_nodes;
     agent cfg;
 
-    assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
-                                 &agent_xml, &agent_nodes, &cfg), 0);
+    assert_int_equal(
+        parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>", &agent_xml, &agent_nodes, &cfg), 0);
 
-    assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
+    assert_int_equal(
+        parse_legacy_client(
+            "<server><address>10.0.0.1</address><port>1517</port></server>", &legacy_xml, &legacy_nodes, &cfg),
+        0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
@@ -1388,18 +1461,17 @@ static void test_legacy_client_is_ignored_once_agent_set_the_address(void **stat
 
 /* The 4.x <client> options are still read, just no longer written: the block was
  * renamed to <agent>, and an upgraded file carries whatever it was left with. */
-static void test_agent_block_reads_the_legacy_client_options(void **state) {
+static void test_agent_block_reads_the_legacy_client_options(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<ssl><verification_mode>full</verification_mode></ssl>"
-        "<config-profile>debian, debian8</config-profile>"
-        "<notify_time>20</notify_time>"
-        "<auto_restart>yes</auto_restart>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<ssl><verification_mode>full</verification_mode></ssl>"
+                          "<config-profile>debian, debian8</config-profile>"
+                          "<notify_time>20</notify_time>"
+                          "<auto_restart>yes</auto_restart>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -1418,15 +1490,14 @@ static void test_agent_block_reads_the_legacy_client_options(void **state) {
  * and inst-functions.sh's WriteAgent): an address, a port, and nothing that only
  * restates a default. Everything left out has to come back as "unset" here, because
  * that is what makes ClientConf's defaults the ones an agent ends up running on. */
-static void test_fresh_install_template_shape(void **state) {
+static void test_fresh_install_template_shape(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<config-profile>debian, debian8</config-profile>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<config-profile>debian, debian8</config-profile>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -1434,19 +1505,20 @@ static void test_fresh_install_template_shape(void **state) {
     assert_string_equal(cfg.server[0].rip, "10.0.0.1");
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
     assert_string_equal(cfg.profile, "debian, debian8");
-    assert_int_equal(cfg.notify_time, 0);        /* ClientConf turns 0 into NOTIFY_TIME. */
-    assert_int_equal(cfg.batch.size, 0);         /* Reported and applied as 1 MiB. */
-    assert_int_equal(cfg.batch.interval, 0);     /* ClientConf turns 0 into 10 s. */
+    assert_int_equal(cfg.notify_time, 0);    /* ClientConf turns 0 into NOTIFY_TIME. */
+    assert_int_equal(cfg.batch.size, 0);     /* Reported and applied as 1 MiB. */
+    assert_int_equal(cfg.batch.interval, 0); /* ClientConf turns 0 into 10 s. */
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_invalid_tag_is_rejected(void **state) {
+static void test_agent_invalid_tag_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<nonsense>1</nonsense>";
+    const char* xml_str = "<nonsense>1</nonsense>";
 
     expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
@@ -1459,22 +1531,22 @@ static void test_agent_invalid_tag_is_rejected(void **state) {
  * untestable through parse_agent() because Read_Agent_Enrollment() dereferenced
  * a lazily-allocated pointer parse_agent()'s memset() left NULL. */
 
-static void test_enrollment_kept_options_are_parsed(void **state) {
+static void test_enrollment_kept_options_are_parsed(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<enrollment>"
-        "<enabled>no</enabled>"
-        "<agent_name>my-agent</agent_name>"
-        "<groups>default,web-servers</groups>"
-        "<agent_address>10.0.0.15</agent_address>"
-        "<use_source_ip>no</use_source_ip>"
-        "<authorization_pass_path>/var/ossec/etc/my.pass</authorization_pass_path>"
-        "<delay_after_enrollment>30</delay_after_enrollment>"
-        "</enrollment>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<enrollment>"
+                          "<enabled>no</enabled>"
+                          "<agent_name>my-agent</agent_name>"
+                          "<groups>default,web-servers</groups>"
+                          "<agent_address>10.0.0.15</agent_address>"
+                          "<use_source_ip>no</use_source_ip>"
+                          "<authorization_pass_path>/var/ossec/etc/my.pass</authorization_pass_path>"
+                          "<delay_after_enrollment>30</delay_after_enrollment>"
+                          "</enrollment>";
 
     /* <enrollment><agent_address> still goes through OS_IsValidIP; only the
      * <manager> block moved off it when <address> was folded into <endpoint>. */
@@ -1493,14 +1565,14 @@ static void test_enrollment_kept_options_are_parsed(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_enrollment_use_source_ip_yes(void **state) {
+static void test_enrollment_use_source_ip_yes(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<enrollment><use_source_ip>yes</use_source_ip></enrollment>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<enrollment><use_source_ip>yes</use_source_ip></enrollment>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -1512,48 +1584,56 @@ static void test_enrollment_use_source_ip_yes(void **state) {
 /* Superseded-by-<server>/<ssl> options (#38465 Q5): a 4.x ossec.conf (an
  * upgrade never rewrites it) still parses successfully, logging INFO per
  * recognized-but-ignored tag instead of rejecting the whole block. */
-static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state) {
+static void test_enrollment_legacy_options_are_ignored_not_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<enrollment>"
-        "<manager_address>old-manager.example</manager_address>"
-        "<port>1515</port>"
-        "<interface_index>2</interface_index>"
-        "<ssl_cipher>HIGH:!aNULL</ssl_cipher>"
-        "<server_ca_path>/etc/wazuh/ca.pem</server_ca_path>"
-        "<agent_certificate_path>/etc/wazuh/agent.pem</agent_certificate_path>"
-        "<agent_key_path>/etc/wazuh/agent.key</agent_key_path>"
-        "<auto_method>no</auto_method>"
-        "</enrollment>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<enrollment>"
+                          "<manager_address>old-manager.example</manager_address>"
+                          "<port>1515</port>"
+                          "<interface_index>2</interface_index>"
+                          "<ssl_cipher>HIGH:!aNULL</ssl_cipher>"
+                          "<server_ca_path>/etc/wazuh/ca.pem</server_ca_path>"
+                          "<agent_certificate_path>/etc/wazuh/agent.pem</agent_certificate_path>"
+                          "<agent_key_path>/etc/wazuh/agent.key</agent_key_path>"
+                          "<auto_method>no</auto_method>"
+                          "</enrollment>";
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<manager_address> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<port> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<interface_index> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<ssl_cipher> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<server_ca_path> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent_certificate_path> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<agent_key_path> under <enrollment> is no longer used: enrollment reuses "
                   "<agent><manager>/<agent><ssl>. Ignoring.");
     /* Removed for its own reason -- TLS 1.3 is not negotiable -- so it carries its own
      * message, and it is ignored rather than rejected because a 4.x file still has it. */
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__minfo,
+                  formatted_msg,
                   "<auto_method> under <enrollment> is no longer used: enrollment always "
                   "negotiates TLS 1.3. Ignoring.");
 
@@ -1570,14 +1650,14 @@ static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_enrollment_unknown_element_is_still_rejected(void **state) {
+static void test_enrollment_unknown_element_is_still_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<enrollment><nonsense>1</nonsense></enrollment>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<enrollment><nonsense>1</nonsense></enrollment>";
 
     expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
@@ -1588,15 +1668,14 @@ static void test_enrollment_unknown_element_is_still_rejected(void **state) {
 
 /* <batch>: accepted, ignored here (owned by the events module, issue 06) */
 
-static void test_batch_size_and_interval_are_parsed(void **state) {
+static void test_batch_size_and_interval_are_parsed(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<batch><size>1MB</size><interval>10s</interval></batch>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<batch><size>1MB</size><interval>10s</interval></batch>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 1024 * 1024);
@@ -1605,14 +1684,14 @@ static void test_batch_size_and_interval_are_parsed(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_batch_is_unset_when_absent(void **state) {
+static void test_batch_is_unset_when_absent(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* Zero is what the transport module reads as "apply your own default". */
-    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 0);
@@ -1621,15 +1700,14 @@ static void test_batch_is_unset_when_absent(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_batch_size_without_a_suffix_is_bytes(void **state) {
+static void test_batch_size_without_a_suffix_is_bytes(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<batch><size>2048</size></batch>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<batch><size>2048</size></batch>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 2048);
@@ -1637,70 +1715,67 @@ static void test_batch_size_without_a_suffix_is_bytes(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_batch_zero_size_is_rejected(void **state) {
+static void test_batch_zero_size_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* A zero payload can never carry an event; refuse it rather than let it
      * read as "unset" and silently fall back to the default. */
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<batch><size>0</size></batch>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<batch><size>0</size></batch>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'size': 0.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'size': 0.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_batch_size_beyond_the_cap_is_rejected(void **state) {
+static void test_batch_size_beyond_the_cap_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* Above a gigabyte the value stops being useful and starts being dangerous:
      * a 32-bit agent's size_t wraps past 4 GiB, and 4 GiB exactly wraps to zero,
      * which every reader downstream takes as "unset". */
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<batch><size>2GB</size></batch>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<batch><size>2GB</size></batch>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'size': 2GB.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'size': 2GB.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_batch_interval_beyond_a_day_is_rejected(void **state) {
+static void test_batch_interval_beyond_a_day_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<batch><interval>2d</interval></batch>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<batch><interval>2d</interval></batch>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'interval': 2d.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'interval': 2d.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_batch_invalid_tag_is_rejected(void **state) {
+static void test_batch_invalid_tag_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<batch><nonsense>1</nonsense></batch>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<batch><nonsense>1</nonsense></batch>";
 
     expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
@@ -1713,26 +1788,30 @@ static void test_batch_invalid_tag_is_rejected(void **state) {
 
 /* Parses `xml_str` as the body of an <agent> block pushed by the manager, via the
  * real Read_Agent_Shared. Same cleanup as parse_agent(). */
-static int parse_agent_shared(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+static int parse_agent_shared(const char* xml_str, OS_XML* xml, xml_node*** nodes, agent* cfg)
+{
     memset(cfg, 0, sizeof(*cfg));
 
-    if (OS_ReadXMLString(xml_str, xml) != 0) {
+    if (OS_ReadXMLString(xml_str, xml) != 0)
+    {
         return OS_INVALID;
     }
 
-    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL) {
+    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL)
+    {
         return OS_INVALID;
     }
 
     return Read_Agent_Shared(xml, *nodes, cfg);
 }
 
-static void test_shared_batch_is_parsed(void **state) {
+static void test_shared_batch_is_parsed(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<batch><size>2MB</size><interval>30s</interval></batch>";
+    const char* xml_str = "<batch><size>2MB</size><interval>30s</interval></batch>";
 
     assert_int_equal(parse_agent_shared(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.batch.size, 2 * 1024 * 1024);
@@ -1741,34 +1820,34 @@ static void test_shared_batch_is_parsed(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_shared_batch_is_validated_like_a_local_one(void **state) {
+static void test_shared_batch_is_validated_like_a_local_one(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* Pushed centrally or written locally, the same value is the same mistake:
      * the manager does not get a laxer parser. */
-    const char *xml_str = "<batch><size>0</size></batch>";
+    const char* xml_str = "<batch><size>0</size></batch>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1235): Invalid value for element 'size': 0.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'size': 0.");
 
     assert_int_equal(parse_agent_shared(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_shared_config_still_refuses_local_only_options(void **state) {
+static void test_shared_config_still_refuses_local_only_options(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* <batch> is opened up, not the whole block: the manager has no business
      * setting how often this endpoint checks in. */
-    const char *xml_str = "<notify_time>5</notify_time>";
+    const char* xml_str = "<notify_time>5</notify_time>";
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'notify_time'.");
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'notify_time'.");
 
     assert_int_equal(parse_agent_shared(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -1779,15 +1858,17 @@ static void test_shared_config_still_refuses_local_only_options(void **state) {
 
 #define BATCH_TEST_CONF "/tmp/test_client-config_https_batch.conf"
 
-static void write_conf(const char *body) {
-    FILE *fp = fopen(BATCH_TEST_CONF, "w");
+static void write_conf(const char* body)
+{
+    FILE* fp = fopen(BATCH_TEST_CONF, "w");
 
     assert_non_null(fp);
     fputs(body, fp);
     fclose(fp);
 }
 
-static void test_read_agent_batch_takes_the_limits_from_the_file(void **state) {
+static void test_read_agent_batch_takes_the_limits_from_the_file(void** state)
+{
     agent_batch batch = {0};
 
     write_conf("<ossec_config><agent>"
@@ -1805,8 +1886,9 @@ static void test_read_agent_batch_takes_the_limits_from_the_file(void **state) {
     remove(BATCH_TEST_CONF);
 }
 
-static void test_read_agent_batch_leaves_the_caller_defaults_when_absent(void **state) {
-    agent_batch batch = { .size = 777, .interval = 42 };
+static void test_read_agent_batch_leaves_the_caller_defaults_when_absent(void** state)
+{
+    agent_batch batch = {.size = 777, .interval = 42};
 
     write_conf("<ossec_config><agent>"
                "<manager><endpoint>10.0.0.1</endpoint></manager>"
@@ -1820,7 +1902,8 @@ static void test_read_agent_batch_leaves_the_caller_defaults_when_absent(void **
     remove(BATCH_TEST_CONF);
 }
 
-static void test_read_agent_batch_applies_the_local_file_with_no_shared_one(void **state) {
+static void test_read_agent_batch_applies_the_local_file_with_no_shared_one(void** state)
+{
     agent_batch batch = {0};
 
     /* Most agents have never been pushed an agent.conf. The reader must treat that
@@ -1837,8 +1920,9 @@ static void test_read_agent_batch_applies_the_local_file_with_no_shared_one(void
     remove(BATCH_TEST_CONF);
 }
 
-static void test_read_agent_batch_applies_nothing_when_the_block_is_rejected(void **state) {
-    agent_batch batch = { .size = 777, .interval = 42 };
+static void test_read_agent_batch_applies_nothing_when_the_block_is_rejected(void** state)
+{
+    agent_batch batch = {.size = 777, .interval = 42};
 
     /* Read_Agent_Batch assigns each limit as it walks it, so by the time the bad
      * element is reached the size is already in the struct. Nothing may reach the
@@ -1848,8 +1932,7 @@ static void test_read_agent_batch_applies_nothing_when_the_block_is_rejected(voi
                "<batch><size>3MB</size><nonsense>1</nonsense></batch>"
                "</agent></ossec_config>");
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1230): Invalid element in the configuration: 'nonsense'.");
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
     w_read_agent_batch(BATCH_TEST_CONF, NULL, &batch);
 
@@ -1861,15 +1944,17 @@ static void test_read_agent_batch_applies_nothing_when_the_block_is_rejected(voi
 
 #define BATCH_SHARED_CONF "/tmp/test_client-config_https_batch_shared.conf"
 
-static void write_shared_conf(const char *body) {
-    FILE *fp = fopen(BATCH_SHARED_CONF, "w");
+static void write_shared_conf(const char* body)
+{
+    FILE* fp = fopen(BATCH_SHARED_CONF, "w");
 
     assert_non_null(fp);
     fputs(body, fp);
     fclose(fp);
 }
 
-static void test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_rejected(void **state) {
+static void test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_rejected(void** state)
+{
     agent_batch batch = {0};
 
     /* The local block parsed cleanly and stands on its own; a centralized file the
@@ -1891,7 +1976,8 @@ static void test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_r
                "</agent></ossec_config>");
     write_shared_conf("<agent_config><agent><batch><size>9MB</size>");
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "Could not read the centralized configuration '" BATCH_SHARED_CONF
                   "'. Keeping the local <agent><batch> limits.");
 
@@ -1905,8 +1991,9 @@ static void test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_r
     remove(BATCH_SHARED_CONF);
 }
 
-static void test_read_agent_batch_survives_a_missing_file(void **state) {
-    agent_batch batch = { .size = 777, .interval = 42 };
+static void test_read_agent_batch_survives_a_missing_file(void** state)
+{
+    agent_batch batch = {.size = 777, .interval = 42};
 
     w_read_agent_batch("/tmp/test_client-config_https_no_such.conf", NULL, &batch);
 
@@ -1916,59 +2003,60 @@ static void test_read_agent_batch_survives_a_missing_file(void **state) {
 
 /* Deprecated legacy-TCP options: accepted, ignored, reported (#37702 restriction 4) */
 
-static void test_time_reconnect_is_deprecated(void **state) {
+static void test_time_reconnect_is_deprecated(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<time-reconnect>60</time-reconnect>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<time-reconnect>60</time-reconnect>";
 
-    expect_string(__wrap__minfo, formatted_msg,
-                  "The <time-reconnect> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__minfo, formatted_msg, "The <time-reconnect> option is deprecated and no longer has any effect.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_max_retries_is_deprecated(void **state) {
+static void test_max_retries_is_deprecated(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint><max_retries>3</max_retries></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint><max_retries>3</max_retries></manager>";
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "The <max_retries> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <max_retries> option is deprecated and no longer has any effect.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_retry_interval_is_deprecated(void **state) {
+static void test_retry_interval_is_deprecated(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint><retry_interval>5</retry_interval></manager>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint><retry_interval>5</retry_interval></manager>";
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "The <retry_interval> option is deprecated and no longer has any effect.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "The <retry_interval> option is deprecated and no longer has any effect.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
 
     cleanup(&xml, nodes, &cfg);
 }
-
 
 /* <stats_report> / <config_report> blocks (#37843) */
 
-static void test_reports_are_off_when_absent(void **state) {
+static void test_reports_are_off_when_absent(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* Read_Agent() itself never sets a default -- it only writes report->enabled
@@ -1977,8 +2065,7 @@ static void test_reports_are_off_when_absent(void **state) {
      * that field to 1 before parsing (see test_agentd.c), so a real agent with
      * no <config_report> block ships with it enabled. Only <stats_report> is
      * actually off by default end-to-end. */
-    const char *xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.stats_report.enabled, 0);
@@ -1989,17 +2076,16 @@ static void test_reports_are_off_when_absent(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_reports_are_independent_of_each_other(void **state) {
+static void test_reports_are_independent_of_each_other(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
     /* The issue requires two separate toggles: enabling stats must leave the
      * config push alone. */
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<stats_report><enabled>yes</enabled><interval>30s</interval></stats_report>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<stats_report><enabled>yes</enabled><interval>30s</interval></stats_report>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.stats_report.enabled, 1);
@@ -2009,16 +2095,15 @@ static void test_reports_are_independent_of_each_other(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_reports_accept_time_suffixes(void **state) {
+static void test_reports_accept_time_suffixes(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<stats_report><enabled>yes</enabled><interval>2m</interval></stats_report>"
-        "<config_report><enabled>yes</enabled><interval>1h</interval></config_report>";
-
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<stats_report><enabled>yes</enabled><interval>2m</interval></stats_report>"
+                          "<config_report><enabled>yes</enabled><interval>1h</interval></config_report>";
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.stats_report.interval, 120);
@@ -2027,14 +2112,14 @@ static void test_reports_accept_time_suffixes(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_report_enabled_rejects_a_non_boolean(void **state) {
+static void test_report_enabled_rejects_a_non_boolean(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<config_report><enabled>maybe</enabled></config_report>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<config_report><enabled>maybe</enabled></config_report>";
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -2043,14 +2128,14 @@ static void test_report_enabled_rejects_a_non_boolean(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_report_interval_beyond_a_day_is_rejected(void **state) {
+static void test_report_interval_beyond_a_day_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<stats_report><interval>2d</interval></stats_report>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<stats_report><interval>2d</interval></stats_report>";
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -2059,14 +2144,14 @@ static void test_report_interval_beyond_a_day_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_report_invalid_tag_is_rejected(void **state) {
+static void test_report_invalid_tag_is_rejected(void** state)
+{
     OS_XML xml = {0};
-    xml_node **nodes;
+    xml_node** nodes;
     agent cfg;
 
-    const char *xml_str =
-        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
-        "<stats_report><cadence>30s</cadence></stats_report>";
+    const char* xml_str = "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+                          "<stats_report><cadence>30s</cadence></stats_report>";
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -2075,7 +2160,8 @@ static void test_report_invalid_tag_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ssl_full_verification_mode),
         cmocka_unit_test(test_ssl_certificate_verification_mode),

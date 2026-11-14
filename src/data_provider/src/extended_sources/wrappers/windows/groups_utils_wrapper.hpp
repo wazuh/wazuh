@@ -20,39 +20,38 @@
 /// Provides methods to process local Windows groups and collect group data.
 class GroupsHelper : public IGroupsHelper
 {
-    private:
-        /// @brief Windows API wrapper instance used for system calls.
-        std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
+private:
+    /// @brief Windows API wrapper instance used for system calls.
+    std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
 
-        /// @brief Users helper instance for user-related operations.
-        std::shared_ptr<IUsersHelper> m_usersHelper;
+    /// @brief Users helper instance for user-related operations.
+    std::shared_ptr<IUsersHelper> m_usersHelper;
 
-        /// @brief Rate limiting constants (only applied during cache refresh)
-        static constexpr std::uint32_t BATCH_SIZE = 100;
-        static constexpr std::chrono::milliseconds BATCH_DELAY{250};
+    /// @brief Rate limiting constants (only applied during cache refresh)
+    static constexpr std::uint32_t BATCH_SIZE = 100;
+    static constexpr std::chrono::milliseconds BATCH_DELAY {250};
 
-        static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
+    static constexpr std::chrono::seconds s_cacheTimeout {60}; // Cache válido por 60 segundos
 
-        /// @brief Validates cache and clears it if expired (> 60 seconds old).
-        static void validateCache();
+    /// @brief Validates cache and clears it if expired (> 60 seconds old).
+    static void validateCache();
 
-        /// @brief Updates cache timestamp after successful operation.
-        static void updateCacheTimestamp();
+    /// @brief Updates cache timestamp after successful operation.
+    static void updateCacheTimestamp();
 
-    public:
-        /// @brief Constructs a GroupsHelper.
-        /// @param winapiWrapper Shared pointer to an `IWindowsApiWrapper`.
-        /// @param usersHelper Shared pointer to an `IUsersHelper`.
-        explicit GroupsHelper(
-            std::shared_ptr<IWindowsApiWrapper> winapiWrapper, std::shared_ptr<IUsersHelper> usersHelper);
+public:
+    /// @brief Constructs a GroupsHelper.
+    /// @param winapiWrapper Shared pointer to an `IWindowsApiWrapper`.
+    /// @param usersHelper Shared pointer to an `IUsersHelper`.
+    explicit GroupsHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper, std::shared_ptr<IUsersHelper> usersHelper);
 
-        /// @brief Default constructor.
-        GroupsHelper();
+    /// @brief Default constructor.
+    GroupsHelper();
 
-        /// @brief Processes local Windows groups and collects group data.
-        /// @return Vector of Group objects representing local groups.
-        std::vector<Group> processLocalGroups() override;
+    /// @brief Processes local Windows groups and collects group data.
+    /// @return Vector of Group objects representing local groups.
+    std::vector<Group> processLocalGroups() override;
 
-        /// @brief Resets the cache.
-        static void resetCache();
+    /// @brief Resets the cache.
+    static void resetCache();
 };

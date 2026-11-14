@@ -14,17 +14,20 @@
 
 #include "rwlock_op_wrappers.h"
 
-void __wrap_rwlock_lock_read(rwlock_t * rwlock) {
+void __wrap_rwlock_lock_read(rwlock_t* rwlock)
+{
     (void)rwlock;
     function_called();
 }
 
-void __wrap_rwlock_lock_write(rwlock_t * rwlock) {
+void __wrap_rwlock_lock_write(rwlock_t* rwlock)
+{
     (void)rwlock;
     function_called();
 }
 
-void __wrap_rwlock_unlock(rwlock_t * rwlock) {
+void __wrap_rwlock_unlock(rwlock_t* rwlock)
+{
     (void)rwlock;
     function_called();
 }

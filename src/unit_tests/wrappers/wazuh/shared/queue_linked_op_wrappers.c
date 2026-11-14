@@ -14,21 +14,25 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-w_linked_queue_node_t * __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
+w_linked_queue_node_t* __wrap_linked_queue_push_ex(w_linked_queue_t* queue, void* data)
+{
     check_expected_ptr(queue);
     check_expected(data);
 
-    w_linked_queue_node_t *node;
+    w_linked_queue_node_t* node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
     node->next = NULL;
-    if (!queue->first) {
+    if (!queue->first)
+    {
         // First node, will be both first and last
         queue->first = node;
         queue->last = node;
         node->prev = NULL;
         node->next = NULL;
-    } else {
+    }
+    else
+    {
         queue->last->next = node;
         node->prev = queue->last;
         node->next = NULL;

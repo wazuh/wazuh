@@ -12,8 +12,8 @@
 
 #include "sysinfo_utils.h"
 
-pid_t * __wrap_w_get_process_childs(w_sysinfo_helpers_t * sysinfo, pid_t parent_pid, unsigned int max_count);
+pid_t* __wrap_w_get_process_childs(w_sysinfo_helpers_t* sysinfo, pid_t parent_pid, unsigned int max_count);
 
-char * __wrap_w_get_os_codename(w_sysinfo_helpers_t * sysinfo);
+char* __wrap_w_get_os_codename(w_sysinfo_helpers_t* sysinfo);
 
 #endif

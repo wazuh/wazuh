@@ -56,7 +56,7 @@ void w_https_client_notify_config_reload_completed(void);
  *        Returns 0 if accepted, -1 if dropped (accumulator full) or the client
  *        is stopping / not started.
  */
-int w_https_client_submit_event(const char *frame, size_t length);
+int w_https_client_submit_event(const char* frame, size_t length);
 
 /**
  * @brief Perform exactly one /enroll HTTP request (#38465), against the same
@@ -78,8 +78,11 @@ int w_https_client_submit_event(const char *frame, size_t length);
  *         status (the caller interprets 200 vs. 4xx/5xx); false when nothing
  *         was ever sent.
  */
-bool w_https_client_enroll(const char *body_json, const char *password, const char *enroll_kid,
-                           const char *enroll_key_hex, hc_enroll_result_t *result);
+bool w_https_client_enroll(const char* body_json,
+                           const char* password,
+                           const char* enroll_kid,
+                           const char* enroll_key_hex,
+                           hc_enroll_result_t* result);
 
 /**
  * @brief Take/release the writer side of the global keystore lock.

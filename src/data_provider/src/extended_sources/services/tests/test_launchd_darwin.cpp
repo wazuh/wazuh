@@ -17,20 +17,16 @@
 
 class LaunchdProviderTest : public ::testing::Test
 {
-    protected:
-        LaunchdProvider m_launchdProvider;
+protected:
+    LaunchdProvider m_launchdProvider;
 
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
-void LaunchdProviderTest::SetUp()
-{
-}
+void LaunchdProviderTest::SetUp() {}
 
-void LaunchdProviderTest::TearDown()
-{
-}
+void LaunchdProviderTest::TearDown() {}
 
 TEST_F(LaunchdProviderTest, TestCollectReturnsValidJsonArray)
 {
@@ -180,8 +176,7 @@ TEST_F(LaunchdProviderTest, TestServiceNameExtractionFromPath)
 
     for (const auto& service : result)
     {
-        if (service.contains("path") && service.contains("name") &&
-                !service["path"].get<std::string>().empty())
+        if (service.contains("path") && service.contains("name") && !service["path"].get<std::string>().empty())
         {
             std::string path = service["path"].get<std::string>();
             std::string name = service["name"].get<std::string>();
@@ -198,65 +193,63 @@ TEST_F(LaunchdProviderTest, TestServiceNameExtractionFromPath)
 /// provider is pointed at it.
 class LaunchdFixtureTest : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_jobsDir;
-        std::filesystem::path m_overridesDir;
+protected:
+    std::filesystem::path m_jobsDir;
+    std::filesystem::path m_overridesDir;
 
-        void SetUp() override
-        {
-            const auto base = std::filesystem::temp_directory_path() /
-                              ("launchd_test_" + std::to_string(::getpid()) + "_" +
-                               std::to_string(reinterpret_cast<uintptr_t>(this)));
-            m_jobsDir = base / "jobs";
-            m_overridesDir = base / "overrides";
-            std::filesystem::create_directories(m_jobsDir);
-            std::filesystem::create_directories(m_overridesDir);
-        }
+    void SetUp() override
+    {
+        const auto base = std::filesystem::temp_directory_path() / ("launchd_test_" + std::to_string(::getpid()) + "_" +
+                                                                    std::to_string(reinterpret_cast<uintptr_t>(this)));
+        m_jobsDir = base / "jobs";
+        m_overridesDir = base / "overrides";
+        std::filesystem::create_directories(m_jobsDir);
+        std::filesystem::create_directories(m_overridesDir);
+    }
 
-        void TearDown() override
-        {
-            std::error_code ec;
-            std::filesystem::remove_all(m_jobsDir.parent_path(), ec);
-        }
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(m_jobsDir.parent_path(), ec);
+    }
 
-        /// Writes an XML plist whose root dictionary holds the given body.
-        void writePlist(const std::filesystem::path& dir, const std::string& name, const std::string& body)
-        {
-            std::ofstream out(dir / name);
-            out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                << "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
-                << "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
-                << "<plist version=\"1.0\"><dict>\n" << body << "\n</dict></plist>\n";
-        }
+    /// Writes an XML plist whose root dictionary holds the given body.
+    void writePlist(const std::filesystem::path& dir, const std::string& name, const std::string& body)
+    {
+        std::ofstream out(dir / name);
+        out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            << "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+            << "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+            << "<plist version=\"1.0\"><dict>\n"
+            << body << "\n</dict></plist>\n";
+    }
 
-        /// Always points the provider at the fixture override directory, empty unless a test
-        /// writes to it, so no test inherits the host's real override database.
-        nlohmann::json collectFrom()
-        {
-            LaunchdProvider provider(nullptr, {m_jobsDir.string()}, m_overridesDir.string());
-            return provider.collect();
-        }
+    /// Always points the provider at the fixture override directory, empty unless a test
+    /// writes to it, so no test inherits the host's real override database.
+    nlohmann::json collectFrom()
+    {
+        LaunchdProvider provider(nullptr, {m_jobsDir.string()}, m_overridesDir.string());
+        return provider.collect();
+    }
 
-        static nlohmann::json findByLabel(const nlohmann::json& all, const std::string& label)
+    static nlohmann::json findByLabel(const nlohmann::json& all, const std::string& label)
+    {
+        for (const auto& service : all)
         {
-            for (const auto& service : all)
+            if (service["label"] == label)
             {
-                if (service["label"] == label)
-                {
-                    return service;
-                }
+                return service;
             }
-
-            return nlohmann::json{};
         }
+
+        return nlohmann::json {};
+    }
 };
 
 TEST_F(LaunchdFixtureTest, DisabledBooleanIsRenderedAsWords)
 {
-    writePlist(m_jobsDir, "on.plist",
-               "<key>Label</key><string>com.test.on</string><key>Disabled</key><false/>");
-    writePlist(m_jobsDir, "off.plist",
-               "<key>Label</key><string>com.test.off</string><key>Disabled</key><true/>");
+    writePlist(m_jobsDir, "on.plist", "<key>Label</key><string>com.test.on</string><key>Disabled</key><false/>");
+    writePlist(m_jobsDir, "off.plist", "<key>Label</key><string>com.test.off</string><key>Disabled</key><true/>");
 
     const auto all = collectFrom();
     ASSERT_EQ(all.size(), 2u);
@@ -266,8 +259,8 @@ TEST_F(LaunchdFixtureTest, DisabledBooleanIsRenderedAsWords)
 
 TEST_F(LaunchdFixtureTest, DisabledSpelledAsNumberIsCaptured)
 {
-    writePlist(m_jobsDir, "num.plist",
-               "<key>Label</key><string>com.test.num</string><key>Disabled</key><integer>1</integer>");
+    writePlist(
+        m_jobsDir, "num.plist", "<key>Label</key><string>com.test.num</string><key>Disabled</key><integer>1</integer>");
 
     const auto all = collectFrom();
     ASSERT_EQ(all.size(), 1u);
@@ -276,7 +269,8 @@ TEST_F(LaunchdFixtureTest, DisabledSpelledAsNumberIsCaptured)
 
 TEST_F(LaunchdFixtureTest, DisabledConditionalIsFlaggedAsUnevaluated)
 {
-    writePlist(m_jobsDir, "cond.plist",
+    writePlist(m_jobsDir,
+               "cond.plist",
                "<key>Label</key><string>com.test.cond</string>"
                "<key>Disabled</key><dict><key>#Then</key><true/></dict>");
 
@@ -297,7 +291,8 @@ TEST_F(LaunchdFixtureTest, AbsentDisabledKeyStaysEmpty)
 
 TEST_F(LaunchdFixtureTest, InetdCompatibilityDictionaryMarksTheJob)
 {
-    writePlist(m_jobsDir, "inetd.plist",
+    writePlist(m_jobsDir,
+               "inetd.plist",
                "<key>Label</key><string>com.test.inetd</string>"
                "<key>inetdCompatibility</key><dict><key>Wait</key><false/></dict>");
 
@@ -308,7 +303,8 @@ TEST_F(LaunchdFixtureTest, InetdCompatibilityDictionaryMarksTheJob)
 
 TEST_F(LaunchdFixtureTest, ProgramFallsBackToFirstProgramArgument)
 {
-    writePlist(m_jobsDir, "args.plist",
+    writePlist(m_jobsDir,
+               "args.plist",
                "<key>Label</key><string>com.test.args</string>"
                "<key>ProgramArguments</key><array>"
                "<string>/usr/bin/tool</string><string>--flag</string></array>");
@@ -321,7 +317,8 @@ TEST_F(LaunchdFixtureTest, ProgramFallsBackToFirstProgramArgument)
 
 TEST_F(LaunchdFixtureTest, ProgramKeyWinsOverProgramArguments)
 {
-    writePlist(m_jobsDir, "both.plist",
+    writePlist(m_jobsDir,
+               "both.plist",
                "<key>Label</key><string>com.test.both</string>"
                "<key>Program</key><string>/usr/bin/real</string>"
                "<key>ProgramArguments</key><array><string>/usr/bin/other</string></array>");
@@ -333,7 +330,8 @@ TEST_F(LaunchdFixtureTest, ProgramKeyWinsOverProgramArguments)
 
 TEST_F(LaunchdFixtureTest, ArrayKeysKeepElementBoundaries)
 {
-    writePlist(m_jobsDir, "arrays.plist",
+    writePlist(m_jobsDir,
+               "arrays.plist",
                "<key>Label</key><string>com.test.arrays</string>"
                "<key>ProgramArguments</key><array>"
                "<string>/Applications/My App.app/Contents/MacOS/My App</string>"
@@ -355,7 +353,8 @@ TEST_F(LaunchdFixtureTest, ArrayKeysKeepElementBoundaries)
 
 TEST_F(LaunchdFixtureTest, EmptyOrAbsentArrayKeysStayEmpty)
 {
-    writePlist(m_jobsDir, "empty.plist",
+    writePlist(m_jobsDir,
+               "empty.plist",
                "<key>Label</key><string>com.test.empty</string>"
                "<key>WatchPaths</key><array/>");
 
@@ -368,12 +367,9 @@ TEST_F(LaunchdFixtureTest, EmptyOrAbsentArrayKeysStayEmpty)
 
 TEST_F(LaunchdFixtureTest, OverrideDatabaseOutranksThePlistBothWays)
 {
-    writePlist(m_jobsDir, "a.plist",
-               "<key>Label</key><string>com.test.a</string>");
-    writePlist(m_jobsDir, "b.plist",
-               "<key>Label</key><string>com.test.b</string><key>Disabled</key><true/>");
-    writePlist(m_overridesDir, "disabled.plist",
-               "<key>com.test.a</key><true/><key>com.test.b</key><false/>");
+    writePlist(m_jobsDir, "a.plist", "<key>Label</key><string>com.test.a</string>");
+    writePlist(m_jobsDir, "b.plist", "<key>Label</key><string>com.test.b</string><key>Disabled</key><true/>");
+    writePlist(m_overridesDir, "disabled.plist", "<key>com.test.a</key><true/><key>com.test.b</key><false/>");
 
     const auto all = collectFrom();
     ASSERT_EQ(all.size(), 2u);
@@ -396,8 +392,7 @@ TEST_F(LaunchdFixtureTest, AnyDomainDisablingWins)
 
 TEST_F(LaunchdFixtureTest, MissingOverrideDirectoryLeavesThePlistUntouched)
 {
-    writePlist(m_jobsDir, "d.plist",
-               "<key>Label</key><string>com.test.d</string><key>Disabled</key><true/>");
+    writePlist(m_jobsDir, "d.plist", "<key>Label</key><string>com.test.d</string><key>Disabled</key><true/>");
     std::filesystem::remove_all(m_overridesDir);
 
     const auto all = collectFrom();

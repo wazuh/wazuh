@@ -28,9 +28,9 @@
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
 
-STATIC OSList *timeout_list;
-STATIC OSListNode *timeout_node;
-STATIC OSHash *repeated_hash;
+STATIC OSList* timeout_list;
+STATIC OSListNode* timeout_node;
+STATIC OSHash* repeated_hash;
 STATIC int repeated_levels;
 STATIC time_t repeated_window;
 STATIC time_t repeated_last_purge;
@@ -38,11 +38,11 @@ STATIC time_t repeated_last_full_warn;
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
-    #include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 static pthread_mutex_t timeout_list_mutex;
-extern w_queue_t * winexec_queue;
-DWORD WINAPI win_exec_main(void * args);
+extern w_queue_t* winexec_queue;
+DWORD WINAPI win_exec_main(void* args);
 #endif
 
 /* Log a warning if an active response command reported failure or terminated abnormally.
@@ -50,19 +50,27 @@ DWORD WINAPI win_exec_main(void * args);
  * (or a bare -1 if waitpid() itself failed, which never occurs as a real encoded status),
  * or the already-resolved exit code on Windows.
  */
-static void LogArExitStatus(const char *name, int wstatus) {
+static void LogArExitStatus(const char* name, int wstatus)
+{
 #ifndef WIN32
-    if (wstatus == -1) {
+    if (wstatus == -1)
+    {
         mwarn("Could not determine exit status of active response command '%s'.", name);
-    } else if (WIFEXITED(wstatus)) {
-        if (WEXITSTATUS(wstatus) != 0) {
+    }
+    else if (WIFEXITED(wstatus))
+    {
+        if (WEXITSTATUS(wstatus) != 0)
+        {
             mwarn("Active response command '%s' reported failure (exit code %d).", name, WEXITSTATUS(wstatus));
         }
-    } else {
+    }
+    else
+    {
         mwarn("Active response command '%s' terminated abnormally.", name);
     }
 #else
-    if (wstatus != 0) {
+    if (wstatus != 0)
+    {
         mwarn("Active response command '%s' reported failure (exit code %d).", name, wstatus);
     }
 #endif
@@ -71,19 +79,22 @@ static void LogArExitStatus(const char *name, int wstatus) {
 /* Free the timeout entry
  * Must be called after popping it from the timeout list
  */
-void FreeTimeoutEntry(timeout_data *timeout_entry)
+void FreeTimeoutEntry(timeout_data* timeout_entry)
 {
-    char **tmp_str;
+    char** tmp_str;
 
-    if (!timeout_entry) {
+    if (!timeout_entry)
+    {
         return;
     }
 
     tmp_str = timeout_entry->command;
 
     /* Clear the command arguments */
-    if (tmp_str) {
-        while (*tmp_str) {
+    if (tmp_str)
+    {
+        while (*tmp_str)
+        {
             os_free(*tmp_str);
             *tmp_str = NULL;
             tmp_str++;
@@ -100,13 +111,15 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 
 /* Free the timeout list
  */
-void FreeTimeoutList() {
+void FreeTimeoutList()
+{
 #ifdef WIN32
     w_mutex_lock(&timeout_list_mutex);
 #endif
     timeout_node = OSList_GetFirstNode(timeout_list);
-    while (timeout_node) {
-        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+    while (timeout_node)
+    {
+        FreeTimeoutEntry((timeout_data*)timeout_node->data);
         OSList_DeleteCurrentlyNode(timeout_list);
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
     }
@@ -125,23 +138,28 @@ STATIC void RepeatedOffendersInit()
     repeated_last_purge = 0;
     repeated_last_full_warn = 0;
 
-    if (repeated_offenders_timeout[0] == 0) {
+    if (repeated_offenders_timeout[0] == 0)
+    {
         return;
     }
 
-    for (; repeated_offenders_timeout[repeated_levels] != 0; repeated_levels++) {
+    for (; repeated_offenders_timeout[repeated_levels] != 0; repeated_levels++)
+    {
         time_t level = (time_t)repeated_offenders_timeout[repeated_levels] * 60;
 
-        if (level > repeated_window) {
+        if (level > repeated_window)
+        {
             repeated_window = level;
         }
     }
 
-    if (repeated_hash = OSHash_Create(), !repeated_hash) {
+    if (repeated_hash = OSHash_Create(), !repeated_hash)
+    {
         merror_exit(HASH_ERROR);
     }
 
-    if (!OSHash_setSize(repeated_hash, REPEATED_OFFENDERS_ROWS)) {
+    if (!OSHash_setSize(repeated_hash, REPEATED_OFFENDERS_ROWS))
+    {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
@@ -154,15 +172,17 @@ STATIC void RepeatedOffendersInit()
 STATIC void RepeatedOffendersPurge(time_t curr_time)
 {
     unsigned int row;
-    OSHashNode *node;
-    OSHashNode *next;
+    OSHashNode* node;
+    OSHashNode* next;
 
-    for (node = OSHash_Begin(repeated_hash, &row); node; node = next) {
-        repeated_offender *offender = (repeated_offender *)node->data;
+    for (node = OSHash_Begin(repeated_hash, &row); node; node = next)
+    {
+        repeated_offender* offender = (repeated_offender*)node->data;
 
         next = OSHash_Next(repeated_hash, &row, node);
 
-        if (curr_time - offender->release_at > repeated_window) {
+        if (curr_time - offender->release_at > repeated_window)
+        {
             free(OSHash_Delete(repeated_hash, node->key));
         }
     }
@@ -171,29 +191,38 @@ STATIC void RepeatedOffendersPurge(time_t curr_time)
 }
 
 /* Return the timeout for this offense of rkey and record it */
-STATIC int RepeatedOffendersCheck(const char *rkey, int timeout_value, time_t curr_time)
+STATIC int RepeatedOffendersCheck(const char* rkey, int timeout_value, time_t curr_time)
 {
-    repeated_offender *offender;
+    repeated_offender* offender;
 
     // Purge every interval, after a backward clock step, and at most once a second while full
     if (curr_time - repeated_last_purge >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_purge ||
-        (repeated_hash->elements >= REPEATED_OFFENDERS_MAX && curr_time != repeated_last_purge)) {
+        (repeated_hash->elements >= REPEATED_OFFENDERS_MAX && curr_time != repeated_last_purge))
+    {
         RepeatedOffendersPurge(curr_time);
     }
 
-    if (offender = (repeated_offender *)OSHash_Get(repeated_hash, rkey), offender) {
-        if (offender->count >= repeated_levels) {
+    if (offender = (repeated_offender*)OSHash_Get(repeated_hash, rkey), offender)
+    {
+        if (offender->count >= repeated_levels)
+        {
             timeout_value = repeated_offenders_timeout[repeated_levels - 1] * 60;
-        } else {
+        }
+        else
+        {
             timeout_value = repeated_offenders_timeout[offender->count] * 60;
             offender->count++;
         }
 
         mdebug1("Repeated offender. Setting timeout to '%ds'", timeout_value);
-    } else {
-        if (repeated_hash->elements >= REPEATED_OFFENDERS_MAX) {
+    }
+    else
+    {
+        if (repeated_hash->elements >= REPEATED_OFFENDERS_MAX)
+        {
             // Repeat the warning at most once per purge interval while the table stays full
-            if (curr_time - repeated_last_full_warn >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_full_warn) {
+            if (curr_time - repeated_last_full_warn >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_full_warn)
+            {
                 mwarn(AR_REPEATED_FULL, REPEATED_OFFENDERS_MAX);
                 repeated_last_full_warn = curr_time;
             }
@@ -202,7 +231,8 @@ STATIC int RepeatedOffendersCheck(const char *rkey, int timeout_value, time_t cu
 
         os_calloc(1, sizeof(repeated_offender), offender);
 
-        if (OSHash_Add(repeated_hash, rkey, offender) != 2) {
+        if (OSHash_Add(repeated_hash, rkey, offender) != 2)
+        {
             os_free(offender);
             merror("At ExecdRun: OSHash_Add() failed");
             return timeout_value;
@@ -226,20 +256,24 @@ void ExecdShutdown(int sig)
     w_mutex_lock(&timeout_list_mutex);
 #endif
     timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
-    while (timeout_node) {
-        timeout_data *list_entry;
+    while (timeout_node)
+    {
+        timeout_data* list_entry;
 
-        list_entry = (timeout_data *)timeout_node->data;
+        list_entry = (timeout_data*)timeout_node->data;
 
         mdebug2("Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
 
-        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
-        if (wfd) {
+        wfd_t* wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+        if (wfd)
+        {
             /* Send alert to AR script */
             fprintf(wfd->file_in, "%s\n", list_entry->parameters);
             fflush(wfd->file_in);
             LogArExitStatus(list_entry->command[0], wpclose(wfd));
-        } else {
+        }
+        else
+        {
             merror(EXEC_CMD_FAIL, strerror(errno), errno);
         }
 
@@ -262,7 +296,7 @@ void ExecdShutdown(int sig)
 #ifdef WIN32
 void ExecdTimeoutRun()
 #else
-void ExecdTimeoutRun(int *childcount)
+void ExecdTimeoutRun(int* childcount)
 #endif
 {
     time_t curr_time = time(NULL);
@@ -272,13 +306,15 @@ void ExecdTimeoutRun(int *childcount)
 #endif
     /* Check if there is any timed out command to execute */
     timeout_node = OSList_GetFirstNode(timeout_list);
-    while (timeout_node) {
-        timeout_data *list_entry;
+    while (timeout_node)
+    {
+        timeout_data* list_entry;
 
-        list_entry = (timeout_data *)timeout_node->data;
+        list_entry = (timeout_data*)timeout_node->data;
 
         /* Timed out */
-        if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
+        if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block)
+        {
 
             if (list_entry->command == NULL || list_entry->command[0] == NULL)
             {
@@ -290,18 +326,20 @@ void ExecdTimeoutRun(int *childcount)
             }
 
             mdebug1("Executing command '%s %s' after a timeout of '%ds'",
-                list_entry->command[0],
-                list_entry->parameters ? list_entry->parameters : "",
-                list_entry->time_to_block
-            );
+                    list_entry->command[0],
+                    list_entry->parameters ? list_entry->parameters : "",
+                    list_entry->time_to_block);
 
-            wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
-            if (wfd) {
+            wfd_t* wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+            if (wfd)
+            {
                 /* Send alert to AR script */
                 fprintf(wfd->file_in, "%s\n", list_entry->parameters);
                 fflush(wfd->file_in);
                 LogArExitStatus(list_entry->command[0], wpclose(wfd));
-            } else {
+            }
+            else
+            {
                 merror(EXEC_CMD_FAIL, strerror(errno), errno);
             }
 
@@ -315,7 +353,9 @@ void ExecdTimeoutRun(int *childcount)
 #ifndef WIN32
             (*childcount)++;
 #endif
-        } else {
+        }
+        else
+        {
             timeout_node = OSList_GetNextNode(timeout_list);
         }
     }
@@ -324,55 +364,64 @@ void ExecdTimeoutRun(int *childcount)
 #endif
 }
 
-static bool ar_ip_in(const os_ip *entry, const struct sockaddr *sa)
+static bool ar_ip_in(const os_ip* entry, const struct sockaddr* sa)
 {
-    if (sa->sa_family == AF_INET) {
-        if (entry->is_ipv6) {
+    if (sa->sa_family == AF_INET)
+    {
+        if (entry->is_ipv6)
+        {
             return false;
         }
-        const struct sockaddr_in *in4 = (const struct sockaddr_in *)sa;
+        const struct sockaddr_in* in4 = (const struct sockaddr_in*)sa;
         return (in4->sin_addr.s_addr & entry->ipv4->netmask) == entry->ipv4->ip_address;
     }
 
-    if (!entry->is_ipv6) {
+    if (!entry->is_ipv6)
+    {
         return false;
     }
-    const uint8_t *addr = (const uint8_t *)&((const struct sockaddr_in6 *)sa)->sin6_addr;
-    for (int i = 0; i < 16; i++) {
-        if ((addr[i] & entry->ipv6->netmask[i]) != entry->ipv6->ip_address[i]) {
+    const uint8_t* addr = (const uint8_t*)&((const struct sockaddr_in6*)sa)->sin6_addr;
+    for (int i = 0; i < 16; i++)
+    {
+        if ((addr[i] & entry->ipv6->netmask[i]) != entry->ipv6->ip_address[i])
+        {
             return false;
         }
     }
     return true;
 }
 
-static bool ar_same_ip(const struct sockaddr *a, const struct sockaddr *b)
+static bool ar_same_ip(const struct sockaddr* a, const struct sockaddr* b)
 {
-    if (a->sa_family != b->sa_family) {
+    if (a->sa_family != b->sa_family)
+    {
         return false;
     }
-    if (a->sa_family == AF_INET) {
-        return ((const struct sockaddr_in *)a)->sin_addr.s_addr == ((const struct sockaddr_in *)b)->sin_addr.s_addr;
+    if (a->sa_family == AF_INET)
+    {
+        return ((const struct sockaddr_in*)a)->sin_addr.s_addr == ((const struct sockaddr_in*)b)->sin_addr.s_addr;
     }
-    return !memcmp(&((const struct sockaddr_in6 *)a)->sin6_addr, &((const struct sockaddr_in6 *)b)->sin6_addr,
+    return !memcmp(&((const struct sockaddr_in6*)a)->sin6_addr,
+                   &((const struct sockaddr_in6*)b)->sin6_addr,
                    sizeof(struct in6_addr));
 }
 
-#define AR_MANAGER_ADDR_MAX 32
+#define AR_MANAGER_ADDR_MAX         32
 #define AR_MANAGER_RESOLVE_INTERVAL 60
 STATIC struct sockaddr_storage ar_manager_addrs[AR_MANAGER_ADDR_MAX];
 STATIC int ar_manager_addrs_n = 0;
 STATIC int ar_manager_addrs_next = 0;
 STATIC time_t ar_manager_resolved_at = 0;
 
-static void ar_unmap_ipv4(struct sockaddr_storage *addr)
+static void ar_unmap_ipv4(struct sockaddr_storage* addr)
 {
-    struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)addr;
+    struct sockaddr_in6* in6 = (struct sockaddr_in6*)addr;
 
-    if (addr->ss_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&in6->sin6_addr)) {
+    if (addr->ss_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&in6->sin6_addr))
+    {
         struct sockaddr_in in4 = {0};
         in4.sin_family = AF_INET;
-        memcpy(&in4.sin_addr, (const uint8_t *)&in6->sin6_addr + 12, sizeof(in4.sin_addr));
+        memcpy(&in4.sin_addr, (const uint8_t*)&in6->sin6_addr + 12, sizeof(in4.sin_addr));
         memset(addr, 0, sizeof(*addr));
         memcpy(addr, &in4, sizeof(in4));
     }
@@ -380,45 +429,54 @@ static void ar_unmap_ipv4(struct sockaddr_storage *addr)
 
 void ar_resolve_manager_hosts(void)
 {
-    if (!ar_manager_hosts) {
+    if (!ar_manager_hosts)
+    {
         return;
     }
 
     // Bounded so a slow resolver cannot stall execd on every response.
     time_t now = time(NULL);
-    if (ar_manager_resolved_at && now - ar_manager_resolved_at < AR_MANAGER_RESOLVE_INTERVAL) {
+    if (ar_manager_resolved_at && now - ar_manager_resolved_at < AR_MANAGER_RESOLVE_INTERVAL)
+    {
         return;
     }
     ar_manager_resolved_at = now;
 
     // Failed lookups keep what was resolved before; when full, the oldest address is replaced.
-    for (int i = 0; ar_manager_hosts[i]; i++) {
+    for (int i = 0; ar_manager_hosts[i]; i++)
+    {
         struct addrinfo hints = {0};
-        struct addrinfo *res = NULL;
+        struct addrinfo* res = NULL;
         hints.ai_family = AF_UNSPEC;
 
-        if (getaddrinfo(ar_manager_hosts[i], NULL, &hints, &res) != 0) {
+        if (getaddrinfo(ar_manager_hosts[i], NULL, &hints, &res) != 0)
+        {
             mdebug1("Could not resolve manager address '%s' for the active response allowlist.", ar_manager_hosts[i]);
             continue;
         }
 
-        for (struct addrinfo *r = res; r; r = r->ai_next) {
+        for (struct addrinfo* r = res; r; r = r->ai_next)
+        {
             struct sockaddr_storage addr = {0};
             bool known = false;
 
-            if (r->ai_addrlen > sizeof(addr)) {
+            if (r->ai_addrlen > sizeof(addr))
+            {
                 continue;
             }
             memcpy(&addr, r->ai_addr, r->ai_addrlen);
             ar_unmap_ipv4(&addr);
 
-            for (int j = 0; j < ar_manager_addrs_n && !known; j++) {
-                known = ar_same_ip((struct sockaddr *)&ar_manager_addrs[j], (struct sockaddr *)&addr);
+            for (int j = 0; j < ar_manager_addrs_n && !known; j++)
+            {
+                known = ar_same_ip((struct sockaddr*)&ar_manager_addrs[j], (struct sockaddr*)&addr);
             }
-            if (!known) {
+            if (!known)
+            {
                 ar_manager_addrs[ar_manager_addrs_next] = addr;
                 ar_manager_addrs_next = (ar_manager_addrs_next + 1) % AR_MANAGER_ADDR_MAX;
-                if (ar_manager_addrs_n < AR_MANAGER_ADDR_MAX) {
+                if (ar_manager_addrs_n < AR_MANAGER_ADDR_MAX)
+                {
                     ar_manager_addrs_n++;
                 }
             }
@@ -427,10 +485,10 @@ void ar_resolve_manager_hosts(void)
     }
 }
 
-bool ar_source_allowlisted(const char *srcip)
+bool ar_source_allowlisted(const char* srcip)
 {
     struct addrinfo hints = {0};
-    struct addrinfo *src = NULL;
+    struct addrinfo* src = NULL;
     struct sockaddr_storage addr = {0};
     bool found = false;
 
@@ -438,7 +496,8 @@ bool ar_source_allowlisted(const char *srcip)
     hints.ai_flags = AI_NUMERICHOST;
 
     // Same parser block-ip uses, so both read the address the same way.
-    if (!srcip || getaddrinfo(srcip, NULL, &hints, &src) != 0 || !src) {
+    if (!srcip || getaddrinfo(srcip, NULL, &hints, &src) != 0 || !src)
+    {
         return false;
     }
     memcpy(&addr, src->ai_addr, src->ai_addrlen);
@@ -446,14 +505,17 @@ bool ar_source_allowlisted(const char *srcip)
 
     ar_unmap_ipv4(&addr);
 
-    for (int i = 0; ar_allowlist && ar_allowlist[i] && !found; i++) {
-        found = ar_ip_in(ar_allowlist[i], (struct sockaddr *)&addr);
+    for (int i = 0; ar_allowlist && ar_allowlist[i] && !found; i++)
+    {
+        found = ar_ip_in(ar_allowlist[i], (struct sockaddr*)&addr);
     }
 
-    if (!found && ar_manager_hosts) {
+    if (!found && ar_manager_hosts)
+    {
         ar_resolve_manager_hosts();
-        for (int i = 0; i < ar_manager_addrs_n && !found; i++) {
-            found = ar_same_ip((struct sockaddr *)&ar_manager_addrs[i], (struct sockaddr *)&addr);
+        for (int i = 0; i < ar_manager_addrs_n && !found; i++)
+        {
+            found = ar_same_ip((struct sockaddr*)&ar_manager_addrs[i], (struct sockaddr*)&addr);
         }
     }
 
@@ -461,9 +523,9 @@ bool ar_source_allowlisted(const char *srcip)
 }
 
 #ifdef WIN32
-void ExecdRun(char *exec_msg)
+void ExecdRun(char* exec_msg)
 #else
-void ExecdRun(char *exec_msg, int *childcount)
+void ExecdRun(char* exec_msg, int* childcount)
 #endif
 {
     time_t curr_time;
@@ -471,55 +533,62 @@ void ExecdRun(char *exec_msg, int *childcount)
     int timeout_value;
     int added_before = 0;
 
-    cJSON *json_root = NULL;
-    char *name = NULL;
-    char *cmd[2] = { NULL, NULL };
-    char *cmd_parameters = NULL;
+    cJSON* json_root = NULL;
+    char* name = NULL;
+    char* cmd[2] = {NULL, NULL};
+    char* cmd_parameters = NULL;
 
-    timeout_data *timeout_entry;
+    timeout_data* timeout_entry;
 
     /* Current time */
     curr_time = time(0);
 
     /* Parse message */
-    if (json_root = cJSON_Parse(exec_msg), !json_root) {
+    if (json_root = cJSON_Parse(exec_msg), !json_root)
+    {
         merror(EXEC_INV_JSON, exec_msg);
         return;
     }
 
     /* Get executable name and AR metadata from wazuh.active_response */
-    cJSON *json_wazuh = cJSON_GetObjectItem(json_root, "wazuh");
-    if (!cJSON_IsObject(json_wazuh)) {
+    cJSON* json_wazuh = cJSON_GetObjectItem(json_root, "wazuh");
+    if (!cJSON_IsObject(json_wazuh))
+    {
         merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
 
-    cJSON *json_ar = cJSON_GetObjectItem(json_wazuh, "active_response");
-    if (!cJSON_IsObject(json_ar)) {
+    cJSON* json_ar = cJSON_GetObjectItem(json_wazuh, "active_response");
+    if (!cJSON_IsObject(json_ar))
+    {
         merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
 
-    cJSON *json_executable = cJSON_GetObjectItem(json_ar, "executable");
-    if (!cJSON_IsString(json_executable) || json_executable->valuestring[0] == '\0') {
+    cJSON* json_executable = cJSON_GetObjectItem(json_ar, "executable");
+    if (!cJSON_IsString(json_executable) || json_executable->valuestring[0] == '\0')
+    {
         merror(EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
     name = json_executable->valuestring;
 
-    cJSON *json_srcip = cJSON_GetObjectItem(cJSON_GetObjectItem(json_root, "source"), "ip");
-    if (cJSON_IsString(json_srcip) && ar_source_allowlisted(json_srcip->valuestring)) {
+    cJSON* json_srcip = cJSON_GetObjectItem(cJSON_GetObjectItem(json_root, "source"), "ip");
+    if (cJSON_IsString(json_srcip) && ar_source_allowlisted(json_srcip->valuestring))
+    {
         mwarn("Active response '%s' not executed: source.ip '%s' is the manager or in the allowlist.",
-              name, json_srcip->valuestring);
+              name,
+              json_srcip->valuestring);
         cJSON_Delete(json_root);
         return;
     }
 
     /* Directory traversal protection */
-    if (w_ref_parent_folder(name)) {
+    if (w_ref_parent_folder(name))
+    {
         merror("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", name);
         cJSON_Delete(json_root);
         return;
@@ -528,11 +597,12 @@ void ExecdRun(char *exec_msg, int *childcount)
     /* Build full command path */
     static char cmd_path[OS_FLSIZE];
 #ifdef WIN32
-    const char *exe_suffix = strchr(name, '.') ? "" : ".exe";
+    const char* exe_suffix = strchr(name, '.') ? "" : ".exe";
 #else
-    const char *exe_suffix = "";
+    const char* exe_suffix = "";
 #endif
-    if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s%s", AR_BINDIR, name, exe_suffix) >= (int)sizeof(cmd_path)) {
+    if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s%s", AR_BINDIR, name, exe_suffix) >= (int)sizeof(cmd_path))
+    {
         merror("Active response command path too long for '%s'. Ignoring.", name);
         cJSON_Delete(json_root);
         return;
@@ -540,8 +610,9 @@ void ExecdRun(char *exec_msg, int *childcount)
     cmd[0] = cmd_path;
 
     /* Verify executable exists */
-    FILE *exec_fp = wfopen(cmd[0], "r");
-    if (!exec_fp) {
+    FILE* exec_fp = wfopen(cmd[0], "r");
+    if (!exec_fp)
+    {
         merror(EXEC_INV_NAME, name);
         cJSON_Delete(json_root);
         return;
@@ -549,16 +620,20 @@ void ExecdRun(char *exec_msg, int *childcount)
     fclose(exec_fp);
 
     /* Determine timeout from AR type metadata */
-    cJSON *json_ar_type = cJSON_GetObjectItem(json_ar, "type");
-    cJSON *json_stateful_timeout = cJSON_GetObjectItem(json_ar, "stateful_timeout");
+    cJSON* json_ar_type = cJSON_GetObjectItem(json_ar, "type");
+    cJSON* json_stateful_timeout = cJSON_GetObjectItem(json_ar, "stateful_timeout");
 
-    if (cJSON_IsString(json_ar_type) && strcmp(json_ar_type->valuestring, "stateful") == 0) {
+    if (cJSON_IsString(json_ar_type) && strcmp(json_ar_type->valuestring, "stateful") == 0)
+    {
         timeout_value = cJSON_IsNumber(json_stateful_timeout) ? (int)json_stateful_timeout->valuedouble : 0;
 
-        if (timeout_value == 0) {
+        if (timeout_value == 0)
+        {
             mdebug1("Stateful AR '%s' has timeout value of 0. AR will be treated as stateless.", name);
         }
-    } else {
+    }
+    else
+    {
         timeout_value = 0;
     }
 
@@ -569,29 +644,33 @@ void ExecdRun(char *exec_msg, int *childcount)
     /* Execute command */
     mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
 
-    wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN | W_BIND_STDOUT);
-    if (wfd) {
+    wfd_t* wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN | W_BIND_STDOUT);
+    if (wfd)
+    {
         char response[OS_SIZE_8192];
         char rkey[OS_SIZE_4096];
-        cJSON *keys_json = NULL;
+        cJSON* keys_json = NULL;
 
         /* Send alert to AR script */
         fprintf(wfd->file_in, "%s\n", cmd_parameters);
         fflush(wfd->file_in);
 
         /* Receive alert keys from AR script to check timeout list */
-        if (fgets(response, sizeof(response), wfd->file_out) == NULL) {
+        if (fgets(response, sizeof(response), wfd->file_out) == NULL)
+        {
             mdebug1("Active response won't be added to timeout list. "
-                    "Message not received with alert keys from script '%s'", cmd[0]);
+                    "Message not received with alert keys from script '%s'",
+                    cmd[0]);
             LogArExitStatus(cmd[0], wpclose(wfd));
             os_free(cmd_parameters);
             cJSON_Delete(json_root);
             return;
         }
 
-        char *cmd_copy;
+        char* cmd_copy;
         os_strdup(cmd[0], cmd_copy);
-        if (cmd_copy == NULL) {
+        if (cmd_copy == NULL)
+        {
             merror("Active response command is null");
             LogArExitStatus(cmd[0], wpclose(wfd));
             os_free(cmd_parameters);
@@ -604,18 +683,21 @@ void ExecdRun(char *exec_msg, int *childcount)
         snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd_copy));
 
         keys_json = cJSON_Parse(response);
-        if (keys_json != NULL) {
-            const char *action = get_command_from_json(keys_json);
-            if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {
-                char *keys = get_keys_from_json(keys_json);
-                if (keys != NULL) {
+        if (keys_json != NULL)
+        {
+            const char* action = get_command_from_json(keys_json);
+            if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0))
+            {
+                char* keys = get_keys_from_json(keys_json);
+                if (keys != NULL)
+                {
                     /* Append to rkey the alert keys that the AR script will use */
                     size_t rkey_len = strlen(rkey);
                     size_t keys_len = strlen(keys);
 
-                    if (rkey_len + keys_len >= OS_SIZE_4096) {
-                        mwarn("Active response key exceeds maximum size (%d). Truncating keys.",
-                              OS_SIZE_4096);
+                    if (rkey_len + keys_len >= OS_SIZE_4096)
+                    {
+                        mwarn("Active response key exceeds maximum size (%d). Truncating keys.", OS_SIZE_4096);
                     }
 
                     strncat(rkey, keys, OS_SIZE_4096 - rkey_len - 1);
@@ -628,8 +710,10 @@ void ExecdRun(char *exec_msg, int *childcount)
         added_before = 0;
 
         /* We don't need to add to the list if the timeout_value == 0 */
-        if (timeout_value) {
-            if (repeated_hash != NULL) {
+        if (timeout_value)
+        {
+            if (repeated_hash != NULL)
+            {
                 timeout_value = RepeatedOffendersCheck(rkey, timeout_value, curr_time);
             }
 
@@ -638,11 +722,13 @@ void ExecdRun(char *exec_msg, int *childcount)
 #endif
             /* Check if this command was already executed */
             timeout_node = OSList_GetFirstNode(timeout_list);
-            while (timeout_node) {
-                timeout_data *list_entry;
+            while (timeout_node)
+            {
+                timeout_data* list_entry;
 
-                list_entry = (timeout_data *)timeout_node->data;
-                if (strcmp(list_entry->rkey, rkey) == 0) {
+                list_entry = (timeout_data*)timeout_node->data;
+                if (strcmp(list_entry->rkey, rkey) == 0)
+                {
                     /* Means we executed this command before and we don't need to add it again */
                     added_before = 1;
 
@@ -660,18 +746,22 @@ void ExecdRun(char *exec_msg, int *childcount)
             w_mutex_unlock(&timeout_list_mutex);
 #endif
             /* If it wasn't added before, do it now */
-            if (!added_before) {
+            if (!added_before)
+            {
                 /* Timeout parameters - change command to disable */
-                cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
-                if (existing_command) {
+                cJSON* existing_command = cJSON_GetObjectItem(json_root, "command");
+                if (existing_command)
+                {
                     cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DISABLE_ENTRY));
-                } else {
+                }
+                else
+                {
                     cJSON_AddStringToObject(json_root, "command", DISABLE_ENTRY);
                 }
 
                 /* Create the timeout entry */
                 os_calloc(1, sizeof(timeout_data), timeout_entry);
-                os_calloc(2, sizeof(char *), timeout_entry->command);
+                os_calloc(2, sizeof(char*), timeout_entry->command);
                 os_strdup(cmd[0], timeout_entry->command[0]);
                 timeout_entry->command[1] = NULL;
                 timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
@@ -681,15 +771,15 @@ void ExecdRun(char *exec_msg, int *childcount)
 
                 /* Add command to the timeout list */
                 mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
-                    timeout_entry->command[0],
-                    timeout_entry->parameters,
-                    timeout_entry->time_to_block
-                );
+                        timeout_entry->command[0],
+                        timeout_entry->parameters,
+                        timeout_entry->time_to_block);
 
 #ifdef WIN32
                 w_mutex_lock(&timeout_list_mutex);
 #endif
-                if (!OSList_AddData(timeout_list, timeout_entry)) {
+                if (!OSList_AddData(timeout_list, timeout_entry))
+                {
                     merror(LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
                 }
@@ -700,20 +790,29 @@ void ExecdRun(char *exec_msg, int *childcount)
         }
 
         /* If it wasn't added before, continue execution */
-        if (!added_before) {
+        if (!added_before)
+        {
             /* Continue command */
-            cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
-            if (existing_command) {
+            cJSON* existing_command = cJSON_GetObjectItem(json_root, "command");
+            if (existing_command)
+            {
                 cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(CONTINUE_ENTRY));
-            } else {
+            }
+            else
+            {
                 cJSON_AddStringToObject(json_root, "command", CONTINUE_ENTRY);
             }
-        } else {
+        }
+        else
+        {
             /* Abort command */
-            cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
-            if (existing_command) {
+            cJSON* existing_command = cJSON_GetObjectItem(json_root, "command");
+            if (existing_command)
+            {
                 cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ABORT_ENTRY));
-            } else {
+            }
+            else
+            {
                 cJSON_AddStringToObject(json_root, "command", ABORT_ENTRY);
             }
         }
@@ -730,7 +829,9 @@ void ExecdRun(char *exec_msg, int *childcount)
 #ifndef WIN32
         (*childcount)++;
 #endif
-    } else {
+    }
+    else
+    {
         merror(EXEC_CMD_FAIL, strerror(errno), errno);
     }
 
@@ -756,7 +857,8 @@ void ExecdStart(int q)
 #ifndef WAZUH_UNIT_TESTING
     /* Create list for timeout */
     timeout_list = OSList_Create();
-    if (!timeout_list) {
+    if (!timeout_list)
+    {
         merror_exit(LIST_ERROR);
     }
 #endif
@@ -764,21 +866,26 @@ void ExecdStart(int q)
     RepeatedOffendersInit();
 
     /* Main loop */
-    while (1) {
+    while (1)
+    {
         /* Clean up any children */
-        while (childcount) {
+        while (childcount)
+        {
             int wp;
-            wp = waitpid((pid_t) - 1, NULL, WNOHANG);
-            if (wp < 0 && errno != ECHILD) {
+            wp = waitpid((pid_t)-1, NULL, WNOHANG);
+            if (wp < 0 && errno != ECHILD)
+            {
                 merror(WAITPID_ERROR, errno, strerror(errno));
                 break;
             }
             /* if = 0, we still need to wait for the child process */
-            else if (wp == 0) {
+            else if (wp == 0)
+            {
                 break;
             }
             /* Child completed if wp > 0 */
-            else {
+            else
+            {
                 childcount--;
             }
         }
@@ -794,19 +901,22 @@ void ExecdStart(int q)
         FD_SET(q, &fdset);
 
         /* Add timeout */
-        if (select(q + 1, &fdset, NULL, NULL, &socket_timeout) == 0) {
+        if (select(q + 1, &fdset, NULL, NULL, &socket_timeout) == 0)
+        {
             /* Timeout */
             continue;
         }
 
         /* Check for error */
-        if (!FD_ISSET(q, &fdset)) {
+        if (!FD_ISSET(q, &fdset))
+        {
             merror(SELECT_ERROR, errno, strerror(errno));
             continue;
         }
 
         /* Receive the message */
-        if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
+        if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0)
+        {
             merror(QUEUE_ERROR, EXECQUEUE, strerror(errno));
             continue;
         }
@@ -815,9 +925,9 @@ void ExecdStart(int q)
 
         ExecdRun(buffer, &childcount);
 
-    #ifdef WAZUH_UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
         break;
-    #endif
+#endif
     }
 }
 
@@ -826,23 +936,26 @@ void ExecdStart(int q)
 int WinExecdStart()
 {
     int c;
-    char *cfg = WAZUHCONF;
+    char* cfg = WAZUHCONF;
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */
-    if ((c = ExecdConfig(cfg)) < 0) {
+    if ((c = ExecdConfig(cfg)) < 0)
+    {
         mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
     /* Active response disabled */
-    if (c == 1) {
+    if (c == 1)
+    {
         minfo(EXEC_DISABLED);
         return (0);
     }
 
     /* Create list for timeout */
     timeout_list = OSList_Create();
-    if (!timeout_list) {
+    if (!timeout_list)
+    {
         merror_exit(LIST_ERROR);
     }
 
@@ -857,23 +970,26 @@ int WinExecdStart()
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
 
-    w_create_thread(NULL, 0, win_exec_main,
-                    winexec_queue, 0, NULL);
+    w_create_thread(NULL, 0, win_exec_main, winexec_queue, 0, NULL);
 
     return (1);
 }
 
 // Create a thread to run windows AR simultaneous
-DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
-    if (startup_gate_wait_for_ready("wazuh-execd") != STARTUP_GATE_READY) {
+DWORD WINAPI win_exec_main(__attribute__((unused)) void* args)
+{
+    if (startup_gate_wait_for_ready("wazuh-execd") != STARTUP_GATE_READY)
+    {
         return 0;
     }
 
     ar_resolve_manager_hosts();
 
-    while(1) {
+    while (1)
+    {
         char* exec_msg = queue_pop_ex(winexec_queue);
-        if (exec_msg) {
+        if (exec_msg)
+        {
             mdebug2("Received message: '%s'", exec_msg);
             ExecdRun(exec_msg);
             os_free(exec_msg);

@@ -53,10 +53,21 @@ namespace
     /// FakeManager takes fourteen positional arguments before the one this suite cares about.
     FakeManager downloadManager(uint16_t port, const std::string& blob, const DownloadOptions& download)
     {
-        return FakeManager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
-                            /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
-                            /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
-                            /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{}, download};
+        return FakeManager {port,
+                            KEY_HEX,
+                            /*tls=*/true,
+                            /*settingsFlipAfter=*/0,
+                            /*configBlob=*/blob,
+                            /*statelessMaxBody=*/0,
+                            /*rotateKeyAfterNotifies=*/0,
+                            /*rotatedKeyHex=*/ {},
+                            /*statefulHoldFile=*/ {},
+                            /*vdFeedOffset=*/0,
+                            /*scanVdRejectFirstNAttempts=*/0,
+                            /*enrollPassword=*/ {},
+                            /*enrollForcedStatus=*/0,
+                            /*caBundle=*/ {},
+                            download};
     }
 
     FakeManager downloadManager(uint16_t port, const std::string& blob, DownloadReply reply)
@@ -80,26 +91,26 @@ namespace
     /// The real performer, keeping every response it hands back.
     class RecordingPerformer final : public IHttpPerformer
     {
-        public:
-            explicit RecordingPerformer(IHttpPerformer& inner)
-                : m_inner(inner)
-            {
-            }
+    public:
+        explicit RecordingPerformer(IHttpPerformer& inner)
+            : m_inner(inner)
+        {
+        }
 
-            HttpResponse perform(const HttpRequestSpec& spec) override
-            {
-                m_responses.push_back(m_inner.perform(spec));
-                return m_responses.back();
-            }
+        HttpResponse perform(const HttpRequestSpec& spec) override
+        {
+            m_responses.push_back(m_inner.perform(spec));
+            return m_responses.back();
+        }
 
-            const std::vector<HttpResponse>& responses() const
-            {
-                return m_responses;
-            }
+        const std::vector<HttpResponse>& responses() const
+        {
+            return m_responses;
+        }
 
-        private:
-            IHttpPerformer& m_inner;
-            std::vector<HttpResponse> m_responses;
+    private:
+        IHttpPerformer& m_inner;
+        std::vector<HttpResponse> m_responses;
     };
 
     std::string readFile(const std::string& path)
@@ -133,64 +144,65 @@ namespace
     /// their own, so a test can tell that a failed download left nothing behind.
     class Downloader final
     {
-        public:
-            explicit Downloader(uint16_t port)
-                : m_config(downloadConfig(port))
-                , m_spoolDir(::testing::TempDir() + "hc_download_" + std::to_string(::getpid()) + "_" + std::to_string(port))
-                , m_signer("001", m_keyProvider)
-                , m_curl(m_config, defaultCurlHandleFactory())
-                , m_performer(m_curl)
-                , m_spoolFactory(m_spoolDir)
-                , m_authGate(m_sink, [] {})
-            , m_configFetcher(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_authGate,
-                              m_compressionGate)
-            , m_wpkFetcher(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_authGate,
-                           m_compressionGate)
-            {
-                ::mkdir(m_spoolDir.c_str(), 0700);
-            }
+    public:
+        explicit Downloader(uint16_t port)
+            : m_config(downloadConfig(port))
+            , m_spoolDir(::testing::TempDir() + "hc_download_" + std::to_string(::getpid()) + "_" +
+                         std::to_string(port))
+            , m_signer("001", m_keyProvider)
+            , m_curl(m_config, defaultCurlHandleFactory())
+            , m_performer(m_curl)
+            , m_spoolFactory(m_spoolDir)
+            , m_authGate(m_sink, [] {})
+            , m_configFetcher(
+                  m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_authGate, m_compressionGate)
+            , m_wpkFetcher(
+                  m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_authGate, m_compressionGate)
+        {
+            ::mkdir(m_spoolDir.c_str(), 0700);
+        }
 
-            ~Downloader()
-            {
-                ::rmdir(m_spoolDir.c_str());
-            }
+        ~Downloader()
+        {
+            ::rmdir(m_spoolDir.c_str());
+        }
 
-            std::shared_ptr<SpoolFile> fetchConfig(const std::string& blob)
-            {
-                return m_configFetcher.fetch(sha256Hex(blob.data(), blob.size()), FAKE_MANAGER_CONFIG_TOKEN, m_waiter);
-            }
+        std::shared_ptr<SpoolFile> fetchConfig(const std::string& blob)
+        {
+            return m_configFetcher.fetch(sha256Hex(blob.data(), blob.size()), FAKE_MANAGER_CONFIG_TOKEN, m_waiter);
+        }
 
-            std::shared_ptr<SpoolFile> fetchWpk()
-            {
-                return m_wpkFetcher.fetch("wazuh_agent.wpk", "da39a3ee5e6b4b0d3255bfef95601890afd80709", m_waiter);
-            }
+        std::shared_ptr<SpoolFile> fetchWpk()
+        {
+            return m_wpkFetcher.fetch("wazuh_agent.wpk", "da39a3ee5e6b4b0d3255bfef95601890afd80709", m_waiter);
+        }
 
-            const std::vector<HttpResponse>& attempts() const
-            {
-                return m_performer.responses();
-            }
+        const std::vector<HttpResponse>& attempts() const
+        {
+            return m_performer.responses();
+        }
 
-            size_t filesLeft() const
-            {
-                return filesIn(m_spoolDir);
-            }
+        size_t filesLeft() const
+        {
+            return filesIn(m_spoolDir);
+        }
 
-        private:
-            ModuleConfig m_config;
-            std::string m_spoolDir;
-            ConfigKeyProvider m_keyProvider {KEY_HEX};
-            JwtSigner m_signer;
-            CurlPerformer m_curl;
-            RecordingPerformer m_performer;
-            TempSpoolFactory m_spoolFactory;
-            SystemClock m_clock;
-            Mt19937Random m_random;
-            CallbackDispatcher m_sink {hc_callbacks_t {}};
-            AuthGate m_authGate;
-            CompressionGate m_compressionGate;
-            Waiter m_waiter;
-            ConfigFetcher m_configFetcher;
-            WpkFetcher m_wpkFetcher;
+    private:
+        ModuleConfig m_config;
+        std::string m_spoolDir;
+        ConfigKeyProvider m_keyProvider {KEY_HEX};
+        JwtSigner m_signer;
+        CurlPerformer m_curl;
+        RecordingPerformer m_performer;
+        TempSpoolFactory m_spoolFactory;
+        SystemClock m_clock;
+        Mt19937Random m_random;
+        CallbackDispatcher m_sink {hc_callbacks_t {}};
+        AuthGate m_authGate;
+        CompressionGate m_compressionGate;
+        Waiter m_waiter;
+        ConfigFetcher m_configFetcher;
+        WpkFetcher m_wpkFetcher;
     };
 
     bool curlErrorIs(const HttpResponse& response, const std::string& code)
@@ -205,9 +217,9 @@ TEST(ConfigDownloadComponentTest, TheAgentsLibcurlDecodesZstd)
 {
     const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
 
-    EXPECT_NE(0, info->features & CURL_VERSION_ZSTD)
-            << "libcurl " << info->version << " was built without zstd: src/external/curl predates "
-            "--with-zstd, run `make clean-deps` and `make deps` again";
+    EXPECT_NE(0, info->features & CURL_VERSION_ZSTD) << "libcurl " << info->version
+                                                     << " was built without zstd: src/external/curl predates "
+                                                        "--with-zstd, run `make clean-deps` and `make deps` again";
 }
 
 // What the performer asks before it offers a coding: it has to match what this libcurl reports.
@@ -228,8 +240,9 @@ TEST(ConfigDownloadComponentTest, TheAgentsLibcurlSpeaksOnlyHttp1)
     const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
 
     EXPECT_EQ(0, info->features & (CURL_VERSION_HTTP2 | CURL_VERSION_HTTP3))
-            << "libcurl " << info->version << " was built with HTTP/2 or HTTP/3: add a component test that "
-            "runs a stacked reply over it";
+        << "libcurl " << info->version
+        << " was built with HTTP/2 or HTTP/3: add a component test that "
+           "runs a stacked reply over it";
 }
 
 TEST(ConfigDownloadComponentTest, AZstdReplyIsDecodedAndDeliveredByteForByte)
@@ -301,7 +314,7 @@ TEST(ConfigDownloadComponentTest, AReplyCodedTwiceIsRefusedBeforeItsBody)
     {
         EXPECT_TRUE(attempt.contentDecodingFailed);
         EXPECT_NE(std::string::npos, attempt.curlError.find("refused Content-Encoding 'zstd, zstd'"))
-                << attempt.curlError;
+            << attempt.curlError;
     }
 
     EXPECT_EQ(0u, downloader.filesLeft());

@@ -28,7 +28,8 @@ static int stop_calls = 0;
 static bool stopped_before_grace_wait = false;
 
 // Replaces wm_handler()'s grace sleep(1).
-unsigned int __wrap_sleep(unsigned int seconds) {
+unsigned int __wrap_sleep(unsigned int seconds)
+{
     check_expected(seconds);
     shutdown_flag_during_grace_wait = wm_shutdown_requested;
     grace_wait_done = true;
@@ -36,64 +37,76 @@ unsigned int __wrap_sleep(unsigned int seconds) {
 }
 
 // exit() is noreturn: end the handler through expect_assert_failure(), as test_agentd.c does.
-void __wrap_exit(int code) {
+void __wrap_exit(int code)
+{
     check_expected(code);
     mock_assert(0, "exit called", __FILE__, __LINE__);
 }
 
 // wm_setup() collaborators: a configuration test must stop before the PID file and the children pool.
-int __wrap_wm_config(void) {
+int __wrap_wm_config(void)
+{
     return 0;
 }
 
-int __wrap_wm_check(void) {
+int __wrap_wm_check(void)
+{
     return 0;
 }
 
-void __wrap_w_read_agent_batch(__attribute__((unused)) const char *cfgfile,
-                               __attribute__((unused)) const char *sharedcfg,
-                               __attribute__((unused)) agent_batch *batch) {
+void __wrap_w_read_agent_batch(__attribute__((unused)) const char* cfgfile,
+                               __attribute__((unused)) const char* sharedcfg,
+                               __attribute__((unused)) agent_batch* batch)
+{
 }
 
-int __wrap_getDefine_Int_default(__attribute__((unused)) const char *high_name,
-                                 __attribute__((unused)) const char *low_name,
+int __wrap_getDefine_Int_default(__attribute__((unused)) const char* high_name,
+                                 __attribute__((unused)) const char* low_name,
                                  __attribute__((unused)) int min,
                                  __attribute__((unused)) int max,
-                                 int default_val) {
+                                 int default_val)
+{
     return default_val;
 }
 
-gid_t __wrap_Privsep_GetGroup(__attribute__((unused)) const char *name) {
+gid_t __wrap_Privsep_GetGroup(__attribute__((unused)) const char* name)
+{
     return getgid();
 }
 
-int __wrap_Privsep_SetGroup(__attribute__((unused)) gid_t gid) {
+int __wrap_Privsep_SetGroup(__attribute__((unused)) gid_t gid)
+{
     return 0;
 }
 
-int __wrap_CreatePID(__attribute__((unused)) const char *name, __attribute__((unused)) int pid) {
+int __wrap_CreatePID(__attribute__((unused)) const char* name, __attribute__((unused)) int pid)
+{
     fail_msg("CreatePID() must not run under -t");
     return -1;
 }
 
-void __wrap_wm_children_pool_init(void) {
+void __wrap_wm_children_pool_init(void)
+{
     fail_msg("wm_children_pool_init() must not run under -t");
 }
 
-static void record_stop(void * data) {
+static void record_stop(void* data)
+{
     (void)data;
     stop_calls++;
-    if (!grace_wait_done) {
+    if (!grace_wait_done)
+    {
         stopped_before_grace_wait = true;
     }
 }
 
 // The flag must be up during the grace wait (wm_fim_query_json() and modulesSync() read it there),
 // and the stop() callbacks must still run after the wait.
-static void test_sigterm_raises_shutdown_flag_before_grace_wait(void ** state) {
+static void test_sigterm_raises_shutdown_flag_before_grace_wait(void** state)
+{
     (void)state;
-    static const wm_context context = { .name = "fake", .stop = record_stop };
-    static wmodule module = { .context = &context };
+    static const wm_context context = {.name = "fake", .stop = record_stop};
+    static wmodule module = {.context = &context};
 
     wmodules = &module;
     wm_shutdown_requested = 0;
@@ -112,7 +125,8 @@ static void test_sigterm_raises_shutdown_flag_before_grace_wait(void ** state) {
 
 // -t (configuration test) reads and validates only: it must neither write a PID file nor start the
 // children pool, so a configuration check writes nothing under var/run.
-static void test_setup_in_test_mode_creates_no_pid_file(void ** state) {
+static void test_setup_in_test_mode_creates_no_pid_file(void** state)
+{
     (void)state;
 
     flag_test_config = 1;
@@ -124,7 +138,8 @@ static void test_setup_in_test_mode_creates_no_pid_file(void ** state) {
     flag_foreground = 0;
 }
 
-int main(void) {
+int main(void)
+{
     // wm_handler() handles a single signal per process, so this binary holds a single handler test.
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_setup_in_test_mode_creates_no_pid_file),

@@ -26,46 +26,47 @@
 
 #include "sysInfoInterface.h"
 
-constexpr auto arraySeparator { "," };
+constexpr auto arraySeparator {","};
 
-class EXPORTED SysInfo: public ISysInfo
+class EXPORTED SysInfo : public ISysInfo
 {
-    public:
-        SysInfo() = default;
-        // LCOV_EXCL_START
-        virtual ~SysInfo() = default;
-        // LCOV_EXCL_STOP
-        nlohmann::json hardware();
-        nlohmann::json packages();
-        nlohmann::json os();
-        nlohmann::json processes();
-        nlohmann::json networks();
-        nlohmann::json ports();
-        void packages(std::function<void(nlohmann::json&)>);
-        void processes(std::function<void(nlohmann::json&)>);
+public:
+    SysInfo() = default;
+    // LCOV_EXCL_START
+    virtual ~SysInfo() = default;
+    // LCOV_EXCL_STOP
+    nlohmann::json hardware();
+    nlohmann::json packages();
+    nlohmann::json os();
+    nlohmann::json processes();
+    nlohmann::json networks();
+    nlohmann::json ports();
+    void packages(std::function<void(nlohmann::json&)>);
+    void processes(std::function<void(nlohmann::json&)>);
 #ifdef __linux__
-        void processNames(std::function<void(const ProcessNames&)> callback) override;
+    void processNames(std::function<void(const ProcessNames&)> callback) override;
 #endif
-        nlohmann::json hotfixes();
-        nlohmann::json groups();
-        nlohmann::json users();
-        nlohmann::json services();
-        nlohmann::json browserExtensions();
-        void releaseThreadResources();
-    private:
-        virtual nlohmann::json getHardware() const;
-        virtual nlohmann::json getPackages() const;
-        virtual nlohmann::json getOsInfo() const;
-        virtual nlohmann::json getProcessesInfo() const;
-        virtual nlohmann::json getNetworks() const;
-        virtual nlohmann::json getPorts() const;
-        virtual nlohmann::json getHotfixes() const;
-        virtual nlohmann::json getGroups() const;
-        virtual nlohmann::json getUsers() const;
-        virtual nlohmann::json getServices() const;
-        virtual nlohmann::json getBrowserExtensions() const;
-        virtual void getPackages(std::function<void(nlohmann::json&)>) const;
-        virtual void getProcessesInfo(std::function<void(nlohmann::json&)>) const;
+    nlohmann::json hotfixes();
+    nlohmann::json groups();
+    nlohmann::json users();
+    nlohmann::json services();
+    nlohmann::json browserExtensions();
+    void releaseThreadResources();
+
+private:
+    virtual nlohmann::json getHardware() const;
+    virtual nlohmann::json getPackages() const;
+    virtual nlohmann::json getOsInfo() const;
+    virtual nlohmann::json getProcessesInfo() const;
+    virtual nlohmann::json getNetworks() const;
+    virtual nlohmann::json getPorts() const;
+    virtual nlohmann::json getHotfixes() const;
+    virtual nlohmann::json getGroups() const;
+    virtual nlohmann::json getUsers() const;
+    virtual nlohmann::json getServices() const;
+    virtual nlohmann::json getBrowserExtensions() const;
+    virtual void getPackages(std::function<void(nlohmann::json&)>) const;
+    virtual void getProcessesInfo(std::function<void(nlohmann::json&)>) const;
 };
 
 #endif //_SYS_INFO_HPP

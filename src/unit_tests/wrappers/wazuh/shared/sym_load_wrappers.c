@@ -15,43 +15,48 @@
 #include <errno.h>
 #include "../../common.h"
 
-void* __wrap_so_get_module_handle_on_path(const char *path, const char *so) {
-    if (test_mode) {
+void* __wrap_so_get_module_handle_on_path(const char* path, const char* so)
+{
+    if (test_mode)
+    {
         check_expected(path);
         check_expected(so);
-        void *ret = mock_type(void*);
+        void* ret = mock_type(void*);
 
         return ret;
-
     }
     return so_get_module_handle_on_path(path, so);
 }
 
-void* __wrap_so_get_module_handle(const char *so) {
-    if (test_mode) {
+void* __wrap_so_get_module_handle(const char* so)
+{
+    if (test_mode)
+    {
         check_expected(so);
-        void *ret = mock_type(void*);
+        void* ret = mock_type(void*);
 
         return ret;
-
     }
     return so_get_module_handle(so);
 }
 
-void* __wrap_so_get_function_sym(void *handle, const char *function_name) {
-    if (test_mode) {
+void* __wrap_so_get_function_sym(void* handle, const char* function_name)
+{
+    if (test_mode)
+    {
         check_expected(handle);
         check_expected(function_name);
-        void *ret = mock_type(void*);
+        void* ret = mock_type(void*);
 
         return ret;
-
     }
     return so_get_function_sym(handle, function_name);
 }
 
-int __wrap_so_free_library(void *handle) {
-    if (test_mode) {
+int __wrap_so_free_library(void* handle)
+{
+    if (test_mode)
+    {
         check_expected(handle);
         return mock();
     }

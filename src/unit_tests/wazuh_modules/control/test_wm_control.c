@@ -34,7 +34,7 @@
 
 /* WM_CONTROL_LOGTAG expands to ARGV0 ":control".
  * For the manager build ARGV0 is "wazuh-manager-modulesd". */
-#define WM_CONTROL_TEST_LOGTAG "wazuh-manager-modulesd:control"
+#define WM_CONTROL_TEST_LOGTAG      "wazuh-manager-modulesd:control"
 #define WM_CONTROL_TEST_PROCESS_UID 1000
 
 static int received_commands;
@@ -48,7 +48,8 @@ static int recv_errno_on_empty;
 /* Setup / teardown                                                     */
 /* ------------------------------------------------------------------ */
 
-static int setup_test_mode(void **state) {
+static int setup_test_mode(void** state)
+{
     test_mode = 1;
     wm_shutdown_requested = 0;
     received_commands = 0;
@@ -59,13 +60,15 @@ static int setup_test_mode(void **state) {
     return 0;
 }
 
-static int teardown_test_mode(void **state) {
+static int teardown_test_mode(void** state)
+{
     test_mode = 0;
     wm_shutdown_requested = 0;
     return 0;
 }
 
-int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {
+int __wrap_OS_BindUnixDomainWithPerms(const char* path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm)
+{
     check_expected(path);
     check_expected(type);
     check_expected(max_msg_size);
@@ -75,50 +78,61 @@ int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_si
     return mock_type(int);
 }
 
-uid_t __wrap_getuid(void) {
+uid_t __wrap_getuid(void)
+{
     return WM_CONTROL_TEST_PROCESS_UID;
 }
 
-int __wrap_wm_select_interruptible(int sock, fd_set *fdset) {
+int __wrap_wm_select_interruptible(int sock, fd_set* fdset)
+{
     check_expected(sock);
     assert_non_null(fdset);
     return mock_type(int);
 }
 
-int __wrap_accept(int sock, struct sockaddr *address, socklen_t *address_len) {
+int __wrap_accept(int sock, struct sockaddr* address, socklen_t* address_len)
+{
     check_expected(sock);
     assert_null(address);
     assert_null(address_len);
     return mock_type(int);
 }
 
-int __wrap_getsockopt(int socket, int level, int option, void *value, socklen_t *value_size) {
+int __wrap_getsockopt(int socket, int level, int option, void* value, socklen_t* value_size)
+{
     check_expected(socket);
     check_expected(level);
     check_expected(option);
     assert_int_equal(*value_size, sizeof(struct ucred));
 
-    struct ucred *credentials = value;
+    struct ucred* credentials = value;
     credentials->uid = mock_type(uid_t);
 
-    if (shutdown_after_credentials) {
+    if (shutdown_after_credentials)
+    {
         wm_shutdown_requested = 1;
     }
 
     return mock_type(int);
 }
 
-int __wrap_OS_RecvUnix(int socket, int size, char *buffer) {
+int __wrap_OS_RecvUnix(int socket, int size, char* buffer)
+{
     check_expected(socket);
     check_expected(size);
 
-    const char *message = mock_type(const char *);
+    const char* message = mock_type(const char*);
     const int length = mock_type(int);
-    if (length > 0) {
+    if (length > 0)
+    {
         memcpy(buffer, message, length);
-    } else if (length == -1) {
+    }
+    else if (length == -1)
+    {
         errno = ECONNRESET;
-    } else if (length == 0 && recv_errno_on_empty != 0) {
+    }
+    else if (length == 0 && recv_errno_on_empty != 0)
+    {
         errno = recv_errno_on_empty;
     }
     received_commands++;
@@ -126,14 +140,16 @@ int __wrap_OS_RecvUnix(int socket, int size, char *buffer) {
     return length;
 }
 
-int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds) {
+int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds)
+{
     check_expected(socket);
     check_expected(seconds);
     check_expected(useconds);
     return mock_type(int);
 }
 
-int __wrap_OS_SendUnix(int socket, const char *message, int size) {
+int __wrap_OS_SendUnix(int socket, const char* message, int size)
+{
     check_expected(socket);
     check_expected(message);
     check_expected(size);
@@ -141,20 +157,24 @@ int __wrap_OS_SendUnix(int socket, const char *message, int size) {
     return mock_type(int);
 }
 
-int __wrap_close(int fd) {
-    if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0])) {
+int __wrap_close(int fd)
+{
+    if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0]))
+    {
         closed_fds[closed_fds_count++] = fd;
     }
     return 0;
 }
 
-int __wrap_pipe(int pipefd[2]) {
+int __wrap_pipe(int pipefd[2])
+{
     pipefd[0] = mock_type(int);
     pipefd[1] = mock_type(int);
     return mock_type(int);
 }
 
-int __wrap_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+int __wrap_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
     check_expected(fds[0].fd);
     check_expected(fds[0].events);
     check_expected(nfds);
@@ -162,15 +182,18 @@ int __wrap_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
     return mock_type(int);
 }
 
-int __wrap_CreateThread(void *(*function_pointer)(void *), void *data) {
+int __wrap_CreateThread(void* (*function_pointer)(void*), void* data)
+{
     const int outcome = mock_type(int);
-    if (outcome != 0) {
+    if (outcome != 0)
+    {
         function_pointer(data);
     }
     return outcome == 1;
 }
 
-static void expect_service_control_accepted(pid_t pid, int thread_outcome) {
+static void expect_service_control_accepted(pid_t pid, int thread_outcome)
+{
     will_return(__wrap_pipe, 10);
     will_return(__wrap_pipe, 11);
     will_return(__wrap_pipe, 0);
@@ -185,14 +208,16 @@ static void expect_service_control_accepted(pid_t pid, int thread_outcome) {
     will_return(__wrap_read, 1);
     will_return(__wrap_CreateThread, thread_outcome);
 
-    if (thread_outcome != 0) {
+    if (thread_outcome != 0)
+    {
         expect_value(__wrap_waitpid, __pid, pid);
         expect_value(__wrap_waitpid, __options, 0);
         will_return(__wrap_waitpid, 0);
         will_return(__wrap_waitpid, pid);
     }
 
-    if (thread_outcome != 1) {
+    if (thread_outcome != 1)
+    {
         expect_value(__wrap_waitpid, __pid, pid);
         expect_value(__wrap_waitpid, __options, WNOHANG);
         will_return(__wrap_waitpid, 0);
@@ -200,7 +225,8 @@ static void expect_service_control_accepted(pid_t pid, int thread_outcome) {
     }
 }
 
-static void expect_control_peer(uid_t peer_uid, int socket, int peer) {
+static void expect_control_peer(uid_t peer_uid, int socket, int peer)
+{
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Starting control thread.");
 
@@ -226,7 +252,8 @@ static void expect_control_peer(uid_t peer_uid, int socket, int peer) {
 }
 
 /* An accepted peer gets a receive timeout, so a client that sends nothing cannot hold the socket. */
-static void expect_peer_recv_timeout(int peer) {
+static void expect_peer_recv_timeout(int peer)
+{
     expect_value(__wrap_OS_SetRecvTimeout, socket, peer);
     expect_value(__wrap_OS_SetRecvTimeout, seconds, 3);
     expect_value(__wrap_OS_SetRecvTimeout, useconds, 0);
@@ -237,7 +264,8 @@ static void expect_peer_recv_timeout(int peer) {
 /* process_control peer authorization tests                            */
 /* ------------------------------------------------------------------ */
 
-static void test_control_peer_uid_matches_process_uid(void **state) {
+static void test_control_peer_uid_matches_process_uid(void** state)
+{
     const int socket = 100;
     const int peer = 101;
     const char command[] = "unknown";
@@ -269,7 +297,8 @@ static void test_control_peer_uid_matches_process_uid(void **state) {
     assert_int_equal(closed_fds[1], socket);
 }
 
-static void test_control_peer_unrelated_uid_is_rejected(void **state) {
+static void test_control_peer_unrelated_uid_is_rejected(void** state)
+{
     const int socket = 100;
     const int peer = 101;
 
@@ -288,7 +317,8 @@ static void test_control_peer_unrelated_uid_is_rejected(void **state) {
     assert_int_equal(closed_fds[1], socket);
 }
 
-static void test_control_peer_closed_on_receive_error(void **state) {
+static void test_control_peer_closed_on_receive_error(void** state)
+{
     const int socket = 100;
     const int peer = 101;
     char expected_msg[OS_SIZE_256];
@@ -314,7 +344,8 @@ static void test_control_peer_closed_on_receive_error(void **state) {
     assert_int_equal(closed_fds[1], socket);
 }
 
-static void test_control_peer_closed_on_empty_message(void **state) {
+static void test_control_peer_closed_on_empty_message(void** state)
+{
     const int socket = 100;
     const int peer = 101;
 
@@ -338,7 +369,8 @@ static void test_control_peer_closed_on_empty_message(void **state) {
     assert_int_equal(closed_fds[1], socket);
 }
 
-static void test_control_peer_closed_on_receive_timeout(void **state) {
+static void test_control_peer_closed_on_receive_timeout(void** state)
+{
     const int socket = 100;
     const int peer = 101;
 
@@ -367,9 +399,10 @@ static void test_control_peer_closed_on_receive_timeout(void **state) {
 /* wm_control_dispatch tests                                            */
 /* ------------------------------------------------------------------ */
 
-static void test_dispatch_restart(void **state) {
+static void test_dispatch_restart(void** state)
+{
     char command[] = "restart";
-    char *output = NULL;
+    char* output = NULL;
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
@@ -384,9 +417,10 @@ static void test_dispatch_restart(void **state) {
     free(output);
 }
 
-static void test_dispatch_reload(void **state) {
+static void test_dispatch_reload(void** state)
+{
     char command[] = "reload";
-    char *output = NULL;
+    char* output = NULL;
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'reload'");
@@ -401,10 +435,11 @@ static void test_dispatch_reload(void **state) {
     free(output);
 }
 
-static void test_dispatch_restart_with_args(void **state) {
+static void test_dispatch_restart_with_args(void** state)
+{
     /* Manager commands must contain only the allowlisted action. */
     char command[] = "restart somearg";
-    char *output = NULL;
+    char* output = NULL;
 
     expect_string(__wrap__mtwarn, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Unexpected arguments for command: 'restart'");
@@ -418,9 +453,10 @@ static void test_dispatch_restart_with_args(void **state) {
     free(output);
 }
 
-static void test_dispatch_unknown_command(void **state) {
+static void test_dispatch_unknown_command(void** state)
+{
     char command[] = "unknowncmd";
-    char *output = NULL;
+    char* output = NULL;
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'unknowncmd'");
@@ -437,18 +473,17 @@ static void test_dispatch_unknown_command(void **state) {
     free(output);
 }
 
-static void test_dispatch_unknown_command_newline_is_escaped(void **state) {
+static void test_dispatch_unknown_command_newline_is_escaped(void** state)
+{
     /* A newline in client input must not start a new (forged) log line. No space: the first one ends the command. */
     char command[] = "bogus\nwazuh-manager-modulesd:INFO:forged";
-    char *output = NULL;
+    char* output = NULL;
 
     expect_string(__wrap__mtdebug2, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg,
-                  "Dispatching command: 'bogus\\nwazuh-manager-modulesd:INFO:forged'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'bogus\\nwazuh-manager-modulesd:INFO:forged'");
 
     expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg,
-                  "Unknown command: 'bogus\\nwazuh-manager-modulesd:INFO:forged'");
+    expect_string(__wrap__mterror, formatted_msg, "Unknown command: 'bogus\\nwazuh-manager-modulesd:INFO:forged'");
 
     size_t ret = wm_control_dispatch(command, &output);
 
@@ -459,12 +494,13 @@ static void test_dispatch_unknown_command_newline_is_escaped(void **state) {
     free(output);
 }
 
-static void test_dispatch_unknown_command_long_is_truncated(void **state) {
+static void test_dispatch_unknown_command_long_is_truncated(void** state)
+{
     char command[1024];
     char logged[200];
     char expected_debug[256];
     char expected_error[256];
-    char *output = NULL;
+    char* output = NULL;
 
     memset(command, 'a', sizeof(command) - 1);
     command[sizeof(command) - 1] = '\0';
@@ -488,9 +524,10 @@ static void test_dispatch_unknown_command_long_is_truncated(void **state) {
     free(output);
 }
 
-static void test_dispatch_with_args_control_chars_are_escaped(void **state) {
+static void test_dispatch_with_args_control_chars_are_escaped(void** state)
+{
     char command[] = "re\rstart\x01 arg";
-    char *output = NULL;
+    char* output = NULL;
 
     expect_string(__wrap__mtwarn, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Unexpected arguments for command: 're\\rstart\\x01'");
@@ -508,14 +545,16 @@ static void test_dispatch_with_args_control_chars_are_escaped(void **state) {
 /* wm_control_log_input tests                                           */
 /* ------------------------------------------------------------------ */
 
-static void test_log_input_escapes_bytes(void **state) {
+static void test_log_input_escapes_bytes(void** state)
+{
     char dst[600];
     const char input[] = "a\\b\tc\x7f\xff'd";
 
     assert_string_equal(wm_control_log_input(input, dst, sizeof(dst)), "a\\\\b\\tc\\x7f\\xff'd");
 }
 
-static void test_log_input_exact_limit_not_truncated(void **state) {
+static void test_log_input_exact_limit_not_truncated(void** state)
+{
     char input[129];
     char dst[600];
 
@@ -525,7 +564,8 @@ static void test_log_input_exact_limit_not_truncated(void **state) {
     assert_string_equal(wm_control_log_input(input, dst, sizeof(dst)), input);
 }
 
-static void test_log_input_small_buffer_and_null(void **state) {
+static void test_log_input_small_buffer_and_null(void** state)
+{
     char dst[4];
 
     /* The rendering stops before an escape that would not fit, and stays terminated. */
@@ -538,8 +578,9 @@ static void test_log_input_small_buffer_and_null(void **state) {
 /* wm_control_execute_action tests                                      */
 /* ------------------------------------------------------------------ */
 
-static void test_execute_action_fork_fails(void **state) {
-    char *output = NULL;
+static void test_execute_action_fork_fails(void** state)
+{
+    char* output = NULL;
 
     will_return(__wrap_pipe, 10);
     will_return(__wrap_pipe, 11);
@@ -557,8 +598,9 @@ static void test_execute_action_fork_fails(void **state) {
     free(output);
 }
 
-static void test_execute_action_restart_accepted(void **state) {
-    char *output = NULL;
+static void test_execute_action_restart_accepted(void** state)
+{
+    char* output = NULL;
 
     expect_service_control_accepted(1234, true);
 
@@ -571,8 +613,9 @@ static void test_execute_action_restart_accepted(void **state) {
     free(output);
 }
 
-static void test_execute_action_reload_accepted(void **state) {
-    char *output = NULL;
+static void test_execute_action_reload_accepted(void** state)
+{
+    char* output = NULL;
 
     expect_service_control_accepted(5678, true);
 
@@ -585,8 +628,9 @@ static void test_execute_action_reload_accepted(void **state) {
     free(output);
 }
 
-static void test_execute_action_reaper_thread_fails(void **state) {
-    char *output = NULL;
+static void test_execute_action_reaper_thread_fails(void** state)
+{
+    char* output = NULL;
 
     expect_service_control_accepted(9012, false);
     expect_string(__wrap__mtwarn, tag, WM_CONTROL_TEST_LOGTAG);
@@ -601,8 +645,9 @@ static void test_execute_action_reaper_thread_fails(void **state) {
     free(output);
 }
 
-static void test_execute_action_reaper_detach_fails(void **state) {
-    char *output = NULL;
+static void test_execute_action_reaper_detach_fails(void** state)
+{
+    char* output = NULL;
 
     /* Outcome 2 models a thread that ran even though CreateThread returned 0. */
     expect_service_control_accepted(3456, 2);
@@ -622,7 +667,8 @@ static void test_execute_action_reaper_detach_fails(void **state) {
 /* wm_control_check_systemd tests                                       */
 /* ------------------------------------------------------------------ */
 
-static void test_check_systemd_no_run_dir(void **state) {
+static void test_check_systemd_no_run_dir(void** state)
+{
     expect_string(__wrap_access, __name, "/run/systemd/system");
     expect_value(__wrap_access, __type, F_OK);
     will_return(__wrap_access, -1);
@@ -632,7 +678,8 @@ static void test_check_systemd_no_run_dir(void **state) {
     assert_false(result);
 }
 
-static void test_check_systemd_fopen_fails(void **state) {
+static void test_check_systemd_fopen_fails(void** state)
+{
     expect_string(__wrap_access, __name, "/run/systemd/system");
     expect_value(__wrap_access, __type, F_OK);
     will_return(__wrap_access, 0);
@@ -646,8 +693,9 @@ static void test_check_systemd_fopen_fails(void **state) {
     assert_false(result);
 }
 
-static void test_check_systemd_is_systemd(void **state) {
-    FILE *fp = (FILE *)1;
+static void test_check_systemd_is_systemd(void** state)
+{
+    FILE* fp = (FILE*)1;
 
     expect_string(__wrap_access, __name, "/run/systemd/system");
     expect_value(__wrap_access, __type, F_OK);
@@ -668,8 +716,9 @@ static void test_check_systemd_is_systemd(void **state) {
     assert_true(result);
 }
 
-static void test_check_systemd_not_systemd(void **state) {
-    FILE *fp = (FILE *)1;
+static void test_check_systemd_not_systemd(void** state)
+{
+    FILE* fp = (FILE*)1;
 
     expect_string(__wrap_access, __name, "/run/systemd/system");
     expect_value(__wrap_access, __type, F_OK);
@@ -690,8 +739,9 @@ static void test_check_systemd_not_systemd(void **state) {
     assert_false(result);
 }
 
-static void test_check_systemd_fgets_null(void **state) {
-    FILE *fp = (FILE *)1;
+static void test_check_systemd_fgets_null(void** state)
+{
+    FILE* fp = (FILE*)1;
 
     expect_string(__wrap_access, __name, "/run/systemd/system");
     expect_value(__wrap_access, __type, F_OK);
@@ -716,38 +766,44 @@ static void test_check_systemd_fgets_null(void **state) {
 /* main                                                                 */
 /* ------------------------------------------------------------------ */
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         /* process_control peer authorization */
-        cmocka_unit_test_setup_teardown(test_control_peer_uid_matches_process_uid,       setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_control_peer_unrelated_uid_is_rejected,     setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_receive_error,       setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_empty_message,       setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_receive_timeout,     setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_control_peer_uid_matches_process_uid, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(
+            test_control_peer_unrelated_uid_is_rejected, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_receive_error, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_empty_message, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(
+            test_control_peer_closed_on_receive_timeout, setup_test_mode, teardown_test_mode),
         /* wm_control_dispatch */
-        cmocka_unit_test_setup_teardown(test_dispatch_restart,            setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_dispatch_reload,             setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_dispatch_restart_with_args,  setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_dispatch_unknown_command,    setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_dispatch_unknown_command_newline_is_escaped, setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_dispatch_unknown_command_long_is_truncated,  setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_dispatch_with_args_control_chars_are_escaped, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_restart, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_reload, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_restart_with_args, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_dispatch_unknown_command, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(
+            test_dispatch_unknown_command_newline_is_escaped, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(
+            test_dispatch_unknown_command_long_is_truncated, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(
+            test_dispatch_with_args_control_chars_are_escaped, setup_test_mode, teardown_test_mode),
         /* wm_control_log_input */
         cmocka_unit_test(test_log_input_escapes_bytes),
         cmocka_unit_test(test_log_input_exact_limit_not_truncated),
         cmocka_unit_test(test_log_input_small_buffer_and_null),
         /* wm_control_execute_action */
-        cmocka_unit_test_setup_teardown(test_execute_action_fork_fails,          setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_execute_action_restart_accepted,     setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_execute_action_reload_accepted,      setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_execute_action_reaper_thread_fails,  setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_execute_action_reaper_detach_fails,  setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_fork_fails, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_restart_accepted, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reload_accepted, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reaper_thread_fails, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_reaper_detach_fails, setup_test_mode, teardown_test_mode),
         /* wm_control_check_systemd */
-        cmocka_unit_test_setup_teardown(test_check_systemd_no_run_dir,    setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_check_systemd_fopen_fails,   setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_check_systemd_is_systemd,    setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_check_systemd_not_systemd,   setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_check_systemd_fgets_null,    setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_no_run_dir, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_fopen_fails, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_is_systemd, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_not_systemd, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_check_systemd_fgets_null, setup_test_mode, teardown_test_mode),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

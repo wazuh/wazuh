@@ -18,20 +18,20 @@
 /// The class provides a method to collect the information and return it in JSON format.
 class ShadowProvider
 {
-    public:
-        /// Constructor
-        /// @param shadowWrapper A shared pointer to an IShadowWrapper object.
-        explicit ShadowProvider(std::shared_ptr<IShadowWrapper> shadowWrapper);
+public:
+    /// Constructor
+    /// @param shadowWrapper A shared pointer to an IShadowWrapper object.
+    explicit ShadowProvider(std::shared_ptr<IShadowWrapper> shadowWrapper);
 
-        /// Default constructor
-        /// This constructor creates a default ShadowProvider object with a default IShadowWrapper implementation.
-        ShadowProvider();
+    /// Default constructor
+    /// This constructor creates a default ShadowProvider object with a default IShadowWrapper implementation.
+    ShadowProvider();
 
-        /// Collects information from the shadow file and returns it in JSON format.
-        /// @return A JSON object containing the information collected from the shadow file.
-        nlohmann::json collect();
+    /// Collects information from the shadow file and returns it in JSON format.
+    /// @return A JSON object containing the information collected from the shadow file.
+    nlohmann::json collect();
 
-    private:
-        /// A shared pointer to an IShadowWrapper object.
-        std::shared_ptr<IShadowWrapper> m_shadowWrapper;
+private:
+    /// A shared pointer to an IShadowWrapper object.
+    std::shared_ptr<IShadowWrapper> m_shadowWrapper;
 };

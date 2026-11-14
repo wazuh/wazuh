@@ -17,7 +17,8 @@
  *        can count a registry failure as a FAILURE, not silently fold it into the
  *        duplicate-discard metric -- the two are otherwise indistinguishable.
  */
-typedef enum {
+typedef enum
+{
     TASK_REGISTRY_RESULT_NEW,       /**< The id was new and is now durably recorded: dispatch it. */
     TASK_REGISTRY_RESULT_DUPLICATE, /**< agent-info confirmed this exact id was already recorded. */
     TASK_REGISTRY_RESULT_ERROR      /**< Registry unreachable/malformed/timed out: fails closed
@@ -49,6 +50,6 @@ typedef enum {
  * @return TASK_REGISTRY_RESULT_NEW, _DUPLICATE, or _ERROR (also returned for a
  *         null/empty task_id).
  */
-task_registry_result_t task_registry_check_and_record(const char *task_id);
+task_registry_result_t task_registry_check_and_record(const char* task_id);
 
 #endif /* TASK_REGISTRY_CLIENT_H */

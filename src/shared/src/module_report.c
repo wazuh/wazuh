@@ -11,19 +11,23 @@
 #include "shared.h"
 #include "module_report.h"
 
-void module_report_merge(cJSON *body, cJSON *section) {
-    cJSON *member = NULL;
+void module_report_merge(cJSON* body, cJSON* section)
+{
+    cJSON* member = NULL;
 
-    if (!section) {
+    if (!section)
+    {
         return;
     }
 
-    if (!body) {
+    if (!body)
+    {
         cJSON_Delete(section); /* Still consumed, as the contract promises. */
         return;
     }
 
-    while (member = section->child, member) {
+    while (member = section->child, member)
+    {
         /* cJSON_AddItemToObject copies the key before releasing the item's own
          * name, so handing it member->string is safe. */
         cJSON_DetachItemViaPointer(section, member);
@@ -33,13 +37,16 @@ void module_report_merge(cJSON *body, cJSON *section) {
     cJSON_Delete(section);
 }
 
-void module_report_add(cJSON *report, const char *module, cJSON *body) {
-    if (!report || !module || !body) {
+void module_report_add(cJSON* report, const char* module, cJSON* body)
+{
+    if (!report || !module || !body)
+    {
         cJSON_Delete(body);
         return;
     }
 
-    if (!body->child) {
+    if (!body->child)
+    {
         cJSON_Delete(body);
         return;
     }
@@ -47,25 +54,28 @@ void module_report_add(cJSON *report, const char *module, cJSON *body) {
     cJSON_AddItemToObject(report, module, body);
 }
 
-void module_report_add_secret(cJSON *object, const char *key,
-                              const char *secret, bool unmasked) {
-    if (!object || !key || !secret || *secret == '\0') {
+void module_report_add_secret(cJSON* object, const char* key, const char* secret, bool unmasked)
+{
+    if (!object || !key || !secret || *secret == '\0')
+    {
         return;
     }
 
-    cJSON_AddStringToObject(object, key,
-                            unmasked ? secret : MODULE_REPORT_SECRET_MASK);
+    cJSON_AddStringToObject(object, key, unmasked ? secret : MODULE_REPORT_SECRET_MASK);
 }
 
-size_t module_report_reply(cJSON *report, char **output) {
-    char *json_str = NULL;
+size_t module_report_reply(cJSON* report, char** output)
+{
+    char* json_str = NULL;
 
-    if (!output) {
+    if (!output)
+    {
         cJSON_Delete(report);
         return 0;
     }
 
-    if (json_str = cJSON_PrintUnformatted(report), !json_str) {
+    if (json_str = cJSON_PrintUnformatted(report), !json_str)
+    {
         cJSON_Delete(report);
         os_strdup("err Could not serialize the module report", *output);
         return strlen(*output);

@@ -41,24 +41,24 @@
 constexpr int SYSCOLLECTOR_OS_MAXSTR = 6144;
 constexpr int SYSCOLLECTOR_OS_SOCKTERR = -2;
 
-#define TRY_CATCH_TASK(task)                                            \
-do                                                                      \
-{                                                                       \
-    try                                                                 \
-    {                                                                   \
-        if (!m_stopping.load())                                         \
-        {                                                               \
-            task();                                                     \
-        }                                                               \
-    }                                                                   \
-    catch(const std::exception& ex)                                     \
-    {                                                                   \
-        if(m_logFunction)                                               \
-        {                                                               \
-            m_logFunction(LOG_ERROR, std::string{ex.what()});           \
-        }                                                               \
-    }                                                                   \
-}while(0)
+#define TRY_CATCH_TASK(task)                                                                                           \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        try                                                                                                            \
+        {                                                                                                              \
+            if (!m_stopping.load())                                                                                    \
+            {                                                                                                          \
+                task();                                                                                                \
+            }                                                                                                          \
+        }                                                                                                              \
+        catch (const std::exception& ex)                                                                               \
+        {                                                                                                              \
+            if (m_logFunction)                                                                                         \
+            {                                                                                                          \
+                m_logFunction(LOG_ERROR, std::string {ex.what()});                                                     \
+            }                                                                                                          \
+        }                                                                                                              \
+    } while (0)
 
 constexpr auto EMPTY_VALUE {""};
 constexpr auto UNKNOWN_VALUE {" "};
@@ -66,31 +66,30 @@ constexpr auto UNKNOWN_VALUE {" "};
 // RAII guard to ensure scanning flag is always cleaned up
 class ScanGuard
 {
-    public:
-        explicit ScanGuard(std::atomic<bool>& flag, std::condition_variable& cv)
-            : m_flag(flag), m_cv(cv)
-        {
-            m_flag = true;
-        }
-        ~ScanGuard()
-        {
-            m_flag = false;
-            m_cv.notify_all();
-        }
-        // Delete copy and move operations
-        ScanGuard(const ScanGuard&) = delete;
-        ScanGuard& operator=(const ScanGuard&) = delete;
-        ScanGuard(ScanGuard&&) = delete;
-        ScanGuard& operator=(ScanGuard&&) = delete;
-    private:
-        std::atomic<bool>& m_flag;
-        std::condition_variable& m_cv;
+public:
+    explicit ScanGuard(std::atomic<bool>& flag, std::condition_variable& cv)
+        : m_flag(flag)
+        , m_cv(cv)
+    {
+        m_flag = true;
+    }
+    ~ScanGuard()
+    {
+        m_flag = false;
+        m_cv.notify_all();
+    }
+    // Delete copy and move operations
+    ScanGuard(const ScanGuard&) = delete;
+    ScanGuard& operator=(const ScanGuard&) = delete;
+    ScanGuard(ScanGuard&&) = delete;
+    ScanGuard& operator=(ScanGuard&&) = delete;
+
+private:
+    std::atomic<bool>& m_flag;
+    std::condition_variable& m_cv;
 };
 
-constexpr auto QUEUE_SIZE
-{
-    4096
-};
+constexpr auto QUEUE_SIZE {4096};
 
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
@@ -111,8 +110,7 @@ constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id
 // so a resync cut short by a restart or a failed table resumes with the tables still pending.
 constexpr auto SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX {"synced_agent_id:"};
 
-static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
-{
+static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP {
     // LCOV_EXCL_START
     {MODIFIED, "modified"},
     {DELETED, "deleted"},
@@ -120,8 +118,7 @@ static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
     // LCOV_EXCL_STOP
 };
 
-static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
-{
+static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP {
     // LCOV_EXCL_START
     {MODIFIED, OPERATION_MODIFY},
     {DELETED, OPERATION_DELETE},
@@ -129,8 +126,7 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
     // LCOV_EXCL_STOP
 };
 
-static const std::map<std::string, std::string> INDEX_MAP
-{
+static const std::map<std::string, std::string> INDEX_MAP {
     // LCOV_EXCL_START
     {OS_TABLE, SYSCOLLECTOR_SYNC_INDEX_SYSTEM},
     {HW_TABLE, SYSCOLLECTOR_SYNC_INDEX_HARDWARE},
@@ -150,8 +146,7 @@ static const std::map<std::string, std::string> INDEX_MAP
 
 // Map from agentd names to full index names
 // These names must match exactly what agentd sends
-static const std::map<std::string, std::string> AGENTD_TO_INDEX_MAP
-{
+static const std::map<std::string, std::string> AGENTD_TO_INDEX_MAP {
     // LCOV_EXCL_START
     {"os_info", SYSCOLLECTOR_SYNC_INDEX_SYSTEM},
     {"hardware", SYSCOLLECTOR_SYNC_INDEX_HARDWARE},
@@ -205,7 +200,7 @@ static void sanitizeJsonValue(nlohmann::json& input)
 
 static std::string getItemChecksum(const nlohmann::json& item)
 {
-    const auto content{item.dump()};
+    const auto content {item.dump()};
     Utils::HashData hash;
     hash.update(content.c_str(), content.size());
     const auto digest {hash.hash()};
@@ -216,8 +211,7 @@ static std::string getItemChecksum(const nlohmann::json& item)
 // they are stored and synchronized like any other column, but a scan where only these moved is not
 // a change worth reporting: it is muted on the stateless path. They are also left out of the item
 // checksum, so integrity stays stable while the state document keeps carrying current values.
-static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_TABLE
-{
+static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_TABLE {
     {HW_TABLE, {"memory_free", "memory_used"}},
     // A package's size is measured by walking its files, so it can come back different, or not
     // at all, without the package having changed: a file removed mid-walk, an entry cap or a
@@ -225,16 +219,15 @@ static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_
     // overwrites the stored value, while the state document still carries the latest reading.
     {PACKAGES_TABLE, {"size"}},
     {PROCESSES_TABLE, {"utime", "stime"}},
-    {
-        NET_IFACE_TABLE,
-        {
-            "host_network_egress_packages", "host_network_ingress_packages",
-            "host_network_egress_errors",   "host_network_ingress_errors",
-            "host_network_egress_bytes",    "host_network_ingress_bytes",
-            "host_network_egress_drops",    "host_network_ingress_drops"
-        }
-    }
-};
+    {NET_IFACE_TABLE,
+     {"host_network_egress_packages",
+      "host_network_ingress_packages",
+      "host_network_egress_errors",
+      "host_network_ingress_errors",
+      "host_network_egress_bytes",
+      "host_network_ingress_bytes",
+      "host_network_egress_drops",
+      "host_network_ingress_drops"}}};
 
 // The columns that identify a package row, in the order the table declares them.
 static const std::vector<std::string> PACKAGE_KEY_FIELDS {"name", "version_", "architecture", "type", "path"};
@@ -275,8 +268,8 @@ static bool onlyVolatileFieldsChanged(ReturnTypeCallback result, const nlohmann:
 {
     const auto itTable {VOLATILE_FIELDS_BY_TABLE.find(table)};
 
-    if (MODIFIED != result || VOLATILE_FIELDS_BY_TABLE.end() == itTable
-            || !data.contains("old") || !data.contains("new"))
+    if (MODIFIED != result || VOLATILE_FIELDS_BY_TABLE.end() == itTable || !data.contains("old") ||
+        !data.contains("new"))
     {
         return false;
     }
@@ -310,17 +303,17 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
 
     for (const auto& field : idFields)
     {
-        const auto& value{item.at(field)};
+        const auto& value {item.at(field)};
 
         if (value.is_string())
         {
-            const auto& valueString{value.get<std::string>()};
+            const auto& valueString {value.get<std::string>()};
             hash.update(valueString.c_str(), valueString.size());
         }
         else
         {
-            const auto& valueNumber{value.get<unsigned long>()};
-            const auto valueString{std::to_string(valueNumber)};
+            const auto& valueNumber {value.get<unsigned long>()};
+            const auto valueString {std::to_string(valueNumber)};
             hash.update(valueString.c_str(), valueString.size());
         }
     }
@@ -331,13 +324,9 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
 
 static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
 {
-    const auto it
-    {
-        std::find_if (input.begin(), input.end(), [&keyValue](const auto & elem)
-        {
-            return elem.at(keyValue.first) == keyValue.second;
-        })
-    };
+    const auto it {std::find_if(input.begin(),
+                                input.end(),
+                                [&keyValue](const auto& elem) { return elem.at(keyValue.first) == keyValue.second; })};
     return it != input.end();
 }
 
@@ -376,7 +365,7 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 
     auto [newData, version] = ecsData(aux, table);
 
-    const auto statefulToSend{newData.dump()};
+    const auto statefulToSend {newData.dump()};
     auto indexIt = INDEX_MAP.find(table);
 
     if (indexIt != INDEX_MAP.end())
@@ -403,7 +392,9 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
             {
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_DEBUG, "Marking entry from table " + table + " for deferred deletion due to validation failure");
+                    m_logFunction(LOG_DEBUG,
+                                  "Marking entry from table " + table +
+                                      " for deferred deletion due to validation failure");
                 }
 
                 // Store the failed item for deletion after transaction completes
@@ -426,13 +417,18 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
                 // The event will still be sent as stateless (below)
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Document limit reached for table " + table + ", skipping persistence");
+                    m_logFunction(LOG_DEBUG_VERBOSE,
+                                  "Document limit reached for table " + table + ", skipping persistence");
                 }
             }
             else
             {
                 // Within limit, persist the event
-                m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, dataToQueue, version);
+                m_persistDiffFunction(calculateHashId(aux, table),
+                                      OPERATION_STATES_MAP.at(result),
+                                      indexIt->second,
+                                      dataToQueue,
+                                      version);
             }
         }
     }
@@ -458,7 +454,8 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
         stateless["collector"] = table;
         stateless["module"] = "inventory";
 
-        auto [oldData, oldVersion] = (result == MODIFIED) ? ecsData(data["old"], table, false) : std::make_pair(nlohmann::json{}, uint64_t(0));
+        auto [oldData, oldVersion] =
+            (result == MODIFIED) ? ecsData(data["old"], table, false) : std::make_pair(nlohmann::json {}, uint64_t(0));
 
         auto changedFields = addPreviousFields(newData, oldData);
 
@@ -467,33 +464,22 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
         stateless["data"]["event"]["created"] = Utils::getCurrentISO8601();
         stateless["data"]["event"]["type"] = OPERATION_MAP.at(result);
 
-        const auto statelessToSend{stateless.dump()};
+        const auto statelessToSend {stateless.dump()};
         m_reportDiffFunction(statelessToSend);
         m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + statelessToSend);
     }
 }
 
-void Syscollector::updateChanges(const std::string& table,
-                                 const nlohmann::json& values)
+void Syscollector::updateChanges(const std::string& table, const nlohmann::json& values)
 {
-    const auto callback
-    {
-        [this, table](ReturnTypeCallback result, const nlohmann::json & data)
-        {
-            if (result == INSERTED || result == MODIFIED || result == DELETED)
-            {
-                notifyChange(result, data, table);
-            }
-        }
-    };
-    DBSyncTxn txn
-    {
-        m_spDBSync->handle(),
-        nlohmann::json{table},
-        0,
-        QUEUE_SIZE,
-        callback
-    };
+    const auto callback {[this, table](ReturnTypeCallback result, const nlohmann::json& data)
+                         {
+                             if (result == INSERTED || result == MODIFIED || result == DELETED)
+                             {
+                                 notifyChange(result, data, table);
+                             }
+                         }};
+    DBSyncTxn txn {m_spDBSync->handle(), nlohmann::json {table}, 0, QUEUE_SIZE, callback};
 
     nlohmann::json input;
     input["table"] = table;
@@ -505,44 +491,41 @@ void Syscollector::updateChanges(const std::string& table,
 }
 
 Syscollector::Syscollector()
-    : m_intervalValue { 0 }
-    , m_integrityIntervalValue { 86400 }
-    , m_scanOnStart { false }
-    , m_hardware { false }
-    , m_os { false }
-    , m_network { false }
-    , m_packages { false }
-    , m_ports { false }
-    , m_portsAll { false }
-    , m_processes { false }
-    , m_hotfixes { false }
-    , m_stopping { true }
-    , m_initialized { false }
-    , m_notify { false }
-    , m_paused { false }
-    , m_scanning { false }
-    , m_syncing { false }
-    , m_groups { false }
-    , m_users { false }
-    , m_services { false }
-    , m_browserExtensions { false }
-    , m_vdSyncEnabled { false }
-    , m_failedItems { nullptr }
-    , m_itemsToUpdateSync { nullptr }
+    : m_intervalValue {0}
+    , m_integrityIntervalValue {86400}
+    , m_scanOnStart {false}
+    , m_hardware {false}
+    , m_os {false}
+    , m_network {false}
+    , m_packages {false}
+    , m_ports {false}
+    , m_portsAll {false}
+    , m_processes {false}
+    , m_hotfixes {false}
+    , m_stopping {true}
+    , m_initialized {false}
+    , m_notify {false}
+    , m_paused {false}
+    , m_scanning {false}
+    , m_syncing {false}
+    , m_groups {false}
+    , m_users {false}
+    , m_services {false}
+    , m_browserExtensions {false}
+    , m_vdSyncEnabled {false}
+    , m_failedItems {nullptr}
+    , m_itemsToUpdateSync {nullptr}
 {
     m_asyncFlushController = std::make_unique<Utils::AsyncFlushController>(
-                                 "Syscollector",
-                                 [this]()
-    {
-        return executeFlushSync();
-    },
-    [this](modules_log_level_t level, const std::string & message)
-    {
-        if (m_logFunction)
+        "Syscollector",
+        [this]() { return executeFlushSync(); },
+        [this](modules_log_level_t level, const std::string& message)
         {
-            m_logFunction(level, message);
-        }
-    });
+            if (m_logFunction)
+            {
+                m_logFunction(level, message);
+            }
+        });
 
     // Initialize document limits to 0 (unlimited) for all indices
     for (const auto& [table, index] : INDEX_MAP)
@@ -573,31 +556,36 @@ std::string Syscollector::getCreateStatement() const
     return ret;
 }
 
-
-void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
-                        std::function<void(const std::string&)> reportDiffFunction,
-                        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
-                        std::function<void(const modules_log_level_t, const std::string&)> logFunction,
-                        const std::string& dbPath,
-                        const std::string& normalizerConfigPath,
-                        const std::string& normalizerType,
-                        const unsigned int interval,
-                        const bool scanOnStart,
-                        const bool hardware,
-                        const bool os,
-                        const bool network,
-                        const bool packages,
-                        const bool ports,
-                        const bool portsAll,
-                        const bool processes,
-                        const bool hotfixes,
-                        const bool groups,
-                        const bool users,
-                        const bool services,
-                        const bool browserExtensions,
-                        const bool notifyOnFirstScan)
+void Syscollector::init(
+    const std::shared_ptr<ISysInfo>& spInfo,
+    std::function<void(const std::string&)> reportDiffFunction,
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>
+        persistDiffFunction,
+    std::function<void(const modules_log_level_t, const std::string&)> logFunction,
+    const std::string& dbPath,
+    const std::string& normalizerConfigPath,
+    const std::string& normalizerType,
+    const unsigned int interval,
+    const bool scanOnStart,
+    const bool hardware,
+    const bool os,
+    const bool network,
+    const bool packages,
+    const bool ports,
+    const bool portsAll,
+    const bool processes,
+    const bool hotfixes,
+    const bool groups,
+    const bool users,
+    const bool services,
+    const bool browserExtensions,
+    const bool notifyOnFirstScan)
 {
-    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT,
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT,
+                                           DbEngineType::SQLITE3,
+                                           dbPath,
+                                           getCreateStatement(),
+                                           DbManagement::PERSISTENT,
                                            UPGRADE_SQL_STATEMENTS);
 
     // Logged here, with this module's tag: a recreated database is why the next sync resends
@@ -609,7 +597,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
-    std::unique_lock<std::mutex> lock{m_scan_mutex};
+    std::unique_lock<std::mutex> lock {m_scan_mutex};
 
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
@@ -632,15 +620,16 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_browserExtensions = browserExtensions;
     m_stopping = false;
 
-    m_spDBSync      = std::move(dbSync);
-    m_spNormalizer  = std::move(normalizer);
-    m_initialized   = true;
+    m_spDBSync = std::move(dbSync);
+    m_spNormalizer = std::move(normalizer);
+    m_initialized = true;
 
     // Initialize document counts from database
     initializeDocumentCounts();
 
-    m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes || m_groups || m_users || m_services || m_browserExtensions);
-    m_dataCleanRetries = 1;  // Default retries for data clean
+    m_allCollectorsDisabled = !(m_hardware || m_os || m_network || m_packages || m_ports || m_processes || m_hotfixes ||
+                                m_groups || m_users || m_services || m_browserExtensions);
+    m_dataCleanRetries = 1; // Default retries for data clean
 
     // Check disabled collectors with existing data
     checkDisabledCollectorsIndicesWithData();
@@ -660,7 +649,7 @@ void Syscollector::start()
 {
     // Don't start if initialization failed
     {
-        std::scoped_lock<std::mutex> lock{m_scan_mutex};
+        std::scoped_lock<std::mutex> lock {m_scan_mutex};
 
         if (!m_initialized)
         {
@@ -688,14 +677,18 @@ void Syscollector::start()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Syscollector data clean notification for disabled collectors sent successfully, data deleted.");
+            m_logFunction(
+                LOG_DEBUG,
+                "Syscollector data clean notification for disabled collectors sent successfully, data deleted.");
         }
     }
     else
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "Syscollector data clean notification for disabled collectors failed, proceeding without deleting data.");
+            m_logFunction(LOG_WARNING,
+                          "Syscollector data clean notification for disabled collectors failed, proceeding without "
+                          "deleting data.");
         }
     }
 
@@ -720,9 +713,13 @@ void Syscollector::start()
     if (!m_vdSyncEnabled)
     {
 #ifdef _WIN32
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS, packages, and hotfixes are required to be enabled.");
+        m_logFunction(LOG_WARNING,
+                      "Vulnerability Detector synchronization is disabled. OS, packages, and hotfixes are required to "
+                      "be enabled.");
 #else
-        m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS and packages are required to be enabled.");
+        m_logFunction(
+            LOG_WARNING,
+            "Vulnerability Detector synchronization is disabled. OS and packages are required to be enabled.");
 #endif
     }
 
@@ -754,7 +751,7 @@ void Syscollector::start()
         }
     }
 
-    std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
+    std::unique_lock<std::mutex> scan_lock {m_scan_mutex};
     syncLoop(scan_lock);
 }
 
@@ -762,7 +759,7 @@ bool Syscollector::handleNotifyDataClean()
 {
     bool ret = false;
     unsigned int attempt = 0;
-    constexpr unsigned int DATACLEAN_RETRY_WAIT_SECONDS = 60;  // Fixed wait time between retries
+    constexpr unsigned int DATACLEAN_RETRY_WAIT_SECONDS = 60; // Fixed wait time between retries
 
     // If all collectors are disabled, retry indefinitely until success or stopping
     // Otherwise, respect the configured retry limit
@@ -784,7 +781,8 @@ bool Syscollector::handleNotifyDataClean()
             {
                 std::unique_lock<std::mutex> lock(m_pauseMutex);
 
-                while ((m_flushInProgress.load() || m_syncing.load() || m_recoveryInProgress.load()) && !m_stopping.load())
+                while ((m_flushInProgress.load() || m_syncing.load() || m_recoveryInProgress.load()) &&
+                       !m_stopping.load())
                 {
                     m_pauseCv.wait_for(lock, std::chrono::seconds(1));
                 }
@@ -810,7 +808,8 @@ bool Syscollector::handleNotifyDataClean()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, "Data clean notification succeeded on attempt " + std::to_string(attempt) + ".");
+                m_logFunction(LOG_DEBUG,
+                              "Data clean notification succeeded on attempt " + std::to_string(attempt) + ".");
             }
 
             break;
@@ -825,7 +824,9 @@ bool Syscollector::handleNotifyDataClean()
 
             if (m_logFunction)
             {
-                m_logFunction(LOG_WARNING, "Syscollector data clean notification failed, retry in " + std::to_string(DATACLEAN_RETRY_WAIT_SECONDS) + " seconds.");
+                m_logFunction(LOG_WARNING,
+                              "Syscollector data clean notification failed, retry in " +
+                                  std::to_string(DATACLEAN_RETRY_WAIT_SECONDS) + " seconds.");
             }
 
             // Wait before next retry with fixed interval
@@ -848,7 +849,9 @@ bool Syscollector::handleNotifyDataClean()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_WARNING, "Syscollector data clean notification failed after " + std::to_string(m_dataCleanRetries) + " attempts.");
+                m_logFunction(LOG_WARNING,
+                              "Syscollector data clean notification failed after " +
+                                  std::to_string(m_dataCleanRetries) + " attempts.");
             }
 
             break;
@@ -938,7 +941,7 @@ void Syscollector::destroy()
 {
     quiesce();
 
-    std::unique_lock<std::mutex> lock{m_scan_mutex, std::try_to_lock};
+    std::unique_lock<std::mutex> lock {m_scan_mutex, std::try_to_lock};
     const bool scanMutexAvailable = lock.owns_lock();
 
     if (scanMutexAvailable)
@@ -950,7 +953,9 @@ void Syscollector::destroy()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "Stop requested while scan mutex is busy; skipping synchronous syscollector resource teardown.");
+            m_logFunction(
+                LOG_WARNING,
+                "Stop requested while scan mutex is busy; skipping synchronous syscollector resource teardown.");
         }
 
         return;
@@ -959,7 +964,8 @@ void Syscollector::destroy()
     releaseResources();
 }
 
-std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
+std::pair<nlohmann::json, uint64_t>
+Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
 {
     nlohmann::json ret;
     uint64_t document_version = 0;
@@ -1105,9 +1111,8 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
         const auto itUsed {originalData.find("memory_used")};
         const auto itTotal {originalData.find("memory_total")};
 
-        if (itUsed != originalData.end() && itUsed->is_number()
-                && itTotal != originalData.end() && itTotal->is_number()
-                && itTotal->get<double>() > 0.0)
+        if (itUsed != originalData.end() && itUsed->is_number() && itTotal != originalData.end() &&
+            itTotal->is_number() && itTotal->get<double>() > 0.0)
         {
             const auto usage {itUsed->get<double>() / itTotal->get<double>()};
             ret[pointer] = std::clamp(usage, 0.0, 1.0);
@@ -1266,7 +1271,7 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
         const nlohmann::json::json_pointer pointer("/process/pid");
 
         if (originalData.contains("process_pid") && originalData["process_pid"].is_number() &&
-                originalData["process_pid"].get<int32_t>() != -1)
+            originalData["process_pid"].get<int32_t>() != -1)
         {
             ret[pointer] = originalData["process_pid"];
         }
@@ -1304,8 +1309,8 @@ nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& origi
         const nlohmann::json::json_pointer pointer("/interface/mtu");
 
         if (originalData.contains("interface_mtu") && originalData["interface_mtu"].is_number() &&
-                originalData["interface_mtu"].get<int64_t>() != UINT32_MAX &&
-                originalData["interface_mtu"].get<int64_t>() != 0)
+            originalData["interface_mtu"].get<int64_t>() != UINT32_MAX &&
+            originalData["interface_mtu"].get<int64_t>() != 0)
         {
             ret[pointer] = originalData["interface_mtu"];
         }
@@ -1336,8 +1341,8 @@ nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& origin
     {
         const nlohmann::json::json_pointer pointer("/network/metric");
 
-        if (originalData.contains("network_metric") && !originalData["network_metric"].is_null()
-                && originalData["network_metric"] != EMPTY_VALUE && originalData["network_metric"] != UNKNOWN_VALUE)
+        if (originalData.contains("network_metric") && !originalData["network_metric"].is_null() &&
+            originalData["network_metric"] != EMPTY_VALUE && originalData["network_metric"] != UNKNOWN_VALUE)
         {
             const auto& value = originalData["network_metric"];
 
@@ -1467,10 +1472,22 @@ nlohmann::json Syscollector::ecsUsersData(const nlohmann::json& originalData, bo
     setJsonField(ret, originalData, "/user/password/hash_algorithm", "user_password_hash_algorithm", createFields);
     setJsonField(ret, originalData, "/user/password/inactive_days", "user_password_inactive_days", createFields);
     setJsonField(ret, originalData, "/user/password/last_change", "user_password_last_change", createFields);
-    setJsonField(ret, originalData, "/user/password/max_days_between_changes", "user_password_max_days_between_changes", createFields);
-    setJsonField(ret, originalData, "/user/password/min_days_between_changes", "user_password_min_days_between_changes", createFields);
+    setJsonField(ret,
+                 originalData,
+                 "/user/password/max_days_between_changes",
+                 "user_password_max_days_between_changes",
+                 createFields);
+    setJsonField(ret,
+                 originalData,
+                 "/user/password/min_days_between_changes",
+                 "user_password_min_days_between_changes",
+                 createFields);
     setJsonField(ret, originalData, "/user/password/status", "user_password_status", createFields);
-    setJsonField(ret, originalData, "/user/password/warning_days_before_expiration", "user_password_warning_days_before_expiration", createFields);
+    setJsonField(ret,
+                 originalData,
+                 "/user/password/warning_days_before_expiration",
+                 "user_password_warning_days_before_expiration",
+                 createFields);
     setJsonFieldArray(ret, originalData, "/user/roles", "user_roles", createFields);
     setJsonField(ret, originalData, "/user/shell", "user_shell", createFields);
     setJsonField(ret, originalData, "/user/type", "user_type", createFields);
@@ -1522,8 +1539,13 @@ nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData,
     setJsonField(ret, originalData, "/service/restart", "service_restart", createFields);
     setJsonField(ret, originalData, "/service/start_type", "service_start_type", createFields);
     setJsonField(ret, originalData, "/service/starts/on_mount", "service_starts_on_mount", createFields, true);
-    setJsonFieldArrayFromJsonString(ret, originalData, "/service/starts/on_not_empty_directory", "service_starts_on_not_empty_directory", createFields);
-    setJsonFieldArrayFromJsonString(ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
+    setJsonFieldArrayFromJsonString(ret,
+                                    originalData,
+                                    "/service/starts/on_not_empty_directory",
+                                    "service_starts_on_not_empty_directory",
+                                    createFields);
+    setJsonFieldArrayFromJsonString(
+        ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
     setJsonField(ret, originalData, "/service/state", "service_state", createFields);
     setJsonField(ret, originalData, "/service/sub_state", "service_sub_state", createFields);
     setJsonField(ret, originalData, "/service/target/address", "service_target_address", createFields);
@@ -1637,7 +1659,7 @@ void Syscollector::scanHardware()
     if (m_hardware)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting hardware scan");
-        const auto& hwData{getHardwareData()};
+        const auto& hwData {getHardwareData()};
         updateChanges(HW_TABLE, hwData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending hardware scan");
     }
@@ -1661,7 +1683,7 @@ void Syscollector::scanOs()
     if (m_os)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting os scan");
-        const auto& osData{getOSData()};
+        const auto& osData {getOSData()};
         updateChanges(OS_TABLE, osData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending os scan");
     }
@@ -1674,18 +1696,14 @@ nlohmann::json Syscollector::getNetworkData()
     nlohmann::json ifaceTableDataList {};
     nlohmann::json protoTableDataList {};
     nlohmann::json addressTableDataList {};
-    constexpr auto IPV4 { 0 };
-    constexpr auto IPV6 { 1 };
-    static const std::map<int, std::string> IP_TYPE
-    {
-        { IPV4, "ipv4" },
-        { IPV6, "ipv6" }
-    };
+    constexpr auto IPV4 {0};
+    constexpr auto IPV6 {1};
+    static const std::map<int, std::string> IP_TYPE {{IPV4, "ipv4"}, {IPV6, "ipv6"}};
 
     if (!networks.is_null())
     {
         sanitizeJsonValue(networks);
-        const auto& itIface { networks.find("iface") };
+        const auto& itIface {networks.find("iface")};
 
         if (networks.end() != itIface)
         {
@@ -1700,20 +1718,20 @@ nlohmann::json Syscollector::getNetworkData()
                     // Split the resulting networks data into the specific DB tables
                     // "dbsync_network_iface" table data to update and notify
                     nlohmann::json ifaceTableData {};
-                    ifaceTableData["interface_name"]                = item.at("interface_name");
-                    ifaceTableData["interface_alias"]               = item.at("interface_alias");
-                    ifaceTableData["interface_type"]                = item.at("interface_type");
-                    ifaceTableData["interface_state"]               = item.at("interface_state");
-                    ifaceTableData["interface_mtu"]                 = item.at("interface_mtu");
-                    ifaceTableData["host_mac"]                      = item.at("host_mac");
-                    ifaceTableData["host_network_egress_packages"]  = item.at("host_network_egress_packages");
+                    ifaceTableData["interface_name"] = item.at("interface_name");
+                    ifaceTableData["interface_alias"] = item.at("interface_alias");
+                    ifaceTableData["interface_type"] = item.at("interface_type");
+                    ifaceTableData["interface_state"] = item.at("interface_state");
+                    ifaceTableData["interface_mtu"] = item.at("interface_mtu");
+                    ifaceTableData["host_mac"] = item.at("host_mac");
+                    ifaceTableData["host_network_egress_packages"] = item.at("host_network_egress_packages");
                     ifaceTableData["host_network_ingress_packages"] = item.at("host_network_ingress_packages");
-                    ifaceTableData["host_network_egress_errors"]    = item.at("host_network_egress_errors");
-                    ifaceTableData["host_network_ingress_errors"]   = item.at("host_network_ingress_errors");
-                    ifaceTableData["host_network_egress_bytes"]     = item.at("host_network_egress_bytes");
-                    ifaceTableData["host_network_ingress_bytes"]    = item.at("host_network_ingress_bytes");
-                    ifaceTableData["host_network_egress_drops"]     = item.at("host_network_egress_drops");
-                    ifaceTableData["host_network_ingress_drops"]    = item.at("host_network_ingress_drops");
+                    ifaceTableData["host_network_egress_errors"] = item.at("host_network_egress_errors");
+                    ifaceTableData["host_network_ingress_errors"] = item.at("host_network_ingress_errors");
+                    ifaceTableData["host_network_egress_bytes"] = item.at("host_network_egress_bytes");
+                    ifaceTableData["host_network_ingress_bytes"] = item.at("host_network_ingress_bytes");
+                    ifaceTableData["host_network_egress_drops"] = item.at("host_network_egress_drops");
+                    ifaceTableData["host_network_ingress_drops"] = item.at("host_network_ingress_drops");
 
                     auto ifaceChecksumInput = ifaceTableData;
                     eraseVolatileFields(ifaceChecksumInput, NET_IFACE_TABLE);
@@ -1723,20 +1741,20 @@ nlohmann::json Syscollector::getNetworkData()
                     {
                         // "dbsync_network_protocol" table data to update and notify
                         nlohmann::json protoTableData {};
-                        protoTableData["interface_name"]  = item.at("interface_name");
+                        protoTableData["interface_name"] = item.at("interface_name");
                         protoTableData["network_gateway"] = item.at("network_gateway");
-                        protoTableData["network_type"]    = IP_TYPE.at(IPV4);
-                        protoTableData["network_dhcp"]    = item.at("IPv4").begin()->at("network_dhcp");
-                        protoTableData["network_metric"]  = item.at("IPv4").begin()->at("network_metric");
-                        protoTableData["checksum"]        = getItemChecksum(protoTableData);
+                        protoTableData["network_type"] = IP_TYPE.at(IPV4);
+                        protoTableData["network_dhcp"] = item.at("IPv4").begin()->at("network_dhcp");
+                        protoTableData["network_metric"] = item.at("IPv4").begin()->at("network_metric");
+                        protoTableData["checksum"] = getItemChecksum(protoTableData);
                         protoRows.push_back(std::move(protoTableData));
 
                         for (auto addressTableData : item.at("IPv4"))
                         {
                             // "dbsync_network_address" table data to update and notify
-                            addressTableData["interface_name"]   = item.at("interface_name");
+                            addressTableData["interface_name"] = item.at("interface_name");
                             addressTableData["network_type"] = IPV4;
-                            addressTableData["checksum"]         = getItemChecksum(addressTableData);
+                            addressTableData["checksum"] = getItemChecksum(addressTableData);
                             // Remove unwanted fields for dbsync_network_address table
                             addressTableData.erase("network_dhcp");
                             addressTableData.erase("network_metric");
@@ -1749,20 +1767,20 @@ nlohmann::json Syscollector::getNetworkData()
                     {
                         // "dbsync_network_protocol" table data to update and notify
                         nlohmann::json protoTableData {};
-                        protoTableData["interface_name"]  = item.at("interface_name");
+                        protoTableData["interface_name"] = item.at("interface_name");
                         protoTableData["network_gateway"] = item.at("network_gateway6");
-                        protoTableData["network_type"]    = IP_TYPE.at(IPV6);
-                        protoTableData["network_dhcp"]    = item.at("IPv6").begin()->at("network_dhcp");
-                        protoTableData["network_metric"]  = item.at("IPv6").begin()->at("network_metric");
-                        protoTableData["checksum"]        = getItemChecksum(protoTableData);
+                        protoTableData["network_type"] = IP_TYPE.at(IPV6);
+                        protoTableData["network_dhcp"] = item.at("IPv6").begin()->at("network_dhcp");
+                        protoTableData["network_metric"] = item.at("IPv6").begin()->at("network_metric");
+                        protoTableData["checksum"] = getItemChecksum(protoTableData);
                         protoRows.push_back(std::move(protoTableData));
 
                         for (auto addressTableData : item.at("IPv6"))
                         {
                             // "dbsync_network_address" table data to update and notify
-                            addressTableData["interface_name"]   = item.at("interface_name");
+                            addressTableData["interface_name"] = item.at("interface_name");
                             addressTableData["network_type"] = IPV6;
-                            addressTableData["checksum"]         = getItemChecksum(addressTableData);
+                            addressTableData["checksum"] = getItemChecksum(addressTableData);
                             // Remove unwanted fields for dbsync_network_address table
                             addressTableData.erase("network_dhcp");
                             addressTableData.erase("network_metric");
@@ -1785,7 +1803,9 @@ nlohmann::json Syscollector::getNetworkData()
                 }
                 catch (const std::exception& e)
                 {
-                    m_logFunction(LOG_WARNING, "Skipping network interface with incomplete data (" + std::string{e.what()} + "): " + item.dump());
+                    m_logFunction(LOG_WARNING,
+                                  "Skipping network interface with incomplete data (" + std::string {e.what()} +
+                                      "): " + item.dump());
                 }
             }
 
@@ -1808,21 +1828,21 @@ void Syscollector::scanNetwork()
 
         if (!networkData.is_null())
         {
-            const auto itIface { networkData.find(NET_IFACE_TABLE) };
+            const auto itIface {networkData.find(NET_IFACE_TABLE)};
 
             if (itIface != networkData.end())
             {
                 updateChanges(NET_IFACE_TABLE, itIface.value());
             }
 
-            const auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
+            const auto itProtocol {networkData.find(NET_PROTOCOL_TABLE)};
 
             if (itProtocol != networkData.end())
             {
                 updateChanges(NET_PROTOCOL_TABLE, itProtocol.value());
             }
 
-            const auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
+            const auto itAddress {networkData.find(NET_ADDRESS_TABLE)};
 
             if (itAddress != networkData.end())
             {
@@ -1850,25 +1870,22 @@ void Syscollector::scanPackages()
         std::map<std::string, int64_t> knownSizes;
         {
             auto sizeQuery = SelectQuery::builder()
-                             .table(PACKAGES_TABLE)
-                             .columnList({"name", "version_", "architecture", "type", "path", "size"})
-                             .build();
+                                 .table(PACKAGES_TABLE)
+                                 .columnList({"name", "version_", "architecture", "type", "path", "size"})
+                                 .build();
 
-            const auto sizeCallback
-            {
-                [&knownSizes](ReturnTypeCallback returnType, const nlohmann::json & row)
-                {
-                    if (SELECTED == returnType)
-                    {
-                        const auto it {row.find("size")};
+            const auto sizeCallback {[&knownSizes](ReturnTypeCallback returnType, const nlohmann::json& row)
+                                     {
+                                         if (SELECTED == returnType)
+                                         {
+                                             const auto it {row.find("size")};
 
-                        if (it != row.end() && it->is_number())
-                        {
-                            knownSizes[packageKey(row)] = it->get<int64_t>();
-                        }
-                    }
-                }
-            };
+                                             if (it != row.end() && it->is_number())
+                                             {
+                                                 knownSizes[packageKey(row)] = it->get<int64_t>();
+                                             }
+                                         }
+                                     }};
 
             try
             {
@@ -1879,67 +1896,55 @@ void Syscollector::scanPackages()
             {
                 // Without the stored sizes a package that cannot be measured reports none, which is
                 // the behaviour this guards against, so say so rather than fail the whole scan.
-                m_logFunction(LOG_WARNING,
-                              std::string{"Could not read the stored package sizes: "} + ex.what());
+                m_logFunction(LOG_WARNING, std::string {"Could not read the stored package sizes: "} + ex.what());
             }
 
             // LCOV_EXCL_STOP
         }
 
-        const auto callback
-        {
-            [this](ReturnTypeCallback result, const nlohmann::json & data)
+        const auto callback {[this](ReturnTypeCallback result, const nlohmann::json& data)
+                             { notifyChange(result, data, PACKAGES_TABLE); }};
+        DBSyncTxn txn {m_spDBSync->handle(), nlohmann::json {PACKAGES_TABLE}, 0, QUEUE_SIZE, callback};
+        m_spInfo->packages(
+            [this, &txn, &knownSizes](nlohmann::json& rawData)
             {
-                notifyChange(result, data, PACKAGES_TABLE);
-            }
-        };
-        DBSyncTxn txn
-        {
-            m_spDBSync->handle(),
-            nlohmann::json{PACKAGES_TABLE},
-            0,
-            QUEUE_SIZE,
-            callback
-        };
-        m_spInfo->packages([this, &txn, &knownSizes](nlohmann::json & rawData)
-        {
-            nlohmann::json input;
+                nlohmann::json input;
 
-            sanitizeJsonValue(rawData);
+                sanitizeJsonValue(rawData);
 
-            auto checksumInput = rawData;
-            eraseVolatileFields(checksumInput, PACKAGES_TABLE);
-            rawData["checksum"] = getItemChecksum(checksumInput);
+                auto checksumInput = rawData;
+                eraseVolatileFields(checksumInput, PACKAGES_TABLE);
+                rawData["checksum"] = getItemChecksum(checksumInput);
 
-            input["table"] = PACKAGES_TABLE;
-            m_spNormalizer->normalize("packages", rawData);
-            m_spNormalizer->removeExcluded("packages", rawData);
+                input["table"] = PACKAGES_TABLE;
+                m_spNormalizer->normalize("packages", rawData);
+                m_spNormalizer->removeExcluded("packages", rawData);
 
-            if (!rawData.empty())
-            {
-                // Inside this guard on purpose: removeExcluded empties the row for a package the
-                // configuration excludes, and putting a size into an emptied row would report a
-                // package that should not be reported at all. After normalising, too, because that
-                // is what decides the values the row is stored under, so the identity used for the
-                // lookup has to be the normalised one. Restoring the stored size changes nothing
-                // the database compares, since it is the value already held, but it keeps the
-                // reported record truthful.
-                if (!rawData.contains("size"))
+                if (!rawData.empty())
                 {
-                    const auto known {knownSizes.find(packageKey(rawData))};
-
-                    if (known != knownSizes.end())
+                    // Inside this guard on purpose: removeExcluded empties the row for a package the
+                    // configuration excludes, and putting a size into an emptied row would report a
+                    // package that should not be reported at all. After normalising, too, because that
+                    // is what decides the values the row is stored under, so the identity used for the
+                    // lookup has to be the normalised one. Restoring the stored size changes nothing
+                    // the database compares, since it is the value already held, but it keeps the
+                    // reported record truthful.
+                    if (!rawData.contains("size"))
                     {
-                        rawData["size"] = known->second;
+                        const auto known {knownSizes.find(packageKey(rawData))};
+
+                        if (known != knownSizes.end())
+                        {
+                            rawData["size"] = known->second;
+                        }
                     }
+
+                    input["data"] = nlohmann::json::array({rawData});
+                    input["options"]["return_old_data"] = true;
+
+                    txn.syncTxnRow(input);
                 }
-
-                input["data"] = nlohmann::json::array( { rawData } );
-                input["options"]["return_old_data"] = true;
-
-                txn.syncTxnRow(input);
-            }
-        });
+            });
         txn.getDeletedRows(callback);
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending packages scan");
@@ -1972,9 +1977,9 @@ void Syscollector::scanHotfixes()
 nlohmann::json Syscollector::getPortsData()
 {
     nlohmann::json ret;
-    constexpr auto PORT_LISTENING_STATE { "listening" };
-    constexpr auto TCP_PROTOCOL { "tcp" };
-    constexpr auto UDP_PROTOCOL { "udp" };
+    constexpr auto PORT_LISTENING_STATE {"listening"};
+    constexpr auto TCP_PROTOCOL {"tcp"};
+    constexpr auto UDP_PROTOCOL {"udp"};
     auto data(m_spInfo->ports());
 
     const std::vector<std::string> PORTS_ITEM_ID_FIELDS {"file_inode", "network_transport", "source_ip", "source_port"};
@@ -1985,14 +1990,14 @@ nlohmann::json Syscollector::getPortsData()
 
         for (auto& item : data)
         {
-            const auto protocol { item.at("network_transport").get_ref<const std::string&>() };
+            const auto protocol {item.at("network_transport").get_ref<const std::string&>()};
 
             if (Utils::startsWith(protocol, TCP_PROTOCOL))
             {
                 // All ports.
                 if (m_portsAll)
                 {
-                    const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+                    const auto& itemId {getItemId(item, PORTS_ITEM_ID_FIELDS)};
 
                     if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
                     {
@@ -2004,11 +2009,11 @@ nlohmann::json Syscollector::getPortsData()
                 else
                 {
                     // Only listening ports.
-                    const auto isListeningState { item.at("interface_state") == PORT_LISTENING_STATE };
+                    const auto isListeningState {item.at("interface_state") == PORT_LISTENING_STATE};
 
                     if (isListeningState)
                     {
-                        const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+                        const auto& itemId {getItemId(item, PORTS_ITEM_ID_FIELDS)};
 
                         if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
                         {
@@ -2021,7 +2026,7 @@ nlohmann::json Syscollector::getPortsData()
             }
             else if (Utils::startsWith(protocol, UDP_PROTOCOL))
             {
-                const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+                const auto& itemId {getItemId(item, PORTS_ITEM_ID_FIELDS)};
 
                 if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
                 {
@@ -2041,7 +2046,7 @@ void Syscollector::scanPorts()
     if (m_ports)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting ports scan");
-        const auto& portsData { getPortsData() };
+        const auto& portsData {getPortsData()};
         updateChanges(PORTS_TABLE, portsData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending ports scan");
     }
@@ -2053,54 +2058,43 @@ void Syscollector::scanProcesses()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting processes scan");
 
-        const auto callback
-        {
-            [this](ReturnTypeCallback result, const nlohmann::json & data)
-            {
-                notifyChange(result, data, PROCESSES_TABLE);
-            }
-        };
-        DBSyncTxn txn
-        {
-            m_spDBSync->handle(),
-            nlohmann::json{PROCESSES_TABLE},
-            0,
-            QUEUE_SIZE,
-            callback
-        };
+        const auto callback {[this](ReturnTypeCallback result, const nlohmann::json& data)
+                             { notifyChange(result, data, PROCESSES_TABLE); }};
+        DBSyncTxn txn {m_spDBSync->handle(), nlohmann::json {PROCESSES_TABLE}, 0, QUEUE_SIZE, callback};
         // A record with no start time is one the Windows collector could not read the process
         // times for, whether because no handle opened or because GetProcessTimes failed. The
         // other collectors always set it, so this counter stays at zero there.
-        std::size_t processesWithoutStartTime { 0 };
+        std::size_t processesWithoutStartTime {0};
 
-        m_spInfo->processes([this, &txn, &processesWithoutStartTime](nlohmann::json & rawData)
-        {
-            nlohmann::json input;
-
-            sanitizeJsonValue(rawData);
-
-            if (!rawData.contains("start"))
+        m_spInfo->processes(
+            [this, &txn, &processesWithoutStartTime](nlohmann::json& rawData)
             {
-                ++processesWithoutStartTime;
-            }
+                nlohmann::json input;
 
-            auto checksumInput = rawData;
-            eraseVolatileFields(checksumInput, PROCESSES_TABLE);
-            rawData["checksum"] = getItemChecksum(checksumInput);
+                sanitizeJsonValue(rawData);
 
-            input["table"] = PROCESSES_TABLE;
-            input["data"] = nlohmann::json::array( { rawData } );
-            input["options"]["return_old_data"] = true;
+                if (!rawData.contains("start"))
+                {
+                    ++processesWithoutStartTime;
+                }
 
-            txn.syncTxnRow(input);
-        });
+                auto checksumInput = rawData;
+                eraseVolatileFields(checksumInput, PROCESSES_TABLE);
+                rawData["checksum"] = getItemChecksum(checksumInput);
+
+                input["table"] = PROCESSES_TABLE;
+                input["data"] = nlohmann::json::array({rawData});
+                input["options"]["return_old_data"] = true;
+
+                txn.syncTxnRow(input);
+            });
         txn.getDeletedRows(callback);
 
         if (processesWithoutStartTime > 0)
         {
             m_logFunction(LOG_DEBUG_VERBOSE,
                           std::to_string(processesWithoutStartTime) +
-                          " process(es) reported without process start time");
+                              " process(es) reported without process start time");
         }
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending processes scan");
@@ -2184,7 +2178,7 @@ void Syscollector::scanGroups()
     if (m_groups)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting groups scan");
-        const auto& groupsData { getGroupsData() };
+        const auto& groupsData {getGroupsData()};
         updateChanges(GROUPS_TABLE, groupsData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending groups scan");
     }
@@ -2195,7 +2189,7 @@ void Syscollector::scanUsers()
     if (m_users)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting users scan");
-        const auto& usersData { getUsersData() };
+        const auto& usersData {getUsersData()};
         updateChanges(USERS_TABLE, usersData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending users scan");
     }
@@ -2206,7 +2200,7 @@ void Syscollector::scanServices()
     if (m_services)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting services scan");
-        const auto& servicesData { getServicesData() };
+        const auto& servicesData {getServicesData()};
         updateChanges(SERVICES_TABLE, servicesData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending services scan");
     }
@@ -2217,7 +2211,7 @@ void Syscollector::scanBrowserExtensions()
     if (m_browserExtensions)
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting browser extensions scan");
-        const auto& extensionsData { getBrowserExtensionsData() };
+        const auto& extensionsData {getBrowserExtensionsData()};
         updateChanges(BROWSER_EXTENSIONS_TABLE, extensionsData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending browser extensions scan");
     }
@@ -2251,8 +2245,8 @@ void Syscollector::scan()
     m_itemsToUpdateSync = &itemsToUpdateSync;
 
     int64_t firstScanCompleted = 0;
-    const bool isFirstScan = !getMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted)
-                             || firstScanCompleted == 0;
+    const bool isFirstScan = !getMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted) ||
+                             firstScanCompleted == 0;
 
     if (isFirstScan)
     {
@@ -2323,10 +2317,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
         scan();
     }
 
-    while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
-{
-    return m_stopping.load();
-    }))
+    while (!m_cv.wait_for(scan_lock, std::chrono::seconds {m_intervalValue}, [&]() { return m_stopping.load(); }))
     {
         if (m_paused)
         {
@@ -2398,7 +2389,8 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     else if (table == NET_ADDRESS_TABLE)
     {
         std::string iface_name = data.contains("interface_name") ? data["interface_name"].get<std::string>() : "";
-        std::string net_protocol = data.contains("network_type") ? std::to_string(data["network_type"].get<int>()) : "0";
+        std::string net_protocol =
+            data.contains("network_type") ? std::to_string(data["network_type"].get<int>()) : "0";
         std::string net_ip = data.contains("network_ip") ? data["network_ip"].get<std::string>() : "";
 
         ret = iface_name + ":" + net_protocol + ":" + net_ip;
@@ -2422,9 +2414,11 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     {
         std::string browser_name = data.contains("browser_name") ? data["browser_name"].get<std::string>() : "";
         std::string user_id = data.contains("user_id") ? data["user_id"].get<std::string>() : "";
-        std::string browser_profile_path = data.contains("browser_profile_path") ? data["browser_profile_path"].get<std::string>() : "";
+        std::string browser_profile_path =
+            data.contains("browser_profile_path") ? data["browser_profile_path"].get<std::string>() : "";
         std::string package_name = data.contains("package_name") ? data["package_name"].get<std::string>() : "";
-        std::string package_version = data.contains("package_version_") ? data["package_version_"].get<std::string>() : "";
+        std::string package_version =
+            data.contains("package_version_") ? data["package_version_"].get<std::string>() : "";
 
         ret = browser_name + ":" + user_id + ":" + browser_profile_path + ":" + package_name + ":" + package_version;
     }
@@ -2483,7 +2477,8 @@ nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nl
                     modifiedKeys.push_back(currentPath);
 
                     size_t dotPos = currentPath.find('.');
-                    std::string topLevelKey = (dotPos != std::string::npos) ? currentPath.substr(0, dotPos) : currentPath;
+                    std::string topLevelKey =
+                        (dotPos != std::string::npos) ? currentPath.substr(0, dotPos) : currentPath;
 
                     if (!current[topLevelKey].contains("previous"))
                     {
@@ -2493,7 +2488,8 @@ nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nl
                     if (dotPos != std::string::npos)
                     {
                         std::string relativePath = currentPath.substr(dotPos + 1);
-                        nlohmann::json::json_pointer pointer("/" + std::regex_replace(relativePath, std::regex("\\."), "/"));
+                        nlohmann::json::json_pointer pointer("/" +
+                                                             std::regex_replace(relativePath, std::regex("\\."), "/"));
                         current[std::move(topLevelKey)]["previous"][pointer] = value;
                     }
                     else
@@ -2562,7 +2558,8 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
         const nlohmann::json::json_pointer destPointer(destPath);
         target[destPointer] = nullptr;
 
-        if (source.contains(sourceKey) && !source[sourceKey].is_null() && source[sourceKey] != EMPTY_VALUE && source[sourceKey] != UNKNOWN_VALUE)
+        if (source.contains(sourceKey) && !source[sourceKey].is_null() && source[sourceKey] != EMPTY_VALUE &&
+            source[sourceKey] != UNKNOWN_VALUE)
         {
             const auto& value = source[sourceKey];
             target[destPointer] = nlohmann::json::array();
@@ -2603,16 +2600,16 @@ void Syscollector::setJsonFieldArrayFromJsonString(nlohmann::json& target,
         const nlohmann::json::json_pointer destPointer(destPath);
         target[destPointer] = nullptr;
 
-        if (source.contains(sourceKey) && source[sourceKey].is_string() && source[sourceKey] != EMPTY_VALUE && source[sourceKey] != UNKNOWN_VALUE)
+        if (source.contains(sourceKey) && source[sourceKey].is_string() && source[sourceKey] != EMPTY_VALUE &&
+            source[sourceKey] != UNKNOWN_VALUE)
         {
             const auto& valueStr = source[sourceKey].get_ref<const std::string&>();
             const auto parsed = nlohmann::json::parse(valueStr, nullptr, false);
 
-            const bool isStringArray = parsed.is_array() &&
-                                       std::all_of(parsed.begin(), parsed.end(), [](const nlohmann::json & element)
-            {
-                return element.is_string();
-            });
+            const bool isStringArray =
+                parsed.is_array() && std::all_of(parsed.begin(),
+                                                 parsed.end(),
+                                                 [](const nlohmann::json& element) { return element.is_string(); });
 
             if (isStringArray)
             {
@@ -2633,22 +2630,24 @@ void Syscollector::setJsonFieldArrayFromJsonString(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
+void Syscollector::initSyncProtocol(const std::string& moduleName,
+                                    const std::string& syncDbPath,
+                                    const std::string& syncDbPathVD,
                                     uint32_t integrityInterval)
 {
     // Publish the protocols under the exclusive lock so a concurrent reader taking the
     // shared lock sees either a fully constructed protocol or none, never a half-assigned one.
     std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
 
-    m_dataCleanRetries = 3;  // Fixed default; the transport handles HTTP-level retries.
+    m_dataCleanRetries = 3; // Fixed default; the transport handles HTTP-level retries.
     m_integrityIntervalValue = integrityInterval;
 
-    auto logger_func = [this](modules_log_level_t level, const std::string & msg)
+    auto logger_func = [this](modules_log_level_t level, const std::string& msg)
     {
         this->m_logFunction(level, msg);
     };
 
-    auto logger_func_vd = [moduleName, this](modules_log_level_t level, const std::string & msg)
+    auto logger_func_vd = [moduleName, this](modules_log_level_t level, const std::string& msg)
     {
         this->m_logFunction(level, moduleName + "_vd: " + msg);
     };
@@ -2663,9 +2662,11 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         // isFeedBased = true: this instance's 409s are checked against the manager's VD feed
         // offset, not a per-item/global-state checksum -- see determineSyncFailureReasonBasedOnSyncResult().
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd,
-                                                                 nullptr, nullptr, /*isFeedBased=*/true);
-        m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(
+            vdModuleName, syncDbPathVD, logger_func_vd, nullptr, nullptr, /*isFeedBased=*/true);
+        m_logFunction(LOG_DEBUG,
+                      "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD +
+                          " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources
         auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
@@ -2678,7 +2679,8 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
             }
             else
             {
-                m_logFunction(LOG_WARNING, "Failed to initialize schema validator. Schema validation will be disabled.");
+                m_logFunction(LOG_WARNING,
+                              "Failed to initialize schema validator. Schema validation will be disabled.");
             }
         }
 
@@ -2774,7 +2776,8 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         {
             int64_t firstSyncCompleted = 0;
 
-            if (!getMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted) || firstSyncCompleted == 0)
+            if (!getMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted) ||
+                firstSyncCompleted == 0)
             {
                 updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
             }
@@ -2802,14 +2805,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // Either the manager is not ready for this agent yet, or the local sync intake
                 // itself isn't reachable yet -- both mostly right after a restart -- and the sync
                 // has not failed enough times in a row to suspect it will not clear.
-                m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason +
-                              " Will retry next cycle.");
+                m_logFunction(LOG_INFO,
+                              "Syscollector synchronization deferred: " + result.failureReason +
+                                  " Will retry next cycle.");
             }
             else if (result.managerNotReady || result.localTransportUnavailable)
             {
                 // Neither condition has cleared for several cycles in a row.
-                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
-                              std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
+                m_logFunction(LOG_WARNING,
+                              "Syscollector synchronization failed " + std::to_string(result.consecutiveFailures) +
+                                  " times in a row: " + result.failureReason);
             }
             else if (result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
@@ -2817,15 +2822,17 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // session rejection (e.g. 409 checksum/version mismatch) is ordinarily transient
                 // -- the state it disagreed about (an index checksum, a feed offset) is expected
                 // to catch up within a cycle or two -- so it is not yet worth a WARNING.
-                m_logFunction(LOG_INFO, "Syscollector synchronization deferred" +
-                              (result.failureReason.empty() ? "." : ": " + result.failureReason) +
-                              " Will retry next cycle.");
+                m_logFunction(LOG_INFO,
+                              "Syscollector synchronization deferred" +
+                                  (result.failureReason.empty() ? "." : ": " + result.failureReason) +
+                                  " Will retry next cycle.");
             }
             else
             {
-                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
-                              std::to_string(result.consecutiveFailures) + " times in a row" +
-                              (result.failureReason.empty() ? "." : ": " + result.failureReason));
+                m_logFunction(LOG_WARNING,
+                              "Syscollector synchronization failed " + std::to_string(result.consecutiveFailures) +
+                                  " times in a row" +
+                                  (result.failureReason.empty() ? "." : ": " + result.failureReason));
             }
         }
     }
@@ -2878,14 +2885,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // Either the manager is not ready for this agent yet, or the local sync intake
                 // itself isn't reachable yet -- both mostly right after a restart -- and the sync
                 // has not failed enough times in a row to suspect it will not clear.
-                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason +
-                              " Will retry next cycle.");
+                m_logFunction(LOG_INFO,
+                              "Syscollector VD synchronization deferred: " + vdResult.failureReason +
+                                  " Will retry next cycle.");
             }
             else if (vdResult.managerNotReady || vdResult.localTransportUnavailable)
             {
                 // Neither condition has cleared for several cycles in a row.
-                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
-                              std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
+                m_logFunction(LOG_WARNING,
+                              "Syscollector VD synchronization failed " + std::to_string(vdResult.consecutiveFailures) +
+                                  " times in a row: " + vdResult.failureReason);
             }
             else if (vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
@@ -2894,15 +2903,17 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // first VD sync racing the manager's already-loaded feed, #39543) is ordinarily
                 // transient -- the agent's locally known feed offset is expected to catch up
                 // within a cycle or two -- so it is not yet worth a WARNING.
-                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred" +
-                              (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason) +
-                              " Will retry next cycle.");
+                m_logFunction(LOG_INFO,
+                              "Syscollector VD synchronization deferred" +
+                                  (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason) +
+                                  " Will retry next cycle.");
             }
             else
             {
-                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
-                              std::to_string(vdResult.consecutiveFailures) + " times in a row" +
-                              (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
+                m_logFunction(LOG_WARNING,
+                              "Syscollector VD synchronization failed " + std::to_string(vdResult.consecutiveFailures) +
+                                  " times in a row" +
+                                  (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
             }
         }
     }
@@ -2917,9 +2928,8 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     if (overallSuccess)
     {
         m_logFunction(LOG_INFO,
-                      sentAnything
-                      ? "Syscollector synchronization process finished successfully."
-                      : "Syscollector synchronization process finished: nothing to send.");
+                      sentAnything ? "Syscollector synchronization process finished successfully."
+                                   : "Syscollector synchronization process finished: nothing to send.");
     }
 
     // Eight initializers for eight fields: localTransportUnavailable sits between
@@ -2930,13 +2940,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // to the wrong members. That is not hypothetical -- rebasing onto #38656, which appends
     // sessionSkipped, left this list one short and fed sentAnything into sessionSkipped, which
     // is the field persistVDFirstSyncIfNeeded() gates the VD first-sync marker on.
-    return {.success = overallSuccess,
-            .failureReason = std::move(failureReason),
-            .sentAnything = sentAnything};
+    return {.success = overallSuccess, .failureReason = std::move(failureReason), .sentAnything = sentAnything};
 }
 // LCOV_EXCL_STOP
 
-void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext)
+void Syscollector::persistDifference(const std::string& id,
+                                     Operation operation,
+                                     const std::string& index,
+                                     const std::string& data,
+                                     uint64_t version,
+                                     bool isDataContext)
 {
     // Serialize against releaseResources(): this entry point is driven by threads that
     // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
@@ -2952,8 +2965,7 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 bool Syscollector::isVDIndex(const std::string& index)
 {
     // VD tables: system (os), packages, hotfixes
-    return index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-           index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
+    return index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM || index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
            index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES;
 }
 
@@ -3004,7 +3016,8 @@ bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
 }
 
 // LCOV_EXCL_START
-std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds, bool forceAll)
+std::vector<nlohmann::json>
+Syscollector::fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds, bool forceAll)
 {
     std::vector<nlohmann::json> results;
 
@@ -3058,16 +3071,12 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         }
 
         // Build SELECT query to fetch rows from the table
-        auto selectQuery = SelectQuery::builder()
-                           .table(tableName)
-                           .columnList({"*"})
-                           .rowFilter(rowFilterClause)
-                           .build();
+        auto selectQuery = SelectQuery::builder().table(tableName).columnList({"*"}).rowFilter(rowFilterClause).build();
 
         // Callback to collect selected rows, filtering out excluded IDs in-memory
         // Note: We filter in the callback because excluded IDs are hash values (SHA1),
         // not primary keys, so we cannot use SQL WHERE clause directly
-        const auto selectCallback = [&](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+        const auto selectCallback = [&](ReturnTypeCallback returnType, const nlohmann::json& resultData)
         {
             if (returnType == SELECTED)
             {
@@ -3087,8 +3096,9 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         if (m_logFunction)
         {
             std::string filterInfo = rowFilterClause.empty() ? " (no limit filter)" : " with sync=1";
-            m_logFunction(LOG_DEBUG_VERBOSE, "Fetched " + std::to_string(results.size()) + " rows" + filterInfo +
-                          " from table " + tableName + " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          "Fetched " + std::to_string(results.size()) + " rows" + filterInfo + " from table " +
+                              tableName + " (excluded " + std::to_string(excludeIds.size()) + " DataValue items)");
         }
     }
     catch (const std::exception& e)
@@ -3128,7 +3138,7 @@ std::vector<std::string> Syscollector::getDataContextTables(Operation operation,
             // Package DELETE → NO DataContext
             // (no tables added)
         }
-        else  // CREATE or MODIFY
+        else // CREATE or MODIFY
         {
             // Linux/macOS: include OS
             // Windows: include hotfixes (and OS implicitly needed but not in spec)
@@ -3157,14 +3167,15 @@ std::vector<std::string> Syscollector::getDataContextTables(Operation operation,
 
         for (const auto& table : tables)
         {
-            if (!tablesStr.empty()) tablesStr += ", ";
+            if (!tablesStr.empty())
+                tablesStr += ", ";
 
             tablesStr += table;
         }
 
-        m_logFunction(LOG_DEBUG, "DataContext tables for index=" + index +
-                      " operation=" + std::to_string(static_cast<int>(operation)) +
-                      ": [" + tablesStr + "]");
+        m_logFunction(LOG_DEBUG,
+                      "DataContext tables for index=" + index +
+                          " operation=" + std::to_string(static_cast<int>(operation)) + ": [" + tablesStr + "]");
     }
 
     return tables;
@@ -3173,8 +3184,8 @@ std::vector<std::string> Syscollector::getDataContextTables(Operation operation,
 bool Syscollector::isVDFirstSyncDone()
 {
     int64_t vdFirstSyncCompleted = 0;
-    return getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted)
-           && vdFirstSyncCompleted > 0;
+    return getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted) &&
+           vdFirstSyncCompleted > 0;
 }
 
 SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
@@ -3330,7 +3341,7 @@ void Syscollector::processVDDataContext()
                 try
                 {
                     const auto ecsPair = ecsData(item, tableName);
-                    const auto statefulToSend{ecsPair.first.dump()};
+                    const auto statefulToSend {ecsPair.first.dump()};
 
                     // Calculate ID the same way as done during scan for DataValue
                     std::string itemId = calculateHashId(item, tableName);
@@ -3356,7 +3367,8 @@ void Syscollector::processVDDataContext()
                     // Note: operation and version parameters are not used for DataContext
                     if (shouldPersist)
                     {
-                        m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
+                        m_spSyncProtocolVD->persistDifference(
+                            itemId, Operation::MODIFY, contextIndex, statefulToSend, 0, true);
                         totalDataContextItems++;
                     }
                 }
@@ -3364,21 +3376,24 @@ void Syscollector::processVDDataContext()
                 {
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_ERROR, "Failed to persist DataContext from " + tableName + ": " + std::string(e.what()));
+                        m_logFunction(LOG_ERROR,
+                                      "Failed to persist DataContext from " + tableName + ": " + std::string(e.what()));
                     }
                 }
             }
 
             if (m_logFunction && !contextItems.empty())
             {
-                m_logFunction(LOG_DEBUG, "Added " + std::to_string(contextItems.size()) + " DataContext items from " + tableName);
+                m_logFunction(LOG_DEBUG,
+                              "Added " + std::to_string(contextItems.size()) + " DataContext items from " + tableName);
             }
         }
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "VD DataContext complete: " + std::to_string(totalDataContextItems) +
-                          " items for " + std::to_string(pendingDataValues.size()) + " DataValues");
+            m_logFunction(LOG_DEBUG,
+                          "VD DataContext complete: " + std::to_string(totalDataContextItems) + " items for " +
+                              std::to_string(pendingDataValues.size()) + " DataValues");
         }
     }
     catch (const std::exception& e)
@@ -3451,12 +3466,13 @@ bool Syscollector::pause()
 
     // Wait for BOTH scan and sync operations to complete
     std::unique_lock<std::mutex> lock(m_pauseMutex);
-    m_pauseCv.wait(lock, [this]
-    {
-        bool scanDone = !m_scanning.load();
-        bool syncDone = !m_syncing.load();
-        return (scanDone && syncDone) || m_stopping.load();
-    });
+    m_pauseCv.wait(lock,
+                   [this]
+                   {
+                       bool scanDone = !m_scanning.load();
+                       bool syncDone = !m_syncing.load();
+                       return (scanDone && syncDone) || m_stopping.load();
+                   });
 
     if (m_logFunction)
     {
@@ -3544,15 +3560,16 @@ int Syscollector::executeFlushSync()
         m_flushInProgress = true;
     }
 
-    DEFER([this]()
-    {
+    DEFER(
+        [this]()
         {
-            std::lock_guard<std::mutex> lock(m_pauseMutex);
-            m_flushInProgress = false;
-        }
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+                m_flushInProgress = false;
+            }
 
-        m_pauseCv.notify_all();
-    });
+            m_pauseCv.notify_all();
+        });
 
     // Trigger immediate synchronization to flush pending messages.
     SyncModuleResult result = {true, {}};
@@ -3614,32 +3631,34 @@ int Syscollector::executeFlushSync()
             // (either the manager itself, or the local sync intake being unreachable -- both share
             // the same restart-hiccup shape); a queue that succeeded does not veto the deferral.
             const bool allFailuresManagerNotReady =
-                (result.success   || result.managerNotReady || result.localTransportUnavailable) &&
+                (result.success || result.managerNotReady || result.localTransportUnavailable) &&
                 (vdResult.success || vdResult.managerNotReady || vdResult.localTransportUnavailable);
 
             // Longest manager-not-ready streak among the queues that actually failed.
             unsigned int streak = 0;
 
             if (!result.success && (result.managerNotReady || result.localTransportUnavailable) &&
-                    result.consecutiveFailures > streak)
+                result.consecutiveFailures > streak)
                 streak = result.consecutiveFailures;
 
             if (!vdResult.success && (vdResult.managerNotReady || vdResult.localTransportUnavailable) &&
-                    vdResult.consecutiveFailures > streak)
+                vdResult.consecutiveFailures > streak)
                 streak = vdResult.consecutiveFailures;
 
             if (allFailuresManagerNotReady && streak <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
                 // The manager is not ready for this agent yet, mostly right after a restart, and the
                 // sync has not failed enough times in a row to suspect it will not clear.
-                m_logFunction(LOG_INFO, "Syscollector flush deferred: " + failedQueues + reasonSuffix +
-                              " Will retry next cycle.");
+                m_logFunction(LOG_INFO,
+                              "Syscollector flush deferred: " + failedQueues + reasonSuffix +
+                                  " Will retry next cycle.");
             }
             else if (allFailuresManagerNotReady)
             {
                 // Not a restart hiccup any more: the manager has not been ready for several cycles.
-                m_logFunction(LOG_WARNING, "Syscollector flush failed " + std::to_string(streak) +
-                              " times in a row: " + failedQueues + reasonSuffix);
+                m_logFunction(LOG_WARNING,
+                              "Syscollector flush failed " + std::to_string(streak) +
+                                  " times in a row: " + failedQueues + reasonSuffix);
             }
             else
             {
@@ -3672,12 +3691,10 @@ int Syscollector::getMaxVersion()
         {
             int tableMaxVersion = 0;
 
-            auto selectQuery = SelectQuery::builder()
-                               .table(tableName)
-                               .columnList({"MAX(version) AS max_version"})
-                               .build();
+            auto selectQuery =
+                SelectQuery::builder().table(tableName).columnList({"MAX(version) AS max_version"}).build();
 
-            const auto callback = [&tableMaxVersion](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+            const auto callback = [&tableMaxVersion](ReturnTypeCallback returnType, const nlohmann::json& resultData)
             {
                 if (returnType == SELECTED && resultData.contains("max_version"))
                 {
@@ -3740,12 +3757,9 @@ int Syscollector::setVersion(int version)
         {
             std::vector<nlohmann::json> rows;
 
-            auto selectQuery = SelectQuery::builder()
-                               .table(tableName)
-                               .columnList({"*"})
-                               .build();
+            auto selectQuery = SelectQuery::builder().table(tableName).columnList({"*"}).build();
 
-            const auto selectCallback = [&rows](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+            const auto selectCallback = [&rows](ReturnTypeCallback returnType, const nlohmann::json& resultData)
             {
                 if (returnType == SELECTED)
                 {
@@ -3759,14 +3773,7 @@ int Syscollector::setVersion(int version)
             {
                 const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
-                DBSyncTxn txn
-                {
-                    m_spDBSync->handle(),
-                    nlohmann::json{tableName},
-                    0,
-                    QUEUE_SIZE,
-                    txnCallback
-                };
+                DBSyncTxn txn {m_spDBSync->handle(), nlohmann::json {tableName}, 0, QUEUE_SIZE, txnCallback};
 
                 for (auto& row : rows)
                 {
@@ -3787,8 +3794,9 @@ int Syscollector::setVersion(int version)
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Syscollector set_version to " + std::to_string(version) +
-                          " for " + std::to_string(totalRowsUpdated) + " total rows across all tables");
+            m_logFunction(LOG_DEBUG,
+                          "Syscollector set_version to " + std::to_string(version) + " for " +
+                              std::to_string(totalRowsUpdated) + " total rows across all tables");
         }
 
         return 0;
@@ -3893,7 +3901,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
         else if (command == "is_flush_completed")
         {
             const auto flushStatus = m_asyncFlushController ? m_asyncFlushController->getFlushStatus()
-                                     : Utils::AsyncFlushController::FlushStatus {false, true};
+                                                            : Utils::AsyncFlushController::FlushStatus {false, true};
 
             response["error"] = MQ_SUCCESS;
             response["data"]["module"] = "syscollector";
@@ -3906,7 +3914,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
             else
             {
                 response["message"] = flushStatus.successful ? "Syscollector flush completed successfully"
-                                      : "Syscollector flush completed with error";
+                                                             : "Syscollector flush completed with error";
                 response["data"]["status"] = "completed";
                 response["data"]["result"] = flushStatus.successful ? "success" : "error";
             }
@@ -4138,21 +4146,18 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
             if (m_spDBSync)
             {
-                auto selectQuery = SelectQuery::builder()
-                                   .table(tableName)
-                                   .columnList({"COUNT(*)"})
-                                   .rowFilter("WHERE sync=1")
-                                   .build();
+                auto selectQuery =
+                    SelectQuery::builder().table(tableName).columnList({"COUNT(*)"}).rowFilter("WHERE sync=1").build();
 
                 m_spDBSync->selectRows(selectQuery.query(),
-                                       [&currentCount](ReturnTypeCallback, const nlohmann::json & result)
-                {
-                    // Result format: {"COUNT(*)": N}
-                    if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
-                    {
-                        currentCount = result["COUNT(*)"].get<size_t>();
-                    }
-                });
+                                       [&currentCount](ReturnTypeCallback, const nlohmann::json& result)
+                                       {
+                                           // Result format: {"COUNT(*)": N}
+                                           if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                                           {
+                                               currentCount = result["COUNT(*)"].get<size_t>();
+                                           }
+                                       });
             }
 
             // Set the new limit
@@ -4170,9 +4175,10 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_DEBUG, "Document limit set to unlimited for index '" + index +
-                                      "' (promoted " + std::to_string(promoted) + " unsynced items, total synced: " +
-                                      std::to_string(currentCount + promoted) + ")");
+                        m_logFunction(LOG_DEBUG,
+                                      "Document limit set to unlimited for index '" + index + "' (promoted " +
+                                          std::to_string(promoted) + " unsynced items, total synced: " +
+                                          std::to_string(currentCount + promoted) + ")");
                     }
                 }
             }
@@ -4184,9 +4190,10 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_DEBUG, "Document limit reduced for index '" + index +
-                                  "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
-                                  ". Resetting " + std::to_string(excessCount) + " excess records to sync=0.");
+                    m_logFunction(LOG_DEBUG,
+                                  "Document limit reduced for index '" + index + "' from " +
+                                      std::to_string(currentCount) + " to " + std::to_string(newLimit) +
+                                      ". Resetting " + std::to_string(excessCount) + " excess records to sync=0.");
                 }
 
                 // Select excess records to reset (last records by ordering fields)
@@ -4207,26 +4214,25 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
                 std::string orderByClause = buildOrderByClause(orderFields, false); // DESC
 
                 auto selectQuery = SelectQuery::builder()
-                                   .table(tableName)
-                                   .columnList({"*"})
-                                   .rowFilter("WHERE sync=1")
-                                   .orderByOpt(orderByClause)
-                                   .countOpt(static_cast<uint32_t>(excessCount))
-                                   .build();
+                                       .table(tableName)
+                                       .columnList({"*"})
+                                       .rowFilter("WHERE sync=1")
+                                       .orderByOpt(orderByClause)
+                                       .countOpt(static_cast<uint32_t>(excessCount))
+                                       .build();
 
                 m_spDBSync->selectRows(selectQuery.query(),
-                                       [&excessRecords](ReturnTypeCallback, const nlohmann::json & result)
-                {
-                    excessRecords.push_back(result);
-                });
+                                       [&excessRecords](ReturnTypeCallback, const nlohmann::json& result)
+                                       { excessRecords.push_back(result); });
 
                 // Process excess records: generate DELETE events and reset sync flag
                 if (!excessRecords.empty())
                 {
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_DEBUG, "Generating DELETE events for " + std::to_string(excessRecords.size()) +
-                                      " excess records from " + tableName);
+                        m_logFunction(LOG_DEBUG,
+                                      "Generating DELETE events for " + std::to_string(excessRecords.size()) +
+                                          " excess records from " + tableName);
                     }
 
                     // Step 1: Generate stateful DELETE events for each excess record
@@ -4247,16 +4253,18 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                             if (m_logFunction)
                             {
-                                m_logFunction(LOG_DEBUG, "Generated DELETE event for excess record in " + tableName +
-                                              " (ID: " + hashId + ")");
+                                m_logFunction(LOG_DEBUG,
+                                              "Generated DELETE event for excess record in " + tableName +
+                                                  " (ID: " + hashId + ")");
                             }
                         }
                         catch (const std::exception& e)
                         {
                             if (m_logFunction)
                             {
-                                m_logFunction(LOG_ERROR, "Failed to generate DELETE event for excess record in " + tableName +
-                                              ": " + std::string(e.what()));
+                                m_logFunction(LOG_ERROR,
+                                              "Failed to generate DELETE event for excess record in " + tableName +
+                                                  ": " + std::string(e.what()));
                             }
                         }
                     }
@@ -4284,8 +4292,8 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
                 {
                     // Promote unsynced items to fill available space
                     size_t availableSpace = newLimit - currentCount;
-                    std::string reason = "Document limit increased from " + std::to_string(currentCount) +
-                                         " to " + std::to_string(newLimit);
+                    std::string reason = "Document limit increased from " + std::to_string(currentCount) + " to " +
+                                         std::to_string(newLimit);
 
                     size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason);
                     m_documentCounts[index] = currentCount + promoted;
@@ -4297,9 +4305,9 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_DEBUG, "Document limit set for index '" + index + "': " +
-                                      std::to_string(newLimit) +
-                                      " (current synced count: " + std::to_string(currentCount) + ")");
+                        m_logFunction(LOG_DEBUG,
+                                      "Document limit set for index '" + index + "': " + std::to_string(newLimit) +
+                                          " (current synced count: " + std::to_string(currentCount) + ")");
                     }
                 }
             }
@@ -4396,13 +4404,19 @@ void Syscollector::initializeDocumentCounts()
 
     std::lock_guard<std::mutex> lock(m_limitsMutex);
 
-    const std::vector<std::string> tables =
-    {
-        OS_TABLE, HW_TABLE, PACKAGES_TABLE, HOTFIXES_TABLE,
-        PROCESSES_TABLE, PORTS_TABLE, NET_IFACE_TABLE,
-        NET_PROTOCOL_TABLE, NET_ADDRESS_TABLE, USERS_TABLE,
-        GROUPS_TABLE, SERVICES_TABLE, BROWSER_EXTENSIONS_TABLE
-    };
+    const std::vector<std::string> tables = {OS_TABLE,
+                                             HW_TABLE,
+                                             PACKAGES_TABLE,
+                                             HOTFIXES_TABLE,
+                                             PROCESSES_TABLE,
+                                             PORTS_TABLE,
+                                             NET_IFACE_TABLE,
+                                             NET_PROTOCOL_TABLE,
+                                             NET_ADDRESS_TABLE,
+                                             USERS_TABLE,
+                                             GROUPS_TABLE,
+                                             SERVICES_TABLE,
+                                             BROWSER_EXTENSIONS_TABLE};
 
     for (const auto& table : tables)
     {
@@ -4418,45 +4432,40 @@ void Syscollector::initializeDocumentCounts()
             const std::string& index = indexIt->second;
 
             // Count records with sync=1
-            auto selectQuery = SelectQuery::builder()
-                               .table(table)
-                               .columnList({"COUNT(*)"})
-                               .rowFilter("WHERE sync=1")
-                               .build();
+            auto selectQuery =
+                SelectQuery::builder().table(table).columnList({"COUNT(*)"}).rowFilter("WHERE sync=1").build();
 
             size_t count = 0;
             m_spDBSync->selectRows(selectQuery.query(),
-                                   [&count](ReturnTypeCallback, const nlohmann::json & result)
-            {
-                // Result format: {"COUNT(*)": N}
-                if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
-                {
-                    count = result["COUNT(*)"].get<size_t>();
-                }
-            });
+                                   [&count](ReturnTypeCallback, const nlohmann::json& result)
+                                   {
+                                       // Result format: {"COUNT(*)": N}
+                                       if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                                       {
+                                           count = result["COUNT(*)"].get<size_t>();
+                                       }
+                                   });
 
             m_documentCounts[index] = count;
 
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, "Initialized document count for index '" + index +
-                              "': " + std::to_string(count));
+                m_logFunction(LOG_DEBUG,
+                              "Initialized document count for index '" + index + "': " + std::to_string(count));
             }
         }
         catch (const std::exception& ex)
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_ERROR, "Failed to initialize count for table " + table +
-                              ": " + std::string(ex.what()));
+                m_logFunction(LOG_ERROR,
+                              "Failed to initialize count for table " + table + ": " + std::string(ex.what()));
             }
         }
     }
 }
 
-bool Syscollector::checkDocumentLimit(const std::string& table,
-                                      const nlohmann::json& data,
-                                      ReturnTypeCallback result)
+bool Syscollector::checkDocumentLimit(const std::string& table, const nlohmann::json& data, ReturnTypeCallback result)
 {
     auto indexIt = INDEX_MAP.find(table);
 
@@ -4488,12 +4497,12 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
 
     if (result == INSERTED || result == MODIFIED)
     {
-        if (isAlreadySynced)  // sync=1
+        if (isAlreadySynced) // sync=1
         {
             // Already synced, generate event
             return true;
         }
-        else  // sync=0, not synced yet
+        else // sync=0, not synced yet
         {
             if (limit > 0)
             {
@@ -4501,7 +4510,7 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
                 // Item stays with sync=0, will be promoted at end of scan
                 return false;
             }
-            else  // limit == 0 (unlimited)
+            else // limit == 0 (unlimited)
             {
                 // No limit: process immediately, mark sync=1
                 if (m_itemsToUpdateSync)
@@ -4515,7 +4524,7 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
     }
     else if (result == DELETED)
     {
-        if (isAlreadySynced)  // sync=1
+        if (isAlreadySynced) // sync=1
         {
             // Decrement counter immediately to free up slot
             if (limit > 0 && m_documentCounts[index] > 0)
@@ -4523,16 +4532,15 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
                 m_documentCounts[index]--;
             }
 
-            return true;  // Generate DELETE event
+            return true; // Generate DELETE event
         }
-        else  // sync=0
+        else // sync=0
         {
             // Not synced, don't generate DELETE event
             if (m_logFunction)
             {
                 m_logFunction(LOG_DEBUG_VERBOSE,
-                              "Skipping DELETE event for non-synced record in table '" + table +
-                              "' (sync=0).");
+                              "Skipping DELETE event for non-synced record in table '" + table + "' (sync=0).");
             }
 
             return false;
@@ -4554,26 +4562,24 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
     // Count items with sync=0
     size_t unsyncedCount = 0;
-    auto countQuery = SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"COUNT(*)"})
-                      .rowFilter("WHERE sync=0")
-                      .build();
+    auto countQuery =
+        SelectQuery::builder().table(tableName).columnList({"COUNT(*)"}).rowFilter("WHERE sync=0").build();
 
     m_spDBSync->selectRows(countQuery.query(),
-                           [&unsyncedCount](ReturnTypeCallback, const nlohmann::json & result)
-    {
-        if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
-        {
-            unsyncedCount = result["COUNT(*)"].get<size_t>();
-        }
-    });
+                           [&unsyncedCount](ReturnTypeCallback, const nlohmann::json& result)
+                           {
+                               if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                               {
+                                   unsyncedCount = result["COUNT(*)"].get<size_t>();
+                               }
+                           });
 
     if (unsyncedCount == 0)
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG_VERBOSE, reason + ": No unsynced items available to promote for index '" + index + "'");
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          reason + ": No unsynced items available to promote for index '" + index + "'");
         }
 
         return 0;
@@ -4584,8 +4590,9 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
     if (m_logFunction)
     {
-        m_logFunction(LOG_DEBUG, reason + ": Promoting " + std::to_string(toPromote) +
-                      " unsynced items for index '" + index + "'");
+        m_logFunction(LOG_DEBUG,
+                      reason + ": Promoting " + std::to_string(toPromote) + " unsynced items for index '" + index +
+                          "'");
     }
 
     // Get ordering fields
@@ -4606,24 +4613,23 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     std::vector<nlohmann::json> recordsToPromote;
 
     auto selectQuery = SelectQuery::builder()
-                       .table(tableName)
-                       .columnList({"*"})
-                       .rowFilter("WHERE sync=0")
-                       .orderByOpt(orderByClause)
-                       .countOpt(static_cast<uint32_t>(toPromote))
-                       .build();
+                           .table(tableName)
+                           .columnList({"*"})
+                           .rowFilter("WHERE sync=0")
+                           .orderByOpt(orderByClause)
+                           .countOpt(static_cast<uint32_t>(toPromote))
+                           .build();
 
     if (m_logFunction)
     {
-        m_logFunction(LOG_DEBUG_VERBOSE, "promoteUnsyncedItems: orderByClause='" + orderByClause +
-                      "', query=" + selectQuery.query().dump());
+        m_logFunction(LOG_DEBUG_VERBOSE,
+                      "promoteUnsyncedItems: orderByClause='" + orderByClause +
+                          "', query=" + selectQuery.query().dump());
     }
 
     m_spDBSync->selectRows(selectQuery.query(),
-                           [&recordsToPromote](ReturnTypeCallback, const nlohmann::json & result)
-    {
-        recordsToPromote.push_back(result);
-    });
+                           [&recordsToPromote](ReturnTypeCallback, const nlohmann::json& result)
+                           { recordsToPromote.push_back(result); });
 
     // Generate INSERT events and mark as sync=1
     std::vector<std::pair<std::string, nlohmann::json>> itemsToMarkSynced;
@@ -4647,8 +4653,8 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, "Failed to promote record in table " + tableName +
-                              ": " + std::string(e.what()));
+                m_logFunction(LOG_DEBUG,
+                              "Failed to promote record in table " + tableName + ": " + std::string(e.what()));
             }
         }
     }
@@ -4660,8 +4666,9 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, reason + ": Successfully promoted " +
-                          std::to_string(itemsToMarkSynced.size()) + " records for index '" + index + "'");
+            m_logFunction(LOG_DEBUG,
+                          reason + ": Successfully promoted " + std::to_string(itemsToMarkSynced.size()) +
+                              " records for index '" + index + "'");
         }
     }
 
@@ -4677,7 +4684,7 @@ void Syscollector::promoteItemsAfterScan()
     {
         if (limit == 0)
         {
-            continue;  // No limit, skip
+            continue; // No limit, skip
         }
 
         // Find table name for this index
@@ -4707,8 +4714,8 @@ void Syscollector::promoteItemsAfterScan()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' is at limit (" +
-                              std::to_string(limit) + "), no items to promote");
+                m_logFunction(LOG_DEBUG_VERBOSE,
+                              "Index '" + index + "' is at limit (" + std::to_string(limit) + "), no items to promote");
             }
 
             continue;
@@ -4716,10 +4723,10 @@ void Syscollector::promoteItemsAfterScan()
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' has " +
-                          std::to_string(availableSpace) + " available slots (current: " +
-                          std::to_string(currentCount) + ", limit: " + std::to_string(limit) +
-                          "). Promoting items with deterministic ordering.");
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          "Index '" + index + "' has " + std::to_string(availableSpace) +
+                              " available slots (current: " + std::to_string(currentCount) +
+                              ", limit: " + std::to_string(limit) + "). Promoting items with deterministic ordering.");
         }
 
         // Promote first availableSpace items with sync=0 using deterministic order
@@ -4731,13 +4738,12 @@ void Syscollector::promoteItemsAfterScan()
 
         if (m_logFunction && promoted > 0)
         {
-            m_logFunction(LOG_DEBUG_VERBOSE, "Successfully promoted " + std::to_string(promoted) +
-                          " items for index '" + index + "' (new count: " +
-                          std::to_string(m_documentCounts[index]) + ")");
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          "Successfully promoted " + std::to_string(promoted) + " items for index '" + index +
+                              "' (new count: " + std::to_string(m_documentCounts[index]) + ")");
         }
     }
 }
-
 
 bool Syscollector::hasDataInTable(const std::string& tableName)
 {
@@ -4749,12 +4755,9 @@ bool Syscollector::hasDataInTable(const std::string& tableName)
     try
     {
         int count = 0;
-        auto selectQuery = SelectQuery::builder()
-                           .table(tableName)
-                           .columnList({"COUNT(*) AS count"})
-                           .build();
+        auto selectQuery = SelectQuery::builder().table(tableName).columnList({"COUNT(*) AS count"}).build();
 
-        const auto callback = [&count](ReturnTypeCallback returnType, const nlohmann::json & resultData)
+        const auto callback = [&count](ReturnTypeCallback returnType, const nlohmann::json& resultData)
         {
             if (returnType == SELECTED && resultData.contains("count"))
             {
@@ -5036,14 +5039,7 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
                 const auto deleteCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
                 // Create transaction for this table - commits automatically on destruction
-                DBSyncTxn txn
-                {
-                    dbHandle,
-                    nlohmann::json {tableName},
-                    0,
-                    QUEUE_SIZE,
-                    deleteCallback
-                };
+                DBSyncTxn txn {dbHandle, nlohmann::json {tableName}, 0, QUEUE_SIZE, deleteCallback};
 
                 // Sync with empty data to mark all existing rows as deleted
                 nlohmann::json emptyInput;
@@ -5100,7 +5096,8 @@ IntegrityCheckResult Syscollector::checkIfFullSyncRequired(const std::string& ta
             // With limits: only include items with sync=1 in checksum
             // This matches what the manager has (only synced items were sent)
             rowFilter = "WHERE sync=1";
-            m_logFunction(LOG_DEBUG, "Calculating checksum with filter 'sync=1' (limit=" + std::to_string(documentLimit) + ")");
+            m_logFunction(LOG_DEBUG,
+                          "Calculating checksum with filter 'sync=1' (limit=" + std::to_string(documentLimit) + ")");
         }
         else
         {
@@ -5114,10 +5111,7 @@ IntegrityCheckResult Syscollector::checkIfFullSyncRequired(const std::string& ta
 
     m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
 
-    auto result = m_spSyncProtocol->requiresFullSync(
-                      INDEX_MAP.at(tableName),
-                      final_checksum
-                  );
+    auto result = m_spSyncProtocol->requiresFullSync(INDEX_MAP.at(tableName), final_checksum);
 
     if (result.status == IntegrityCheckStatus::MISMATCH)
     {
@@ -5150,7 +5144,7 @@ bool Syscollector::getMetadataValue(const std::string& key, int64_t& value)
         return false;
     }
 
-    auto callback = [&value](ReturnTypeCallback result, const nlohmann::json & data)
+    auto callback = [&value](ReturnTypeCallback result, const nlohmann::json& data)
     {
         if (result == ReturnTypeCallback::SELECTED && data.contains("last_sync_time"))
         {
@@ -5161,10 +5155,10 @@ bool Syscollector::getMetadataValue(const std::string& key, int64_t& value)
     try
     {
         auto selectQuery = SelectQuery::builder()
-                           .table("table_metadata")
-                           .columnList({"last_sync_time"})
-                           .rowFilter("WHERE table_name = '" + key + "'")
-                           .build();
+                               .table("table_metadata")
+                               .columnList({"last_sync_time"})
+                               .rowFilter("WHERE table_name = '" + key + "'")
+                               .build();
 
         m_spDBSync->selectRows(selectQuery.query(), callback);
         return true;
@@ -5195,18 +5189,14 @@ bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
     try
     {
         std::map<std::string, int64_t> metadataValues;
-        auto selectQuery = SelectQuery::builder()
-                           .table("table_metadata")
-                           .columnList({"table_name", "last_sync_time"})
-                           .build();
+        auto selectQuery =
+            SelectQuery::builder().table("table_metadata").columnList({"table_name", "last_sync_time"}).build();
 
-        auto selectCallback = [&metadataValues](ReturnTypeCallback result, const nlohmann::json & data)
+        auto selectCallback = [&metadataValues](ReturnTypeCallback result, const nlohmann::json& data)
         {
-            if (result == ReturnTypeCallback::SELECTED &&
-                    data.contains("table_name") &&
-                    data.contains("last_sync_time") &&
-                    data.at("table_name").is_string() &&
-                    data.at("last_sync_time").is_number())
+            if (result == ReturnTypeCallback::SELECTED && data.contains("table_name") &&
+                data.contains("last_sync_time") && data.at("table_name").is_string() &&
+                data.at("last_sync_time").is_number())
             {
                 metadataValues[data.at("table_name").get<std::string>()] = data.at("last_sync_time").get<int64_t>();
             }
@@ -5215,14 +5205,7 @@ bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
         m_spDBSync->selectRows(selectQuery.query(), selectCallback);
         metadataValues[key] = value;
 
-        DBSyncTxn txn
-        {
-            m_spDBSync->handle(),
-            nlohmann::json{"table_metadata"},
-            0,
-            QUEUE_SIZE,
-            emptyCallback
-        };
+        DBSyncTxn txn {m_spDBSync->handle(), nlohmann::json {"table_metadata"}, 0, QUEUE_SIZE, emptyCallback};
 
         nlohmann::json allData = nlohmann::json::array();
 
@@ -5310,27 +5293,38 @@ bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int
 
 bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) const
 {
-    if (tableName == OS_TABLE) return m_os;
+    if (tableName == OS_TABLE)
+        return m_os;
 
-    if (tableName == HW_TABLE) return m_hardware;
+    if (tableName == HW_TABLE)
+        return m_hardware;
 
-    if (tableName == HOTFIXES_TABLE) return m_hotfixes;
+    if (tableName == HOTFIXES_TABLE)
+        return m_hotfixes;
 
-    if (tableName == PACKAGES_TABLE) return m_packages;
+    if (tableName == PACKAGES_TABLE)
+        return m_packages;
 
-    if (tableName == PROCESSES_TABLE) return m_processes;
+    if (tableName == PROCESSES_TABLE)
+        return m_processes;
 
-    if (tableName == PORTS_TABLE) return m_ports;
+    if (tableName == PORTS_TABLE)
+        return m_ports;
 
-    if (tableName == NET_ADDRESS_TABLE || tableName == NET_IFACE_TABLE || tableName == NET_PROTOCOL_TABLE) return m_network;
+    if (tableName == NET_ADDRESS_TABLE || tableName == NET_IFACE_TABLE || tableName == NET_PROTOCOL_TABLE)
+        return m_network;
 
-    if (tableName == USERS_TABLE) return m_users;
+    if (tableName == USERS_TABLE)
+        return m_users;
 
-    if (tableName == GROUPS_TABLE) return m_groups;
+    if (tableName == GROUPS_TABLE)
+        return m_groups;
 
-    if (tableName == SERVICES_TABLE) return m_services;
+    if (tableName == SERVICES_TABLE)
+        return m_services;
 
-    if (tableName == BROWSER_EXTENSIONS_TABLE) return m_browserExtensions;
+    if (tableName == BROWSER_EXTENSIONS_TABLE)
+        return m_browserExtensions;
 
     return true;
 }
@@ -5375,7 +5369,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
             rowFilterClause = "";
         }
 
-        auto callback = [&items](ReturnTypeCallback result, const nlohmann::json & data)
+        auto callback = [&items](ReturnTypeCallback result, const nlohmann::json& data)
         {
             if (result == ReturnTypeCallback::SELECTED)
             {
@@ -5383,11 +5377,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
             }
         };
 
-        auto selectQuery = SelectQuery::builder()
-                           .table(tableName)
-                           .columnList({"*"})
-                           .rowFilter(rowFilterClause)
-                           .build();
+        auto selectQuery = SelectQuery::builder().table(tableName).columnList({"*"}).rowFilter(rowFilterClause).build();
 
         m_spDBSync->selectRows(selectQuery.query(), callback);
     }
@@ -5423,8 +5413,12 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
             return false;
         }
 
-        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName +
-                      (cleanResult.failureReason.empty() ? "" : " (" + Utils::rightTrim(cleanResult.failureReason, ".") + ")") + "; " + retryNote);
+        m_logFunction(LOG_WARNING,
+                      "Failed to clear index " + index + " before recovery resync for table " + tableName +
+                          (cleanResult.failureReason.empty()
+                               ? ""
+                               : " (" + Utils::rightTrim(cleanResult.failureReason, ".") + ")") +
+                          "; " + retryNote);
         return false;
     }
 
@@ -5439,7 +5433,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
     {
         // Build stateful event
         auto [newData, version] = ecsData(item, tableName);
-        const auto statefulToSend{newData.dump()};
+        const auto statefulToSend {newData.dump()};
 
         // Validate stateful event before persisting for recovery
         bool shouldPersist = true;
@@ -5461,13 +5455,11 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
             // wazuh-states-inventory-* but never reaches the vulnerability
             // scanner, so a recovered agent gets its inventory back while its
             // vulnerability documents stay missing.
-            protocol->persistDifference(
-                calculateHashId(item, tableName),
-                Operation::CREATE,
-                index,
-                statefulToSend,
-                item["version"].get<uint64_t>()
-            );
+            protocol->persistDifference(calculateHashId(item, tableName),
+                                        Operation::CREATE,
+                                        index,
+                                        statefulToSend,
+                                        item["version"].get<uint64_t>());
         }
     }
 
@@ -5504,10 +5496,11 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
     {
         // syncModule() already reported why the session failed. The rows are queued, so the
         // ordinary cycle delivers them; nothing about this table has to be redone.
-        m_logFunction(LOG_INFO, "Recovery of index " + index + " did not finish sending; the queued rows will be "
-                      "delivered by the next regular synchronization.");
+        m_logFunction(LOG_INFO,
+                      "Recovery of index " + index +
+                          " did not finish sending; the queued rows will be "
+                          "delivered by the next regular synchronization.");
     }
-
 
     return true;
 }
@@ -5559,16 +5552,13 @@ int Syscollector::agentIdentityChangeState()
 
     switch (readAgentIdentity(currentId, syncedId))
     {
-        case AgentIdentity::Changed:
-            return 1;
+        case AgentIdentity::Changed: return 1;
 
-        case AgentIdentity::Unknown:
-            return -1;
+        case AgentIdentity::Unknown: return -1;
 
         case AgentIdentity::Unrecorded:
         case AgentIdentity::Unchanged:
-        default:
-            return 0;
+        default: return 0;
     }
 }
 
@@ -5600,17 +5590,17 @@ void Syscollector::checkAgentIdentity()
     // resent every cycle. A read that fails counts as "not done": one redundant resend is noise,
     // while skipping it on a guess leaves the vulnerability inventory missing.
     int64_t vdSyncedId = 0;
-    const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId)
-                                 && vdSyncedId == static_cast<int64_t>(currentId);
+    const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId) &&
+                                 vdSyncedId == static_cast<int64_t>(currentId);
 
     // Same rule per plain-lane table: one already resent under this id is not cleared again, and
     // a failed read counts as "not done". VD-lane tables follow the lane's marker instead.
-    const auto tableMarkerKey = [](const std::string & tableName)
+    const auto tableMarkerKey = [](const std::string& tableName)
     {
         return std::string(SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX) + tableName;
     };
     // The VD lane exists only while m_vdSyncEnabled; otherwise its tables ride the plain lane.
-    const auto onVDLane = [this](const std::string & index)
+    const auto onVDLane = [this](const std::string& index)
     {
         return isVDIndex(index) && m_vdSyncEnabled;
     };
@@ -5624,10 +5614,9 @@ void Syscollector::checkAgentIdentity()
         }
 
         int64_t tableSyncedId = 0;
-        const bool alreadyResent = onVDLane(index)
-                                   ? vdAlreadyResent
-                                   : getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
-                                   && tableSyncedId == static_cast<int64_t>(currentId);
+        const bool alreadyResent = onVDLane(index) ? vdAlreadyResent
+                                                   : getMetadataValue(tableMarkerKey(tableName), tableSyncedId) &&
+                                                         tableSyncedId == static_cast<int64_t>(currentId);
 
         if (alreadyResent)
         {
@@ -5637,9 +5626,10 @@ void Syscollector::checkAgentIdentity()
 
     m_logFunction(LOG_INFO,
                   "Inventory was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
-                  std::to_string(currentId) + (tablesAlreadyResent.empty()
-                                               ? ". Resending every table."
-                                               : ". Resuming the resend with the tables not yet sent under this id."));
+                      std::to_string(currentId) +
+                      (tablesAlreadyResent.empty()
+                           ? ". Resending every table."
+                           : ". Resuming the resend with the tables not yet sent under this id."));
 
     // The plain lane keeps one session per table: an index is cleared immediately before its own
     // rows are queued, so a session that never reaches the manager leaves the others untouched
@@ -5659,10 +5649,7 @@ void Syscollector::checkAgentIdentity()
     // session would also flush whatever the VD lane had queued. Persisting the VD tables only
     // after the last plain session is what keeps their rows together for the single VDFirst
     // session below.
-    for (const int pass :
-            {
-                0, 1
-            })
+    for (const int pass : {0, 1})
     {
         for (const auto& [tableName, index] : INDEX_MAP)
         {
@@ -5792,8 +5779,8 @@ void Syscollector::checkAgentIdentity()
     {
         int64_t tableSyncedId = 0;
 
-        if ((!getMetadataValue(tableMarkerKey(tableName), tableSyncedId) || tableSyncedId != 0)
-                && !updateMetadataValue(tableMarkerKey(tableName), 0))
+        if ((!getMetadataValue(tableMarkerKey(tableName), tableSyncedId) || tableSyncedId != 0) &&
+            !updateMetadataValue(tableMarkerKey(tableName), 0))
         {
             resetFailed = true;
         }
@@ -5801,7 +5788,8 @@ void Syscollector::checkAgentIdentity()
 
     if (resetFailed || !updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, 0))
     {
-        m_logFunction(LOG_DEBUG, "Could not clear the inventory resync progress markers; the identity will be "
+        m_logFunction(LOG_DEBUG,
+                      "Could not clear the inventory resync progress markers; the identity will be "
                       "recorded on the next sync cycle.");
         return;
     }
@@ -5825,8 +5813,9 @@ void Syscollector::runRecoveryProcess()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, m_flushInProgress.load() ? "Syscollector recovery skipped: flush in progress"
-                              : "Syscollector recovery skipped: DataClean in progress");
+                m_logFunction(LOG_DEBUG,
+                              m_flushInProgress.load() ? "Syscollector recovery skipped: flush in progress"
+                                                       : "Syscollector recovery skipped: DataClean in progress");
             }
 
             return;
@@ -5842,13 +5831,14 @@ void Syscollector::runRecoveryProcess()
     // reaching syncModule() internally cannot recurse.
     checkAgentIdentity();
 
-    const auto retryNote = "it will be retried in the next integrity_interval (" +
-                           formatIntegrityInterval(m_integrityIntervalValue) + ")";
+    const auto retryNote =
+        "it will be retried in the next integrity_interval (" + formatIntegrityInterval(m_integrityIntervalValue) + ")";
     std::vector<std::string> notChecked;
 
     for (const auto& [tableName, index] : INDEX_MAP)
     {
-        if (!isCollectorEnabledForTable(tableName)) continue;
+        if (!isCollectorEnabledForTable(tableName))
+            continue;
 
         // A stop leaves every remaining table unstamped, so it is checked after the restart
         // instead of being counted as checked without one.
@@ -5867,23 +5857,27 @@ void Syscollector::runRecoveryProcess()
             // failed in between does not carry the stopped flag.
             if (check.status == IntegrityCheckStatus::NOT_CHECKED && (check.stopped || m_stopping.load()))
             {
-                m_logFunction(LOG_INFO, "Integrity check for " + index + " interrupted: module is stopping" +
-                              (check.mismatchUnconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "") +
-                              ". It will be checked again after the restart.");
+                m_logFunction(LOG_INFO,
+                              "Integrity check for " + index + " interrupted: module is stopping" +
+                                  (check.mismatchUnconfirmed
+                                       ? "; a checksum mismatch reported by the manager was not confirmed"
+                                       : "") +
+                                  ". It will be checked again after the restart.");
                 break;
             }
 
             if (check.status == IntegrityCheckStatus::NOT_CHECKED)
             {
                 // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
-                notChecked.push_back(index + " (" + Utils::rightTrim(check.failureReason, ".") +
-                                     (check.mismatchUnconfirmed ? ", after a checksum mismatch reported by the manager" : "") +
-                                     ")");
+                notChecked.push_back(
+                    index + " (" + Utils::rightTrim(check.failureReason, ".") +
+                    (check.mismatchUnconfirmed ? ", after a checksum mismatch reported by the manager" : "") + ")");
             }
             else if (check.status == IntegrityCheckStatus::MISMATCH)
             {
-                m_logFunction(LOG_INFO, "Checksum mismatch confirmed for " + index +
-                              "; starting recovery (index cleanup and full resend).");
+                m_logFunction(LOG_INFO,
+                              "Checksum mismatch confirmed for " + index +
+                                  "; starting recovery (index cleanup and full resend).");
 
                 // A failure here is reported by resyncTableToManager() itself. Like any other
                 // failure of this pass, the table still counts as checked, so it is not retried
@@ -5910,13 +5904,16 @@ void Syscollector::runRecoveryProcess()
             tables += (tables.empty() ? "" : ", ") + entry;
         }
 
-        m_logFunction(LOG_WARNING, "Integrity check could not be performed for " + std::to_string(notChecked.size()) +
-                      " table(s): " + tables + "; they will be checked again in the next integrity_interval (" +
-                      formatIntegrityInterval(m_integrityIntervalValue) + ").");
+        m_logFunction(LOG_WARNING,
+                      "Integrity check could not be performed for " + std::to_string(notChecked.size()) +
+                          " table(s): " + tables + "; they will be checked again in the next integrity_interval (" +
+                          formatIntegrityInterval(m_integrityIntervalValue) + ").");
     }
 }
 
-bool Syscollector::validateSchemaAndLog(const std::string& data, const std::string& index, const std::string& context) const
+bool Syscollector::validateSchemaAndLog(const std::string& data,
+                                        const std::string& index,
+                                        const std::string& context) const
 {
     auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
 
@@ -5948,7 +5945,8 @@ bool Syscollector::validateSchemaAndLog(const std::string& data, const std::stri
     }
 
     // Validation failed - log errors
-    std::string errorMsg = "Schema validation failed for Syscollector message (" + context + ", index: " + index + "). Errors: ";
+    std::string errorMsg =
+        "Schema validation failed for Syscollector message (" + context + ", index: " + index + "). Errors: ";
 
     for (const auto& error : validationResult.errors)
     {
@@ -5975,10 +5973,10 @@ void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::stri
     {
         // Create a transaction scope - BEGIN TRANSACTION will be executed
         DBSyncTxn deleteTxn(m_spDBSync->handle(),
-                            nlohmann::json::array(),  // Empty table list
+                            nlohmann::json::array(), // Empty table list
                             0,
                             1,
-        [](ReturnTypeCallback, const nlohmann::json&) {});
+                            [](ReturnTypeCallback, const nlohmann::json&) {});
 
         // Execute all deletions within the transaction scope
         for (const auto& [tableName, data] : failedItems)
@@ -5990,11 +5988,7 @@ void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::stri
 
             try
             {
-                auto deleteQuery = DeleteQuery::builder()
-                                   .table(tableName)
-                                   .data(data)
-                                   .rowFilter("")
-                                   .build();
+                auto deleteQuery = DeleteQuery::builder().table(tableName).data(data).rowFilter("").build();
 
                 m_spDBSync->deleteRows(deleteQuery.query());
             }
@@ -6013,7 +6007,9 @@ void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::stri
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Deleted " + std::to_string(failedItems.size()) + " item(s) from DBSync due to validation failure");
+            m_logFunction(LOG_DEBUG,
+                          "Deleted " + std::to_string(failedItems.size()) +
+                              " item(s) from DBSync due to validation failure");
         }
     }
     catch (const std::exception& e)
@@ -6025,7 +6021,8 @@ void Syscollector::deleteFailedItemsFromDB(const std::vector<std::pair<std::stri
     }
 }
 
-void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const
+void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate,
+                                      int syncValue) const
 {
     if (itemsToUpdate.empty() || !m_spDBSync)
     {
@@ -6040,17 +6037,13 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
         // Step 1: Delete all rows in a transaction
         {
             const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-            DBSyncTxn deleteTxn{m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
+            DBSyncTxn deleteTxn {m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
 
             for (const auto& [tableName, data] : itemsToUpdate)
             {
                 try
                 {
-                    auto deleteQuery = DeleteQuery::builder()
-                                       .table(tableName)
-                                       .data(data)
-                                       .rowFilter("")
-                                       .build();
+                    auto deleteQuery = DeleteQuery::builder().table(tableName).data(data).rowFilter("").build();
 
                     m_spDBSync->deleteRows(deleteQuery.query());
                 }
@@ -6069,7 +6062,7 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
         // Step 2: Re-insert rows with new sync value in a transaction to force commit
         {
             const auto txnCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
-            DBSyncTxn insertTxn{m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
+            DBSyncTxn insertTxn {m_spDBSync->handle(), nlohmann::json::array(), 0, 1, txnCallback};
 
             for (const auto& [tableName, data] : itemsToUpdate)
             {
@@ -6088,7 +6081,8 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
                 {
                     if (m_logFunction)
                     {
-                        m_logFunction(LOG_ERROR, "Failed to insert row for table " + tableName + ": " + std::string(e.what()));
+                        m_logFunction(LOG_ERROR,
+                                      "Failed to insert row for table " + tableName + ": " + std::string(e.what()));
                     }
                 }
             }
@@ -6099,8 +6093,9 @@ void Syscollector::updateSyncFlagInDB(const std::vector<std::pair<std::string, n
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG_VERBOSE, "Updated sync=" + std::to_string(syncValue) +
-                          " for " + std::to_string(itemsToUpdate.size()) + " item(s) in DBSync");
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          "Updated sync=" + std::to_string(syncValue) + " for " + std::to_string(itemsToUpdate.size()) +
+                              " item(s) in DBSync");
         }
     }
     catch (const std::exception& e)
@@ -6116,12 +6111,11 @@ std::string Syscollector::getFirstPrimaryKeyField(const std::string& tableName) 
 {
     // Map table names to their simplified ordering fields
     // Most use first PK field only, but some (like packages) use multiple for stability
-    static const std::map<std::string, const char*> tableOrderByFields =
-    {
+    static const std::map<std::string, const char*> tableOrderByFields = {
         {OS_TABLE, OS_ORDER_BY},
         {HW_TABLE, HW_ORDER_BY},
         {HOTFIXES_TABLE, HOTFIXES_ORDER_BY},
-        {PACKAGES_TABLE, PACKAGES_ORDER_BY},  // "name, type" for better ordering
+        {PACKAGES_TABLE, PACKAGES_ORDER_BY}, // "name, type" for better ordering
         {PROCESSES_TABLE, PROCESSES_ORDER_BY},
         {PORTS_TABLE, PORTS_ORDER_BY},
         {NET_IFACE_TABLE, NET_IFACE_ORDER_BY},
@@ -6130,8 +6124,7 @@ std::string Syscollector::getFirstPrimaryKeyField(const std::string& tableName) 
         {USERS_TABLE, USERS_ORDER_BY},
         {GROUPS_TABLE, GROUPS_ORDER_BY},
         {SERVICES_TABLE, SERVICES_ORDER_BY},
-        {BROWSER_EXTENSIONS_TABLE, BROWSER_EXTENSIONS_ORDER_BY}
-    };
+        {BROWSER_EXTENSIONS_TABLE, BROWSER_EXTENSIONS_ORDER_BY}};
 
     auto it = tableOrderByFields.find(tableName);
     return (it != tableOrderByFields.end()) ? it->second : "";

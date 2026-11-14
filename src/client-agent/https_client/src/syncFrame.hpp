@@ -48,13 +48,14 @@ enum class SyncFrameResult
 
 /// Frames and writes a whole session through the write callback. Returns false
 /// on a transport write error.
-bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionId,
-                           const uint8_t* body, size_t length);
+bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionId, const uint8_t* body, size_t length);
 
 /// Reads one framed session, streaming the body into `out` (already open for
 /// writing). Fills sessionId and size on Ok. Body length is bounded by maxBody.
-SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out,
-                                     std::string& sessionId, uint64_t& size,
+SyncFrameResult readSyncSessionFrame(const SyncReadFn& read,
+                                     std::FILE* out,
+                                     std::string& sessionId,
+                                     uint64_t& size,
                                      uint64_t maxBody = SYNC_FRAME_MAX_BODY);
 
 /// Answers the producer with the one-byte outcome of its session.

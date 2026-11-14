@@ -31,29 +31,29 @@
 #define STATIC static
 #endif
 
-static const char *FIM_EVENT_TYPE_ARRAY[] = {
-    "added",
-    "deleted",
-    "modified"
-};
+static const char* FIM_EVENT_TYPE_ARRAY[] = {"added", "deleted", "modified"};
 
-static const char *FIM_EVENT_MODE[] = {
-    "scheduled",
-    "realtime",
-    "whodata"
-};
+static const char* FIM_EVENT_MODE[] = {"scheduled", "realtime", "whodata"};
 
-cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data, const OSList *directories_list){
+cJSON* build_stateful_event_file(const char* path,
+                                 const char* sha1_hash,
+                                 const uint64_t document_version,
+                                 const cJSON* dbsync_event,
+                                 const fim_file_data* file_data,
+                                 const OSList* directories_list)
+{
     const directory_t* config = fim_configuration_directory(path, true, directories_list);
 
     // If config is NULL, we cannot proceed as fim_attributes_json requires it
-    if (config == NULL) {
+    if (config == NULL)
+    {
         merror("Failed to get configuration for path: %s", path);
         return NULL;
     }
 
     cJSON* stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
+    if (stateful_event == NULL)
+    {
         return NULL;
     }
 
@@ -61,16 +61,19 @@ cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const 
     cJSON* file_stateful = fim_attributes_json(dbsync_event, file_data, config);
     cJSON_AddItemToObject(stateful_event, "file", file_stateful);
 #ifdef WIN32
-     char *utf8_path = auto_to_utf8(path);
-     if (utf8_path) {
+    char* utf8_path = auto_to_utf8(path);
+    if (utf8_path)
+    {
         cJSON_AddStringToObject(file_stateful, "path", utf8_path);
         os_free(utf8_path);
-     } else {
+    }
+    else
+    {
         cJSON_AddStringToObject(file_stateful, "path", path);
-     }
- #else
-     cJSON_AddStringToObject(file_stateful, "path", path);
- #endif
+    }
+#else
+    cJSON_AddStringToObject(file_stateful, "path", path);
+#endif
 
     // Checksum
     cJSON* checksum = cJSON_CreateObject();
@@ -105,9 +108,8 @@ cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const 
  * @param result_json Data from dbsync containing checksum and version.
  * @param txn_context Transaction context with event metadata.
  */
-STATIC void handle_orphaned_delete(const char* path,
-                                   const cJSON* result_json,
-                                   callback_ctx* txn_context) {
+STATIC void handle_orphaned_delete(const char* path, const cJSON* result_json, callback_ctx* txn_context)
+{
     cJSON* stateless_event = NULL;
     cJSON* stateful_event = NULL;
     char iso_time[32];
@@ -120,19 +122,22 @@ STATIC void handle_orphaned_delete(const char* path,
 
     // Get checksum from result_json (file's SHA1 hash from database)
     cJSON* checksum_json = cJSON_GetObjectItem(result_json, "checksum");
-    if (checksum_json == NULL) {
+    if (checksum_json == NULL)
+    {
         mdebug1("Couldn't find checksum for orphaned delete '%s'", path);
         return;
     }
     char* sha1_checksum = cJSON_GetStringValue(checksum_json);
-    if (sha1_checksum == NULL) {
+    if (sha1_checksum == NULL)
+    {
         mdebug1("Invalid checksum value for orphaned delete '%s'", path);
         return;
     }
 
     // Get version from result_json (for DELETED events, version is at top level)
     cJSON* version_json = cJSON_GetObjectItem(result_json, "version");
-    if (version_json == NULL) {
+    if (version_json == NULL)
+    {
         mdebug1("Couldn't find version for orphaned delete '%s'", path);
         return;
     }
@@ -140,7 +145,8 @@ STATIC void handle_orphaned_delete(const char* path,
 
     // Build minimal stateless event
     stateless_event = cJSON_CreateObject();
-    if (stateless_event == NULL) {
+    if (stateless_event == NULL)
+    {
         return;
     }
 
@@ -162,10 +168,13 @@ STATIC void handle_orphaned_delete(const char* path,
 
 #ifdef WIN32
     char* utf8_path = auto_to_utf8(path);
-    if (utf8_path) {
+    if (utf8_path)
+    {
         cJSON_AddStringToObject(file_stateless, "path", utf8_path);
         os_free(utf8_path);
-    } else {
+    }
+    else
+    {
         cJSON_AddStringToObject(file_stateless, "path", path);
     }
 #else
@@ -175,7 +184,8 @@ STATIC void handle_orphaned_delete(const char* path,
     cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
 
     // Send stateless event if enabled
-    if (notify_scan != 0 && txn_context->event->report_event) {
+    if (notify_scan != 0 && txn_context->event->report_event)
+    {
         send_syscheck_msg(stateless_event);
     }
 
@@ -183,7 +193,8 @@ STATIC void handle_orphaned_delete(const char* path,
 
     // Build minimal stateful event for sync
     stateful_event = cJSON_CreateObject();
-    if (stateful_event == NULL) {
+    if (stateful_event == NULL)
+    {
         return;
     }
 
@@ -192,10 +203,13 @@ STATIC void handle_orphaned_delete(const char* path,
 
 #ifdef WIN32
     utf8_path = auto_to_utf8(path);
-    if (utf8_path) {
+    if (utf8_path)
+    {
         cJSON_AddStringToObject(file_stateful, "path", utf8_path);
         os_free(utf8_path);
-    } else {
+    }
+    else
+    {
         cJSON_AddStringToObject(file_stateful, "path", path);
     }
 #else
@@ -225,15 +239,23 @@ STATIC void handle_orphaned_delete(const char* path,
     snprintf(item_desc, sizeof(item_desc), "file %s", path);
 
     cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
-    if (sync_json == NULL) {
+    if (sync_json == NULL)
+    {
         mdebug1("Couldn't find sync for orphaned delete '%s'", path);
         cJSON_Delete(stateful_event);
         return;
     }
     int sync_value = (int)cJSON_GetNumberValue(sync_json);
-    validate_and_persist_fim_event(stateful_event, file_path_sha1, OPERATION_DELETE,
-                                    FIM_FILES_SYNC_INDEX, document_version,
-                                    item_desc, false, NULL, NULL, sync_value);
+    validate_and_persist_fim_event(stateful_event,
+                                   file_path_sha1,
+                                   OPERATION_DELETE,
+                                   FIM_FILES_SYNC_INDEX,
+                                   document_version,
+                                   item_desc,
+                                   false,
+                                   NULL,
+                                   NULL,
+                                   sync_value);
 
     cJSON_Delete(stateful_event);
 }
@@ -245,97 +267,120 @@ STATIC void handle_orphaned_delete(const char* path,
  * @param result_json Data returned by dbsync in JSON format.
  * @param user_data File transaction context.
  */
-STATIC void transaction_callback(ReturnTypeCallback resultType,
-                                 const cJSON* result_json,
-                                 void* user_data) {
+STATIC void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
+{
     cJSON* stateless_event = NULL;
-    cJSON *json_path = NULL;
+    cJSON* json_path = NULL;
     cJSON* old_data = NULL;
     cJSON* old_attributes = NULL;
     cJSON* changed_attributes = NULL;
-    char *diff = NULL;
-    char *path = NULL;
+    char* diff = NULL;
+    char* path = NULL;
     char iso_time[32];
     Operation_t sync_operation = OPERATION_NO_OP;
     int sync_flag = 1;
 
-    callback_ctx *txn_context = (callback_ctx *) user_data;
+    callback_ctx* txn_context = (callback_ctx*)user_data;
 
     // In case of deletions, entry is NULL, so we need to get the path from the json event
-    if (txn_context->entry == NULL) {
-        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL) {
+    if (txn_context->entry == NULL)
+    {
+        if (json_path = cJSON_GetObjectItem(result_json, "path"), json_path == NULL)
+        {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
-    } else {
+    }
+    else
+    {
         path = txn_context->entry->file_entry.path;
     }
 
     // Extract version early so it's available for deferred sync items
-    cJSON *version_aux = NULL;
-    cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
-    if (new_data != NULL) {
+    cJSON* version_aux = NULL;
+    cJSON* new_data = cJSON_GetObjectItem(result_json, "new");
+    if (new_data != NULL)
+    {
         // For MODIFIED events, version is in the "new" object
         version_aux = cJSON_GetObjectItem(new_data, "version");
-    } else {
+    }
+    else
+    {
         // For INSERTED/DELETED events, version is at the top level
         version_aux = cJSON_GetObjectItem(result_json, "version");
     }
 
     uint64_t document_version = 0;
-    if (version_aux != NULL) {
+    if (version_aux != NULL)
+    {
         document_version = (uint64_t)version_aux->valueint;
     }
 
-    if (txn_context->config == NULL) {
+    if (txn_context->config == NULL)
+    {
         // For DELETE events, don't log "not found" since path may have been removed from config
         txn_context->config = fim_configuration_directory(path, resultType != DELETED, syscheck.directories);
-        if (txn_context->config == NULL) {
+        if (txn_context->config == NULL)
+        {
             // For DELETE events of orphaned files (path removed from config),
             // generate minimal delete events without requiring configuration
-            if (resultType == DELETED) {
+            if (resultType == DELETED)
+            {
                 handle_orphaned_delete(path, result_json, txn_context);
             }
             goto end;
         }
     }
 
-    if (txn_context->config->options & CHECK_SEECHANGES && resultType != DELETED) {
+    if (txn_context->config->options & CHECK_SEECHANGES && resultType != DELETED)
+    {
         diff = fim_file_diff(path, txn_context->config);
     }
 
-    switch (resultType) {
+    switch (resultType)
+    {
         case INSERTED:
             txn_context->event->type = FIM_ADD;
             sync_operation = OPERATION_CREATE;
             // For CREATE events: determine if within limit and defer sync flag update.
             // Check-then-increment must be atomic: the scheduled scan and a realtime/whodata
             // event can run this concurrently (see synced_docs_mutex's declaration comment).
-            if (syscheck.file_limit > 0) {
+            if (syscheck.file_limit > 0)
+            {
                 w_mutex_lock(&synced_docs_mutex);
                 int docs_before = synced_docs_files;
                 sync_flag = (synced_docs_files < syscheck.file_limit) ? 1 : 0;
-                if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
+                if (sync_flag == 1 && txn_context->pending_sync_updates != NULL)
+                {
                     synced_docs_files++;
                 }
                 w_mutex_unlock(&synced_docs_mutex);
                 // Logged pre-increment (docs_before), matching the value the sync_flag
                 // decision above was actually based on.
                 mdebug2("INSERTED: synced_docs_files=%d, file_limit=%d, sync_flag=%d, path=%s",
-                        docs_before, syscheck.file_limit, sync_flag, path);
-            } else {
+                        docs_before,
+                        syscheck.file_limit,
+                        sync_flag,
+                        path);
+            }
+            else
+            {
                 sync_flag = 1;
                 mdebug2("INSERTED: file_limit=0 (unlimited), sync_flag=1, path=%s", path);
             }
             // Add to deferred list if sync_flag should be 1
-            if (sync_flag == 1 && txn_context->pending_sync_updates != NULL) {
+            if (sync_flag == 1 && txn_context->pending_sync_updates != NULL)
+            {
                 cJSON* sync_item = cJSON_CreateObject();
-                if (sync_item != NULL) {
+                if (sync_item != NULL)
+                {
                     cJSON_AddStringToObject(sync_item, "path", path);
                     cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
                     add_pending_sync_item(txn_context->pending_sync_updates, sync_item, 1);
                     cJSON_Delete(sync_item);
-                } else {
+                }
+                else
+                {
                     merror("Failed to create cJSON object for deferred sync item");
                 }
             }
@@ -347,33 +392,40 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
 
             // Get the old sync flag value to track synced documents and determine if promotion is needed
             old_data = cJSON_GetObjectItem(result_json, "old");
-            cJSON *sync_json = cJSON_GetObjectItem(old_data, "sync");
-            if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+            cJSON* sync_json = cJSON_GetObjectItem(old_data, "sync");
+            if (sync_json != NULL && cJSON_IsNumber(sync_json))
+            {
                 sync_flag = sync_json->valueint;
                 // NOTE: We don't add to deferred list here because syncRow preserves the sync flag
                 // when it's not in the input data. The sync flag is already 1 after the transaction.
             }
 
-            if (sync_flag == 0 && syscheck.file_limit > 0) { // Promote
+            if (sync_flag == 0 && syscheck.file_limit > 0)
+            { // Promote
                 // Check-then-increment must be atomic (see synced_docs_mutex's declaration
                 // comment); the cJSON construction below doesn't touch shared state, so it
                 // stays outside the lock.
                 w_mutex_lock(&synced_docs_mutex);
                 bool promote = (synced_docs_files < syscheck.file_limit);
-                if (promote) {
+                if (promote)
+                {
                     synced_docs_files++;
                 }
                 w_mutex_unlock(&synced_docs_mutex);
 
-                if (promote) {
+                if (promote)
+                {
                     cJSON* sync_item = cJSON_CreateObject();
-                    if (sync_item != NULL) {
+                    if (sync_item != NULL)
+                    {
                         cJSON_AddStringToObject(sync_item, "path", path);
                         cJSON_AddNumberToObject(sync_item, "version", (double)document_version);
                         add_pending_sync_item(txn_context->pending_sync_updates, sync_item, 1);
                         cJSON_Delete(sync_item);
                         sync_flag = 1;
-                    } else {
+                    }
+                    else
+                    {
                         merror("Failed to create cJSON object for deferred sync item");
                     }
                 }
@@ -381,17 +433,20 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             break;
 
         case DELETED:
-            if (txn_context->config->options & CHECK_SEECHANGES) {
+            if (txn_context->config->options & CHECK_SEECHANGES)
+            {
                 fim_diff_process_delete_file(path);
             }
             txn_context->event->type = FIM_DELETE;
             sync_operation = OPERATION_DELETE;
             // For DELETE events: entry is NULL, read sync flag from DB result
             {
-                cJSON *sync_json = cJSON_GetObjectItem(result_json, "sync");
-                if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+                cJSON* sync_json = cJSON_GetObjectItem(result_json, "sync");
+                if (sync_json != NULL && cJSON_IsNumber(sync_json))
+                {
                     sync_flag = sync_json->valueint;
-                    if (sync_flag == 1) {
+                    if (sync_flag == 1)
+                    {
                         w_mutex_lock(&synced_docs_mutex);
                         synced_docs_files--;
                         w_mutex_unlock(&synced_docs_mutex);
@@ -404,13 +459,12 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
-        default:
-            goto end;
-            break;
+        default: goto end; break;
     }
 
     stateless_event = cJSON_CreateObject();
-    if (stateless_event == NULL) {
+    if (stateless_event == NULL)
+    {
         goto end; // LCOV_EXCL_LINE
     }
 
@@ -427,71 +481,85 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(event, "created", iso_time);
     cJSON_AddStringToObject(event, "type", FIM_EVENT_TYPE_ARRAY[txn_context->event->type]);
 
-    cJSON* file_stateless = fim_attributes_json(result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
+    cJSON* file_stateless = fim_attributes_json(
+        result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, txn_context->config);
     cJSON_AddItemToObject(data, "file", file_stateless);
 
 #ifdef WIN32
-     char *utf8_path = auto_to_utf8(path);
-     if (utf8_path) {
+    char* utf8_path = auto_to_utf8(path);
+    if (utf8_path)
+    {
         cJSON_AddStringToObject(file_stateless, "path", utf8_path);
         os_free(utf8_path);
-     } else {
+    }
+    else
+    {
         cJSON_AddStringToObject(file_stateless, "path", path);
-     }
- #else
-     cJSON_AddStringToObject(file_stateless, "path", path);
- #endif
+    }
+#else
+    cJSON_AddStringToObject(file_stateless, "path", path);
+#endif
 
     cJSON_AddStringToObject(file_stateless, "mode", FIM_EVENT_MODE[txn_context->event->mode]);
 
     old_data = cJSON_GetObjectItem(result_json, "old");
-    if (old_data != NULL) {
+    if (old_data != NULL)
+    {
         old_attributes = cJSON_CreateObject();
         changed_attributes = cJSON_CreateArray();
         cJSON_AddItemToObject(file_stateless, "previous", old_attributes);
         cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
 
-        fim_calculate_dbsync_difference(txn_context->config,
-                                        old_data,
-                                        changed_attributes,
-                                        old_attributes);
+        fim_calculate_dbsync_difference(txn_context->config, old_data, changed_attributes, old_attributes);
 
-        if (cJSON_GetArraySize(changed_attributes) == 0) {
+        if (cJSON_GetArraySize(changed_attributes) == 0)
+        {
             mdebug2(FIM_EMPTY_CHANGED_ATTRIBUTES, path);
             goto end;
         }
     }
 
-    if (diff != NULL && resultType == MODIFIED) {
+    if (diff != NULL && resultType == MODIFIED)
+    {
         cJSON_AddStringToObject(file_stateless, "content_changes", diff);
     }
 
-    if (txn_context->event->w_evt) {
+    if (txn_context->event->w_evt)
+    {
         cJSON_AddItemToObject(file_stateless, "audit", fim_audit_json(txn_context->event->w_evt));
     }
 
-    if (txn_context->config->tag != NULL) {
+    if (txn_context->config->tag != NULL)
+    {
         cJSON_AddStringToObject(file_stateless, "tags", txn_context->config->tag);
     }
 
-    if (notify_scan != 0 && txn_context->event->report_event) {
+    if (notify_scan != 0 && txn_context->event->report_event)
+    {
         send_syscheck_msg(stateless_event);
     }
 
     char* sha1_checksum;
-    if (txn_context->entry != NULL && txn_context->entry->file_entry.data != NULL) {
+    if (txn_context->entry != NULL && txn_context->entry->file_entry.data != NULL)
+    {
         sha1_checksum = txn_context->entry->file_entry.data->checksum;
-    } else {
-        cJSON *aux = cJSON_GetObjectItem(result_json, "checksum");
-        if (aux != NULL) {
+    }
+    else
+    {
+        cJSON* aux = cJSON_GetObjectItem(result_json, "checksum");
+        if (aux != NULL)
+        {
             sha1_checksum = cJSON_GetStringValue(aux);
-        } else {
+        }
+        else
+        {
             mdebug1("Couldn't find checksum for '%s", path);
             goto end; // LCOV_EXCL_LINE
         }
     }
 
-    if (document_version == 0) {
+    if (document_version == 0)
+    {
         mdebug1("Couldn't find version for '%s'", path);
         goto end; // LCOV_EXCL_LINE
     }
@@ -499,8 +567,15 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
-    cJSON* stateful_event = build_stateful_event_file(path, sha1_checksum, document_version, result_json, (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL, syscheck.directories);
-    if (!stateful_event) {
+    cJSON* stateful_event =
+        build_stateful_event_file(path,
+                                  sha1_checksum,
+                                  document_version,
+                                  result_json,
+                                  (txn_context->entry != NULL) ? txn_context->entry->file_entry.data : NULL,
+                                  syscheck.directories);
+    if (!stateful_event)
+    {
         merror("Couldn't create stateful event for %s", path);
         goto end; // LCOV_EXCL_LINE
     }
@@ -513,14 +588,21 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char* path_copy = (resultType == INSERTED || resultType == MODIFIED) ? strdup(path) : NULL;
     bool mark_for_deletion = (resultType == INSERTED || resultType == MODIFIED) && path_copy != NULL;
 
-    bool validation_passed = validate_and_persist_fim_event(stateful_event, file_path_sha1, sync_operation,
-                                                             FIM_FILES_SYNC_INDEX, document_version,
-                                                             item_desc, mark_for_deletion,
-                                                             txn_context->failed_paths, path_copy, sync_flag);
+    bool validation_passed = validate_and_persist_fim_event(stateful_event,
+                                                            file_path_sha1,
+                                                            sync_operation,
+                                                            FIM_FILES_SYNC_INDEX,
+                                                            document_version,
+                                                            item_desc,
+                                                            mark_for_deletion,
+                                                            txn_context->failed_paths,
+                                                            path_copy,
+                                                            sync_flag);
 
     // If validation passed, we need to free path_copy (it wasn't added to the list)
     // If validation failed, path_copy was added to the list and will be freed later
-    if (validation_passed && path_copy) {
+    if (validation_passed && path_copy)
+    {
         os_free(path_copy);
     }
 
@@ -532,30 +614,30 @@ end:
 }
 
 // Callback
-void fim_db_remove_entry(void * data, void * ctx)
+void fim_db_remove_entry(void* data, void* ctx)
 {
-    char *path = (char *)data;
-    callback_ctx *ctx_data = (struct callback_ctx *)ctx;
+    char* path = (char*)data;
+    callback_ctx* ctx_data = (struct callback_ctx*)ctx;
 
     fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
 }
 
 // Callback
-void fim_db_process_missing_entry(void * data, void * ctx)
+void fim_db_process_missing_entry(void* data, void* ctx)
 {
-    fim_entry *new_entry = (fim_entry *)data;
-    struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
+    fim_entry* new_entry = (fim_entry*)data;
+    struct callback_ctx* ctx_data = (struct callback_ctx*)ctx;
 
     fim_checker(new_entry->file_entry.path, ctx_data->event, NULL, NULL, NULL);
 }
 
 // Callback
-void fim_db_remove_validated_path(void * data, void * ctx)
+void fim_db_remove_validated_path(void* data, void* ctx)
 {
-    char *path = (char *)data;
-    struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
+    char* path = (char*)data;
+    struct callback_ctx* ctx_data = (struct callback_ctx*)ctx;
 
-    directory_t *validated_configuration = fim_configuration_directory(path, true, syscheck.directories);
+    directory_t* validated_configuration = fim_configuration_directory(path, true, syscheck.directories);
 
     if (validated_configuration == ctx_data->config)
     {
@@ -563,44 +645,50 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     }
 }
 
-directory_t *fim_configuration_directory(const char *key, bool notify_not_found, const OSList *directories_list) {
+directory_t* fim_configuration_directory(const char* key, bool notify_not_found, const OSList* directories_list)
+{
     char full_path[OS_SIZE_4096 + 1] = {'\0'};
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
-    directory_t *dir_it = NULL;
-    directory_t *dir = NULL;
-    OSListNode *node_it;
+    directory_t* dir_it = NULL;
+    directory_t* dir = NULL;
+    OSListNode* node_it;
     int top = 0;
     int match = 0;
-    char *pathname = NULL;
+    char* pathname = NULL;
 
-    if (!key || *key == '\0') {
+    if (!key || *key == '\0')
+    {
         return NULL;
     }
 
-    if (!directories_list) {
+    if (!directories_list)
+    {
         merror("fim_configuration_directory called with NULL directories_list");
         return NULL;
     }
 
 #ifdef WIN32
-     pathname = auto_to_ansi(key);
-     if (!pathname) {
-         return NULL;
-     }
- #else
-     os_strdup(key, pathname);
- #endif
+    pathname = auto_to_ansi(key);
+    if (!pathname)
+    {
+        return NULL;
+    }
+#else
+    os_strdup(key, pathname);
+#endif
 
     trail_path_separator(full_path, pathname, sizeof(full_path));
 
-    OSList_foreach(node_it, (OSList *)directories_list) {
+    OSList_foreach(node_it, (OSList*)directories_list)
+    {
         dir_it = node_it->data;
-        char *real_path = fim_get_real_path(dir_it);
+        char* real_path = fim_get_real_path(dir_it);
 
         trail_path_separator(full_entry, real_path, sizeof(full_entry));
         match = w_compare_str(full_entry, full_path);
 
-        if (top < match && full_path[match - 1] == PATH_SEP) {
+        if (top < match && full_path[match - 1] == PATH_SEP)
+        {
             dir = dir_it;
             top = match;
         }
@@ -608,7 +696,8 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found,
         os_free(real_path);
     }
 
-    if (dir == NULL && notify_not_found) {
+    if (dir == NULL && notify_not_found)
+    {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", key);
     }
 
@@ -616,10 +705,11 @@ directory_t *fim_configuration_directory(const char *key, bool notify_not_found,
     return dir;
 }
 
-int fim_check_depth(const char *path, const directory_t *configuration) {
-    const char * pos;
+int fim_check_depth(const char* path, const directory_t* configuration)
+{
+    const char* pos;
     int depth = -1;
-    char *parent_path;
+    char* parent_path;
     unsigned int parent_path_size;
 
     assert(configuration != NULL);
@@ -628,27 +718,34 @@ int fim_check_depth(const char *path, const directory_t *configuration) {
     parent_path_size = strlen(parent_path);
     os_free(parent_path);
 
-    if (parent_path_size > strlen(path)) {
+    if (parent_path_size > strlen(path))
+    {
         return -1;
     }
 
 #ifdef WIN32
     // Check for monitoring of 'U:\'
-    if(parent_path_size == 3 && path[2] == '\\') {
+    if (parent_path_size == 3 && path[2] == '\\')
+    {
         depth = 0;
     }
 #else
     // Check for monitoring of '/'
-    if(parent_path_size == 1) {
+    if (parent_path_size == 1)
+    {
         depth = 0;
     }
 #endif
 
     pos = path + parent_path_size;
-    while (pos) {
-        if (pos = strchr(pos, PATH_SEP), pos) {
+    while (pos)
+    {
+        if (pos = strchr(pos, PATH_SEP), pos)
+        {
             depth++;
-        } else {
+        }
+        else
+        {
             break;
         }
         pos++;
@@ -657,12 +754,16 @@ int fim_check_depth(const char *path, const directory_t *configuration) {
     return depth;
 }
 
-int fim_check_ignore (const char *file_name, mode_t path_type) {
+int fim_check_ignore(const char* file_name, mode_t path_type)
+{
     // Check if the file should be ignored
-    if (syscheck.ignore) {
+    if (syscheck.ignore)
+    {
         int i = 0;
-        while (syscheck.ignore[i] != NULL) {
-            if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
+        while (syscheck.ignore[i] != NULL)
+        {
+            if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0)
+            {
                 mdebug2(FIM_IGNORE_ENTRY, file_name, syscheck.ignore[i]);
                 return 1;
             }
@@ -671,13 +772,19 @@ int fim_check_ignore (const char *file_name, mode_t path_type) {
     }
 
     // Check in the regex entry
-    if (syscheck.ignore_regex) {
+    if (syscheck.ignore_regex)
+    {
         int i = 0;
-        while (syscheck.ignore_regex[i] != NULL) {
-            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                if (path_type == FIM_DIRECTORY && syscheck.ignore_regex[i]->raw[0] == '!') {
+        while (syscheck.ignore_regex[i] != NULL)
+        {
+            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i]))
+            {
+                if (path_type == FIM_DIRECTORY && syscheck.ignore_regex[i]->raw[0] == '!')
+                {
                     return 0;
-                } else {
+                }
+                else
+                {
                     mdebug2(FIM_IGNORE_SREGEX, file_name, syscheck.ignore_regex[i]->raw);
                     return 1;
                 }
@@ -689,15 +796,19 @@ int fim_check_ignore (const char *file_name, mode_t path_type) {
     return 0;
 }
 
-int fim_check_restrict(const char *file_name, OSMatch *restriction) {
-    if (file_name == NULL) {
+int fim_check_restrict(const char* file_name, OSMatch* restriction)
+{
+    if (file_name == NULL)
+    {
         merror(NULL_ERROR);
         return 1;
     }
 
     // Restrict file types
-    if (restriction) {
-        if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
+    if (restriction)
+    {
+        if (!OSMatch_Execute(file_name, strlen(file_name), restriction))
+        {
             mdebug2(FIM_FILE_IGNORE_RESTRICT, file_name, restriction->raw);
             return 1;
         }
@@ -706,20 +817,28 @@ int fim_check_restrict(const char *file_name, OSMatch *restriction) {
     return 0;
 }
 
-char *fim_get_real_path(const directory_t *dir) {
-    char *real_path = NULL;
+char* fim_get_real_path(const directory_t* dir)
+{
+    char* real_path = NULL;
 
 #ifndef WIN32
     w_mutex_lock(&syscheck.fim_symlink_mutex);
 
-    //Create a safe copy of the path to be used by other threads.
-    if ((dir->options & CHECK_FOLLOW) == 0) {
+    // Create a safe copy of the path to be used by other threads.
+    if ((dir->options & CHECK_FOLLOW) == 0)
+    {
         os_strdup(dir->path, real_path);
-    } else if (dir->symbolic_links) {
+    }
+    else if (dir->symbolic_links)
+    {
         os_strdup(dir->symbolic_links, real_path);
-    } else if (IsLink(dir->path) == 0) { // Broken link
+    }
+    else if (IsLink(dir->path) == 0)
+    { // Broken link
         os_strdup("", real_path);
-    } else {
+    }
+    else
+    {
         os_strdup(dir->path, real_path);
     }
 
@@ -731,50 +850,52 @@ char *fim_get_real_path(const directory_t *dir) {
     return real_path;
 }
 
-void fim_get_checksum(fim_file_data * data) {
+void fim_get_checksum(fim_file_data* data)
+{
     int size;
-    char *checksum = NULL;
+    char* checksum = NULL;
 
     size = snprintf(0,
-            0,
-            "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
-            data->size,
-            data->path,
-            data->permissions ? data->permissions : "",
-            data->attributes ? data->attributes : "",
-            data->uid ? data->uid : "",
-            data->gid ? data->gid : "",
-            data->owner ? data->owner : "",
-            data->group ? data->group : "",
-            data->mtime,
-            data->inode,
-            data->hash_md5,
-            data->hash_sha1,
-            data->hash_sha256);
+                    0,
+                    "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+                    data->size,
+                    data->path,
+                    data->permissions ? data->permissions : "",
+                    data->attributes ? data->attributes : "",
+                    data->uid ? data->uid : "",
+                    data->gid ? data->gid : "",
+                    data->owner ? data->owner : "",
+                    data->group ? data->group : "",
+                    data->mtime,
+                    data->inode,
+                    data->hash_md5,
+                    data->hash_sha1,
+                    data->hash_sha256);
 
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
-            size + 1,
-            "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
-            data->size,
-            data->path,
-            data->permissions ? data->permissions : "",
-            data->attributes ? data->attributes : "",
-            data->uid ? data->uid : "",
-            data->gid ? data->gid : "",
-            data->owner ? data->owner : "",
-            data->group ? data->group : "",
-            data->mtime,
-            data->inode,
-            data->hash_md5,
-            data->hash_sha1,
-            data->hash_sha256);
+             size + 1,
+             "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+             data->size,
+             data->path,
+             data->permissions ? data->permissions : "",
+             data->attributes ? data->attributes : "",
+             data->uid ? data->uid : "",
+             data->gid ? data->gid : "",
+             data->owner ? data->owner : "",
+             data->group ? data->group : "",
+             data->mtime,
+             data->inode,
+             data->hash_md5,
+             data->hash_sha1,
+             data->hash_sha256);
 
     OS_SHA1_Str(checksum, -1, data->checksum);
     free(checksum);
 }
 
-void init_fim_data_entry(fim_file_data *data) {
+void init_fim_data_entry(fim_file_data* data)
+{
     data->size = 0;
     data->path = NULL;
     data->permissions = NULL;
@@ -793,8 +914,10 @@ void init_fim_data_entry(fim_file_data *data) {
     data->hash_sha256[0] = '\0';
 }
 
-void free_file_data(fim_file_data * data) {
-    if (!data) {
+void free_file_data(fim_file_data* data)
+{
+    if (!data)
+    {
         return;
     }
 
@@ -812,22 +935,26 @@ void free_file_data(fim_file_data * data) {
     os_free(data);
 }
 
-fim_file_data *fim_get_data(const char *file, const directory_t *configuration, const struct stat *statbuf) {
-    fim_file_data * data = NULL;
+fim_file_data* fim_get_data(const char* file, const directory_t* configuration, const struct stat* statbuf)
+{
+    fim_file_data* data = NULL;
 
     os_calloc(1, sizeof(fim_file_data), data);
     init_fim_data_entry(data);
 
-    if (configuration->options & CHECK_SIZE) {
+    if (configuration->options & CHECK_SIZE)
+    {
         data->size = statbuf->st_size;
     }
 
-    if (configuration->options & CHECK_PERM) {
+    if (configuration->options & CHECK_PERM)
+    {
 #ifdef WIN32
         int error;
 
         error = w_get_file_permissions(file, &(data->perm_json));
-        if (error) {
+        if (error)
+        {
             mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
             free_file_data(data);
             return NULL;
@@ -841,13 +968,15 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     }
 
 #ifdef WIN32
-    if (configuration->options & CHECK_ATTRS) {
+    if (configuration->options & CHECK_ATTRS)
+    {
         os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
         decode_win_attributes(data->attributes, w_get_file_attrs(file));
     }
 #endif
 
-    if (configuration->options & CHECK_MTIME) {
+    if (configuration->options & CHECK_MTIME)
+    {
 #ifdef WIN32
         data->mtime = get_UTC_modification_time(file);
 #else
@@ -856,11 +985,13 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     }
 
 #ifdef WIN32
-    if (configuration->options & CHECK_OWNER) {
+    if (configuration->options & CHECK_OWNER)
+    {
         data->owner = get_file_user(file, &data->uid);
     }
 #else
-    if (configuration->options & CHECK_OWNER) {
+    if (configuration->options & CHECK_OWNER)
+    {
         char aux[OS_SIZE_64];
         snprintf(aux, OS_SIZE_64, "%u", statbuf->st_uid);
         os_strdup(aux, data->uid);
@@ -868,7 +999,8 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         data->owner = get_user(statbuf->st_uid);
     }
 
-    if (configuration->options & CHECK_GROUP) {
+    if (configuration->options & CHECK_GROUP)
+    {
         char aux[OS_SIZE_64];
         snprintf(aux, OS_SIZE_64, "%u", statbuf->st_gid);
         os_strdup(aux, data->gid);
@@ -879,28 +1011,34 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
     snprintf(data->hash_sha1, sizeof(os_sha1), "%s", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    snprintf(data->hash_sha256, sizeof(os_sha256), "%s", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    snprintf(
+        data->hash_sha256, sizeof(os_sha256), "%s", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
     // We won't calculate hash for symbolic links, empty or large files
     if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && (size_t)statbuf->st_size < syscheck.file_max_size) &&
-        (configuration->options & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM))) {
-        if (OS_MD5_SHA1_SHA256_File(file, data->hash_md5, data->hash_sha1, data->hash_sha256,
-                                    OS_BINARY, syscheck.file_max_size) < 0) {
+        (configuration->options & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)))
+    {
+        if (OS_MD5_SHA1_SHA256_File(
+                file, data->hash_md5, data->hash_sha1, data->hash_sha256, OS_BINARY, syscheck.file_max_size) < 0)
+        {
             mdebug1(FIM_HASHES_FAIL, file);
             free_file_data(data);
             return NULL;
         }
     }
 
-    if ((configuration->options & CHECK_MD5SUM) == 0) {
+    if ((configuration->options & CHECK_MD5SUM) == 0)
+    {
         data->hash_md5[0] = '\0';
     }
 
-    if ((configuration->options & CHECK_SHA1SUM) == 0) {
+    if ((configuration->options & CHECK_SHA1SUM) == 0)
+    {
         data->hash_sha1[0] = '\0';
     }
 
-    if ((configuration->options & CHECK_SHA256SUM) == 0) {
+    if ((configuration->options & CHECK_SHA256SUM) == 0)
+    {
         data->hash_sha256[0] = '\0';
     }
 
@@ -912,16 +1050,18 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     return data;
 }
 
-void fim_checker(const char *path,
-                 event_data_t *evt_data,
-                 const directory_t *parent_configuration,
+void fim_checker(const char* path,
+                 event_data_t* evt_data,
+                 const directory_t* parent_configuration,
                  TXN_HANDLE dbsync_txn,
-                 callback_ctx *ctx) {
-    directory_t *configuration;
+                 callback_ctx* ctx)
+{
+    directory_t* configuration;
     int depth;
 
 #ifndef WIN32
-    if (!w_utf8_valid(path)) {
+    if (!w_utf8_valid(path))
+    {
         mwarn(FIM_INVALID_FILE_NAME, path);
         return;
     }
@@ -929,13 +1069,15 @@ void fim_checker(const char *path,
 
 #ifdef WIN32
     // Ignore the recycle bin.
-    if (check_removed_file(path)){
+    if (check_removed_file(path))
+    {
         return;
     }
 #endif
 
     configuration = fim_configuration_directory(path, true, syscheck.directories);
-    if (configuration == NULL) {
+    if (configuration == NULL)
+    {
         return;
     }
 
@@ -946,22 +1088,28 @@ void fim_checker(const char *path,
      * and leaving the databases open (issue #38212). Placed after the checks above that do not read
      * evt_data: fim_db_process_missing_entry() reaches this with a NULL event, and returns at the
      * configuration lookup before anything dereferences it. */
-    if (evt_data->mode == FIM_SCHEDULED && fim_shutdown_process_on()) {
+    if (evt_data->mode == FIM_SCHEDULED && fim_shutdown_process_on())
+    {
         return;
     }
 
-    if (parent_configuration == NULL) {
+    if (parent_configuration == NULL)
+    {
         // First time entering
         // It's dangerous to go alone! Take this.
         parent_configuration = configuration;
     }
 
-    if (evt_data->mode == FIM_SCHEDULED) {
+    if (evt_data->mode == FIM_SCHEDULED)
+    {
         // If the directory has another configuration will scan it with that configuration
-        if (parent_configuration != configuration) {
+        if (parent_configuration != configuration)
+        {
             return;
         }
-    } else if (evt_data->mode != FIM_MODE(configuration->options)) {
+    }
+    else if (evt_data->mode != FIM_MODE(configuration->options))
+    {
         // If this event is not generated by a scan, the mode of the event and
         // the mode configured must match
         return;
@@ -969,20 +1117,24 @@ void fim_checker(const char *path,
 
     depth = fim_check_depth(path, configuration);
 
-    if (depth > configuration->recursion_level) {
+    if (depth > configuration->recursion_level)
+    {
         mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, path);
         return;
     }
 
     // Deleted file. Sending alert.
-    if (w_lstat(path, &(evt_data->statbuf)) == -1) {
-        if(errno != ENOENT) {
+    if (w_lstat(path, &(evt_data->statbuf)) == -1)
+    {
+        if (errno != ENOENT)
+        {
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
         }
 
         // Delete alerts in scheduled scan is triggered in the transaction delete rows operation.
-        if (evt_data->mode != FIM_SCHEDULED) {
+        if (evt_data->mode != FIM_SCHEDULED)
+        {
             evt_data->type = FIM_DELETE;
             fim_generate_delete_event(path, evt_data, configuration);
         }
@@ -991,62 +1143,72 @@ void fim_checker(const char *path,
     }
 
 #ifdef WIN_WHODATA
-    if (evt_data->w_evt && evt_data->w_evt->scan_directory == 1) {
-        if (w_update_sacl(path)) {
+    if (evt_data->w_evt && evt_data->w_evt->scan_directory == 1)
+    {
+        if (w_update_sacl(path))
+        {
             mdebug1(FIM_SCAL_NOREFRESH, path);
         }
     }
 #endif
     mode_t path_type = evt_data->statbuf.st_mode & S_IFMT;
 
-    if (HasFilesystem(path, syscheck.skip_fs)) {
+    if (HasFilesystem(path, syscheck.skip_fs))
+    {
         return;
     }
 
-    if (fim_check_ignore(path, path_type) == 1) {
+    if (fim_check_ignore(path, path_type) == 1)
+    {
         return;
     }
 
-    switch (path_type) {
+    switch (path_type)
+    {
 #ifndef WIN32
-    case FIM_LINK:
-        // Fallthrough
+        case FIM_LINK:
+            // Fallthrough
 #endif
-    case FIM_REGULAR:
-        if (fim_check_restrict(path, configuration->filerestrict) == 1) {
-            return;
-        }
+        case FIM_REGULAR:
+            if (fim_check_restrict(path, configuration->filerestrict) == 1)
+            {
+                return;
+            }
 
-        fim_file(path, configuration, evt_data, dbsync_txn, ctx);
-        break;
+            fim_file(path, configuration, evt_data, dbsync_txn, ctx);
+            break;
 
-    case FIM_DIRECTORY:
-        if (depth == configuration->recursion_level) {
-            mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
-            return;
-        }
-        fim_directory(path, evt_data, configuration, dbsync_txn, ctx);
+        case FIM_DIRECTORY:
+            if (depth == configuration->recursion_level)
+            {
+                mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
+                return;
+            }
+            fim_directory(path, evt_data, configuration, dbsync_txn, ctx);
 
 #ifdef INOTIFY_ENABLED
-        if (FIM_MODE(configuration->options) == FIM_REALTIME) {
-            fim_add_inotify_watch(path, configuration);
-        }
+            if (FIM_MODE(configuration->options) == FIM_REALTIME)
+            {
+                fim_add_inotify_watch(path, configuration);
+            }
 #endif
-        break;
+            break;
     }
 }
 
-static void fim_process_dir_entry(const char *dir,
-                                  const char *name,
-                                  char *f_name,
-                                  event_data_t *evt_data,
-                                  const directory_t *configuration,
+static void fim_process_dir_entry(const char* dir,
+                                  const char* name,
+                                  char* f_name,
+                                  event_data_t* evt_data,
+                                  const directory_t* configuration,
                                   TXN_HANDLE dbsync_txn,
-                                  callback_ctx *ctx) {
-    char *s_name;
+                                  callback_ctx* ctx)
+{
+    char* s_name;
     size_t path_size;
 
-    if ((strcmp(name, ".") == 0) || (strcmp(name, "..") == 0)) {
+    if ((strcmp(name, ".") == 0) || (strcmp(name, "..") == 0))
+    {
         return;
     }
 
@@ -1054,7 +1216,8 @@ static void fim_process_dir_entry(const char *dir,
     path_size = strlen(dir);
     s_name = f_name + path_size;
 
-    if (*(s_name - 1) != PATH_SEP) {
+    if (*(s_name - 1) != PATH_SEP)
+    {
         *s_name++ = PATH_SEP;
     }
     *(s_name) = '\0';
@@ -1062,7 +1225,8 @@ static void fim_process_dir_entry(const char *dir,
 
 #ifdef WIN32
     // PATH_MAX is 260 on Windows; reserve one char for the null terminator.
-    if (path_size + strlen(name) >= PATH_MAX) {
+    if (path_size + strlen(name) >= PATH_MAX)
+    {
         mwarn(FIM_ERROR_PATH_TOO_LONG, f_name, name, PATH_MAX);
         return;
     }
@@ -1073,14 +1237,13 @@ static void fim_process_dir_entry(const char *dir,
     fim_checker(f_name, evt_data, configuration, dbsync_txn, ctx);
 }
 
-int fim_directory(const char *dir,
-                  event_data_t *evt_data,
-                  const directory_t *configuration,
-                  TXN_HANDLE dbsync_txn,
-                  callback_ctx *ctx) {
-    char *f_name;
+int fim_directory(
+    const char* dir, event_data_t* evt_data, const directory_t* configuration, TXN_HANDLE dbsync_txn, callback_ctx* ctx)
+{
+    char* f_name;
 
-    if (!dir) {
+    if (!dir)
+    {
         merror(NULL_ERROR);
         return OS_INVALID;
     }
@@ -1090,17 +1253,18 @@ int fim_directory(const char *dir,
 #ifdef WIN32
     // opendir()/readdir() drop names with characters outside the process ANSI
     // code page (e.g. Turkish); enumerate wide and convert each name to UTF-8.
-    if (is_network_path(dir)) {
+    if (is_network_path(dir))
+    {
         mwarn(NETWORK_PATH_EXECUTED, dir);
         os_free(f_name);
         return OS_INVALID;
     }
 
-    char *pattern;
+    char* pattern;
     os_malloc(strlen(dir) + 3, pattern);
     snprintf(pattern, strlen(dir) + 3, "%s%c*", dir, PATH_SEP);
 
-    wchar_t *wpattern = auto_to_wide(pattern);
+    wchar_t* wpattern = auto_to_wide(pattern);
     os_free(pattern);
 
     WIN32_FIND_DATAW fd;
@@ -1109,24 +1273,29 @@ int fim_directory(const char *dir,
     DWORD last_error = GetLastError();
     os_free(wpattern);
 
-    if (hFind == INVALID_HANDLE_VALUE) {
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
         mwarn(FIM_PATH_NOT_OPEN, dir, win_strerror(last_error));
         os_free(f_name);
         return OS_INVALID;
     }
 
-    do {
-        char *name = wide_to_utf8(fd.cFileName);
+    do
+    {
+        char* name = wide_to_utf8(fd.cFileName);
 
-        if (name == NULL) {
+        if (name == NULL)
+        {
             mdebug2("Cannot convert a directory entry under '%s' to UTF-8.", dir);
             continue;
         }
 
         // Lowercase ASCII only: keeps the on-disk bytes so stat resolves, and
         // matches the ASCII canonicalization used by realtime/whodata.
-        for (char *p = name; *p != '\0'; p++) {
-            if (*p >= 'A' && *p <= 'Z') {
+        for (char* p = name; *p != '\0'; p++)
+        {
+            if (*p >= 'A' && *p <= 'Z')
+            {
                 *p += 'a' - 'A';
             }
         }
@@ -1137,18 +1306,20 @@ int fim_directory(const char *dir,
 
     FindClose(hFind);
 #else
-    DIR *dp;
-    struct dirent *entry;
+    DIR* dp;
+    struct dirent* entry;
 
     dp = wopendir(dir);
 
-    if (!dp) {
+    if (!dp)
+    {
         mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));
         os_free(f_name);
         return OS_INVALID;
     }
 
-    while ((entry = readdir(dp)) != NULL) {
+    while ((entry = readdir(dp)) != NULL)
+    {
         fim_process_dir_entry(dir, entry->d_name, f_name, evt_data, configuration, dbsync_txn, ctx);
     }
 
@@ -1159,11 +1330,12 @@ int fim_directory(const char *dir,
     return 0;
 }
 
-void fim_file(const char *path,
-              const directory_t *configuration,
-              event_data_t *evt_data,
+void fim_file(const char* path,
+              const directory_t* configuration,
+              event_data_t* evt_data,
               TXN_HANDLE txn_handle,
-              callback_ctx *txn_context) {
+              callback_ctx* txn_context)
+{
     assert(path != NULL);
     assert(configuration != NULL);
     assert(evt_data != NULL);
@@ -1173,15 +1345,17 @@ void fim_file(const char *path,
     check_max_fps();
 
     new_entry.type = FIM_TYPE_FILE;
-    new_entry.file_entry.path = (char *)path;
+    new_entry.file_entry.path = (char*)path;
     new_entry.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
 
-    if (new_entry.file_entry.data == NULL) {
+    if (new_entry.file_entry.data == NULL)
+    {
         mdebug1(FIM_GET_ATTRIBUTES, path);
         return;
     }
 
-    if (txn_handle != NULL) {
+    if (txn_handle != NULL)
+    {
         txn_context->entry = &new_entry;
         txn_context->config = configuration;
 
@@ -1190,13 +1364,16 @@ void fim_file(const char *path,
         free_file_data(new_entry.file_entry.data);
         txn_context->entry = NULL;
         txn_context->config = NULL;
-    } else {
+    }
+    else
+    {
         OSList* failed_paths = OSList_Create();
-        if (!failed_paths) {
+        if (!failed_paths)
+        {
             free_file_data(new_entry.file_entry.data);
             return;
         }
-        OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+        OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
 
         // Sync flag updates deferred like the scan path (file.c's fim_file_scan()) so the
         // DELETED branch's later read of the sync column (run_check.c) is not stuck at its
@@ -1207,7 +1384,8 @@ void fim_file(const char *path,
         // takes m_handlersMutex and checks m_stopping before touching the dbsync handler, so a
         // concurrent FIMDB::teardown() can't run underneath either call.
         OSList* pending_sync_updates = OSList_Create();
-        if (!pending_sync_updates) {
+        if (!pending_sync_updates)
+        {
             merror("Failed to create pending sync updates list");
             OSList_Destroy(failed_paths);
             free_file_data(new_entry.file_entry.data);
@@ -1215,13 +1393,11 @@ void fim_file(const char *path,
         }
         OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
 
-        callback_ctx ctx = {
-            .event = evt_data,
-            .config = configuration,
-            .entry = &new_entry,
-            .failed_paths = failed_paths,
-            .pending_sync_updates = pending_sync_updates
-        };
+        callback_ctx ctx = {.event = evt_data,
+                            .config = configuration,
+                            .entry = &new_entry,
+                            .failed_paths = failed_paths,
+                            .pending_sync_updates = pending_sync_updates};
 
         callback_context_t callback_data;
         callback_data.callback_txn = transaction_callback;
@@ -1238,17 +1414,22 @@ void fim_file(const char *path,
         // so failed_paths and pending_sync_updates — both populated from the same
         // transaction_callback() invocation — can only ever be about that one path; a
         // non-empty failed_paths here means whatever is in pending_sync_updates is for it.
-        if (OSList_GetFirstNode(failed_paths) != NULL) {
-            OSListNode *node_it;
-            OSList_foreach(node_it, pending_sync_updates) {
-                pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
-                if (item != NULL && item->sync_value == 1) {
+        if (OSList_GetFirstNode(failed_paths) != NULL)
+        {
+            OSListNode* node_it;
+            OSList_foreach(node_it, pending_sync_updates)
+            {
+                pending_sync_item_t* item = (pending_sync_item_t*)node_it->data;
+                if (item != NULL && item->sync_value == 1)
+                {
                     w_mutex_lock(&synced_docs_mutex);
                     synced_docs_files--;
                     w_mutex_unlock(&synced_docs_mutex);
                 }
             }
-        } else if (OSList_GetFirstNode(pending_sync_updates) != NULL) {
+        }
+        else if (OSList_GetFirstNode(pending_sync_updates) != NULL)
+        {
             // Most realtime/whodata events don't have anything to promote (the file was
             // already synced, or this was a MODIFIED with no old.sync=0 to promote), so skip
             // the call entirely when there's nothing to do. When there IS something to
@@ -1269,22 +1450,20 @@ void fim_file(const char *path,
     }
 }
 
-void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
-    directory_t *configuration = NULL;
+void fim_process_missing_entry(char* pathname, fim_event_mode mode, whodata_evt* w_evt)
+{
+    directory_t* configuration = NULL;
 
     configuration = fim_configuration_directory(pathname, true, syscheck.directories);
-    if (NULL == configuration) {
+    if (NULL == configuration)
+    {
         return;
     }
 
-    event_data_t evt_data = {
-        .mode = mode,
-        .w_evt = w_evt,
-        .report_event = true,
-        .type = FIM_DELETE
-    };
+    event_data_t evt_data = {.mode = mode, .w_evt = w_evt, .report_event = true, .type = FIM_DELETE};
 
-    if (evt_data.mode != FIM_MODE(configuration->options)) {
+    if (evt_data.mode != FIM_MODE(configuration->options))
+    {
         /* Don't send alert if received mode and mode in configuration aren't the same.
         Scheduled mode events must always be processed to preserve the state of the agent's DB.
         */
@@ -1296,22 +1475,13 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     fim_handle_delete_by_path(pathname, &evt_data, configuration, false, true);
 }
 
-void fim_link_delete_range(directory_t *config) {
+void fim_link_delete_range(directory_t* config)
+{
     char pattern[PATH_MAX] = {0};
 
-    event_data_t evt_data = {
-        .mode = FIM_SCHEDULED,
-        .w_evt = NULL,
-        .report_event = false,
-        .type = FIM_DELETE
-    };
+    event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE};
 
-    callback_ctx ctx = {
-        .event = (event_data_t *)&evt_data,
-        .config = config,
-        .entry = NULL,
-        .failed_paths = NULL
-    };
+    callback_ctx ctx = {.event = (event_data_t*)&evt_data, .config = config, .entry = NULL, .failed_paths = NULL};
 
     // Create the sqlite LIKE pattern.
     snprintf(pattern, PATH_MAX, "%s%c%%", config->symbolic_links, PATH_SEP);
@@ -1322,43 +1492,37 @@ void fim_link_delete_range(directory_t *config) {
     fim_db_file_pattern_search(pattern, callback_data);
 }
 
-void fim_generate_delete_event(const char *file_path,
-                              const void *_evt_data,
-                              const void *configuration){
-    const directory_t *config = (const directory_t *)configuration;
-    const event_data_t *evt_data = (const event_data_t *)_evt_data;
+void fim_generate_delete_event(const char* file_path, const void* _evt_data, const void* configuration)
+{
+    const directory_t* config = (const directory_t*)configuration;
+    const event_data_t* evt_data = (const event_data_t*)_evt_data;
 
     fim_handle_delete_by_path(file_path, evt_data, config, true, false);
 }
 
-void fim_handle_delete_by_path(const char *path,
-                               const event_data_t *evt_data,
-                               const directory_t *config,
-                               bool to_delete,
-                               bool fallback_cb)
+void fim_handle_delete_by_path(
+    const char* path, const event_data_t* evt_data, const directory_t* config, bool to_delete, bool fallback_cb)
 {
-    callback_ctx ctx = {
-        .event = (event_data_t *)evt_data,
-        .config = config,
-        .entry = NULL,
-        .failed_paths = NULL
-    };
+    callback_ctx ctx = {.event = (event_data_t*)evt_data, .config = config, .entry = NULL, .failed_paths = NULL};
 
-    callback_context_t cb = {
-        .context = &ctx
-    };
+    callback_context_t cb = {.context = &ctx};
 
-    if (to_delete) {
+    if (to_delete)
+    {
         cb.callback_txn = transaction_callback;
-    } else {
+    }
+    else
+    {
         cb.callback = fim_db_process_missing_entry;
     }
 
-    if (fim_db_get_path(path, cb, to_delete) == FIMDB_OK) {
+    if (fim_db_get_path(path, cb, to_delete) == FIMDB_OK)
+    {
         return;
     }
 
-    if (fallback_cb == true) {
+    if (fallback_cb == true)
+    {
         // File not found in DB: fallback to LIKE pattern ("path/%")
         char pattern[PATH_MAX] = {0};
         snprintf(pattern, PATH_MAX, "%s%c%%", path, PATH_SEP);
@@ -1386,14 +1550,17 @@ void fim_handle_delete_by_path(const char *path,
  * @param pending_sync_updates OSList of pending_sync_item_t queued for a sync flag update;
  *                              items whose path is also in failed_paths are removed from it.
  */
-STATIC void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSList *pending_sync_updates) {
-    if (OSList_GetFirstNode(failed_paths) == NULL || OSList_GetFirstNode(pending_sync_updates) == NULL) {
+STATIC void reconcile_failed_paths_with_pending_sync(OSList* failed_paths, OSList* pending_sync_updates)
+{
+    if (OSList_GetFirstNode(failed_paths) == NULL || OSList_GetFirstNode(pending_sync_updates) == NULL)
+    {
         return;
     }
 
     size_t max_nodes = (size_t)pending_sync_updates->currently_size;
-    OSListNode **nodes_to_remove = calloc(max_nodes, sizeof(OSListNode *));
-    if (nodes_to_remove == NULL) {
+    OSListNode** nodes_to_remove = calloc(max_nodes, sizeof(OSListNode*));
+    if (nodes_to_remove == NULL)
+    {
         merror("Failed to allocate scratch buffer to correlate failed schema-validation paths "
                "with pending sync updates; sync flags may be attempted for deleted rows this scan");
         return;
@@ -1404,21 +1571,25 @@ STATIC void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSLis
     // node_it->next on every iteration, so unlinking/freeing a node mid-traversal would use
     // freed memory. Only after this read-only pass finishes are the collected nodes removed.
     size_t nodes_to_remove_count = 0;
-    OSListNode *node_it;
-    OSList_foreach(node_it, pending_sync_updates) {
-        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
-        const char *item_path = (item != NULL && item->json != NULL)
-                                     ? cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"))
-                                     : NULL;
-        if (item_path == NULL) {
+    OSListNode* node_it;
+    OSList_foreach(node_it, pending_sync_updates)
+    {
+        pending_sync_item_t* item = (pending_sync_item_t*)node_it->data;
+        const char* item_path =
+            (item != NULL && item->json != NULL) ? cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path")) : NULL;
+        if (item_path == NULL)
+        {
             continue;
         }
 
-        OSListNode *fp_it;
-        OSList_foreach(fp_it, failed_paths) {
-            const char *failed_path = (const char *)fp_it->data;
-            if (failed_path != NULL && strcmp(item_path, failed_path) == 0) {
-                if (item->sync_value == 1) {
+        OSListNode* fp_it;
+        OSList_foreach(fp_it, failed_paths)
+        {
+            const char* failed_path = (const char*)fp_it->data;
+            if (failed_path != NULL && strcmp(item_path, failed_path) == 0)
+            {
+                if (item->sync_value == 1)
+                {
                     w_mutex_lock(&synced_docs_mutex);
                     synced_docs_files--;
                     w_mutex_unlock(&synced_docs_mutex);
@@ -1430,30 +1601,36 @@ STATIC void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSLis
         }
     }
 
-    for (size_t i = 0; i < nodes_to_remove_count; i++) {
+    for (size_t i = 0; i < nodes_to_remove_count; i++)
+    {
         OSList_DeleteThisNode(pending_sync_updates, nodes_to_remove[i]);
     }
     free(nodes_to_remove);
 }
 
-void fim_file_scan() {
-    if (fim_shutdown_process_on()) {
+void fim_file_scan()
+{
+    if (fim_shutdown_process_on())
+    {
         return;
     }
 
-    OSListNode *node_it;
-    directory_t *dir_it;
+    OSListNode* node_it;
+    directory_t* dir_it;
 
     // Check if directories are configured - if syscheck.directories is NULL or empty,
     // but we have data in the database, we need to send DataClean for files index
-    if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
-        if (fim_shutdown_process_on()) {
+    if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL)
+    {
+        if (fim_shutdown_process_on())
+        {
             return;
         }
 
         int files_count = fim_db_get_count_file_entry();
 
-        if (files_count > 0) {
+        if (files_count > 0)
+        {
             mdebug1("No directory paths configured but database has %d files. Initiating DataClean for files.",
                     files_count);
 
@@ -1461,7 +1638,8 @@ void fim_file_scan() {
             bool dataCleanSent = false;
 
             w_rwlock_rdlock(&fim_sync_handle_rwlock);
-            if (syscheck.sync_handle) {
+            if (syscheck.sync_handle)
+            {
                 sync_handle_available = true;
 
                 // Prepare indices vector for data clean notification
@@ -1473,16 +1651,23 @@ void fim_file_scan() {
             }
             w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-            if (sync_handle_available) {
-                if (dataCleanSent) {
-                    minfo("DataClean notification sent successfully for files index (all directory paths removed from configuration).");
-                } else {
+            if (sync_handle_available)
+            {
+                if (dataCleanSent)
+                {
+                    minfo("DataClean notification sent successfully for files index (all directory paths removed from "
+                          "configuration).");
+                }
+                else
+                {
                     mwarn("DataClean notification failed for files index. Indexer may retain stale file data.");
                 }
 
                 // Clear file table from database
                 fim_db_clean_file_table();
-            } else {
+            }
+            else
+            {
                 mdebug1("Sync protocol not initialized, cannot send DataClean notification for files.");
             }
         }
@@ -1490,24 +1675,30 @@ void fim_file_scan() {
     }
 
     OSList* failed_paths = OSList_Create();
-    if (!failed_paths) {
+    if (!failed_paths)
+    {
         merror("Failed to create failed_paths list for schema validation cleanup");
         return;
     }
-    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
 
-    event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
+    event_data_t evt_data = {.report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL};
 
     // Initialize pending sync updates list for sync flag updates after transaction commit
-    OSList *pending_sync_updates = OSList_Create();
-    if (!pending_sync_updates) {
+    OSList* pending_sync_updates = OSList_Create();
+    if (!pending_sync_updates)
+    {
         merror("Failed to create pending sync updates list");
         OSList_Destroy(failed_paths);
         return;
     }
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
 
-    callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths, .pending_sync_updates = pending_sync_updates };
+    callback_ctx txn_ctx = {.event = &evt_data,
+                            .entry = NULL,
+                            .config = NULL,
+                            .failed_paths = failed_paths,
+                            .pending_sync_updates = pending_sync_updates};
 
     // The whole transaction lifecycle (start .. deleted_rows/close), plus the post-transaction
     // cleanup/promotion writes below (cleanup_failed_fim_files, process_pending_sync_updates),
@@ -1520,7 +1711,8 @@ void fim_file_scan() {
     /* Re-checked now that this thread owns the mutex: the shutdown teardown may have released the
      * database context while this scan was waiting, and a transaction started against it would run
      * on freed memory (issue #38212). */
-    if (fim_shutdown_process_on()) {
+    if (fim_shutdown_process_on())
+    {
         mdebug1("Shutdown in progress: skipping the file scan.");
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         OSList_Destroy(failed_paths);
@@ -1529,7 +1721,8 @@ void fim_file_scan() {
     }
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
-    if (db_transaction_handle == NULL) {
+    if (db_transaction_handle == NULL)
+    {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         OSList_Destroy(failed_paths);
@@ -1539,16 +1732,17 @@ void fim_file_scan() {
 
     w_rwlock_rdlock(&syscheck.directories_lock);
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        char *path = fim_get_real_path(dir_it);
+        char* path = fim_get_real_path(dir_it);
 
 #ifndef WIN32
-        if ((dir_it->options & CHECK_FOLLOW) == 0
-                && !dir_it->symlink_warned
-                && IsLink(path) == 0) {
-            char *link_target = realpath(path, NULL);
-            if (link_target) {
+        if ((dir_it->options & CHECK_FOLLOW) == 0 && !dir_it->symlink_warned && IsLink(path) == 0)
+        {
+            char* link_target = realpath(path, NULL);
+            if (link_target)
+            {
                 minfo(FIM_WARN_SYMLINK_NOFOLLOW, path, link_target, link_target);
                 os_free(link_target);
             }
@@ -1561,7 +1755,8 @@ void fim_file_scan() {
 #ifndef WIN32
         realtime_adddir(path, dir_it);
 #elif defined WIN_WHODATA
-        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA)
+        {
             realtime_adddir(path, dir_it);
         }
 #endif
@@ -1570,11 +1765,14 @@ void fim_file_scan() {
 
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    if (fim_shutdown_process_on()) {
+    if (fim_shutdown_process_on())
+    {
         mdebug1("Shutdown in progress: closing the scan transaction without the deleted rows stage.");
         fim_db_transaction_close(db_transaction_handle);
         OSList_Destroy(failed_paths);
-    } else {
+    }
+    else
+    {
         fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
         // #38608: see reconcile_failed_paths_with_pending_sync()'s doc comment for why this

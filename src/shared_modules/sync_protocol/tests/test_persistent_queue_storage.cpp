@@ -36,27 +36,26 @@ inline void PrintTo(const QueueScenario& q, std::ostream* os)
     *os << q.name;
 }
 
-class PersistentQueueFullParamTest :
-    public ::testing::TestWithParam<QueueScenario>
+class PersistentQueueFullParamTest : public ::testing::TestWithParam<QueueScenario>
 {
-    protected:
-        std::unique_ptr<PersistentQueueStorage> storage;
+protected:
+    std::unique_ptr<PersistentQueueStorage> storage;
 
-        LoggerFunc testLogger;
+    LoggerFunc testLogger;
 
-        void SetUp() override
-        {
-            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+    void SetUp() override
+    {
+        testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
             {
             };
 
-            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
-        }
+        storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
+    }
 
-        void TearDown() override
-        {
-            storage.reset();
-        }
+    void TearDown() override
+    {
+        storage.reset();
+    }
 };
 
 TEST_P(PersistentQueueFullParamTest, HandlesSubmitFetchRemoveResetCorrectly)
@@ -119,266 +118,246 @@ INSTANTIATE_TEST_SUITE_P(
     PersistentQueueFullParamTest,
     ::testing::Values(
         // 1. CREATE
-        QueueScenario
-{
-    "Case 1",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    false, {}, false, false,
-    1, Operation::CREATE
-},
-// 2. CREATE + MODIFY no sync -> MODIFY
-QueueScenario
-{
-    "Case 2",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0}
-    },
-    false, {}, false, false,
-    1, Operation::MODIFY
-},
-// 3. CREATE + DELETE no sync -> row deleted
-QueueScenario
-{
-    "Case 3",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0}
-    },
-    false, {}, false, false,
-    0, Operation::CREATE
-},
-// 4. MODIFY + DELETE no sync -> DELETE
-QueueScenario
-{
-    "Case 4",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY, 0},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0}
-    },
-    false, {}, false, false,
-    1, Operation::DELETE_
-},
-// 5. DELETE
-QueueScenario
-{
-    "Case 5",
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
-    false, {}, false, false,
-    1, Operation::DELETE_
-},
-// 6. CREATE + Sync + MODIFY during  sync + sync success -> MODIFY
-QueueScenario
-{
-    "Case 6",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
-    true, false,
-    1, Operation::MODIFY
-},
-// 7. CREATE + Sync + DELETE during  sync + sync success -> DELETE
-QueueScenario
-{
-    "Case 7",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
-    true, false,
-    1, Operation::DELETE_
-},
-// 8. CREATE + Sync + DELETE during  sync + sync fail -> DELETE (the manager may have applied the CREATE)
-QueueScenario
-{
-    "Case 8",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} },
-    false, true,
-    1, Operation::DELETE_
-},
-// 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
-QueueScenario
-{
-    "Case 9",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
-    false, true,
-    1, Operation::MODIFY
-},
-// 10. DELETE + MODIFY -> MODIFY
-QueueScenario
-{
-    "Case 10",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0}
-    },
-    false, {}, false, false,
-    1, Operation::MODIFY
-},
-// 11. Sync
-QueueScenario
-{
-    "Case 11",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true, {}, true, false,
-    0, Operation::CREATE
-},
-// 12. Two MODIFY -> MODIFY
-QueueScenario
-{
-    "Case 12",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::MODIFY, 0},
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0},
-    },
-    false, {}, false, false,
-    1, Operation::MODIFY
-},
-// 13. Two IDs
-QueueScenario
-{
-    "Case 13",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
-        PersistedData{0, "id2", "idx", "{}", Operation::MODIFY, 0}
-    },
-    false, {}, false, false,
-    2, Operation::CREATE
-},
-// 14. MODIFY + Sync + DELETE + CREATE + DELETE during sync + sync fail -> DELETE
-QueueScenario
-{
-    "Case 14",
-    { PersistedData{0, "id1", "idx", "{}", Operation::MODIFY, 0} },
-    true,
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0}
-    },
-    false, true,
-    1, Operation::DELETE_
-},
-// 15. CREATE -> DELETE -> CREATE -> CREATE
-QueueScenario
-{
-    "Case 15",
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
-        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
-    },
-    false, {}, false, false,
-    1, Operation::CREATE
-},
-// 16. CREATE + Sync + MODIFY + DELETE + MODIFY during sync + sync success -> MODIFY
-QueueScenario
-{
-    "Case 16",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    {
-        PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
-        PersistedData{0, "id1", "idx3", "{}", Operation::MODIFY, 0}
-    },
-    true, false,
-    1, Operation::MODIFY
-},
-// 17. CREATE + Sync + DELETE + CREATE during sync + sync fail -> CREATE
-QueueScenario
-{
-    "Case 17",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
-        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
-    },
-    false, true,
-    1, Operation::CREATE
-},
-// 18. CREATE + Sync + sync fail, then DELETE -> DELETE
-QueueScenario
-{
-    "Case 18",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true, {}, false, true,
-    1, Operation::DELETE_,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
-},
-// 19. CREATE + Sync + MODIFY during sync + sync fail, then DELETE -> DELETE
-QueueScenario
-{
-    "Case 19",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY, 0} },
-    false, true,
-    1, Operation::DELETE_,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
-},
-// 20. CREATE + Sync + DELETE + CREATE during sync + sync fail, then DELETE -> DELETE
-QueueScenario
-{
-    "Case 20",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0},
-        PersistedData{0, "id1", "idx2", "{}", Operation::CREATE, 0}
-    },
-    false, true,
-    1, Operation::DELETE_,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
-},
-// 21. CREATE + Sync + CREATE of another id during sync + sync fail, then DELETE of that id
-//     -> only the first CREATE remains: the second one never left the agent
-QueueScenario
-{
-    "Case 21",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true,
-    { PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0} },
-    false, true,
-    1, Operation::CREATE,
-    { PersistedData{0, "id2", "idx", "{}", Operation::DELETE_, 0} },
-    "id1"
-},
-// 22. CREATE + Sync + sync success, then DELETE -> DELETE
-QueueScenario
-{
-    "Case 22",
-    { PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0} },
-    true, {}, true, false,
-    1, Operation::DELETE_,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_, 0} }
-}
-    )
-);
+        QueueScenario {"Case 1",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::CREATE},
+        // 2. CREATE + MODIFY no sync -> MODIFY
+        QueueScenario {"Case 2",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0},
+                        PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::MODIFY},
+        // 3. CREATE + DELETE no sync -> row deleted
+        QueueScenario {"Case 3",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0},
+                        PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       0,
+                       Operation::CREATE},
+        // 4. MODIFY + DELETE no sync -> DELETE
+        QueueScenario {"Case 4",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::MODIFY, 0},
+                        PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::DELETE_},
+        // 5. DELETE
+        QueueScenario {"Case 5",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::DELETE_},
+        // 6. CREATE + Sync + MODIFY during  sync + sync success -> MODIFY
+        QueueScenario {"Case 6",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0}},
+                       true,
+                       false,
+                       1,
+                       Operation::MODIFY},
+        // 7. CREATE + Sync + DELETE during  sync + sync success -> DELETE
+        QueueScenario {"Case 7",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}},
+                       true,
+                       false,
+                       1,
+                       Operation::DELETE_},
+        // 8. CREATE + Sync + DELETE during  sync + sync fail -> DELETE (the manager may have applied the CREATE)
+        QueueScenario {"Case 8",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::DELETE_},
+        // 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
+        QueueScenario {"Case 9",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::MODIFY},
+        // 10. DELETE + MODIFY -> MODIFY
+        QueueScenario {"Case 10",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0},
+                        PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::MODIFY},
+        // 11. Sync
+        QueueScenario {"Case 11",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {},
+                       true,
+                       false,
+                       0,
+                       Operation::CREATE},
+        // 12. Two MODIFY -> MODIFY
+        QueueScenario {"Case 12",
+                       {
+                           PersistedData {0, "id1", "idx", "{}", Operation::MODIFY, 0},
+                           PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0},
+                       },
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::MODIFY},
+        // 13. Two IDs
+        QueueScenario {"Case 13",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0},
+                        PersistedData {0, "id2", "idx", "{}", Operation::MODIFY, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       2,
+                       Operation::CREATE},
+        // 14. MODIFY + Sync + DELETE + CREATE + DELETE during sync + sync fail -> DELETE
+        QueueScenario {"Case 14",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::MODIFY, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0},
+                        PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0},
+                        PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::DELETE_},
+        // 15. CREATE -> DELETE -> CREATE -> CREATE
+        QueueScenario {"Case 15",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0},
+                        PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0},
+                        PersistedData {0, "id1", "idx2", "{}", Operation::CREATE, 0}},
+                       false,
+                       {},
+                       false,
+                       false,
+                       1,
+                       Operation::CREATE},
+        // 16. CREATE + Sync + MODIFY + DELETE + MODIFY during sync + sync success -> MODIFY
+        QueueScenario {"Case 16",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0},
+                        PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0},
+                        PersistedData {0, "id1", "idx3", "{}", Operation::MODIFY, 0}},
+                       true,
+                       false,
+                       1,
+                       Operation::MODIFY},
+        // 17. CREATE + Sync + DELETE + CREATE during sync + sync fail -> CREATE
+        QueueScenario {"Case 17",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0},
+                        PersistedData {0, "id1", "idx2", "{}", Operation::CREATE, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::CREATE},
+        // 18. CREATE + Sync + sync fail, then DELETE -> DELETE
+        QueueScenario {"Case 18",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {},
+                       false,
+                       true,
+                       1,
+                       Operation::DELETE_,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}}},
+        // 19. CREATE + Sync + MODIFY during sync + sync fail, then DELETE -> DELETE
+        QueueScenario {"Case 19",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx2", "{}", Operation::MODIFY, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::DELETE_,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}}},
+        // 20. CREATE + Sync + DELETE + CREATE during sync + sync fail, then DELETE -> DELETE
+        QueueScenario {"Case 20",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0},
+                        PersistedData {0, "id1", "idx2", "{}", Operation::CREATE, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::DELETE_,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}}},
+        // 21. CREATE + Sync + CREATE of another id during sync + sync fail, then DELETE of that id
+        //     -> only the first CREATE remains: the second one never left the agent
+        QueueScenario {"Case 21",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {PersistedData {0, "id2", "idx", "{}", Operation::CREATE, 0}},
+                       false,
+                       true,
+                       1,
+                       Operation::CREATE,
+                       {PersistedData {0, "id2", "idx", "{}", Operation::DELETE_, 0}},
+                       "id1"},
+        // 22. CREATE + Sync + sync success, then DELETE -> DELETE
+        QueueScenario {"Case 22",
+                       {PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0}},
+                       true,
+                       {},
+                       true,
+                       false,
+                       1,
+                       Operation::DELETE_,
+                       {PersistedData {0, "id1", "idx", "{}", Operation::DELETE_, 0}}}));
 
 class PersistentQueueStorageTest : public ::testing::Test
 {
-    protected:
-        std::unique_ptr<PersistentQueueStorage> storage;
-        LoggerFunc testLogger;
+protected:
+    std::unique_ptr<PersistentQueueStorage> storage;
+    LoggerFunc testLogger;
 
-        void SetUp() override
-        {
-            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+    void SetUp() override
+    {
+        testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
             {
             };
 
-            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
-        }
+        storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
+    }
 
-        void TearDown() override
-        {
-            storage.reset();
-        }
+    void TearDown() override
+    {
+        storage.reset();
+    }
 };
 
 TEST_F(PersistentQueueStorageTest, ConstructorKeepsSqliteDefaultWalAutocheckpointThresholdWithoutOverride)
@@ -399,7 +378,8 @@ TEST_F(PersistentQueueStorageTest, ConstructorKeepsSqliteDefaultCacheSizeWithout
 
 TEST_F(PersistentQueueStorageTest, ConstructorHonorsCacheSizeOverride)
 {
-    auto overriddenStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, 256);
+    auto overriddenStorage =
+        std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, 256);
     EXPECT_EQ(overriddenStorage->getCacheSize(), -256);
     EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 1000);
 }
@@ -409,7 +389,8 @@ TEST_F(PersistentQueueStorageTest, ConstructorIgnoresNonPositiveCacheSizeOverrid
     auto zeroStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, 0);
     EXPECT_EQ(zeroStorage->getCacheSize(), -2000);
 
-    auto negativeStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, -512);
+    auto negativeStorage =
+        std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, std::nullopt, -512);
     EXPECT_EQ(negativeStorage->getCacheSize(), -2000);
 }
 
@@ -448,24 +429,24 @@ TEST_F(PersistentQueueStorageTest, IntegrityProgressIsKeptPerIndex)
 
 TEST_F(PersistentQueueStorageTest, IntegrityProgressDoesNotTouchTheQueue)
 {
-    storage->submitOrCoalesce(PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "idx", "{}", Operation::CREATE, 0});
     storage->setIntegrityProgress("idx", {.mismatches = 1, .lastMismatchMs = 1000});
 
     storage->removeByIndex("idx");
     EXPECT_TRUE(storage->getIntegrityProgress("idx").has_value());
 
     storage->clearIntegrityProgress("idx");
-    storage->submitOrCoalesce(PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData {0, "id2", "idx", "{}", Operation::CREATE, 0});
     EXPECT_EQ(storage->fetchPending().size(), 1u);
 }
 
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 {
     // Insert items with different indices
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 0});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE, 0});
-    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "{}", Operation::MODIFY, 0});
-    storage->submitOrCoalesce(PersistedData{0, "id4", "index3", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData {0, "id2", "index2", "{}", Operation::CREATE, 0});
+    storage->submitOrCoalesce(PersistedData {0, "id3", "index1", "{}", Operation::MODIFY, 0});
+    storage->submitOrCoalesce(PersistedData {0, "id4", "index3", "{}", Operation::CREATE, 0});
 
     // Verify all items are present
     auto allItems = storage->fetchAndMarkForSync();
@@ -491,8 +472,8 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 TEST_F(PersistentQueueStorageTest, RemoveByIndexHandlesNonExistentIndex)
 {
     // Insert some items
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id2", "index2", "{}", Operation::CREATE, 1});
 
     // Try to remove items with non-existent index (should not throw)
     EXPECT_NO_THROW(storage->removeByIndex("non_existent_index"));
@@ -515,15 +496,15 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexHandlesEmptyDatabase)
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
 {
     // Insert items and mark some as syncing
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "{}", Operation::MODIFY, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id3", "index2", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id2", "index1", "{}", Operation::MODIFY, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id3", "index2", "{}", Operation::CREATE, 1});
 
     // Mark items as syncing
     storage->fetchAndMarkForSync();
 
     // Update an item during sync (will be SYNCING_UPDATED)
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{updated}", Operation::MODIFY, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "{updated}", Operation::MODIFY, 1});
 
     // Remove all items with "index1" regardless of status
     storage->removeByIndex("index1");
@@ -538,9 +519,9 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
 
 TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetSelectsPrefixOnly)
 {
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "payload3", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id2", "index1", "payload2", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id3", "index1", "payload3", Operation::CREATE, 1});
 
     const auto firstBlock = storage->fetchAndMarkForSync(1);
     ASSERT_EQ(firstBlock.size(), static_cast<size_t>(1));
@@ -560,7 +541,7 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtL
 {
     // Use a fresh storage instance with a capturing logger.
     bool warnEmitted = false;
-    LoggerFunc capturingLogger = [&warnEmitted](modules_log_level_t level, const std::string & msg)
+    LoggerFunc capturingLogger = [&warnEmitted](modules_log_level_t level, const std::string& msg)
     {
         if (level == LOG_WARNING && msg.find("exceeds") != std::string::npos)
         {
@@ -569,7 +550,7 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtL
     };
     auto capStorage = std::make_unique<PersistentQueueStorage>(":memory:", capturingLogger);
 
-    capStorage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    capStorage->submitOrCoalesce(PersistedData {0, "id1", "index1", "payload1", Operation::CREATE, 1});
 
     // Budget of 1 byte � the item is far larger than that.
     const auto block = capStorage->fetchAndMarkForSync(1);
@@ -585,7 +566,7 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtL
 TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncDropsPersistentlyOversizedItemAfterMaxAttempts)
 {
     int errorCount = 0;
-    LoggerFunc capturingLogger = [&errorCount](modules_log_level_t level, const std::string & msg)
+    LoggerFunc capturingLogger = [&errorCount](modules_log_level_t level, const std::string& msg)
     {
         if (level == LOG_ERROR && msg.find("Dropping") != std::string::npos)
         {
@@ -594,8 +575,8 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncDropsPersistentlyOversized
     };
     auto capStorage = std::make_unique<PersistentQueueStorage>(":memory:", capturingLogger);
 
-    capStorage->submitOrCoalesce(PersistedData{0, "stuck_id", "index1", "payload1", Operation::CREATE, 1});
-    capStorage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+    capStorage->submitOrCoalesce(PersistedData {0, "stuck_id", "index1", "payload1", Operation::CREATE, 1});
+    capStorage->submitOrCoalesce(PersistedData {0, "id2", "index1", "payload2", Operation::CREATE, 1});
 
     // Simulate consecutive failed sync cycles: each one selects the oversized item
     // alone, then the caller resets it back to PENDING (as agent_sync_protocol does
@@ -627,9 +608,9 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncDropsPersistentlyOversized
 
 TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAllPendingRows)
 {
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::MODIFY, 1});
-    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "payload3", Operation::DELETE_, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id2", "index1", "payload2", Operation::MODIFY, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id3", "index1", "payload3", Operation::DELETE_, 1});
 
     const auto rows = storage->fetchAndMarkForSync(0);
     ASSERT_EQ(rows.size(), static_cast<size_t>(3));
@@ -641,40 +622,38 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAl
 // Test class for testing deleteDatabase method with mock filesystem wrapper
 class PersistentQueueStorageDeleteDatabaseTest : public ::testing::Test
 {
-    protected:
-        std::shared_ptr<MockFileSystemWrapper> mockFileSystemWrapper;
-        std::unique_ptr<PersistentQueueStorage> storage;
-        LoggerFunc testLogger;
+protected:
+    std::shared_ptr<MockFileSystemWrapper> mockFileSystemWrapper;
+    std::unique_ptr<PersistentQueueStorage> storage;
+    LoggerFunc testLogger;
 
-        void SetUp() override
+    void SetUp() override
+    {
+        mockFileSystemWrapper = std::make_shared<MockFileSystemWrapper>();
+
+        testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
         {
-            mockFileSystemWrapper = std::make_shared<MockFileSystemWrapper>();
+            // Capture log messages for testing if needed
+        };
 
-            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
-            {
-                // Capture log messages for testing if needed
-            };
+        storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, mockFileSystemWrapper);
+    }
 
-            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, mockFileSystemWrapper);
-        }
-
-        void TearDown() override
-        {
-            storage.reset();
-            mockFileSystemWrapper.reset();
-        }
+    void TearDown() override
+    {
+        storage.reset();
+        mockFileSystemWrapper.reset();
+    }
 };
 
 TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenFileExists)
 {
-    using ::testing::Return;
     using ::testing::_;
+    using ::testing::Return;
 
     // Mock that file exists and removal succeeds
-    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
-    .WillOnce(Return(true));
-    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
-    .WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_)).WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_)).WillOnce(Return(true));
 
     // Call deleteDatabase - should not throw
     EXPECT_NO_THROW(storage->deleteDatabase());
@@ -682,15 +661,13 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenFileExists)
 
 TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenFileDoesNotExist)
 {
-    using ::testing::Return;
     using ::testing::_;
+    using ::testing::Return;
 
     // Mock that file does not exist
-    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
-    .WillOnce(Return(false));
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_)).WillOnce(Return(false));
     // remove should not be called when file doesn't exist
-    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
-    .Times(0);
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_)).Times(0);
 
     // Call deleteDatabase - should not throw and should log warning
     EXPECT_NO_THROW(storage->deleteDatabase());
@@ -698,15 +675,14 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenFileDoesNotEx
 
 TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenRemoveFails)
 {
+    using ::testing::_;
     using ::testing::Return;
     using ::testing::Throw;
-    using ::testing::_;
 
     // Mock that file exists but removal fails
-    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
-    .WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_)).WillOnce(Return(true));
     EXPECT_CALL(*mockFileSystemWrapper, remove(_))
-    .WillOnce(Throw(std::filesystem::filesystem_error("Remove failed", std::error_code())));
+        .WillOnce(Throw(std::filesystem::filesystem_error("Remove failed", std::error_code())));
 
     // Call deleteDatabase - should throw filesystem_error
     EXPECT_THROW(storage->deleteDatabase(), std::filesystem::filesystem_error);
@@ -714,15 +690,13 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenRemoveFails)
 
 TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenExistsThrows)
 {
-    using ::testing::Throw;
     using ::testing::_;
+    using ::testing::Throw;
 
     // Mock that exists() throws an exception
-    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
-    .WillOnce(Throw(std::runtime_error("Filesystem access error")));
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_)).WillOnce(Throw(std::runtime_error("Filesystem access error")));
     // remove should not be called when exists throws
-    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
-    .Times(0);
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_)).Times(0);
 
     // Call deleteDatabase - should throw the exception
     EXPECT_THROW(storage->deleteDatabase(), std::runtime_error);
@@ -733,11 +707,9 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWithMemoryDatabas
     using ::testing::_;
 
     // Mock that the memory path doesn't exist (which is expected)
-    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
-    .WillOnce(testing::Return(false));
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_)).WillOnce(testing::Return(false));
     // remove should not be called for memory database
-    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
-    .Times(0);
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_)).Times(0);
 
     // Call deleteDatabase - should handle memory database gracefully
     EXPECT_NO_THROW(storage->deleteDatabase());
@@ -745,19 +717,17 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWithMemoryDatabas
 
 TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseVerifyConnectionIsClosed)
 {
-    using ::testing::Return;
     using ::testing::_;
+    using ::testing::Return;
 
     // Insert some data to ensure database is active
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "id1", "index1", "{}", Operation::CREATE, 1});
     auto items = storage->fetchAndMarkForSync();
     EXPECT_EQ(items.size(), static_cast<size_t>(1));
 
     // Mock successful file operations
-    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
-    .WillOnce(Return(true));
-    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
-    .WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_)).WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_)).WillOnce(Return(true));
 
     // Call deleteDatabase
     EXPECT_NO_THROW(storage->deleteDatabase());
@@ -766,28 +736,28 @@ TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseVerifyConnectionI
 /// @brief A stale writer lock left by another connection must resolve once it clears, not fail immediately.
 class PersistentQueueStorageBusyLockTest : public ::testing::Test
 {
-    protected:
-        std::string dbPath;
-        LoggerFunc testLogger;
+protected:
+    std::string dbPath;
+    LoggerFunc testLogger;
 
-        void SetUp() override
-        {
-            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_busy_lock_test.db").string();
-            std::filesystem::remove(dbPath);
-            std::filesystem::remove(dbPath + "-wal");
-            std::filesystem::remove(dbPath + "-shm");
+    void SetUp() override
+    {
+        dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_busy_lock_test.db").string();
+        std::filesystem::remove(dbPath);
+        std::filesystem::remove(dbPath + "-wal");
+        std::filesystem::remove(dbPath + "-shm");
 
-            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+        testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
             {
             };
-        }
+    }
 
-        void TearDown() override
-        {
-            std::filesystem::remove(dbPath);
-            std::filesystem::remove(dbPath + "-wal");
-            std::filesystem::remove(dbPath + "-shm");
-        }
+    void TearDown() override
+    {
+        std::filesystem::remove(dbPath);
+        std::filesystem::remove(dbPath + "-wal");
+        std::filesystem::remove(dbPath + "-shm");
+    }
 };
 
 TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockInsteadOfFailingImmediately)
@@ -804,10 +774,10 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
     // Release the lock from another thread after a short delay.
     std::thread lockReleaser(
         [&lockHolderConnection]()
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        lockHolderConnection.execute("COMMIT;");
-    });
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            lockHolderConnection.execute("COMMIT;");
+        });
 
     // Without busy_timeout this throws immediately; with it, it waits out the 300ms lock.
     EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
@@ -818,27 +788,28 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
 /// @brief The integrity progress must survive a restart, including on a database created before it existed.
 class PersistentQueueStorageIntegrityProgressFileTest : public ::testing::Test
 {
-    protected:
-        std::string dbPath;
-        LoggerFunc testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/) {};
+protected:
+    std::string dbPath;
+    LoggerFunc testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/) {};
 
-        void SetUp() override
-        {
-            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_integrity_progress_test.db").string();
-            removeDatabase();
-        }
+    void SetUp() override
+    {
+        dbPath =
+            (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_integrity_progress_test.db").string();
+        removeDatabase();
+    }
 
-        void TearDown() override
-        {
-            removeDatabase();
-        }
+    void TearDown() override
+    {
+        removeDatabase();
+    }
 
-        void removeDatabase()
-        {
-            std::filesystem::remove(dbPath);
-            std::filesystem::remove(dbPath + "-wal");
-            std::filesystem::remove(dbPath + "-shm");
-        }
+    void removeDatabase()
+    {
+        std::filesystem::remove(dbPath);
+        std::filesystem::remove(dbPath + "-wal");
+        std::filesystem::remove(dbPath + "-shm");
+    }
 };
 
 TEST_F(PersistentQueueStorageIntegrityProgressFileTest, IntegrityProgressSurvivesReopen)
@@ -860,17 +831,16 @@ TEST_F(PersistentQueueStorageIntegrityProgressFileTest, IntegrityProgressWorksOn
     // A queue database written before the integrity_progress table existed.
     {
         SQLite3Wrapper::Connection connection(dbPath);
-        connection.execute(
-            "CREATE TABLE persistent_queue ("
-            "id TEXT PRIMARY KEY NOT NULL,"
-            "idx TEXT NOT NULL,"
-            "data TEXT NOT NULL,"
-            "operation INTEGER NOT NULL,"
-            "version INTEGER NOT NULL DEFAULT 0,"
-            "sync_status INTEGER NOT NULL DEFAULT 0,"
-            "create_status INTEGER NOT NULL DEFAULT 0,"
-            "operation_syncing INTEGER NOT NULL DEFAULT 3,"
-            "is_data_context INTEGER NOT NULL DEFAULT 0);");
+        connection.execute("CREATE TABLE persistent_queue ("
+                           "id TEXT PRIMARY KEY NOT NULL,"
+                           "idx TEXT NOT NULL,"
+                           "data TEXT NOT NULL,"
+                           "operation INTEGER NOT NULL,"
+                           "version INTEGER NOT NULL DEFAULT 0,"
+                           "sync_status INTEGER NOT NULL DEFAULT 0,"
+                           "create_status INTEGER NOT NULL DEFAULT 0,"
+                           "operation_syncing INTEGER NOT NULL DEFAULT 3,"
+                           "is_data_context INTEGER NOT NULL DEFAULT 0);");
         connection.execute("INSERT INTO persistent_queue (id, idx, data, operation) VALUES ('id1', 'idx', '{}', 0);");
     }
 

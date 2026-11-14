@@ -17,11 +17,14 @@
 
 class MockFileCompressor : public IFileCompressor
 {
-    public:
-        MOCK_METHOD((std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>), compress,
-                    (const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir,
-                     const std::atomic<bool>* abortFlag),
-                    (override));
+public:
+    MOCK_METHOD((std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>),
+                compress,
+                (const std::string& sourcePath,
+                 uint64_t sourceSize,
+                 const std::string& spoolDir,
+                 const std::atomic<bool>* abortFlag),
+                (override));
 };
 
 #endif // _HC_MOCK_FILE_COMPRESSOR_HPP

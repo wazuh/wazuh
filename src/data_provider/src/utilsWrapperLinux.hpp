@@ -13,12 +13,11 @@
 
 #include <string>
 
-
 class UtilsWrapperLinux final
 {
-    public:
-        static std::string exec(const std::string& cmd, const size_t bufferSize = 128);
-        static bool existsRegular(const std::string& path);
+public:
+    static std::string exec(const std::string& cmd, const size_t bufferSize = 128);
+    static bool existsRegular(const std::string& path);
 };
 
 #endif // _UTILS_WRAPPER_LINUX_H

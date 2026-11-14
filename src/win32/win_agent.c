@@ -88,18 +88,22 @@ STATIC int run_service_restart(void)
     // ~2-3x the normal worst case for a single restart (20 s module-join budget
     // + 10 s SCA wait + overhead), so a second concurrent restart request only
     // ever times out here if something is already badly wrong (issue 38428).
-    const DWORD restartLockWaitMs = 60000;   // 60 seconds
+    const DWORD restartLockWaitMs = 60000; // 60 seconds
 
     int restart_lock_timed_out = 0;
     HANDLE restart_lock = acquire_restart_lock(restartLockWaitMs, &restart_lock_timed_out);
-    if (restart_lock == INVALID_HANDLE_VALUE) {
-        if (restart_lock_timed_out) {
+    if (restart_lock == INVALID_HANDLE_VALUE)
+    {
+        if (restart_lock_timed_out)
+        {
             plain_merror("service-restart: another restart has been in progress for over %lu ms "
                          "(expected well under that) -- the agent may be stuck; not starting a "
-                         "second concurrent restart attempt.", restartLockWaitMs);
+                         "second concurrent restart attempt.",
+                         restartLockWaitMs);
             return 1;
         }
-        plain_merror("service-restart: cannot open the restart lock (error %lu); proceeding unsynchronized.", GetLastError());
+        plain_merror("service-restart: cannot open the restart lock (error %lu); proceeding unsynchronized.",
+                     GetLastError());
     }
 
     /* Sleep briefly so the calling service has time to send its "ok"
@@ -109,7 +113,8 @@ STATIC int run_service_restart(void)
      * If this fails, the stop signal was not delivered to the SCM,
      * so there is no point in waiting for the service to stop. */
     int stop_rc = os_stop_service();
-    if (stop_rc == 0) {
+    if (stop_rc == 0)
+    {
         plain_merror("Failure running stop service.");
         return 1;
     }
@@ -119,22 +124,25 @@ STATIC int run_service_restart(void)
      * keeps waiting through the old process's own shutdown instead of
      * starting a new one over it (issue 38428, defect #6). */
     startTime = GetTickCount();
-    while (CheckServiceRunning()) {
-        if (GetTickCount() - startTime > timeoutMs) {
+    while (CheckServiceRunning())
+    {
+        if (GetTickCount() - startTime > timeoutMs)
+        {
             plain_merror("Failure service did not stop within the expected time.");
             return 1;
         }
         Sleep(sleepIntervalMs);
     }
     int start_rc = os_start_service();
-    if (start_rc == 0) {
+    if (start_rc == 0)
+    {
         plain_merror("Failure running start service.");
         return 1;
     }
     return 0;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     /* Never read an openssl.cnf: Wazuh ships none, and OpenSSL's compiled-in directory is not ours
      * to trust. Configuration loads once per process, so this first call turns every later request
@@ -148,13 +156,15 @@ int main(int argc, char **argv)
      * operator inspecting a token by hand should not need a working install either. Kept ahead
      * of the argv dispatch further down for that reason, and it runs the same function the POSIX
      * entry point does, so a token one platform accepts is a token the other accepts. */
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--show-token") == 0) {
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--show-token") == 0)
+        {
             return (w_agent_show_enrollment_token());
         }
     }
 
-    char *tmpstr;
+    char* tmpstr;
     char mypath[OS_MAXSTR + 1];
     char myfinalpath[OS_MAXSTR + 1];
     char myfile[OS_MAXSTR + 1];
@@ -170,35 +180,47 @@ int main(int argc, char **argv)
     /* mypath is going to be the whole path of the file */
     strncpy(mypath, argv[0], OS_MAXSTR);
     tmpstr = strrchr(mypath, '\\');
-    if (tmpstr) {
+    if (tmpstr)
+    {
         /* tmpstr is now the file name */
         *tmpstr = '\0';
         tmpstr++;
         strncpy(myfile, tmpstr, OS_MAXSTR);
-    } else {
+    }
+    else
+    {
         strncpy(myfile, argv[0], OS_MAXSTR);
         mypath[0] = '.';
         mypath[1] = '\0';
     }
-    if (chdir(mypath) < 0) {
+    if (chdir(mypath) < 0)
+    {
         plain_merror_exit(CHDIR_ERROR, mypath, errno, strerror(errno));
     }
     getcwd(mypath, OS_MAXSTR - 1);
     snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
 
-    if (argc > 1) {
-        if (strcmp(argv[1], "--shred-enrollment-password") == 0) {
+    if (argc > 1)
+    {
+        if (strcmp(argv[1], "--shred-enrollment-password") == 0)
+        {
             /* Handled here rather than in the pre-chdir loop above, unlike --show-token:
              * AUTHD_PASS is relative to the installation directory (see defs.h), so it only
              * resolves once the chdir() has run. The MSI's RemoveFleetEnrollmentPassword custom
              * action invokes this, deferred and After="InstallFiles", so this binary is already
              * on disk by the time it is asked to do it. */
             return (w_agent_shred_enrollment_password());
-        } else if (strcmp(argv[1], "install-service") == 0) {
+        }
+        else if (strcmp(argv[1], "install-service") == 0)
+        {
             return (InstallService(myfinalpath));
-        } else if (strcmp(argv[1], "uninstall-service") == 0) {
+        }
+        else if (strcmp(argv[1], "uninstall-service") == 0)
+        {
             return (UninstallService());
-        } else if (strcmp(argv[1], "start") == 0) {
+        }
+        else if (strcmp(argv[1], "start") == 0)
+        {
             /* local_start() -> wm_start_modules_unless_shutting_down() takes
              * wm_lifecycle_lock. OssecServiceStart() (the SCM-invoked path)
              * initializes it before calling local_start(); this direct CLI
@@ -208,22 +230,33 @@ int main(int argc, char **argv)
              * win_service.c (issue 38428). */
             wm_lifecycle_lock_init();
             return (local_start());
-        } else if (strcmp(argv[1], "service-restart") == 0) {
+        }
+        else if (strcmp(argv[1], "service-restart") == 0)
+        {
             return run_service_restart();
-        } else if (strcmp(argv[1], "/?") == 0) {
+        }
+        else if (strcmp(argv[1], "/?") == 0)
+        {
             agent_help();
-        } else if (strcmp(argv[1], "-h") == 0) {
+        }
+        else if (strcmp(argv[1], "-h") == 0)
+        {
             agent_help();
-        } else if (strcmp(argv[1], "help") == 0) {
+        }
+        else if (strcmp(argv[1], "help") == 0)
+        {
             agent_help();
-        } else {
+        }
+        else
+        {
             plain_merror("Unknown option: %s", argv[1]);
             exit(1);
         }
     }
 
     /* Start it */
-    if (!os_WinMain(argc, argv)) {
+    if (!os_WinMain(argc, argv))
+    {
         plain_merror_exit("Unable to start WinMain.");
     }
 

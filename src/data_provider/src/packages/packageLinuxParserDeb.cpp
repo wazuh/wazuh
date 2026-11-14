@@ -26,7 +26,7 @@
 
 void getDpkgInfo(const std::string& fileName, const std::function<void(nlohmann::json&)>& callback)
 {
-    std::fstream file{fileName, std::ios_base::in};
+    std::fstream file {fileName, std::ios_base::in};
 
     if (file.is_open())
     {
@@ -39,7 +39,7 @@ void getDpkgInfo(const std::string& fileName, const std::function<void(nlohmann:
             {
                 std::getline(file, line);
 
-                if (line.front() == ' ') //additional info
+                if (line.front() == ' ') // additional info
                 {
                     data.back() = data.back() + line + "\n";
                 }
@@ -47,8 +47,7 @@ void getDpkgInfo(const std::string& fileName, const std::function<void(nlohmann:
                 {
                     data.push_back(line + "\n");
                 }
-            }
-            while (!line.empty()); //end of package item info
+            } while (!line.empty()); // end of package item info
 
             auto packageInfo = PackageLinuxHelper::parseDpkg(data);
 
@@ -71,8 +70,7 @@ void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
     {
         for (const auto& entry : fileSystemWrapper.list_directory(DPKG_INFO_PATH))
         {
-            if (fileSystemWrapper.is_regular_file(entry) &&
-                    std::regex_search(entry.filename().string(), listPattern))
+            if (fileSystemWrapper.is_regular_file(entry) && std::regex_search(entry.filename().string(), listPattern))
             {
                 std::ifstream file(entry);
                 std::string line;

@@ -10,7 +10,6 @@
 #ifndef STDIO_WRAPPERS_LIBWAZUH_H
 #define STDIO_WRAPPERS_LIBWAZUH_H
 
-
 #undef mterror
 #define mterror wrap_mterror
 #undef mtwarn
@@ -22,14 +21,10 @@
 #undef wm_sendmsg
 #define wm_sendmsg wrap_wm_sendmsg
 
-void wrap_mterror(const char *tag, const char *msg, ...);
-void wrap_mtwarn(const char *tag, const char *msg, ...);
-void wrap_mtdebug1(const char *tag, const char *msg, ...);
-void wrap_mtdebug2(const char *tag, const char *msg, ...);
-int wrap_wm_sendmsg(int usec,
-                    int queue,
-                    const char *message,
-                    const char *locmsg,
-                    char loc);
+void wrap_mterror(const char* tag, const char* msg, ...);
+void wrap_mtwarn(const char* tag, const char* msg, ...);
+void wrap_mtdebug1(const char* tag, const char* msg, ...);
+void wrap_mtdebug2(const char* tag, const char* msg, ...);
+int wrap_wm_sendmsg(int usec, int queue, const char* message, const char* locmsg, char loc);
 
 #endif

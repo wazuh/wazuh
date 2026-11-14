@@ -18,8 +18,9 @@
 #include "shared.h"
 #include "read-alert.h"
 
-static alert_data* parse_alert_from_string(const char *input) {
-    FILE *fp = tmpfile();
+static alert_data* parse_alert_from_string(const char* input)
+{
+    FILE* fp = tmpfile();
     assert_non_null(fp);
 
     size_t len = strlen(input);
@@ -28,23 +29,23 @@ static alert_data* parse_alert_from_string(const char *input) {
 
     rewind(fp);
 
-    alert_data *al_data = GetAlertData(0, fp);
+    alert_data* al_data = GetAlertData(0, fp);
     fclose(fp);
 
     return al_data;
 }
 
-static void test_GetAlertData_buffer_underflow_fix_empty_filename(void **state) {
-    (void) state;
+static void test_GetAlertData_buffer_underflow_fix_empty_filename(void** state)
+{
+    (void)state;
 
-    const char input[] =
-        "** Alert 1676620577.100: - ossec,syscheck,\n"
-        "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
-        "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
-        "Integrity checksum changed for: ''\n"
-        "\n";
+    const char input[] = "** Alert 1676620577.100: - ossec,syscheck,\n"
+                         "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
+                         "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
+                         "Integrity checksum changed for: ''\n"
+                         "\n";
 
-    alert_data *al_data = parse_alert_from_string(input);
+    alert_data* al_data = parse_alert_from_string(input);
 
     assert_non_null(al_data);
     assert_non_null(al_data->filename);
@@ -53,17 +54,17 @@ static void test_GetAlertData_buffer_underflow_fix_empty_filename(void **state) 
     FreeAlertData(al_data);
 }
 
-static void test_GetAlertData_valid_filename(void **state) {
-    (void) state;
+static void test_GetAlertData_valid_filename(void** state)
+{
+    (void)state;
 
-    const char input[] =
-        "** Alert 1676620577.100: - ossec,syscheck,\n"
-        "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
-        "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
-        "Integrity checksum changed for: '/etc/passwd'\n"
-        "\n";
+    const char input[] = "** Alert 1676620577.100: - ossec,syscheck,\n"
+                         "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
+                         "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
+                         "Integrity checksum changed for: '/etc/passwd'\n"
+                         "\n";
 
-    alert_data *al_data = parse_alert_from_string(input);
+    alert_data* al_data = parse_alert_from_string(input);
 
     assert_non_null(al_data);
     assert_non_null(al_data->filename);
@@ -72,17 +73,17 @@ static void test_GetAlertData_valid_filename(void **state) {
     FreeAlertData(al_data);
 }
 
-static void test_GetAlertData_filename_with_spaces(void **state) {
-    (void) state;
+static void test_GetAlertData_filename_with_spaces(void** state)
+{
+    (void)state;
 
-    const char input[] =
-        "** Alert 1676620577.100: - ossec,syscheck,\n"
-        "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
-        "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
-        "Integrity checksum changed for: '/path/with spaces/file.txt'\n"
-        "\n";
+    const char input[] = "** Alert 1676620577.100: - ossec,syscheck,\n"
+                         "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
+                         "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
+                         "Integrity checksum changed for: '/path/with spaces/file.txt'\n"
+                         "\n";
 
-    alert_data *al_data = parse_alert_from_string(input);
+    alert_data* al_data = parse_alert_from_string(input);
 
     assert_non_null(al_data);
     assert_non_null(al_data->filename);
@@ -91,17 +92,17 @@ static void test_GetAlertData_filename_with_spaces(void **state) {
     FreeAlertData(al_data);
 }
 
-static void test_GetAlertData_filename_windows_crlf(void **state) {
-    (void) state;
+static void test_GetAlertData_filename_windows_crlf(void** state)
+{
+    (void)state;
 
-    const char input[] =
-        "** Alert 1676620577.100: - ossec,syscheck,\n"
-        "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
-        "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
-        "Integrity checksum changed for: '/var/log/auth.log'\r\n"
-        "\n";
+    const char input[] = "** Alert 1676620577.100: - ossec,syscheck,\n"
+                         "2023 Feb 17 08:00:00 (agent) 192.168.0.1->syscheck\n"
+                         "Rule: 550 (level 7) -> 'Integrity checksum changed.'\n"
+                         "Integrity checksum changed for: '/var/log/auth.log'\r\n"
+                         "\n";
 
-    alert_data *al_data = parse_alert_from_string(input);
+    alert_data* al_data = parse_alert_from_string(input);
 
     assert_non_null(al_data);
     assert_non_null(al_data->filename);
@@ -111,8 +112,8 @@ static void test_GetAlertData_filename_windows_crlf(void **state) {
     FreeAlertData(al_data);
 }
 
-
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_GetAlertData_buffer_underflow_fix_empty_filename),
         cmocka_unit_test(test_GetAlertData_valid_filename),

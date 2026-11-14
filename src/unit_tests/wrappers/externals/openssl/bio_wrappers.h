@@ -7,12 +7,11 @@
  * Foundation
  */
 
-
 #ifndef BIO_WRAPPERS_H
 #define BIO_WRAPPERS_H
 
 #include <openssl/ssl.h>
 
-BIO *__wrap_BIO_new_socket(int sock, int close_flag);
+BIO* __wrap_BIO_new_socket(int sock, int close_flag);
 
 #endif

@@ -19,7 +19,7 @@ print = functools.partial(print, flush=True)
 CURRENT_DIR = Path(__file__).parent
 HEADER_DIR = {
     'asan':                "=============== Running ASAN        ===============",
-    'AStyle':              "=============== Running AStyle      ===============",
+    'clangformat':         "=============== Running clang-format ===============",
     'clean':               "=============== Cleaning library    ===============",
     'cleanfolder':         "=============== Clean build Folders ===============",
     'cppcheck':            "=============== Running cppcheck    ===============",
@@ -151,43 +151,6 @@ def findFolder(name, path):
                                     subdir)
 
     return ""
-
-
-def getFoldersToAStyle(moduleName):
-    """
-    Return folders to be analyzed with AStyle coding style analysis tool.
-
-    Args:
-        - moduleName(str): Library to be analyzed using AStyle coding style
-                           analysis tool.
-
-    Returns:
-        - foldersToScan(str): specific folders and files to be analyzed.
-
-    Raises:
-        - None
-    """
-    printHeader(moduleName=moduleName,
-                headerKey="AStyle")
-    build_tools.cleanFolder(moduleName,
-                            "build")
-
-    foldersToScan = ""
-    if str(moduleName) == "shared_modules/sync_protocol":
-        foldersToScan = "\"{0}/include/*.hpp\" \"{0}/src/*.cpp\""\
-                        .format(moduleName)
-    elif str(moduleName) == "shared_modules/agent_metadata":
-        foldersToScan = "\"{0}/include/*.h\" \"{0}/src/*.cpp\""\
-                        .format(moduleName)
-    elif str(moduleName) == "syscheckd":
-        foldersToScan = "\"{0}/src/db/src/*.hpp\" \"{0}/src/db/src/*.cpp\""\
-                        .format(moduleName)
-    elif str(moduleName) == "shared_modules/file_helper":
-        foldersToScan = "'{0}/*.cpp' '{0}/*.hpp'".format(moduleName)
-    else:
-        foldersToScan = "{0}/*.h {0}/*.cpp {0}/*.hpp".format(moduleName)
-
-    return foldersToScan
 
 
 def moduleDirPath(moduleName):

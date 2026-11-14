@@ -22,37 +22,33 @@
 
 #define MAX_NEEDED_TAGS 4
 
-#define BITMASK(modules)   (\
-                            (modules & CSYSCHECK     ) | (modules & CROOTCHECK    ) |\
-                            (modules & CLOCALFILE    ) | (modules & CCLIENT       ) |\
-                            (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) |\
-                            (modules & CLGCSOCKET    ) )
-
-
+#define BITMASK(modules)                                                                                               \
+    ((modules & CSYSCHECK) | (modules & CROOTCHECK) | (modules & CLOCALFILE) | (modules & CCLIENT) |                   \
+     (modules & CAGENT_CONFIG) | (modules & CWMODULE) | (modules & CLGCSOCKET))
 
 #include "os_xml.h"
 #include "wazuh_db-config.h"
 #include "time.h"
 
 /* Main function to read the config */
-int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
-void PrintErrorAcordingToModules(int modules, const char *cfgfile);
+int ReadConfig(int modules, const char* cfgfile, void* d1, void* d2);
+void PrintErrorAcordingToModules(int modules, const char* cfgfile);
 
 #ifndef CLIENT
 /* Readers of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see mconf-config.h): the cJSON
  * argument is the section returned by w_mconf_section(); NULL/absent keys keep the caller defaults.
  * File-scope forward declaration: a `struct` first named inside a prototype would have prototype scope. */
 struct cJSON;
-int Read_Global_JSON(const struct cJSON *global, void *configp);
-int Read_Remote_JSON(const struct cJSON *remote, void *d1);
+int Read_Global_JSON(const struct cJSON* global, void* configp);
+int Read_Remote_JSON(const struct cJSON* remote, void* d1);
 #endif
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
-int Read_Localfile(XML_NODE node, void *d1, void *d2);
-int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
-int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_Syscheck(const OS_XML* xml, XML_NODE node, void* d1, void* d2);
+int Read_Rootcheck(XML_NODE node, void* d1, void* d2);
+int Read_Localfile(XML_NODE node, void* d1, void* d2);
+int Read_Agent(const OS_XML* xml, XML_NODE node, void* d1, void* d2);
+int Read_Legacy_Client(const OS_XML* xml, XML_NODE node, void* d1, void* d2);
+int Read_WModule(const OS_XML* xml, xml_node* node, void* d1, void* d2);
+int Read_SCA(const OS_XML* xml, xml_node* node, void* d1, void* d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 
 /**
@@ -61,7 +57,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
  * @param node XML node to analyze
  * @param d1 Agent configuration structure
  */
-int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1);
+int Read_Agent_Shared(const OS_XML* xml, XML_NODE node, void* d1);
 
 /**
  * @brief Read the configuration for Google Cloud Pub/Sub
@@ -70,7 +66,7 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1);
  * @param d1 Pub/Sub configuration structure
  * @param d2 Agent configuration validation flag
  */
-int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_GCP_pubsub(const OS_XML* xml, xml_node* node, void* d1, void* d2);
 
 /**
  * @brief Read the configuration for a Google Cloud bucket
@@ -79,24 +75,24 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2);
  * @param d1 Bucket configuration structure
  * @param d2 Agent configuration validation flag
  */
-int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_GCP_bucket(const OS_XML* xml, xml_node* node, void* d1, void* d2);
 
 #ifndef WIN32
 #ifndef CLIENT
-int Read_Authd_JSON(const struct cJSON *auth, void *d1);
+int Read_Authd_JSON(const struct cJSON* auth, void* d1);
 #endif
 #endif
-int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
+int Read_LogCollecSocket(XML_NODE node, void* d1, void* d2);
 #ifndef CLIENT
 /* Readers of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see mconf-config.h) used by modulesd:
  * `vulnerability-detection` (d1 = wmodule **; a NULL section creates no module) and `indexer` (sets
  * indexer_config; a NULL section or an empty host list leaves it NULL). */
-int Read_Vulnerability_Detection_JSON(const struct cJSON *vd, void *d1);
-int Read_Indexer_JSON(const struct cJSON *indexer);
+int Read_Vulnerability_Detection_JSON(const struct cJSON* vd, void* d1);
+int Read_Indexer_JSON(const struct cJSON* indexer);
 #else
 /* Agent only. A manager has no agent-upgrade module: it serves upgrades from the task manager, and
  * configures them in the `task-manager` section of the effective document. */
-int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
+int Read_AgentUpgrade(const OS_XML* xml, xml_node* node, void* d1);
 #endif
 
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
@@ -107,7 +103,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
  * @param d1 github configuration structure
  * @param d2 Agent configuration validation flag
  */
-int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_Github(const OS_XML* xml, xml_node* node, void* d1, void* d2);
 
 /**
  * @brief Read the configuration for Office365 module
@@ -116,7 +112,7 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2);
  * @param d1 office365 configuration structure
  * @param d2 Agent configuration validation flag
  */
-int Read_Office365(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_Office365(const OS_XML* xml, xml_node* node, void* d1, void* d2);
 
 /**
  * @brief Read the configuration for MS Graph module
@@ -125,30 +121,30 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1, void *d2);
  * @param d1 ms_graph configuration structure
  * @param d2 Agent configuration validation flag
  */
-int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_MS_Graph(const OS_XML* xml, xml_node* node, void* d1, void* d2);
 #endif
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
-int Test_Syscheck(const char * path);
+int Test_Syscheck(const char* path);
 
 /* Verifies that the configuration for Rootcheck is correct. Return 0 on success or -1 on error.  */
-int Test_Rootcheck(const char * path);
+int Test_Rootcheck(const char* path);
 
 /* Verifies that the configuration for Localfile is correct. Return 0 on success or -1 on error.  */
-int Test_Localfile(const char * path);
+int Test_Localfile(const char* path);
 
 /* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
-int Test_Agent(const char * path);
+int Test_Agent(const char* path);
 
 /* Verifies that the configuration for ClientBuffer is correct. Return 0 on success or -1 on error.  */
 
 /* Verifies that the configuration for Wodle is correct. Return 0 on success or -1 on error. */
-int Test_WModule(const char * path);
+int Test_WModule(const char* path);
 
 /**
  * @brief Read the configuration for anti-tampering functionalities
  * @param node anti_tampering block configuration
  */
-int Read_AntiTampering(XML_NODE node, void *d1);
+int Read_AntiTampering(XML_NODE node, void* d1);
 
 #endif /* HCONFIG_H */

@@ -37,7 +37,8 @@ namespace chrome
         std::shared_ptr<IBrowserExtensionsWrapper> chromeExtensionsWrapper,
         std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
         : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper))
-        , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
+        , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                                : std::make_unique<file_system::FileSystemWrapper>())
     {
     }
 
@@ -49,10 +50,8 @@ namespace chrome
 
     bool ChromeExtensionsProvider::isValidChromeProfile(const std::string& profilePath)
     {
-        if (profilePath.empty() ||
-                profilePath.find("..") != std::string::npos ||
-                profilePath.length() > MAX_PATH_LENGTH
-           )
+        if (profilePath.empty() || profilePath.find("..") != std::string::npos ||
+            profilePath.length() > MAX_PATH_LENGTH)
         {
             return false;
         }
@@ -88,7 +87,8 @@ namespace chrome
 
     bool ChromeExtensionsProvider::isSnakeCase(const std::string& s)
     {
-        if (s.empty() || s.front() == '_' || s.back() == '_') return false;
+        if (s.empty() || s.front() == '_' || s.back() == '_')
+            return false;
 
         bool has_underscore = false;
         bool last_was_underscore = false;
@@ -97,14 +97,16 @@ namespace chrome
         {
             if (c == '_')
             {
-                if (last_was_underscore) return false; // no double underscores
+                if (last_was_underscore)
+                    return false; // no double underscores
 
                 has_underscore = true;
                 last_was_underscore = true;
             }
             else
             {
-                if (!std::isalnum(static_cast<unsigned char>(c))) return false;
+                if (!std::isalnum(static_cast<unsigned char>(c)))
+                    return false;
 
                 last_was_underscore = false;
             }
@@ -115,10 +117,9 @@ namespace chrome
 
     bool ChromeExtensionsProvider::isValidLocaleName(const std::string& locale)
     {
-        return !locale.empty() && std::all_of(locale.begin(), locale.end(), [](unsigned char c)
-        {
-            return std::isalnum(c) || c == '_' || c == '-';
-        });
+        return !locale.empty() && std::all_of(locale.begin(),
+                                              locale.end(),
+                                              [](unsigned char c) { return std::isalnum(c) || c == '_' || c == '-'; });
     }
 
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
@@ -144,7 +145,8 @@ namespace chrome
         if (m_fileSystemWrapper->is_regular_file(messagesFilePath))
         {
             std::string nameKey = Utils::rightTrim(Utils::leftTrim(extension.name, "__MSG_"), "__");
-            std::string descriptionKey = Utils::rightTrim(Utils::leftTrim(extension.description, "__MSG_"), "__");;
+            std::string descriptionKey = Utils::rightTrim(Utils::leftTrim(extension.description, "__MSG_"), "__");
+            ;
 
             if (isSnakeCase(nameKey))
             {
@@ -170,7 +172,7 @@ namespace chrome
                 return;
             }
 
-            const auto localize = [&messagesJson](const std::string & key, std::string & field)
+            const auto localize = [&messagesJson](const std::string& key, std::string& field)
             {
                 const auto& entry = getObjectField(messagesJson, key.c_str());
                 const auto it = entry.find("message");
@@ -217,7 +219,8 @@ namespace chrome
 
         for (unsigned char c : input)
         {
-            if (T[c] == -1) break;
+            if (T[c] == -1)
+                break;
 
             val = (val << 6) + T[c];
             valb += 6;
@@ -347,16 +350,22 @@ namespace chrome
         extension.author = getStringField(manifestJson, "author");
         extension.default_locale = getStringField(manifestJson, "default_locale");
         extension.current_locale = getStringField(manifestJson, "current_locale");
-        extension.persistent = getBoolField(getObjectField(manifestJson, "background"), "persistent", false) ? "1" : "0";
+        extension.persistent =
+            getBoolField(getObjectField(manifestJson, "background"), "persistent", false) ? "1" : "0";
         extension.description = getStringField(manifestJson, "description");
-        extension.permissions = manifestJson.contains("permissions") ? jsonArrayToString(manifestJson["permissions"]) : "";
-        extension.optional_permissions = manifestJson.contains("optional_permissions") ? jsonArrayToString(manifestJson["optional_permissions"]) : "";
+        extension.permissions =
+            manifestJson.contains("permissions") ? jsonArrayToString(manifestJson["permissions"]) : "";
+        extension.optional_permissions = manifestJson.contains("optional_permissions")
+                                             ? jsonArrayToString(manifestJson["optional_permissions"])
+                                             : "";
         extension.key = getStringField(manifestJson, "key");
 
         localizeParameters(extension);
     }
 
-    void ChromeExtensionsProvider::parsePreferenceSettings(ChromeExtension& extension, const std::string& key, const nlohmann::json& value)
+    void ChromeExtensionsProvider::parsePreferenceSettings(ChromeExtension& extension,
+                                                           const std::string& key,
+                                                           const nlohmann::json& value)
     {
         const auto stateIt = value.find("state");
         extension.state = "1";
@@ -388,7 +397,9 @@ namespace chrome
         extension.manifest_hash = sha256Content(manifestContent);
     }
 
-    ChromeExtensionList ChromeExtensionsProvider::getExtensionsFromPreferences(const std::string& profilePath, const std::string& preferencesFilePath, const std::string& profileName)
+    ChromeExtensionList ChromeExtensionsProvider::getExtensionsFromPreferences(const std::string& profilePath,
+                                                                               const std::string& preferencesFilePath,
+                                                                               const std::string& profileName)
     {
         if (!m_fileSystemWrapper->is_regular_file(preferencesFilePath))
         {
@@ -445,8 +456,8 @@ namespace chrome
                 if (insideProfile)
                 {
                     if (extensionPath.find("..") != std::string::npos ||
-                            extensionPath.find("//") != std::string::npos ||
-                            extensionPath.empty() || extensionPath.length() > MAX_PATH_LENGTH)
+                        extensionPath.find("//") != std::string::npos || extensionPath.empty() ||
+                        extensionPath.length() > MAX_PATH_LENGTH)
                     {
                         continue;
                     }
@@ -458,8 +469,9 @@ namespace chrome
                 std::string manifestContent;
 
                 if (m_fileSystemWrapper->is_directory(extensionPath) &&
-                        (!insideProfile || browser_extensions::isPlainDirectoryChain(extensionsDir.string(), relativePath)) &&
-                        browser_extensions::readRegularFile(manifestPath.string(), manifestContent, m_currentOwnerUid))
+                    (!insideProfile ||
+                     browser_extensions::isPlainDirectoryChain(extensionsDir.string(), relativePath)) &&
+                    browser_extensions::readRegularFile(manifestPath.string(), manifestContent, m_currentOwnerUid))
                 {
                     ChromeExtension extension;
 
@@ -493,7 +505,8 @@ namespace chrome
         return extensions;
     }
 
-    std::string ChromeExtensionsProvider::getProfileFromPreferences(const std::string& preferencesFilePath, const std::string& securePreferencesFilePath)
+    std::string ChromeExtensionsProvider::getProfileFromPreferences(const std::string& preferencesFilePath,
+                                                                    const std::string& securePreferencesFilePath)
     {
         std::string profileName = "";
 
@@ -515,7 +528,7 @@ namespace chrome
         std::string extraPreferencesContent;
 
         if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent, m_currentOwnerUid) ||
-                !browser_extensions::readRegularFile(securePreferencesFilePath, extraPreferencesContent, m_currentOwnerUid))
+            !browser_extensions::readRegularFile(securePreferencesFilePath, extraPreferencesContent, m_currentOwnerUid))
         {
             return "";
         }
@@ -556,18 +569,21 @@ namespace chrome
     {
         std::filesystem::path preferencesFilePath = std::filesystem::path(profilePath) / PREFERENCES_FILE;
         std::filesystem::path securePreferencesFilePath = std::filesystem::path(profilePath) / SECURE_PREFERENCES_FILE;
-        std::string profileName = getProfileFromPreferences(preferencesFilePath.string(), securePreferencesFilePath.string());
+        std::string profileName =
+            getProfileFromPreferences(preferencesFilePath.string(), securePreferencesFilePath.string());
 
-        ChromeExtensionList preferencesFileExtensions = getExtensionsFromPreferences(profilePath, preferencesFilePath.string(), profileName);
-        ChromeExtensionList securePreferencesFileExtensions = getExtensionsFromPreferences(profilePath, securePreferencesFilePath.string(), profileName);
+        ChromeExtensionList preferencesFileExtensions =
+            getExtensionsFromPreferences(profilePath, preferencesFilePath.string(), profileName);
+        ChromeExtensionList securePreferencesFileExtensions =
+            getExtensionsFromPreferences(profilePath, securePreferencesFilePath.string(), profileName);
 
         // Only add to extension list the extensions that are not already in the list
         for (const auto& securePreferencesExtension : securePreferencesFileExtensions)
         {
-            auto it = std::find_if(preferencesFileExtensions.begin(), preferencesFileExtensions.end(), [&securePreferencesExtension](const auto & preferencesExtension)
-            {
-                return preferencesExtension.path == securePreferencesExtension.path;
-            });
+            auto it = std::find_if(preferencesFileExtensions.begin(),
+                                   preferencesFileExtensions.end(),
+                                   [&securePreferencesExtension](const auto& preferencesExtension)
+                                   { return preferencesExtension.path == securePreferencesExtension.path; });
 
             if (it == preferencesFileExtensions.end())
             {
@@ -607,20 +623,24 @@ namespace chrome
             return {};
         }
 
-        std::string profileName = getProfileFromPreferences(preferencesFilePath.string(), securePreferencesFilePath.string());
+        std::string profileName =
+            getProfileFromPreferences(preferencesFilePath.string(), securePreferencesFilePath.string());
         ChromeExtensionList extensions;
 
         for (auto subDir : m_fileSystemWrapper->list_directory(extensionPath))
         {
             subDir = extensionPath / subDir;
 
-            if (!m_fileSystemWrapper->is_directory(subDir) || !browser_extensions::isPlainDirectory(subDir.string())) continue;
+            if (!m_fileSystemWrapper->is_directory(subDir) || !browser_extensions::isPlainDirectory(subDir.string()))
+                continue;
 
             for (auto subSubDir : m_fileSystemWrapper->list_directory(subDir))
             {
                 subSubDir = subDir / subSubDir;
 
-                if (!m_fileSystemWrapper->is_directory(subSubDir) || !browser_extensions::isPlainDirectory(subSubDir.string())) continue;
+                if (!m_fileSystemWrapper->is_directory(subSubDir) ||
+                    !browser_extensions::isPlainDirectory(subSubDir.string()))
+                    continue;
 
                 std::filesystem::path manifestPath = subSubDir / EXTENSION_MANIFEST_FILE;
 
@@ -705,10 +725,10 @@ namespace chrome
         // Only add to extension list the unreferenced extensions that are not already in the list
         for (const auto& unreferencedExtension : unreferencedExtensions)
         {
-            auto it = std::find_if(referencedExtensions.begin(), referencedExtensions.end(), [&unreferencedExtension](const auto & referencedExtension)
-            {
-                return referencedExtension.path == unreferencedExtension.path;
-            });
+            auto it = std::find_if(referencedExtensions.begin(),
+                                   referencedExtensions.end(),
+                                   [&unreferencedExtension](const auto& referencedExtension)
+                                   { return referencedExtension.path == unreferencedExtension.path; });
 
             if (it == referencedExtensions.end())
             {
@@ -732,7 +752,8 @@ namespace chrome
 
             m_currentUid = m_chromeExtensionsWrapper->getUserId(user.filename().string());
             const std::filesystem::path userHomePath = std::filesystem::path(homePath) / user;
-            m_currentOwnerUid = m_currentUid.empty() ? browser_extensions::homeDirectoryOwner(userHomePath.string()) : m_currentUid;
+            m_currentOwnerUid =
+                m_currentUid.empty() ? browser_extensions::homeDirectoryOwner(userHomePath.string()) : m_currentUid;
 
 #if defined(_WIN32) || defined(_WIN64)
 
@@ -765,7 +786,8 @@ namespace chrome
                     {
                         subDirectory = profilePath / subDirectory;
 
-                        if (m_fileSystemWrapper->is_directory(subDirectory) && isValidChromeProfile(subDirectory.string()))
+                        if (m_fileSystemWrapper->is_directory(subDirectory) &&
+                            isValidChromeProfile(subDirectory.string()))
                         {
                             getExtensionsFromPath(extensions, subDirectory.string());
                         }
@@ -789,6 +811,5 @@ namespace chrome
             return nlohmann::json::array();
         }
     }
-
 
 } // namespace chrome

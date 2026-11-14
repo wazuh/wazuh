@@ -19,131 +19,129 @@
 namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-    GLOBAL_LOG_FUNCTION = nullptr;
+        GLOBAL_LOG_FUNCTION = nullptr;
 }
 
 namespace DbSync
 {
     class Pipeline final : public IPipeline
     {
-        public:
-            Pipeline(const DBSYNC_HANDLE handle,
-                     const nlohmann::json& tables,
-                     const unsigned int threadNumber,
-                     const unsigned int maxQueueSize,
-                     const ResultCallback callback)
-                : m_handle {handle}
-                , m_txnContext {DBSyncImplementation::instance().createTransaction(handle, tables)}
-                , m_maxQueueSize {maxQueueSize}
-                , m_callback {callback}
-                , m_spDispatchNode {maxQueueSize ? getDispatchNode(threadNumber) : nullptr}
+    public:
+        Pipeline(const DBSYNC_HANDLE handle,
+                 const nlohmann::json& tables,
+                 const unsigned int threadNumber,
+                 const unsigned int maxQueueSize,
+                 const ResultCallback callback)
+            : m_handle {handle}
+            , m_txnContext {DBSyncImplementation::instance().createTransaction(handle, tables)}
+            , m_maxQueueSize {maxQueueSize}
+            , m_callback {callback}
+            , m_spDispatchNode {maxQueueSize ? getDispatchNode(threadNumber) : nullptr}
+        {
+            if (!m_callback || !m_handle || !m_txnContext)
             {
-                if (!m_callback || !m_handle || !m_txnContext)
-                {
-                    throw dbsync_error {INVALID_PARAMETERS};
-                }
+                throw dbsync_error {INVALID_PARAMETERS};
             }
-            ~Pipeline()
+        }
+        ~Pipeline()
+        {
+            if (m_spDispatchNode)
             {
-                if (m_spDispatchNode)
-                {
-                    try
-                    {
-                        m_spDispatchNode->rundown();
-                    }
-                    catch (...)
-                    {
-                    }
-                }
-
                 try
                 {
-                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext, !m_keepRowsOnClose);
+                    m_spDispatchNode->rundown();
                 }
                 catch (...)
                 {
                 }
             }
-            void syncRow(const nlohmann::json& value) override
-            {
-                try
-                {
-                    DBSyncImplementation::instance().syncRowData(
-                        m_handle,
-                        m_txnContext,
-                        value,
-                        [this](ReturnTypeCallback resType, const nlohmann::json & resValue)
-                    {
-                        this->pushResult(SyncResult {resType, resValue});
-                    });
-                }
-                catch (const DbSync::max_rows_error&)
-                {
-                    pushResult(SyncResult {MAX_ROWS, value});
-                }
-                catch (const std::exception& ex)
-                {
-                    SyncResult result;
-                    result.first = DB_ERROR;
-                    result.second = value;
-                    result.second["exception"] = ex.what();
-                    pushResult(result);
-                }
-            }
-            void getDeleted(ResultCallback callback) override
-            {
-                if (m_spDispatchNode)
-                {
-                    m_spDispatchNode->rundown();
-                }
 
-                DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
-            }
-            void keepRowsOnClose() override
+            try
             {
-                m_keepRowsOnClose = true;
+                DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext, !m_keepRowsOnClose);
             }
-
-        private:
-            using SyncResult = std::pair<ReturnTypeCallback, nlohmann::json>;
-            using DispatchCallbackNode = Utils::ReadNode<SyncResult>;
-
-            std::shared_ptr<DispatchCallbackNode> getDispatchNode(const int threadNumber)
+            catch (...)
             {
-                return std::make_shared<DispatchCallbackNode>(
-                           std::bind(&Pipeline::dispatchResult, this, std::placeholders::_1),
-                           threadNumber ? threadNumber : cpp_get_nproc());
+            }
+        }
+        void syncRow(const nlohmann::json& value) override
+        {
+            try
+            {
+                DBSyncImplementation::instance().syncRowData(
+                    m_handle,
+                    m_txnContext,
+                    value,
+                    [this](ReturnTypeCallback resType, const nlohmann::json& resValue)
+                    { this->pushResult(SyncResult {resType, resValue}); });
+            }
+            catch (const DbSync::max_rows_error&)
+            {
+                pushResult(SyncResult {MAX_ROWS, value});
+            }
+            catch (const std::exception& ex)
+            {
+                SyncResult result;
+                result.first = DB_ERROR;
+                result.second = value;
+                result.second["exception"] = ex.what();
+                pushResult(result);
+            }
+        }
+        void getDeleted(ResultCallback callback) override
+        {
+            if (m_spDispatchNode)
+            {
+                m_spDispatchNode->rundown();
             }
 
-            void pushResult(const SyncResult& result)
+            DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
+        }
+        void keepRowsOnClose() override
+        {
+            m_keepRowsOnClose = true;
+        }
+
+    private:
+        using SyncResult = std::pair<ReturnTypeCallback, nlohmann::json>;
+        using DispatchCallbackNode = Utils::ReadNode<SyncResult>;
+
+        std::shared_ptr<DispatchCallbackNode> getDispatchNode(const int threadNumber)
+        {
+            return std::make_shared<DispatchCallbackNode>(
+                std::bind(&Pipeline::dispatchResult, this, std::placeholders::_1),
+                threadNumber ? threadNumber : cpp_get_nproc());
+        }
+
+        void pushResult(const SyncResult& result)
+        {
+            const auto async {m_spDispatchNode && m_spDispatchNode->size() < m_maxQueueSize};
+
+            if (async)
             {
-                const auto async {m_spDispatchNode&& m_spDispatchNode->size() < m_maxQueueSize};
-
-                if (async)
-                {
-                    m_spDispatchNode->receive(result);
-                }
-                else
-                {
-                    dispatchResult(result);
-                }
+                m_spDispatchNode->receive(result);
             }
-
-            void dispatchResult(const SyncResult& result)
+            else
             {
-                const auto& value {result.second};
-
-                if (!value.empty())
-                {
-                    m_callback(result.first, value);
-                }
+                dispatchResult(result);
             }
-            const DBSYNC_HANDLE m_handle;
-            const TXN_HANDLE m_txnContext;
-            const unsigned int m_maxQueueSize;
-            const ResultCallback m_callback;
-            const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
-            bool m_keepRowsOnClose {false};
+        }
+
+        void dispatchResult(const SyncResult& result)
+        {
+            const auto& value {result.second};
+
+            if (!value.empty())
+            {
+                m_callback(result.first, value);
+            }
+        }
+        const DBSYNC_HANDLE m_handle;
+        const TXN_HANDLE m_txnContext;
+        const unsigned int m_maxQueueSize;
+        const ResultCallback m_callback;
+        const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
+        bool m_keepRowsOnClose {false};
     };
     //----------------------------------------------------------------------------------------
     PipelineFactory& PipelineFactory::instance() noexcept

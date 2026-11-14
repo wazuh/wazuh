@@ -12,7 +12,13 @@ runs:
       run: sudo apt-get update -y
     - name: Install tools and libraries
       shell: bash
-      run: sudo apt-get install cppcheck astyle valgrind lcov clang-tools -y
+      run: sudo apt-get install cppcheck valgrind lcov clang-tools -y
+    - name: Install clang-format
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/clang-format"
+        curl -fsSL https://packages.wazuh.com/utils/clang-format/clang-format.tar.gz | tar -xz -C "$RUNNER_TEMP/clang-format"
+        echo "$RUNNER_TEMP/clang-format/bin" >> "$GITHUB_PATH"
     - name: Install mingw
       shell: bash
       run: |

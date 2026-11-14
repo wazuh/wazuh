@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_CreateThread(__attribute__((unused)) void * (*function_pointer)(void *),
-                        __attribute__((unused))  void *data) {
+int __wrap_CreateThread(__attribute__((unused)) void* (*function_pointer)(void*), __attribute__((unused)) void* data)
+{
     return 1;
 }

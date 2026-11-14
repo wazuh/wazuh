@@ -13,10 +13,10 @@
 #include "../../../../external/cJSON/cJSON.h"
 
 /* w_mconf_load(): expect_string(cfgfile) + will_return(status). */
-int __wrap_w_mconf_load(const char *cfgfile);
+int __wrap_w_mconf_load(const char* cfgfile);
 
 /* w_mconf_section(): expect_string(section) + will_return(cJSON *) — the caller frees the object,
  * so queue a fresh cJSON_Parse() result (or NULL) for every expected call. */
-cJSON *__wrap_w_mconf_section(const char *section);
+cJSON* __wrap_w_mconf_section(const char* section);
 
 #endif // MCONF_CONFIG_WRAPPERS

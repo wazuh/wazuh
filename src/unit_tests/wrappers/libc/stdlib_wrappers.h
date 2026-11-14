@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef STDLIB_WRAPPERS_H
 #define STDLIB_WRAPPERS_H
 
@@ -15,12 +14,12 @@
 
 int __wrap_atexit(void (*callback)(void));
 
-char *__wrap_realpath(const char *path, char *resolved_path);
-char *__wrap___realpath_chk(const char *path, char *resolved_path, size_t resolved_len);
+char* __wrap_realpath(const char* path, char* resolved_path);
+char* __wrap___realpath_chk(const char* path, char* resolved_path, size_t resolved_len);
 
-int __wrap_system(const char *__command);
+int __wrap_system(const char* __command);
 void expect_system(int ret);
 
-int __wrap_mkstemp(char *template);
+int __wrap_mkstemp(char* template);
 
 #endif
