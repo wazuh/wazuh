@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <benchmark/benchmark.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -22,8 +23,8 @@ constexpr int64_t kBatch = 256;
 /**
  * @brief Batch size: a fixed batch of kBatch documents below firstSingleSize, one document per iteration from there up.
  *
- * A batch of 1 means one PauseTiming/ResumeTiming per iteration, so it is used only where the timed body takes about a
- * millisecond or more: merges switch at N >= 1024, JsonEraseIfKey at N >= 16384.
+ * A batch of 1 means one PauseTiming/ResumeTiming per iteration, so it is used only from the sizes where kBatch copies
+ * of the document would take too much memory: merges switch at N >= 1024, JsonEraseIfKey at N >= 16384.
  */
 int64_t batchFor(const benchmark::State& state, int64_t firstSingleSize)
 {
@@ -179,19 +180,25 @@ void BM_JsonSetString_SameKey(benchmark::State& state)
 /**
  * @brief Shared body of the merge benchmarks: merges srcText into fresh copies of dstText.
  *
- * input_bytes is the serialized size of the source document.
+ * input_bytes is the serialized size of the source document. With alwaysFullBatch every batch holds kBatch documents,
+ * for the benchmarks whose timed body is small whatever the size of the destination; otherwise the batch follows the
+ * document size (batchFor).
  */
-void runMerge(benchmark::State& state, const std::string& srcText, const std::string& dstText, size_t expectedSize)
+void runMerge(benchmark::State& state,
+              const std::string& srcText,
+              const std::string& dstText,
+              size_t expectedSize,
+              bool isRecursive = false,
+              bool alwaysFullBatch = false)
 {
     const Json src(srcText.c_str());
     const Json dstTemplate(dstText.c_str());
     state.counters["input_bytes"] = static_cast<double>(srcText.size());
 
-    // Untimed guard: runs the whole merge once, so the wall clock of single-iteration sizes is about twice the
-    // reported time.
+    // Untimed guard: runs the whole merge once.
     {
         Json check(dstTemplate);
-        check.merge(false, src);
+        check.merge(isRecursive, src);
         if (check.size() != expectedSize)
         {
             state.SkipWithError("the merge did not produce the expected size");
@@ -199,7 +206,7 @@ void runMerge(benchmark::State& state, const std::string& srcText, const std::st
         }
     }
 
-    const auto batch = batchFor(state, 1024);
+    const auto batch = alwaysFullBatch ? kBatch : batchFor(state, 1024);
     std::vector<Json> docs;
     docs.reserve(static_cast<size_t>(batch));
     while (state.KeepRunningBatch(batch))
@@ -209,7 +216,7 @@ void runMerge(benchmark::State& state, const std::string& srcText, const std::st
         state.ResumeTiming();
         for (auto& doc : docs)
         {
-            doc.merge(false, src);
+            doc.merge(isRecursive, src);
             benchmark::DoNotOptimize(doc);
         }
     }
@@ -231,6 +238,140 @@ void BM_JsonMerge_Array(benchmark::State& state)
 {
     const auto n = state.range(0);
     runMerge(state, makeArrayText(n, "s"), makeArrayText(n, "d"), static_cast<size_t>(2 * n));
+}
+
+/** @brief Object text with n members "k<i>": a small object each; the members differ between source and destination. */
+std::string makeNestedObjectText(int64_t n, bool isSource)
+{
+    std::string text = "{";
+    for (int64_t i = 0; i < n; ++i)
+    {
+        if (i > 0)
+        {
+            text += ',';
+        }
+        const auto id = std::to_string(i);
+        text += "\"k" + id + "\":";
+        text += isSource ? "{\"a\":\"s" + id + "\",\"b\":2,\"c\":3}" : "{\"a\":\"d" + id + "\",\"b\":1}";
+    }
+    text += '}';
+    return text;
+}
+
+/** @brief Same keys in source and destination, each value a small object, merged recursively: size stays N. */
+void BM_JsonMerge_ObjectRecursive(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    runMerge(state, makeNestedObjectText(n, true), makeNestedObjectText(n, false), static_cast<size_t>(n), true);
+}
+
+/** @brief Small source (8 members: 4 new names, 4 already in the destination) into a destination of N members. */
+void BM_JsonMerge_SmallIntoWide(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    std::string src = "{";
+    for (int64_t i = 0; i < 4; ++i)
+    {
+        src += "\"new" + std::to_string(i) + "\":\"n" + std::to_string(i) + "\",";
+    }
+    for (int64_t i = 0; i < 4; ++i)
+    {
+        // Names spread over the destination.
+        const auto idx = (i * n) / 4;
+        src += "\"d" + std::to_string(idx) + "\":\"m" + std::to_string(i) + "\"";
+        if (i < 3)
+        {
+            src += ',';
+        }
+    }
+    src += '}';
+    runMerge(state, src, makeObjectText(n, "d"), static_cast<size_t>(n + 4), false, true);
+}
+
+/**
+ * @brief Merges around the point where the member index is built: range(0) = S source members, range(1) = D
+ * destination members, range(2) = population (0: source names disjoint from the destination; 1: source names present
+ * in it, taken from its first members; 2: present in it, taken from its last members).
+ *
+ * With populations 1 and 2 and S > D the source names wrap around the destination names, so a name repeats inside the
+ * source.
+ */
+void BM_JsonMerge_Crossover(benchmark::State& state)
+{
+    const auto s = state.range(0);
+    const auto d = state.range(1);
+    const auto population = state.range(2);
+    if (population != 0)
+    {
+        std::string src = "{";
+        for (int64_t i = 0; i < s; ++i)
+        {
+            if (i > 0)
+            {
+                src += ',';
+            }
+            const auto hit = population == 1 ? i % d : d - 1 - (i % d);
+            src += "\"d" + std::to_string(hit) + "\":\"s" + std::to_string(i) + "\"";
+        }
+        src += '}';
+        runMerge(state, src, makeObjectText(d, "d"), static_cast<size_t>(d), false, true);
+    }
+    else
+    {
+        runMerge(state, makeObjectText(s, "s"), makeObjectText(d, "d"), static_cast<size_t>(s + d), false, true);
+    }
+}
+
+/**
+ * @brief Source position at which a merge of the given population finds its member index built, following the rule
+ * of Json::merge: the members visited by its scans exceed MERGE_INDEX_SCAN_FACTOR times those of the destination.
+ */
+int64_t crossoverIndexBuiltAt(int64_t d, int64_t population)
+{
+    const size_t factor = Json::MERGE_INDEX_SCAN_FACTOR;
+    size_t scanned = 0;
+    auto count = static_cast<size_t>(d);
+    for (int64_t i = 0;; ++i)
+    {
+        if (scanned > factor * count)
+        {
+            return i;
+        }
+        if (population == 0)
+        {
+            // A miss visits every member and adds one
+            scanned += count;
+            ++count;
+        }
+        else
+        {
+            const auto hit = population == 1 ? i % d : d - 1 - (i % d);
+            scanned += static_cast<size_t>(hit) + 1;
+        }
+    }
+}
+
+/**
+ * @brief Fills the (S, D, population) grid of BM_JsonMerge_Crossover without duplicates: a few small sources, and
+ * sources that end half way to the index, just after it is built (the index is paid for and hardly used: the least
+ * favourable point) and well after it.
+ */
+void crossoverGrid(benchmark::internal::Benchmark* bench)
+{
+    for (const int64_t d : {64, 256, 1024})
+    {
+        for (const int64_t population : {0, 1, 2})
+        {
+            const auto built = crossoverIndexBuiltAt(d, population);
+            std::vector<int64_t> sources {1, 8, 32, built / 2, built + 1, built + 8, built + 64, 2 * built};
+            std::sort(sources.begin(), sources.end());
+            sources.erase(std::unique(sources.begin(), sources.end()), sources.end());
+            for (const auto s : sources)
+            {
+                bench->Args({s, d, population});
+            }
+        }
+    }
 }
 
 // =============================================================================
@@ -475,8 +616,12 @@ REGISTER_SCALING_BENCH(BM_JsonSetString_Siblings);
 REGISTER_SCALING_BENCH(BM_JsonSet_Siblings);
 REGISTER_SCALING_BENCH(BM_JsonSetString_NestedSiblings);
 REGISTER_SCALING_BENCH(BM_JsonSetString_SameKey);
-REGISTER_SCALING_BENCH(BM_JsonMerge_ObjectDisjoint);
-REGISTER_SCALING_BENCH(BM_JsonMerge_ObjectOverlap);
+// The merges between objects run every size the same way.
+BENCHMARK(BM_JsonMerge_ObjectDisjoint)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonMerge_ObjectOverlap)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonMerge_ObjectRecursive)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond);
+// Always kBatch documents per batch, so its sizes stop where that many copies stay small.
+BENCHMARK(BM_JsonMerge_SmallIntoWide)->RangeMultiplier(4)->Range(16, 4096)->Unit(benchmark::kMicrosecond);
 // The range sweep only: the single large run is not registered for the array merge.
 BENCHMARK(BM_JsonMerge_Array)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
 REGISTER_SCALING_BENCH(BM_JsonEraseIfKey);
@@ -505,6 +650,9 @@ REGISTER_SMALL_SIZES_BENCH(BM_PathWriterSetString_NestedSiblings);
 REGISTER_SMALL_SIZES_BENCH(BM_JsonSetString_Siblings);
 REGISTER_SMALL_SIZES_BENCH(BM_JsonSet_Siblings);
 REGISTER_SMALL_SIZES_BENCH(BM_JsonSetString_NestedSiblings);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ObjectDisjoint);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ObjectOverlap);
+REGISTER_SMALL_SIZES_BENCH(BM_JsonMerge_ObjectRecursive);
 
 // Threshold sweep: T in {16, 32, 64, 128}, N in {T + 2, 2T, 4T}.
 BENCHMARK(BM_PathWriterThreshold_Siblings)
@@ -534,3 +682,6 @@ BENCHMARK(BM_JsonSetString_Crossover)
     ->Arg(256)
     ->Arg(512)
     ->Unit(benchmark::kMicrosecond);
+
+// Merge crossover: the (S, D, population) grid, built programmatically.
+BENCHMARK(BM_JsonMerge_Crossover)->Apply(crossoverGrid)->Unit(benchmark::kMicrosecond);

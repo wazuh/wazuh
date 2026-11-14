@@ -2825,12 +2825,6 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             RETURN_FAILURE(isTestMode, event, failureTrace1);
         }
 
-        auto fieldsOpt = event->getFields(tgtPath);
-        if (!fieldsOpt)
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace1);
-        }
-
         // Comparison value: the shared literal, or a per-event snapshot of the reference.
         const json::Json* cmp = capturedVal.get();
         std::optional<json::Json> refSnap;
@@ -2850,21 +2844,12 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             }
         }
 
-        const auto& fields = *fieldsOpt;
-
-        std::string childPath;
-
-        for (const auto& k : fields)
+        // Without a comparison value (the reference does not exist) nothing is deleted
+        if (cmp != nullptr)
         {
-            childPath.assign(tgtPath);
-            childPath.append(json::Json::formatJsonPath(k, true));
-
             try
             {
-                if (cmp != nullptr && event->equals(childPath, *cmp))
-                {
-                    (void)event->erase(childPath);
-                }
+                (void)event->eraseMembersEqualTo(tgtPath, *cmp);
             }
             catch (const std::exception& e)
             {

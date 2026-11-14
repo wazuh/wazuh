@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "jsonNameCompare.hpp"
+
 namespace json
 {
 
@@ -23,24 +25,7 @@ namespace
 using Member = rapidjson::Value::Member;
 using Token = rapidjson::Pointer::Token;
 
-// Byte order first, then length: names may contain NUL bytes.
-int compareNames(std::string_view lhs, std::string_view rhs)
-{
-    const auto common = std::min(lhs.size(), rhs.size());
-    if (common != 0)
-    {
-        const int result = std::memcmp(lhs.data(), rhs.data(), common);
-        if (result != 0)
-        {
-            return result;
-        }
-    }
-    if (lhs.size() == rhs.size())
-    {
-        return 0;
-    }
-    return lhs.size() < rhs.size() ? -1 : 1;
-}
+using internal::compareNames;
 
 std::string_view nameOf(const Member& member)
 {
