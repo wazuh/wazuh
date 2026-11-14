@@ -28,6 +28,7 @@ base/
 │   ├── timer.hpp, syncStatus.hpp, statusSnapshot.hpp, ymlFormat.hpp, baseTypes.hpp
 │   └── utils/                  # stringUtils, ipUtils, timeUtils, communityId, singletonLocator, ...
 ├── src/                        # Implementations (managerLogSink.cpp, process.cpp, logging.cpp, ...)
+│   └── jsonNameCompare.hpp     # Internal header: member-name comparison shared by the path writer, the merge and the bulk erase (not installed)
 ├── test/include/               # base::test INTERFACE include directory (test helpers)
 ├── test/src/unit/              # GoogleTest unit tests
 └── benchmark/                  # base_benchmark (eventParser, json)
@@ -104,6 +105,16 @@ json::Json doc;
     const bool hasUser = writer.exists("/user"); // read through the writer, not through doc
 }                                                // scope end: doc is free to use directly again
 ```
+
+## JSON Merge and Bulk Erase
+
+Header: [include/base/json.hpp](include/base/json.hpp). Implementation: [src/json.cpp](src/json.cpp). Namespace `json`.
+
+**`Json::merge` between objects.** Each member of the source is resolved in the destination with one lookup, which scans the destination. Once the scans of one merge have visited more than `Json::MERGE_INDEX_SCAN_FACTOR` times the number of members of the destination, the rest of its lookups go through a local ordered index of the destination members: building the index costs a small fraction of the scanning already done, so a merge is not noticeably slower than plain scanning and the cost of merging wide objects grows almost linearly with the number of members. A recursive merge descends into the member it found. Merging arrays is a different path: each source element is compared with every destination element.
+
+**Destination path in URI-fragment form.** A destination path written as `#/...` is resolved once, at the start of the call. Member names met while descending are never read again as part of a fragment.
+
+**`Json::eraseMembersEqualTo(path, value)`.** Erases, in a single pass, the members of the object at `path` whose value equals `value`; the members that stay keep their order. With a repeated member name, the leading run of equal occurrences of that name is erased and the first occurrence that differs keeps the later ones. Names are compared with their whole length. It returns the number of members erased, and 0 with the document untouched when the path does not exist or is not an object. The builder helper `delete_fields_with_value` uses it.
 
 ## Time Utilities
 
