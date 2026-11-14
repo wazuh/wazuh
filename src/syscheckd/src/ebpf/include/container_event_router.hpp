@@ -226,10 +226,11 @@ namespace fim_container_events
              *
              * The fix belongs in the engine and is cheap: ONE bit in the record's
              * `flags` marking the source end. Two of sixteen bits are used and
-             * `_reserved0` is free, so it costs no bytes — do NOT append the source
-             * path, which is what an earlier version of this comment proposed; that
-             * grows the record from 12,424 to ~16,520 bytes and cuts the 8 MiB ring
-             * from ~674 records to ~508 for every event class to fix one.
+             * `_reserved0` is free, so it costs no bytes — unlike appending the
+             * source path, which an earlier version of this comment proposed. That
+             * was ~4 KiB per event when the record was fixed-length; under ABI 2 it
+             * is only the path's real length, but it is still a fourth string on
+             * every event of every class, to fix one.
              *
              * The bit alone is still not enough to delete the source: these are
              * entry-time hooks with no completion report, so the rename may have

@@ -36,8 +36,8 @@
  * MAJOR (a consumer must refuse to open a mismatched-MAJOR engine). Every
  * event also carries abi_major so a consumer that opened the engine before
  * a live reload can still detect a mismatch. */
-#define RT_ABI_MAJOR 1
-#define RT_ABI_MINOR 2
+#define RT_ABI_MAJOR 2
+#define RT_ABI_MINOR 0
 /* MINOR 1: added cwd/parent_cwd/parent_comm. Purely additive (appended
  * after the existing fields) — found missing when starting the FIM
  * cutover: host FIM's existing whodata "who" attribution (dynamic_file_
@@ -48,6 +48,27 @@
 /* MINOR 2: added euid/login_uid after parent_comm so host FIM whodata
  * retains effective-user and audit-user attribution. Consumers built against
  * MINOR 1 still work unmodified; they just never read the new tail fields. */
+
+/* MAJOR 2 (MINOR back to 0): the record on the wire is now VARIABLE LENGTH.
+ *
+ * ABI 1 reserved sizeof(struct rt_file_event) -- 12,424 bytes -- for every
+ * event, whatever its paths actually were, because bpf_ringbuf_reserve() needs
+ * a verifier-constant size. The 8 MiB ring therefore held ~674 records: about
+ * 80 ms of a burst measured at 8,400 events/s. The three RT_PATH_MAX arrays
+ * are what cost that, and a typical event fills a few dozen bytes of each.
+ *
+ * So the BPF program now builds the record in a per-CPU scratch, packs the
+ * three paths back to back NUL-terminated, and sends only the used prefix with
+ * bpf_ringbuf_output(). A record with three 64-byte paths is ~331 bytes
+ * instead of 12,424: ~37x more events in flight before the ring overflows.
+ *
+ * This is a layout change, hence MAJOR, and the two sides must be rebuilt
+ * together -- which the per-event abi_major guard enforces.
+ *
+ * CONSUMERS ARE NOT AFFECTED. struct rt_file_event keeps exactly the shape it
+ * had: the engine expands the wire record into one before calling the sink, so
+ * a consumer still reads ev->filename / ev->cwd / ev->parent_cwd as fixed
+ * arrays. Only the kernel-to-engine transport changed. */
 
 enum rt_event_type
 {
@@ -75,9 +96,11 @@ enum rt_flags
 #define RT_PATH_MAX 4096
 #define RT_COMM_MAX 32
 
-/* Fixed-size record for every FILE_* event class. A future event class
- * (process-exec, network) would get its own struct plus a new type value
- * in rt_event_type — not a change to this one. */
+/* The DECODED record, which is what every consumer sees. Fixed size, same
+ * shape it has had since ABI 1: the engine expands each wire record into one
+ * of these before calling the sink. A future event class (process-exec,
+ * network) would get its own struct plus a new type value in rt_event_type —
+ * not a change to this one. */
 struct rt_file_event
 {
     unsigned short abi_major;
@@ -112,6 +135,61 @@ struct rt_file_event
     unsigned int euid;
     unsigned int login_uid;
 };
+
+/* ---- wire record ------------------------------------------------------ *
+ *
+ * What the BPF program actually writes, and the only thing the ring carries.
+ * The head is fixed; `paths` holds filename, cwd and parent_cwd back to back,
+ * each NUL-terminated, and only the used prefix is transmitted. A record is
+ * therefore RT_WIRE_HEAD_SIZE + (bytes used) long, never sizeof() this struct
+ * unless all three paths are at their maximum.
+ *
+ * A path that was not collected — the cwd pair under RT_SKIP_PROC_CONTEXT, or
+ * one whose walk failed — is still present, as a single NUL. The count is
+ * always three, so the decoder never has to guess which one is missing.
+ *
+ * The first four fields are deliberately identical to struct rt_file_event's,
+ * so the engine can read abi_major out of a record it has not yet decoded and
+ * may not understand. */
+#define RT_WIRE_PATH_COUNT 3
+
+struct rt_file_event_wire
+{
+    unsigned short abi_major;
+    unsigned short event_type;   /* enum rt_event_type */
+    unsigned short flags;        /* enum rt_flags bitmask */
+    unsigned short _reserved0;
+    unsigned long long timestamp_ns;
+
+    unsigned int pid;
+    unsigned int ppid;
+    unsigned int uid;
+    unsigned int gid;
+
+    unsigned long long inode;
+    unsigned long long dev;
+
+    unsigned long long cgroup_id;
+    unsigned int mnt_ns;
+    unsigned int dropped;
+
+    unsigned int euid;
+    unsigned int login_uid;
+
+    char comm[RT_COMM_MAX];
+    char parent_comm[RT_COMM_MAX];
+
+    /* filename, then cwd, then parent_cwd. */
+    char paths[RT_WIRE_PATH_COUNT * RT_PATH_MAX];
+};
+
+/* Bytes before `paths`. __builtin_offsetof rather than <stddef.h>: this header
+ * is compiled freestanding for the BPF target (see the file header). */
+#define RT_WIRE_HEAD_SIZE __builtin_offsetof(struct rt_file_event_wire, paths)
+
+/* The shortest legal record: the head plus three empty strings. Anything
+ * shorter is not a record this build can read. */
+#define RT_WIRE_MIN_SIZE (RT_WIRE_HEAD_SIZE + RT_WIRE_PATH_COUNT)
 
 /* ---- filter contract -------------------------------------------------- *
  *
@@ -159,7 +237,7 @@ enum rt_cgroup_mode
 
     /* Submit only events whose cgroup_id has been added with
      * rt_allow_cgroup(). Everything else is discarded in the kernel, before
-     * the ring reservation is even attempted.
+     * the path is even resolved.
      *
      * IMPORTANT for a container consumer: in this mode an event from a cgroup
      * you have not added is invisible, not merely unattributed. That removes

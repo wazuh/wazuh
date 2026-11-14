@@ -101,10 +101,41 @@ static void test_event_abi_layout(void)
           "login_uid is no longer the last member");
 }
 
+/* ---------------------------------------------------------------------------
+ * The WIRE record, which is the one the kernel and this library exchange.
+ * struct rt_file_event above is a userspace view the engine decodes into, so
+ * these are the numbers a stale .bpf.o would disagree with.
+ * ------------------------------------------------------------------------- */
+static void test_wire_abi_layout(void)
+{
+    CHECK(sizeof(struct rt_file_event_wire) == 12424, "sizeof(struct rt_file_event_wire) is %zu, expected 12424",
+          sizeof(struct rt_file_event_wire));
+
+    /* The guard reads abi_major out of a record it has not decoded and may not
+     * understand, so this offset must never move -- not even across a MAJOR. */
+    CHECK(offsetof(struct rt_file_event_wire, abi_major) == 0, "wire abi_major moved to %zu",
+          offsetof(struct rt_file_event_wire, abi_major));
+    CHECK(offsetof(struct rt_file_event_wire, event_type) == 2, "wire event_type moved to %zu",
+          offsetof(struct rt_file_event_wire, event_type));
+    CHECK(offsetof(struct rt_file_event_wire, flags) == 4, "wire flags moved to %zu",
+          offsetof(struct rt_file_event_wire, flags));
+
+    CHECK(RT_WIRE_HEAD_SIZE == 136, "RT_WIRE_HEAD_SIZE is %zu, expected 136", (size_t)RT_WIRE_HEAD_SIZE);
+    CHECK(RT_WIRE_MIN_SIZE == 139, "RT_WIRE_MIN_SIZE is %zu, expected 139", (size_t)RT_WIRE_MIN_SIZE);
+    CHECK(RT_WIRE_PATH_COUNT == 3, "RT_WIRE_PATH_COUNT is %d, expected 3", RT_WIRE_PATH_COUNT);
+
+    /* The whole point of ABI 2: a record with short paths is a fraction of the
+     * fixed one. Three 64-byte paths, terminators included. */
+    const size_t typical = (size_t)RT_WIRE_HEAD_SIZE + 3 * 65;
+    CHECK(typical < sizeof(struct rt_file_event_wire) / 30,
+          "a typical record is %zu bytes, expected well under a thirtieth of %zu", typical,
+          sizeof(struct rt_file_event_wire));
+}
+
 static void test_abi_accessors(void)
 {
     CHECK(rt_abi_major() == RT_ABI_MAJOR, "rt_abi_major() = %d, header says %d", rt_abi_major(), RT_ABI_MAJOR);
-    CHECK(rt_abi_minor() == 2, "rt_abi_minor() = %d, expected 2", rt_abi_minor());
+    CHECK(rt_abi_minor() == 0, "rt_abi_minor() = %d, expected 0", rt_abi_minor());
     CHECK(rt_abi_minor() == RT_ABI_MINOR, "rt_abi_minor() = %d, header says %d", rt_abi_minor(), RT_ABI_MINOR);
 }
 
@@ -601,6 +632,7 @@ int main(void)
 {
     printf("rt_engine contract tests\n");
     test_event_abi_layout();
+    test_wire_abi_layout();
     test_abi_accessors();
     test_rt_open_rejects_useless_filters();
     test_null_handle_contracts();

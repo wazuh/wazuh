@@ -17,7 +17,7 @@ Nada de lo que sigue está medido. Son diferencias de código verificadas contra
 | F1 | Mount no capturado en operaciones por `fd` | Rutas erróneas en alertas FIM | Correctitud, silencioso | Bajo | No | Sí |
 | F2 | Sin semántica de operación completada | Borrados/reconciliaciones por operaciones fallidas | Correctitud | Medio (alto si se hace completo) | Sí (MINOR) | Sí |
 | F3 | `m_ownersGeneration` escrito desde IPC | Atribución de owner obsoleta + carrera de datos | Correctitud | Trivial | No | No |
-| F4 | Registro fijo de 12.424 bytes | Pérdida de eventos bajo ráfaga | Capacidad | Alto (los dos pasos cuestan casi lo mismo) | Sí (MAJOR en el paso 2) | Sí |
+| F4 | Registro fijo de 12.424 bytes | Pérdida de eventos bajo ráfaga | Capacidad | Medio — menos de lo estimado, ver §34.4 | Sí, `RT_ABI_MAJOR` 2 | Sí |
 | F5 | Sin filtro de rutas en kernel | CPU de kernel y presión de ring evitables | Rendimiento | Medio | No | Sí |
 | F6 | Rename sin marca de extremo | Reconciliación completa de contenedor por rename | Rendimiento | Bajo | Sí (MINOR, sin cambio de tamaño) | Sí |
 | F7 | Ráfaga de rutas irrelevantes desborda staging | Re-walk completo de contenedor | Rendimiento | Bajo-medio | No | No |
@@ -138,92 +138,40 @@ Hay un agravante propio del hook LSM: un `lsm/path_unlink` se ejecuta *antes* de
 
 4.14.11 cerraba el ciclo: `OP_PENDING`/`OP_DONE`, `inflight_map` keyeado por tid, el campo `tid` en el registro, y **tres return probes** que reportan `ret` (`modern.bpf.c:35-37, 46-65, 519-551`).
 
-### Arreglo en dos pasos, y el primero no toca BPF
+### Arreglo: registro de longitud variable, `RT_ABI_MAJOR` 2 — **implementado**
 
-**Paso 1 — el arreglo pequeño que vale hoy.** `container_event_drain.cpp:714` deja de tratar el `unlink` de entrada como borrado consumado: marca el contenedor como Suspect y deja que la reconciliación **establezca la ausencia** mirando el filesystem. La reconciliación ya existe, ya coalesce por contenedor (`container_event_staging.hpp:349`) y es la única capa del sistema que puede afirmar que un archivo no está. El coste es un re-walk donde antes había un borrado directo; la ganancia es que deja de borrar por operaciones fallidas.
-
-**Paso 2 — la restauración completa**, cuando el registro cambie por F4 de todos modos:
-
-- `rt_event_contract.h`: añadir `tid` al final (`RT_ABI_MINOR` 2 → 3, puramente aditivo) y un bit en `flags` para distinguir intención de completado. Hay 14 bits libres de 16 y `_reserved0` entero.
-- `rt_file.bpf.c`: `inflight_map` keyeado por `bpf_get_current_pid_tgid()`, más return probes para los hooks destructivos.
-- **Liberar la operación pendiente sólo tras un completado con éxito. Un timeout no establece éxito**, y tratarlo como tal reintroduce el bug por la puerta de atrás.
-- Consumidores: condicionar toda acción destructiva al completado; mantener la reconciliación como respaldo para registros antiguos o sin marcar.
-
-El doc 31 §31.4.2 planteaba esto como pregunta abierta de diseño. No lo es: hay implementación de referencia funcionando en 4.14.11.
-
----
-
-## 34.3 F3 — `m_ownersGeneration` escrito desde el hilo IPC
-
-### Síntoma
-
-Tras un refresco IPC de un solo contenedor, **la planificación por generación deja de disparar**: los chequeos de igualdad de `:153` y `:203` ya no ven trabajo pendiente. Los demás contenedores conservan atribución de owner obsoleta —pod, namespace, controlador— y sus alertas salen con el owner equivocado, no sin owner.
-
-Precisión: **no es que la reconciliación no corra nunca**. `refreshOne()` no limpia `m_reconcilePending`, así que una pendiente ya marcada todavía corre en `:218-220`; los eventos de watch ordinarios la marcan en `:174` y un re-listado llama a `reconcile()` en `:196`. Lo que se pierde es la vía de la generación — justo la que cubre un cambio de ownership sin evento de pod.
-
-Por debajo, además, hay una carrera de datos real sobre un `std::uint64_t` plano, que es comportamiento indefinido.
-
-### Cadena causal
-
-[`kubernetes_connector.hpp:59-64`](../src/wazuh_modules/container_instances/ci_impl/src/kubernetes/kubernetes_connector.hpp) declara el bloque como *"Connector-thread state (watch sink and reconcile run on it exclusively)"*. `m_ownersGeneration` vive ahí dentro y significa **la generación con la que la reconciliación completa reconstruyó el set entero de records**.
-
-`kubernetes_connector.cpp:287`, dentro de `refreshOne()`, la pisa refrescando **un solo** contenedor. `refreshOne()` lo invocan los workers IPC (`ipc_server.cpp:180-195, 234` → [`query_service.cpp:215`](../src/wazuh_modules/container_instances/ci_impl/src/ipc/query_service.cpp)), que no son el hilo del conector.
-
-Si el reconcile completo contabilizó la generación N y un refresco IPC la deja en N+1, los chequeos de igualdad de `:153` y `:203` dan falso: ya no detectan que hay trabajo pendiente, y el reconcile completo se pierde.
-
-### Arreglo
-
-**Borrar la línea 287.** `refreshOne()` sigue leyendo `latest()` para su propio record; sólo la reconciliación completa debe avanzar la marca.
-
-### Trampa del arreglo
-
-Hacer el campo `std::atomic<std::uint64_t>` es el reflejo equivocado: **quita la carrera y deja el bug lógico intacto**. El reconcile seguiría perdiéndose, y el código quedaría con una pista falsa de que el acceso multihilo está contemplado. El campo debe seguir siendo de un solo hilo, y el comentario del header pasa a ser cierto en vez de aspiracional.
-
----
-
-## 34.4 F4 — Registro fijo de 12.424 bytes
-
-### Síntoma
-
-El ring de 8 MiB aloja **~674 registros**. Una ráfaga de más de ~674 eventos sin consumir —una descompresión, un `npm install`, una rotación de logs— desborda el ring y se pierden eventos. La pérdida es visible (`RT_F_DROPS_BEFORE`, `rt_drain_drops()`), pero los eventos no se recuperan: para FIM eso es un cambio de archivo no alertado.
-
-### Cadena causal
-
-`rt_file.bpf.c:678` reserva `sizeof(*evt)` incondicionalmente. El contrato tiene tres `char[4096]` —`filename`, `cwd`, `parent_cwd`— y el registro ocupa 12.424 bytes aunque las tres rutas sumen 60 caracteres.
-
-4.14.11 empaquetaba las tres cadenas contiguas y NUL-terminadas en `char paths[3 * MAX_PATH_LEN]` y enviaba sólo lo usado:
+`bpf_ringbuf_reserve()` exige tamaño constante para el verificador, así que no se puede cambiar el tamaño de la reserva y ya está. El registro se arma en un scratch per-CPU y se emite con `bpf_ringbuf_output()`, que copia `size` bytes:
 
 ```c
-__u64 size = offsetof(struct file_event, paths) + off;
-if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, 0))
-    return;
+const __u64 size = (__u64)RT_WIRE_HEAD_SIZE + off;
+if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, 0) != 0)
 ```
 
-Con cabecera de 112 bytes y tres cadenas de 64, el registro histórico eran **304 bytes contra 12.424: ~41×**.
+**Lo que se hizo, y por qué no costó lo que decía la primera versión de este documento.**
 
-### Arreglo en dos pasos
+Esa versión planteaba dos pasos —truncar en frontera de campo primero, empaquetar después— y afirmaba que ambos necesitaban propagar `size` al sink, tocando a todos los consumidores. Codex señaló la salida: **decodificar dentro del motor**. Hay dos structs:
 
-`bpf_ringbuf_reserve()` exige tamaño constante para el verificador, así que **no se puede cambiar el tamaño de la reserva y ya está**. Hay que armar el registro en un scratch per-CPU y emitirlo con `bpf_ringbuf_output()`, que copia `size` bytes.
+| Struct | Quién lo ve | Forma |
+| --- | --- | --- |
+| `rt_file_event_wire` | sólo el programa BPF y `rt_engine.c` | cabecera fija de 136 bytes + `paths[]` con tres cadenas NUL-terminadas pegadas |
+| `rt_file_event` | **todos los consumidores** | idéntico a ABI 1, con sus tres `char[4096]` |
 
-**Paso 1 — truncado en frontera de campo.** Cuando el handle pone `RT_SKIP_PROC_CONTEXT` —el drain lo hace (`container_event_drain.cpp:1553`)—, `cwd` y `parent_cwd` llegan vacíos y se transmiten 8.192 bytes inútiles. Inútiles, no nulos: `rt_file.bpf.c:733-735` escribe sólo el primer byte de cada cadena. Armando en scratch y emitiendo hasta el final de `filename` se pasa de 12.424 a ~4.200 bytes: **~3×, sin repaquetar nada y sin cambiar un solo offset**. Los campos del tail (`parent_comm`, `euid`, `login_uid`) quedan ausentes, no corruptos.
+`ringbuf_sample_cb()` valida el registro de cable y lo expande a un `rt_file_event` antes de llamar al sink. **Ningún consumidor cambió ni una línea**, ni `ebpf_whodata.cpp` ni `container_event_drain.cpp`. Y el paso intermedio sobra: se fue directo al empaquetado completo.
 
-**Pero el guard de ABI actual lo rechaza de plano.** `ringbuf_sample_cb()` (`rt_engine.c:513`) hace:
+Detalles que importan:
 
-```c
-if (ev->abi_major != RT_ABI_MAJOR || size < sizeof(struct rt_file_event))
-```
+- **Siempre viajan tres cadenas**, aunque estén vacías (un solo NUL). El decodificador nunca tiene que adivinar cuál falta en un registro corto, que es el error fácil de este formato. Con `RT_SKIP_PROC_CONTEXT` eso son 2 bytes en vez de 8.192.
+- **El guard de ABI se replanteó.** Bajo ABI 1 un registro corto significaba objeto desactualizado, porque todos medían lo mismo; bajo ABI 2 corto es el caso normal. La longitud ya no dice nada sobre la antigüedad del objeto y `abi_major` lo carga solo. El guard ahora comprueba `size >= RT_WIRE_MIN_SIZE` **antes** de leer `abi_major`, y `size <= sizeof(wire)` después.
+- **El decodificador está acotado por `size`, no por lo que digan las cadenas.** Una última cadena sin terminar —copia truncada, u objeto que no coincide— sale truncada, no leyendo más allá de la muestra.
+- **El contador de drops se devuelve si la copia falla.** `take_drop_counter()` se llama justo antes del `bpf_ringbuf_output()`; si la copia falla, `restore_drop_counter()` devuelve lo tomado antes de contar la pérdida de este evento. Si no, un ring lleno reportaría un drop en vez de todos.
 
-Un registro corto no se malinterpreta: se **descarta** y se loguea como objeto BPF incompatible. El guard está construido sobre la premisa de que longitud corta sólo puede significar objeto desactualizado, que es exactamente lo que ADR-003 define. Truncar deliberadamente rompe esa premisa.
+**Coste:** un `BPF_MAP_TYPE_PERCPU_ARRAY` nuevo de un `rt_file_event_wire` (12.424 B por CPU). Per-load per-CPU pasa de 68 KiB a ~80 KiB, contra 8 MiB de ring que ahora rinde ~38×.
 
-Por tanto el paso 1 exige tres cambios acoplados, y conviene verlos antes de llamarlo barato:
+### Medido
 
-1. Sustituir el guard por un mínimo de cabecera —hasta el final de `filename`— más comprobación de presencia por campo derivada de `size`.
-2. Propagar `size` al sink: hoy la firma entrega sólo el puntero, así que un consumidor no puede distinguir *campo ausente* de *campo vacío* — leería **más allá de la muestra**, no un cero. **Alternativa que no toca a los consumidores**: validar el registro compacto dentro del motor y decodificarlo al `struct rt_file_event` completo antes de llamar al sink (`rt_engine.c:527`). Cuesta una copia por evento y deja la firma intacta.
-3. Reemplazar la detección de objeto desactualizado por otra señal, porque la longitud deja de servir para eso. El registro lleva `abi_major` pero **no `abi_minor`**; `_reserved0` (`rt_event_contract.h:80`) está libre y es del tamaño justo para alojarlo.
+`rt_engine_drops_test`, 80.000 eventos contra un ring sin consumir: **54.400 drops, ~25.600 registros entregados** antes de desbordar. Antes eran ~674. **~38×**, que es lo que predecía la aritmética de tamaños.
 
-Con la decodificación en el motor el punto 2 desaparece y el acoplamiento se reduce al guard. Aun así **el paso 1 no es claramente más barato que el paso 2** —el guard hay que replantearlo igual— y el paso 2 da ~41× en vez de ~3×. Ese ~41× es una relación de tamaños de registro, no una mejora de throughput medida.
-
-**Paso 2 — empaquetado completo**, que es el que da los ~41×. Cambia offsets, así que es **`RT_ABI_MAJOR` 1 → 2**: hay que cambiar struct, codificación y decodificación en el mismo commit, y regenerar los dos objetos prebuilt ahí mismo. El guard por evento de `ringbuf_sample_cb()` hace que un objeto desactualizado se detecte en vez de malinterpretarse, que es precisamente para lo que está.
+El propio test hubo que re-sintonizarlo: con 4.000 eventos por hijo ya no desborda nada, que es precisamente el arreglo funcionando. Ahora son 40.000, con la aritmética escrita en el comentario para que el próximo que lo vea fallar mire primero el tamaño del registro.
 
 ### Nota sobre el doc 32
 
@@ -269,7 +217,7 @@ Los comentarios del consumidor siguen afirmando que el origen no se reporta. Ver
 
 ### Arreglo
 
-Un bit en `flags`. Hoy se usan 2 de 16, **y no cambia los 12.424 bytes**. La propuesta que está escrita en el comentario del router —anexar la ruta origen al registro, llevándolo a ~16.512 bytes— es estrictamente peor y agrava F4.
+Un bit en `flags`. Hoy se usan 2 de 16, **y no cambia el tamaño del registro**. La propuesta que estaba escrita en el comentario del router —anexar la ruta origen— era ~4 KiB por evento con el registro fijo; con ABI 2 es sólo la longitud real de la ruta, pero sigue siendo una cuarta cadena en todos los eventos de todas las clases para arreglar una.
 
 El arreglo completo es: marcar los registros de origen, conservar las rutas de destino, enseñar a los consumidores a reconciliar ambos extremos, y **preservar la escalada como respaldo** para registros antiguos o sin marcar.
 
@@ -371,13 +319,13 @@ Tres tandas. El criterio es el acoplamiento al artefacto BPF, no la severidad.
 
 **Tanda 3 — cambios de contrato, cada uno con su regeneración.**
 
-8. F4: replanteo del guard de ABI y propagación de `size` al sink. Es prerrequisito de los dos pasos; hecho eso, ir directo al paso 2.
+8. ~~F4~~ **hecho**: registro de cable empaquetado, decodificación en el motor, guard replanteado.
 9. F6: bit de extremo de rename, consumidores reconciliando ambos extremos, escalada conservada como respaldo.
 10. F2 paso 2: `tid`, `inflight_map`, return probes, liberación sólo tras éxito.
-11. F4 paso 2: empaquetado completo, `RT_ABI_MAJOR` 2. El paso 1 sólo como escalón intermedio si hace falta entregar algo antes.
+11. ~~F4 paso 2~~ **hecho** — y sin el paso 1, que resultó innecesario.
 12. F5: LPM trie opcional por handle, con la validación en userspace intacta.
 
-F4 desactualiza los números del doc 32, que están construidos sobre los 12.424 bytes fijos. No hay nada que decidir ahí: el diseño es N cargas y aquel documento es exploratorio.
+F4 desactualiza los números del doc 32, que están construidos sobre los 12.424 bytes fijos: medido, el ring rinde ~38× más. No hay nada que decidir ahí — el diseño es N cargas y aquel documento es exploratorio.
 
 ---
 
@@ -394,7 +342,7 @@ Rama `37532-ebpf-provider-review-fixes`, desde `37532-ebpf-engine` en `351f268b6
 | F8 | **Hecho** | `rt_file.bpf.c`: helper `rt_admit()`, admisión antes de los 10 sitios de resolución de ruta, y `submit_event()` recibe el `cgroup_id` en vez de resolverlo. |
 | F9 | **Hecho** | Claves, `RT_V1_SUBSYS_MAX`, `RT_SKIP_PROC_CONTEXT` y el `enum rt_cgroup_mode` completo viven ya sólo en `rt_event_contract.h`. |
 | Comentarios | **Hecho** | Rename (router y drain), 12.416→12.424, ~675→~674, y la aritmética de ráfaga, que estaba mal por 30× (ver abajo). |
-| F4 | **Pendiente** | Cambio de contrato. |
+| F4 | **Hecho** | `rt_event_contract.h`: `rt_file_event_wire` + `RT_ABI_MAJOR` 2. `rt_file.bpf.c`: `wire_map`, `append_task_cwd()`, `bpf_ringbuf_output()`, `restore_drop_counter()`. `rt_engine.c`: `decode_event()` y guard replanteado. Consumidores sin tocar. |
 | F5 | **Pendiente** | Capacidad nueva. |
 | F6 | **Pendiente** | Cambio de contrato, y depende de F2 paso 2 para servir de algo. |
 | F2 paso 2 | **Pendiente** | Cambio de contrato. |
@@ -403,7 +351,9 @@ Rama `37532-ebpf-provider-review-fixes`, desde `37532-ebpf-engine` en `351f268b6
 
 "~675 registros de 12.416 bytes — unos **2,4 segundos** de una ráfaga medida a 8.400 eventos/s" aparecía en `container_event_staging.hpp:14-16` y `container_event_drain.hpp:19-20`. La división no da eso: 674 / 8.400 = **0,080 s**. El comentario estaba equivocado por un factor de 30, y en la dirección cómoda. Corregido, junto con los dos argumentos que se apoyaban en la cifra (`drain.hpp:27`, `staging.hpp:561`); sus conclusiones aguantan, la del `drain.hpp` incluso se refuerza — 2 s de bloqueo contra 80 ms de ring son 25×.
 
-Esto es, además, el mejor argumento para F4 que hay en el repositorio: el ring absorbe **80 ms**, no 2,4 s.
+Esto era, además, el mejor argumento para F4 que había en el repositorio: con el registro fijo el ring absorbía **80 ms**, no 2,4 s.
+
+Y F4 lo volvió a mover, esta vez hacia arriba: medido, el ring ahora aguanta ~25.600 registros, unos **3 s** a 8.400 eventos/s. Los comentarios quedaron recalculados con ese número. De paso cae un argumento: el de `container_event_drain.hpp:27` decía que 2 s de bloqueo contra 80 ms de ring eran 25× de exceso; contra 3 s son dos tercios del presupuesto. La conclusión —no compartir el hilo— se sostiene igual, con menos dramatismo.
 
 ### Verificación ejecutada
 
@@ -428,9 +378,9 @@ Con `make deps TARGET=agent TEST=1` ya corrido, árbol configurado con `cmake ..
 | Test | Resultado |
 | --- | --- |
 | `rt_engine_leak_test` | pasa |
-| `rt_engine_drops_test` | pasa |
+| `rt_engine_drops_test` | pasa, **re-sintonizado**: con 4.000 eventos por hijo ABI 2 ya no desborda el ring. A 40.000 mide 54.400 drops y ~25.600 registros entregados, contra los ~674 de ABI 1 |
 | `rt_engine_filter_test` | pasa |
-| `rt_engine_skip_test` | pasa |
+| `rt_engine_skip_test` | pasa — y con ABI 2 confirma la decodificación: con `skip` puesto, `cwd`/`parent_cwd`/`parent_comm` llegan vacíos y `filename` lleno |
 | `rt_engine_paths_test` | **pasa** — `ALL OK` sobre los fixtures de bind mount, las cuatro clases de evento con ruta absoluta al mount, y las dos mitades del rename |
 | `rt_engine_creds_test` | **falla** — preexistente, ver abajo |
 

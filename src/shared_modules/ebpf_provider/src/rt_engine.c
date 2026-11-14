@@ -345,6 +345,13 @@ struct rt_engine_handle
      * cannot flood the log. */
     unsigned long long rejected;
     int rejected_reported;
+
+    /* Where each wire record is expanded before the sink sees it. One per
+     * handle, not per event: rt_poll() is single-threaded per handle by
+     * contract, and the sink is called synchronously from inside it, so the
+     * buffer cannot be in use twice. Keeping it here rather than on the
+     * callback's stack keeps 12 KiB off a stack the caller chose. */
+    struct rt_file_event decoded;
 };
 
 /* Detach every attached program. Ordered before the ring buffer is freed so
@@ -484,6 +491,74 @@ static void select_programs(struct bpf_object* obj, unsigned int type_mask, int 
     }
 }
 
+/* Expands one wire record into the fixed-layout struct every consumer reads.
+ *
+ * `paths` carries RT_WIRE_PATH_COUNT NUL-terminated strings back to back, and
+ * `size` is the only thing that says where they end -- so every step is
+ * bounded by what actually arrived, never by what the strings claim. A record
+ * whose last string is unterminated (a truncated copy, or an object that
+ * disagrees with this build) yields that string truncated rather than a read
+ * past the sample. A string that is missing entirely yields an empty one,
+ * which is what a consumer already sees for skipped process context. */
+static void decode_event(const struct rt_file_event_wire* w, size_t size, struct rt_file_event* ev)
+{
+    memset(ev, 0, sizeof(*ev));
+
+    ev->abi_major = w->abi_major;
+    ev->event_type = w->event_type;
+    ev->flags = w->flags;
+    ev->_reserved0 = w->_reserved0;
+    ev->timestamp_ns = w->timestamp_ns;
+
+    ev->pid = w->pid;
+    ev->ppid = w->ppid;
+    ev->uid = w->uid;
+    ev->gid = w->gid;
+
+    ev->inode = w->inode;
+    ev->dev = w->dev;
+
+    ev->cgroup_id = w->cgroup_id;
+    ev->mnt_ns = w->mnt_ns;
+    ev->dropped = w->dropped;
+
+    ev->euid = w->euid;
+    ev->login_uid = w->login_uid;
+
+    memcpy(ev->comm, w->comm, RT_COMM_MAX);
+    ev->comm[RT_COMM_MAX - 1] = '\0';
+    memcpy(ev->parent_comm, w->parent_comm, RT_COMM_MAX);
+    ev->parent_comm[RT_COMM_MAX - 1] = '\0';
+
+    char* const dest[RT_WIRE_PATH_COUNT] = {ev->filename, ev->cwd, ev->parent_cwd};
+    const char* src = w->paths;
+    size_t avail = size - RT_WIRE_HEAD_SIZE;
+
+    for (unsigned int i = 0; i < RT_WIRE_PATH_COUNT; ++i)
+    {
+        /* memset above already left it empty; nothing more to do. */
+        if (avail == 0)
+        {
+            continue;
+        }
+
+        const char* end = (const char*)memchr(src, '\0', avail);
+        size_t len = end ? (size_t)(end - src) : avail;
+        const size_t step = end ? len + 1 : avail;
+
+        if (len > RT_PATH_MAX - 1)
+        {
+            len = RT_PATH_MAX - 1;
+        }
+
+        memcpy(dest[i], src, len);
+        dest[i][len] = '\0';
+
+        src += step;
+        avail -= step;
+    }
+}
+
 static int ringbuf_sample_cb(void* ctx, void* data, size_t size)
 {
     struct rt_engine_handle* h = (struct rt_engine_handle*)ctx;
@@ -492,40 +567,53 @@ static int ringbuf_sample_cb(void* ctx, void* data, size_t size)
         return 0;
     }
 
-    const struct rt_file_event* ev = (const struct rt_file_event*)data;
+    const struct rt_file_event_wire* w = (const struct rt_file_event_wire*)data;
 
     /* ABI guard. The BPF object is a separate build artefact from this
      * library, so a stale .bpf.o against a newer contract is a real
      * possibility — and the record is exchanged by raw memory
      * reinterpretation, which makes such a mismatch silent and its effects
-     * arbitrary. Two independent checks:
+     * arbitrary. Three checks, in this order because the first is what makes
+     * the second safe to read:
      *
-     *   abi_major   the object stamps its own RT_ABI_MAJOR into every event;
-     *               a difference means fields moved or changed size.
-     *   size        per ADR-003 a MINOR bump appends fields, so an object
-     *               built against an older MINOR emits a SHORTER record than
-     *               this build's struct — reading our tail fields would run
-     *               off the end of the record. The reverse (a newer object,
-     *               longer record) is fine and is what "old consumers ignore
-     *               the tail" means.
+     *   size >= MIN   the head plus one byte per path. Below that there is no
+     *                 record here at all, not even an abi_major to read.
+     *   abi_major     the object stamps its own RT_ABI_MAJOR into every event;
+     *                 a difference means fields moved or changed size. An ABI
+     *                 1 object lands here: it sends a full 12,424-byte fixed
+     *                 record and stamps 1.
+     *   size <= max   a record longer than the struct cannot have come from
+     *                 this contract, so its tail cannot be interpreted.
+     *
+     * Note what is NOT a check any more: under ABI 1 a short record meant a
+     * stale object, because every record was the same size. Under ABI 2 short
+     * is the normal case — it is how the format pays for itself — so length
+     * says nothing about the object's vintage and abi_major carries that alone.
      *
      * Rejected records are dropped rather than passed on, and reported once. */
-    if (ev->abi_major != RT_ABI_MAJOR || size < sizeof(struct rt_file_event))
+    if (size < RT_WIRE_MIN_SIZE || w->abi_major != RT_ABI_MAJOR || size > sizeof(*w))
     {
         ++h->rejected;
         if (!h->rejected_reported)
         {
             h->rejected_reported = 1;
+            /* A record too short to hold abi_major cannot report one; 0 is
+             * not a legal value, so it reads as "unavailable" rather than as
+             * a real mismatch. */
+            const unsigned got = size >= sizeof(unsigned short) ? (unsigned)w->abi_major : 0u;
+
             rt_log(&h->log, RT_LOG_ERROR,
-                   "rejecting events from an incompatible BPF object: got abi_major=%u record=%zu bytes, "
-                   "this build expects abi_major=%d record>=%zu bytes. Rebuild rt_file.bpf.o. "
-                   "Further occurrences will not be logged.",
-                   (unsigned)ev->abi_major, size, RT_ABI_MAJOR, sizeof(struct rt_file_event));
+                   "rejecting events from an incompatible BPF object: got abi_major=%u record=%zu "
+                   "bytes, this build expects abi_major=%d and %zu..%zu bytes. Rebuild "
+                   "rt_file.bpf.o. Further occurrences will not be logged.",
+                   got, size, RT_ABI_MAJOR, (size_t)RT_WIRE_MIN_SIZE, sizeof(*w));
         }
         return 0;
     }
 
-    h->current_sink(ev, h->current_user);
+    decode_event(w, size, &h->decoded);
+
+    h->current_sink(&h->decoded, h->current_user);
     return 0;
 }
 

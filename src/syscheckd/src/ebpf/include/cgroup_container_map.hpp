@@ -16,7 +16,7 @@
  * The hard constraint is that the drain thread must never block. Resolution
  * lives in container_instances, behind a connect-per-request IPC socket whose
  * client defaults to a 1 s timeout — three orders of magnitude more than the
- * ~120 us per event the drain can afford before an 8 MiB ring holding ~674
+ * ~120 us per event the drain can afford before an 8 MiB ring holding ~25,600
  * records overflows. So classification here is a pure in-memory lookup, and
  * every cache miss is recorded for somebody else to resolve off the drain
  * thread. This class does no I/O at all; it is fed by its owner.

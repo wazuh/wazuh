@@ -47,7 +47,19 @@
 #include <unistd.h>
 
 #define SKIP_EXIT 77
-#define EVENTS_PER_CHILD 4000 /* an unpolled ring holds ~674 of these records */
+/* Enough events that the 8 MiB ring cannot hold them, which is the whole
+ * premise of this test.
+ *
+ * It used to be 4,000, when every record was a fixed 12,424 bytes and the ring
+ * therefore held ~674 of them. ABI 2 sends only the used prefix, so one of
+ * these events -- a ~30-byte path plus two cwds -- is nearer 300 bytes, and
+ * 8 MiB now holds on the order of 29,000. Two children at 40,000 each put
+ * ~24 MiB through an unpolled ring, three times over, which keeps the margin
+ * this test had before.
+ *
+ * If this ever stops producing drops again, check the record size before
+ * raising the number: it most likely means the format got smaller again. */
+#define EVENTS_PER_CHILD 40000
 #define MAX_REPORTED 64
 
 static int g_failures = 0;

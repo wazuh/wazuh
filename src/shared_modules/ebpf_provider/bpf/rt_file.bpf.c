@@ -107,6 +107,21 @@ struct
     __uint(max_entries, 1);
 } dpath_map SEC(".maps");
 
+/* The record is assembled here and only its used prefix is copied to the ring.
+ * It cannot live on the BPF stack (512 bytes) and it cannot be a ring
+ * reservation either, because bpf_ringbuf_reserve() needs a size the verifier
+ * knows at load time -- which is exactly what made ABI 1 pay 12,424 bytes for
+ * every event. A separate map rather than another heaps_map slot: the
+ * triggering hook's resolved path still lives in RT_SLOT_EVENT while this is
+ * being filled, and the cwd walks use RT_SLOT_CWD. */
+struct
+{
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, __u32);
+    __type(value, struct rt_file_event_wire);
+    __uint(max_entries, 1);
+} wire_map SEC(".maps");
+
 /* The VFS claims this mount just before setattr, unlink and rename, so
  * each thread's last claim identifies the mount those kprobes reached. */
 struct
@@ -169,8 +184,8 @@ struct
 
 /* In-kernel cgroup filtering.
  *
- * Without it every consumer receives every write-intent open on the host, as a
- * 12,424-byte record into an 8 MiB ring — roughly 674 records in flight. A
+ * Without it every consumer receives every write-intent open on the host, into
+ * an 8 MiB ring that holds ~25,600 of ABI 2's variable-length records. A
  * container-scoped consumer pays that whole firehose to learn about a handful
  * of cgroups, and it is what makes loss reachable at all: measured, 198,000
  * events from ten parallel producers dropped 203, while the same producer count
@@ -434,6 +449,23 @@ statfunc void bump_drop_counter(void)
     }
 }
 
+/* Hands back a count taken by take_drop_counter() that never reached a
+ * consumer, so loss stays reported exactly once. */
+statfunc void restore_drop_counter(__u32 n)
+{
+    if (!n)
+    {
+        return;
+    }
+
+    __u32 key = 0;
+    __u32* counter = bpf_map_lookup_elem(&drops_map, &key);
+    if (counter)
+    {
+        __sync_fetch_and_add(counter, n);
+    }
+}
+
 statfunc __u32 take_drop_counter(void)
 {
     __u32 key = 0;
@@ -618,10 +650,11 @@ statfunc void get_inode_dev(struct inode* inode_ptr, __u64* inode, __u64* dev)
     }
 }
 
-/* Ported from the retired modern.bpf.c's get_task_cwd(). Resolves `task`'s current
- * working directory into `dest`; returns -1 (dest left untouched by the
- * caller, which pre-clears it) on any failure in the chain. */
-statfunc int get_task_cwd(char* dest, int size, struct task_struct* task)
+/* Ported from the retired modern.bpf.c's get_task_cwd(). Resolves `task`'s
+ * current working directory into `dest` and returns the number of bytes
+ * written INCLUDING the terminator, or -1 on any failure in the chain. The
+ * length is what lets the caller pack the next string straight after it. */
+statfunc long get_task_cwd(char* dest, int size, struct task_struct* task)
 {
     if (!task)
         return -1;
@@ -643,8 +676,7 @@ statfunc int get_task_cwd(char* dest, int size, struct task_struct* task)
     if (!cwd_path)
         return -1;
 
-    bpf_probe_read_kernel_str(dest, size, cwd_path);
-    return 0;
+    return bpf_probe_read_kernel_str(dest, size, cwd_path);
 }
 
 statfunc __u32 get_mnt_ns_inum(struct task_struct* task)
@@ -660,15 +692,49 @@ statfunc __u32 get_mnt_ns_inum(struct task_struct* task)
     return BPF_CORE_READ(mnt_ns, ns.inum);
 }
 
+/* Appends one NUL-terminated path to the record and returns the new offset.
+ *
+ * A path that cannot be resolved -- no task, a failed walk, or process context
+ * the consumer asked to skip -- is still appended, as a single NUL. The wire
+ * format always carries RT_WIRE_PATH_COUNT strings, so the decoder never has
+ * to work out WHICH one is missing from a short record.
+ *
+ * The bound is what makes the variable-offset write verifiable: with off at
+ * most (RT_WIRE_PATH_COUNT - 1) * RT_PATH_MAX, a RT_PATH_MAX-byte write
+ * starting there still ends inside paths[]. */
+statfunc __u32 append_task_cwd(struct rt_file_event_wire* evt, __u32 off, struct task_struct* task)
+{
+    if (off > (RT_WIRE_PATH_COUNT - 1) * RT_PATH_MAX)
+    {
+        return off;
+    }
+
+    long len = task ? get_task_cwd(&evt->paths[off], RT_PATH_MAX, task) : -1;
+    if (len <= 0)
+    {
+        /* Direct null-byte write rather than bpf_probe_read_kernel_str(..., "")
+         * — see the retired modern.bpf.c's identical comment: libbpf < 0.6
+         * can't resolve relocations against the .rodata.str1.1 section an empty
+         * string literal would emit here, corrupting the object at load time. */
+        evt->paths[off] = '\0';
+        len = 1;
+    }
+
+    return off + (__u32)len;
+}
+
 /* `cgroup_id` comes from rt_admit(), which every caller ran BEFORE resolving a
  * path. Resolving it again here would be a second walk of the v1 hierarchy on
  * such hosts, and re-checking admission would be dead code. */
 statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __u64 dev, __u64 cgroup_id)
 {
-    struct rt_file_event* evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
+    __u32 zero = 0;
+    struct rt_file_event_wire* evt = bpf_map_lookup_elem(&wire_map, &zero);
     if (!evt)
     {
-        bump_drop_counter();
+        /* Not loss: the map is per-CPU and always present, so this is
+         * unreachable in a loaded object. Counting it would make a lookup
+         * failure look like ring pressure. */
         return;
     }
 
@@ -707,33 +773,26 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     evt->cgroup_id = cgroup_id;
     evt->mnt_ns = get_mnt_ns_inum(current_task);
 
-    evt->dropped = take_drop_counter();
-    if (evt->dropped > 0)
-    {
-        evt->flags |= RT_F_DROPS_BEFORE;
-    }
-
     bpf_probe_read_kernel_str(evt->comm, RT_COMM_MAX, (const char*)BPF_CORE_READ(current_task, comm));
-    bpf_probe_read_kernel_str(evt->filename, RT_PATH_MAX, filename);
-
-    /* Direct null-byte writes rather than bpf_probe_read_kernel_str(..., "")
-     * — see the retired modern.bpf.c's identical comment: libbpf < 0.6 can't resolve
-     * relocations against the .rodata.str1.1 section an empty-string literal
-     * would otherwise emit here, corrupting the object at load time. */
-    evt->cwd[0] = '\0';
-    evt->parent_cwd[0] = '\0';
     evt->parent_comm[0] = '\0';
+
+    /* Path 1 of 3. At offset 0, so this one needs no bound. An event with no
+     * resolvable path is not worth sending: every consumer routes on it. */
+    long len = bpf_probe_read_kernel_str(evt->paths, RT_PATH_MAX, filename);
+    if (len <= 0)
+    {
+        return;
+    }
+    __u32 off = (__u32)len;
 
     /* Two full dentry walks live below. A consumer that routes on cgroup_id and
      * filename reads none of what they produce, and on the kprobe path they are
-     * the dominant per-event cost. The fields stay in the record and stay
-     * null-terminated; they just arrive empty. */
+     * the dominant per-event cost. Skipping now costs a byte per path instead
+     * of RT_PATH_MAX, which is most of what ABI 2 is for. */
     const int want_proc_context = (skip_mask() & RT_SKIP_PROC_CONTEXT) == 0;
 
-    if (want_proc_context)
-    {
-        get_task_cwd(evt->cwd, RT_PATH_MAX, current_task);
-    }
+    /* Path 2 of 3. */
+    off = append_task_cwd(evt, off, want_proc_context ? current_task : NULL);
 
     evt->ppid = 0;
     struct task_struct* parent_task = BPF_CORE_READ(current_task, real_parent);
@@ -746,11 +805,30 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
         {
             bpf_probe_read_kernel_str(
                 evt->parent_comm, RT_COMM_MAX, (const char*)BPF_CORE_READ(parent_task, comm));
-            get_task_cwd(evt->parent_cwd, RT_PATH_MAX, parent_task);
         }
     }
 
-    bpf_ringbuf_submit(evt, 0);
+    /* Path 3 of 3. */
+    off = append_task_cwd(evt, off, want_proc_context ? parent_task : NULL);
+
+    /* Taken as late as possible: between here and the copy below there is
+     * nothing that can fail except the copy itself, and that path hands the
+     * count straight back. */
+    evt->dropped = take_drop_counter();
+    if (evt->dropped > 0)
+    {
+        evt->flags |= RT_F_DROPS_BEFORE;
+    }
+
+    const __u64 size = (__u64)RT_WIRE_HEAD_SIZE + off;
+    if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, 0) != 0)
+    {
+        /* The count we just took reached nobody, so put it back before
+         * recording this event's own loss -- otherwise one full ring would
+         * report one drop instead of all of them. */
+        restore_drop_counter(evt->dropped);
+        bump_drop_counter();
+    }
 }
 
 statfunc bool is_regular_file(struct inode* inode)

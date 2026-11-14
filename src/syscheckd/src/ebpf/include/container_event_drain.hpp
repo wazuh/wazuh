@@ -16,8 +16,9 @@
  * THREE threads, which deserves a justification since syscheckd is not short of
  * them:
  *
- *   drain     rt_poll() only. Must never block: an 8 MiB ring holds ~674
- *             12,424-byte records, about 80 ms of a burst measured at 8,400
+ *   drain     rt_poll() only. Must never block: an 8 MiB ring holds ~25,600
+ *             records of ABI 2's variable length (measured, ~328 bytes each
+ *             with real paths), about 3 s of a burst measured at 8,400
  *             events/s, and every kernel-side drop escalates a container to a
  *             full re-walk. It does one hash lookup per event and nothing else.
  *
@@ -25,7 +26,8 @@
  *             three orders of magnitude more than the drain can afford per
  *             event — so this cannot share the drain's thread. Even two
  *             resolves per poll cycle would risk 2 s of blocking against the
- *             ~80 ms of ring capacity above -- 25x over, not a margin.
+ *             ~3 s of ring capacity above. Two thirds of the budget spent on
+ *             blocking, for work that is not draining the ring.
  *
  *   consumer  Re-reads files and re-walks containers, so it blocks on disk for
  *             as long as a walk takes. Folding it into the resolver would stall
@@ -162,7 +164,7 @@ namespace fim_container_events
         std::size_t max_resolves_per_cycle{32};
 
         /* Discard events from cgroups that are not containers in the KERNEL, before
-         * a 12,424-byte ring reservation is attempted, instead of in this process.
+         * the record is even built, instead of in this process.
          *
          * Worth having because the ratio is lopsided: unfiltered, this consumer
          * receives every file write on the host and discards the overwhelming
