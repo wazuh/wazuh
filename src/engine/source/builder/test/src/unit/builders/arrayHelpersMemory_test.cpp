@@ -31,7 +31,7 @@ constexpr size_t JOIN_ITEM_SIZE = 300;
 
 // Address space headroom of the capped children, in multiples of the JSON text size. Calibrated per helper: each one
 // fits from 8 x text with element copies sized to their content (4 x margin), while a 64 KB chunk per element needs
-// ~200 x text. The count is the one reported for the issue; mapkv/extract take a few seconds (one lookup per insert).
+// ~200 x text. The count is that of a large real event.
 constexpr rlim_t ARRAY_APPEND_CAP_FACTOR = 32;
 constexpr rlim_t JOIN_CAP_FACTOR = 32;
 constexpr rlim_t ARRAY_OBJ_TO_MAPKV_CAP_FACTOR = 32;

@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <exception>
 #include <limits>
+#include <memory_resource>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -15,6 +17,8 @@
 #include "rapidjson/schema.h"
 
 #include <base/logging.hpp>
+
+#include "jsonNameCompare.hpp"
 
 namespace
 {
@@ -1714,6 +1718,162 @@ bool Json::erase(std::string_view path)
     }
 }
 
+namespace
+{
+
+using Allocator = rapidjson::Document::AllocatorType;
+using Position = rapidjson::SizeType;
+
+std::string_view memberName(const rapidjson::Value& name)
+{
+    return {name.GetString(), name.GetStringLength()};
+}
+
+// Orders member positions of an object by name. The names are read through the live object on every comparison, so
+// the positions stay valid when AddMember moves the member array.
+struct MemberPositionLess
+{
+    using is_transparent = void;
+
+    const rapidjson::Value* object;
+
+    std::string_view nameAt(Position position) const { return memberName((object->MemberBegin() + position)->name); }
+
+    bool operator()(Position lhs, Position rhs) const { return internal::compareNames(nameAt(lhs), nameAt(rhs)) < 0; }
+    bool operator()(Position lhs, std::string_view rhs) const { return internal::compareNames(nameAt(lhs), rhs) < 0; }
+    bool operator()(std::string_view lhs, Position rhs) const { return internal::compareNames(lhs, nameAt(rhs)) < 0; }
+};
+
+// The positions of the members of an object ordered by name, first occurrence of each name only. Its nodes come from
+// a buffer that is released at once.
+struct MemberIndex
+{
+    std::pmr::monotonic_buffer_resource memory;
+    std::pmr::set<Position, MemberPositionLess> positions;
+
+    explicit MemberIndex(const rapidjson::Value& object)
+        : positions(MemberPositionLess {&object}, &memory)
+    {
+        const Position count = object.MemberCount();
+        for (Position position = 0; position < count; ++position)
+        {
+            positions.insert(positions.end(), position);
+        }
+    }
+};
+
+void mergeValue(rapidjson::Value& dst, const rapidjson::Value& src, bool isRecursive, Allocator& allocator);
+
+// Merges one source member into the object dst once its member in dst (or MemberEnd) is known. Returns true if the
+// member was added.
+bool mergeMember(rapidjson::Value& dst,
+                 rapidjson::Value::MemberIterator found,
+                 rapidjson::Value::ConstMemberIterator srcIt,
+                 bool isRecursive,
+                 Allocator& allocator)
+{
+    if (found != dst.MemberEnd())
+    {
+        rapidjson::Value cpyValue {srcIt->value, allocator};
+        if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
+        {
+            mergeValue(found->value, cpyValue, isRecursive, allocator);
+        }
+        else
+        {
+            found->value = cpyValue;
+        }
+        return false;
+    }
+
+    rapidjson::Value cpyValue {srcIt->value, allocator};
+    rapidjson::Value cpyName {srcIt->name, allocator};
+    dst.AddMember(cpyName, cpyValue, allocator);
+    return true;
+}
+
+// Merges the source members from srcIt on into the object dst, looking them up through an index of dst: it holds the
+// first occurrence of each name, like FindMember, and every member added from here on. Kept out of line so that the
+// merges that never need the index do not carry it.
+[[gnu::noinline]] void mergeMembersIndexed(rapidjson::Value& dst,
+                                           const rapidjson::Value& src,
+                                           rapidjson::Value::ConstMemberIterator srcIt,
+                                           bool isRecursive,
+                                           Allocator& allocator)
+{
+    MemberIndex index(dst);
+    for (; srcIt != src.MemberEnd(); ++srcIt)
+    {
+        auto found = dst.MemberEnd();
+        const auto position = index.positions.find(memberName(srcIt->name));
+        if (position != index.positions.end())
+        {
+            found = dst.MemberBegin() + *position;
+        }
+        if (mergeMember(dst, found, srcIt, isRecursive, allocator))
+        {
+            index.positions.insert(index.positions.end(), dst.MemberCount() - 1);
+        }
+    }
+}
+
+void mergeValue(rapidjson::Value& dst, const rapidjson::Value& src, bool isRecursive, Allocator& allocator)
+{
+    if (dst.GetType() != src.GetType())
+    {
+        throw std::runtime_error("JSON objects of different types cannot be merged");
+    }
+
+    if (dst.IsObject())
+    {
+        // Members of the destination visited by the scans of this loop. Once they exceed MERGE_INDEX_SCAN_FACTOR times
+        // the size of the destination, the rest of the source is merged through an index of the destination.
+        size_t scanned = 0;
+        for (auto srcIt = src.MemberBegin(); srcIt != src.MemberEnd(); ++srcIt)
+        {
+            if (scanned > Json::MERGE_INDEX_SCAN_FACTOR * static_cast<size_t>(dst.MemberCount()))
+            {
+                mergeMembersIndexed(dst, src, srcIt, isRecursive, allocator);
+                break;
+            }
+
+            const auto found = dst.FindMember(srcIt->name);
+            scanned += found == dst.MemberEnd() ? static_cast<size_t>(dst.MemberCount())
+                                                : static_cast<size_t>(found - dst.MemberBegin()) + 1;
+            mergeMember(dst, found, srcIt, isRecursive, allocator);
+        }
+    }
+    else if (dst.IsArray())
+    {
+        for (auto srcIt = src.Begin(); srcIt != src.End(); ++srcIt)
+        {
+            // Find if value is already in dst
+            // TODO: this is inefficient, but rapidjson does not provide a way
+            // to do it.
+            auto found = false;
+            for (auto dstIt = dst.Begin(); dstIt != dst.End(); ++dstIt)
+            {
+                if (*dstIt == *srcIt)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                rapidjson::Value cpyValue {*srcIt, allocator};
+                dst.PushBack(cpyValue, allocator);
+            }
+        }
+    }
+    else
+    {
+        throw std::runtime_error("JSON elements must be both either objects or arrays to be merged");
+    }
+}
+
+} // namespace
+
 void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path)
 {
     const auto pp = rapidjson::Pointer(path.data(), path.size());
@@ -1723,75 +1883,8 @@ void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::st
         auto* dstValue = pp.Get(m_document);
         if (dstValue)
         {
-            if (dstValue->GetType() == source.GetType())
-            {
-                if (dstValue->IsObject())
-                {
-                    for (auto srcIt = source.MemberBegin(); srcIt != source.MemberEnd(); ++srcIt)
-                    {
-                        if (dstValue->HasMember(srcIt->name))
-                        {
-                            rapidjson::Value cpyValue {srcIt->value, m_document.GetAllocator()};
-                            if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
-                            {
-                                const std::string_view rawName {srcIt->name.GetString(), srcIt->name.GetStringLength()};
-                                std::string newPath {path};
-                                if (rawName.find_first_of("~/") == std::string_view::npos)
-                                {
-                                    newPath += '/';
-                                    newPath.append(rawName);
-                                }
-                                else
-                                {
-                                    newPath += formatJsonPath(rawName, true);
-                                }
-                                merge(isRecursive, cpyValue, newPath);
-                            }
-                            else
-                            {
-                                dstValue->FindMember(srcIt->name)->value = cpyValue;
-                            }
-                        }
-                        else
-                        {
-                            rapidjson::Value cpyValue {srcIt->value, m_document.GetAllocator()};
-                            rapidjson::Value cpyName {srcIt->name, m_document.GetAllocator()};
-                            dstValue->AddMember(cpyName, cpyValue, m_document.GetAllocator());
-                        }
-                    }
-                }
-                else if (dstValue->IsArray())
-                {
-                    for (auto srcIt = source.Begin(); srcIt != source.End(); ++srcIt)
-                    {
-                        // Find if value is already in dstValue
-                        // TODO: this is inefficient, but rapidjson does not provide a way
-                        // to do it.
-                        auto found = false;
-                        for (auto dstIt = dstValue->Begin(); dstIt != dstValue->End(); ++dstIt)
-                        {
-                            if (*dstIt == *srcIt)
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                        {
-                            rapidjson::Value cpyValue {*srcIt, m_document.GetAllocator()};
-                            dstValue->PushBack(cpyValue, m_document.GetAllocator());
-                        }
-                    }
-                }
-                else
-                {
-                    throw std::runtime_error("JSON elements must be both either objects or arrays to be merged");
-                }
-
-                return;
-            }
-
-            throw std::runtime_error("JSON objects of different types cannot be merged");
+            mergeValue(*dstValue, source, isRecursive, m_document.GetAllocator());
+            return;
         }
 
         throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
@@ -1938,6 +2031,98 @@ size_t Json::removeDuplicateKeys()
     deduplicate(m_document, deduplicate);
 
     return removedCount;
+}
+
+size_t Json::eraseMembersEqualTo(std::string_view path, const Json& value)
+{
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
+    if (!pp.IsValid())
+    {
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    }
+
+    auto* object = pp.Get(m_document);
+    if (object == nullptr || !object->IsObject())
+    {
+        return 0;
+    }
+
+    // Marks: 0 = different value, 1 = equal value, 2 = to erase. Allocated at the first equal member only.
+    const Position count = object->MemberCount();
+    const auto members = object->MemberBegin();
+    std::vector<unsigned char> marks;
+    for (Position position = 0; position < count; ++position)
+    {
+        if (members[position].value == value.m_document)
+        {
+            if (marks.empty())
+            {
+                marks.resize(count, 0);
+            }
+            marks[position] = 1;
+        }
+    }
+    if (marks.empty())
+    {
+        return 0;
+    }
+
+    // An occurrence is erased only while every earlier occurrence of its name is equal too: sort the positions by
+    // (name, position) and erase the leading run of equal occurrences in each group of names.
+    std::vector<Position> order(count);
+    for (Position position = 0; position < count; ++position)
+    {
+        order[position] = position;
+    }
+    std::sort(order.begin(),
+              order.end(),
+              [&members](Position lhs, Position rhs)
+              {
+                  const int result =
+                      internal::compareNames(memberName(members[lhs].name), memberName(members[rhs].name));
+                  return result != 0 ? result < 0 : lhs < rhs;
+              });
+
+    size_t erased = 0;
+    for (Position group = 0; group < count;)
+    {
+        const auto name = memberName(members[order[group]].name);
+        Position next = group;
+        bool leading = true;
+        for (; next < count && internal::compareNames(memberName(members[order[next]].name), name) == 0; ++next)
+        {
+            leading = leading && marks[order[next]] == 1;
+            if (leading)
+            {
+                marks[order[next]] = 2;
+                ++erased;
+            }
+        }
+        group = next;
+    }
+    if (erased == 0)
+    {
+        return 0;
+    }
+
+    // Move the kept members forward over the erased ones, in order, and drop the tail at once
+    Position firstFree = 0;
+    for (Position position = 0; position < count; ++position)
+    {
+        if (marks[position] == 2)
+        {
+            continue;
+        }
+        if (firstFree != position)
+        {
+            members[firstFree].name = members[position].name;
+            members[firstFree].value = members[position].value;
+        }
+        ++firstFree;
+    }
+    object->EraseMember(members + firstFree, object->MemberEnd());
+
+    return erased;
 }
 
 bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)

@@ -4,6 +4,7 @@
 #include "number.hpp"
 #include <algorithm>
 #include <base/json.hpp>
+#include <base/jsonPathWriter.hpp>
 #include <iostream>
 #include <string_view>
 namespace hlp
@@ -108,14 +109,11 @@ bool exceedsMaxDepth(std::string_view path)
 {
     return static_cast<std::size_t>(std::count(path.cbegin(), path.cend(), '/')) > json::Json::MAX_DEPTH;
 }
-} // namespace
 
-bool updateDoc(json::Json& doc,
-               std::string_view key,
-               std::string_view value,
-               bool is_escaped,
-               std::string_view escape,
-               bool is_quoted)
+// Body shared by the two overloads of updateDoc: Doc is json::Json or json::PathWriter.
+template<typename Doc>
+bool updateDocImpl(
+    Doc& doc, std::string_view key, std::string_view value, bool is_escaped, std::string_view escape, bool is_quoted)
 {
     // Keys come from event data: every token is written as an object member, never as an array index.
     // The dots of the key nest the value whether it is empty or not, so both count towards the depth cap
@@ -136,6 +134,27 @@ bool updateDoc(json::Json& doc,
     unescape(is_escaped, vs, escape);
     doc.setStringAsMembers(vs, path);
     return true;
+}
+} // namespace
+
+bool updateDoc(json::Json& doc,
+               std::string_view key,
+               std::string_view value,
+               bool is_escaped,
+               std::string_view escape,
+               bool is_quoted)
+{
+    return updateDocImpl(doc, key, value, is_escaped, escape, is_quoted);
+}
+
+bool updateDoc(json::PathWriter& doc,
+               std::string_view key,
+               std::string_view value,
+               bool is_escaped,
+               std::string_view escape,
+               bool is_quoted)
+{
+    return updateDocImpl(doc, key, value, is_escaped, escape, is_quoted);
 }
 
 } // namespace hlp

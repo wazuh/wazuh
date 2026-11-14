@@ -14,6 +14,7 @@ add_library(base STATIC
     ${SRC_DIR}/expression.cpp
     ${SRC_DIR}/eventParser.cpp
     ${SRC_DIR}/json.cpp
+    ${SRC_DIR}/jsonPathWriter.cpp
     ${SRC_DIR}/logging.cpp
     ${SRC_DIR}/process.cpp
     ${SRC_DIR}/managerLogSink.cpp
@@ -73,6 +74,8 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/eventParser_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
     ${UNIT_SRC_DIR}/json_copy_memory_test.cpp
+    ${UNIT_SRC_DIR}/jsonPathWriter_test.cpp
+    ${UNIT_SRC_DIR}/jsonMerge_diff_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp
@@ -146,6 +149,7 @@ add_library(base::bench ALIAS base_bench)
 add_executable(base_benchmark
     ${BENCH_SRC_DIR}/eventParser_bench.cpp
     ${BENCH_SRC_DIR}/json_bench.cpp
+    ${BENCH_SRC_DIR}/jsonSet_bench.cpp
 )
 target_include_directories(base_benchmark
     PRIVATE

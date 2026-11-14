@@ -165,6 +165,7 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
 	${UNIT_SRC_DIR}/builders/opmap/arrayObj_to_MapKv_test.cpp
 	${UNIT_SRC_DIR}/builders/opmap/array_extract_key_obj_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/arrayToObject_diff_test.cpp
 
 	# Enrichment Builders
 	${UNIT_SRC_DIR}/builders/enrichment/geo_test.cpp
@@ -174,6 +175,7 @@ add_executable(builder_utest
 	# # Transform Builders
 	${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/jsonTransform_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/deleteFieldsWithValue_diff_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/array_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
 	# ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
@@ -224,6 +226,7 @@ set(BENCH_SRC_DIR ${SRC_DIR}/builders/enrichment/benchmark/src/)
 
 add_executable(builder_benchmark
     ${BENCH_SRC_DIR}/geoEnrichment_bench.cpp
+    ${SRC_DIR}/builders/opmap/benchmark/src/arrayToObject_bench.cpp
 )
 target_include_directories(builder_benchmark
     PRIVATE
