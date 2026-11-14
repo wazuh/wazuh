@@ -1,0 +1,65 @@
+# Name of the helper function
+name: index_unclassified_events
+
+metadata:
+  description: |
+    Checks whether the event is an unclassified event that the policy wants indexed.
+
+    Behavior:
+    - The target must be exactly `wazuh.integration.category`.
+    - True only when the policy was built with `index_unclassified_events` set to true and the target string
+      is equal to `unclassified`, byte for byte.
+    - The policy flag is captured when the asset is built; with the flag off the check is false for every
+      event.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is any field other than `wazuh.integration.category`.
+    - Any argument is given.
+
+    Notes:
+    - Used by the indexer output in the `first_of` branch that routes events to the unclassified index; with
+      the flag on it is equivalent to `string_eq($wazuh.integration.category, 'unclassified')`.
+    - The category is `unclassified` when the last decoder that matched belongs to the catch-all
+      `unclassified` integration.
+    - The test cases below assume a policy built with `index_unclassified_events` set to true.
+  group: event
+  fails_when:
+    - The policy flag `index_unclassified_events` is false.
+    - The target field does not exist.
+    - The target field is not a string.
+    - The category is not `unclassified` (the comparison is case-sensitive).
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: string
+  path: wazuh.integration.category
+
+# These tests assume the policy flag index_unclassified_events is enabled in the test environment.
+test:
+  - target_field: "unclassified"
+    should_pass: true
+    description: The category is unclassified.
+  - target_field: "security"
+    should_pass: false
+    description: The category is a known one other than unclassified.
+  - target_field: "system-activity"
+    should_pass: false
+    description: The category is a known one other than unclassified.
+  - target_field: "Unclassified"
+    should_pass: false
+    description: The comparison is case-sensitive.
+  - target_field: ""
+    should_pass: false
+    description: The category is an empty string.
+  - target_field: 42
+    should_pass: false
+    description: The target field is a number, not a string.
+  - target_field: ["unclassified"]
+    should_pass: false
+    description: The target field is an array, not a string.

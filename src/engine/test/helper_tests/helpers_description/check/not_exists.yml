@@ -1,0 +1,56 @@
+# Name of the helper function
+name: not_exists
+
+metadata:
+  description: |
+    Checks whether the target field is absent from the event.
+
+    Behavior:
+    - True only when the target path does not resolve to any value.
+    - A field holding `null` exists, so the check is false for it.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is neither a schema field nor a temporary field rooted at `_`.
+    - Any argument is given.
+
+    Notes:
+    - `exists` is the exact complement of this helper.
+    - `is_null` requires the field to be present with a null value; `not_exists` requires it to be absent.
+  group: type
+  fails_when:
+    - The target field exists in the event, whatever its value (null included).
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - target_field: "hello"
+    should_pass: false
+    description: The field exists with a string value.
+  - target_field: 0
+    should_pass: false
+    description: The field exists with a number value.
+  - target_field: [1]
+    should_pass: false
+    description: The field exists with an array value.
+  - target_field:
+      key: value
+    should_pass: false
+    description: The field exists with an object value.
+  - target_field: true
+    should_pass: false
+    description: The field exists with a boolean value.
+  - target_field: []
+    should_pass: true
+    description: The target field is absent from the event (the test harness leaves an empty array unmapped).

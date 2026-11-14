@@ -28,6 +28,8 @@ int __wrap_StartMQPredicated(const char *path, short int type, short int n_attem
  */
 void expect_StartMQPredicated_call(const char *qpath, int type, bool (*fn_ptr)(), int ret);
 
+int __wrap_MQReconnectPredicated(const char *path, bool (*fn_ptr)());
+
 /**
  * @brief This function loads the expect and will_return calls for the function SendMSG
  */

@@ -18,16 +18,15 @@ namespace eEngine = ::com::wazuh::api::engine;
 namespace
 {
 
-httplib::Response invoke(const api::adapter::RouteHandler& handler, std::string body = {})
+httpsrv::Response invoke(const api::adapter::RouteHandler& handler, std::string body = {})
 {
-    httplib::Request request;
-    request.body = std::move(body);
-    httplib::Response response;
+    const auto request = httpsrv::Request::fromOwned(httpsrv::Method::POST, "/content/ruleset/update", std::move(body));
+    httpsrv::Response response;
     handler(request, response);
     return response;
 }
 
-eEngine::GenericStatus_Response decode(const httplib::Response& response)
+eEngine::GenericStatus_Response decode(const httpsrv::Response& response)
 {
     return api::adapter::parseResponse<eEngine::GenericStatus_Response>(response);
 }
@@ -53,7 +52,7 @@ TEST_F(ContentSyncHandlersTest, ARequestRunsTheTaskNowAndAnswersAccepted)
 
     const auto response = invoke(triggerSync(task, "ruleset"));
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_EQ(decode(response).status(), eEngine::ReturnStatus::OK);
 }
 
@@ -62,7 +61,7 @@ TEST_F(ContentSyncHandlersTest, ABodyIsAcceptedAndIgnored)
     EXPECT_CALL(*scheduler, scheduleTask(_, _)).Times(1);
     EXPECT_CALL(*scheduler, scheduleTaskFirst(_)).Times(1);
 
-    EXPECT_EQ(invoke(triggerSync(task, "IOC"), R"({"unexpected":"field"})").status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(invoke(triggerSync(task, "IOC"), R"({"unexpected":"field"})").status, 200);
 }
 
 TEST_F(ContentSyncHandlersTest, AMissingTaskIsAnInternalError)
@@ -71,9 +70,9 @@ TEST_F(ContentSyncHandlersTest, AMissingTaskIsAnInternalError)
     task.reset();
 
     const auto response = invoke(handler);
-    EXPECT_EQ(response.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(response.status, 500);
     EXPECT_EQ(decode(response).status(), eEngine::ReturnStatus::ERROR);
 
     // Event processing off: the task was never built.
-    EXPECT_EQ(invoke(triggerSync(nullptr, "IOC")).status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(invoke(triggerSync(nullptr, "IOC")).status, 500);
 }

@@ -9,7 +9,7 @@ target_include_directories(api_adapter
 target_link_libraries(api_adapter
     INTERFACE
     base
-    httpsrv
+    httpsrv::ihttpsrv
     eMessages
 )
 add_library(api::adapter ALIAS api_adapter)

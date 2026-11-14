@@ -60,6 +60,9 @@ typedef struct SyncModuleResult_t
     /// cycle, which `success` alone cannot express. Never use it to gate durable state -- see
     /// SyncModuleResult::sentAnything (agent_sync_protocol_types.hpp) for why.
     bool sent_anything;
+    /// @brief True when the cycle stopped at its per-cycle block limit with entries possibly still
+    /// queued. See SyncModuleResult::reachedBlockLimit (agent_sync_protocol_types.hpp).
+    bool reached_block_limit;
 } SyncModuleResult_t;
 
 /// @brief Outcome of a module integrity check. See IntegrityCheckStatus (agent_sync_protocol_types.hpp).

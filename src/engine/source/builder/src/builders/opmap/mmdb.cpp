@@ -109,7 +109,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
 {
     return [geoManager](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
-        utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
+        utils::assertSize(opArgs, 1);
         utils::assertRef(opArgs, 0);
 
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
@@ -166,7 +166,7 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
     {
         const auto name = buildCtx->context().opName;
 
-        utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
+        utils::assertSize(opArgs, 1);
         utils::assertRef(opArgs, 0);
 
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);

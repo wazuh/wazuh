@@ -1,0 +1,58 @@
+# Name of the helper function
+name: lowercase
+
+metadata:
+  description: |
+    Converts the ASCII upper-case letters of a string to lower case and maps the result to the target
+    field.
+
+    Behavior:
+    - Only the ASCII letters `A-Z` change; every other byte is kept, so non-ASCII (UTF-8 multibyte)
+      characters are left as they are.
+    - `value` can be a literal or a reference.
+
+    Build errors:
+    - `value` is a literal that is not a string.
+    - `value` is a schema field whose type is not a string.
+
+    Notes:
+    - `uppercase` is the opposite conversion.
+  group: string
+  fails_when:
+    - "`value` is a reference that is missing or is not a string"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  value:
+    type: string
+    generate: string
+    source: both
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      value: ABCD
+    should_pass: true
+    expected: abcd
+    description: Convert an upper-case string to lower case
+  - arguments:
+      value: AbcD
+    should_pass: true
+    expected: abcd
+    description: Convert a mixed-case string to lower case
+  - arguments:
+      value: aBcDECF
+    should_pass: true
+    expected: abcdecf
+    description: Keep the letters that are already lower case
+  - arguments:
+      value: "\u00c9COLE"
+    should_pass: true
+    expected: "\u00c9cole"
+    description: Leave a non-ASCII letter unchanged and convert the ASCII ones

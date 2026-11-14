@@ -25,6 +25,7 @@ class StubWpkRepository:
     def __init__(self):
         self._routes = {}
         self._counts = {}
+        self._user_agents = {}
         self._lock = threading.Lock()
         self._server = None
         self._thread = None
@@ -57,6 +58,11 @@ class StubWpkRepository:
         with self._lock:
             return self._counts.get(path, 0)
 
+    def user_agents(self, path: str) -> list:
+        """The User-Agent of every request for `path`, in order; None where the header was absent."""
+        with self._lock:
+            return list(self._user_agents.get(path, []))
+
     def total(self) -> int:
         with self._lock:
             return sum(self._counts.values())
@@ -64,6 +70,7 @@ class StubWpkRepository:
     def reset_counts(self):
         with self._lock:
             self._counts.clear()
+            self._user_agents.clear()
 
     # ---- lifecycle -------------------------------------------------------------------------
 
@@ -81,6 +88,8 @@ class StubWpkRepository:
             def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler's spelling
                 with repository._lock:
                     repository._counts[self.path] = repository._counts.get(self.path, 0) + 1
+                    repository._user_agents.setdefault(self.path, []).append(
+                        self.headers.get('User-Agent'))
                     entry = repository._routes.get(self.path)
 
                 if entry is None:

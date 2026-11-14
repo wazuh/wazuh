@@ -1,0 +1,73 @@
+# Name of the helper function
+name: not_in_kvdb
+
+metadata:
+  description: |
+    Checks whether the target string is not a key of the KVDB `db`.
+
+    Behavior:
+    - `db` is a literal string naming a KVDB that is declared and enabled in the integration or policy; the
+      database is loaded when the asset is built.
+    - The lookup is an exact, case-sensitive key match; the value stored under the key is ignored.
+    - A missing or non-string target gives false, so this is not the same as `NOT in_kvdb(...)`, which is
+      true for a missing field.
+
+    Build errors:
+    - `db` is a reference or a literal that is not a string.
+    - The KVDB is not declared, is not enabled, or cannot be loaded.
+
+    Notes:
+    - During shallow asset validation (dependencies not loaded) the check is a no-op that always passes.
+  group: kvdb
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The target string is a key of the KVDB.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db:
+    type: string
+    generate: string
+    source: value # only literal values, not references
+
+# the generated success cases use a KVDB name that does not exist
+skipped:
+  - success_cases
+
+# Field whose value is used as the key to look up in the KVDB
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      db: non-existing-db
+    target_field: "0x0"
+    should_pass: false
+    description: The KVDB cannot be loaded, so the asset is rejected at build time.
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+    target_field: "0x0"
+    should_pass: false
+    description: The target string is a key of the KVDB.
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+    target_field: "bitmask_test_values"
+    should_pass: false
+    description: The value stored under the key is ignored, so a key holding an array also fails the check.
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+    target_field: "0x99"
+    should_pass: true
+    description: The target string is not a key of the KVDB.
+  - arguments:
+      db: windows_kerberos_status_code_to_code_name
+    target_field: 0
+    should_pass: false
+    description: The target field is a number, not a string, so the check fails although it is not a key.

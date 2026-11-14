@@ -60,12 +60,12 @@ Configures diff-related settings for change reporting. This block contains sub-e
 
 #### diff > disk_quota
 
-Limits the total size of the `queue/diff/local` folder, which holds compressed file snapshots used for diff operations when `report_changes` is enabled. Once the limit is reached, diff information is suppressed from alerts until disk usage drops below the threshold.
+Limits the total size of the compressed snapshots used for diff operations when `report_changes` is enabled. They are stored under `queue/diff/file` (files) and `queue/diff/registry` (registry values). Once the limit is reached, diff information is suppressed from alerts until disk usage drops below the threshold.
 
 | Sub-element | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the disk quota limit |
-| `limit` | `1GB` | Any positive number followed by `KB`, `MB`, or `GB` | Maximum allowed size |
+| `limit` | `1GB` | Any positive number followed by `KB`, `MB`, `GB` or `TB` (a bare number is KB; minimum 1 KB) | Maximum allowed size |
 
 #### diff > file_size
 
@@ -74,7 +74,7 @@ Limits the maximum individual file size eligible for diff reporting. Files excee
 | Sub-element | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable the per-file size limit |
-| `limit` | `50MB` | Any positive number followed by `KB`, `MB`, or `GB` | Maximum file size for diff |
+| `limit` | `50MB` | Any positive number followed by `KB`, `MB`, `GB` or `TB` (a bare number is KB; minimum 1 KB) | Maximum file size for diff |
 
 #### diff > nodiff
 
@@ -148,7 +148,7 @@ Defines which directories to monitor. This is the primary configuration element 
 | `check_device` | `yes` | `yes`, `no` | Check the file device identifier. Available on UNIX only. |
 | `restrict` | N/A | `sregex` | Limit monitoring to files whose full path matches the given [`sregex` pattern](#sregex-patterns). |
 | `tags` | N/A | Comma-separated strings | Attach custom tags to all alerts from this directory. |
-| `recursion_level` | `256` | Integer `0`–`320` | Maximum recursion depth. `0` means only the top-level directory is monitored. |
+| `recursion_level` | `256` | Integer `0`–`320` | Maximum recursion depth. `0` means only the top-level directory is monitored. A value above `320` is replaced by `syscheck.default_max_depth`, not clamped. |
 | `follow_symbolic_link` | `no` | `yes`, `no` | UNIX only. When enabled, symbolic links are followed and the linked content is monitored. When disabled, the link itself is monitored. |
 
 #### Attribute Precedence Rules
@@ -300,7 +300,7 @@ On Linux, `-20` is highest priority and `19` is lowest. On Windows, values are m
 
 ### registry_ignore (Windows only)
 
-Registry entries to exclude from processing. Ignored keys and values are skipped during enumeration, so no events are generated for them and no further processing is performed.
+Registry keys to exclude from processing. Ignored keys are skipped during enumeration, so no events are generated for them and no further processing is performed. To exclude values by name, use `registry_ignore_value`, which takes the same `arch` and `type` attributes.
 
 - **Attribute: `arch`** — `32bit` (default), `64bit`, `both`
 - **Attribute: `type`** — `sregex` to use a regex pattern
@@ -319,6 +319,29 @@ only to the one it was written for.
 The `arch` of an ignore entry must equal the `arch` of the `<windows_registry>` entry it is meant to
 filter, and both default to `32bit`. An ignore written with `arch="64bit"` alone never matches a
 monitored entry left at the default, and nothing warns about it.
+
+---
+
+### registry_ignore_value (Windows only)
+
+Registry values to exclude from processing. Where `registry_ignore` skips whole keys, this skips
+individual values: the key and its other values are still monitored, and no event is generated for
+an ignored value.
+
+- **Attribute: `arch`** — `32bit` (default), `64bit`, `both`
+- **Attribute: `type`** — `sregex` to use a regex pattern
+
+```xml
+<registry_ignore_value>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\W32Time\Config\LastKnownGoodTime</registry_ignore_value>
+<registry_ignore_value type="sregex">\\LastWrite</registry_ignore_value>
+```
+
+Each value is matched as `<key path>\<value name>`. Plain entries are a **case-insensitive prefix**
+of that string, so an entry that ends in the key path alone ignores every value of that key (and of
+its subkeys) while still reporting changes to the keys themselves. `type="sregex"` uses the same
+`OSMatch` syntax as `registry_ignore` and also applies to every monitored registry entry. The `arch`
+rule of `registry_ignore` applies too: the ignore entry must have the `arch` of the
+`<windows_registry>` entry it filters.
 
 ---
 
@@ -345,7 +368,7 @@ Sets a hard cap on the number of registry entries FIM can monitor.
 Restricts scheduled scans to a specific day of the week. One entry per line.
 
 - **Default value:** N/A
-- **Allowed values:** Day name (e.g., `monday`, `thursday`)
+- **Allowed values:** Day name or abbreviation (e.g., `monday`, `thu`), `weekdays` or `weekends`
 
 ```xml
 <scan_day>thursday</scan_day>
@@ -440,8 +463,8 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 | Parameter | Default | Allowed values | Description |
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable FIM synchronization persistence. When disabled, FIM only generates stateless events. |
-| `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent initiates a sync with the manager. |
-| `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
+| `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d`, `w` | How often the agent initiates a sync with the manager. |
+| `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d`, `w` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
 
 **Note:** Database files are stored at fixed paths: `queue/fim/db/fim.db` and `queue/fim/db/fim_sync.db`.
 
@@ -480,7 +503,7 @@ Configures who-data monitoring options. When a directory is monitored with `whod
 How often (in seconds) the Windows agent checks that Local Audit Policies and SACLs for who-data monitored directories are still correctly configured.
 
 - **Default value:** `300`
-- **Allowed values:** Integer `1`–`9999`
+- **Allowed values:** A non-negative integer (digits only). The agent checks only that the value is numeric; no upper bound is enforced. `0` means the default (`300`)
 
 ```xml
 <windows_audit_interval>300</windows_audit_interval>

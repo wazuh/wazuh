@@ -513,6 +513,41 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
               rm_config->auth_max_body_size);
         rm_config->auth_max_decoded_body_size = rm_config->auth_max_body_size;
     }
+
+    // The engine refuses a /stateless batch over its ingest cap from the declared length, and remoted
+    // forwards the body exactly as decoded. A decoded cap above the engine's turns a batch the agent could
+    // split (413) into a refused write here and a 503 it retries unchanged. The key is the engine's, which
+    // refuses to start on a bad value: remoted only compares against it, so a value it cannot use skips the
+    // check with a warning instead of stopping remoted, and is never replaced by the engine's default.
+    int engine_max_body_read = 67108864; // The engine's default, used when its key is absent.
+    if (getDefine_Int_nonfatal(
+            "analysisd", "server_enriched_events_max_body_bytes", 33554432, 1073741824, &engine_max_body_read) < 0) {
+        mwarn("'analysisd.server_enriched_events_max_body_bytes' is not an integer between 33554432 and 1073741824; "
+              "remoted's body caps are not checked against the engine's ingest cap.");
+    } else {
+        const long long engine_max_body = engine_max_body_read;
+        if (rm_config->auth_max_decoded_body_size > engine_max_body) {
+            // Never below the wire cap: a body accepted on the wire must still be accepted once decoded.
+            const long long capped =
+                engine_max_body > rm_config->auth_max_body_size ? engine_max_body : rm_config->auth_max_body_size;
+            mwarn("'remoted.auth_max_decoded_body_size' (%lld) is above "
+                  "'analysisd.server_enriched_events_max_body_bytes' (%lld), the largest batch the engine accepts; "
+                  "using %lld.",
+                  rm_config->auth_max_decoded_body_size,
+                  engine_max_body,
+                  capped);
+            rm_config->auth_max_decoded_body_size = capped;
+        }
+        // Not lowered: the wire cap applies to every authenticated route, not only to the batches the
+        // engine receives.
+        if (rm_config->auth_max_body_size > engine_max_body) {
+            mwarn("'remoted.auth_max_body_size' (%lld) is above 'analysisd.server_enriched_events_max_body_bytes' "
+                  "(%lld): the engine refuses an uncompressed batch larger than that. Lower the first or raise the "
+                  "second.",
+                  rm_config->auth_max_body_size,
+                  engine_max_body);
+        }
+    }
 }
 
 /**
@@ -872,10 +907,24 @@ void HandleSecure()
     // Create com request thread
     w_create_thread(remcom_main, NULL);
 
-    // Reset all the agents' connection status in Wazuh DB
-    // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
-    if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
-        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+    // Disconnect the agents that have been silent past <agents_disconnection_time>, as the disconnection
+    // sweep would, so a manager that was down for longer does not report them active until the sweep's
+    // next run. Only those: on a master, global.db holds every agent of the cluster, and one served by a
+    // worker that stayed up keeps its keepalive current through the worker's agent-info sync. Resetting
+    // every agent here, as this did, reported the whole fleet disconnected after a master restart -- and
+    // indexed it so in the first metrics snapshot -- until each agent's next keepalive reached the master.
+    // An agent this node served comes back with its next notify; one that does not is the sweep's, like
+    // any other agent that goes silent. The local database only: each node runs this for itself, so no
+    // synchronization is required.
+    {
+        int *disconnected = wdb_disconnect_agents((int)(time(NULL) - logr.global.agents_disconnection_time),
+                                                  "synced", NULL);
+        if (disconnected == NULL) {
+            mwarn("Unable to disconnect the agents silent for longer than the disconnection time. Their status "
+                  "may stay 'active' until the next disconnection sweep.");
+        }
+        os_free(disconnected);
+    }
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
@@ -2227,7 +2276,7 @@ void *dispach_events_thread(void *arg) {
         .user_agent         = "wazuh-manager-remoted/1.0",
         .timeout_ms         = 5000,
         .connect_timeout_ms = 2000,
-        .keepalive          = true
+        .keepalive          = false                         // the ingest server closes after each response
     };
 
     uhttp_client_t *cli = NULL;

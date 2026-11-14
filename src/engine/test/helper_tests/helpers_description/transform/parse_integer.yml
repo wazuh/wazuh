@@ -1,0 +1,80 @@
+# Name of the helper function
+name: parse_integer
+
+metadata:
+  description: |
+    Converts the input string to a 32-bit signed integer and stores it in the target field.
+
+    Behavior:
+    - The input must match `-?[0-9]+(.[0-9]*)?`: an optional minus sign, digits and an optional fraction; no
+      plus sign, exponent or surrounding spaces.
+    - The fraction is dropped (truncation toward zero): `23.45` gives `23`.
+    - The value must be within -2147483648 and 2147483647; otherwise the operation fails ("Number is out of
+      range").
+    - The integer replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not integer, byte, short or long.
+
+    Notes:
+    - `parse_long` accepts the 64-bit range; `to_int` converts a number instead of a string.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a decimal number in the accepted syntax.
+    - The value is outside the range -2147483648..2147483647.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: number
+  generate: integer
+
+test:
+  - arguments:
+      input: "-2"
+    target_field: any_value
+    should_pass: true
+    expected: -2
+    description: A negative integer is stored
+  - arguments:
+      input: "12345"
+    target_field: any_value
+    should_pass: true
+    expected: 12345
+    description: A positive integer is stored
+  - arguments:
+      input: "23.45"
+    target_field: any_value
+    should_pass: true
+    expected: 23
+    description: The fraction is dropped
+  - arguments:
+      input: "2147483648"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a value above the 32-bit range
+  - arguments:
+      input: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a string that is not a number

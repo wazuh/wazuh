@@ -61,7 +61,8 @@ ReporterStream::ReporterStream(const ModuleConfig& config,
                config.httpsCompressionEnabled,
                &compressionGate,
                &authGate,
-               config.serverEndpoint)
+               config.serverEndpoint,
+               config.unknownAgentRetryBound)
     , m_clock(clock)
     , m_authGate(authGate)
     , m_cluster(cluster)

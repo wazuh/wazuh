@@ -73,7 +73,9 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_host_port.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'all_daemons': True}
+# A host this machine cannot bind makes apid fail its launch, so the restart exits 1 on purpose. The bind
+# failure is still asserted: wait_for_api_start requires it in api.log and the test requires a ConnectionError.
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 
 # Tests
@@ -92,7 +94,8 @@ def test_host_port(test_configuration, test_metadata, add_configuration, truncat
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
             - Truncate the log files
-            - Restart daemons defined in `daemons_handler_configuration` in this module
+            - Restart daemons defined in `daemons_handler_configuration` in this module (the restart fails
+              for a host that cannot be bound, since apid refuses to start)
             - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
         - test:
             - Check that expected host and port appear in the Wazuh API log
@@ -136,8 +139,8 @@ def test_host_port(test_configuration, test_metadata, add_configuration, truncat
     expected_output:
         - '.*INFO: Listening on {host}:{port}.+' (valid host/port combinations)
         - '.*could not bind on any address out of {host}.*' (a host not assigned to any
-          interface here, e.g. INVALID_HOST_INVALID_PORT/INVALID_HOST_VALID_PORT -- the API
-          cannot bind it at all, so it never starts, rather than starting but being unreachable)
+          interface here, e.g. INVALID_HOST_INVALID_PORT/INVALID_HOST_VALID_PORT: apid checks the
+          bind before daemonizing, so its launch and the restart fail instead of the API starting)
         - r'200' ('OK' HTTP status code)
     """
     host = test_configuration['blocks']['host']

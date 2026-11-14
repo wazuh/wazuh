@@ -1,0 +1,179 @@
+# Name of the helper function
+name: community_id
+
+metadata:
+  description: |
+    Computes the Community ID v1 of a network flow and maps it to the target field as the string
+    `1:<base64 of the SHA-1>`, with the seed fixed to 0.
+
+    Behavior:
+    - `source_ip` and `destination_ip` are references to strings holding two addresses of the same IP
+      family; `source_port` and `destination_port` are references to integers; `protocol` is the IANA
+      protocol number, as an integer literal or reference.
+    - The two endpoints are ordered by address and port before hashing, so both directions of a flow
+      give the same id.
+    - The ports are checked against the protocol: TCP (6), UDP (17) and SCTP (132) need 1..65535;
+      ICMP (1) and ICMPv6 (58) take the type and code as 0..255; any other protocol takes 0..65535.
+    - A missing port reference counts as 0, which fails for TCP, UDP and SCTP. The ICMP values are
+      hashed as given: no type-to-counterpart mapping is applied.
+
+    Build errors:
+    - The number of arguments is not 5, or an IP or port argument is not a reference.
+    - An IP schema field whose type is not a string; a port or protocol schema field whose type is
+      not `integer`, `short` or `long`.
+    - A literal `protocol` that is not an integer in 0..255.
+
+    Notes:
+    - `iana_protocol_number` returns a string, so its result cannot be used as `protocol`; the schema
+      field `network.iana_number` is a keyword and is rejected at build time.
+    - `ip_version` tells the family of an address.
+  group: network
+  fails_when:
+    - "an IP is missing, is not a string or is not a valid address, or the two addresses are of different families"
+    - "the protocol reference is missing or is not an integer"
+    - "a port is present but is not an integer, or is outside the range allowed for the protocol"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  source_ip:
+    type: string
+    generate: ip
+    source: reference
+  destination_ip:
+    type: string
+    generate: ip
+    source: reference
+  source_port:
+    type: number
+    generate: integer
+    source: reference
+  destination_port:
+    type: number
+    generate: integer
+    source: reference
+  protocol:
+    type: number
+    generate: integer
+    source: both
+
+skipped:
+  - success_cases
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: 12345
+      destination_port: 80
+      protocol: 6
+    should_pass: true
+    expected: "1:JHvDxB6S6/K68OntUBf4DJZYvkM="
+    description: Compute the id of a TCP flow over IPv4
+  - arguments:
+      source_ip: 10.1.1.1
+      destination_ip: 10.1.1.2
+      source_port: 5353
+      destination_port: 53
+      protocol: 17
+    should_pass: true
+    expected: "1:8JTDncPomK8OiyinJXhpO10W6EY="
+    description: Compute the id of a UDP flow over IPv4
+  - arguments:
+      source_ip: 2001:db8::1
+      destination_ip: 2001:db8::2
+      source_port: 0
+      destination_port: 0
+      protocol: 41
+    should_pass: true
+    expected: "1:CXfAfp/8zYUwm/5DkEbJvPdJtcU="
+    description: Compute the id of an IPv6 encapsulation flow, whose ports are 0
+  - arguments:
+      source_ip: 192.0.2.1
+      destination_ip: 198.51.100.2
+      source_port: 8
+      destination_port: 0
+      protocol: 1
+    should_pass: true
+    expected: "1:zFLKq9oekfjLhmre/zOf0XYYjVE="
+    description: Compute the id of an ICMP echo request, with the type and code as ports
+  - arguments:
+      source_ip: not-an-ip
+      destination_ip: 10.0.0.5
+      source_port: 12345
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Fail on a source IP that is not a valid address
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: 12345
+      destination_port: 80
+      protocol: 300
+    should_pass: false
+    description: Fail on a protocol number above 255
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: 70000
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Fail on a transport port above 65535
+  - arguments:
+      source_ip: 192.0.2.1
+      destination_ip: 198.51.100.2
+      source_port: 300
+      destination_port: 0
+      protocol: 1
+    should_pass: false
+    description: Fail on an ICMP type above 255
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 2001:db8::1
+      source_port: 12345
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Fail on endpoints of different IP families
+  - arguments:
+      source_ip: 222.222.2.22
+      destination_ip: 222.222.2.22
+      source_port: 8
+      destination_port: 0
+      protocol: 6
+    should_pass: false
+    description: Fail on a TCP flow whose destination port is 0
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: "12345"
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Fail on a port given as a string
+  - arguments:
+      source_ip:
+        source: reference
+        value: 192.168.0.1
+      destination_ip:
+        source: reference
+        value: 10.0.0.5
+      source_port:
+        source: reference
+        value: null
+      destination_port:
+        source: reference
+        value: 80
+      protocol:
+        source: value
+        value: 6
+    should_pass: false
+    description: Fail on a TCP flow whose source port reference is missing, as it counts as 0

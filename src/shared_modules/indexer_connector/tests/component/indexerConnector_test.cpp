@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 #include <atomic>
 #include <chrono>
+#include <external/cpp-httplib/httplib.h>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -679,4 +680,35 @@ TEST_F(IndexerConnectorTest, AConnectorKeepsWorkingAfterItsSessionIsDestroyed)
     }
 
     ASSERT_TRUE(connector->isAvailable());
+}
+
+// ─── FakeIndexer health routes ────────────────────────────────────────────────
+
+/**
+ * @brief The fake serves the index-scoped health route, with the shape `_cluster/health` really has.
+ *
+ * This is the route the connector probes with, so the rest of the suite drives it indirectly. What
+ * this case adds is the contract the others take for granted: 200, a bare OBJECT (not the one-row
+ * array the cluster-wide `_cat/health` answered with) carrying `status`, a health-request count that
+ * moves, and -- the part the whole change rests on -- that a path holding `*` and `,` reaches the
+ * regex handler at all.
+ */
+TEST_F(IndexerConnectorTest, ScopedClusterHealthRouteAnswersAnObjectAndCountsAsAHealthRequest)
+{
+    const auto before = m_indexerServers[A_IDX]->healthRequests();
+
+    httplib::Client client(INDEXER_HOSTNAME, A_PORT);
+    const auto response = client.Get("/_cluster/health/wazuh-*,.wazuh-*");
+
+    ASSERT_TRUE(response) << "the fake did not route GET /_cluster/health/wazuh-*,.wazuh-*";
+    ASSERT_EQ(200, response->status);
+
+    nlohmann::json body;
+    ASSERT_NO_THROW(body = nlohmann::json::parse(response->body)) << response->body;
+    ASSERT_TRUE(body.is_object()) << body.dump();
+    ASSERT_FALSE(body.is_array()) << body.dump();
+    ASSERT_TRUE(body.contains("status")) << body.dump();
+    ASSERT_EQ("green", body.at("status").get<std::string>());
+
+    ASSERT_EQ(before + 1, m_indexerServers[A_IDX]->healthRequests());
 }

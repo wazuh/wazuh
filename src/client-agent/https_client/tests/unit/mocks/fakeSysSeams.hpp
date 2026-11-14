@@ -125,6 +125,12 @@ class FakeWaiter final : public Waiter
 
             const bool keepRunning = m_script.front();
             m_script.pop_front();
+
+            if (keepRunning && m_clock != nullptr)
+            {
+                m_clock->advance(timeout); // A wait that elapses moves the bound clock with it.
+            }
+
             return keepRunning;
         }
 
@@ -136,6 +142,12 @@ class FakeWaiter final : public Waiter
         void script(std::initializer_list<bool> answers)
         {
             m_script.assign(answers);
+        }
+
+        /// Elapsed waits advance this clock, for code that waits until a deadline.
+        void bindClock(FakeClock& clock)
+        {
+            m_clock = &clock;
         }
 
         const std::vector<std::chrono::milliseconds>& requestedDelays() const
@@ -152,6 +164,7 @@ class FakeWaiter final : public Waiter
         std::deque<bool> m_script;
         std::vector<std::chrono::milliseconds> m_requestedDelays;
         int m_notifyCount {0};
+        FakeClock* m_clock {nullptr};
 };
 
 #endif // _HC_FAKE_SYS_SEAMS_HPP

@@ -30,6 +30,16 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
  */
 int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val) __attribute__((nonnull(1, 2)));
 
+/**
+ * @brief Get an integer definition without ever exiting, for an option another daemon owns.
+ *
+ * Same files and precedence as getDefine_Int_default().
+ *
+ * @return 1 with @p value set when the option is an integer within [min, max]; 0 when it is absent;
+ *         -1 when it is present but empty, not an integer, or out of range (@p value untouched).
+ */
+int getDefine_Int_nonfatal(const char *high_name, const char *low_name, int min, int max, int *value) __attribute__((nonnull));
+
 
 /**
  * @brief Check if IP_address is present at that_ip

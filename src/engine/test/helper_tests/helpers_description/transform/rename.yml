@@ -1,0 +1,62 @@
+# Name of the helper function
+name: rename
+
+metadata:
+  description: |
+    Moves the field referenced by `source` to the target field.
+
+    Behavior:
+    - The value is copied to the target field, whatever its type, and the source field is erased.
+    - The target field must not exist: an existing target is never overwritten.
+    - Direction: `target: rename($source)` moves `source` to `target`.
+
+    Build errors:
+    - `source` is not a reference.
+    - The source or the target field is not a schema field and does not start with `_`.
+    - A number of arguments other than 1.
+
+    Notes:
+    - The moved value is not validated against the schema type of the target field.
+    - To overwrite an existing target, map the value and then `delete` the source.
+  group: object
+  deletes_arguments:
+    - source
+  fails_when:
+    - The target field already exists.
+    - The source field does not exist.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  source:
+    type:
+      - object
+      - array
+      - string
+      - number
+      - boolean
+    source: reference
+
+# The harness always creates the target field first, so the operation always fails here
+skipped:
+  - success_cases
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      source: 42
+    target_field: elapsed_time
+    should_pass: false
+    expected: elapsed_time
+    description: Fails and keeps the target unchanged because the target field already exists

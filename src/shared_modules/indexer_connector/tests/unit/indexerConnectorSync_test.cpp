@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string_view>
 #include <thread>
+#include <tuple>
 #include <variant>
 #include <vector>
 
@@ -2418,14 +2419,13 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryError)
     // Setup error expectation
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillOnce(Invoke(
-            [](auto requestParams, const auto& postParams, auto /*configParams*/)
+            [](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
             {
+                // The transport calls onError(error, statusCode, responseBody).
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::string url;
-                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError(url, 500, "Internal server error");
+                        .onError("Server error", 500, "Internal server error");
                 }
             }));
 
@@ -2437,8 +2437,18 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryError)
     updateQuery["script"]["source"] = "ctx._source.field = params.value";
     updateQuery["script"]["params"]["value"] = "new-value";
 
-    // Call should throw exception on fatal error
-    EXPECT_THROW(connector.executeUpdateByQuery(indices, updateQuery), IndexerConnectorException);
+    // Call should throw exception on fatal error, carrying the status and the body
+    try
+    {
+        connector.executeUpdateByQuery(indices, updateQuery);
+        FAIL() << "executeUpdateByQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("Update by query failed (status 500): Server error"));
+        EXPECT_THAT(e.what(), HasSubstr(" - Internal server error"));
+        EXPECT_EQ(e.statusCode(), 500);
+    }
 
     EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
 }
@@ -2457,14 +2467,13 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
     // Call fails with version conflict
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillOnce(Invoke(
-            [](auto requestParams, const auto& postParams, auto /*configParams*/)
+            [](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
             {
+                // The transport calls onError(error, statusCode, responseBody).
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::string url;
-                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError(url, 409, "Version conflict");
+                        .onError("Client error", 409, "Version conflict");
                 }
             }));
 
@@ -2756,22 +2765,437 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError)
     // Setup error expectation
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillOnce(Invoke(
-            [](auto requestParams, const auto& postParams, auto /*configParams*/)
+            [](auto /*requestParams*/, const auto& postParams, auto /*configParams*/)
             {
+                // The transport calls onError(error, statusCode, responseBody).
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::string url;
-                    std::visit([&url](const auto& params) { url = params.url.url(); }, requestParams);
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError(url, 500, "Internal server error");
+                        .onError("Server error", 500, "Internal server error");
                 }
             }));
 
     nlohmann::json searchQuery;
     searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
 
-    // Call should throw exception on error
+    // Call should throw exception on error, carrying the status and the body
+    try
+    {
+        connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+        FAIL() << "executeSearchQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_STREQ(e.what(), "Search query failed (status 500): Server error - Internal server error");
+        EXPECT_EQ(e.statusCode(), 500);
+    }
+}
+
+namespace
+{
+    /// What OpenSearch answers when the queried index does not exist.
+    constexpr auto INDEX_NOT_FOUND_BODY =
+        R"({"error":{"root_cause":[{"type":"index_not_found_exception","reason":"no such index [wazuh-states-vulnerabilities]","index":"wazuh-states-vulnerabilities"}],"type":"index_not_found_exception","reason":"no such index [wazuh-states-vulnerabilities]","index":"wazuh-states-vulnerabilities"},"status":404})";
+
+    /// Fails a POST the way the transport does: onError(error, statusCode, responseBody).
+    template<typename PostParams>
+    void answerPostError(PostParams& postParams, const std::string& error, long statusCode, const std::string& body)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, statusCode, body);
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, statusCode, body);
+        }
+    }
+
+    /// Answers a POST with a successful, empty search result.
+    template<typename PostParams>
+    void answerPostEmptyHits(PostParams& postParams)
+    {
+        nlohmann::json response;
+        response["hits"]["total"]["value"] = 0;
+        response["hits"]["hits"] = nlohmann::json::array();
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(response.dump());
+        }
+    }
+
+    /// Runs a search answered with (error, statusCode, body) and returns the exception it threw.
+    IndexerConnectorException failedSearch(IndexerConnectorSyncImplTest& connector,
+                                           MockHTTPRequest& mockHttpRequest,
+                                           const std::string& error,
+                                           long statusCode,
+                                           const std::string& body)
+    {
+        EXPECT_CALL(mockHttpRequest, post(_, _, _))
+            .WillOnce(Invoke([error, statusCode, body](auto, auto postParams, auto)
+                             { answerPostError(postParams, error, statusCode, body); }));
+
+        nlohmann::json searchQuery;
+        searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
+        try
+        {
+            connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            return e;
+        }
+        ADD_FAILURE() << "executeSearchQuery should have thrown";
+        return IndexerConnectorException("no exception");
+    }
+} // namespace
+
+// CA-E4-1: a missing index is the caller's decision, so the search logs it at debug2, not as a warning.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryIndexNotFoundLogsAtDebugAndThrows)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const auto e = failedSearch(connector, mockHttpRequest, "Client error", 404, INDEX_NOT_FOUND_BODY);
+
+    EXPECT_EQ(std::string(e.what()),
+              std::string("Search query failed (status 404): Client error - ") +
+                  std::string(INDEX_NOT_FOUND_BODY).substr(0, 256));
+    EXPECT_THAT(e.what(), HasSubstr("index_not_found_exception"));
+    EXPECT_EQ(e.statusCode(), 404);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Search query failed: Client error, status code: 404"),
+              1U);
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Search query failed"));
+}
+
+// CA-E4-2: any other failure still warns -- a 500, and a 404 that is not a missing index. 502/503/504 are
+// NOT here: they are retried now (see ExecuteSearchQueryRetriesARetryableServerError).
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryOtherFailuresWarnAndThrow)
+{
+    const std::vector<std::tuple<std::string, long, std::string>> failures {
+        {"Server error", 500, R"({"error":"internal error"})"},
+        {"Client error", 403, R"({"error":{"type":"security_exception"},"status":403})"},
+        {"Client error", 404, "Not Found"},
+    };
+
+    for (const auto& [error, statusCode, body] : failures)
+    {
+        SCOPED_TRACE(statusCode);
+        ScopedLogCapture logs;
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+        const auto e = failedSearch(connector, mockHttpRequest, error, statusCode, body);
+
+        EXPECT_EQ(std::string(e.what()),
+                  "Search query failed (status " + std::to_string(statusCode) + "): " + error + " - " + body);
+        EXPECT_EQ(e.statusCode(), statusCode);
+        EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                    "Search query failed: " + error + ", status code: " + std::to_string(statusCode)),
+                  1U);
+        EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Search query failed"));
+    }
+}
+
+// A read is idempotent, so a transport failure (no HTTP status) is retried instead of losing the caller's
+// whole operation -- for the VD, a scan including the new findings it had already computed.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryRetriesATransportFailure)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int calls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                answerPostError(postParams, "Connection refused", -1, "");
+            }))
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                answerPostEmptyHits(postParams);
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    const auto result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+
+    EXPECT_EQ(calls, 2) << "a transport failure must be retried, not thrown on the first attempt";
+    EXPECT_EQ(result["hits"]["total"]["value"], 0);
+}
+
+// 502/503/504 are what a cluster answers while it reshuffles; the retry goes to the next host.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryRetriesARetryableServerError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int calls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                answerPostError(postParams, "Server error", 503, R"({"error":"cluster unavailable"})");
+            }))
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                answerPostEmptyHits(postParams);
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    const auto result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+
+    EXPECT_EQ(calls, 2) << "a 503 must be retried like the bulk path does";
+    EXPECT_EQ(result["hits"]["total"]["value"], 0);
+}
+
+// 500 stays non-retryable: it may be deterministic, and retrying it would only burn the budget.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryDoesNotRetryA500)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int calls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                answerPostError(postParams, "Server error", 500, "Internal server error");
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
     EXPECT_THROW(connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery), IndexerConnectorException);
+
+    EXPECT_EQ(calls, 1) << "a 500 must fail on the first attempt";
+}
+
+// A 2xx whose body is not JSON (e.g. a proxy's HTML page) is deterministic: it fails on the first
+// attempt with the parse error, instead of being retried as a transport failure. The mock reproduces
+// HTTPRequest::post()'s real contract -- onSuccess runs inside its try, and any exception it throws is
+// forwarded to onError with status -1 -- which a mock that only calls onSuccess would bypass.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryInvalidResponseIsNotRetried)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    constexpr auto HTML_BODY = "<html><body>proxy page</body></html>";
+    int calls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                auto& params = std::get<TPostRequestParameters<const std::string&>>(postParams);
+                try
+                {
+                    params.onSuccess(HTML_BODY);
+                }
+                catch (const std::exception& ex)
+                {
+                    params.onError(ex.what(), -1, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    try
+    {
+        connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+        FAIL() << "executeSearchQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("Search query returned an invalid response: "));
+        EXPECT_THAT(e.what(), HasSubstr("parse_error"));
+        EXPECT_THAT(e.what(), HasSubstr(HTML_BODY));
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+    }
+
+    EXPECT_EQ(calls, 1) << "an unparseable 2xx body must fail on the first attempt, not be retried";
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Search query returned an invalid response"));
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Transport-level failure"));
+}
+
+// The update path gains the same 502/503/504 retry the transport failure already had.
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryRetriesARetryableServerError)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int calls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                answerPostError(postParams, "Server error", 502, R"({"error":"bad gateway"})");
+            }))
+        .WillOnce(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                const std::string body = R"({"took":1,"updated":1,"total":1,"noops":0,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    updateQuery["script"]["source"] = "ctx._source.host.os = params.os";
+    EXPECT_NO_THROW(connector.executeUpdateByQuery({"wazuh-states-vulnerabilities"}, updateQuery));
+
+    EXPECT_EQ(calls, 2) << "a 502 must be retried, like the transport failure above it";
+}
+
+// CA-E4-3: an update_by_query on a missing index carries the status and the body, logs at debug2 and
+// KEEPS the pending notify callbacks: it is a no-op for the caller, not a failed write.
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryIndexNotFoundLogsAtDebugAndThrows)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([](auto, auto postParams, auto)
+                         { answerPostError(postParams, "Client error", 404, INDEX_NOT_FOUND_BODY); }));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    updateQuery["script"]["source"] = "ctx._source.host.os = params.os";
+
+    try
+    {
+        connector.executeUpdateByQuery({"wazuh-states-vulnerabilities"}, updateQuery);
+        FAIL() << "executeUpdateByQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        // The whole message pins the 256-byte truncation of the body, as the search test does.
+        EXPECT_EQ(std::string(e.what()),
+                  std::string("Update by query failed (status 404): Client error - ") +
+                      std::string(INDEX_NOT_FOUND_BODY).substr(0, 256));
+        EXPECT_THAT(e.what(), HasSubstr(R"({"error":{"root_cause":[{"type":"index_not_found_exception")"));
+        EXPECT_EQ(e.statusCode(), 404);
+    }
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Update by query failed: Client error, status code: 404"),
+              1U);
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Update by query failed"));
+
+    // Nothing was written, so the session that registered them is not broken: the callbacks (e.g.
+    // unlockAgent) must still fire, exactly as on the filtered-indices no-op. Dropping them would
+    // hang the session on an update the caller treats as a no-op (the VD's host.os refresh on a
+    // fresh install).
+    connector.invokePendingCallbacks();
+    EXPECT_TRUE(notifyCalled) << "a missing index is a no-op: the pending callbacks must be preserved";
+}
+
+// CA-E4-3: any other update_by_query failure warns, with the status in what().
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryServerErrorWarnsAndThrows)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke([](auto, auto postParams, auto)
+                         { answerPostError(postParams, "Server error", 500, "Internal server error"); }));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    updateQuery["script"]["source"] = "ctx._source.host.os = params.os";
+
+    try
+    {
+        connector.executeUpdateByQuery({"wazuh-states-vulnerabilities"}, updateQuery);
+        FAIL() << "executeUpdateByQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_STREQ(e.what(), "Update by query failed (status 500): Server error - Internal server error");
+        EXPECT_EQ(e.statusCode(), 500);
+    }
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Update by query failed: Server error, status code: 500"), 1U);
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Update by query failed"));
+
+    // A real failure still drops them: only the missing-index no-op keeps the callbacks.
+    connector.invokePendingCallbacks();
+    EXPECT_FALSE(notifyCalled) << "a failed update must not notify the session as if it had been applied";
+}
+
+// CA-E4-3: a 404 that is NOT a missing index (no index_not_found_exception in the body) still warns: the
+// debug level is keyed on the body, not on the status alone.
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryPlainNotFoundWarnsAndThrows)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(
+            Invoke([](auto, auto postParams, auto) { answerPostError(postParams, "Client error", 404, "Not Found"); }));
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    updateQuery["script"]["source"] = "ctx._source.host.os = params.os";
+
+    try
+    {
+        connector.executeUpdateByQuery({"wazuh-states-vulnerabilities"}, updateQuery);
+        FAIL() << "executeUpdateByQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_STREQ(e.what(), "Update by query failed (status 404): Client error - Not Found");
+        EXPECT_EQ(e.statusCode(), 404);
+    }
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Update by query failed: Client error, status code: 404"), 1U);
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Update by query failed"));
 }
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError429TooManyRequestsWithRetry)

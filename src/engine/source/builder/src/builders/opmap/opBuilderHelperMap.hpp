@@ -51,6 +51,22 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief `trim_start([chars])`: removes the given characters (default: whitespace) from the start of the target
+ * string, in place.
+ */
+TransformOp opBuilderHelperStringTrimStart(const Reference& targetField,
+                                           const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief `trim_end([chars])`: removes the given characters (default: whitespace) from the end of the target
+ * string, in place.
+ */
+TransformOp opBuilderHelperStringTrimEnd(const Reference& targetField,
+                                         const std::vector<OpArg>& opArgs,
+                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Helper function to build a MapOp that converts a float or double to an integer allowing truncation or rounding
  * during processing
  *
@@ -100,11 +116,11 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs,
 
 /**
  * @brief Transforms a string of hexa digits into an ASCII string
- * i.e: 'targetField: decode_base16($ref)' with ref '48656C6C6F20776F726C6421' then 'targetField' would be
+ * i.e: 'targetField: decode_hex($ref)' with ref '48656C6C6F20776F726C6421' then 'targetField' would be
  * 'Hello world!'
  *
  * Without a mode the reference must be a string accepted by base::utils::string::hexToAscii, otherwise the operation
- * fails. With the optional mode 'quoted' (decode_base16($ref, 'quoted')) the reference can be a string or an array of
+ * fails. With the optional mode 'quoted' (decode_hex($ref, 'quoted')) the reference can be a string or an array of
  * raw auditd values: a value between double quotes loses its quotes and is kept as text, an unquoted value of
  * upper-case hexadecimal digits that decodes to valid UTF-8 is decoded, and any other value (and any non-string
  * element) is kept unchanged. The 'quoted' mode never fails on the values; an empty array yields an empty array.
@@ -117,7 +133,7 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
 
 /**
  * @brief Transforms a string of hexadecimal digits into a number
- * i.e: 'targetField: +hex_to_number/0x1234' then 'targetField' would be 4660
+ * i.e: 'targetField: +hex_to_int/0x1234' then 'targetField' would be 4660
  * Fail if the string is not a valid hexadecimal number or the reference is not found.
  *
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -261,8 +277,9 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Merge two arrays or objects.
- * Accepts one reference parameter. Fail cases:
+ * @brief Merge two arrays or objects: `merge($source[, 'deep'])`.
+ * Accepts the source reference and the optional literal 'deep' (recursive merge); the source field is deleted after
+ * a successful merge. Fail cases:
  * - If target or source not exists
  * - If source and target, are not the same type
  * - If source or target are not arrays or objects
@@ -272,30 +289,12 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `merge` transformation.
  *
- * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
+ * @throw std::runtime_error if the first parameter is not a reference, the second is not the literal 'deep', or a
+ * schema target is not an object in deep mode.
  */
 TransformOp opBuilderHelperMerge(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Merge recursively two arrays or two objects.
- * Accepts one reference parameter. Fail cases:
- * - If target or source not exists
- * - If source and target, are not the same type
- * - If source or target are not arrays or objects
- *
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return base::Expression The lifter with the `merge` transformation.
- *
- * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
- */
-
-TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
-                                            const std::vector<OpArg>& opArgs,
-                                            const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
  * @brief Function that returns a builder for the operation to erase custom fields from an event.
@@ -329,7 +328,7 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
  * - If true: keeps all fields intact
  * - If false: removes all fields except preserved ones (integration metadata)
  *
- * Usage: wazuh.space.event_discarded: +discard_events
+ * Usage: wazuh.space.event_discarded: +discard_event
  *
  * @param targetField target field (must be "wazuh.space.event_discarded")
  * @param opArgs Vector of operation arguments (must be empty)
@@ -538,23 +537,23 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 //*************************************************
 
 /**
- * @brief Create 'get_key_in' helper function that maps or merge target field value with the content of the some key in
- * the definition object, where the key is specified with a reference to another field.
+ * @brief Create the 'lookup' / 'lookup_merge' helpers: map or merge into the target field the value stored under a
+ * key of an object (a literal, a definition or a reference). The key is a literal string or a reference to a string
+ * field and is matched literally; 'lookup_merge' takes the optional trailing literal 'deep'.
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @param isMerge true if the helper is used in a merge operation (merge_key_in), false if only get the value
+ * @param isMerge true if the helper is used in a merge operation (lookup_merge), false if only get the value
  * @return base::Expression
  */
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge = false,
-                                           bool isRecurive = false);
+                                           bool isMerge = false);
 
 /**
- * @brief Get the 'get_key_in' function helper builder
+ * @brief Get the 'lookup' function helper builder
  *
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
@@ -566,9 +565,9 @@ TransformOp opBuilderHelperGetValue(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Get the 'merge_key_in' function helper builder
+ * @brief Get the 'lookup_merge' function helper builder
  *
- * <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
+ * <field>: +lookup_merge/$<definition_object>|$<object_reference>/$<key>
  * @param targetField target field of the helper
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
@@ -578,18 +577,6 @@ TransformOp opBuilderHelperMergeValue(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
-/**
- * @brief Get the 'merge_recursive_key_in' function helper builder
- *
- * <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return builder
- */
-TransformOp opBuilderHelperMergeRecursiveValue(const Reference& targetField,
-                                               const std::vector<OpArg>& opArgs,
-                                               const std::shared_ptr<const IBuildCtx>& buildCtx);
 } // namespace builder::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H

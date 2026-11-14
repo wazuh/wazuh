@@ -1,0 +1,98 @@
+# Name of the helper function
+name: has_only_keys
+
+metadata:
+  description: |
+    Checks whether every top-level key of the target object is in `keys`.
+
+    Behavior:
+    - `keys` is an array of strings: a literal, a definition or a reference to an array field.
+    - True when the set of top-level member names of the target is a subset of `keys`. Entries of `keys` that
+      are not in the object are fine, nested keys are not examined, and an empty object passes.
+
+    Build errors:
+    - `keys` is a literal that is not an array, or contains an element that is not a string.
+    - `keys` is a reference to a schema field whose type is not a string type.
+    - The target is a schema field whose type is not an object type.
+
+    Notes:
+    - `is_key_of` checks the opposite direction: a target string against the keys of an object.
+    - An empty target object cannot be exercised by the helper test harness, which leaves such a field unmapped.
+  group: object
+  fails_when:
+    - The target field does not exist.
+    - The target field is not an object.
+    - The reference given as `keys` does not exist, is not an array, or contains an element that is not a
+      string.
+    - The target object has a top-level key that is not in `keys`.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  keys:
+    type: array
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# the generated success cases use a list that does not contain the keys of the generated object
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      keys:
+        source: reference
+        value: null
+    target_field:
+      ts: "2021-01-03T01:19:32.488179Z"
+    should_pass: false
+    description: The reference given as keys does not exist.
+  - arguments:
+      keys: ["ts", "host"]
+    target_field:
+      ts: "2021-01-03T01:19:32.488179Z"
+      host: 192.168.4.43
+    should_pass: true
+    description: Every key of the object is in the list.
+  - arguments:
+      keys: ["ts", "host", "other"]
+    target_field:
+      ts: "2021-01-03T01:19:32.488179Z"
+      host: 192.168.4.43
+    should_pass: true
+    description: The list may contain entries that are not keys of the object.
+  - arguments:
+      keys: ["ts", "host"]
+    target_field:
+      ts: "2021-01-03T01:19:32.488179Z"
+      host: 192.168.4.43
+      other_key: some_value
+    should_pass: false
+    description: The object has a key that is not in the list.
+  - arguments:
+      keys: ["ts", 9999, "other"]
+    target_field:
+      ts: "2021-01-03T01:19:32.488179Z"
+      host: 192.168.4.43
+    should_pass: false
+    description: A list element that is not a string is rejected, at build time for a literal and at run time for a reference.
+  - arguments:
+      keys: ["a"]
+    target_field:
+      a:
+        b: 1
+    should_pass: true
+    description: Nested keys are not examined.
+  - arguments:
+      keys: ["ts"]
+    target_field: ts
+    should_pass: false
+    description: The target field is a string, not an object.

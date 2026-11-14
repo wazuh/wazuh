@@ -9,14 +9,18 @@
  */
 
 #include "requestParser.hpp"
+#include "sanitizers.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
 using wazuh::uds_http::Method;
 using wazuh::uds_http::RequestParser;
+using wazuh::uds_http::UdsHttpServerConfig;
 using Feed = wazuh::uds_http::RequestParser::Feed;
 
 namespace
@@ -63,6 +67,20 @@ namespace
     RequestParser::Limits defaultLimits()
     {
         return RequestParser::Limits {};
+    }
+
+    /// No server-wide body limit: what the transport hands the parser when it has neither a cap nor a byte budget.
+    RequestParser::Limits unlimitedLimits()
+    {
+        RequestParser::Limits limits;
+        limits.maxBodySize = UdsHttpServerConfig::UNLIMITED_BODY_SIZE;
+        return limits;
+    }
+
+    /// The head of a POST declaring @p contentLength, which is written verbatim (it may not fit any integer).
+    std::string headDeclaring(const std::string& contentLength)
+    {
+        return "POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + contentLength + "\r\n\r\n";
     }
 } // namespace
 
@@ -517,4 +535,153 @@ TEST(RequestParserTest, APipelinedRequestAfterABodyIsIgnored)
               feedChunks(parser, {first.substr(0, headEnd), first.substr(headEnd) + peerRequest("second-body")}));
     EXPECT_EQ("/inventory/sync", parser.request().target);
     EXPECT_EQ("abc", parser.request().body);
+}
+
+/*
+ * The header map keeps the last value of a repeated name. A handler that must insist on exactly one
+ * occurrence (an identity header) can only do so if the parser also says which names repeated.
+ */
+TEST(RequestParserTest, RecordsRepeatedHeaderNamesLowerCased)
+{
+    RequestParser parser {defaultLimits()};
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\n"
+                               "X-Id: 1\r\nx-id: 2\r\nContent-Length: 0\r\n\r\n"};
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {request}));
+
+    const auto& seen = parser.request();
+    EXPECT_EQ(1U, seen.duplicateHeaders.size());
+    EXPECT_EQ(1U, seen.duplicateHeaders.count("x-id"));
+    EXPECT_EQ("2", seen.headers.at("x-id")) << "the map still keeps the last value";
+}
+
+TEST(RequestParserTest, SingleHeadersLeaveTheDuplicateSetEmpty)
+{
+    RequestParser parser {defaultLimits()};
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {peerRequest()}));
+
+    EXPECT_TRUE(parser.request().duplicateHeaders.empty());
+}
+
+// llhttp delivers a name that straddles a read boundary in two callbacks; that is one header, not two.
+TEST(RequestParserTest, AHeaderSplitAcrossFeedsIsNotADuplicate)
+{
+    RequestParser parser {defaultLimits()};
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\n"
+                               "X-Wazuh-Agent-Id: 001\r\nContent-Length: 0\r\n\r\n"};
+    const auto split = request.find("Agent-Id");
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {request.substr(0, split), request.substr(split)}));
+
+    EXPECT_TRUE(parser.request().duplicateHeaders.empty());
+    EXPECT_EQ("001", parser.request().headers.at("x-wazuh-agent-id"));
+}
+
+// A declared length that no body buffer could hold is refused at the head, with or without a limit, before
+// anything is reserved for it -- never left to a failed allocation and a timeout.
+namespace
+{
+    struct ParserLengthCase
+    {
+        const char* name;
+        std::string contentLength;
+        bool unlimited;
+    };
+} // namespace
+
+class RequestParserImpossibleLengthTest : public ::testing::TestWithParam<ParserLengthCase>
+{
+};
+
+TEST_P(RequestParserImpossibleLengthTest, IsRejectedWith413AtTheHeadWithoutAllocating)
+{
+    const auto& param = GetParam();
+    RequestParser parser {param.unlimited ? unlimitedLimits() : defaultLimits()};
+    const auto head = headDeclaring(param.contentLength);
+
+    EXPECT_EQ(Feed::Reject, parser.feed(head.data(), head.size()));
+    EXPECT_EQ(413, parser.rejectStatus());
+    EXPECT_EQ(Feed::Reject, parser.resume()) << "a rejected head cannot be resumed into a reserve";
+    EXPECT_LT(parser.request().body.capacity(), 1024U) << "nothing was reserved for the declared length";
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    DeclaredLengths,
+    RequestParserImpossibleLengthTest,
+    ::testing::Values(
+        ParserLengthCase {"MaxUint64Unlimited", std::to_string(std::numeric_limits<std::uint64_t>::max()), true},
+        ParserLengthCase {"OverMaxSizeUnlimited", std::to_string(std::string {}.max_size() + 1), true},
+        ParserLengthCase {"MaxUint64WithALimit", std::to_string(std::numeric_limits<std::uint64_t>::max()), false},
+        ParserLengthCase {"OverMaxSizeWithALimit", std::to_string(std::string {}.max_size() + 1), false}),
+    [](const ::testing::TestParamInfo<ParserLengthCase>& info) { return std::string {info.param.name}; });
+
+// With no limit the declared length is only the peer's word: accepting a head that declares 1 TiB reserves the
+// bounded initial amount, not the terabyte.
+TEST(RequestParserTest, UnlimitedReservesAtMostTheInitialAmountForAHugeDeclaredLength)
+{
+    RequestParser parser {unlimitedLimits()};
+    const auto head = headDeclaring(std::to_string(std::uint64_t {1} << 40U));
+
+    ASSERT_EQ(Feed::HeadersReady, parser.feed(head.data(), head.size()));
+    ASSERT_EQ(Feed::Incomplete, parser.resume());
+
+    EXPECT_LE(parser.request().body.capacity(), RequestParser::UNBOUNDED_INITIAL_RESERVE);
+}
+
+// The initial reserve is not a body limit: a body several times larger completes byte for byte, and its buffer
+// ends at the declared length rather than at the next doubling past it.
+TEST(RequestParserTest, UnlimitedGrowsABodyLargerThanTheInitialReserve)
+{
+    RequestParser parser {unlimitedLimits()};
+    const auto declared = 3 * RequestParser::UNBOUNDED_INITIAL_RESERVE + 7;
+    std::string body(declared, '\0');
+    for (std::size_t i = 0; i < body.size(); ++i)
+    {
+        body[i] = static_cast<char>('a' + i % 26);
+    }
+    std::vector<std::string> chunks {headDeclaring(std::to_string(declared))};
+    for (std::size_t at = 0; at < body.size(); at += 64 * 1024)
+    {
+        chunks.push_back(body.substr(at, 64 * 1024));
+    }
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, chunks));
+
+    EXPECT_EQ(body, parser.request().body);
+    EXPECT_EQ(declared, parser.request().body.capacity());
+}
+
+// With a finite limit the declared length is at most one permitted body, which the byte budget (when there is
+// one) already charged: it is reserved whole, as before.
+TEST(RequestParserTest, FiniteLimitReservesTheDeclaredLengthWhole)
+{
+    RequestParser parser {defaultLimits()};
+    const auto declared = 2 * RequestParser::UNBOUNDED_INITIAL_RESERVE;
+    const auto head = headDeclaring(std::to_string(declared));
+
+    ASSERT_EQ(Feed::HeadersReady, parser.feed(head.data(), head.size()));
+    ASSERT_EQ(Feed::Incomplete, parser.resume());
+
+    EXPECT_EQ(declared, parser.request().body.capacity());
+}
+
+// A finite limit large enough to admit a length that can be represented but not allocated: the failed reserve is
+// a 500 Reject, not an exception thrown at the caller.
+TEST(RequestParserTest, AReserveThatCannotBeSatisfiedIsA500Reject)
+{
+    if (wazuh::uds_http::test::UNDER_ADDRESS_SANITIZER)
+    {
+        GTEST_SKIP() << "AddressSanitizer aborts on the allocation instead of throwing std::bad_alloc";
+    }
+    RequestParser::Limits limits;
+    limits.maxBodySize = std::string {}.max_size();
+    RequestParser parser {limits};
+    const auto head = headDeclaring(std::to_string(std::string {}.max_size()));
+
+    ASSERT_EQ(Feed::HeadersReady, parser.feed(head.data(), head.size()));
+
+    EXPECT_EQ(Feed::Reject, parser.resume());
+    EXPECT_EQ(500, parser.rejectStatus());
+    EXPECT_EQ(Feed::Reject, parser.feed("x", 1)) << "the parser is spent";
 }

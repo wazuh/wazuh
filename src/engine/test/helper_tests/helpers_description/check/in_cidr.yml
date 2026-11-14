@@ -1,0 +1,92 @@
+# Name of the helper function
+name: in_cidr
+
+metadata:
+  description: |
+    Checks whether the target IPv4 address belongs to at least one of the given networks.
+
+    Behavior:
+    - Each argument is a literal string naming an IPv4 network in CIDR notation, `a.b.c.d/nn` with `nn` from
+      0 to 32, or with a dotted-decimal mask, `a.b.c.d/m.m.m.m` (any dotted quad is accepted as a mask,
+      non-contiguous ones included).
+    - The networks are tested in order and the check is true as soon as the target is inside one of them.
+    - Only IPv4 targets are supported: an IPv6 address gives false.
+    - The address parser is lenient: leading whitespace and leading zeros (read as decimal) are accepted,
+      trailing characters are not.
+
+    Build errors:
+    - No argument is given.
+    - An argument is a reference or is not a string.
+    - A network is malformed, or the prefix length is outside 0 to 32.
+    - The target is a schema field whose type is neither `ip` nor an IP-compatible string type (keyword, text,
+      wildcard and the like); date, binary, numeric and object fields are rejected.
+
+    Notes:
+    - `is_ipv4` uses a strict parser, so this helper can accept strings that `is_ipv4` rejects.
+    - `is_public_ip` is the fixed-range check that also handles IPv6.
+  group: network
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The target string is not an IPv4 address (an IPv6 address included).
+    - The address is outside every given network.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  cidr:
+    type: string
+    generate: string
+    source: value # only literal values, not references
+    accepted_values: IPv4 network as `a.b.c.d/nn` (`nn` from 0 to 32) or `a.b.c.d/m.m.m.m`  # documentation only
+
+# the generated success cases do not use CIDR notation
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - arguments:
+      cidr: 192.168.0.0/16
+    target_field: 192.168.1.5
+    should_pass: true
+    description: The address is inside the network given with a prefix length.
+  - arguments:
+      cidr: 192.168.0.0/255.255.0.0
+    target_field: 192.168.1.5
+    should_pass: true
+    description: The address is inside the network given with a dotted-decimal mask.
+  - arguments:
+      cidr: 192.168.0.0/16
+    target_field: 111.111.1.11
+    should_pass: false
+    description: The address is outside the only network.
+  - arguments:
+      cidr: 10.0.0.0/8
+      cidr_1: 172.16.0.0/12
+    target_field: 172.20.5.9
+    should_pass: true
+    description: The address is inside the second of two networks.
+  - arguments:
+      cidr: 10.0.0.0/8
+      cidr_1: 172.16.0.0/12
+    target_field: 192.168.1.1
+    should_pass: false
+    description: The address is outside both networks.
+  - arguments:
+      cidr: 192.168.0.0/16
+    target_field: 2001:db8::1
+    should_pass: false
+    description: An IPv6 address never matches.
+  - arguments:
+      cidr: 192.168.0.0/16
+    target_field: 3232235781
+    should_pass: false
+    description: The target field is a number, not a string.

@@ -16,6 +16,7 @@
 
 #include <agentcache/agentMetadataCache.hpp>
 #include <api/contentsync/handlers.hpp>
+#include <api/event/ingestServer.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
@@ -35,6 +36,7 @@
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
 #include <cmsync/cmsync.hpp>
+#include <cmsync/routeStatusReporter.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
@@ -48,6 +50,7 @@
 #include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
+#include <httpsrv/apiServer.hpp>
 #include <httpsrv/server.hpp>
 #include <iockvdb/helpers.hpp>
 #include <iockvdb/manager.hpp>
@@ -166,6 +169,9 @@ int main(int argc, char* argv[])
 
         exitHandler.add([]() { logging::stop(); });
         logging::start(logConfig);
+        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (the HTTP transport, the indexer
+        // connector) reach this sink too; without it they are dropped in standalone mode.
+        Log::assignLogFunction(logging::createStandaloneLogFunction());
 
         if (logConfig.enableRotation)
         {
@@ -341,6 +347,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
+    std::shared_ptr<cm::sync::RouteStatusReporter> routeStatusReporter;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
     std::shared_ptr<scheduler::TriggerableTask> cmSyncTask;
     std::shared_ptr<scheduler::TriggerableTask> iocSyncTask;
@@ -742,35 +749,19 @@ int main(int argc, char* argv[])
             exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
             LOG_INFO("IOC Sync Service initialized");
 
-            // Logs only on transitions between "no enabled route" and "at least one".
-            auto lastWarned = std::make_shared<std::optional<bool>>();
-            const auto reportRouteStatus = [orchestrator, lastWarned, firstStart]()
-            {
-                const auto entries = orchestrator->getEntries();
-                const bool shouldWarn =
-                    std::none_of(entries.begin(),
-                                 entries.end(),
-                                 [](const auto& e) { return e.status() == router::env::State::ENABLED; });
-                if (*lastWarned == shouldWarn)
+            // Logs whether incoming events have an enabled route. Registered after the CMSync, IOC sync and
+            // orchestrator handlers so that it stops before them: the router is empty once shut down, which is
+            // not a lost route.
+            routeStatusReporter = std::make_shared<cm::sync::RouteStatusReporter>(
+                [orchestrator]()
                 {
-                    return;
-                }
-                *lastWarned = shouldWarn;
-                if (!shouldWarn)
-                {
-                    LOG_INFO("[CMSync] Event processing is now active");
-                }
-                else if (firstStart)
-                {
-                    LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded until content "
-                             "synchronization completes");
-                }
-                else
-                {
-                    LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded until "
-                                "content synchronization completes");
-                }
-            };
+                    const auto entries = orchestrator->getEntries();
+                    return std::any_of(entries.begin(),
+                                       entries.end(),
+                                       [](const auto& e) { return e.status() == router::env::State::ENABLED; });
+                },
+                firstStart);
+            exitHandler.add([routeStatusReporter]() { routeStatusReporter->requestShutdown(); });
 
             // 0 disables the early retry; the range is checked by confManager.load() (conf.cpp).
             const auto cmSyncRetryConfigured = confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
@@ -785,10 +776,10 @@ int main(int argc, char* argv[])
                 "cm-sync-task",
                 cmSyncInterval,
                 0,
-                [reportRouteStatus, orchestrator, cmSyncService, cmSyncPending, cmSyncRetryInterval]()
+                [routeStatusReporter, orchestrator, cmSyncService, cmSyncPending, cmSyncRetryInterval]()
                 {
                     // Detects a route lost between runs (e.g. deleted by hand), then recovery.
-                    reportRouteStatus();
+                    routeStatusReporter->report();
                     // The full worker pool must exist before the first sync mutates it.
                     orchestrator->expandWorkerPool();
                     const bool pending = cmSyncService->synchronize();
@@ -798,7 +789,7 @@ int main(int argc, char* argv[])
                                  cmSyncRetryInterval);
                     }
                     cmSyncPending->store(pending);
-                    reportRouteStatus();
+                    routeStatusReporter->report();
                 },
                 [cmSyncPending, cmSyncRetryInterval]() -> std::size_t
                 { return cmSyncPending->load() ? cmSyncRetryInterval : 0; });
@@ -889,14 +880,18 @@ int main(int argc, char* argv[])
                             serverApiPayloadMaxBytes);
                 serverApiPayloadMaxBytes = 0;
             }
-            apiServer =
-                std::make_shared<httpsrv::Server>("API services", static_cast<size_t>(serverApiPayloadMaxBytes), true);
+            apiServer = httpsrv::makeApiServer();
+            const auto apiRoutes =
+                std::make_shared<httpsrv::ApiRouteRegistrar>(apiServer, static_cast<size_t>(serverApiPayloadMaxBytes));
 
-            // API
+            // API. On a clean stop the shutdown below has already stopped it; this covers the error paths.
             exitHandler.add(
                 [apiServer]()
                 {
-                    apiServer->stop();
+                    if (apiServer->isRunning())
+                    {
+                        apiServer->shutdown();
+                    }
                     eMessage::ShutdownEMessageLibrary();
                 });
 
@@ -904,30 +899,30 @@ int main(int argc, char* argv[])
             metricsManager =
                 std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
             api::metrics::handlers::registerHandlers(
-                metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
+                metricsManager, apiRoutes, "wazuh-manager-analysisd", engineUptimeISO);
             LOG_DEBUG("Metrics API registered");
 
             // Geo
-            api::geo::handlers::registerHandlers(geoManager, apiServer);
+            api::geo::handlers::registerHandlers(geoManager, apiRoutes);
             LOG_DEBUG("Geo API registered");
 
             // Router
-            api::router::handlers::registerHandlers(orchestrator, cmStore, apiServer);
+            api::router::handlers::registerHandlers(orchestrator, cmStore, apiRoutes);
             LOG_DEBUG("Router API registered");
 
             // Tester
             api::tester::handlers::registerHandlers(
-                orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiServer);
+                orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiRoutes);
             LOG_DEBUG("Tester API registered");
 
             // Dumper Events
-            api::dumper::handlers::registerHandlers(dumper, apiServer);
+            api::dumper::handlers::registerHandlers(dumper, apiRoutes);
             LOG_DEBUG("Dumper Events API registered");
 
             // Raw Event Indexer
             if (rawEventIndexer)
             {
-                api::rawevtindexer::handlers::registerHandlers(rawEventIndexer, apiServer);
+                api::rawevtindexer::handlers::registerHandlers(rawEventIndexer, apiRoutes);
                 LOG_DEBUG("Raw Event Indexer API registered");
             }
 
@@ -936,20 +931,20 @@ int main(int argc, char* argv[])
             const auto apiResourceKvdbPayloadMaxBytes =
                 confManager.get<int64_t>(conf::key::API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES);
             api::cmcrud::handlers::registerHandlers(
-                cmCrudService, orchestrator, apiServer, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
+                cmCrudService, orchestrator, apiRoutes, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
             LOG_DEBUG("Content Manager CRUD API registered");
 
             // IOC CRUD
             const std::filesystem::path iocInputPath(confManager.get<std::string>(conf::key::KVDB_IOC_INPUT_PATH));
-            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer, iocInputPath);
+            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiRoutes, iocInputPath);
             LOG_DEBUG("IOC CRUD API registered");
 
             // Status
-            api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiServer);
+            api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiRoutes);
             LOG_DEBUG("Status API registered.");
 
             // On-demand content synchronization (ruleset and IOC)
-            api::contentsync::handlers::registerHandlers(cmSyncTask, iocSyncTask, apiServer);
+            api::contentsync::handlers::registerHandlers(cmSyncTask, iocSyncTask, apiRoutes);
             LOG_DEBUG("Content synchronization API registered.");
 
             // Finally start the API server
@@ -959,9 +954,12 @@ int main(int argc, char* argv[])
         // HTTP enriched events server
         if (enableProcessing)
         {
-            engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
-            // Every cache setting is validated here, before the ingest server below starts listening: a
-            // bad value must stop start-up before any batch is accepted, not after.
+            // Every cache and ingest setting is validated here, before the ingest server below starts
+            // listening: a bad value must stop start-up before any batch is accepted, not after.
+            const auto ingestLimits = api::event::validateIngestLimits(
+                {confManager.get<std::size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES),
+                 confManager.get<std::size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS),
+                 confManager.get<std::size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES)});
             agentMetadataCacheCleanInterval = agentcache::validateCleanInterval(
                 confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL));
             agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
@@ -972,13 +970,16 @@ int main(int argc, char* argv[])
             // Register retained cache usage and configured limits.
             agentcache::registerCacheMetrics(agentMetadataCache);
 
-            exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
+            engineRemoteServer = api::event::makeIngestServer(orchestrator, dumper, agentMetadataCache, ingestLimits);
+            exitHandler.add(
+                [engineRemoteServer]()
+                {
+                    if (engineRemoteServer->isRunning())
+                    {
+                        engineRemoteServer->shutdown();
+                    }
+                });
 
-            engineRemoteServer->addRoute(httpsrv::Method::POST,
-                                         "/events/enriched",
-                                         api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
-
-            // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 
             LOG_INFO("Remote engine's server initialized and started");
@@ -1027,7 +1028,9 @@ int main(int argc, char* argv[])
                 if (g_shutdown_requested)
                 {
                     LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
-                    engineRemoteServer->stop();
+                    // Both servers stop accepting first and drain together, before any dependency's exit
+                    // handler runs.
+                    httpsrv::shutdownAll({engineRemoteServer.get(), apiServer.get()});
                 }
             }
             engineRemoteServer.reset();
@@ -1043,6 +1046,7 @@ int main(int argc, char* argv[])
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
+            httpsrv::shutdownAll({apiServer.get()});
         }
     }
     catch (const std::exception& e)

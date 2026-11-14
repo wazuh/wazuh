@@ -15,6 +15,12 @@ aliases, and malformed batch framing or H line return HTTP `400`. Identity failu
 event is enqueued. Unavailable internal services return HTTP `500`. See the
 [events specification](spec-events.yaml) for the complete request and error contract.
 
+Admission rejected because of capacity or shutdown returns HTTP `503` before any event is enqueued.
+A response backstop that expires while the handler is pending returns HTTP `504`; a handler that drops
+its responder without answering returns `503`. These two failures may happen after work has started,
+so retrying the batch may duplicate events. Both use a JSON body with an `error` string and a `code`
+integer; the specification includes representative messages from the engine and its HTTP transport.
+
 A request is answered 200 once its batch is split and queued: the identity, the header line and the batch framing are
 checked synchronously (400 on failure; the engine logs the first rejected batch as the WARNING
 `[API::Event] Failed to parse request {"agent_id":"<id>"}: '<reason>'`, then at most one line per minute that also reports how many

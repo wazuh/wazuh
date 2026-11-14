@@ -119,6 +119,13 @@ int ClientConf(const char *cfgfile)
     if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
         return OS_INVALID;
     }
+
+    /* The group's shared agent.conf, read after ossec.conf so a value it sets wins: that is the order
+     * the package's uninstaller (prerm/%preun) enforces it in. Without this read, a group that turned
+     * protection on blocked the uninstall while getconfig and the module report still said "no". */
+    if (remote_conf) {
+        ReadConfig(ATAMPERING | CAGENT_CONFIG, AGENTCONFIG, atc, NULL);
+    }
 #endif
 
     /* Last, so it sees everything ossec.conf had to say about <ssl>. Deliberately below the

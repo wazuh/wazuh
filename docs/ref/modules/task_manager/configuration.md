@@ -255,6 +255,10 @@ at or above half of it).
   '/global/agents_disconnection_time': ...`, so no daemon starts.
 - **Effect:** an agent whose last keepalive is older than this is marked `disconnected` by the
   [disconnection sweep](schedules.md#agent_disconnect_sweep), which runs on the master node only.
+  `wazuh-manager-remoted` applies the same rule once when it starts, on every node, so agents that
+  went silent while the manager was down are not reported `active` until the sweep's next run. It
+  changes nothing else: an agent seen within the window keeps its status across a restart, and on
+  a master that includes every agent served by a worker that stayed up.
   Read when `wazuh-manager-modulesd` starts; if `global` cannot be read, modulesd logs `Cannot read
   the global configuration; the agent disconnection sweep will use its default window.`, uses
   900 s, and fails `wazuh-manager-modulesd -t` — so `wazuh-manager-control` refuses the start.
@@ -449,6 +453,9 @@ version gates are listed under
 **WPK downloads fail.** Confirm outbound HTTPS access to `<wpk_repository>`, or place the WPK under
 `/var/wazuh-manager/var/upgrade/` and use the custom-upgrade endpoint. A custom WPK **must** be
 inside that directory; anything else is refused with *The WPK file does not exist*.
+Both the `versions` fetch and the WPK download send `User-Agent: wazuh-manager/<version>` (for
+example `wazuh-manager/5.0.0`); a repository behind a WAF or proxy that filters on that header must
+allow it.
 
 *A missing CA bundle fails every repository request, by design* (peer verification is never
 disabled; see [The WPK file](agent-upgrades.md#the-wpk-file)). The module says so once at start-up,

@@ -245,7 +245,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(makeDefaultArgs(),
              opBuilderHelperNetworkCommunityId,
              FAILURE(expectNumericRefType("network.iana_number", schemf::Type::KEYWORD)))),
-    testNameFormatter<MapBuilderTest>("NetworkCommunityId"));
+    testNameFormatter<MapBuilderTest>("CommunityId"));
 } // namespace mapbuildtest
 
 namespace mapoperatestest
@@ -375,5 +375,5 @@ INSTANTIATE_TEST_SUITE_P(
             opBuilderHelperNetworkCommunityId,
             makeDefaultArgs(),
             FAILURE(operationFailure()))),
-    testNameFormatter<MapOperationTest>("NetworkCommunityId"));
+    testNameFormatter<MapOperationTest>("CommunityId"));
 } // namespace mapoperatestest

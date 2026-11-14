@@ -63,7 +63,7 @@ class IAgentSyncProtocol
         /// @brief Synchronizes metadata or groups with the server without sending data.
         ///
         /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
-        /// Sent as one FullSession carrying Start and End (no data items).
+        /// Sent as one FullSession carrying only the Start (no data items).
         /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
         /// @param indices Vector of index names that will be updated by the manager
         /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
@@ -73,8 +73,8 @@ class IAgentSyncProtocol
         /// @brief Notifies the manager about data cleaning for specified indices.
         ///
         /// This method sends DataClean messages for each index in the provided vector.
-        /// Sent as one FullSession carrying Start, a DataClean per index, and End.
-        /// Upon receiving Ok, it clears the local database. Reports the same detail
+        /// Sent as one FullSession carrying the Start and a DataClean per index.
+        /// When the manager accepts it, it clears the local database. Reports the same detail
         /// synchronizeModule() does (manager-not-ready / local-transport-unavailable /
         /// consecutive-failure streak), so a caller that needs to distinguish a transient
         /// hiccup from a real failure -- to decide log severity or apply the same retry

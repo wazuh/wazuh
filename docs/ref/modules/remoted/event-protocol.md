@@ -212,7 +212,8 @@ Trailing newlines are trimmed from each event; blank lines between events are sk
 
 - `200`: the batch was parsed and its events queued for processing.
 - `400`: the identity carrier is missing, repeated or noncanonical; the H-line identity is missing,
-  ambiguous, mismatched or has a dotted alias; or the H/E batch is malformed. The response is
+  ambiguous, mismatched or has a dotted alias; another dotted member name of the H line would expand
+  into `wazuh.*`; or the H/E batch is malformed. The response is
   `{"error": "<validation message>", "code": 400}`. Identity failures are rejected before any event
   is enqueued and increment `agent.cache.rejected.identity`. Identity warnings (`[API::Event] Identity
   rejected`) are throttled to one per 90 seconds; parse warnings (`[API::Event] Failed to parse request`)

@@ -1,0 +1,93 @@
+# Name of the helper function
+name: parse_byte
+
+metadata:
+  description: |
+    Converts the input string to an 8-bit signed integer and stores it in the target field.
+
+    Behavior:
+    - The input must match `-?[0-9]+(.[0-9]*)?`: an optional minus sign, digits and an optional fraction; no
+      plus sign, exponent or surrounding spaces.
+    - The fraction is dropped (truncation toward zero): `3.14` gives `3` and `-2.9` gives `-2`.
+    - The value must be within -128 and 127; otherwise the operation fails ("Number is out of range").
+    - The integer replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not byte, short, integer or long.
+
+    Notes:
+    - `to_int` converts a number instead of a string; `hex_to_int` converts hexadecimal text.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a decimal number in the accepted syntax.
+    - The value is outside the range -128..127.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: number
+  generate: integer
+
+test:
+  - arguments:
+      input: "127"
+    target_field: any_value
+    should_pass: true
+    expected: 127
+    description: The upper bound of the range is accepted
+  - arguments:
+      input: "-128"
+    target_field: any_value
+    should_pass: true
+    expected: -128
+    description: The lower bound of the range is accepted
+  - arguments:
+      input: "3.14"
+    target_field: any_value
+    should_pass: true
+    expected: 3
+    description: The fraction is dropped
+  - arguments:
+      input: "128"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a value above the range
+  - arguments:
+      input: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a string that is not a number
+  - arguments:
+      input: "130"
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: An array target is left unchanged when the value is out of range
+  - arguments:
+      input: "130"
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: An object target is left unchanged when the value is out of range

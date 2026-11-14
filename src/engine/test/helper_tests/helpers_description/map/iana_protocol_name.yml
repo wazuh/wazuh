@@ -1,0 +1,144 @@
+# Name of the helper function
+name: iana_protocol_name
+
+metadata:
+  description: |
+    Resolves an IANA IP protocol number to its keyword, for example `tcp` for 6, and maps it to the
+    target field.
+
+    Behavior:
+    - `protocol_number` is a JSON integer in 0..255, or a string of decimal digits that is read in
+      full (no sign, whitespace or decimals).
+    - The result is the lower-case keyword of a built-in table, such as `tcp`, `ipv6-icmp`, `a/n`,
+      `ax.25` or `tp++`.
+
+    Build errors:
+    - `protocol_number` is a literal.
+    - `protocol_number` is a schema field whose type is neither a number nor a string.
+
+    Notes:
+    - A JSON double such as `6.0` fails even when it is integral.
+    - `iana_protocol_number` is the inverse lookup.
+  group: network
+  fails_when:
+    - "`protocol_number` is missing, is a boolean or a double, or is a string that is not a plain decimal number"
+    - "the number is outside 0..255"
+    - "the number is unassigned (148 to 252), experimental (253 and 254), reserved (255) or a generic category (61, 63, 68, 99 and 114)"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  protocol_number:
+    type:
+      - number
+      - string
+    source: reference
+
+skipped:
+  - success_cases
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      protocol_number: 6
+    should_pass: true
+    expected: "tcp"
+    description: Resolve 6 to tcp
+  - arguments:
+      protocol_number: 58
+    should_pass: true
+    expected: "ipv6-icmp"
+    description: Resolve 58 to ipv6-icmp
+  - arguments:
+      protocol_number: 147
+    should_pass: true
+    expected: "bit-emu"
+    description: Resolve 147, the last assigned number, to bit-emu
+  - arguments:
+      protocol_number: "6"
+    should_pass: true
+    expected: "tcp"
+    description: Resolve a number given as a decimal string
+  - arguments:
+      protocol_number: "58"
+    should_pass: true
+    expected: "ipv6-icmp"
+    description: Resolve a number given as a decimal string
+  - arguments:
+      protocol_number: "147"
+    should_pass: true
+    expected: "bit-emu"
+    description: Resolve a number given as a decimal string
+  - arguments:
+      protocol_number: "6.0"
+    should_pass: false
+    description: Fail on a string with decimals
+  - arguments:
+      protocol_number: "+6"
+    should_pass: false
+    description: Fail on a string with a sign
+  - arguments:
+      protocol_number: 6.0
+    should_pass: false
+    description: Fail on a double, even when it is integral
+  - arguments:
+      protocol_number: "-1"
+    should_pass: false
+    description: Fail on a negative number given as a string
+  - arguments:
+      protocol_number: "256"
+    should_pass: false
+    description: Fail on a number above 255 given as a string
+  - arguments:
+      protocol_number: "abc"
+    should_pass: false
+    description: Fail on a string that is not a number
+  - arguments:
+      protocol_number: 61
+    should_pass: false
+    description: Fail on the generic category 61
+  - arguments:
+      protocol_number: 63
+    should_pass: false
+    description: Fail on the generic category 63
+  - arguments:
+      protocol_number: 68
+    should_pass: false
+    description: Fail on the generic category 68
+  - arguments:
+      protocol_number: 99
+    should_pass: false
+    description: Fail on the generic category 99
+  - arguments:
+      protocol_number: 114
+    should_pass: false
+    description: Fail on the generic category 114
+  - arguments:
+      protocol_number: 148
+    should_pass: false
+    description: Fail on an unassigned number
+  - arguments:
+      protocol_number: 253
+    should_pass: false
+    description: Fail on an experimental number
+  - arguments:
+      protocol_number: 255
+    should_pass: false
+    description: Fail on the reserved number
+  - arguments:
+      protocol_number: -1
+    should_pass: false
+    description: Fail on a negative number
+  - arguments:
+      protocol_number: 256
+    should_pass: false
+    description: Fail on a number above 255
+  - arguments:
+      protocol_number: null
+    should_pass: false
+    description: Fail on a null value

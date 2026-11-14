@@ -23,7 +23,8 @@ reads them directly**, with the manager stopped.
 The 5.0 manager is the one that has to end up correct, so **`import` never writes its files**. Every
 agent, group and membership is created through the manager's own API, which means the manager
 validates each one, writes `client.keys` and the registry itself, with its own ownership, and keeps
-the two in step. This tool holds no copy of the 5.0 schema, no table of file modes for the registry
+the two in step. The exceptions are files no endpoint accepts: the two opt-in credentials and the
+SCA policy files a group loads. This tool holds no copy of the 5.0 schema, no table of file modes for the registry
 and no idea what `client.keys` looks like. When the product changes any of that, nothing here has to
 follow.
 
@@ -66,7 +67,14 @@ is for when it is somewhere else.
 | `--force` | `export`, `import` | off | Proceed past this tool's safety checks |
 | `--version` | — | — | Print the tool version |
 
-`--dry-run` reports what `export` and `import` would do and changes nothing. Run it first.
+`--dry-run` reports what `export` and `import` would do and changes nothing. Run it first: it ends
+with the same **Review before going on** list as the real `export`, printed once on standard output.
+The list names, per group (`default` included), every `agent.conf` setting 5.0 agents ignore
+(`<labels>`, `<client_buffer>`, `<integration>`... with what to use instead), every file left
+behind and every SCA policy carried. It also names the features the 4.x manager's `ossec.conf`
+configures that stop at cutover (integrations, email, syslog output, agentless, active responses,
+OpenSCAP and CIS-CAT, syslog input, and the monitoring of the server's own host), each with the
+migration guide that rebuilds it. `import` prints the list again from the bundle.
 
 The API password is read, in order, from `--api-password-file` (`-` for standard input), from
 `WAZUH_API_PASSWORD` or `WAZUH_MANAGER_API_PASSWORD` in the environment, from the
@@ -94,7 +102,9 @@ or keep the 4.x passwords and give `check` the 4.x one explicitly.
 | Agents: id, name, address and key | `POST /agents/insert` per agent. The manager writes `client.keys` and the registry row itself |
 | Groups | `POST /groups` per custom group. `default` is the target's own and is never recreated |
 | Each group's `agent.conf` | `PUT /groups/{group}/configuration` |
-| Group membership | `PUT /agents/{id}/group/{group}` in the 4.x priority order |
+| The `default` group's `agent.conf`, when the 4.x one sets anything | Appended after the 5.0 one with `PUT /groups/default/configuration`, so both apply. A second import finds it there and leaves the file alone |
+| SCA policy files a group's `agent.conf` loads | File copy into the group folder, `wazuh-manager:wazuh-manager 0660`, before the `agent.conf` that loads them |
+| Group membership | Exactly the 4.x groups, in the 4.x priority order. The manager inserts every agent in `default`: the first group replaces it (`PUT /agents/{id}/group/{group}?force_single_group=true`) and the rest are appended, `default` included where 4.x had it |
 | Enrollment password | file copy, `--with-password` at both ends |
 | API users, roles and policies | file copy, `--with-rbac` at both ends |
 
@@ -104,10 +114,19 @@ system are not carried either, but those the manager refreshes from the agent's 
 Agent labels and the 4.x `info` table were removed in 5.0. Rules, decoders and CDB lists are their
 own migration; see the guides for each.
 
-**Files in a group folder other than `agent.conf`** are reported and left behind. No endpoint
-uploads them, and 5.0 compiles everything in a group folder into what it pushes to that group's
-agents, so a 4.x CDB list or rootcheck file would be distributed to the fleet with no meaning
-attached. `export` names each one so the decision is yours rather than silent.
+**SCA policy files** are carried when the group's `agent.conf` loads them: a `<policy>` under
+`<sca>` whose path is the agent's shared directory and the file name (`etc/shared/<file>` on Linux
+and macOS, `shared\<file>` on Windows). 5.0 agents still run them.
+
+**Other files in a group folder** are reported and left behind. No endpoint uploads them, and 5.0
+compiles everything in a group folder into what it pushes to that group's agents, so a 4.x CDB list
+or rootcheck file would be distributed to the fleet with no meaning attached. `export` names each
+one so the decision is yours rather than silent. The rootcheck lists every 4.x installation ships
+in `default` are not named.
+
+**Agent labels** (`<labels>` in an `agent.conf`) are carried with the file, but 5.0 agents ignore
+them and `agent.labels.*` no longer reaches events. The review names every group that sets them;
+group membership (`wazuh.agent.groups`) is the closest replacement.
 
 ### The RBAC database
 
@@ -126,14 +145,24 @@ Everything that can refuse runs before the first write.
 - The 4.x manager is still running. Its files would be read underneath live daemons.
 - The source registry reports a `db_version` this tool has not been checked against.
 - The target already holds agents, which an import would collide with by id.
-- The bundle is truncated, or comes from a different bundle version.
+- The bundle is truncated, or comes from a bundle version this tool does not read. Version 2
+  bundles (tool 2.x) are imported with a notice: they carry neither the default group nor the SCA
+  policy files.
 
 Anything the manager itself refuses is reported in the manager's own words, per item, and the run
-ends with exit `1` rather than pretending it succeeded. `--force` overrides this tool's own checks;
+ends with exit `1` rather than pretending it succeeded. A `default` group configuration the manager
+refuses is reported the same way and does not stop the agents from going in. `--force` overrides this tool's own checks;
 it cannot override the manager's.
 
 The two file copies keep a `.pre-migration` copy of whatever they overwrite, and never overwrite an
 earlier one: a second import writes `.pre-migration.<timestamp>` instead of skipping the backup.
+
+## What `check` compares
+
+Every agent of the bundle is present with its name and exactly its 4.x groups in the 4.x order (a
+group missing, a group it was not in, `default` included, and a different order are each a
+problem); no agent is present that the bundle did not carry; every group exists; the `default`
+group holds the 4.x settings the bundle carried; every carried SCA policy is in its group folder.
 
 ## Exit codes
 

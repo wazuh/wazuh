@@ -79,6 +79,10 @@ constexpr std::string_view SERVER_API_TIMEOUT = "analysisd.server_api_timeout";
 constexpr std::string_view SERVER_API_PAYLOAD_MAX_BYTES = "analysisd.server_api_payload_max_bytes";
 
 constexpr std::string_view SERVER_ENRICHED_EVENTS_SOCKET = "analysisd.server_enriched_events_socket";
+constexpr std::string_view SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES = "analysisd.server_enriched_events_max_body_bytes";
+constexpr std::string_view SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS = "analysisd.server_enriched_events_max_connections";
+constexpr std::string_view SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES =
+    "analysisd.server_enriched_events_max_inflight_bytes";
 
 constexpr std::string_view SERVER_ENABLE_EVENT_PROCESSING = "analysisd.server_enable_event_processing";
 

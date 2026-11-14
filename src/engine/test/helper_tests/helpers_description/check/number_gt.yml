@@ -1,0 +1,93 @@
+# Name of the helper function
+name: number_gt
+
+metadata:
+  description: |
+    Checks whether the target number is greater than `value`.
+
+    Behavior:
+    - Two integers are compared exactly as 64-bit integers, whatever their magnitude: `9007199254740993` and
+      `9007199254740992` are different numbers.
+    - When either operand is a floating-point number, both are compared as doubles: `2` equals `2.0` and `3` is
+      greater than `2.9`. Nothing is rounded or truncated.
+    - Integers are exact from -2^63 to 2^64-1; an integer beyond that range is read as a double.
+    - An integer compared with a floating-point number is exact only up to 2^53 (the precision of a double); above
+      that the integer loses its low bits in the conversion. Keep large counters and epoch timestamps (milliseconds
+      or nanoseconds) as integers on both sides.
+    - `value` is a literal integer or floating-point number, or a reference to a numeric field.
+    - Strings, booleans and null are never numbers, not even `"2"`: the check fails.
+
+    Build errors:
+    - `value` is a literal that is not a number (a quoted number, a boolean or null).
+    - `value` is a reference to a schema field whose type is not numeric.
+    - The target is a schema field whose type is not numeric.
+
+    Notes:
+    - The `>` operator with a numeric literal (`$field > 5`) maps to this helper.
+    - Not the negation of `number_lte`: both are false for a missing or non-number target.
+  group: comparison
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a number.
+    - The reference given as `value` does not exist or is not a number.
+    - The target number is less than or equal to `value`.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  value:
+    type: number
+    generate:
+      - integer
+      - float
+      - double
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: number
+  generate: number
+
+test:
+  - arguments:
+      value: 2
+    target_field: 2.5
+    should_pass: true
+    description: A floating-point target is greater than an integer value.
+  - arguments:
+      value: 2.9
+    target_field: 3
+    should_pass: true
+    description: An integer target is greater than a floating-point value; nothing is rounded.
+  - arguments:
+      value: 9007199254740992
+    target_field: 9007199254740993
+    should_pass: true
+    description: Two integers above 2^53 are compared exactly.
+  - arguments:
+      value: 9223372036854775807
+    target_field: 18446744073709551615
+    should_pass: true
+    description: An unsigned 64-bit target is greater than the largest signed value.
+  - arguments:
+      value: 2
+    target_field: 2
+    should_pass: false
+    description: Equal numbers are not greater.
+  - arguments:
+      value: 3.8
+    target_field: 2.2
+    should_pass: false
+    description: The target number is less than the value.
+  - arguments:
+      value: 3
+    target_field: "5"
+    should_pass: false
+    description: The target field is a string, not a number.

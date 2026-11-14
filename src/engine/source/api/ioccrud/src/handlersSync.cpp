@@ -325,7 +325,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
     return [weakKvdbManager = std::weak_ptr<::ioc::kvdb::IKVDBManager>(kvdbManager),
             weakScheduler = std::weak_ptr<scheduler::IScheduler>(scheduler),
             weakStore = std::weak_ptr<store::IStore>(store),
-            inputRoot](const httplib::Request& req, httplib::Response& res)
+            inputRoot](const httpsrv::Request& req, httpsrv::Response& res)
     {
         using RequestType = eIoc::UpdateIoc_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -466,7 +466,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
 
 adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
 {
-    return [weakStore = std::weak_ptr<store::IStore>(store)](const httplib::Request& req, httplib::Response& res)
+    return [weakStore = std::weak_ptr<store::IStore>(store)](const httpsrv::Request& req, httpsrv::Response& res)
     {
         using ResponseType = eIoc::GetIocState_Response;
 
@@ -484,13 +484,13 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
             const auto result = eMessage::eMessageToJson<ResponseType>(eResponse);
             if (std::holds_alternative<base::Error>(result))
             {
-                res.status = httplib::StatusCode::InternalServerError_500;
-                res.set_content("Failed to serialize response", "text/plain");
+                res.status = 500;
+                res.setContent("Failed to serialize response", "text/plain");
             }
             else
             {
-                res.status = httplib::StatusCode::OK_200;
-                res.set_content(std::get<std::string>(result), "application/json");
+                res.status = 200;
+                res.setContent(std::get<std::string>(result), "application/json");
             }
             return;
         }
@@ -521,13 +521,13 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         const auto result = eMessage::eMessageToJson<ResponseType>(eResponse);
         if (std::holds_alternative<base::Error>(result))
         {
-            res.status = httplib::StatusCode::InternalServerError_500;
-            res.set_content("Failed to serialize response", "text/plain");
+            res.status = 500;
+            res.setContent("Failed to serialize response", "text/plain");
         }
         else
         {
-            res.status = httplib::StatusCode::OK_200;
-            res.set_content(std::get<std::string>(result), "application/json");
+            res.status = 200;
+            res.setContent(std::get<std::string>(result), "application/json");
         }
     };
 }

@@ -70,6 +70,21 @@ namespace task_manager::upgrade
         }
     }
 
+    std::string HttpWpkRepository::userAgentFor(std::string_view managerVersion)
+    {
+        if (!managerVersion.empty() && managerVersion.front() == 'v')
+        {
+            managerVersion.remove_prefix(1);
+        }
+
+        std::string userAgent {"wazuh-manager"};
+        if (!managerVersion.empty())
+        {
+            userAgent.append("/").append(managerVersion);
+        }
+        return userAgent;
+    }
+
     bool HttpWpkRepository::hasCaBundle() const
     {
         return !m_caBundle.empty();
@@ -110,6 +125,7 @@ namespace task_manager::upgrade
             ConfigurationParameters {.timeout = static_cast<long>(m_options.versionsTimeout.count()),
                                      .handlerType = CurlHandlerTypeEnum::MULTI,
                                      .shouldRun = shouldRunFlag(),
+                                     .userAgent = m_options.userAgent,
                                      .maxResponseSize = MAX_VERSIONS_SIZE});
 
         if (!failed)
@@ -163,7 +179,8 @@ namespace task_manager::upgrade
                 .outputFile = destPath},
             ConfigurationParameters {.timeout = static_cast<long>(m_options.downloadTimeout.count()),
                                      .handlerType = CurlHandlerTypeEnum::MULTI,
-                                     .shouldRun = shouldRunFlag()});
+                                     .shouldRun = shouldRunFlag(),
+                                     .userAgent = m_options.userAgent});
 
         if (!failed)
         {

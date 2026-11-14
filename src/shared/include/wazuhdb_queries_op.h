@@ -30,7 +30,6 @@ typedef enum global_db_access
     WDB_DELETE_AGENT,
     WDB_DELETE_GROUP,
     WDB_SET_AGENT_GROUPS,
-    WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_DISCONNECT_AGENTS,
     WDB_GET_DISTINCT_AGENT_GROUP,
@@ -238,37 +237,16 @@ int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_st
 int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, int* sock);
 
 /**
- * @brief Reset the connection_status column of every agent (excluding the manager).
- *        If connection_status is pending or connected it will be changed to disconnected.
- *        If connection_status is disconnected or never_connected it will not be changed.
- *        It also set the 'sync_status' with the specified value.
- *
- * @param[in] sync_status String with the cluster synchronization status to be set.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_reset_agents_connection(const char* sync_status, int* sock);
-
-/**
  * @brief Returns an array containing the ID of every agent (excluding the manager) that matches
- *        the specified connection status, ended with -1.
+ *        the specified connection status and whose ID is greater than `last_id`, ended with -1.
  *        This method creates and sends a command to WazuhDB to receive the ID of every agent.
  *        If the response is bigger than the capacity of the socket, multiple commands will be sent until every
  *        agent ID is obtained. The array is heap allocated memory that must be freed by the caller.
  *
- * @param[in] connection_status The connection status.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Pointer to the array, on success. NULL on errors.
- */
-int* wdb_get_agents_by_connection_status(const char* connection_status, int* sock);
-
-/**
- * @brief Same as wdb_get_agents_by_connection_status(), resuming after a given agent ID.
- *
- * The underlying query is already `WHERE id > ?` and pages on that column; this exposes the start
- * point that wdb_get_agents_by_connection_status() hardcodes to 0. A caller that walks a large
- * result set in bounded batches needs it: without it, every batch re-reads and discards the whole
- * prefix it has already handled, making a full walk quadratic in the number of matching agents.
+ * The underlying query is `WHERE id > ?` and pages on that column. A caller that walks a large
+ * result set in bounded batches passes the last ID it handled: without it, every batch re-reads and
+ * discards the whole prefix it has already handled, making a full walk quadratic in the number of
+ * matching agents.
  *
  * @param[in] last_id Return agents whose ID is strictly greater than this. 0 starts from the beginning.
  * @param[in] connection_status The connection status.

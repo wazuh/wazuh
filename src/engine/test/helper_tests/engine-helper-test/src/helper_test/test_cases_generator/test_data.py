@@ -67,12 +67,14 @@ class TestData:
         target_field_name = self.get_target_field_name()
         if self.helper_type == "map":
             normalize_list = [{"map": [{"_helper": helper}]}]
-        elif self.helper_type == "filter":
+        elif self.helper_type == "check":
             normalize_list = [{"map": [{target_field_name: target_field_value}]}, {"check": [{target_field_name: helper}], "map": [
                 {"_verification_field": "It is used to verify if the check passed correctly"}]}]
-        else:
+        elif self.helper_type == "transform":
             normalize_list = [
                 {"map": [{target_field_name: target_field_value}, {target_field_name: helper}]}]
+        else:
+            raise ValueError(f"Helper type '{self.helper_type}' is not valid")
         self.asset_definition = {
             "name": "decoder/test/0", "normalize": normalize_list}
 
@@ -107,16 +109,18 @@ class TestData:
         if self.helper_type == "map":
             normalize_list = [{"map": [{"_eventJson": "parse_json($event.original)"}, {
                 "_helper": helper}]}]
-        elif self.helper_type == "filter":
+        elif self.helper_type == "check":
             normalize_list = [
                 {"map": [{"_eventJson": "parse_json($event.original)"}, {
                     target_field_name: target_field_value}]},
                 {"check": [{target_field_name: helper}], "map": [
                     {"_verification_field": "It is used to verify if the check passed correctly"}]}
             ]
-        else:
+        elif self.helper_type == "transform":
             normalize_list = [{"map": [{"_eventJson": "parse_json($event.original)"}, {target_field_name: target_field_value}, {
                 target_field_name: helper}]}]
+        else:
+            raise ValueError(f"Helper type '{self.helper_type}' is not valid")
         self.asset_definition = {
             "name": "decoder/test/0", "normalize": normalize_list}
 

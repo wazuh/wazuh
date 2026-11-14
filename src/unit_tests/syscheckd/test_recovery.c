@@ -201,13 +201,13 @@ static void test_fim_recovery_integrity_interval_has_elapsed_elapsed(void **stat
     assert_true(result);
 }
 
-// Test: Persist and resync with successful synchronization
+// Test: the table is cleared and queued, and nothing is sent: the caller sends it once it has
+// released the scan mutexes (no asp_sync_module expectation, so reaching it fails the case).
 static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     (void) state;
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
 
     // Create test data - simple file entry
     cJSON* test_items = cJSON_CreateArray();
@@ -255,84 +255,8 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    // Expect asp_sync_module_bounded call - return success
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, true);
-
-    // Call the function
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
-
-    // The function should complete successfully
     // Note: test_items is freed by the function, so don't free it here
-}
-
-// Test: Persist and resync with failed synchronization
-static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
-    (void) state;
-    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
-
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
-
-    // Create test data - simple file entry
-    cJSON* test_items = cJSON_CreateArray();
-    cJSON* item = cJSON_CreateObject();
-    cJSON_AddStringToObject(item, "path", "/tmp/test2.txt");
-    cJSON_AddStringToObject(item, "checksum", "def456");
-    cJSON_AddNumberToObject(item, "version", 1);
-    cJSON_AddNumberToObject(item, "inode", 67890);
-    cJSON_AddItemToArray(test_items, item);
-
-    // Expect fim_db_increase_each_entry_version call (called first)
-    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
-    will_return(__wrap_fim_db_increase_each_entry_version, 0);
-
-    // Expect fim_db_get_every_element to return our test items
-    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
-    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
-    will_return(__wrap_fim_db_get_every_element, test_items);
-
-    // Expect asp_notify_data_clean call (clears the manager's index before resending)
-    expect_value(__wrap_asp_notify_data_clean, handle, handle);
-    expect_any(__wrap_asp_notify_data_clean, indices);
-    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
-    will_return(__wrap_asp_notify_data_clean, true);
-
-    // Orphan guard: path must still resolve to a config
-    expect_string(__wrap_fim_configuration_directory, path, "/tmp/test2.txt");
-    will_return(__wrap_fim_configuration_directory, &mock_directory_config);
-
-    // Expect build_stateful_event_file to be called for our test item
-    expect_string(__wrap_build_stateful_event_file, path, "/tmp/test2.txt");
-    // Return a mock stateful event
-    cJSON* mock_event = cJSON_CreateObject();
-    cJSON_AddStringToObject(mock_event, "type", "file");
-    will_return(__wrap_build_stateful_event_file, mock_event);
-
-    // Schema validator is not initialized (no validation)
-    will_return(__wrap_schema_validator_is_initialized, false);
-
-    // Expect asp_persist_diff call - validate all parameters
-    expect_value(__wrap_asp_persist_diff, handle, handle);
-    expect_any(__wrap_asp_persist_diff, id);
-    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff, data);
-    expect_value(__wrap_asp_persist_diff, version, 1);
-
-    // Expect asp_sync_module_bounded call - return failure
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, false);
-
-    // Call the function
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
-
-    // The function should complete (even though sync failed)
-    // Note: test_items is freed by the function, so don't free it here
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
 }
 
 // Test: Persist and resync with version increase failure
@@ -405,7 +329,7 @@ static void test_fim_recovery_persist_table_and_resync_data_clean_failure(void *
                   "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
                   FIMDB_FILE_TABLE_NAME "; retry note");
 
-    // No asp_persist_diff/asp_sync_module_bounded expectations: reaching either would be the bug.
+    // No asp_persist_diff expectation: reaching it would be the bug.
     assert_false(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
 }
 
@@ -488,7 +412,6 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     cJSON* test_items = cJSON_CreateArray();
@@ -541,11 +464,6 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
-
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
 
@@ -633,7 +551,6 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     cJSON* test_items = cJSON_CreateArray();
@@ -690,11 +607,6 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, true);
-
     fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories, "retry note");
 
     // test_items is freed by the function.
@@ -726,7 +638,7 @@ static void test_fim_resync_on_agent_id_change_absent_marker_is_adopted(void **s
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 1);
 
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
 }
 
 // The id is unchanged: the steady state, and also what a re-enrollment handing back the SAME id
@@ -743,7 +655,7 @@ static void test_fim_resync_on_agent_id_change_same_id_is_noop(void **state) {
     will_return(__wrap_fim_db_try_get_last_sync_time, 7);
     will_return(__wrap_fim_db_try_get_last_sync_time, true);
 
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
 }
 
 // The provider has published nothing. "Unknown" must never read as "changed", or an agent whose
@@ -756,7 +668,7 @@ static void test_fim_resync_on_agent_id_change_unknown_id_is_noop(void **state) 
 
     will_return(__wrap_asp_get_agent_id, 0);
 
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
 }
 
 // The id changed: the table is resent in full and only then are both markers advanced.
@@ -817,10 +729,6 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, true);
 
     // The table's integrity clock, so the checksum loop right after does not resend it again.
 #ifdef TEST_WINAGENT
@@ -840,7 +748,10 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);
 
-    assert_true(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    bool recovered[1] = {false};
+    assert_true(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, recovered));
+    // Queued, not sent: the caller sends it after releasing the scan mutexes.
+    assert_true(recovered[0]);
 }
 
 // A table that could not be resent records nothing, so the next cycle tries again. Recording it
@@ -868,7 +779,7 @@ static void test_fim_resync_on_agent_id_change_failed_table_records_nothing(void
     will_return(__wrap_fim_db_increase_each_entry_version, -1);
 
     // No fim_db_update_last_sync_time_value expectation: writing one here would be the bug.
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
 }
 
 
@@ -887,7 +798,7 @@ static void test_fim_resync_on_agent_id_change_failed_read_adopts_nothing(void *
     will_return(__wrap_fim_db_try_get_last_sync_time, false);
 
     // No fim_db_update_last_sync_time_value expectation: writing one here would be the bug.
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
 }
 
 // Windows drives this loop with three tables, and a failure in one of them used to abandon the
@@ -920,7 +831,9 @@ static void test_fim_resync_on_agent_id_change_continues_past_a_failed_table(voi
     }
 
     // No fim_db_update_last_sync_time_value expectation: not one table reached the manager.
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories));
+    bool recovered[3] = {false, false, false};
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories, recovered));
+    assert_false(recovered[0] || recovered[1] || recovered[2]);
 }
 
 // A pass cut short earlier left some tables resent under this id. The next pass leaves those
@@ -960,7 +873,7 @@ static void test_fim_resync_on_agent_id_change_resumes_with_the_pending_tables(v
     will_return(__wrap_fim_db_increase_each_entry_version, -1);
 
     // No fim_db_update_last_sync_time_value expectation: neither pending table reached the manager.
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories, NULL));
 }
 
 // A per-table marker that cannot be cleared keeps the identity unrecorded, so the next cycle
@@ -990,7 +903,7 @@ static void test_fim_resync_on_agent_id_change_failed_marker_reset_records_nothi
     will_return(__wrap_fim_db_try_update_last_sync_time_value, false);
 
     // No fim_db_update_last_sync_time_value expectation: recording the identity here would be the bug.
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories, NULL));
 }
 
 // A shutdown right after the first table leaves the identity marker alone, and the next pass
@@ -1054,10 +967,6 @@ static void test_fim_resync_on_agent_id_change_pass_cut_by_shutdown_resumes(void
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, true);
 
 #ifdef TEST_WINAGENT
     time_mock_value = 1000000;
@@ -1071,7 +980,7 @@ static void test_fim_resync_on_agent_id_change_pass_cut_by_shutdown_resumes(void
 
     // No reset and no identity marker: the pass did not finish.
     shutdown_after_writing = FILE_TABLE_SYNCED_KEY;
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories, NULL));
     shutdown_after_writing = NULL;
     mock_fim_shutdown = false;
 
@@ -1091,7 +1000,7 @@ static void test_fim_resync_on_agent_id_change_pass_cut_by_shutdown_resumes(void
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_REGISTRY_KEY_TABLENAME);
     will_return(__wrap_fim_db_increase_each_entry_version, -1);
 
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories, NULL));
 }
 
 // Every table was resent under this id by earlier, unfinished passes: nothing is cleared or sent
@@ -1127,7 +1036,7 @@ static void test_fim_resync_on_agent_id_change_records_when_every_table_was_rese
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);
 
-    assert_true(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories));
+    assert_true(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories, NULL));
 }
 
 // "Nothing recorded" is also what a read gets once the database is stopping: FIMDB::executeQuery
@@ -1146,7 +1055,7 @@ static void test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_s
 
     mock_fim_shutdown = true;
     // No fim_db_update_last_sync_time_value expectation: adopting here would be the bug.
-    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories));
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 1, &mock_directories, NULL));
     mock_fim_shutdown = false;
 }
 
@@ -1227,7 +1136,7 @@ static void test_fim_recovery_run_integrity_checks_unchecked_table_is_stamped_an
                   " (Failed to communicate with the manager); they will be checked again in the next "
                   "integrity_interval (24h).");
 
-    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
 }
 
 // A shutdown in the middle of a check is not a failed check: the table is left unstamped so it is
@@ -1250,7 +1159,7 @@ static void test_fim_recovery_run_integrity_checks_stop_during_check_leaves_tabl
                   "Integrity check for " FIM_FILES_SYNC_INDEX " interrupted: module is stopping; a checksum "
                   "mismatch reported by the manager was not confirmed. It will be checked again after the restart.");
 
-    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
 }
 
 // A recovery that cannot start is retried in the next integrity_interval, like a failed check:
@@ -1284,7 +1193,7 @@ static void test_fim_recovery_run_integrity_checks_refused_data_clean_stamps(voi
 
     expect_table_stamped();
 
-    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
 }
 
 // A valid checksum stamps the table and reports nothing above DEBUG.
@@ -1301,10 +1210,10 @@ static void test_fim_recovery_run_integrity_checks_valid_table_is_stamped_quietl
     expect_table_stamped();
     // No _minfo/_mwarn expectation: either one would fail the case.
 
-    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
 }
 
-// A confirmed mismatch whose recovery completes is reported at INFO and stamps the table.
+// A confirmed mismatch whose recovery is queued stamps the table and reports it as recovered.
 static void test_fim_recovery_run_integrity_checks_recovered_mismatch_is_stamped(void **state) {
     (void) state;
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
@@ -1319,14 +1228,12 @@ static void test_fim_recovery_run_integrity_checks_recovered_mismatch_is_stamped
                   "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
                   "; starting recovery (index cleanup and full resend).");
     expect_recovery_until_data_clean(handle, true);
-    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
-    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
-    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
-    will_return(__wrap_asp_sync_module_bounded, true);
-    expect_string(__wrap__minfo, formatted_msg, "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed.");
     expect_table_stamped();
 
-    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    // Queued for the caller to send after the unlock; nothing is sent from inside the pass.
+    bool recovered[1] = {false};
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL, recovered);
+    assert_true(recovered[0]);
 }
 
 // Every table left unchecked goes into one WARNING, each with its reason; a mismatch the manager
@@ -1359,7 +1266,7 @@ static void test_fim_recovery_run_integrity_checks_unchecked_tables_share_one_wa
                   FIM_FILES_SYNC_INDEX " (Timed out waiting for manager response); they will be checked again in "
                   "the next integrity_interval (24h).");
 
-    fim_recovery_run_integrity_checks(handle, tables, 2, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 2, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
 }
 
 // A shutdown that makes the DataClean fail leaves the confirmed mismatch unstamped, so it is
@@ -1383,7 +1290,7 @@ static void test_fim_recovery_run_integrity_checks_stop_during_data_clean_leaves
     // No stamp and no second table: either one would fail the case.
 
     mock_fim_shutdown_after_calls = 1; // The pass starts; the DataClean failure finds the shutdown.
-    fim_recovery_run_integrity_checks(handle, tables, 2, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 2, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
     mock_fim_shutdown_after_calls = 0;
     mock_fim_shutdown = false;
 }
@@ -1395,7 +1302,161 @@ static void test_fim_recovery_run_integrity_checks_shutdown_checks_nothing(void 
     char* tables[] = {FIMDB_FILE_TABLE_NAME};
 
     mock_fim_shutdown = true;
-    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL, NULL);
+    mock_fim_shutdown = false;
+}
+
+/* fim_recovery_sync_recovered_tables(): sends what this cycle's recoveries queued, once, and reports
+ * each recovered index. Linux FIM has a single table with a sync index, so the same table stands in
+ * for two where a case needs more than one. */
+static void expect_recovery_sync(AgentSyncProtocolHandle* handle, SyncModuleResult_t* result) {
+    expect_string(__wrap__mdebug1, formatted_msg, "Starting recovery synchronization...");
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    __wrap_asp_sync_module_use_full_result(true);
+    will_return(__wrap_asp_sync_module, result);
+}
+
+// No table was recovered: nothing is sent and nothing is logged.
+static void test_fim_recovery_sync_recovered_tables_nothing_recovered(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {false};
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+}
+
+// The queue ran dry within the cycle: the recovery is complete.
+static void test_fim_recovery_sync_recovered_tables_completed(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = true;
+    result.sent_anything = true;
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg, "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// The cycle stopped at its block limit: completed, but it says entries are still queued instead of
+// implying the manager has all of them.
+static void test_fim_recovery_sync_recovered_tables_block_limit_reports_queued_entries(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = true;
+    result.sent_anything = true;
+    result.reached_block_limit = true;
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed; some entries are still queued and "
+                  "will be sent in the next synchronization.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// A failed send leaves the rows queued for the regular cycle, and says why.
+static void test_fim_recovery_sync_recovered_tables_failed_sync(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = false;
+    snprintf(result.failure_reason, sizeof(result.failure_reason), "Failed to communicate with the manager.");
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' did not finish sending (Failed to communicate "
+                  "with the manager); the queued rows will be delivered by the next regular synchronization.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// A stop between two blocks ends the cycle with success set (blocks were already sent) and below
+// the block limit: it is reported as interrupted, not completed.
+static void test_fim_recovery_sync_recovered_tables_stop_between_blocks(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = true;
+    result.sent_anything = true;
+    result.stopped = true;
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping. The queued entries "
+                  "will be sent by a later synchronization.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// A stop during a session fails it: reported as interrupted, not as a failed send.
+static void test_fim_recovery_sync_recovered_tables_stop_during_session(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+    SyncModuleResult_t result = {0};
+    result.success = false;
+    result.stopped = true;
+    snprintf(result.failure_reason, sizeof(result.failure_reason), "Synchronization interrupted.");
+
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping. The queued entries "
+                  "will be sent by a later synchronization.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// One cycle covers every recovered table, and only the recovered ones are reported.
+static void test_fim_recovery_sync_recovered_tables_one_sync_for_every_table(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME, FIMDB_FILE_TABLE_NAME, FIMDB_FILE_TABLE_NAME};
+    bool recovered[3] = {true, false, true};
+    SyncModuleResult_t result = {0};
+    result.success = true;
+    result.sent_anything = true;
+
+    // A single asp_sync_module expectation: a second call would fail the case.
+    expect_recovery_sync(handle, &result);
+    expect_string(__wrap__minfo, formatted_msg, "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed.");
+    expect_string(__wrap__minfo, formatted_msg, "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed.");
+
+    fim_recovery_sync_recovered_tables(handle, tables, 3, recovered);
+    __wrap_asp_sync_module_use_full_result(false);
+}
+
+// Once a shutdown is in progress nothing is sent; the rows stay queued for a later cycle.
+static void test_fim_recovery_sync_recovered_tables_shutdown_sends_nothing(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+    bool recovered[1] = {true};
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping. The queued entries "
+                  "will be sent by a later synchronization.");
+
+    mock_fim_shutdown = true;
+    fim_recovery_sync_recovered_tables(handle, tables, 1, recovered);
     mock_fim_shutdown = false;
 }
 
@@ -1405,7 +1466,6 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_not_elapsed),
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_elapsed),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_success),
-        cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_data_clean_failure),
@@ -1433,6 +1493,14 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_recovered_mismatch_is_stamped),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_unchecked_tables_share_one_warning),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_stop_during_data_clean_leaves_table_unstamped),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_nothing_recovered),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_completed),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_block_limit_reports_queued_entries),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_failed_sync),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_stop_between_blocks),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_stop_during_session),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_one_sync_for_every_table),
+        cmocka_unit_test(test_fim_recovery_sync_recovered_tables_shutdown_sends_nothing),
         cmocka_unit_test(test_buildFileStatefulEvent_success),
 #ifdef WIN32
         cmocka_unit_test(test_buildRegistryKeyStatefulEvent_success),

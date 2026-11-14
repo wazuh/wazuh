@@ -1,0 +1,87 @@
+# Name of the helper function
+name: parse_ip
+
+metadata:
+  description: |
+    Checks that the input string is an IPv4 or IPv6 address and stores it in the target field.
+
+    Behavior:
+    - Accepts an IPv4 address (four decimal numbers from 0 to 255 separated by dots) or an IPv6 address in
+      any standard notation: eight groups of up to four hexadecimal digits, a form compressed with `::`, or
+      a form with an embedded IPv4 address.
+    - The address is validated with the system's `inet_pton`; zone identifiers (`%eth0`), CIDR suffixes,
+      brackets and ports are rejected.
+    - The string is stored unchanged, without normalization, and replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is neither ip nor text-like.
+
+    Notes:
+    - `is_ipv4` and `is_ipv6` test the target without writing; `ip_version` returns the family.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a valid IPv4 or IPv6 address.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      input: 192.168.1.1
+    target_field: any_value
+    should_pass: true
+    expected: 192.168.1.1
+    description: An IPv4 address is stored unchanged
+  - arguments:
+      input: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+    target_field: any_value
+    should_pass: true
+    expected: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+    description: A full IPv6 address is stored unchanged
+  - arguments:
+      input: "::1"
+    target_field: any_value
+    should_pass: true
+    expected: "::1"
+    description: A compressed IPv6 address is accepted and not expanded
+  - arguments:
+      input: 192.168.1.1/24
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on CIDR notation
+  - arguments:
+      input: 999.999.999.999
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: An array target is left unchanged when the input is not an address
+  - arguments:
+      input: 999.999.999.999
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: An object target is left unchanged when the input is not an address

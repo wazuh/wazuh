@@ -3,28 +3,39 @@ name: join
 
 metadata:
   description: |
-    The operation concatenates the elements (strings) of the "array" and separates them with “separator”.
-    The result of the string concatenation (join) operation is mapped to “field”.
-    If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
-  keywords:
-    - undefined
+    Concatenates the strings of an array with a separator and maps the result to the target field.
+
+    Behavior:
+    - `array` is a reference to an array whose elements are all strings; numbers are not converted.
+    - `separator` is a string literal of any length, the empty string included, written between
+      consecutive elements.
+    - An empty array gives an empty string.
+
+    Build errors:
+    - `separator` is a reference or is not a string.
+    - `array` is a schema field whose elements are not strings.
+
+    Notes:
+    - `concat` and `concat_any` concatenate separate arguments and convert numbers and objects.
+    - `split` is the inverse operation.
+  group: string
+  fails_when:
+    - "`array` is missing or is not an array"
+    - "an element of `array` is not a string"
 
 helper_type: map
 
-# Arguments expected by the helper function
+is_variadic: false
+
 arguments:
   array:
-    type: array # Expected type is string
+    type: array
     generate: string
-    source: reference # Includes values or references (their names start with $)
-
+    source: reference
   separator:
-    type: string # Expected type is string
+    type: string
     generate: string
-    source: value # Includes values or references (their names start with $)
-
-# Indicates whether the helper function supports a variable number of arguments
-is_variadic: false
+    source: value
 
 output:
   type: string
@@ -36,10 +47,27 @@ test:
       separator: ' '
     should_pass: true
     expected: Hi Wazuh! It is the year 2024
-    description: Join a string using space like separator
+    description: Join the strings with a space
   - arguments:
       array: ["Hi Wazuh!", "It is", "the", "year", "2024"]
       separator: separator
     should_pass: true
     expected: Hi Wazuh!separatorIt isseparatortheseparatoryearseparator2024
-    description: Join a string using a string like separator
+    description: Join the strings with a multi-character separator
+  - arguments:
+      array: ["a", "b", "c"]
+      separator: ""
+    should_pass: true
+    expected: abc
+    description: Join the strings with an empty separator
+  - arguments:
+      array: []
+      separator: ","
+    should_pass: true
+    expected: ""
+    description: Join an empty array into an empty string
+  - arguments:
+      array: ["a", 1]
+      separator: ","
+    should_pass: false
+    description: Fail on an element that is not a string

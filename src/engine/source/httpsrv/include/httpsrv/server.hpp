@@ -2,140 +2,157 @@
 #ifndef _HTTPSRV_SERVER_HPP
 #define _HTTPSRV_SERVER_HPP
 
-#include <algorithm>
-#include <limits>
-#include <map>
+#include <chrono>
+#include <cstddef>
+#include <filesystem>
 #include <memory>
-#include <mutex>
-#include <optional>
-#include <set>
 #include <string>
-#include <thread>
+#include <vector>
 
-#include <proc.hpp>
-
-// Clamp httplib worker threads to the [2, 16] range based on available hardware.
-#ifndef CPPHTTPLIB_THREAD_POOL_COUNT
-#define CPPHTTPLIB_THREAD_POOL_COUNT ((std::min)(16u, (std::max)(2u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u)))
-#endif
-
-// httplib caps an application/x-www-form-urlencoded body at 8 KiB on its own (413 before any handler runs). The
-// engine never reads form fields, so lift that cap: the configured payload limit (set_payload_max_length) is the
-// only one. This header is the engine's only include of httplib.h, so every engine translation unit agrees.
-#ifndef CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH
-#define CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH ((std::numeric_limits<std::size_t>::max)())
-#endif
-
-#include <httplib.h>
-
-#include <httpsrv/iserver.hpp>
+#include <httpsrv/irouteregistrar.hpp>
+#include <httpsrv/types.hpp>
 
 namespace httpsrv
 {
 
+/// Grace an engine server gives admitted requests once the daemon is stopping, counted from the shutdown() or
+/// shutdownAll() call: stopAccepting() runs within it while the executor keeps working, and no second window
+/// follows. Stopping the transport and waiting for running handlers come after it, so a whole shutdown can last longer.
+constexpr std::chrono::seconds DEFAULT_SHUTDOWN_DEADLINE {10};
+
 /**
- * @brief Implementation of the server using httplib.
+ * @brief Settings of one Server.
  *
+ * Pool sizes can be set independently. Timeouts and the socket mode (0660) keep the transport's defaults.
  */
-class Server : public IServer<Server>
+struct ServerOptions
 {
-private:
-    std::shared_ptr<httplib::Server> m_srv; ///< Httplib Server instance
-    std::thread m_thread;                   ///< Server thread
-    std::string m_id;                       ///< Server identifier
-    std::filesystem::path m_socketPath;     ///< Socket path where the server is listening
-    size_t m_payloadMaxBytes {0};           ///< Maximum allowed payload size in bytes. 0 means unlimited.
-    bool m_enableDetailedLogging {true};    ///< Enable detailed request/response logging
-
-    /// Registered methods per literal route path, to tell a wrong method (405) from an unknown route (404).
-    std::map<std::string, std::set<std::string>> m_routeMethods;
-    /// Guards m_routeMethods: routes may be added while the server is serving.
-    mutable std::mutex m_routesMutex;
-
-    /**
-     * @brief Methods registered for a route path, joined for an Allow header ("GET, POST").
-     *
-     * @param path Request path.
-     * @param method Request method.
-     * @return std::optional<std::string> std::nullopt when the path has no route at all; an empty string when it has
-     * one for this method; else the methods it has.
-     */
-    std::optional<std::string> allowedOtherMethods(const std::string& path, const std::string& method) const;
-
-    /**
-     * @brief Apply the payload size limit to the server.
-     *
-     * @note If m_payloadMaxBytes is 0, the payload size is unlimited.
-     */
-    void applyPayloadLimit();
-
-    /**
-     * @brief Binds the server to a socket and starts listening for incoming connections.
-     *
-     * This method is blocking and will run until the server is stopped, either by calling stop() or due to an error.
-     * If the server fails to bind to the socket or start listening, it will return false.
-     * @return true if the server successfully binds and starts listening, false otherwise.
-     * @note This method is blockin and should be called in a separate thread if non-blocking behavior is desired.
-     */
-    bool bindAndListen();
-
-public:
-    /**
-     * @brief Construct a new Server object
-     *
-     * @param id Server string identifier
-     * @param payloadMaxBytes Maximum allowed payload size in bytes. 0 means unlimited.
-     * @param enableDetailedLogging If true, logs detailed request/response information.
-     */
-    explicit Server(const std::string& id, size_t payloadMaxBytes = 0, bool enableDetailedLogging = true);
-
-    /**
-     * @brief Destroy the Server object
-     *
-     */
-    ~Server() override { stop(); }
-
-    /**
-     * @brief Start the server at the specified socket path.
-     *
-     * @param socketPath Socket path, if the file exists it will be removed, and the parent directory must exist.
-     * @param useThread If true, the server will be started in a separate thread.
-     *
-     * @throws std::runtime_error If the server fails to start.
-     */
-    void start(const std::filesystem::path& socketPath, bool useThread = true);
-
-    /**
-     * @brief Stop the server.
-     */
-    void stop() noexcept;
-
-    /**
-     * @brief Add a route to the server.
-     *
-     * @param method Method of the route
-     * @param route Route path
-     * @param handler Handler function
-     */
-    void addRoute(Method method,
-                  const std::string& route,
-                  const std::function<void(const httplib::Request&, httplib::Response&)>& handler);
-
-    /**
-     * @brief Check if the server is running.
-     *
-     * @return true If the server is running.
-     * @return false Otherwise.
-     */
-    bool isRunning() const { return m_srv->is_running(); }
-
-    /**
-     * @brief Get the maximum allowed payload size in bytes.
-     *
-     * @return size_t Maximum allowed payload size in bytes.
-     */
-    size_t getPayloadMaxBytes() const noexcept { return m_payloadMaxBytes; }
+    std::string name;   ///< Shown in log lines ("<name> server ...").
+    std::string logTag; ///< Tag of the transport's own log lines.
+    std::size_t maxConnections {1024};
+    std::size_t maxInFlightBytes {0}; ///< 0 keeps the transport's default byte budget.
+    /// false: no in-flight byte budget at all, and so no parser limit derived from it; bodies are then
+    /// bounded only by the route caps (and maxBodySize). For servers whose routes never charge the budget.
+    bool byteBudget {true};
+    std::size_t maxBodySize {0};    ///< Server-wide declared-length cap; 0 = none of its own.
+    std::size_t bodyTimeoutSec {0}; ///< Head received -> full body received; 0 keeps the transport's 30 s.
+    bool answerBodyTimeout {false}; ///< Answer a body that did not arrive in time with 400, not a silent close.
+    std::size_t ioThreads {0};      ///< 0 keeps the transport default (one thread per available CPU).
+    std::size_t executorThreads {2};
+    std::size_t executorQueue {64};
+    bool expectContinue {false};  ///< Answer "Expect: 100-continue" once a request is admitted.
+    bool detailedLogging {false}; ///< One TRACE line per request (method, target, status).
+    /// Setting that raises the in-flight byte budget, named in the transport's budget-exhausted log line;
+    /// empty omits the advice.
+    std::string budgetOptionHint;
+    /// Setting that raises the connection limit, named in the transport's connection-limit log line; empty
+    /// omits the advice.
+    std::string connectionCapOptionHint;
 };
+
+/**
+ * @brief Counters and gauges of one Server, for metrics.
+ */
+struct ServerStats
+{
+    std::size_t inFlightBytes {0};    ///< Bytes reserved by admitted requests.
+    std::size_t inFlightRequests {0}; ///< Requests holding a reservation.
+    std::size_t sessions {0};         ///< Open connections.
+    std::size_t queueDepth {0};       ///< Requests admitted but not started.
+    std::size_t running {0};          ///< Requests being handled.
+    std::size_t shedBudget {0};       ///< 503: byte budget exhausted.
+    std::size_t shedSessions {0};     ///< 503: connection or session cap reached.
+    std::size_t shedExecutorFull {0}; ///< 503: the executor queue was full.
+    std::size_t shedShutdown {0};     ///< 503: the server was stopping.
+    std::size_t handlerErrors {0};    ///< 500: a handler threw.
+    std::size_t rejectedTooLarge {0}; ///< 413: the body exceeded the route or server cap.
+};
+
+/**
+ * @brief What a shutdown did with the requests still in the server.
+ */
+struct ShutdownReport
+{
+    std::size_t completed {0}; ///< Finished during the drain.
+    std::size_t rejected {0};  ///< Not started at the deadline; answered 503.
+    std::size_t abandoned {0}; ///< Still running at the deadline; their connection is closed.
+};
+
+/**
+ * @brief An HTTP-over-Unix-socket server for the engine, on the manager's shared transport.
+ *
+ * The transport's I/O threads only parse, route and admit; every admitted request becomes a job of
+ * this server's bounded executor, where the synchronous RouteHandler runs, and the reply goes back
+ * through the transport. A full executor answers 503 {"error":"Server busy","code":503}; a handler
+ * that throws answers 500 "Internal server error".
+ *
+ * Routes are registered before start(). The object is one-shot: start() once, stop once.
+ */
+class Server : public IRouteRegistrar
+{
+public:
+    explicit Server(ServerOptions options);
+    ~Server() override;
+
+    Server(const Server&) = delete;
+    Server& operator=(const Server&) = delete;
+
+    /**
+     * @brief Registers a route. Must be called before start().
+     */
+    void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options = {}) override;
+
+    /**
+     * @brief Binds the socket (mode 0660) and starts serving. Throws on failure.
+     */
+    void start(const std::filesystem::path& socketPath);
+
+    bool isRunning() const;
+
+    /// @name Shutdown steps (shutdown() and shutdownAll() run them in order)
+    /// @{
+    void stopAccepting();  ///< No new request reaches a handler; replies still go out.
+    void closeAdmission(); ///< The executor takes nothing new; queued requests keep running.
+    ShutdownReport drainUntil(std::chrono::steady_clock::time_point deadline);
+    void stop(); ///< Drains the replies and closes the transport.
+    /// Waits until no handler runs: one that outlived the deadline is waited for, never left running.
+    void waitForHandlers();
+    /// @}
+
+    /**
+     * @brief All the shutdown steps for this server alone, with @p deadline counted from this call. Returns only
+     * once no handler runs, so the caller can destroy what the handlers use; that can be after the deadline.
+     */
+    ShutdownReport shutdown(std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
+
+    ServerStats stats() const;
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> m_impl;
+};
+
+/**
+ * @brief Shuts several servers down together: every server stops accepting first, then every
+ * executor closes admission, all drain in parallel up to one deadline counted from this call, and only
+ * then is each transport stopped. Null entries are skipped.
+ */
+void shutdownAll(const std::vector<Server*>& servers, std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
+
+/**
+ * @brief Publishes a server's stats() as fastmetrics pull metrics named server.<instance>.<suffix>
+ * (in-flight bytes and requests, sessions, queue depth, running handlers, 503s by cause, handler
+ * errors, 413s).
+ *
+ * The metrics hold only a weak reference: once the server is destroyed they read 0. The fastmetrics
+ * manager must already be registered, and it keeps the first registration of a name: call this once
+ * per instance name and process.
+ *
+ * @param server Server to observe.
+ * @param instance Middle segment of every name ("ingest", "api").
+ */
+void registerMetrics(const std::weak_ptr<Server>& server, const std::string& instance);
+
 } // namespace httpsrv
 
 #endif // _HTTPSRV_SERVER_HPP

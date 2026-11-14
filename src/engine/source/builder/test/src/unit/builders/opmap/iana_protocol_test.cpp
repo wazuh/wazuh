@@ -50,7 +50,7 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapBuilderTest,
     testing::Values(
-        // -- iana_protocol_name_to_number --
+        // -- iana_protocol_number --
         MapT({}, opBuilderHelperIanaProtocolNameToNumber, FAILURE()),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperIanaProtocolNameToNumber, FAILURE()),
         // Must be reference (no literal)
@@ -77,7 +77,7 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperIanaProtocolNameToNumber,
              FAILURE(jTypeRefExpected(json::Json::Type::Null))),
 
-        // -- iana_protocol_number_to_name --
+        // -- iana_protocol_name --
         MapT({}, opBuilderHelperIanaProtocolNumberToName, FAILURE()),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperIanaProtocolNumberToName, FAILURE()),
         // Must be reference (no literal)
@@ -113,7 +113,7 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapOperationTest,
     testing::Values(
-        // iana_protocol_name_to_number success → expects STRING outputs
+        // iana_protocol_number success -> expects STRING outputs
         MapT(R"({"ref": "tcp"})",
              opBuilderHelperIanaProtocolNameToNumber,
              {makeRef("ref")},
@@ -143,7 +143,7 @@ INSTANTIATE_TEST_SUITE_P(
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("59")")))),
 
-        // iana_protocol_name_to_number failures
+        // iana_protocol_number failures
         MapT(R"({"notRef": "tcp"})",
              opBuilderHelperIanaProtocolNameToNumber,
              {makeRef("ref")},
@@ -155,7 +155,7 @@ INSTANTIATE_TEST_SUITE_P(
              {makeRef("ref")},
              FAILURE(customRefExpected())),
 
-        // iana_protocol_number_to_name success (numeric input)
+        // iana_protocol_name success (numeric input)
         MapT(R"({"ref": 6})",
              opBuilderHelperIanaProtocolNumberToName,
              {makeRef("ref")},
@@ -169,7 +169,7 @@ INSTANTIATE_TEST_SUITE_P(
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("bit-emu")")))),
 
-        // iana_protocol_number_to_name success (string input with number)
+        // iana_protocol_name success (string input with number)
         MapT(R"({"ref": "6"})",
              opBuilderHelperIanaProtocolNumberToName,
              {makeRef("ref")},
@@ -183,7 +183,7 @@ INSTANTIATE_TEST_SUITE_P(
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("bit-emu")")))),
 
-        // iana_protocol_number_to_name failures (invalid/missing)
+        // iana_protocol_name failures (invalid/missing)
         MapT(R"({"notRef": 6})",
              opBuilderHelperIanaProtocolNumberToName,
              {makeRef("ref")},

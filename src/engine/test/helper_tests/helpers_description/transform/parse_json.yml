@@ -1,0 +1,84 @@
+# Name of the helper function
+name: parse_json
+
+metadata:
+  description: |
+    Parses the input string as JSON and stores the resulting value in the target field.
+
+    Behavior:
+    - Any JSON value is accepted: object, array, string, number, boolean or null; the nesting depth is
+      limited to 256 levels.
+    - Leading whitespace is accepted, but any character after the value, a trailing space or newline
+      included, makes the operation fail.
+    - The parsed value replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - A value that is not an object written into an object schema field is not rejected at runtime.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not valid JSON, or is nested deeper than 256 levels.
+    - The input has characters after the JSON value.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+skipped:
+  - success_cases # string generation is random
+
+# Any JSON value may be written
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input: '{"key": {"innerKey": "value"}}'
+    target_field: any_value
+    should_pass: true
+    expected:
+      key:
+        innerKey: value
+    description: A JSON object replaces the target field
+  - arguments:
+      input: '[1, 2]'
+    target_field: any_value
+    should_pass: true
+    expected: [1, 2]
+    description: A JSON array is accepted
+  - arguments:
+      input: '42'
+    target_field: any_value
+    should_pass: true
+    expected: 42
+    description: A JSON scalar is accepted
+  - arguments:
+      input: '{"a": 1} '
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a character after the JSON value, a trailing space included
+  - arguments:
+      input: '{"key": "innerKey": "value"}}'
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: Fails on invalid JSON and leaves the target unchanged

@@ -1,0 +1,81 @@
+# Name of the helper function
+name: contains
+
+metadata:
+  description: |
+    Checks whether the target string contains `substring`.
+
+    Behavior:
+    - Byte-wise, case-sensitive substring search; no locale or Unicode normalization is applied.
+    - `substring` is a literal string or a reference to a string field.
+
+    Build errors:
+    - `substring` is an empty literal.
+    - `substring` is a literal that is not a string (an unquoted number, boolean or null).
+    - `substring` is a reference to a schema field whose type is not a string type.
+    - The target is a schema field whose type is not a string type.
+
+    Notes:
+    - A reference that resolves to an empty string is not rejected: the check is false (an empty substring is never found).
+    - `starts_with` and `ends_with` are the anchored variants; `regex_match` takes a pattern.
+    - An array target is never searched; use `array_contains_all` or `array_contains_any` for arrays.
+  group: string
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The reference given as `substring` does not exist or is not a string.
+    - The target string does not contain `substring`.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  substring:
+    type: string
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      substring: hello
+    target_field: hello wazuh!
+    should_pass: true
+    description: The target string contains the substring.
+  - arguments:
+      substring: hello!
+    target_field: hello wazuh!
+    should_pass: false
+    description: The substring does not occur in the target string.
+  - arguments:
+      substring: world
+    target_field: hello wazuh!
+    should_pass: false
+    description: The substring does not occur in the target string.
+  - arguments:
+      substring: Hello
+    target_field: hello wazuh!
+    should_pass: false
+    description: The search is case-sensitive.
+  - arguments:
+      substring: hello
+    target_field: 123
+    should_pass: false
+    description: The target field is a number, not a string.
+  - arguments:
+      substring:
+        source: value
+        value: ""
+    target_field: hello wazuh!
+    should_pass: false
+    description: An empty literal is rejected at build time.

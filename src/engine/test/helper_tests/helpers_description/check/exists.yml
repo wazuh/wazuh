@@ -1,0 +1,50 @@
+# Name of the helper function
+name: exists
+
+metadata:
+  description: |
+    Checks whether the target field exists in the event.
+
+    Behavior:
+    - True when the target path resolves to any JSON value: `null`, `""`, `0`, `false`, `[]` and `{}` all
+      count as existing values.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is neither a schema field nor a temporary field rooted at `_`.
+    - Any argument is given.
+
+    Notes:
+    - A field holding `null` exists; use `is_not_null` to also require a non-null value.
+    - `not_exists` is the exact complement of this helper.
+  group: type
+  fails_when:
+    - The target field does not exist in the event.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - target_field: 1234
+    should_pass: true
+    description: The target field exists with a number value.
+  - target_field: hello
+    should_pass: true
+    description: The target field exists with a string value.
+  - target_field: true
+    should_pass: true
+    description: The target field exists with a boolean value.
+  - target_field:
+      key: value
+    should_pass: true
+    description: The target field exists with an object value.

@@ -31,7 +31,6 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
-    [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
     [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s",
@@ -823,51 +822,6 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
     }
 
     return result;
-}
-
-int wdb_reset_agents_connection(const char *sync_status, int *sock) {
-    int result = OS_SUCCESS;
-    char *wdbquery = NULL;
-    char *wdboutput = NULL;
-    int aux_sock = -1;
-
-    os_malloc(WDBQUERY_SIZE, wdbquery);
-    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_RESET_AGENTS_CONNECTION], sync_status);
-
-    os_malloc(WDBOUTPUT_SIZE, wdboutput);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, NULL)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
-            break;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
-            break;
-    }
-
-    os_free(wdbquery);
-    os_free(wdboutput);
-
-    return result;
-}
-
-int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock) {
-    return wdb_get_agents_by_connection_status_from(0, connection_status, sock);
 }
 
 int* wdb_get_agents_by_connection_status_from(int last_id, const char* connection_status, int *sock) {

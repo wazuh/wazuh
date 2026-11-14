@@ -1,0 +1,70 @@
+# Name of the helper function
+name: syslog_severity
+
+metadata:
+  description: |
+    Derives the syslog severity from a PRI value and maps `{"code": <severity>, "name": <name>}` to
+    the target field.
+
+    Behavior:
+    - `priority` is a JSON integer in 0..191 (`facility * 8 + severity`); the code is `priority % 8`.
+    - The names by code: 0 emergency, 1 alert, 2 critical, 3 error, 4 warning, 5 notice,
+      6 informational and 7 debug.
+
+    Build errors:
+    - `priority` is a literal.
+    - `priority` is a schema field whose type is not a number.
+
+    Notes:
+    - The PRI must already be a number: `"<13>"`, `"13"` and `13.0` all fail.
+    - The result matches the `log.syslog.severity` schema object.
+    - `syslog_facility` derives the facility from the same value.
+  group: syslog
+  fails_when:
+    - "`priority` is missing or is not an integer"
+    - "`priority` is outside 0..191"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  priority:
+    type: number
+    generate: integer
+    source: reference
+
+output:
+  type: object
+
+test:
+  - arguments:
+      priority: 165
+    should_pass: true
+    expected:
+      code: 5
+      name: notice
+    description: Derive the severity notice (5) from the priority 165
+  - arguments:
+      priority: 0
+    should_pass: true
+    expected:
+      code: 0
+      name: emergency
+    description: Derive the severity emergency (0) from the priority 0
+  - arguments:
+      priority: 255
+    should_pass: false
+    description: Fail on a priority above 191
+  - arguments:
+      priority: -1
+    should_pass: false
+    description: Fail on a negative priority
+  - arguments:
+      priority: "13"
+    should_pass: false
+    description: Fail on a priority given as a string
+  - arguments:
+      priority: 13.0
+    should_pass: false
+    description: Fail on a priority given as a double

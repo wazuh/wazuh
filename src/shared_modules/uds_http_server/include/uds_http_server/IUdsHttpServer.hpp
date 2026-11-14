@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,10 @@ namespace wazuh::uds_http
         /// which documents lower-casing but inserts the name as received -- this one actually
         /// normalizes, so a handler may look up "content-type" unconditionally.
         std::unordered_map<std::string, std::string> headers;
+        /// Lower-cased names that appeared MORE THAN ONCE in the head. `headers` keeps the last
+        /// value of such a name; this set is what lets a handler that needs "exactly one" of a
+        /// header (an identity header, say) tell a repeated one from a single one.
+        std::unordered_set<std::string> duplicateHeaders;
     };
 
     /**
@@ -199,6 +204,14 @@ namespace wazuh::uds_http
         /// on completes just after the connection was torn down. Setting this per route is what
         /// keeps that from being fixed by weakening the backstop for every other route.
         std::size_t responseTimeoutSec {0};
+        /// Body of the 413 this route answers when its body cap (the class cap or maxBodyBytes)
+        /// refuses the declared Content-Length; empty -> the class-keyed JSON. For a consumer whose
+        /// peers already parse a documented 413 text. The parser's server-wide cap
+        /// (UdsHttpServerConfig::maxBodySize, or the limit derived from the byte budget) is decided
+        /// before routing, so its 413 keeps the generic body whatever is set here.
+        std::string payloadTooLargeBody {};
+        /// Content-Type of payloadTooLargeBody; ignored while that body is empty.
+        std::string payloadTooLargeContentType {"text/plain"};
     };
 
     /**
@@ -240,10 +253,13 @@ namespace wazuh::uds_http
 
         /// Sentinel meaning "no body cap of this server's own".
         static constexpr std::size_t UNLIMITED_BODY_SIZE {static_cast<std::size_t>(-1)};
+        /// The per-body maximum: a declared Content-Length over it is a 413 at headers-complete.
         /// No own cap BY DEFAULT: a session is bounded by the in-flight byte budget instead, and
         /// start() feeds that budget to the parser so a request that declares more than could ever
         /// be admitted is refused with 413 at headers-complete (the peer must split the session)
-        /// rather than shed with a retriable 503 it would retry forever.
+        /// rather than shed with a retriable 503 it would retry forever. With neither this cap nor a
+        /// budget, bodies have no size limit: only a length no buffer can hold is refused, and the
+        /// parser reserves memory as the body arrives rather than from the declared length.
         std::size_t maxBodySize {UNLIMITED_BODY_SIZE};
         std::size_t maxUrlSize {2048};
         std::size_t maxHeaderNameSize {256};
@@ -251,9 +267,20 @@ namespace wazuh::uds_http
         /// Fixed at 32 everywhere (here, RequestParser::Limits and the builder): it is a term of
         /// the per-request memory overhead the in-flight byte budget charges for.
         std::size_t maxHeaderCount {32};
+        /// Answer `Expect: 100-continue` with an interim `HTTP/1.1 100 Continue`. Off by default, which
+        /// keeps the wire byte-identical for consumers whose peers never send the expectation. When
+        /// on, the interim response is written only after the request is admitted (route, body caps,
+        /// session caps and byte budget all passed) and only while the body is still outstanding, so
+        /// a request that will be refused gets its final 4xx/5xx before the peer sends the body. Any
+        /// other expectation value is ignored.
+        bool expectContinue {false};
 
         std::size_t headerTimeoutSec {10}; ///< Accept -> full request head received.
         std::size_t bodyTimeoutSec {30};   ///< Head received -> full body received.
+        /// Answer a request whose body did not arrive within bodyTimeoutSec with 400 before closing,
+        /// instead of closing without a response. Off by default, which keeps the silent close the
+        /// existing consumers' peers handle; for a consumer whose peers expect a status.
+        bool answerBodyTimeout {false};
         /// Dispatch -> send(). A LEAK BACKSTOP, not a quality-of-service deadline: the peer sets
         /// its own, shorter, per-target deadline and gives up first. Its only job is to guarantee
         /// that a handler which loses a responder cannot hold an fd forever. A route whose peer
@@ -305,9 +332,11 @@ namespace wazuh::uds_http
         /// Accept-headroom the data plane can never consume. Clamped at start() to at most
         /// maxConnections / 4 (and to 0 when that quarter is 0, i.e. tiny test configs).
         std::size_t reservedControlConnections {64};
-        /// Reserved from the declared Content-Length at headers-complete, so this bounds the
-        /// read-phase peak as well as resident payloads. 0 disables. start() clamps it up to at
-        /// least one maximum-size body, so a too-small value cannot reject everything.
+        /// The aggregate budget across requests: reserved from the declared Content-Length at
+        /// headers-complete, so this bounds the read-phase peak as well as resident payloads; the
+        /// parser then reserves each admitted body in full. 0 disables it (see maxBodySize for what
+        /// bounds a body then). start() clamps it up to at least one maximum-size body, so a
+        /// too-small value cannot reject everything.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
     };
 
@@ -338,6 +367,12 @@ namespace wazuh::uds_http
         std::size_t rejectedSessionCap {0};      ///< A per-class session cap was already reached.
         std::size_t rejectedShutdown {0};        ///< Answered because the server was already stopping.
         std::size_t rejectedNoResponse {0};      ///< A handler dropped the request without answering.
+        /// The server-wide limit (maxConnections) was already reached when the connection was
+        /// accepted: answered before its request is read, so no route class is known yet.
+        std::size_t rejectedConnectionCap {0};
+        /// Cumulative 413s: the declared or received body exceeded the route, class or parser cap.
+        /// Not a 503 -- the peer is wrong and must split -- but invisible to endpoint metrics too.
+        std::size_t rejectedTooLarge {0};
     };
 
     /**

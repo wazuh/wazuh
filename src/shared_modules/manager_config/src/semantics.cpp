@@ -9,8 +9,11 @@
  */
 #include "semantics.hpp"
 
+#include "managerConfDir.hpp"
+
 #include <rapidjson/pointer.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -54,6 +57,46 @@ namespace manager_config::detail
                               "file not found: " + resolved.string() +
                                   " (issued by the credential resolver at installation, or provisioned "
                                   "externally, e.g. with wazuh-certs-tool)"};
+            }
+            return std::nullopt;
+        }
+
+        /**
+         * The credential resolver's location rule (certs_name() in wazuh-manager-resolve-credentials.py), kept
+         * identical: the path, resolved against the home as the consumer resolves it, must name a file directly in
+         * <MANAGER_CONF_DIR>/certs, with no empty, "." or ".." component. A path the rule refuses stops the start
+         * (error 22) whether or not the file exists, so this does not look at the filesystem.
+         */
+        std::optional<Error>
+        checkInCertsDir(const std::string& path, const std::string& pointer, const LoadOptions& options)
+        {
+            if (path.empty())
+            {
+                return std::nullopt;
+            }
+            const std::string certs {std::string {Utils::MANAGER_CONF_DIR} + "/certs"};
+            std::string resolved {path};
+            if (resolved.front() != '/')
+            {
+                // As the resolver: relative to the home, and an unset home is the working directory.
+                std::error_code ec;
+                const auto home = options.home.empty() ? std::filesystem::current_path(ec) : options.home;
+                resolved = (home / path).string();
+            }
+            bool inside = resolved.size() > certs.size() + 1 && resolved.compare(0, certs.size(), certs) == 0 &&
+                          resolved[certs.size()] == '/' && resolved.find('/', certs.size() + 1) == std::string::npos;
+            for (std::size_t start = 1; inside && start <= resolved.size();)
+            {
+                const std::size_t end = std::min(resolved.find('/', start), resolved.size());
+                const std::string component = resolved.substr(start, end - start);
+                inside = !(component.empty() || component == "." || component == "..");
+                start = end + 1;
+            }
+            if (!inside)
+            {
+                return Error {pointer,
+                              resolved + " is outside " + certs +
+                                  ", the only place the credential resolver accepts it (the manager refuses to start)"};
             }
             return std::nullopt;
         }
@@ -139,9 +182,10 @@ namespace manager_config::detail
 
         // Nothing recreates these files at start: the credential resolver issues them once, at installation,
         // and the operator provisions or rotates them out of band thereafter (e.g. with wazuh-certs-tool). So a
-        // missing file is a fail-closed verdict here, before any daemon starts. indexer.ssl.* is not checked
-        // here: the credential resolver owns those files (imported from the indexer's export or staged by the
-        // operator) and refuses the start itself when they are missing or invalid.
+        // missing file is a fail-closed verdict here, before any daemon starts. indexer.ssl.* is not checked for
+        // existence here: the credential resolver owns those files (imported from the indexer's export at
+        // --prestart, after this check runs, or staged by the operator) and refuses the start itself when they
+        // are missing. Their location is checked below.
         if (options.checkFiles)
         {
             for (const char* pointer : {"/remote/https/certificate",
@@ -153,6 +197,28 @@ namespace manager_config::detail
                                         "/auth/ssl_manager_key"})
             {
                 if (auto error = checkFile(str(get(doc, pointer)), pointer, options))
+                {
+                    errors.push_back(std::move(*error));
+                }
+            }
+
+            // indexer.ssl.* is not checked for existence (see above), but where it points is decided by the
+            // configuration alone: the resolver refuses any of these paths outside <conf>/certs before it looks
+            // for the file, so a validate that passes them would pass a configuration that cannot start.
+            if (const auto* cas = get(doc, "/indexer/ssl/certificate_authorities"); cas != nullptr && cas->IsArray())
+            {
+                for (rapidjson::SizeType i = 0; i < cas->Size(); ++i)
+                {
+                    const auto pointer = "/indexer/ssl/certificate_authorities/" + std::to_string(i);
+                    if (auto error = checkInCertsDir(str(&(*cas)[i]), pointer, options))
+                    {
+                        errors.push_back(std::move(*error));
+                    }
+                }
+            }
+            for (const char* pointer : {"/indexer/ssl/certificate", "/indexer/ssl/key"})
+            {
+                if (auto error = checkInCertsDir(str(get(doc, pointer)), pointer, options))
                 {
                     errors.push_back(std::move(*error));
                 }

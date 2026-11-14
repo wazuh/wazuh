@@ -8,7 +8,7 @@ Before integrating the Agent Sync Protocol, ensure you have:
 
 1. Access to the protocol headers in `src/shared_modules/sync_protocol/include/`
 2. A unique module name identifier
-3. A dedicated SQLite database path for persistent storage (or `std::nullopt`/`NULL` for in-memory-only use)
+3. A dedicated SQLite database path for persistent storage (or `std::nullopt`/`NULL` for an instance used only for metadata, groups and integrity checks; without a queue the persist, delta-sync and data-clean calls cannot work)
 
 There is no message-queue setup to wire in: the protocol carries a whole session over its own local `queue-sync` socket by default (see [API Reference](api-reference.md#transport-abstraction)); nothing needs to be passed in for that.
 
@@ -50,7 +50,7 @@ LoggerFunc logger = [](modules_log_level_t level, const std::string& message) {
 // defaults (real SQLite queue, real queue-sync socket transport).
 auto protocol = std::make_unique<AgentSyncProtocol>(
     "fim",                              // Module name
-    "/var/ossec/queue/fim/fim_sync.db", // Database path
+    "queue/fim/db/fim_sync.db",          // Database path, relative to the install root
     logger                              // Logger callback
 );
 ```
@@ -71,7 +71,7 @@ void module_logger(modules_log_level_t level, const char* message) {
 // Create protocol handle
 AgentSyncProtocolHandle* handle = asp_create(
     "sca",
-    "/var/ossec/queue/sca/sca_sync.db",
+    "queue/sca/db/sca_sync.db",
     module_logger,
     0,  // flush_batch_size: use the built-in default
     0,  // flush_interval_ms: use the built-in default
@@ -558,7 +558,9 @@ public:
     MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string&, const std::string&), (override));
     MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>&, Option, bool), (override));
     MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t*, size_t), (override));
-    // ... plus every other pure virtual of IAgentSyncProtocol, or the mock cannot be instantiated.
+    // ... plus every other pure virtual of IAgentSyncProtocol (including synchronizeMetadataOrGroups,
+    // clearIntegrityProgress, fetchPendingItems, clearAllDataContext, deleteDatabase, stop, reset and
+    // shouldStop), or the mock cannot be instantiated.
 };
 ```
 
@@ -589,6 +591,9 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
     nullptr,     // default persistent queue
     transport);
 
+// A session is only built once the agent metadata provider holds metadata: until then a sync waits
+// for it, and without any group it fails with awaitingPrerequisite. The unit tests publish both with
+// metadata_provider_update().
 // ... trigger a sync on another thread, then feed the result for the session it sent:
 const std::string result = "HCRESULT:" + std::to_string(sessionSent) + ":200:{}";
 protocol->parseResponseBuffer(reinterpret_cast<const uint8_t*>(result.data()), result.size());
@@ -622,5 +627,5 @@ protocol->parseResponseBuffer(reinterpret_cast<const uint8_t*>(result.data()), r
 
 6. **Metadata/Groups Sync Failures**
    - Verify the correct mode is used (`METADATA_DELTA`, `METADATA_CHECK`, `GROUP_DELTA`, `GROUP_CHECK`)
-   - These modes never populate a `SessionPayload` — only `Start`/`End` are sent
+   - These modes never populate a `SessionPayload` — only `Start` is sent
    - Check manager logs for additional error details

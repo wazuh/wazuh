@@ -566,6 +566,13 @@ namespace
                 return ip != nullptr ? std::string(ip) : std::string();
             }
 
+            bool requestSent() override
+            {
+                long size = 0;
+
+                return curl_easy_getinfo(m_handle, CURLINFO_REQUEST_SIZE, &size) == CURLE_OK && size > 0;
+            }
+
             std::string curlError() override
             {
                 return m_lastError;

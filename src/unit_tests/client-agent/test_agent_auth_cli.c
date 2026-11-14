@@ -22,6 +22,7 @@
 #include "agentd.h"
 #include "agent_auth_cli.h"
 #include "token_bootstrap.h"
+#include "enrollment.h"
 #include "enrollment_token.h"
 #include "https_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -256,6 +257,11 @@ bool __wrap_hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len
     return true;
 }
 
+/* The real getter reads the internal options, which this suite does not set up. */
+uint32_t __wrap_w_enrollment_timeout_ms(void) {
+    return HC_DEFAULT_ENROLL_TIMEOUT_MS;
+}
+
 bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *request,
                       hc_enroll_result_t *result) {
     (void) config;
@@ -417,6 +423,7 @@ static int setup_test(void **state) {
     g_fetch_calls = 0;
     g_enroll_calls = 0;
     g_enroll_body[0] = '\0';
+    w_enrollment_clear_outcome_unknown();
     g_fail_anchor_move = false;
     g_chown_calls = 0;
     g_fchown_calls = 0;

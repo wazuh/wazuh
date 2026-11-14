@@ -1,0 +1,99 @@
+# Name of the helper function
+name: array_length_eq
+
+metadata:
+  description: |
+    Checks whether the target array has exactly `expected_length` elements.
+
+    Behavior:
+    - `expected_length` is a literal non-negative integer.
+    - True when the target exists, is an array and its number of elements equals `expected_length`.
+
+    Build errors:
+    - `expected_length` is a reference.
+    - `expected_length` is not a JSON integer (`2.0`, `'2'` and `1e1` are rejected) or is negative.
+
+    Notes:
+    - Only the equality comparison exists; there is no helper for other length comparisons.
+    - `array_length_eq(0)` is true only for an array that is present and empty.
+    - `is_array` checks the type alone.
+  group: array
+  fails_when:
+    - The target field does not exist.
+    - The target field is not an array.
+    - The number of elements differs from `expected_length`.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  expected_length:
+    type: number
+    generate: integer
+    source: value # only literal values, not references
+
+# the generated success cases use a length that does not match the generated array
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      expected_length: 1
+    target_field:
+      - "single_element"
+    should_pass: true
+    description: The array has one element.
+  - arguments:
+      expected_length: 3
+    target_field:
+      - "first"
+      - "second"
+      - "third"
+    should_pass: true
+    description: The array has three elements.
+  - arguments:
+      expected_length: 5
+    target_field:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    should_pass: true
+    description: The array has five numeric elements.
+  - arguments:
+      expected_length: 2
+    target_field:
+      - "element"
+    should_pass: false
+    description: The array has one element, not two.
+  - arguments:
+      expected_length: 1
+    target_field:
+      - "first"
+      - "second"
+    should_pass: false
+    description: The array has two elements, not one.
+  - arguments:
+      expected_length: 1
+    target_field: "not_an_array"
+    should_pass: false
+    description: The target field is a string, not an array.
+  - arguments:
+      expected_length: 0
+    target_field: 42
+    should_pass: false
+    description: The target field is a number, not an array.
+  - arguments:
+      expected_length: -1
+    target_field:
+      - "element"
+    should_pass: false
+    description: A negative length is rejected at build time.

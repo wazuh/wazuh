@@ -21,6 +21,8 @@ on:
       - 'src/Makefile'
       - 'tools/get_git_refs.sh'
       - 'src/deps.lock.mk'
+      # cluster/tests/test_utils.py checks the start-script lock and restart marker paths against it
+      - 'src/init/wazuh-server.sh'
       # API unit tests (5_testunit_api.yml) and manager_config's C++ suites (5_testunit_managerconfig.yml)
       - '!api/api/**/test/**'
       - '!src/shared_modules/manager_config/tests/**'

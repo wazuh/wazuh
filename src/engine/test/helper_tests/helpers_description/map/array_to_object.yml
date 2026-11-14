@@ -1,0 +1,195 @@
+# Name of the helper function
+name: array_to_object
+
+metadata:
+  description: |
+    Builds an object from an array of objects, taking from every element a key and a value at the
+    given dot paths, and maps it to the target field.
+
+    Behavior:
+    - `key_path` and `value_path` are dot paths relative to each element (for example `Name` or
+      `Value`); `.` selects the whole element.
+    - Every element that is an object and holds a non-empty string at `key_path` and any value at
+      `value_path` (`null`, an array or an object included) produces one member of the result. Other
+      elements are skipped.
+    - Unless `mode` is `raw_keys`, each key is normalized: ASCII `A-Z` is lowercased; `a-z`, `0-9`
+      and `_` are kept (consecutive `_` collapse into one); a space, `/`, `.`, `-`, `\` or `:` becomes
+      a single `_`, never leading or trailing; every other byte is dropped. camelCase is not split:
+      `Request.Type` becomes `request_type` and `UserAgent` becomes `useragent`.
+    - A key whose normalized form is empty is skipped. The last element with a given key wins.
+    - On success the whole target value is replaced by the new object.
+
+    Build errors:
+    - Fewer than 3 or more than 4 arguments.
+    - `source_array` is not a reference, or it is a schema field whose elements are not objects.
+    - `key_path` or `value_path` is not a string literal, is empty, or starts with `/` (JSON pointers are not
+      accepted).
+    - `mode` is given and is not the literal `raw_keys`.
+
+    Notes:
+    - The target can be a schema object field or a temporary (`_`) field.
+    - `array_to_object_changes` builds one nested object per key from a new and an old value.
+    - `snake_case_keys` applies the same key normalization to an existing object.
+  group: array
+  fails_when:
+    - "`source_array` is missing or is not an array"
+    - "no element produces a member, so the result would be empty"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  source_array:
+    type: array
+    generate: object
+    source: reference
+  key_path:
+    type: string
+    generate: string
+    source: value
+  value_path:
+    type: string
+    generate: string
+    source: value
+  mode:
+    type: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - raw_keys
+
+skipped:
+  - success_cases
+
+output:
+  type: object
+
+test:
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: UserAgent
+            Value: Mozilla/5.0
+          - Name: Request.Type
+            Value: OAuth2:Authorize
+          - Name: Included Updated Properties
+            Value: RequiredResourceAccess
+      key_path:
+        source: value
+        value: Name
+      value_path:
+        source: value
+        value: Value
+    should_pass: true
+    expected:
+      useragent: Mozilla/5.0
+      request_type: OAuth2:Authorize
+      included_updated_properties: RequiredResourceAccess
+    description: Build the object from the Name and Value of every element, with normalized keys
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: UserAgent
+            Value: Mozilla/5.0
+          - Name: KeepMeSignedIn
+            Value: true
+          - Name: OptionalField
+            Value: null
+          - Name: Roles
+            Value:
+              - admin
+              - user
+          - Name: Meta
+            Value:
+              os: linux
+              arch: x64
+      key_path:
+        source: value
+        value: Name
+      value_path:
+        source: value
+        value: Value
+      mode:
+        source: value
+        value: raw_keys
+    should_pass: true
+    expected:
+      UserAgent: Mozilla/5.0
+      KeepMeSignedIn: true
+      OptionalField: null
+      Roles:
+        - admin
+        - user
+      Meta:
+        os: linux
+        arch: x64
+    description: Keep the keys verbatim with the mode raw_keys and copy values of any JSON type
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: Request
+            Value: GET
+      key_path:
+        source: value
+        value: Name
+      value_path:
+        source: value
+        value: "."
+    should_pass: true
+    expected:
+      request:
+        Name: Request
+        Value: GET
+    description: Store the whole element under its key when the value path is a dot
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - 1
+          - Value: no-key
+          - Name: ""
+            Value: empty-key
+          - Name: NoValue
+          - Name: Keep Me
+            Value: 2
+      key_path:
+        source: value
+        value: Name
+      value_path:
+        source: value
+        value: Value
+    should_pass: true
+    expected:
+      keep_me: 2
+    description: Skip the elements that are not objects, have no non-empty string key or have no value
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: "***"
+            Value: 1
+      key_path:
+        source: value
+        value: Name
+      value_path:
+        source: value
+        value: Value
+    should_pass: false
+    description: Fail when every element is skipped, here because the key normalizes to an empty string
+  - arguments:
+      source_array:
+        source: reference
+        value: null
+      key_path:
+        source: value
+        value: Name
+      value_path:
+        source: value
+        value: Value
+    should_pass: false
+    description: Fail when the source array reference is missing

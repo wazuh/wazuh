@@ -57,7 +57,10 @@ relative one resolves against the manager home, `/var/wazuh-manager`), but the
 before every start and refuses any other location, a relative path included:
 `INVALID indexer.ssl.certificate: /var/wazuh-manager/client.pem is outside /etc/wazuh-manager/certs, the only place the resolver checks (set in /etc/wazuh-manager/wazuh-manager.conf)`,
 and `wazuh-manager-control` stops with `Invalid credentials. Exiting` (error 22 in `-j` output).
-`wazuh-manager-conf validate` does not look at these files: the resolver owns them. A listed file that
+`wazuh-manager-conf validate` refuses the same paths first, unless `--skip-file-checks`:
+`(1244): Invalid configuration at '/indexer/ssl/certificate': /var/wazuh-manager/client.pem is outside /etc/wazuh-manager/certs, the only place the credential resolver accepts it (the manager refuses to start)`
+(a listed CA is named by its index, `/indexer/ssl/certificate_authorities/0`). It does not check that
+the files exist: the resolver owns them. A listed file that
 is absent, and that the resolver cannot import from a co-located indexer, refuses the start with
 `MISSING <path>` and `Unresolved credentials. Exiting` (error 21).
 
@@ -215,10 +218,10 @@ curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
      --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
      --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     https://<indexer>:9200/_cluster/health
+     'https://127.0.0.1:9200/_cluster/health/wazuh-*,.wazuh-*'
 ```
 
-The connector treats a node as available when its health is `green` or `yellow`.
+The connector treats a node as available when its health is `green` or `yellow`. The index expression matters: the connector asks only about the manager's own indices, so querying `/_cluster/health` without it reports the whole cluster and can disagree with the connector's verdict.
 
 Then check the manager log for the connector's verdict on each node:
 

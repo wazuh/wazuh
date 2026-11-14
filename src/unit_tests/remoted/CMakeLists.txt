@@ -62,7 +62,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,uhttp_client_reset_headers -Wl,--wrap,uhttp_client_add_header \
                             -Wl,--wrap,uhttp_post \
                             -Wl,--wrap,batch_queue_enqueue_ex \
-                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
+                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,getDefine_Int_nonfatal \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
                             -Wl,--wrap,rem_inc_recv_upgrade_ack -Wl,--wrap,rem_inc_send_ack \

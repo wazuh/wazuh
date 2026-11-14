@@ -19,15 +19,12 @@
 typedef struct _global_agent_t {
     uint64_t delete_agent_queries;
     uint64_t disconnect_agents_queries;
-    uint64_t find_agent_queries;
     uint64_t get_agent_info_queries;
     uint64_t get_agents_by_connection_status_queries;
     uint64_t get_all_agents_queries;
     uint64_t get_distinct_groups_queries;
-    uint64_t get_groups_integrity_queries;
     uint64_t recalculate_agent_group_hashes_queries;
     uint64_t insert_agent_queries;
-    uint64_t reset_agents_connection_queries;
     uint64_t select_agent_group_queries;
     uint64_t set_agent_groups_queries;
     uint64_t sync_agent_groups_get_queries;
@@ -40,15 +37,12 @@ typedef struct _global_agent_t {
     uint64_t set_agent_credentials_queries;
     struct timeval delete_agent_time;
     struct timeval disconnect_agents_time;
-    struct timeval find_agent_time;
     struct timeval get_agent_info_time;
     struct timeval get_agents_by_connection_status_time;
     struct timeval get_all_agents_time;
     struct timeval get_distinct_groups_time;
-    struct timeval get_groups_integrity_time;
     struct timeval recalculate_agent_group_hashes_time;
     struct timeval insert_agent_time;
-    struct timeval reset_agents_connection_time;
     struct timeval select_agent_group_time;
     struct timeval set_agent_groups_time;
     struct timeval sync_agent_groups_get_time;
@@ -63,9 +57,7 @@ typedef struct _global_agent_t {
 
 typedef struct _global_belongs_t {
     uint64_t get_group_agent_queries;
-    uint64_t select_group_belong_queries;
     struct timeval get_group_agent_time;
-    struct timeval select_group_belong_time;
 } global_belongs_t;
 
 typedef struct _global_group_t {
@@ -82,14 +74,10 @@ typedef struct _global_group_t {
 typedef struct _global_breakdown_t {
     uint64_t backup_queries;
     uint64_t sql_queries;
-    uint64_t vacuum_queries;
     uint64_t commit_queries;
-    uint64_t get_fragmentation_queries;
     struct timeval backup_time;
     struct timeval sql_time;
-    struct timeval vacuum_time;
     struct timeval commit_time;
-    struct timeval get_fragmentation_time;
     struct timeval open_calls_time;
     global_agent_t agent;
     global_belongs_t belongs;
@@ -240,19 +228,6 @@ void w_inc_global_agent_update_status_code();
 void w_inc_global_agent_update_status_code_time(struct timeval time);
 
 /**
- * @brief Increment reset-agents-connection global agent queries counter
- *
- */
-void w_inc_global_agent_reset_agents_connection();
-
-/**
- * @brief Increment reset-agents-connection global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_reset_agents_connection_time(struct timeval time);
-
-/**
  * @brief Increment delete-agent global agent queries counter
  *
  */
@@ -277,19 +252,6 @@ void w_inc_global_agent_select_agent_group();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_select_agent_group_time(struct timeval time);
-
-/**
- * @brief Increment find-agent global agent queries counter
- *
- */
-void w_inc_global_agent_find_agent();
-
-/**
- * @brief Increment find-agent global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_find_agent_time(struct timeval time);
 
 /**
  * @brief Increment get-agent-info global agent queries counter
@@ -409,19 +371,6 @@ void w_inc_global_agent_set_agent_groups();
 void w_inc_global_agent_set_agent_groups_time(struct timeval time);
 
 /**
- * @brief Increment get-groups-integrity global agent queries counter
- *
- */
-void w_inc_global_agent_get_groups_integrity();
-
-/**
- * @brief Increment get-groups-integrity global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
-
-/**
  * @brief Increment recalculate-agent-group-hashes global agent queries counter
  *
  */
@@ -487,19 +436,6 @@ void w_inc_global_group_find_group();
 void w_inc_global_group_find_group_time(struct timeval time);
 
 /**
- * @brief Increment select-group-belong global belongs queries counter
- *
- */
-void w_inc_global_belongs_select_group_belong();
-
-/**
- * @brief Increment select-group-belong global belongs time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_belongs_select_group_belong_time(struct timeval time);
-
-/**
  * @brief Increment get-group-agent global belongs queries counter
  *
  */
@@ -513,19 +449,6 @@ void w_inc_global_belongs_get_group_agent();
 void w_inc_global_belongs_get_group_agent_time(struct timeval time);
 
 /**
- * @brief Increment vacuum global queries counter
- *
- */
-void w_inc_global_vacuum();
-
-/**
- * @brief Increment vacuum global time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_vacuum_time(struct timeval time);
-
-/**
  * @brief Increment commit global queries counter
  *
  */
@@ -537,19 +460,6 @@ void w_inc_global_commit();
  * @param time Value to increment the counter.
  */
 void w_inc_global_commit_time(struct timeval time);
-
-/**
- * @brief Increment get_fragmentation global queries counter
- *
- */
-void w_inc_global_get_fragmentation();
-
-/**
- * @brief Increment get_fragmentation global time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_get_fragmentation_time(struct timeval time);
 
 /**
  * @brief Increment mitre queries counter

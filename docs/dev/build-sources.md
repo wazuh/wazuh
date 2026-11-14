@@ -36,6 +36,17 @@ Boolean flags accept only `YES`, `yes`, `y`, `Y` and `1`; any other value (`TEST
 - `TEST` and `ENGINE_TEST` do not combine: with any `TEST` value set, `ENGINE_TEST` is skipped with the warning `TEST is defined; skipping CMake engine test option`. A `TEST=1` build still builds the engine tests, but with AddressSanitizer forced on; use `ENGINE_TEST=1` alone for engine work.
 - `FSANITIZE` and `TSANITIZE` change only the `Debug` C++ flags, so they have no effect without `DEBUG=1`, and C code is never instrumented. They are mutually exclusive.
 - `DISABLE_JEMALLOC=yes` only stops the daemons from linking jemalloc; the library is still fetched and built.
+
+Less common `src/Makefile` variables:
+
+- `USE_INOTIFY=yes` enables inotify (`INOTIFY_ENABLED`). It is already on for every Linux build, so it only matters elsewhere; ignored for `winagent`.
+- `USE_AUDIT=yes` enables the Linux audit code (`ENABLE_AUDIT`, linking libaudit). The Linux agent turns it on by itself; the manager does not need it. Ignored for `winagent`.
+- `USE_BIG_ENDIAN=yes` builds for a big-endian host (`OS_BIG_ENDIAN`).
+- `USE_SELINUX=yes` builds the agent's SELinux policy module; it is on by default when `checkmodule` and `semodule_package` are installed, and always off for the manager.
+- `HTTP_REQUEST_BRANCH=<branch, tag or commit>` is the `wazuh-http-request` ref that `make deps` downloads when the `shared_modules/http-request` submodule is not checked out (the default is a pinned commit). It has no effect once the directory holds sources.
+- `WAZUH_USER` and `WAZUH_GROUP` (default `wazuh-manager` for the manager, `wazuh` for the agents) are only printed by `make settings`, and `WAZUH_GROUP` owns the embedded Python that the `wpython` goal installs. They do not change the user and group of an installation: `install.sh` and the packages hard-code them.
+
+`USE_INOTIFY`, `USE_AUDIT` and `USE_BIG_ENDIAN` pass their CMake option only as `ON`, so they stick in the cache like the flags above.
 - A Linux manager build is hardened: `-fstack-protector-strong` (or `-fstack-protector` where unsupported), `-D_FORTIFY_SOURCE=2`, full RELRO (`-Wl,-z,relro -Wl,-z,now`) and, except on 32-bit x86, PIE (`-fPIC`, `-pie`). It applies to the manager's own executables and shared libraries, the engine included, and not to the external dependencies (nor `libwazuhext`), which come from the pool. `DEBUG`, `TEST`, `ENGINE_TEST`, `FSANITIZE` and `TSANITIZE` builds are not hardened. The configure prints `Compiler hardening: …` when it applies; check a binary with `readelf -h` (`DYN`), `readelf -d` (`BIND_NOW`) and `readelf -s --dyn-syms` (`__stack_chk_fail`, `__*_chk`).
 
 `INSTALLDIR` does not choose where `install.sh` installs (that is `USER_DIR`, see [Run from Sources](run-sources.md)); the Makefile uses it only for the embedded Python interpreter: the `wpython` goal that `install.sh` runs installs it under `<INSTALLDIR>/framework/python`, and `build_python` (building it from sources) refuses to run without it.

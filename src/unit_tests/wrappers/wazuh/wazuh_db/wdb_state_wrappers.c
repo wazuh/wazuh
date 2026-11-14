@@ -50,27 +50,11 @@ void __wrap_w_inc_global_backup_time(__attribute__((unused))struct timeval diff)
     function_called();
 }
 
-void __wrap_w_inc_global_vacuum() {
-    function_called();
-}
-
-void __wrap_w_inc_global_vacuum_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
 void __wrap_w_inc_global_commit() {
     function_called();
 }
 
 void __wrap_w_inc_global_commit_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
-void __wrap_w_inc_global_get_fragmentation() {
-    function_called();
-}
-
-void __wrap_w_inc_global_get_fragmentation_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
 
@@ -124,14 +108,6 @@ void __wrap_w_inc_global_agent_update_status_code_time(__attribute__((unused))st
     function_called();
 }
 
-void __wrap_w_inc_global_agent_reset_agents_connection() {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_reset_agents_connection_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
 void __wrap_w_inc_global_agent_delete_agent() {
     function_called();
 }
@@ -145,14 +121,6 @@ void __wrap_w_inc_global_agent_select_agent_group() {
 }
 
 void __wrap_w_inc_global_agent_select_agent_group_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_find_agent() {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_find_agent_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
 
@@ -220,14 +188,6 @@ void __wrap_w_inc_global_agent_set_agent_groups_time(__attribute__((unused))stru
     function_called();
 }
 
-void __wrap_w_inc_global_agent_get_groups_integrity() {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_get_groups_integrity_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
 void __wrap_w_inc_global_agent_get_distinct_groups() {
     function_called();
 }
@@ -279,14 +239,6 @@ void __wrap_w_inc_global_group_find_group_time(__attribute__((unused))struct tim
 }
 
 // Global belongs counters
-
-void __wrap_w_inc_global_belongs_select_group_belong() {
-    function_called();
-}
-
-void __wrap_w_inc_global_belongs_select_group_belong_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
 
 void __wrap_w_inc_global_belongs_get_group_agent() {
     function_called();

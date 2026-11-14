@@ -6,6 +6,7 @@
 #include <string>
 
 #include <api/adapter/adapter.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 #include <scheduler/triggerableTask.hpp>
 
 /**
@@ -38,11 +39,11 @@ adapter::RouteHandler triggerSync(const std::shared_ptr<scheduler::TriggerableTa
  *
  * @param rulesetSync The ruleset sync task (`cm-sync-task`).
  * @param iocSync The IOC sync task (`ioc-sync-task`).
- * @param server API server.
+ * @param server Where the routes are registered (the API's route registrar, which applies its body limits).
  */
 inline void registerHandlers(const std::shared_ptr<scheduler::TriggerableTask>& rulesetSync,
                              const std::shared_ptr<scheduler::TriggerableTask>& iocSync,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/content/ruleset/update", triggerSync(rulesetSync, "ruleset"));
     server->addRoute(httpsrv::Method::POST, "/content/ioc/sync", triggerSync(iocSync, "IOC"));

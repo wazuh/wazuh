@@ -49,23 +49,23 @@ Responsibilities:
 * **`fim_run_realtime()`** - Platform-specific realtime monitoring thread:
   - **Linux/Unix**: Uses inotify to watch filesystem events (`INOTIFY_ENABLED`)
   - **Windows**: Uses ReadDirectoryChangesW API (`WIN32`)
-  - **Other platforms**: Falls back to polling-based monitoring
+  - **Other platforms**: Realtime is unsupported; the thread logs a warning if a directory requests it and exits
 * Monitors configured directories for changes (create, modify, delete, move)
 * Triggers `fim_checker()` which leads to database transactions and `transaction_callback()`
 * Runs continuously in background thread launched at FIM startup
-* **Respects pause state** - checks `fim_pause_requested` before processing changes
+* **Respects pause state** - the inotify loop reads the inotify descriptor under `fim_realtime_mutex`, so it is held off while a completed pause owns that mutex
 
 ### **Integrity Scanning Thread**
 
-Dedicated thread that performs periodic full scans and handles synchronization.
+Dedicated thread that performs the periodic synchronization and the integrity/recovery checks. It is started only when `synchronization` is enabled. The scheduled filesystem scan runs in the daemon's main loop (`start_daemon()`), not in this thread.
 Responsibilities:
 
-* **`fim_run_integrity()`** - Main integrity scanning thread:
-  - Runs periodic full filesystem scans based on configured interval
-  - Manages synchronization with the manager
-  - Handles flush requests by checking `fim_flush_in_progress` flag
-  - **Respects pause state** - checks `fim_pause_requested` before initiating scans
-  - Coordinates with sync protocol for reliable message delivery
+* **`fim_run_integrity()`** - Synchronization and integrity thread:
+  - Waits `syscheck.sync_interval` seconds between cycles (the first cycle runs without delay on a first start)
+  - Runs one `asp_sync_module(MODE_DELTA)` per cycle for the whole module
+  - Handles flush requests by checking the `fim_flush_in_progress` flag
+  - **Respects pause state** - skips the cycle while `fim_pause_requested` is set, except for a pending flush, which it serves without taking the scan mutexes
+  - Runs the agent-ID resync and the integrity/recovery checks under the scan mutexes (see [Recovery Architecture](#recovery-architecture))
 
 ### **Operation State Control**
 
@@ -73,7 +73,7 @@ FIM implements atomic state flags to coordinate operations and enable external c
 
 **State Flags (Atomic Variables):**
 * `fim_pause_requested` - Indicates if a pause has been requested
-* `fim_pausing_is_allowed` - Indicates if FIM has acknowledged the pause (operations stopped)
+* `fim_pausing_is_allowed` - Indicates that a pause was acknowledged: `fim_execute_is_pause_completed()` holds the scan mutexes
 * `fim_flush_in_progress` - Indicates if a flush operation is active
 * `fim_flush_result` - Result of the flush operation (0 = success, -1 = error)
 
@@ -83,7 +83,7 @@ FIM implements atomic state flags to coordinate operations and enable external c
 External Coordination Command (pause)
          │
          ▼
-Set fim_pause_requested = 1 (atomic)
+Set fim_pausing_is_allowed = 0, fim_pause_requested = 1 (atomic)
          │
          ▼
 Return immediately (non-blocking)
@@ -91,21 +91,22 @@ Return immediately (non-blocking)
          ▼
 Caller Polls: fim_execute_is_pause_completed()
          │
-         ├─► Returns 1 (in progress) - FIM threads detecting flag
+         ├─► trylock fim_scan_mutex, fim_realtime_mutex
+         │   (and fim_registry_scan_mutex on Windows)
          │
-         ├─► FIM threads check fim_pause_requested
-         │   └─► Pause at safe points
-         │   └─► Set fim_pausing_is_allowed = 1
+         ├─► Any mutex busy (scan, realtime, or the sync thread's
+         │   resync/integrity checks) ──► release those taken, Returns 1
          │
-         ├─► Returns 1 (in progress) - waiting for acknowledgment
+         ├─► All acquired ──► Set fim_pausing_is_allowed = 1, Returns 0
+         │   (the mutexes stay held until resume)
          │
-         └─► Returns 0 (completed) - both flags set
+         └─► FIM stopping ──► release any held pause, Returns -1
          │
          ▼
 External Coordination Command (resume)
          │
          ▼
-Release mutexes and clear flags
+Release the mutexes (if acknowledged) and clear both flags
          │
          ▼
 FIM threads resume operations
@@ -113,34 +114,27 @@ FIM threads resume operations
 
 **Operation Protection:**
 
-Before starting scan operations, FIM threads check the pause state:
+The sync thread checks the pause flag on every cycle; scans and realtime processing are held off only by the mutexes that a completed pause owns:
 
 ```c
-// In fim_run_integrity (periodic scanning)
-if (atomic_int_get(&syscheck.fim_pause_requested)) {
-    // Set acknowledgment flag
-    atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
+// In fim_run_integrity, once per cycle
+int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
 
-    // Wait on mutex (blocking until resume)
-    w_mutex_lock(&syscheck.fim_scan_mutex);
-    w_mutex_unlock(&syscheck.fim_scan_mutex);
-
-    // Clear acknowledgment flag
-    atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
+if (pause_requested && !flush_request_detected) {
+    mdebug2("FIM is paused, skipping sync iteration");
+    continue;
 }
 
-// Check flush request
-if (atomic_int_get(&fim_flush_in_progress)) {
-    // Perform synchronization immediately
-    bool result = asp_sync_module(...);
+if (pause_requested && flush_request_detected) {
+    // Paused with a pending flush: sync without taking the scan mutexes
+    SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
 
-    // Update result and clear in-progress flag
-    atomic_int_set(&fim_flush_result, result ? 0 : -1);
+    atomic_int_set(&fim_flush_result, sync_result.success ? 0 : -1);
     atomic_int_set(&fim_flush_in_progress, 0);
+} else {
+    // Normal cycle: asp_sync_module(), then (with the scan mutexes held)
+    // fim_resync_on_agent_id_change() and fim_recovery_run_integrity_checks()
 }
-
-// Proceed with normal scanning
-perform_integrity_scan();
 ```
 
 ---
@@ -204,7 +198,7 @@ if (notify_scan != 0 && txn_context->event->report_event) {
 Generated with complete data including checksums and persisted for synchronization:
 
 ```c
-persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event);
+persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event, document_version);
 ```
 
 **Characteristics:**
@@ -244,7 +238,7 @@ The `transaction_callback()` function handles the database response:
 - File modifications detected by realtime monitoring
 - New file creation events
 - File attribute changes (permissions, ownership, etc.)
-- Registry key and value changes (Windows)
+- Registry key and value changes (Windows), through `registry_key_transaction_callback()` and `registry_value_transaction_callback()`, which follow the same pattern
 - Scheduled scan results comparing current vs. stored state
 
 #### **File Deletion Exception**
@@ -273,7 +267,7 @@ Document limits allow agents to:
 - **Track unlimited files/registry entries locally** for complete monitoring coverage
 - **Synchronize only a subset** to the indexer to manage resource usage
 - **Continue generating stateless events** for all changes regardless of sync status
-- **Maintain FIFO prioritization** for sync selection (first detected items are synced first)
+- **Prioritize by arrival** while the limit is being filled: a new item gets `sync=1` only while the synced count is below the limit
 
 ### Synchronization Control
 
@@ -338,21 +332,21 @@ if (old_sync == 1) {
 
 ### Promotion and Demotion on Limit Changes
 
-When the manager sends a new sync limit during agent startup or configuration reload, FIM automatically adjusts which documents are synchronized based on the limit change.
+FIM fetches the sync limit from agentd once, when it starts (agent start or restart). If it differs from the one the documents were synced with, FIM automatically adjusts which documents are synchronized based on the limit change.
 
 #### Limit Change Detection (During Initialization)
 
 **Process:**
 1. Count currently synced documents: `synced_docs = fim_db_count_synced_docs(table_name)`
-2. Receive new limit from manager configuration
+2. Receive the new limit from agentd
 3. Compare and adjust:
-   - **Limit increased** (`synced_docs < new_limit`): Promote oldest non-synced documents
-   - **Limit decreased** (`synced_docs > new_limit`): Demote newest synced documents
+   - **Limit increased** (`synced_docs < new_limit`): Promote the first non-synced documents in a fixed order (see Ordering Strategy)
+   - **Limit decreased** (`synced_docs > new_limit`): Demote the first synced documents in a fixed order (see Ordering Strategy)
    - **Special case**: `limit = 0` means unlimited, promote all documents
 
 ### Ordering Strategy
 
-Items are selected for synchronization using **FIFO (First-In-First-Out)** based on database insertion order:
+When a startup limit change promotes documents, the candidates are selected in a fixed order (not insertion order): by path, then architecture and value where the table has them, then version, as in the queries below; during normal operation a new item is synced only while the synced count is below the limit:
 
 **File Table:**
 ```sql
@@ -369,11 +363,11 @@ SELECT * FROM registry_key WHERE sync = 0 ORDER BY path, architecture, version L
 SELECT * FROM registry_data WHERE sync = 0 ORDER BY path, architecture, value, version LIMIT N
 ```
 
-The primary key ordering ensures **deterministic and consistent** selection across agent restarts.
+This fixed ordering ensures **deterministic and consistent** selection across agent restarts. It follows the key columns but not always their declared order: `registry_key`'s primary key is `(architecture, path)`, while the query sorts by `path, architecture`.
 
 ### Configuration
 
-The sync limit is received from the manager during agent handshake and stored globally:
+The sync limit is fetched from agentd at startup (FIM retries once per second until agentd answers) and stored globally:
 
 ```c
 extern int synced_docs_files;           // Current count of synced files
@@ -383,25 +377,33 @@ extern int synced_docs_registry_values;  // Current count of synced registry val
 
 **Behavior:**
 - **`sync_limit = 0`** (default): Unlimited synchronization - all items have `sync=1`
-- **`sync_limit > 0`**: Sync only first N items by detection order
+- **`sync_limit > 0`**: Items inserted while the synced count is below N get `sync=1`; the rest are stored with `sync=0`
 
 ### Recovery with Limits
 
 During recovery operations, only items with `sync=1` are synchronized:
 
-```cpp
-void fim_recovery_persist_table_and_resync(const char* table_name, ...) {
+```c
+bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle,
+                                           const OSList* directories_list, const char* retry_note) {
     // Increase version for all entries
     fim_db_increase_each_entry_version(table_name);
 
     // Get only synced entries
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
 
-    // Build and persist stateful events for synced items only
-    for (auto& item : items) {
-        cJSON* event = build_stateful_event_file(...);
-        validate_and_persist_fim_event(..., sync_flag=1);
+    // Clear the manager's index for this table
+    asp_notify_data_clean(handle, clean_indices, 1);
+
+    // Build, validate and queue the stateful events for synced items only
+    // (rows no longer covered by the configuration are skipped)
+    cJSON_ArrayForEach(item, items) {
+        asp_persist_diff(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
     }
+
+    // Nothing is sent here: the caller sends the queued rows after releasing the scan mutexes,
+    // with fim_recovery_sync_recovered_tables()
+    return true;
 }
 ```
 
@@ -669,7 +671,7 @@ bool ret = asp_parse_response_buffer(syscheck.sync_handle, data, data_len);
 FIM implements an automatic recovery mechanism to detect and resolve database synchronization inconsistencies between agent and manager. The recovery system ensures long-term data consistency by periodically validating synchronization state and triggering full resynchronization when mismatches are detected.
 
 * **`fim_run_integrity()`** - Integrity monitoring thread.
-* Attempts DELTA synchronizations for each table every `syscheck.sync_interval`.
+* Runs one DELTA synchronization (all tables share the same queue) every `syscheck.sync_interval`.
 * Each time `syscheck.integrity_interval` elapses, it performs the integrity validation and full recovery process in case of a checksum mismatch between the agent and the manager's tables.
 * Runs continuously in background thread launched at FIM startup
 
@@ -685,7 +687,16 @@ Run Delta Sync ──► asp_sync_module(MODE_DELTA)
          │
          └─►  Failure? ──► Skip Recovery, Wait for Next Cycle
          │
-         └─►  Success? ──► Continue to Recovery Check
+         └─►  Success? ──► Lock fim_scan_mutex, fim_realtime_mutex
+                           (and fim_registry_scan_mutex on Windows;
+                            retried every second, abandoned on shutdown)
+                                    │
+                                    ▼
+                          Agent ID changed since the last sync?
+                          (fim_resync_on_agent_id_change)
+                                    │
+                                    └─► Yes? ──► DataClean + queue every table not yet
+                                                 resent under the new ID, then record the ID
                                     │
                                     ▼
                           For Each Table (file_entry, registry_key, registry_data):
@@ -700,21 +711,32 @@ Run Delta Sync ──► asp_sync_module(MODE_DELTA)
                                                  ▼
                                         Compare with Manager Checksum
                                             │
-                                            ├─► Match? ──► Update last_sync_time, Done
+                                            ├─► Match? ──► Done
+                                            │
+                                            ├─► Not checked (check failed)? ──► Reported in one
+                                            │     warning, retried in the next integrity_interval
                                             │
                                             └─► Mismatch? ──► Trigger Recovery
                                                                  │
                                                                  ▼
-                                                         Load Entire Table
+                                                         Load Table Rows with sync=1
                                                                      │
                                                                      ▼
                                                          Clear Manager Index (DataClean)
                                                                      │
                                                                      ▼
-                                                         Persist All Entries (MODE_DELTA)
-                                                                     │
-                                                                     ▼
-                                                         Delta Sync with Manager
+                                                         Queue the Entries (sent after the unlock)
+
+After every table is checked (last_sync_time is updated whatever the outcome,
+unless a shutdown interrupted the pass):
+         │
+         ▼
+Unlock the mutexes
+         │
+         ▼
+Any table recovered? ──► One Delta Sync for all of them ──► asp_sync_module(MODE_DELTA)
+                         (regular agent.sync_max_blocks_per_cycle limit; whatever is
+                          left is sent by the next cycles and the log says so)
 ```
 
 ---
@@ -737,7 +759,13 @@ The pause command follows this **asynchronous sequence**:
 Pause Command Received (fim_execute_pause)
          │
          ▼
-Set fim_pause_requested = 1 (atomic)
+FIM stopping? ──► Return -1
+         │
+         ▼
+Already requested? ──► Return 0 (idempotent)
+         │
+         ▼
+Set fim_pausing_is_allowed = 0, fim_pause_requested = 1 (atomic)
          │
          ▼
 Return 0 immediately (non-blocking)
@@ -745,17 +773,19 @@ Return 0 immediately (non-blocking)
          ▼
 Caller Polls Status (fim_execute_is_pause_completed)
          │
-         ├─► Returns 1: In progress
-         │   │
-         │   ├─► FIM threads detect fim_pause_requested
-         │   │
-         │   ├─► Threads pause at safe points
-         │   │   └─► Set fim_pausing_is_allowed = 1
-         │   │   └─► Wait on scan mutexes
-         │   │
-         │   └─► Caller waits and polls again
+         ├─► FIM stopping: release any held pause ──► Returns -1
          │
-         └─► Returns 0: Completed (both flags set)
+         ├─► fim_pausing_is_allowed already set ──► Returns 0
+         │
+         ├─► No pause requested ──► Returns 0 (nothing is taken)
+         │
+         ├─► trylock fim_scan_mutex, fim_realtime_mutex
+         │   (and fim_registry_scan_mutex on Windows)
+         │   │
+         │   ├─► Any busy: release those taken ──► Returns 1 (caller polls again)
+         │   │
+         │   └─► All acquired: set fim_pausing_is_allowed = 1 ──► Returns 0
+         │       (the mutexes stay held until resume or shutdown)
 ```
 
 The resume command is **synchronous**:
@@ -764,14 +794,14 @@ The resume command is **synchronous**:
 Resume Command Received (fim_execute_resume)
          │
          ▼
-Check if FIM is paused
+Check if a pause was requested
          │
-         ├─► Not paused → Return (idempotent)
+         ├─► Not requested → Return 0 (idempotent)
          │
-         └─► Paused → Continue
+         └─► Requested → Continue
                  │
                  ▼
-         Release all mutexes:
+         Release the mutexes (only if the pause was acknowledged):
                  │
                  ├─► fim_realtime_mutex
                  ├─► fim_scan_mutex
@@ -795,6 +825,9 @@ Check if FIM is paused
 
 ```
 Flush Command Received (fim_execute_flush)
+         │
+         ▼
+FIM stopping? ──► Return -1
          │
          ▼
 Check if Sync Enabled
@@ -839,8 +872,9 @@ Check if Sync Enabled
          Caller Polls Status (fim_execute_is_flush_completed)
                          │
                          ├─► Returns 1: In progress
-                         ├─► Returns 0: Success
-                         └─► Returns -1: Error
+                         ├─► Returns 0: Success (also when synchronization is disabled)
+                         ├─► Returns -1: Error
+                         └─► Returns -2: FIM is stopping (no result reported)
 ```
 
 ### Thread Safety
@@ -849,7 +883,7 @@ All coordination commands are thread-safe:
 
 - **Atomic operations** (`atomic_int_get`, `atomic_int_set`) ensure consistent flag reads/writes
 - **Mutexes** coordinate between command handlers and FIM threads
-- **Lock-free polling** allows non-blocking status checks
+- **Non-blocking polling**: status checks never wait; `fim_execute_is_pause_completed()` uses `pthread_mutex_trylock()` and returns 1 when a mutex is busy
 - **Idempotent operations** allow safe retries
 
 ---
@@ -869,33 +903,34 @@ FIM integrates with the [Schema Validator](../utils/schema-validator/README.md) 
 
 Schema validation occurs at two critical points in the FIM lifecycle:
 
-#### 1. During Event Processing (fim_process_event)
+#### 1. During Event Processing (the file and registry transaction callbacks)
 
 When file or registry changes are detected, validation occurs before sending to the sync protocol:
 
 ```c
-// Validate and handle stateful message
-validation_passed = fim_validate_and_handle_stateful(
+// Validate the stateful event and, if it passes, persist it
+validation_passed = validate_and_persist_fim_event(
     stateful_event,
-    fim_index,
-    context,
-    failed_list,
-    failed_item_data
+    file_path_sha1,
+    sync_operation,
+    FIM_FILES_SYNC_INDEX,
+    document_version,
+    item_desc,
+    mark_for_deletion,
+    txn_context->failed_paths,
+    path_copy,
+    sync_flag
 );
-
-if (validation_passed)
-{
-    // Send valid event to sync protocol
-    fim_send_sync(stateful_event, operation, index);
-}
 ```
+
+`validate_and_persist_fim_event()` validates only when synchronization is enabled and the schema validator is initialized. On success, and only if `sync_flag` is `1`, it calls `persist_syscheck_msg()`. A validation failure that is observed while FIM is shutting down is ignored (logged at debug level, nothing is persisted or deleted), because the validator's state may already be torn down.
 
 **Key characteristics:**
 - Validation before sync protocol transmission
 - Failed items are accumulated in `failed_list`
 - Item data is marked for deferred deletion
 
-#### 2. During Recovery (fim_recovery_process)
+#### 2. During Recovery (fim_recovery_persist_table_and_resync)
 
 When performing integrity recovery, only valid items are synchronized:
 
@@ -909,11 +944,13 @@ if (schema_validator_is_initialized())
         // Validation failed - log but don't persist
         if (errorMessage)
         {
-            mdebug2("Schema validation failed for FIM recovery message (index: %s). Error: %s",
-                   index, errorMessage);
-            mdebug2("Raw recovery event that failed validation: %s", stateful_event_str);
-            free(errorMessage);
+            merror("Schema validation failed for recovery event (table: %s, id: %s, index: %s). Errors: %s",
+                   table_name, id_str, index, errorMessage);
+            os_free(errorMessage);
         }
+
+        merror("Raw recovery event that failed validation: %s", stateful_event_str);
+        mdebug1("Skipping persistence of invalid recovery event for %s", id_str);
         validation_passed = false;
     }
 }
@@ -921,7 +958,7 @@ if (schema_validator_is_initialized())
 if (validation_passed)
 {
     // Persist for recovery (into the sync protocol's persistent queue, same as any other delta item)
-    asp_persist_diff(sync_handle, id, operation, index, data, version);
+    asp_persist_diff(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
 }
 ```
 

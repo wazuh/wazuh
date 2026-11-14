@@ -93,7 +93,7 @@ protected:
         m_store.reset();
     }
 
-    httplib::Request createValidRequest(const std::string& path, const std::string& hash = "abc123")
+    httpsrv::Request createValidRequest(const std::string& path, const std::string& hash = "abc123")
     {
         com::wazuh::api::engine::ioc::UpdateIoc_Request protoReq;
         protoReq.set_path(path);
@@ -104,11 +104,11 @@ protected:
     api::adapter::RouteHandler handler() { return syncIoc(m_kvdbManager, m_scheduler, m_store, m_dirs.root()); }
 
     // Runs the handler with a store that never matches the hash, so only the path check decides
-    httplib::Response postPath(const std::string& path)
+    httpsrv::Response postPath(const std::string& path)
     {
         EXPECT_CALL(*m_store, readDoc(_)).Times(0);
         EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(0);
-        httplib::Response response;
+        httpsrv::Response response;
         handler()(createValidRequest(path, "path_check_hash"), response);
         return response;
     }
@@ -143,11 +143,11 @@ TEST_F(SyncIocHandlerTest, EmptyPath_Returns400)
     protoReq.set_hash("somehash");
 
     auto request = api::adapter::createRequest(protoReq);
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr("Field /path cannot be empty"));
 }
 
@@ -161,11 +161,11 @@ TEST_F(SyncIocHandlerTest, EmptyHash_Returns400)
     protoReq.set_hash("");
 
     auto request = api::adapter::createRequest(protoReq);
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr("Field /hash cannot be empty"));
 }
 
@@ -177,7 +177,7 @@ TEST_F(SyncIocHandlerTest, PathNonexistent_Returns400_GenericMessage)
     const auto path = (m_dirs.root() / "missing.json").string();
     auto response = postPath(path);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR + m_dirs.root().string()));
     EXPECT_THAT(response.body, Not(HasSubstr(path)));
 }
@@ -190,8 +190,8 @@ TEST_F(SyncIocHandlerTest, PathOutsideRoot_Returns400_SameMessageAsNonexistent)
     auto existingResp = postPath(existing);
     auto missingResp = postPath(missing);
 
-    EXPECT_EQ(existingResp.status, httplib::StatusCode::BadRequest_400);
-    EXPECT_EQ(missingResp.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(existingResp.status, 400);
+    EXPECT_EQ(missingResp.status, 400);
     EXPECT_THAT(existingResp.body, HasSubstr(GENERIC_PATH_ERROR));
     EXPECT_EQ(existingResp.body, missingResp.body);
 }
@@ -203,7 +203,7 @@ TEST_F(SyncIocHandlerTest, PathTraversalOutOfRoot_Returns400)
 
     auto response = postPath(path);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -215,7 +215,7 @@ TEST_F(SyncIocHandlerTest, PathInSiblingDirSharingPrefix_Returns400)
 
     auto response = postPath(path);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -227,7 +227,7 @@ TEST_F(SyncIocHandlerTest, SymlinkInRootPointingOutside_Returns400)
 
     auto response = postPath(link.string());
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -235,7 +235,7 @@ TEST_F(SyncIocHandlerTest, RootItself_Returns400)
 {
     auto response = postPath(m_dirs.root().string());
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -246,7 +246,7 @@ TEST_F(SyncIocHandlerTest, DirectoryInRoot_Returns400)
 
     auto response = postPath(dir.string());
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -259,7 +259,7 @@ TEST_F(SyncIocHandlerTest, FifoInRoot_Returns400_WithoutBlocking)
     ASSERT_EQ(future.wait_for(std::chrono::seconds(5)), std::future_status::ready) << "handler blocked on the FIFO";
 
     auto response = future.get();
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -269,10 +269,10 @@ TEST_F(SyncIocHandlerTest, RootMissing_Returns400)
     auto missingRootHandler = syncIoc(m_kvdbManager, m_scheduler, m_store, m_dirs.base() / "no-such-root");
 
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(0);
-    httplib::Response response;
+    httpsrv::Response response;
     missingRootHandler(createValidRequest(path), response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
 }
 
@@ -289,10 +289,10 @@ TEST_F(SyncIocHandlerTest, SymlinkedRoot_RegularFileInside_Schedules)
     EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
-    httplib::Response response;
+    httpsrv::Response response;
     syncIoc(m_kvdbManager, m_scheduler, m_store, rootLink)(createValidRequest(viaLink, "new_hash"), response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
 }
 
 TEST_F(SyncIocHandlerTest, ResolveInputFile_ReturnsCanonicalPath)
@@ -315,11 +315,11 @@ TEST_F(SyncIocHandlerTest, StoreNotAvailable_Returns500)
     auto nullStoreHandler = syncIoc(m_kvdbManager, m_scheduler, nullptr, m_dirs.root());
 
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string());
-    httplib::Response response;
+    httpsrv::Response response;
 
     nullStoreHandler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(response.status, 500);
     EXPECT_THAT(response.body, HasSubstr("Store is not available"));
 }
 
@@ -338,11 +338,11 @@ TEST_F(SyncIocHandlerTest, HashMatches_Returns200_NoSync)
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(0);
 
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), hash);
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("IOC data is already up to date"));
 }
 
@@ -364,11 +364,11 @@ TEST_F(SyncIocHandlerTest, HashMismatch_SchedulesSync_Returns200)
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), newHash);
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
 }
 
@@ -386,11 +386,11 @@ TEST_F(SyncIocHandlerTest, DocumentDoesNotExist_CreatesAndProceeds)
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), "new_hash");
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
 }
 
 /*****************************************************************************
@@ -406,11 +406,11 @@ TEST_F(SyncIocHandlerTest, SchedulerNotAvailable_Returns500)
     // Create handler with nullptr scheduler
     auto nullSchedulerHandler = syncIoc(m_kvdbManager, nullptr, m_store, m_dirs.root());
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), "unique_new_hash_sna");
-    httplib::Response response;
+    httpsrv::Response response;
 
     nullSchedulerHandler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(response.status, 500);
     EXPECT_THAT(response.body, HasSubstr("Scheduler is not available"));
     EXPECT_FALSE(detail::g_syncInProgress.load()); // Semaphore released on the error path
 }
@@ -420,15 +420,14 @@ TEST_F(SyncIocHandlerTest, SchedulerNotAvailable_Returns500)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, InvalidRequestFormat_Returns400)
 {
-    httplib::Request request;
-    request.body = "invalid json {{{";
-    request.set_header("Content-Type", "text/plain");
+    const auto request =
+        httpsrv::Request::fromOwned(httpsrv::Method::POST, "/", "invalid json {{{", {{"Content-Type", "text/plain"}});
 
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr("Failed to parse protobuff json request"));
 }
 
@@ -444,12 +443,12 @@ TEST_F(SyncIocHandlerTest, GetIocState_StoreNotAvailable_ReturnsError)
     // Create handler with nullptr store (simulates expired weak_ptr)
     auto handler = getIocState(nullptr);
 
-    httplib::Request request;
-    httplib::Response response;
+    httpsrv::Request request;
+    httpsrv::Response response;
 
     handler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"ERROR\""));
     EXPECT_THAT(response.body, HasSubstr("Store is not available"));
 }
@@ -464,12 +463,12 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentDoesNotExist_ReturnsEmptyState)
 
     auto handler = getIocState(m_store);
 
-    httplib::Request request;
-    httplib::Response response;
+    httpsrv::Request request;
+    httpsrv::Response response;
 
     handler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr("\"hash\":\"\""));
     EXPECT_THAT(response.body, HasSubstr("\"updating\":false"));
@@ -492,12 +491,12 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentExists_ReturnsStoredState)
 
     auto handler = getIocState(m_store);
 
-    httplib::Request request;
-    httplib::Response response;
+    httpsrv::Request request;
+    httpsrv::Response response;
 
     handler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr(fmt::format("\"hash\":\"{}\"", testHash)));
     EXPECT_THAT(response.body, HasSubstr("\"updating\":false"));
@@ -520,12 +519,12 @@ TEST_F(SyncIocHandlerTest, GetIocState_SyncInProgress_ReturnsUpdatingTrue)
 
     auto handler = getIocState(m_store);
 
-    httplib::Request request;
-    httplib::Response response;
+    httpsrv::Request request;
+    httpsrv::Response response;
 
     handler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr("\"hash\":\"current_hash\""));
     EXPECT_THAT(response.body, HasSubstr("\"updating\":true"));
@@ -547,12 +546,12 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentWithError_ReturnsLastError)
 
     auto handler = getIocState(m_store);
 
-    httplib::Request request;
-    httplib::Response response;
+    httpsrv::Request request;
+    httpsrv::Response response;
 
     handler(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr("\"hash\":\"old_hash_123\""));
     EXPECT_THAT(response.body, HasSubstr("\"updating\":false"));
@@ -853,11 +852,11 @@ TEST_F(SyncIocHandlerTest, SyncInProgress_Returns400)
     detail::g_syncInProgress.store(true);
 
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), newHash);
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, 400);
     EXPECT_THAT(response.body, HasSubstr("IOC synchronization already in progress"));
 }
 
@@ -878,11 +877,11 @@ TEST_F(SyncIocHandlerTest, DocumentCreationFails_ContinuesWithEmptyHash)
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
     auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), newHash);
-    httplib::Response response;
+    httpsrv::Response response;
 
     handler()(request, response);
 
-    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(response.status, 200);
 }
 
 /*****************************************************************************

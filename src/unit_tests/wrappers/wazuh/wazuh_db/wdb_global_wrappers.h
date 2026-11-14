@@ -57,8 +57,6 @@ cJSON* __wrap_wdb_global_get_group_agents(wdb_t* wdb, wdbc_result* status, char*
 
 int __wrap_wdb_global_delete_agent_belong(wdb_t* wdb, int id);
 
-cJSON* __wrap_wdb_global_find_agent(wdb_t* wdb, const char* name, const char* ip);
-
 cJSON* __wrap_wdb_global_find_group(wdb_t* wdb, char* group_name);
 
 int __wrap_wdb_global_insert_agent_group(wdb_t* wdb, char* group_name);
@@ -86,7 +84,6 @@ int __wrap_wdb_global_get_all_agents_context(wdb_t* wdb);
 
 cJSON* __wrap_wdb_global_get_agent_info(wdb_t* wdb, int id);
 
-int __wrap_wdb_global_reset_agents_connection(wdb_t* wdb, const char* sync_status);
 
 cJSON* __wrap_wdb_global_get_agents_by_connection_status(wdb_t* wdb,
                                                          int last_agent_id,
@@ -100,8 +97,6 @@ wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_
                                                     bool get_hash,
                                                     int agent_registration_delta,
                                                     cJSON** output);
-
-cJSON* __wrap_wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash);
 
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(
     wdb_t* wdb, int last_agent_id, int keep_alive, const char* sync_status, wdbc_result* status);

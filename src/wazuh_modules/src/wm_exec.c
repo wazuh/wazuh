@@ -664,6 +664,12 @@ int wm_exec_env(char *command, char **output, int *exitcode, int secs, const cha
             pid_t reaped = waitpid(pid, &status, WNOHANG);
 
             if (reaped == 0 && secs) {
+                // A command just stopped by the timeout closes its output before it can be reaped
+                if (retval == WM_ERROR_TIMEOUT) {
+                    gettime(&timeout);
+                    timeout.tv_sec += 1;
+                }
+
                 if (reaped = wm_exec_wait_child(pid, &status, &timeout), reaped == 0) {
                     retval = WM_ERROR_TIMEOUT;
                     reaped = wm_exec_stop_command(pid, &status);

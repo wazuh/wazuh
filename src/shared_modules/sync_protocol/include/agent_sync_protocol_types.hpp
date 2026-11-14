@@ -22,12 +22,12 @@ enum class SyncResult
     SUCCESS,             ///< Operation completed successfully
     COMMUNICATION_ERROR, ///< Failed to communicate with the manager
     CHECKSUM_ERROR,      ///< Checksum validation failed
-    START_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the Start message
-    END_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the End message
+    START_TIMEOUT_ERROR,       ///< Not produced: kept from the Start/End exchange, which no longer exists
+    END_TIMEOUT_ERROR,       ///< No HTTP result arrived for the session within SESSION_RESPONSE_TIMEOUT
     PROTOCOL_ERROR,       ///< Manager sent an unexpected or invalid response
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
     PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
-    ///< budget (HTTP 413); the session must be split and resent smaller.
+    ///< budget (HTTP 413); not split, retried on the next cycle.
     FEED_NOT_READY,      ///< Manager's vulnerability feed is not loaded yet (HTTP 503 "vulnerability
     ///< feed not ready"); the session is resent on the next cycle.
 };
@@ -116,6 +116,15 @@ struct SyncModuleResult
     ///
     /// Not part of the C interface's SyncModuleResult_t: its modules never send those sessions.
     bool feedNotReady{false};
+
+    /// @brief True when the cycle stopped because it sent its per-cycle block limit
+    /// (agent.sync_max_blocks_per_cycle), not because the queue ran dry.
+    ///
+    /// Lets a module say that entries are still queued for a later cycle instead of implying the
+    /// manager has everything. It is not an exact count: a queue that empties with the very last
+    /// block allowed still sets it. The VD options fetch with no byte budget, so their first
+    /// block carries the whole queue and never reaches the limit.
+    bool reachedBlockLimit{false};
 };
 
 /// @brief Outcome of a module integrity check (IAgentSyncProtocol::requiresFullSync()).

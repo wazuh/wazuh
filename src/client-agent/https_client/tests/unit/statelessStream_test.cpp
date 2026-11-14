@@ -819,6 +819,32 @@ TEST_F(StatelessStreamTest, SuccessAfterUnescalatedAuthFailuresResetsTheBackoff)
     EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, stream.tick(m_waiter, true));
 }
 
+TEST_F(StatelessStreamTest, UnknownAgentIsRetriedWithTheBatchKeptBeforeTheGateLatches)
+{
+    // The batch stays put through the retries and goes out once the credential is accepted
+    // again, with no pause.
+    const std::string unknownAgent = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
+    auto refused = response(TransportStatus::Ok, 401);
+    refused.body = unknownAgent;
+    m_waiter.script({true, true});
+    m_waiter.bindClock(m_clock);
+    m_stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10);
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(refused))
+    .WillOnce(Return(refused))
+    .WillOnce(Return(refused))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    m_stream.tick(m_waiter, true);
+
+    EXPECT_FALSE(m_authGate.paused());
+    EXPECT_EQ(2u, m_waiter.requestedDelays().size());
+
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    m_stream.tick(m_waiter, true); // Accepted: nothing left to resend.
+}
+
 TEST_F(StatelessStreamTest, DrainUsesASingleAttemptWithinTheDrainWindow)
 {
     // The drain runs on the stop path with a waiter that is never stopped, so

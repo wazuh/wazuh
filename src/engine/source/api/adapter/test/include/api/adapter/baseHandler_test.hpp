@@ -11,8 +11,8 @@
 
 namespace api::test
 {
-using ReqGetter = std::function<httplib::Request()>;
-using ResGetter = std::function<httplib::Response()>;
+using ReqGetter = std::function<httpsrv::Request()>;
+using ResGetter = std::function<httpsrv::Response()>;
 template<typename IHandler>
 using HandlerGetter = std::function<adapter::RouteHandler(const std::shared_ptr<IHandler>&)>;
 template<typename MockHandler>
@@ -52,7 +52,7 @@ void handlerTest(ReqGetter& reqGetter,
     ASSERT_NO_THROW(routeHandler = handlerGetter(handler));
 
     mocker(*mockHandler);
-    httplib::Response response;
+    httpsrv::Response response;
     ASSERT_NO_THROW(routeHandler(request, response));
 
     EXPECT_EQ(response.status, expectedResponse.status);
@@ -61,7 +61,7 @@ void handlerTest(ReqGetter& reqGetter,
     // Expired handler test
     handler.reset();
     mockHandler.reset();
-    httplib::Response expiredResponse;
+    httpsrv::Response expiredResponse;
     ASSERT_NO_THROW(routeHandler(request, expiredResponse));
     auto expectedExpiredResponse =
         adapter::internalErrorResponse<adapter::eEngine::GenericStatus_Response>("Error: Handler is not initialized");

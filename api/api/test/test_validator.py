@@ -158,6 +158,10 @@ def test_is_safe_path():
     assert not is_safe_path("/api/configuration/api.yaml", basedir="non-existent", relative=False)
     assert not is_safe_path("/..")
     assert not is_safe_path("\\..")
+    # A NUL byte is refused, never raised from os.path.realpath() (a 500 instead of a 400).
+    assert not is_safe_path("\0")
+    assert not is_safe_path("a\0.wpk", relative=False)
+    assert not is_safe_path("/var/a\0.wpk", relative=False)
 
 
 @pytest.mark.parametrize("value", [None, 123, ["1"], {"id": "1"}])
@@ -222,6 +226,13 @@ def test_validation_json_ok(value, format):
         ("2147483648", "agent_id"),
         ("4294967296", "agent_id"),
         ("!/var/wazuh/test", "path"),
+        # NUL bytes: wpk_repo and upgrade_custom's file_path
+        ("\0", "path"),
+        ("a\0b", "path"),
+        ("packages.wazuh.com\0", "path"),
+        ("\0", "wpk_path"),
+        ("a\0.wpk", "wpk_path"),
+        ("/var/a\0.wpk", "wpk_path"),
         ("test,.&", "search"),
         ("+field&", "sort"),
         ("-field;+field.subfield", "sort"),

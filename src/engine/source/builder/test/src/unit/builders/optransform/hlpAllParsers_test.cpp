@@ -118,7 +118,7 @@ INSTANTIATE_TEST_SUITE_P(
                              makeValue(R"("field1")"),
                              makeValue(R"("field2")"),
                              makeValue(R"("field3")")}},
-        HlpParserTestParam {"parse_key_value",
+        HlpParserTestParam {"parse_kv",
                             keyValueParseBuilder,
                             R"({"source": "key1=val1 key2=val2"})",
                             {makeValue(R"("=")"), makeValue(R"(" ")"), makeValue(R"("\"")"), makeValue(R"("\\")")}},
@@ -128,11 +128,7 @@ INSTANTIATE_TEST_SUITE_P(
                             R"({"source": "[content]"})",
                             {makeValue(R"("[")"), makeValue(R"("]")")}},
         HlpParserTestParam {"parse_alphanumeric", alphanumericParseBuilder, R"({"source": "abc123"})", {}},
-        HlpParserTestParam {"parse_user_agent",
-                            userAgentParseBuilder,
-                            R"({"source": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})",
-                            {}},
-        HlpParserTestParam {"parse_file_path", filePathParseBuilder, R"({"source": "/usr/local/bin/test"})", {}}),
+        HlpParserTestParam {"parse_file", filePathParseBuilder, R"({"source": "/usr/local/bin/test"})", {}}),
     [](const testing::TestParamInfo<HlpParserTestParam>& info) { return info.param.name; });
 
 // =============================================================================
@@ -382,7 +378,7 @@ TEST_F(HlpAliasingTest, DateParserTargetEqualsSourceWithShortValue)
 // Section 5: nesting depth limit of the parsers that build a structure
 // =============================================================================
 //
-// parse_json, parse_xml and parse_key_value build a JSON structure from the
+// parse_json, parse_xml and parse_kv build a JSON structure from the
 // source text, and json::Json::MAX_DEPTH bounds how deep it can nest. A source
 // one level over the limit fails with a test-mode trace that names the limit
 // and leaves the event untouched; a source exactly at the limit is mapped.

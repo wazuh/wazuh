@@ -74,6 +74,26 @@ def test_a_whole_fleet_costs_one_fetch_and_one_download(upgrade_module, wpk_repo
     assert wpk_repository.count(f'{DEB_DIR}{DEB_WPK}') == 1
 
 
+def test_both_repository_requests_carry_the_manager_user_agent(upgrade_module, wpk_repository):
+    """A CDN whose WAF runs the AWS core rule set answers a request with no User-Agent with 403.
+
+    libcurl sends no header at all unless one is set, so this is checked on the wire rather than
+    on the option: the `versions` fetch and the WPK download each have their own call site.
+    """
+    upgrade_module.script_agents({1: UBUNTU})
+    wpk_repository.publish_wpk(DEB_DIR, 'v5.0.0', DEB_WPK, WPK_BODY)
+    upgrade_module.start()
+
+    with upgrade_module.client() as client:
+        response = client.upgrade([1])
+
+    assert response.status_code == 200
+    assert client.agent_errors(response) == [0]
+
+    assert wpk_repository.user_agents(f'{DEB_DIR}versions') == ['wazuh-manager/5.0.0']
+    assert wpk_repository.user_agents(f'{DEB_DIR}{DEB_WPK}') == ['wazuh-manager/5.0.0']
+
+
 def test_a_mixed_fleet_costs_one_of_each_per_platform(upgrade_module, wpk_repository):
     rows = {}
     rows.update({n: UBUNTU for n in range(1, 21)})

@@ -297,6 +297,76 @@ TEST_F(SessionProcessorTest, DocumentsNestedPastTheLimitAreSkippedBeforeParsing)
     EXPECT_EQ("test-cluster_001_doc-deepest", std::get<1>(ops[0]));
 }
 
+/**
+ * The overlay binds the nested identity only. A dotted member name is a different key to nlohmann, so
+ * it survives the merge, and the indexer expands it into a second value of the field the overlay just
+ * bound. Documents whose dotted names reach wazuh.* are skipped; dotted names elsewhere and dots in
+ * VALUES cannot reach it, and those documents are staged.
+ */
+TEST_F(SessionProcessorTest, DocumentsWithDottedNamesReachingWazuhAreSkipped)
+{
+    const std::vector<std::string> dotted {
+        R"({"package":{"name":"vim"},"wazuh.agent.id":"002"})",
+        R"({"package":{"name":"vim"},"wazuh":{"agent.id":"002"}})",
+        R"({"package":{"name":"vim"},"wazuh.agent":{"id":"002"}})",
+        R"({"package":{"name":"vim"},"wazuh.cluster.name":"other"})",
+        R"({"package":{"name":"vim"},"wazuh":{"agent":{"host":{"x.y":1}}}})",
+        "{\"package\":{\"name\":\"vim\"},\"wazuh\\u002eagent\\u002eid\":\"002\"}",
+    };
+    std::vector<ValueSpec> values;
+    for (std::size_t i = 0; i < dotted.size(); ++i)
+    {
+        ValueSpec value;
+        value.id = "doc-dotted-" + std::to_string(i);
+        value.data = dotted[i];
+        values.push_back(value);
+    }
+    ValueSpec dotsInValues;
+    dotsInValues.id = "doc-good";
+    dotsInValues.data = R"({"package":{"name":"libc6","version":"2.35-0ubuntu3.1"},"file":{"path":"/etc/a.conf"}})";
+    values.push_back(dotsInValues);
+    ValueSpec dottedOutsideWazuh;
+    dottedOutsideWazuh.id = "doc-dotted-outside";
+    // "wazuh\u0000x" is a 7-character root name, not `wazuh`: compared by length, it is not walked.
+    dottedOutsideWazuh.data =
+        "{\"package\":{\"name\":\"vim\",\"x.y\":1,\"list\":[{\"a.b\":1}]},\"wazuh\\u0000x\":{\"c.d\":1}}";
+    values.push_back(dottedOutsideWazuh);
+
+    const auto prepared = prepare(invsync::test::buildSyncDataSession(SessionSpec {}, values));
+    const auto outcome = processor.stageBulk(prepared.session, connector);
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(2U, ops.size()) << "only the documents whose dotted names cannot reach wazuh.* may reach the bulk";
+    EXPECT_EQ("test-cluster_001_doc-good", std::get<1>(ops[0]));
+    EXPECT_EQ("test-cluster_001_doc-dotted-outside", std::get<1>(ops[1]));
+    for (const auto& op : ops)
+    {
+        const auto document = nlohmann::json::parse(std::get<3>(op));
+        EXPECT_EQ("001", document["wazuh"]["agent"]["id"]) << std::get<1>(op);
+    }
+    // The allowed dotted names reach the bulk exactly as the agent sent them.
+    const auto outside = nlohmann::json::parse(std::get<3>(ops[1]));
+    EXPECT_EQ(1, outside["package"]["x.y"]);
+    EXPECT_EQ(1, outside["package"]["list"][0]["a.b"]);
+    EXPECT_EQ(1, outside[std::string("wazuh\0x", 7)]["c.d"]);
+}
+
+TEST_F(SessionProcessorTest, ASessionOfOnlyDottedDocumentsIsANoOp)
+{
+    ValueSpec forged;
+    forged.id = "doc-forged";
+    forged.data = R"({"package":{"name":"vim"},"wazuh.agent.id":"002"})";
+
+    const auto prepared = prepare(invsync::test::buildSyncDataSession(SessionSpec {}, {forged}));
+    const auto outcome = processor.stageBulk(prepared.session, connector);
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_FALSE(outcome.staged);
+    EXPECT_TRUE(events->syncOps().empty());
+}
+
 TEST_F(SessionProcessorTest, AnOutOfEnumOperationIs400WithNothingStaged)
 {
     ValueSpec good;

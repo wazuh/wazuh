@@ -1022,19 +1022,17 @@ def test_failed_test_get_timeframe_in_seconds(time):
     ({'operator': '=', 'value': '{"a": 1}', 'field': 'description'},
      {'operator': '=', 'value': '{"a":1}', 'field': 'description'}),
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
-def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
+def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db,
                                              query_filter, expected_query_filter):
     """Test WazuhDBQuery._clean_filter function: a quote never changes the operator nor the value."""
     query = utils.WazuhDBQuery(offset=0, limit=500, table='agent', sort=None,
                                search=None, select=None, filters=None,
                                fields={'1': None, '2': None},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._clean_filter(query_filter)
@@ -1046,19 +1044,17 @@ def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, moc
     (0, True, 1406),
     (100, True, 1405),
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
-def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
+def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_conn_db,
                                                    limit, error, expected_exception):
     """Test WazuhDBQuery._add_limit_to_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=limit, table='agent', sort=None,
                                search=None, select=None, filters=None,
                                fields={'1': None, '2': None},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     if error:
@@ -1070,18 +1066,16 @@ def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_conn_d
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db):
     """Tests WazuhDBQuery._sort_query function works"""
 
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent',
                                sort={'order': 'asc'}, search=None, select=None,
                                filters=None, fields={'1': None, '2': None},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1), count=5,
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5,
                                get_data=None)
 
     assert isinstance(query._sort_query('1'), str)
@@ -1096,11 +1090,9 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_
     ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None),
     ({'order': 'asc', 'fields': ['internal_key']}, 1403)
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
+def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db,
                                                   sort, expected_exception):
     """Test WazuhDBQuery._add_sort_to_query function."""
     fields = {'1': 'one', '2': 'two', '3': 'three', '4': 'four'}
@@ -1109,7 +1101,7 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db
                                fields=fields,
                                extra_fields={'internal_key'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     if expected_exception:
@@ -1127,36 +1119,30 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_conn_db
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_db, mock_glob,
-                                                    mock_exists):
+def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_db):
     """Test WazuhDBQuery._add_search_to_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search={"negation": True, "value": "1"}, select=None,
                                filters=None, fields={'1': 'one', '2': 'two'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._add_search_to_query()
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_socket_conn, mock_conn_db, mock_glob,
-                                                                       mock_exists):
+def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_socket_conn, mock_conn_db):
     """Test WazuhDBQuery._add_search_to_query function does not search on extra fields."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search={"negation": False, "value": "1"}, select=None,
                                filters=None, fields={'1': 'one', '2': 'two', 'secret': 'secret_col'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None, extra_fields={'secret'})
 
     query._add_search_to_query()
@@ -1172,18 +1158,15 @@ def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_sock
     ('c:\\temp', '%c:\\\\temp%'),
     ("it's", "%it's%"),
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_search_to_query_matches_literally(mock_socket_conn, mock_conn_db, mock_glob,
-                                                                      mock_exists, value, expected):
+def test_WazuhDBQuery_protected_add_search_to_query_matches_literally(mock_socket_conn, mock_conn_db, value, expected):
     """search escapes the LIKE wildcards and declares the escape character, so '%' and '_' match themselves."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search={"negation": False, "value": value}, select=None,
                                filters=None, fields={'1': 'one'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._add_search_to_query()
@@ -1203,18 +1186,16 @@ def test_WazuhDBQuery_protected_add_search_to_query_matches_literally(mock_socke
     (['1'], False, None),
     (['bad_field'], True, 1724)
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch('glob.glob', return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn, mock_glob, mock_conn_db, mock_exists,
+def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn, mock_conn_db,
                                                     selector_fields, error, expected_exception):
     """Test WazuhDBQuery._parse_select_filter function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None, filters=None,
                                fields={'1': None, '2': None},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     if error:
@@ -1228,19 +1209,16 @@ def test_WazuhDBQuery_protected_parse_select_filter(mock_socket_conn, mock_glob,
         mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._parse_select_filter')
-def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn, mock_conn_db, mock_glob,
-                                                    mock_exists):
+def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn, mock_conn_db):
     """Test WazuhDBQuery._add_select_to_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent',
                                sort={'order': 'asc'}, search=None, select=None,
                                filters=None, fields={'1': None, '2': None},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._add_select_to_query()
@@ -1328,16 +1306,15 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
       {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
       {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exists, q, expected_query_filters):
+def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, q, expected_query_filters):
     """Test WazuhDBQuery._parse_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None, filters=None,
                                fields={query_filter['field'].replace('$0', ''): None
                                        for query_filter in expected_query_filters},
                                default_sort_field=None, query=q,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
     query._parse_query()
     query_filters = query.query_filters
@@ -1357,11 +1334,9 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
     ('os.name=!ubuntu', True, 1409),
     ('internal_key=test', True, 1408)
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
+def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db,
                                             q, error, expected_exception):
     """Test WazuhDBQuery._parse_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
@@ -1369,7 +1344,7 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock
                                fields={'os.name': None, 'os.version': None, 'internal_key': None},
                                extra_fields={'internal_key'},
                                default_sort_field=None, query=q,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     if error:
@@ -1386,18 +1361,15 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_conn_db, mock
     {'os.name': 'ubuntu,windows'},
     {'name': 'value1,value2'}
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_conn_db, mock_glob,
-                                                     mock_exists, filter_):
+def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_conn_db, filter_):
     """Test WazuhDBQuery._parse_legacy_filters function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None, filters=filter_,
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._parse_legacy_filters()
@@ -1409,20 +1381,17 @@ def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_conn
     ({'os.name': 'ubuntu,windows'}, 'os.name=ubuntu'),
     ({'name': 'value1,value2'}, 'os.version>12e')
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._parse_legacy_filters')
 @patch('wazuh.core.utils.WazuhDBQuery._parse_query')
-def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, mock_conn_db, mock_glob,
-                                    mock_exists, filter, q):
+def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, mock_conn_db, filter, q):
     """Test WazuhDBQuery._parse_filters function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search={"negation": True, "value": "1"}, select=None,
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=q,
-                               backend=utils.WazuhDBBackend(agent_id=0),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._parse_legacy_filters()
@@ -1440,20 +1409,17 @@ def test_WazuhDBQuery_parse_filters(mock_query, mock_filter, mock_socket_conn, m
     ('os.name', None, {'value': None, 'operator': 'LIKE', 'field': 'status$0'}),
     ('os.name', 'field', {'value': '2019-07-16 09:21:56', 'operator': 'LIKE', 'field': 'status$0'})
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._filter_status')
 @patch('wazuh.core.utils.WazuhDBQuery._filter_date')
-def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_socket_conn, mock_conn_db,
-                                               mock_glob, mock_exists, field_name, field_filter, q_filter):
+def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_socket_conn, mock_conn_db, field_name, field_filter, q_filter):
     """Tests WazuhDBQuery._process_filter."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None,
                                fields={'os.name': 'ubuntu', 'os.version': '18.04', 'status': 'active'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0), count=5,
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5,
                                get_data=None, date_fields=['date1', 'date2'])
 
     query._process_filter(field_name, field_filter, q_filter)
@@ -1463,19 +1429,17 @@ def test_WazuhDBQuery_protected_process_filter(mock_date, mock_status, mock_sock
         mock_date.assert_any_call(q_filter, field_name)
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._process_filter')
 def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_conn,
-                                                     mock_conn_db, mock_glob, mock_exists):
+                                                     mock_conn_db):
     """Test WazuhDBQuery._add_filters_to_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=['os.name'],
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query='os.name=ubuntu',
-                               backend=utils.WazuhDBBackend(agent_id=0), distinct=True,
+                               backend=utils.WazuhDBBackend(query_format='global'), distinct=True,
                                count=5, get_data=None, filters={'os.name': 'ubuntu'},
                                date_fields=['date1', 'date2'])
 
@@ -1544,13 +1508,12 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
     ),
 ])
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch('wazuh.core.utils.path.exists', return_value=True)
-def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, mock_file_exists,
+def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_file_exists,
                                                                  filters, expected_query):
     """Test WazuhDBQuery._add_filters_to_query final query."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
                                fields={'id': 'id', 'status': 'status', 'group': 'group'},
-                               default_sort_field=None, query='', backend=utils.WazuhDBBackend(agent_id=0),
+                               default_sort_field=None, query='', backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query.query_filters = filters
@@ -1604,13 +1567,12 @@ def test_validate_query(q, valid):
     ({'status': 'active'}, '', "(status = :status$0 COLLATE NOCASE)"),
 ])
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch('wazuh.core.utils.path.exists', return_value=True)
-def test_WazuhDBQuery_protected_add_filters_to_query_groups_q(mock_conn_db, mock_file_exists,
+def test_WazuhDBQuery_protected_add_filters_to_query_groups_q(mock_file_exists,
                                                               filters, q, expected_where):
     """Test that the q filters are rendered as one balanced group ANDed with the legacy filters."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
                                fields={'id': 'id', 'status': 'status'}, filters=filters,
-                               default_sort_field=None, query=q, backend=utils.WazuhDBBackend(agent_id=0),
+                               default_sort_field=None, query=q, backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None)
 
     query._add_filters_to_query()
@@ -1620,17 +1582,15 @@ def test_WazuhDBQuery_protected_add_filters_to_query_groups_q(mock_conn_db, mock
     assert where.count('(') == where.count(')')
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db):
     """Test WazuhDBQuery._get_total_items function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None,
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0), count=5,
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5,
                                get_data=None, date_fields=['date1', 'date2'])
 
     query._add_select_to_query()
@@ -1639,17 +1599,14 @@ def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db, 
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_conn_db, mock_glob,
-                                                      mock_exists):
+def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_conn_db):
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None,
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0, query_format='mitre'), count=5,
+                               backend=utils.WazuhDBBackend(query_format='mitre'), count=5,
                                get_data=None, date_fields=['date1', 'date2'])
 
     query._add_select_to_query()
@@ -1658,17 +1615,15 @@ def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_con
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQuery._get_total_items function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None,
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0), count=5,
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5,
                                get_data=None, date_fields=['date1', 'date2'])
     query.request = {'testing': 'testing'}
 
@@ -1678,13 +1633,11 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glo
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db):
     """Strings are quoted, ints and floats are not, whether scalar or inside a list."""
-    backend = utils.WazuhDBBackend(agent_id=0)
+    backend = utils.WazuhDBBackend(query_format='global')
     assert backend._substitute_params("a = :a AND b = :b", {'a': 'hello', 'b': 5}) == "a = 'hello' AND b = 5"
     assert backend._substitute_params("id IN (:ids)", {'ids': ['001', '002', 'abc']}) == "id IN ('001','002','abc')"
     assert backend._substitute_params("name IN (:names)", {'names': ['007']}) == "name IN ('007')"
@@ -1695,54 +1648,45 @@ def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db, m
         backend._substitute_params("x = :x", {'x': object()})
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_substitute_params_prefix_collision(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_substitute_params_prefix_collision(mock_socket_conn, mock_conn_db):
     """A placeholder that is a prefix of another is not matched partially."""
-    backend = utils.WazuhDBBackend(agent_id=0)
+    backend = utils.WazuhDBBackend(query_format='global')
     result = backend._substitute_params("name LIKE :search OR id LIKE :search_id",
                                         {'search': '%foo%', 'search_id': 'foo'})
     assert result == "name LIKE '%foo%' OR id LIKE 'foo'"
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_substitute_params_single_pass(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_substitute_params_single_pass(mock_socket_conn, mock_conn_db):
     """A value equal to another placeholder name is not substituted a second time."""
-    backend = utils.WazuhDBBackend(agent_id=0)
+    backend = utils.WazuhDBBackend(query_format='global')
     # A key with '$' (as the query builder produces) whose value looks like the ':b' placeholder.
     result = backend._substitute_params("x = :a$0 AND y = :b", {'a$0': ':b', 'b': 'value_b'})
     # ':a$0' resolves to the literal ':b'; the replacement text is not scanned again for :b.
     assert result == "x = ':b' AND y = 'value_b'"
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_substitute_params_quote_escaping(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_substitute_params_quote_escaping(mock_socket_conn, mock_conn_db):
     """Single quotes in a value are escaped by doubling so a value cannot terminate its literal."""
-    backend = utils.WazuhDBBackend(agent_id=0)
+    backend = utils.WazuhDBBackend(query_format='global')
     assert backend._substitute_params("name = :n", {'n': "O'Brien"}) == "name = 'O''Brien'"
     assert backend._substitute_params("name = :n", {'n': "a'b'c"}) == "name = 'a''b''c'"
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mock_conn_db, mock_glob,
-                                                            mock_exists):
+def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQuery._format_data_into_dictionary."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': set(['os.name'])},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0), count=5,
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5,
                                get_data=None, min_select_fields=set(['os.version']))
 
     query._data = []
@@ -1752,17 +1696,15 @@ def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mo
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQuery._filter_status function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': set(['os.name'])},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data=None,
                                min_select_fields=set(['os.version']))
 
@@ -1777,18 +1719,16 @@ def test_WazuhDBQuery_protected_filter_status(mock_socket_conn, mock_conn_db, mo
     ({'value': '2019-08-13', 'operator': '<', 'field': 'time'}, 'os.name', 10, False),
     ({'value': 'bad_value'}, 'os.name', 10, True)
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
+def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_conn_db,
                                             date_filter, filter_db_name, time, error):
     """Test utils.WazuhDBQuery._filter_date function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': set(['os.name'])},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0), count=5,
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5,
                                get_data=None)
 
     query.request = {'time': None}
@@ -1925,18 +1865,16 @@ def test_WazuhDBQuery_oversized_run_unsupported(mock_socket_conn):
         query.oversized_run()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._default_query')
-def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQuery.reset function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'os.name'},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data='data')
 
     query.reset()
@@ -1945,17 +1883,15 @@ def test_WazuhDBQuery_reset(mock_query, mock_socket_conn, mock_conn_db, mock_glo
     mock_query.assert_called_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQuery._default_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': set(['os.name'])},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None, count=5,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                get_data='data')
 
     result = query._default_query()
@@ -1964,18 +1900,15 @@ def test_WazuhDBQuery_protected_default_query(mock_socket_conn, mock_conn_db, mo
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_conn_db, mock_glob,
-                                                    mock_exists):
+def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQuery._default_count_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': set(['os.name'])},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data='data')
 
     result = query._default_count_query()
@@ -1988,18 +1921,16 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_conn_
     'all',
     'other_filter'
 ])
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
+def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_conn_db,
                                             value):
     """Test utils.WazuhDBQuery._pass_filter function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': {'os.name'}},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=1),
+                               backend=utils.WazuhDBBackend(query_format='global'),
                                count=5, get_data='data')
 
     result = query._pass_filter('os.name', value)
@@ -2008,31 +1939,26 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_conn_db, mock
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_conn_db):
     """Tests utils.WazuhDBQueryGroupBy.__init__ function works"""
     utils.WazuhDBQueryGroupBy(filter_fields=None, offset=0, limit=1, table='agent',
                               sort=None, search=None, select={'fields': ['name']},
                               filters=None, fields={'name': '`group`'},
                               default_sort_field=None, default_sort_order='ASC',
                               query=None, min_select_fields=None, count=True,
-                              backend=utils.WazuhDBBackend(agent_id=0), get_data=None,
+                              backend=utils.WazuhDBBackend(query_format='global'), get_data=None,
                               date_fields={'lastKeepAlive', 'dateAdd'},
                               extra_fields={'internal_key'})
 
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._get_total_items')
-def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_conn, mock_conn_db,
-                                                       mock_glob, mock_exists):
+def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_conn, mock_conn_db):
     """Test utils.WazuhDBQueryGroupBy._get_total_items function."""
     query = utils.WazuhDBQueryGroupBy(filter_fields={'fields': ['name']}, offset=0,
                                       limit=1, table='agent', sort=None, search=None,
@@ -2041,7 +1967,7 @@ def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_c
                                       default_sort_field=None, get_data=None,
                                       default_sort_order='ASC',
                                       min_select_fields=None, count=True,
-                                      backend=utils.WazuhDBBackend(agent_id=0),
+                                      backend=utils.WazuhDBBackend(query_format='global'),
                                       date_fields={'lastKeepAlive', 'dateAdd'},
                                       extra_fields={'internal_key'})
 
@@ -2049,14 +1975,12 @@ def test_WazuhDBQueryGroupBy_protected_get_total_items(mock_total, mock_socket_c
     mock_conn_db.assert_called_once_with()
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.WazuhDBQuery._add_select_to_query')
 @patch('wazuh.core.utils.WazuhDBQuery._parse_select_filter')
 def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add, mock_socket_conn,
-                                                           mock_conn_db, mock_glob, mock_exists):
+                                                           mock_conn_db):
     """Test utils.WazuhDBQueryGroupBy._add_select_to_query function."""
     query = utils.WazuhDBQueryGroupBy(filter_fields={'fields': ['name']}, offset=0,
                                       limit=1, table='agent', sort=None, search=None,
@@ -2066,7 +1990,7 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
                                       default_sort_order='ASC',
                                       min_select_fields=None,
                                       count=True, get_data=None,
-                                      backend=utils.WazuhDBBackend(agent_id=0),
+                                      backend=utils.WazuhDBBackend(query_format='global'),
                                       date_fields={'lastKeepAlive', 'dateAdd'},
                                       extra_fields={'internal_key'})
 
@@ -2498,13 +2422,12 @@ def test_escape_like_matches_literally_in_sqlite(value, stored, matches):
     assert [row[0] for row in rows] == matches
 
 
-@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-def test_WazuhDBQuery_protected_process_filter_like_escapes_wildcards(mock_conn_db, mock_exists):
+def test_WazuhDBQuery_protected_process_filter_like_escapes_wildcards(mock_conn_db):
     """'~' renders a LIKE with an ESCAPE clause and an escaped value, so '%' and '_' are literal."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
                                fields={'name': 'name'}, default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0), count=5, get_data=None)
+                               backend=utils.WazuhDBBackend(query_format='global'), count=5, get_data=None)
     query.query = ''
 
     query._process_filter('name', 'name$0', {'value': '50%_off', 'operator': 'LIKE', 'field': 'name$0'})

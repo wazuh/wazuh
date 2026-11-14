@@ -1,0 +1,46 @@
+# Name of the helper function
+name: discard_event
+
+metadata:
+  description: |
+    Marks the event as discarded by setting `wazuh.space.event_discarded` to `true`.
+
+    Behavior:
+    - The target field must be exactly `wazuh.space.event_discarded`; the helper takes no arguments.
+    - The policy option `index_discarded_events` is read when the asset is built and decides what happens:
+      - `false`: only the flag is set and every other field is kept. In pre-enrichment the discarded-events
+        filter drops the event and counts it in `space.<space>.events.discarded`: it is not enriched and
+        reaches no output.
+      - `true`: the whole event is erased first and then the flag is set, so the event becomes
+        `{"wazuh": {"space": {"event_discarded": true}}}`. It is neither dropped nor counted: it goes through
+        enrichment and the outputs, carrying the flag plus whatever later operations and enrichment add.
+    - The helper itself always succeeds and does not stop processing: the operations after it in the same
+      asset and the rest of the decoding still run, and a later operation may overwrite the flag.
+
+    Build errors:
+    - The target field is not `wazuh.space.event_discarded`.
+    - Any argument is given.
+
+    Notes:
+    - The drop happens in pre-enrichment, not where the helper runs; use it in a map block once the discard
+      condition is met.
+    - The policy value is captured at build time: changing `index_discarded_events` needs a rebuild of the
+      policy.
+  group: event
+  fails_when: []
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# The only target the helper accepts; the harness cannot read it back, so the test checks the result only
+target_field:
+  type: boolean
+  generate: boolean
+  path: wazuh.space.event_discarded
+
+test:
+  - target_field: false
+    should_pass: true
+    description: Sets the discard flag of the event to true and succeeds

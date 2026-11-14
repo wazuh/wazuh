@@ -74,7 +74,8 @@ if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
-local_internal_options.update({AGENTD_TIMEOUT: '5'})
+# The simulator always answers unknown_agent; a 1 s retry window keeps re-enrollment prompt.
+local_internal_options.update({AGENTD_TIMEOUT: '5', 'agent.https_unknown_agent_retry': '1000'})
 
 daemons_handler_configuration = {'all_daemons': True}
 

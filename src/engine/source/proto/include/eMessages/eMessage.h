@@ -2,6 +2,8 @@
 #ifndef _PROTO_EMESSAGE_EMESSAGE_HPP
 #define _PROTO_EMESSAGE_EMESSAGE_HPP
 
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include <variant>
 
@@ -21,7 +23,7 @@ namespace eMessage
  * @return A variant object with either an error message or the parsed message.
  */
 template<typename T>
-std::variant<base::Error, T> eMessageFromJson(const std::string& json)
+std::variant<base::Error, T> eMessageFromJson(std::string_view json)
 {
     static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
     T message;

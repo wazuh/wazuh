@@ -25,6 +25,8 @@
 #include <set>
 #include <optional>
 #include <chrono>
+#include <ctime>
+#include <functional>
 #include <mutex>
 
 #include "json.hpp"
@@ -202,6 +204,12 @@ class UsersHelper : public IUsersHelper
         /// @brief Windows API wrapper instance used for system calls.
         std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
 
+        /// @brief Clock returning the current time in epoch seconds.
+        std::function<std::time_t()> m_clock;
+
+        /// @brief Maximum difference in seconds treated as clock jitter, not a password change.
+        static constexpr std::uint64_t s_passwordChangeTolerance{2};
+
         /// @brief Rate limiting constants (only applied during cache refresh)
         static constexpr std::uint32_t BATCH_SIZE = 100;
         static constexpr std::chrono::milliseconds BATCH_DELAY{250};
@@ -213,6 +221,16 @@ class UsersHelper : public IUsersHelper
 
         /// @brief Updates cache timestamp after successful operation.
         static void updateCacheTimestamp();
+
+        /// @brief Computes the password last change time (epoch seconds) from the password age.
+        ///
+        /// The age is truncated to seconds at call time, so consecutive collections can differ
+        /// by one second. The previous value of the SID is reused when the new one is within
+        /// s_passwordChangeTolerance, so only real password changes are reported.
+        /// @param sid String representation of the user SID.
+        /// @param passwordAge Seconds elapsed since the password was last set.
+        /// @return Epoch seconds of the last password change, or 0 when the password was never set or the SID is empty.
+        std::uint64_t getPasswordLastChange(const std::string& sid, DWORD passwordAge);
 
         /// @brief Internal method to load both local and roaming users together
         /// @param processed_sids Set to track which SIDs have been processed
@@ -234,7 +252,12 @@ class UsersHelper : public IUsersHelper
     public:
         /// @brief Constructs a UsersHelper with a Windows API wrapper.
         /// @param winapiWrapper Shared pointer to an `IWindowsApiWrapper`.
-        explicit UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper);
+        /// @param clock Clock returning the current time in epoch seconds.
+        explicit UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper,
+                             std::function<std::time_t()> clock = []
+        {
+            return std::time(nullptr);
+        });
 
         /// @brief Default constructor.
         UsersHelper();
@@ -271,4 +294,7 @@ class UsersHelper : public IUsersHelper
 
         /// @brief Resets the cache.
         static void resetCache();
+
+        /// @brief Resets the password last change values kept between cache refreshes.
+        static void resetPasswordChangeHistory();
 };

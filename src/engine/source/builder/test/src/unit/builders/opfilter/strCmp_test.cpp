@@ -40,6 +40,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringEqual, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringEqual, SUCCESS()),
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringEqual, SUCCESS()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringEqual, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringEqual, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringEqual, FAILURE()),
@@ -62,6 +63,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringNotEqual, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringNotEqual, SUCCESS()),
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringNotEqual, SUCCESS()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringNotEqual, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringNotEqual, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringNotEqual, FAILURE()),
@@ -84,6 +86,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringLessThan, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringLessThan, SUCCESS()),
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringLessThan, SUCCESS()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringLessThan, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringLessThan, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringLessThan, FAILURE()),
@@ -108,6 +111,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringLessThanEqual, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringLessThanEqual, SUCCESS()),
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringLessThanEqual, SUCCESS()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringLessThanEqual, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringLessThanEqual, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringLessThanEqual, FAILURE()),
@@ -130,6 +134,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringGreaterThan, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringGreaterThan, SUCCESS()),
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringGreaterThan, SUCCESS()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringGreaterThan, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringGreaterThan, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringGreaterThan, FAILURE()),
@@ -154,6 +159,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringGreaterThanEqual, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringGreaterThanEqual, SUCCESS()),
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringGreaterThanEqual, SUCCESS()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringGreaterThanEqual, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringGreaterThanEqual, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringGreaterThanEqual, FAILURE()),
@@ -176,6 +182,8 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringStarts, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringStarts, SUCCESS()),
+        // An empty prefix is a build error
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringStarts, FAILURE()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringStarts, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringStarts, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringStarts, FAILURE()),
@@ -198,6 +206,8 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({}, opfilter::opBuilderHelperStringContains, FAILURE()),
         // Values
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperStringContains, SUCCESS()),
+        // An empty substring is a build error
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperStringContains, FAILURE()),
         FilterT({makeValue("1")}, opfilter::opBuilderHelperStringContains, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperStringContains, FAILURE()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperStringContains, FAILURE()),
@@ -835,6 +845,60 @@ INSTANTIATE_TEST_SUITE_P(
                 opfilter::opBuilderHelperStringContains,
                 "target",
                 {makeRef("ref")},
-                FAILURE(customRefExpected()))),
+                FAILURE(customRefExpected())),
+        /*** Empty literal: valid for the string_* comparisons ***/
+        FilterT(R"({"target": ""})", opfilter::opBuilderHelperStringEqual, "target", {makeValue(R"("")")}, SUCCESS()),
+        FilterT(
+            R"({"target": "str"})", opfilter::opBuilderHelperStringEqual, "target", {makeValue(R"("")")}, FAILURE()),
+        FilterT(
+            R"({"target": "str"})", opfilter::opBuilderHelperStringNotEqual, "target", {makeValue(R"("")")}, SUCCESS()),
+        FilterT(
+            R"({"target": ""})", opfilter::opBuilderHelperStringNotEqual, "target", {makeValue(R"("")")}, FAILURE()),
+        FilterT(R"({"target": "str"})",
+                opfilter::opBuilderHelperStringGreaterThan,
+                "target",
+                {makeValue(R"("")")},
+                SUCCESS()),
+        FilterT(
+            R"({"target": ""})", opfilter::opBuilderHelperStringGreaterThan, "target", {makeValue(R"("")")}, FAILURE()),
+        FilterT(R"({"target": ""})",
+                opfilter::opBuilderHelperStringGreaterThanEqual,
+                "target",
+                {makeValue(R"("")")},
+                SUCCESS()),
+        FilterT(
+            R"({"target": "str"})", opfilter::opBuilderHelperStringLessThan, "target", {makeValue(R"("")")}, FAILURE()),
+        FilterT(
+            R"({"target": ""})", opfilter::opBuilderHelperStringLessThan, "target", {makeValue(R"("")")}, FAILURE()),
+        FilterT(R"({"target": ""})",
+                opfilter::opBuilderHelperStringLessThanEqual,
+                "target",
+                {makeValue(R"("")")},
+                SUCCESS()),
+        /*** Empty reference: only the literal is checked at build time; starts_with matches, contains does not ***/
+        FilterT(R"({"target": "str", "ref": ""})",
+                opfilter::opBuilderHelperStringStarts,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRefExpected())),
+        FilterT(R"({"target": "", "ref": ""})",
+                opfilter::opBuilderHelperStringStarts,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRefExpected())),
+        FilterT(R"({"target": "str", "ref": ""})",
+                opfilter::opBuilderHelperStringContains,
+                "target",
+                {makeRef("ref")},
+                FAILURE(customRefExpected())),
+        FilterT(R"({"target": "", "ref": ""})",
+                opfilter::opBuilderHelperStringContains,
+                "target",
+                {makeRef("ref")},
+                FAILURE(customRefExpected())),
+        /*** Empty target ***/
+        FilterT(R"({"target": ""})", opfilter::opBuilderHelperStringStarts, "target", {makeValue(R"("s")")}, FAILURE()),
+        FilterT(
+            R"({"target": ""})", opfilter::opBuilderHelperStringContains, "target", {makeValue(R"("s")")}, FAILURE())),
     testNameFormatter<FilterOperationTest>("StringCmp"));
 } // namespace filteroperatestest

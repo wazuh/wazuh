@@ -1313,7 +1313,7 @@ void fim_link_delete_range(directory_t *config) {
         .failed_paths = NULL
     };
 
-    // Create the sqlite LIKE pattern.
+    // Prefix pattern: <path><sep>%
     snprintf(pattern, PATH_MAX, "%s%c%%", config->symbolic_links, PATH_SEP);
     callback_context_t callback_data;
     callback_data.callback = fim_db_remove_validated_path;
@@ -1359,7 +1359,7 @@ void fim_handle_delete_by_path(const char *path,
     }
 
     if (fallback_cb == true) {
-        // File not found in DB: fallback to LIKE pattern ("path/%")
+        // File not found in DB: fall back to the prefix pattern <path><sep>%
         char pattern[PATH_MAX] = {0};
         snprintf(pattern, PATH_MAX, "%s%c%%", path, PATH_SEP);
 

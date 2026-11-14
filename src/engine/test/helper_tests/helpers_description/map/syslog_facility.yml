@@ -1,0 +1,71 @@
+# Name of the helper function
+name: syslog_facility
+
+metadata:
+  description: |
+    Derives the syslog facility from a PRI value and maps `{"code": <facility>, "name": <name>}` to
+    the target field.
+
+    Behavior:
+    - `priority` is a JSON integer in 0..191 (`facility * 8 + severity`); the code is `priority / 8`.
+    - The names by code: 0 kernel, 1 user, 2 mail, 3 daemon, 4 auth, 5 syslog, 6 lpr, 7 news, 8 uucp,
+      9 cron, 10 authpriv, 11 ftp, 12 ntp, 13 logaudit, 14 logalert, 15 solaris-cron and 16 to 23
+      local0 to local7.
+
+    Build errors:
+    - `priority` is a literal.
+    - `priority` is a schema field whose type is not a number.
+
+    Notes:
+    - The PRI must already be a number: `"<13>"`, `"13"` and `13.0` all fail.
+    - The result matches the `log.syslog.facility` schema object.
+    - `syslog_severity` derives the severity from the same value.
+  group: syslog
+  fails_when:
+    - "`priority` is missing or is not an integer"
+    - "`priority` is outside 0..191"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  priority:
+    type: number
+    generate: integer
+    source: reference
+
+output:
+  type: object
+
+test:
+  - arguments:
+      priority: 165
+    should_pass: true
+    expected:
+      code: 20
+      name: local4
+    description: Derive the facility local4 (20) from the priority 165
+  - arguments:
+      priority: 0
+    should_pass: true
+    expected:
+      code: 0
+      name: kernel
+    description: Derive the facility kernel (0) from the priority 0
+  - arguments:
+      priority: 255
+    should_pass: false
+    description: Fail on a priority above 191
+  - arguments:
+      priority: -1
+    should_pass: false
+    description: Fail on a negative priority
+  - arguments:
+      priority: "13"
+    should_pass: false
+    description: Fail on a priority given as a string
+  - arguments:
+      priority: 13.0
+    should_pass: false
+    description: Fail on a priority given as a double

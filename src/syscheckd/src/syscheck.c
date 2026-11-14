@@ -510,6 +510,9 @@ bool fetch_document_limits_from_agentd(){
 }
 
 void fim_initialize() {
+    // The report_changes locks, before any path that can diff or delete a stored snapshot
+    fim_diff_init();
+
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,

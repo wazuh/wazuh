@@ -73,6 +73,20 @@ int __wrap_getDefine_Int_default(const char *high_name,
     return mock();
 }
 
+// Queue: the result, then the value when it is 1. The range is checked: the mock does not enforce it.
+int __wrap_getDefine_Int_nonfatal(const char *high_name, const char *low_name, int min, int max, int *value) {
+    check_expected(high_name);
+    check_expected(low_name);
+    check_expected(min);
+    check_expected(max);
+
+    const int result = mock();
+    if (result == 1) {
+        *value = mock();
+    }
+    return result;
+}
+
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);
     check_expected(final_ip);

@@ -404,6 +404,68 @@ def test_bind_against_a_real_kernel(apid):
             sock.close()
 
 
+def test_check_bind_addresses_raises_when_no_address_can_be_bound(apid):
+    """A host this machine cannot bind fails the check with the message the start log shows."""
+    unassigned = OSError(errno.EADDRNOTAVAIL, 'Cannot assign requested address')
+    factory, created = _socket_factory([unassigned])
+    with patch('socket.socket', side_effect=factory):
+        with pytest.raises(OSError, match=r"could not bind on any address out of \['123.45.6.78'\]") as exc_info:
+            apid._check_bind_addresses(['123.45.6.78'], 55000)
+
+    assert exc_info.value.errno is None
+    assert len(created) == 1
+    created[0].close.assert_called_once()
+    apid._shutdown_event.wait.assert_not_called()
+
+
+def test_check_bind_addresses_leaves_a_busy_port_to_the_retry(apid):
+    """A port in use passes the check without waiting: the bind after daemonizing retries it."""
+    factory, created = _socket_factory([None, _in_use()])
+    with patch('socket.socket', side_effect=factory):
+        assert apid._check_bind_addresses(['0.0.0.0', '::'], 55000) is None
+
+    assert len(created) == 2
+    for sock in created:
+        sock.close.assert_called_once()
+    apid._shutdown_event.wait.assert_not_called()
+
+
+def test_check_bind_addresses_raises_a_permission_error(apid):
+    """Any bind error other than a busy port fails the check."""
+    factory, created = _socket_factory([OSError(errno.EACCES, 'Permission denied')])
+    with patch('socket.socket', side_effect=factory):
+        with pytest.raises(OSError) as exc_info:
+            apid._check_bind_addresses(['0.0.0.0'], 443)
+
+    assert exc_info.value.errno == errno.EACCES
+    created[0].close.assert_called_once()
+    apid._shutdown_event.wait.assert_not_called()
+
+
+def test_check_bind_addresses_raises_for_a_host_that_cannot_be_resolved(apid):
+    """A host name that does not resolve fails the check before any socket is opened."""
+    with patch('socket.socket') as socket_mock, \
+         patch('socket.getaddrinfo', side_effect=socket.gaierror(-2, 'Name or service not known')):
+        with pytest.raises(OSError, match="could not resolve host 'api.invalid'"):
+            apid._check_bind_addresses(['api.invalid'], 55000)
+
+    socket_mock.assert_not_called()
+    apid._shutdown_event.wait.assert_not_called()
+
+
+def test_check_bind_addresses_closes_every_socket_of_a_bindable_host(apid):
+    """A bindable host passes, and no probe socket is left open for the real bind to collide with."""
+    factory, created = _socket_factory([None, None])
+    with patch('socket.socket', side_effect=factory):
+        assert apid._check_bind_addresses(['0.0.0.0', '::'], 55000) is None
+
+    assert len(created) == 2
+    for sock in created:
+        sock.close.assert_called_once()
+        sock.listen.assert_not_called()
+    apid.logger.warning.assert_not_called()
+
+
 def test_exit_handler_sets_the_shutdown_event_before_deleting_pidfiles(apid):
     """`exit_handler` releases the bind-retry wait, and does so before its pidfile cleanup."""
     calls = []
@@ -1075,12 +1137,12 @@ UNSAFE_BEFORE_DROP = {'dictConfig', 'getLogger', 'open', 'chown', 'chmod', 'lcho
 
 
 def test_main_drops_privileges_before_opening_logs_and_any_ssl_work():
-    """`__main__` opens no log file before drop_privileges() and checks TLS after it, before daemonizing.
+    """`__main__` opens no log file before drop_privileges() and checks TLS and binds after it, before daemonizing.
 
     A log file opened as root keeps root's descriptor after setuid(), and a chown or chmod by path in
     the service-writable logs/ directory follows a planted symbolic link. pyDaemon() exits the first
-    parent with 0 and sends stdout/stderr to /dev/null, so a TLS check after it would fail silently
-    with exit 0.
+    parent with 0 and sends stdout/stderr to /dev/null, so a TLS or bind address check after it would
+    fail silently with exit 0.
     """
     with open(APID_PATH) as source:
         tree = ast.parse(source.read())
@@ -1095,11 +1157,12 @@ def test_main_drops_privileges_before_opening_logs_and_any_ssl_work():
     for node in calls:
         lines.setdefault(_call_name(node), []).append(node.lineno)
 
-    for name in ('prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', 'pyDaemon'):
+    for name in ('prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', '_check_bind_addresses',
+                 'pyDaemon'):
         assert len(lines.get(name, [])) == 1, f'{name} must be called exactly once in __main__'
 
-    order = ['set_logging', 'prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', 'pyDaemon',
-             'create_pid']
+    order = ['set_logging', 'prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl',
+             '_check_bind_addresses', 'pyDaemon', 'create_pid']
     first = [lines[name][0] for name in order]
     assert first == sorted(first), dict(zip(order, first))
 

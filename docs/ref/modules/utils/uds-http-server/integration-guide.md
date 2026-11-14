@@ -27,8 +27,8 @@ and, if your capacity knobs are internal options, the two hint fields
 ## Socket path
 
 No default; an empty path makes `start()` throw. Use a path relative to the installation
-directory, which is the working directory of every consumer daemon (all five sockets are
-`queue/sockets/<name>.sock`). A path that does not fit `sun_path` (107 characters) makes
+directory, which is the working directory of every consumer daemon (every consumer's socket
+is `queue/sockets/<name>.sock`; the engine takes an absolute path from its settings). A path that does not fit `sun_path` (107 characters) makes
 `start()` throw naming both. Pre-flight bind feasibility with `socketPathIsUsable()`
 (`socketPathCheck.hpp`) for fail-fast startups. The library never creates the parent
 directory, refuses to unlink a path that exists and is not a socket, replaces a stale
@@ -44,6 +44,36 @@ you need the payload, drop it before replying if you are done with the bytes. A 
 that throws is answered `500`; a responder dropped without `send()` is answered `503`
 and logged as a handler bug.
 
+## Headers that must appear once
+
+`HttpRequest::headers` keeps the last value of a repeated name. If your contract needs
+exactly one occurrence of a header (an identity header, for example), check
+`HttpRequest::duplicateHeaders`, which lists the lower-cased names that appeared more than
+once, and refuse the request yourself.
+
+## `Expect: 100-continue`
+
+Off by default. Turn on `UdsHttpServerConfig::expectContinue` when your peers send the
+expectation — libcurl does for bodies above 1 MiB unless the client suppresses it with an
+empty `Expect:` header — or each such request waits out the client's own timeout (1 s in
+libcurl) before sending its body. The interim answer is written only after the request is
+admitted, so a request your caps or budget would refuse gets its final `413`/`503` before
+the body is sent.
+
+## Body timeout answer
+
+Off by default: a request whose body does not arrive within `bodyTimeoutSec` is closed
+without a response. Turn on `UdsHttpServerConfig::answerBodyTimeout` when your peers
+expect a status for it; they then get `400` before the close.
+
+## Body limits and memory
+
+Leaving both `maxBodySize` and `maxInFlightBytes` at no limit gives bodies no size limit.
+The server then reserves at most 1 MiB when it accepts a head and grows the buffer with the
+bytes received, so a declared length alone allocates nothing; with either limit in place it
+reserves the declared length at once. Set a class or route cap for the routes whose bodies
+you can bound.
+
 ## Route classes
 
 Declare each route's class with `RouteOptions`: **Data** (budget-charged, sheddable),
@@ -55,7 +85,12 @@ never to Control, so a probe registered without it is shed under load and an adm
 registered with `false` hits the Liveness caps. `RouteOptions` also carries per-route
 overrides — `maxBodyBytes`, `maxSessions` (enforced in addition to the class cap) and
 `responseTimeoutSec` — each `0` meaning "the class or server default"; set
-`responseTimeoutSec` on a route whose peer waits longer than the server-wide backstop. A
+`responseTimeoutSec` on a route whose peer waits longer than the server-wide backstop.
+`payloadTooLargeBody` (with `payloadTooLargeContentType`, default `text/plain`) gives the
+route its own `413` body when its body cap refuses the declared length — for peers that
+parse a documented text; empty keeps the JSON body. It cannot apply to the server-wide cap
+(`maxBodySize`, or the limit derived from the byte budget): that `413` is decided before the
+route is known and always carries the generic body. A
 Control route that does real work still sheds its own capacity module-side (bounded
 queue → 503). Routes are exact `method + path` matches (the path before `?`; carry
 identity in a header, not in the path) and must be registered before `start()`;
@@ -72,10 +107,10 @@ on a server that never started; the destructor calls `stop()`.
 
 The library does not depend on `wazuh_metrics`; it exposes a `diagnostics()` snapshot
 (budget available/in-flight bytes, in-flight requests, live sessions, sessions per route
-class, and cumulative transport-level 503s by cause: budget exhausted, session cap,
-shutdown, no response). These are relaxed atomic loads, callable at any point between
-construction and destruction. The 503 counters matter because those requests never reach
-a handler, so your endpoint metrics cannot see them. Publish those
+class, cumulative transport-level 503s by cause: budget exhausted, session cap,
+connection cap (the server-wide limit, refused at accept), shutdown, no response, and cumulative 413s: `rejectedTooLarge`). These are relaxed atomic
+loads, callable at any point between construction and destruction. The 503 and 413 counters
+matter because those requests never reach a handler, so your endpoint metrics cannot see them. Publish those
 fields as pull metrics through your own `wazuh::metrics::IManager`. Mind the pull
 lifetime rule (pulls cannot be unregistered): capture a `weak_ptr` resolved under your
 own lock, register once, and let an expired target read as zeros — reference wiring:

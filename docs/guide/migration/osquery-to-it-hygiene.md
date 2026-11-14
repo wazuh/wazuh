@@ -426,7 +426,7 @@ SELECT pid, name, path, cmdline, state, ppid, start_time, uid, gid FROM processe
 ### Users
 
 In OSquery 4.x, user-related data was spread across multiple tables. In Wazuh
-5.0, the `states-inventory-users-*` index consolidates all of them into a
+5.0, the `wazuh-states-inventory-users-*` index consolidates all of them into a
 single document per user.
 
 **OSquery 4.x** — relevant source tables:
@@ -656,7 +656,7 @@ SELECT header FROM sudoers;
 ### Groups
 
 Similar to Users, Wazuh 5.0 consolidates data from two OSquery tables into each
-`states-inventory-groups-*` document: `groups` (group definitions from
+`wazuh-states-inventory-groups-*` document: `groups` (group definitions from
 `/etc/group`) and `user_groups` (membership relationships).
 
 **OSquery 4.x** — relevant source tables:
@@ -1200,7 +1200,7 @@ The OSquery wodle has been fully removed in Wazuh 5.0: a leftover block is ignor
 | Area | OSquery 4.x behavior | Wazuh 4.14+ / 5.0 IT Hygiene behavior |
 |---|---|---|
 | **Installation** | External binary (`osqueryd`) required on each endpoint | Built into the Wazuh agent; no extra install |
-| **Data destination** | Alerts in `wazuh-alerts-*` (rules 24000-24811, group `osquery`); fields under `data.osquery.*` | Stateful inventory indices (`states-inventory-*`) |
+| **Data destination** | Alerts in `wazuh-alerts-*` (rules 24000-24811, group `osquery`); fields under `data.osquery.*` | Stateful inventory indices (`wazuh-states-inventory-*`) |
 | **Query granularity** | Per-field SQL SELECT at query time | All fields for a category collected on each scan |
 | **On-demand queries** | `osqueryi` interactive shell | Not available; use `scan_on_start` or reduce the interval |
 | **Event-based tables** | Supported (e.g., `process_events`, `file_events`, `socket_events`) | Out of scope; use FIM for file events, Audit/Syscall monitoring for process and socket events |

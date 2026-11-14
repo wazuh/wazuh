@@ -17,7 +17,8 @@
       "name": "asio",
       "dependency": "asio",
       "artefacts": [
-        "manager"
+        "manager",
+        "standalone"
       ],
       "readme_license": "Boost Software License 1.0",
       "dir": "asio",
@@ -81,8 +82,7 @@
       "name": "cpp-httplib",
       "dependency": "cpp-httplib",
       "artefacts": [
-        "manager",
-        "standalone"
+        "manager"
       ],
       "readme_license": "MIT License",
       "dir": "cpp-httplib",
@@ -353,7 +353,8 @@
       "name": "llhttp",
       "dependency": "llhttp",
       "artefacts": [
-        "manager"
+        "manager",
+        "standalone"
       ],
       "readme_license": "MIT License",
       "dir": "llhttp",

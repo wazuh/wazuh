@@ -102,8 +102,8 @@ struct IndexerSessionData;
  *
  * Build ONE and hand it to several connectors in the same process so they share a single health
  * check thread, a single keystore read and a single CA merge, instead of one each. Without it, every
- * connector runs its own synchronous round of `GET /_cat/health` (5 s timeout per host) inside its
- * constructor, so a process holding both a sync and an async connector pays that cost twice.
+ * connector runs its own synchronous round of `GET /_cluster/health/<manager indices>` (5 s timeout per host) inside
+ * its constructor, so a process holding both a sync and an async connector pays that cost twice.
  *
  * The constructor performs the SAME synchronous validation a connector's own constructor does --
  * `hosts` present, referenced CA files exist on disk, keystore credentials readable -- and throws

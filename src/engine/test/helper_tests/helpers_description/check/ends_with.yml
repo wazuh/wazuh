@@ -1,0 +1,82 @@
+# Name of the helper function
+name: ends_with
+
+metadata:
+  description: |
+    Checks whether the target string ends with `suffix`.
+
+    Behavior:
+    - Byte-wise, case-sensitive suffix comparison; no locale or Unicode normalization is applied.
+    - `suffix` is a literal string or a reference to a string field.
+
+    Build errors:
+    - `suffix` is an empty literal.
+    - `suffix` is a literal that is not a string (an unquoted number, boolean or null).
+    - `suffix` is a reference to a schema field whose type is not `keyword` or `text`; this is stricter than
+      `starts_with` and `contains`, which accept any string type.
+    - The target is a schema field whose type is not a string type.
+
+    Notes:
+    - A reference that resolves to an empty string is not rejected: the check is true (every string ends with the empty string).
+    - `starts_with` is the mirror check; `contains` searches anywhere in the string; `regex_match('...$')` is
+      the pattern alternative.
+  group: string
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The reference given as `suffix` does not exist or is not a string.
+    - The target string does not end with `suffix`.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  suffix:
+    type: string
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      suffix: wazuh!!
+    target_field: hello wazuh!!
+    should_pass: true
+    description: The target string ends with the suffix.
+  - arguments:
+      suffix: wazuh
+    target_field: hello wazuh!!!
+    should_pass: false
+    description: The target string does not end with the suffix.
+  - arguments:
+      suffix: hello
+    target_field: hello wazuh!
+    should_pass: false
+    description: The suffix occurs at the start of the string, not at the end.
+  - arguments:
+      suffix: WAZUH!
+    target_field: hello wazuh!
+    should_pass: false
+    description: The comparison is case-sensitive.
+  - arguments:
+      suffix: wazuh!
+    target_field: 123
+    should_pass: false
+    description: The target field is a number, not a string.
+  - arguments:
+      suffix:
+        source: value
+        value: ""
+    target_field: hello wazuh!
+    should_pass: false
+    description: An empty literal is rejected at build time.

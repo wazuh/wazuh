@@ -2672,7 +2672,7 @@ stages:
         data:
           affected_items:
             - filename: agent.conf
-              hash: b083dc1f093af79477ea03501b810fb6
+              hash: 1dc8ea877ad2ec7f25d8a392c11a4a3e
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

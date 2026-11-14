@@ -780,11 +780,10 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
 
 ## Event Processing
 
-Syscollector events reach the manager through remoted's authenticated HTTPS listener, which forwards
-them to the [Inventory Sync Server](../inventory-sync-server/README.md). It writes them directly to the
-`wazuh-states-inventory-*` indices of the Wazuh Indexer without going through the engine's rule
-processing, since they represent inventory state rather than security events. Syscollector's VD sessions
-(packages, OS and hotfixes) also drive the vulnerability scan.
+Syscollector produces two kinds of events from each detected change:
+
+- **Stateful documents** (the ECS documents described above, without the `collector`/`module`/`event` wrapper) are validated against the index schema, subject to the manager's document limits, and queued in the local sync database. They reach the manager in Agent Sync Protocol sessions sent over the agent's HTTPS connection to remoted, which forwards them to the [Inventory Sync Server](../inventory-sync-server/README.md). It writes them directly to the `wazuh-states-inventory-*` indices of the Wazuh Indexer without going through the engine's rule processing, since they represent inventory state rather than security events. Syscollector's VD sessions (packages, OS and hotfixes) also drive the vulnerability scan.
+- **Stateless events** (the structure shown in [Event Structure](#event-structure)) are written to the agent's local message queue as they are detected, at most `max_eps` per second, with no persistence or retry. They are not subject to document limits. They are not generated for an agent's very first scan when `notify_first_scan` is `no`, nor for a modification where only volatile counters changed (`host.memory.free`/`used`, process `utime`/`stime`, interface packet, byte, error and drop counters).
 
 ## Integration
 

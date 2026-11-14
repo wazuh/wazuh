@@ -190,6 +190,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
                                 -Wl,--wrap,fchmod \
                                 -Wl,--wrap,w_move_file_nofollow -Wl,--wrap,isatty -Wl,--wrap,TempFile \
                                 -Wl,--wrap,rename -Wl,--wrap,OPENSSL_cleanse \
+                                -Wl,--wrap,w_enrollment_timeout_ms \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_auth_cli")
@@ -204,6 +205,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,kill -Wl,--wrap,hc_fetch_cacerts \
                                 -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup \
                                 -Wl,--wrap,chown -Wl,--wrap,fchown -Wl,--wrap,fchmodat \
                                 -Wl,--wrap,TempFile -Wl,--wrap,rename -Wl,--wrap,OS_ReadXML \
+                                -Wl,--wrap,w_enrollment_timeout_ms \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_https_client_bridge")

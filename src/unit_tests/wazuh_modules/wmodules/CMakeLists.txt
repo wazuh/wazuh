@@ -35,6 +35,10 @@ list(APPEND wmodules_names "test_wmodules")
 list(APPEND wmodules_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 \
                             -Wl,--wrap,OS_ConnectUnixDomain")
 
+list(APPEND wmodules_names "test_wm_sendmsg")
+list(APPEND wmodules_flags "-Wl,--wrap,SendMSGPredicated -Wl,--wrap,MQReconnectPredicated -Wl,--wrap,os_wait_predicate -Wl,--wrap,os_iswait \
+                            -Wl,--wrap,_mtinfo -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mdebug1")
+
 list(APPEND wmodules_names "test_wmcom")
 list(APPEND wmodules_flags "-Wl,--wrap,getModulesConfig -Wl,--wrap,getModulesInternalOptions \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")

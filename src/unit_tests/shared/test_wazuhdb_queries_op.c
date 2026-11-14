@@ -2481,102 +2481,7 @@ void test_get_agent_date_added_success(void **state) {
     assert_int_equal(date_returned, date_add);
 }
 
-/* Tests wdb_reset_agents_connection */
-
-void test_wdb_reset_agents_connection_error_socket(void **state)
-{
-    int ret = 0;
-    const char *sync_status = "synced";
-    const char *query_str = "global reset-agents-connection synced";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global reset-agents-connection synced");
-
-    ret = wdb_reset_agents_connection(sync_status, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_reset_agents_connection_error_sql_execution(void **state)
-{
-    int ret = 0;
-    const char *sync_status = "synced";
-    const char *query_str = "global reset-agents-connection synced";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global reset-agents-connection synced");
-
-    ret = wdb_reset_agents_connection(sync_status, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_reset_agents_connection_error_result(void **state)
-{
-    int ret = 0;
-    const char *sync_status = "synced";
-    const char *query_str = "global reset-agents-connection synced";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
-
-    ret = wdb_reset_agents_connection(sync_status, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_reset_agents_connection_success(void **state)
-{
-    int ret = 0;
-    const char *sync_status = "synced";
-    const char *query_str = "global reset-agents-connection synced";
-    const char *response = "ok";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = wdb_reset_agents_connection(sync_status, NULL);
-
-    assert_int_equal(OS_SUCCESS, ret);
-}
-
-/* Tests wdb_get_agents_by_connection_status */
+/* Tests wdb_get_agents_by_connection_status_from */
 
 void test_wdb_get_agents_by_connection_status_query_error(void **state)
 {
@@ -2590,7 +2495,7 @@ void test_wdb_get_agents_by_connection_status_query_error(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
+    int *array = wdb_get_agents_by_connection_status_from(0, "active", NULL);
 
     assert_null(array);
 }
@@ -2611,7 +2516,7 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
+    int *array = wdb_get_agents_by_connection_status_from(0, "active", NULL);
 
     assert_null(array);
 }
@@ -2644,7 +2549,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     will_return(__wrap_cJSON_GetObjectItem, id3);
     expect_function_call(__wrap_cJSON_Delete);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
+    int *array = wdb_get_agents_by_connection_status_from(0, "active", NULL);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);
@@ -3717,12 +3622,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_invalid_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_reset_agents_connection */
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_get_agents_by_connection_status */
+        /* Tests wdb_get_agents_by_connection_status_from */
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

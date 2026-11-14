@@ -1405,6 +1405,10 @@ are visible as `remoted.auth.reject.body_too_large` in
   instead of being cut at the transport with no response at all. The agent's own ceiling is
   `<client><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
   default leaves 5x headroom — raise this one if that setting is raised.
+- **Note:** remoted warns at start when this value is above the engine's
+  [`analysisd.server_enriched_events_max_body_bytes`](../engine/configuration.md) (64 MiB by default):
+  the engine refuses an uncompressed `/stateless` batch larger than its cap. It is not lowered, since
+  it applies to every authenticated route; lower it or raise the engine's.
 
 #### remoted.auth_max_decoded_body_size
 
@@ -1415,7 +1419,15 @@ frame is refused as soon as its output would cross the cap. Either way the answe
 - **Default value:** `33554432` (32 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `1073741824` (1 GiB). A value below
   [`remoted.auth_max_body_size`](#remotedauth_max_body_size) is raised to it, with a warning, so a
-  body accepted on the wire is never refused once decoded.
+  body accepted on the wire is never refused once decoded. A value above the engine's
+  [`analysisd.server_enriched_events_max_body_bytes`](../engine/configuration.md) (64 MiB by default),
+  as set in the internal options file, is lowered to it with a warning (never below
+  `remoted.auth_max_body_size`): remoted forwards a `/stateless` batch as decoded, and a batch the engine
+  refuses would reach the agent as a `503` it retries unchanged instead of a `413` it splits.
+  An engine value that is not an integer in the engine's range skips this comparison with a warning; it
+  never stops remoted. remoted reads the engine's key from the internal options file only: the engine
+  gives its `WAZUH_SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES` environment variable precedence, and a value set
+  that way is not compared. Set the engine's cap in the file, or lower this value to match it.
 - **Note:** Without this cap, one enrolled agent could send a zstd frame of a few kilobytes that
   decompressed into the whole in-flight budget, and every other agent was answered `503` until it
   was released. It is larger than `auth_max_body_size` on purpose. The agent sizes its batches

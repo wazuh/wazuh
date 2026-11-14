@@ -4,6 +4,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <cmstore/icmstore.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 #include <router/iapi.hpp>
 namespace api::router::handlers
 {
@@ -20,7 +21,7 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& rout
 
 inline void registerHandlers(const std::shared_ptr<::router::IRouterAPI>& router,
                              const std::shared_ptr<cm::store::ICMStore>& store,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/router/route/post", routePost(router));
     server->addRoute(httpsrv::Method::POST, "/_internal/router/route/delete", routeDelete(router));

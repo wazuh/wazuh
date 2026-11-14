@@ -33,10 +33,21 @@ bool __wrap_fim_recovery_integrity_interval_has_elapsed(__attribute__((unused)) 
     return mock_type(bool);
 }
 
+static bool s_recover_first_table = false;
+
+void __wrap_fim_recovery_run_integrity_checks_recover_first_table(bool enable) {
+    s_recover_first_table = enable;
+}
+
 void __wrap_fim_recovery_run_integrity_checks(__attribute__((unused)) AgentSyncProtocolHandle* handle,
                                               __attribute__((unused)) char** table_names,
-                                              __attribute__((unused)) int table_count,
+                                              int table_count,
                                               __attribute__((unused)) const OSList* directories_list,
-                                              __attribute__((unused)) int64_t integrity_interval) {
+                                              __attribute__((unused)) int64_t integrity_interval,
+                                              bool* recovered) {
     function_called();
+
+    if (s_recover_first_table && recovered && table_count > 0) {
+        recovered[0] = true;
+    }
 }

@@ -92,9 +92,10 @@ Reduce scanning frequency to minimize resource usage:
 
 The agent info module collects:
 
-- **System information:** OS name, version, architecture, hostname
-- **Network configuration:** IP addresses, MAC addresses, network interfaces
+- **Agent identity:** Agent ID, name and version
+- **System information:** OS name, type, platform, version, architecture, hostname
 - **Agent configuration:** Group memberships and the manager cluster name
+- **Vulnerability detection feed offset:** When known, it is added to the metadata sent to the manager during synchronization
 
 ### Collection Flow
 
@@ -111,12 +112,15 @@ The agent info module collects:
 
 ### Coordination Events
 
-When agent metadata changes (e.g., group assignment, label update):
+When agent metadata changes (e.g., group assignment, cluster name):
 
-1. **Pause:** Pauses FIM, SCA and Syscollector and has them flush pending data
+1. **Pause:** Pauses FIM, SCA and Syscollector
 2. **Version:** Reads each module's synchronization version and sets the new one on all of them
-3. **Synchronize:** Sends the changed metadata to the manager
+3. **Flush:** Has each module flush its pending data
 4. **Resume:** Resumes the paused modules
+5. **Synchronize:** Once the flushes complete, sends the changed metadata to the manager
+
+If FIM, SCA or Syscollector has not finished its first synchronization, the cycle is deferred and retried on the next interval.
 
 See [Architecture](architecture.md) for the full protocol.
 
@@ -194,15 +198,15 @@ curl -s -k -X GET "https://localhost:55000/agents?agents_list=001&pretty=true" \
 
 **On agent (check synchronization status):**
 ```bash
-tail -f /var/ossec/logs/ossec.log | grep "agent-info.*sync"
+tail -f /var/ossec/logs/ossec.log | grep -i "agent-info.*\(coordinat\|synchroniz\|integrity\)"
 ```
 
 ### Monitor Scan Activity
 
 **On agent:**
 ```bash
-# View metadata collection events
-tail -f /var/ossec/logs/ossec.log | grep "agent-info.*scan"
+# View metadata collection activity (debug level: set wazuh_modules.debug=1 in local_internal_options.conf; Windows agents use windows.debug)
+tail -f /var/ossec/logs/ossec.log | grep "agent-info.*Populating agent metadata"
 ```
 
 ---
@@ -211,11 +215,11 @@ tail -f /var/ossec/logs/ossec.log | grep "agent-info.*scan"
 
 The module performs the following validation at startup:
 
-- **Time Values:** Validates time format and acceptable ranges
-- **Integer Values:** Ensures integer values are within valid ranges
-- **Interval Constraints:** Verifies `interval` and `integrity_interval` are positive
+- **`interval`:** Must be an integer from 60 to 86400
+- **`integrity_interval`:** Must be an integer from 60 to 604800
+- **Unknown elements:** Logged as a warning and ignored
 
-If the configuration is invalid, the module will log a warning and use default values or, in case of critical errors, fail to start.
+A value that is out of range or not a number is logged as a warning and the default is kept. An empty element name is a configuration error.
 
 ---
 

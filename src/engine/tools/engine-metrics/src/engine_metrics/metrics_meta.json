@@ -12,6 +12,50 @@
     "category": "events",
     "unit": "count"
   },
+  "server.ingest.inflight.bytes": {
+    "category": "bytes",
+    "unit": "bytes"
+  },
+  "server.ingest.inflight.requests": {
+    "category": "events",
+    "unit": "items"
+  },
+  "server.ingest.sessions": {
+    "category": "events",
+    "unit": "items"
+  },
+  "server.ingest.queue.depth": {
+    "category": "events",
+    "unit": "items"
+  },
+  "server.ingest.running": {
+    "category": "events",
+    "unit": "items"
+  },
+  "server.ingest.shed.budget": {
+    "category": "events",
+    "unit": "count"
+  },
+  "server.ingest.shed.connections": {
+    "category": "events",
+    "unit": "count"
+  },
+  "server.ingest.shed.executor_full": {
+    "category": "events",
+    "unit": "count"
+  },
+  "server.ingest.shed.shutdown": {
+    "category": "events",
+    "unit": "count"
+  },
+  "server.ingest.handler_errors": {
+    "category": "events",
+    "unit": "count"
+  },
+  "server.ingest.rejected.too_large": {
+    "category": "events",
+    "unit": "count"
+  },
   "router.queue.size": {
     "category": "events",
     "unit": "items"

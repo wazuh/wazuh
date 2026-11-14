@@ -23,6 +23,8 @@
 ///< Size of hash table to save the status file
 #define LOCALFILES_TABLE_SIZE 40
 
+#define FILE_HEAD_SIZE 4096
+
 ///< JSON path wich contains the files position of last read
 #ifdef WIN32
 #define LOCALFILE_STATUS "queue\\logcollector\\file_status.json"
@@ -294,6 +296,8 @@ typedef struct file_status
     int64_t offset;      ///< Position to read
     EVP_MD_CTX* context; ///< It stores the hashed data calculated so far
     os_sha1 hash;        ///< Content file SHA1 hash
+    int64_t head_offset; ///< Bytes covered by head_hash, up to FILE_HEAD_SIZE
+    os_sha1 head_hash;   ///< SHA1 hash of the first head_offset bytes
 } os_file_status_t;
 
 extern w_input_range_t* w_input_threads_range;

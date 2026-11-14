@@ -4,6 +4,15 @@
 import yaml
 import sys
 
+# Kinds a helper description may declare in `helper_type`. `check` helpers are used in `check`
+# stages and `first_of` branches; `map` helpers in `map` stages; a `transform` is a map helper
+# that reads and modifies its target field in place.
+HELPER_TYPES = ("check", "map", "transform")
+
+# Values `metadata.group` may take, in the order the generated reference lists them.
+HELPER_GROUPS = ("type", "comparison", "string", "array", "object", "number",
+                 "date", "network", "syslog", "kvdb", "parse", "event")
+
 
 class Parser:
     def __init__(self):
@@ -306,6 +315,24 @@ class Parser:
 
     def get_metadata(self) -> dict:
         return self.yaml_data.get("metadata", {})
+
+    def get_group(self):
+        """
+        Retrieves the group of the helper (`metadata.group`).
+
+        Returns:
+            str: The group, or None if not present.
+        """
+        return self.get_metadata().get("group")
+
+    def get_fails_when(self) -> list:
+        """
+        Retrieves the conditions under which the helper fails (`metadata.fails_when`).
+
+        Returns:
+            list: The conditions, or an empty list if not present.
+        """
+        return self.get_metadata().get("fails_when", [])
 
     def get_arguments(self) -> dict:
         return self.yaml_data.get("arguments", {})

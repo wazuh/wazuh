@@ -48,6 +48,25 @@ constexpr auto AGENT_CACHE_REJECTED_IDENTITY = "agent.cache.rejected.identity";
 constexpr auto SERVER_BYTES_RECEIVED = "server.bytes.received";
 constexpr auto SERVER_EVENTS_RECEIVED = "server.events.received";
 
+// Per-server-instance metrics (server.<instance>.<suffix>, e.g. server.ingest.sessions)
+constexpr auto SERVER_INFLIGHT_BYTES = "inflight.bytes";
+constexpr auto SERVER_INFLIGHT_REQUESTS = "inflight.requests";
+constexpr auto SERVER_SESSIONS = "sessions";
+constexpr auto SERVER_QUEUE_DEPTH = "queue.depth";
+constexpr auto SERVER_RUNNING = "running";
+constexpr auto SERVER_SHED_BUDGET = "shed.budget";
+constexpr auto SERVER_SHED_CONNECTIONS = "shed.connections";
+constexpr auto SERVER_SHED_EXECUTOR_FULL = "shed.executor_full";
+constexpr auto SERVER_SHED_SHUTDOWN = "shed.shutdown";
+constexpr auto SERVER_HANDLER_ERRORS = "handler_errors";
+constexpr auto SERVER_REJECTED_TOO_LARGE = "rejected.too_large";
+
+// Per-server-instance metric name formatter
+inline std::string server_metric(const std::string& instance, const std::string& suffix)
+{
+    return fmt::format("server.{}.{}", instance, suffix);
+}
+
 // Per-space metric name formatters
 inline std::string space_events_unclassified(const std::string& space)
 {

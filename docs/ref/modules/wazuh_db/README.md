@@ -119,7 +119,7 @@ configuration. Both answer `{"error":<code>,"message":…,"data":…}`.
 | `timestamp` | The Unix time (seconds) of this answer |
 | `name` | `wazuh-manager-db` |
 | `metrics.queries.received` | Queries received since start, all targets: socket commands and requests to the HTTP routes alike (each HTTP request counts once, under `global`) |
-| `metrics.queries.received_breakdown` | The same count per target (`global`, `mitre`) and, under `global_breakdown`, per command: `db` (`backup`, `sql`, `vacuum`, `commit`, `get_fragmentation`) and `tables` (`agent`, `belongs`, `group`, one counter per command named as on the wire, such as `insert-agent`). `mitre_breakdown.db.sql` counts the SQL queries run against the MITRE database |
+| `metrics.queries.received_breakdown` | The same count per target (`global`, `mitre`) and, under `global_breakdown`, per command: `db` (`backup`, `sql`, `commit`) and `tables` (`agent`, `belongs`, `group`, one counter per command named as on the wire, such as `insert-agent`). `mitre_breakdown.db.sql` counts the SQL queries run against the MITRE database |
 | `metrics.time.execution` | Total time spent running queries since start, in milliseconds |
 | `metrics.time.execution_breakdown` | That time with the same breakdown as the counters (`mitre_breakdown.db.sql` included), plus `global_breakdown.db.open` (time spent opening `global.db`), in milliseconds |
 
@@ -159,8 +159,8 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 > answers `ok` (or `err Cannot end transaction`). Every other write answers `ok` from inside a
 > DEFERRED transaction that this daemon commits later on its own clock (`commit_time_min` /
 > `commit_time_max`), so that `ok` is not a durability acknowledgement. `wazuh-manager-authd` is the
-> only caller: it may forget a journaled identity transition only once the write is committed
-> (issue #39078). The daemon's statistics count it under `commit`, next to `vacuum`.
+> only caller: it may forget a journaled identity transition only once the write is committed.
+> The daemon's statistics count it under `commit`, next to `backup` and `sql`.
 
 > **Note on `update-connection-status`:** the `status_code` field (numeric) is required in addition to `id`, `connection_status`, and `sync_status`. Omitting it causes the query to be rejected with `err Invalid JSON data, near '…'`.
 

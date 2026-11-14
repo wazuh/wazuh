@@ -27,6 +27,8 @@
 
 using namespace ::testing;
 
+#include "captureLogs.hpp"
+
 namespace
 {
 
@@ -88,22 +90,6 @@ nlohmann::json policyPage(std::string_view space, const std::string& hash)
                                                   {"_source",
                                                    {{"space", {{"name", space}, {"hash", {{"sha256", hash}}}}},
                                                     {"document", {{"name", "policy/wazuh/0"}, {"enabled", true}}}}}}});
-}
-
-/// Engine log lines of a call: INFO/DEBUG go to stdout, WARNING and above to stderr (base::logging CustomSink).
-struct CapturedLogs
-{
-    std::string info;
-    std::string warn;
-};
-
-template<typename Fn>
-CapturedLogs captureLogs(Fn&& fn)
-{
-    testing::internal::CaptureStdout();
-    testing::internal::CaptureStderr();
-    fn();
-    return {testing::internal::GetCapturedStdout(), testing::internal::GetCapturedStderr()};
 }
 
 /// A cycle whose probe finds no policy for the space in the indexer.
@@ -419,6 +405,57 @@ TEST_F(CMSyncTest, ShutdownStopsEveryTopicAndTheNextRun)
 
     EXPECT_FALSE(sync->synchronize());
     EXPECT_TRUE(topics.calls().empty());
+}
+
+/*
+ * A cycle that fails because the engine is stopping: the engine stops this service before the router and
+ * the indexer connector, so such a failure is an abort, logged at INFO, and the space is still FAILED.
+ */
+
+TEST_F(CMSyncTest, AFailureDuringTheShutdownIsLoggedAsAnAbort)
+{
+    std::unique_ptr<cm::sync::CMSync> sync;
+    cmcontent::mocks::FakeTopicRegistry::Script failing;
+    failing.outcome.status = content_manager::CycleStatus::FailedTransport;
+    failing.outcome.detail = "Orchestrator has been shutdown";
+    failing.driveSink = [&sync](content_manager::IContentSink&)
+    {
+        sync->requestShutdown();
+    };
+    topics.script(topicOf(STANDARD), {failing});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    sync = build();
+    logging::setLevel(logging::Level::Info);
+    const auto logs = captureLogs([&]() { EXPECT_FALSE(sync->synchronize()); });
+    logging::setLevel(logging::Level::Warn);
+
+    EXPECT_EQ(
+        countAtLevel(logs.info,
+                     "info",
+                     "Synchronization aborted for space 'standard' by the shutdown: Orchestrator has been shutdown"),
+        1U)
+        << logs.info;
+    EXPECT_EQ(logs.warn.find("Failed to synchronize space"), std::string::npos) << logs.warn;
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::FAILED);
+}
+
+TEST_F(CMSyncTest, AFailureWithoutTheShutdownIsAWarning)
+{
+    cmcontent::mocks::FakeTopicRegistry::Script failing;
+    failing.outcome.status = content_manager::CycleStatus::FailedTransport;
+    failing.outcome.detail = "indexer unreachable";
+    topics.script(topicOf(STANDARD), {failing});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+    logging::setLevel(logging::Level::Info);
+    const auto logs = captureLogs([&]() { sync->synchronize(); });
+    logging::setLevel(logging::Level::Warn);
+
+    EXPECT_EQ(countAtLevel(logs.warn, "warning", "Failed to synchronize space 'standard': indexer unreachable"), 1U)
+        << logs.warn;
+    EXPECT_EQ(logs.info.find("Synchronization aborted for space"), std::string::npos) << logs.info;
 }
 
 /*

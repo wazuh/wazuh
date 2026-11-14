@@ -110,12 +110,12 @@ protected:
     }
 };
 
-TEST_F(DateNanosCompatTest, ParseDateAndGetDateIntoDateNanosBuild)
+TEST_F(DateNanosCompatTest, ParseDateAndNowIntoDateNanosBuild)
 {
     // DATE helpers into a DATE_NANOS field: compatible, with runtime validation of the date_nanos range
     // Delimited raw strings: `()"` and `')"` inside the expressions would otherwise close a plain R"(...)"
     EXPECT_NO_THROW(buildMapEntry(R"json({"event.received": "parse_date($msg, '%Y-%m-%dT%H:%M:%SZ')"})json"));
-    EXPECT_NO_THROW(buildMapEntry(R"json({"event.received": "get_date()"})json"));
+    EXPECT_NO_THROW(buildMapEntry(R"json({"event.received": "now()"})json"));
 }
 
 TEST_F(DateNanosCompatTest, DateNanosReferenceIntoDateRuntime)
@@ -176,14 +176,14 @@ TEST_F(DateNanosCompatTest, DateReferenceIntoDateNanosRuntimeRange)
     }
 }
 
-TEST_F(DateNanosCompatTest, SystemEpochIsLongRejectedIntoDateRunsIntoLong)
+TEST_F(DateNanosCompatTest, NowEpochIsLongRejectedIntoDateRunsIntoLong)
 {
-    // system_epoch writes integer seconds and is registered as LONG: with DATE<->DATE_NANOS compatibility in place it
+    // now_epoch writes integer seconds and is registered as LONG: with DATE<->DATE_NANOS compatibility in place it
     // must still be rejected at build time into a DATE field, and build and run into a LONG field.
-    EXPECT_THROW(buildMapEntry(R"json({"@timestamp": "system_epoch()"})json"), std::runtime_error);
+    EXPECT_THROW(buildMapEntry(R"json({"@timestamp": "now_epoch()"})json"), std::runtime_error);
 
     base::Expression expr;
-    ASSERT_NO_THROW(expr = buildMapEntry(R"json({"event.sequence": "system_epoch()"})json"));
+    ASSERT_NO_THROW(expr = buildMapEntry(R"json({"event.sequence": "now_epoch()"})json"));
 
     auto event = std::make_shared<json::Json>(R"({})");
     auto result = run(expr, event);
@@ -192,11 +192,11 @@ TEST_F(DateNanosCompatTest, SystemEpochIsLongRejectedIntoDateRunsIntoLong)
     EXPECT_TRUE(event->isInt64("/event/sequence"));
 }
 
-TEST_F(DateNanosCompatTest, SystemEpochIsLongRejectedIntoKeyword)
+TEST_F(DateNanosCompatTest, NowEpochIsLongRejectedIntoKeyword)
 {
     // Contract fixed by the LONG token: integer seconds no longer build into string fields (before this branch the
     // DATE_NANOS token let them through because every string type lists DATE_NANOS as compatible).
-    EXPECT_THROW(buildMapEntry(R"json({"msg": "system_epoch()"})json"), std::runtime_error);
+    EXPECT_THROW(buildMapEntry(R"json({"msg": "now_epoch()"})json"), std::runtime_error);
 }
 
 } // namespace

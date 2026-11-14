@@ -26,22 +26,45 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <future>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <thread>
 #include <utility>
 #include <vector>
+
+namespace wazuh::uds_http::detail
+{
+    /**
+     * @brief Test seam for the interim "100 Continue" write.
+     *
+     * @param startWrite Starts the write; it posts onto the session strand, so it may be called from any
+     *                   thread.
+     * @return true when the seam took @p startWrite and will call it later, false to write at once.
+     *
+     * This weak definition is the production one and always writes at once. The unit tests link a strong
+     * definition (test/unit/testHooks.cpp) that can hold the write in flight, which is the only way to
+     * drive a final response into the parked path; nothing else defines it.
+     */
+    __attribute__((weak)) bool interceptInterimWrite(const std::function<void()>& startWrite)
+    {
+        (void)startWrite;
+        return false;
+    }
+} // namespace wazuh::uds_http::detail
 
 namespace
 {
@@ -318,6 +341,8 @@ namespace wazuh::uds_http
             LogThrottle peerGoneThrottle;
             LogThrottle classBodyCapThrottle;
             LogThrottle classSessionCapThrottle;
+            LogThrottle bodyTimeoutThrottle;
+            LogThrottle requestErrorThrottle;
 
             /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
@@ -326,7 +351,10 @@ namespace wazuh::uds_http
             /// The other transport-level 503s, counted for the reason TransportDiagnostics gives.
             std::atomic<std::size_t> budgetRejected {0};
             std::atomic<std::size_t> sessionCapRejected {0};
+            std::atomic<std::size_t> connectionCapRejected {0};
             std::atomic<std::size_t> noResponseRejected {0};
+            /// 413s, whichever cap decided them (route/class cap or the parser's own).
+            std::atomic<std::size_t> tooLargeRejected {0};
 
             std::atomic_bool accepting {false};
 
@@ -526,6 +554,12 @@ namespace wazuh::uds_http
 
                 if (m_phase == Phase::Response)
                 {
+                    // The handler already answered and only the interim write is outstanding. Not a
+                    // session without a deadline: parking the answer re-armed this timer as Phase::Write.
+                    if (m_parkedResponse)
+                    {
+                        return;
+                    }
                     // Synthesize a status rather than just dropping the connection: the peer gets a
                     // 504 it can classify instead of a bare reset. This is the leak backstop for a
                     // handler that kept a responder and never used it.
@@ -545,6 +579,25 @@ namespace wazuh::uds_http
                                        : m_state->config.responseTimeoutSec);
                     }
                     deliver(errorResponse(504, "Handler did not respond in time"));
+                    return;
+                }
+
+                // Opt-in: a consumer whose peers expect a status for a body that never arrived. The
+                // head is in, so the peer is still reading what we send; the other phases keep the
+                // silent close below.
+                if (m_phase == Phase::Body && m_state->config.answerBodyTimeout)
+                {
+                    if (const auto decision = m_state->bodyTimeoutThrottle.record())
+                    {
+                        LOGFN_WARN(m_state->log,
+                                   "Answered %llu request(s) with 400 %s: the body did not arrive "
+                                   "within %zu s (last on '%.128s').",
+                                   static_cast<unsigned long long>(decision.total),
+                                   decision.period().c_str(),
+                                   m_state->config.bodyTimeoutSec,
+                                   requestPath().c_str());
+                    }
+                    deliver(errorResponse(400, "Request body not received in time"));
                     return;
                 }
 
@@ -607,6 +660,47 @@ namespace wazuh::uds_http
                     return;
                 }
 
+                // Exception barrier for parsing and admission (dispatch() has its own). Without it an
+                // allocation failure here escapes to the I/O thread's run() loop, and the session is
+                // left with no read pending and nobody to answer it until a phase timer reaps it.
+                try
+                {
+                    processRead(bytes);
+                }
+                catch (const std::exception& e)
+                {
+                    failRequest(e.what());
+                }
+                // LCOV_EXCL_START -- nothing on this path throws a non-std exception
+                catch (...)
+                {
+                    failRequest("non-standard exception");
+                }
+                // LCOV_EXCL_STOP
+            }
+
+            /// Answer 500 and close through the normal path, which releases the session's counters
+            /// and, with the session, its byte reservation.
+            void failRequest(const char* reason)
+            {
+                if (m_finished)
+                {
+                    return;
+                }
+                if (const auto decision = m_state->requestErrorThrottle.record())
+                {
+                    LOGFN_ERROR(m_state->log,
+                                "Answered %llu request(s) with 500 %s: the request could not be "
+                                "read or admitted (last: %s).",
+                                static_cast<unsigned long long>(decision.total),
+                                decision.period().c_str(),
+                                reason);
+                }
+                deliver(errorResponse(500, rejectMessage(500)));
+            }
+
+            void processRead(std::size_t bytes)
+            {
                 auto verdict = m_parser.feed(m_readBuffer.data(), bytes);
 
                 if (verdict == RequestParser::Feed::HeadersReady)
@@ -619,6 +713,12 @@ namespace wazuh::uds_http
                     case RequestParser::Feed::Incomplete: doRead(); return;
                     case RequestParser::Feed::Complete: dispatch(); return;
                     case RequestParser::Feed::Reject:
+                        if (m_parser.rejectStatus() == 500)
+                        {
+                            // Not a limit: the parser could not allocate what the request needed.
+                            failRequest("out of memory while buffering the request");
+                            return;
+                        }
                         // These four statuses are decided by limits an operator can tune, and the
                         // peer's write-then-read pattern often means it never reads the status either
                         // (see the interop note below deliver()) -- so this line is the only record
@@ -632,6 +732,10 @@ namespace wazuh::uds_http
                                        decision.period().c_str(),
                                        m_parser.rejectStatus(),
                                        requestPath().c_str());
+                        }
+                        if (m_parser.rejectStatus() == 413)
+                        {
+                            m_state->tooLargeRejected.fetch_add(1, std::memory_order_relaxed);
                         }
                         deliver(errorResponse(m_parser.rejectStatus(), rejectMessage(m_parser.rejectStatus())));
                         return;
@@ -674,6 +778,21 @@ namespace wazuh::uds_http
                         return errorResponse(413, "Request body exceeds the liveness-class limit");
                 }
                 return errorResponse(413, "Request body exceeds the class limit"); // LCOV_EXCL_LINE
+            }
+
+            /// The 413 for a declared length over the route's body cap: the route's own body when it
+            /// set one, else the class-keyed JSON.
+            wazuh::uds_http::HttpResponse bodyCapResponse(const Route& route) const
+            {
+                if (route.options.payloadTooLargeBody.empty())
+                {
+                    return classBodyCapResponse(route.options.cls);
+                }
+                wazuh::uds_http::HttpResponse response;
+                response.status = 413;
+                response.body = route.options.payloadTooLargeBody;
+                response.headers.emplace_back("Content-Type", route.options.payloadTooLargeContentType);
+                return response;
             }
 
             wazuh::uds_http::HttpResponse classSessionCapResponse(RouteClass cls) const
@@ -742,7 +861,8 @@ namespace wazuh::uds_http
                                    bodyCap,
                                    route->path.c_str());
                     }
-                    deliver(classBodyCapResponse(cls));
+                    m_state->tooLargeRejected.fetch_add(1, std::memory_order_relaxed);
+                    deliver(bodyCapResponse(*route));
                     return RequestParser::Feed::Incomplete;
                 }
 
@@ -800,7 +920,78 @@ namespace wazuh::uds_http
 
                 m_route = route;
                 armTimer(Phase::Body, std::chrono::seconds {m_state->config.bodyTimeoutSec});
-                return m_parser.resume();
+                const auto verdict = m_parser.resume();
+
+                // Admitted, and the body is still outstanding: a peer waiting on its expectation would
+                // otherwise sit out its own timeout before sending the body (libcurl's is 1 s).
+                if (verdict == RequestParser::Feed::Incomplete && m_state->config.expectContinue && expectsContinue())
+                {
+                    writeInterimContinue();
+                }
+                return verdict;
+            }
+
+            bool expectsContinue()
+            {
+                const auto& headers = m_parser.request().headers;
+                const auto it = headers.find("expect");
+                if (it == headers.end())
+                {
+                    return false;
+                }
+                std::string value = it->second;
+                std::transform(value.begin(),
+                               value.end(),
+                               value.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                return value == "100-continue";
+            }
+
+            /**
+             * @brief Writes the interim "100 Continue" while the read for the body proceeds.
+             *
+             * One read and one write may be outstanding on a socket at the same time, two writes may
+             * not: a final response that becomes ready while this write is in flight (the peer sent the
+             * body without waiting and the handler answered inline) is parked by deliver() and written
+             * from this completion.
+             */
+            void writeInterimContinue()
+            {
+                static constexpr std::string_view INTERIM {"HTTP/1.1 100 Continue\r\n\r\n"};
+                m_interimWriting = true;
+                auto self = shared_from_this();
+                auto startWrite = [self]()
+                {
+                    asio::async_write(self->m_socket,
+                                      asio::buffer(INTERIM.data(), INTERIM.size()),
+                                      asio::bind_executor(self->m_strand,
+                                                          [self](const std::error_code& ec, std::size_t)
+                                                          {
+                                                              self->m_interimWriting = false;
+                                                              if (ec)
+                                                              {
+                                                                  // The peer is gone; nothing can be answered.
+                                                                  self->m_parkedResponse.reset();
+                                                                  self->m_finished = true;
+                                                                  self->m_timer.cancel();
+                                                                  self->closeSocket();
+                                                                  self->unregisterSelf();
+                                                                  return;
+                                                              }
+                                                              if (self->m_parkedResponse)
+                                                              {
+                                                                  auto parked = std::move(*self->m_parkedResponse);
+                                                                  self->m_parkedResponse.reset();
+                                                                  self->deliver(std::move(parked));
+                                                              }
+                                                          }));
+                };
+                if (wazuh::uds_http::detail::interceptInterimWrite([self, startWrite]()
+                                                                   { asio::post(self->m_strand, startWrite); }))
+                {
+                    return;
+                }
+                startWrite();
             }
 
             const Route* matchRoute()
@@ -880,6 +1071,12 @@ namespace wazuh::uds_http
 
             void dispatch()
             {
+                // A final answer chosen before the body completed (the body-timeout 400, a shutdown 503)
+                // only waits for the interim write: the request it answered never reaches a handler.
+                if (m_parkedResponse)
+                {
+                    return;
+                }
                 m_dispatched = true;
                 m_state->undispatched.fetch_sub(1, std::memory_order_relaxed);
                 m_state->dispatchesRunning.fetch_add(1, std::memory_order_relaxed);
@@ -1020,6 +1217,18 @@ namespace wazuh::uds_http
             {
                 if (m_finished)
                 {
+                    return;
+                }
+                if (m_interimWriting)
+                {
+                    // Never two writes in flight: the interim completion delivers the first final answer.
+                    // From here only that write stands between the answer and the wire, so it gets the
+                    // bound of any write; a later answer neither replaces the first nor extends it.
+                    if (!m_parkedResponse)
+                    {
+                        m_parkedResponse = std::move(response);
+                        armTimer(Phase::Write, std::chrono::seconds {m_state->config.writeTimeoutSec});
+                    }
                     return;
                 }
                 m_finished = true;
@@ -1216,6 +1425,9 @@ namespace wazuh::uds_http
             Phase m_phase {Phase::Header};
             bool m_finished {false};
             bool m_dispatched {false};
+            /// An interim "100 Continue" write is in flight; deliver() parks the final response.
+            bool m_interimWriting {false};
+            std::optional<HttpResponse> m_parkedResponse;
             bool m_unregistered {false};
 
             std::string m_writeHead;
@@ -1474,6 +1686,7 @@ namespace wazuh::uds_http
             if (live > state->config.maxConnections)
             {
                 state->liveSessions.fetch_sub(1, std::memory_order_relaxed);
+                state->connectionCapRejected.fetch_add(1, std::memory_order_relaxed);
                 // A rollback is progress too: stop() waits on this counter, and without the wake it
                 // sits out its whole window whenever the cap was hit as the server was going down.
                 state->noteProgress();
@@ -2179,8 +2392,10 @@ namespace wazuh::uds_http
         }
         snapshot.rejectedBudgetExhausted = state.budgetRejected.load(std::memory_order_relaxed);
         snapshot.rejectedSessionCap = state.sessionCapRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedConnectionCap = state.connectionCapRejected.load(std::memory_order_relaxed);
         snapshot.rejectedShutdown = state.shutdownRejected.load(std::memory_order_relaxed);
         snapshot.rejectedNoResponse = state.noResponseRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedTooLarge = state.tooLargeRejected.load(std::memory_order_relaxed);
         return snapshot;
     }
 

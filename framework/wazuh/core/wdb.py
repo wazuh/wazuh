@@ -192,7 +192,8 @@ class WazuhDBConnection:
         """Check input queries have the correct format
 
         Accepted query formats:
-        - global sql sql_sentence
+        - global sql <select ...>
+        - mitre sql <select ...>
 
         Parameters
         ----------
@@ -205,25 +206,21 @@ class WazuhDBConnection:
             Database query not valid.
         """
         query_elements = query.split(" ")
-        sql_first_index = 2 if query_elements[0] == 'agent' else 1
 
         if query_elements[0] == 'mitre':
             input_val_errors = [
-                (query_elements[sql_first_index] == 'sql',
+                (query_elements[1] == 'sql',
                  'Incorrect WDB request type'),
                 (query_elements[2] == 'select',
                  'Wrong SQL query for Mitre database')
             ]
         else:
             input_val_errors = [
-                (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
-                (query_elements[0] == 'agent' or query_elements[0] == 'global' or query_elements[0] == 'task',
+                (query_elements[1] == 'sql', "Incorrect WDB request type."),
+                (query_elements[0] == 'global',
                  "The {} database is not valid".format(query_elements[0])),
-                (query_elements[1].isdigit() if query_elements[0] == 'agent' else True,
-                 "Incorrect agent ID {}".format(query_elements[1])),
-                (query_elements[sql_first_index + 1] == 'select' or query_elements[sql_first_index + 1] == 'delete' or
-                 query_elements[sql_first_index + 1] == 'update', 'Only "select", "delete" or "update" requests can be '
-                                                                  'sent to WDB'),
+                (query_elements[2] == 'select',
+                 'Only "select" requests can be sent to WDB'),
                 (';' not in query, "Found a not valid symbol in database query: ;")
             ]
 
@@ -375,7 +372,7 @@ class WazuhDBConnection:
         """
         return self._send(query, raw)
 
-    def execute(self, query, count=False, delete=False, update=False):
+    def execute(self, query, count=False):
         """
         Send a SQL query to wdb socket.
         """
@@ -402,21 +399,6 @@ class WazuhDBConnection:
         query_lower = self.__query_lower(query)
 
         self.__query_input_validation(query_lower)
-
-        # only for delete queries
-        if delete:
-            regex = re.compile(r"\w+ \d+? (sql delete from ([a-z0-9,_ ]+)|\w+ delete$)")
-            if regex.match(query_lower) is None:
-                raise WazuhError(2004, "Delete query is wrong")
-            return self._send(query_lower)
-
-        # only for update queries
-        if update:
-            regex = re.compile(r"\w+ \d+? sql update ([\w\d,*_ ]+) set value = '([\w\d,*_ ]+)' where key (=|like)?"
-                               r" '([a-z0-9,*_%\- ]+)'")
-            if regex.match(query_lower) is None:
-                raise WazuhError(2004, "Update query is wrong")
-            return self._send(query_lower)
 
         # Remove text inside 'where' clause to prevent finding reserved words (offset/count)
         query_without_where = re.sub(r'where \([^()]*\)', 'where ()', query_lower)

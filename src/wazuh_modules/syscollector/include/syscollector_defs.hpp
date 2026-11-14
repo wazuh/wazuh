@@ -81,6 +81,10 @@
     FRIEND_TEST(SyscollectorIdentityTest, RefusedRecoveryDataCleanStampsAndMovesOn);                                   \
     FRIEND_TEST(SyscollectorIdentityTest, StopBetweenTablesLeavesTheRestUnstamped);                                    \
     FRIEND_TEST(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstamped);                           \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsCompletedWhenTheQueueRunsDry);                                   \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsStillQueuedWhenTheCycleReachedItsBlockLimit);                    \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsStillQueuedWhenTheVDProtocolReachedItsBlockLimit);               \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoveryLogsInterruptedWhenTheCycleWasStoppedBetweenBlocks);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \

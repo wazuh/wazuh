@@ -114,7 +114,7 @@ set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckC
                            -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start \
                            -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                            -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                            -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                            -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                            -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -137,9 +137,9 @@ endif()
 # fim_diff_changes.c tests
 set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,wfopen \
-                                 -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
+                                 -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,mkdir -Wl,--wrap,fflush \
                                  -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
-                                 -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
+                                 -Wl,--wrap,rename -Wl,--wrap=fim_diff_exec -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
                                  -Wl,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mdebug2,--wrap=rmdir_ex,--wrap=rename_ex \
                                  -Wl,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
                                  -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=pthread_rwlock_wrlock -Wl,--wrap=pthread_mutex_lock \
@@ -150,7 +150,7 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                  -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
                                  -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete -Wl,--wrap,popen \
-                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                  -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                  -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                  -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -167,6 +167,12 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize -Wl,--wrap=realpath")
 endif()
 
+# fim_diff_exec.c tests (they run real child processes; Windows relies on fc.exe, which wine does not implement)
+if(NOT ${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "fim_diff_exec")
+  list(APPEND syscheckd_tests_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 # run_realtime.c tests
 set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_file_pattern_search \
                              -Wl,--wrap,read -Wl,--wrap,rbtree_insert -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_file_update \
@@ -179,7 +185,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                              -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                              -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                             -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                             -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                              -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                              -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                              -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -216,7 +222,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                                 -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                 -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                                -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                 -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                 -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                                 -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -246,7 +252,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                          -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                          -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -287,8 +293,8 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                           -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                           -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                          -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=asp_sync_module -Wl,--wrap=asp_sync_module_bounded \
-                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_get_agent_id -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                          -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=asp_sync_module \
+                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_get_agent_id -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -517,7 +523,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_sysche
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                           -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                           -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_recovery_run_integrity_checks \
@@ -584,7 +590,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
                          -Wl,--wrap,fim_db_increase_each_entry_version \
                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_persist_diff \
-                         -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_requires_full_sync \
+                         -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_requires_full_sync \
                          -Wl,--wrap,asp_get_agent_id \
                          -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
                          -Wl,--wrap,_minfo -Wl,--wrap,_mwarn \

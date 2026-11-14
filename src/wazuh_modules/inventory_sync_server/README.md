@@ -312,7 +312,7 @@ through these internal options.
 
 A third, session-level option — `inventory_sync_server_indexer_monitoring_interval_seconds`
 (10 s default, range 1–3600, mapped to `monitoring_interval_seconds`) — sets how often the
-shared session's health monitor polls each host with `GET /_cat/health`. It is one option, not a
+shared session's health monitor polls each host with `GET /_cluster/health/wazuh-*,.wazuh-*`. It is one option, not a
 sync/async pair, because both connectors share the session's single monitor. It bounds how stale
 the availability verdict behind the `503` admission gate can be: a host's death or recovery is
 noticed within roughly one interval (plus up to 5 s of probe timeout per unresponsive host, as
@@ -398,7 +398,13 @@ lock: two requests of the same agent traverse the same FIFO. Sessions classify i
   invalid operations (a bad enum is a `400` BEFORE anything is staged), skipping per-document
   problems with a WARN (a bad document never fails the request), building
   `_id = {cluster}_{agent}_{id}` (skipped when that exceeds the indexer's 512-byte limit — D27), overlaying authoritative `wazuh.*` fields so a payload cannot
-  impersonate another agent (a non-object value in the way is replaced, never thrown on — D29), and using the versioned-upsert form when `version > 0`. Staged
+  impersonate another agent (a non-object value in the way is replaced, never thrown on — D29), and using the versioned-upsert form when `version > 0`.
+  An upsert whose `data` has a dotted member name that would expand into `wazuh.*` is skipped before
+  the overlay (`common/jsonMemberNames.hpp`): the overlay rewrites the nested `wazuh.agent.id` only, a
+  literal `"wazuh.agent.id"` (or `"agent.id"` inside `wazuh`) is a different key to nlohmann and survives
+  it, and the indexer expands that name into a second value of the overlaid field. A dotted name only
+  expands below the object holding it, so the check covers root names whose first segment is `wazuh`
+  and the root `wazuh` object; dotted names elsewhere stay in their own subtree and are staged. Staged
   sessions join the worker's open batch; the **group commit** flushes when the batch bytes reach
   the threshold or the shard's queue drains, and only then answers every batched session `200`.
 - **Immediate** (cleans, checksum, metadata/groups, deletions): executes its own I/O and responds

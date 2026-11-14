@@ -66,7 +66,11 @@ Defines the format of the log source to determine how logs are read and parsed.
   - `djb-multilog` - DJB multilog format
   - `multi-line: N` - Multi-line log entries of exactly `N` lines (for example, `multi-line: 3`)
   - `multi-line-regex` - Multi-line log entries delimited by `multiline_regex`
-- **Note:** The format determines which collector is used to read the log source
+  - `generic`, `snort-fast`, `apache`, `iis`, `squid`, `syslog-pipe` - Read exactly like `syslog`, one event per line. They are kept for compatibility and select no other parsing
+  - `snort-full` - Snort full alert files: the lines of each alert (header, classification, optional AppID line and date line) are joined into one event
+  - `mssql_log` - Microsoft SQL Server error logs: a line starting with a `YYYY-MM-DD hh:mm:ss` timestamp starts a new event, and the following lines without one are appended to it
+  - `wazuhalert` - Wazuh alert logs in the plain-text `alerts.log` format: each alert is rewritten as a single `wazuh: Alert Level: ...; Rule: ...` event. Linux and macOS only; on Windows it is read like `syslog`
+- **Note:** The format determines which collector is used to read the log source. Any other value is a configuration error
 
 ### query
 
@@ -206,13 +210,31 @@ PCRE2 expression that splits a `multi-line-regex` source into events.
   - `timeout` - seconds to wait for more lines before sending an incomplete event. Default `5`, allowed `1` to `120`
 - **Example:** `<multiline_regex replace="wspace">^\d{4}-\d{2}-\d{2} </multiline_regex>`
 
+### command
+
+Command whose output is collected (`command` and `full_command` only).
+
+- **Default value:** None (required with `command` and `full_command`)
+- **Allowed values:** A command line, run by the agent with the agent's privileges
+- **Note:** Used instead of `location`. A `command` or `full_command` source without it is ignored with an error. Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`: the whole `<localfile>` is then ignored with an error. On Windows, a network path is ignored with a warning
+- **Example:** `<command>df -h</command>`
+
+### frequency
+
+Minimum time between two runs of the `command` (`command` and `full_command` only).
+
+- **Default value:** `360` (seconds)
+- **Allowed values:** A number of seconds (digits only, no unit suffix), `hourly` (3600) or `daily` (86400). Any other value is a configuration error
+- **Note:** The command runs once when logcollector starts and then again when at least `frequency` seconds have passed since the previous run. Ignored with a warning for `journald` and `macos`; has no effect on other formats
+- **Example:** `<frequency>hourly</frequency>`
+
 ### reconnect_time
 
-Time to wait before reconnecting to a log source after failure.
+Time to wait before trying again to subscribe to a Windows Event Channel that could not be opened (`eventchannel` on Windows only).
 
-- **Default value:** `5s`
-- **Allowed values:** Time interval in seconds
-- **Note:** Applies to log sources that can disconnect and reconnect (e.g., sockets, commands)
+- **Default value:** `5` (seconds)
+- **Allowed values:** A number followed by a unit: `s`, `m`, `h`, `d` or `w` (for example, `30s`, `5m`). The unit is required: a bare number such as `30` is a configuration error, as is any other suffix. `0` (with or without a unit) is replaced by the default with a warning
+- **Note:** Only `eventchannel` uses it. It has no effect on other formats (files, commands, sockets), and is ignored with a warning for `journald` and `macos`
 
 ---
 

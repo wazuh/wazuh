@@ -5,6 +5,7 @@
 import logging
 import json
 import os
+import re
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -109,7 +110,8 @@ def test_get_manager_status(mock_read_config):
                 assert value == 'failed'
 
             called += 1
-            status = utils.get_manager_status()
+            with patch('wazuh.core.cluster.utils.restart_in_progress', return_value=True):
+                status = utils.get_manager_status()
             for value in status.values():
                 assert value == 'restarting'
 
@@ -122,6 +124,109 @@ def test_get_manager_status(mock_read_config):
             status = utils.get_manager_status()
             for value in status.values():
                 assert value == 'running'
+
+
+@pytest.mark.parametrize('marker, lock_pid, holder_alive, expected', [
+    (False, '1234', True, False),
+    (True, '1234', True, True),
+    (True, '1234', False, False),
+    (True, None, False, False),
+    (True, 'not-a-pid', True, False),
+    (True, '0', True, False),
+    (True, '-1234', True, False),
+    (True, '\u00b2', True, False),
+    (True, '1' * 5000, True, False),
+])
+def test_restart_in_progress(tmp_path, marker, lock_pid, holder_alive, expected):
+    """Check that a restart marker only counts while the control script holding the start-script lock is alive.
+
+    Parameters
+    ----------
+    marker : bool
+        Whether var/run/.restart exists.
+    lock_pid : str or None
+        Content of var/start-script-lock/pid, or None for no lock.
+    holder_alive : bool
+        Whether a process with that pid exists.
+    expected : bool
+        Expected result.
+    """
+    (tmp_path / 'var' / 'run').mkdir(parents=True)
+    if marker:
+        (tmp_path / 'var' / 'run' / '.restart').touch()
+    if lock_pid is not None:
+        (tmp_path / 'var' / 'start-script-lock').mkdir()
+        (tmp_path / 'var' / 'start-script-lock' / 'pid').write_text(f'{lock_pid}\n')
+
+    with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
+            patch('wazuh.core.cluster.utils.process_exists', return_value=holder_alive) as process_exists_mock:
+        assert utils.restart_in_progress() is expected
+
+    if expected:
+        process_exists_mock.assert_called_once_with(1234)
+
+
+def test_restart_paths_match_control_script():
+    """Check that restart_in_progress() reads the marker and the lock pid where wazuh-manager-control writes them.
+
+    Nothing else ties the two: if the script renamed either one, the API would never report 'restarting' again, and
+    no error would show it.
+    """
+    script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), *[os.pardir] * 5, 'src', 'init',
+                               'wazuh-server.sh')
+    with open(script_path) as script_file:
+        script = script_file.read()
+
+    lock = re.search(r'^LOCK="\$\{DIR\}/(.+)"$', script, re.MULTILINE)
+    lock_pid = re.search(r'^LOCK_PID="\$\{LOCK\}/(.+)"$', script, re.MULTILINE)
+    assert lock and lock_pid, 'LOCK and LOCK_PID are not set where expected in wazuh-server.sh'
+    assert os.path.join(lock.group(1), lock_pid.group(1)) == utils.START_LOCK_PID
+    assert re.search(r'^\s*service_write \$\{DIR\}/' + re.escape(utils.RESTART_MARKER) + r' replace ', script,
+                     re.MULTILINE), 'restart_service() does not write the marker restart_in_progress() reads'
+
+
+def test_restart_in_progress_binary_pid(tmp_path):
+    """Check that a pid file holding bytes that aren't text doesn't count, instead of raising."""
+    (tmp_path / 'var' / 'run').mkdir(parents=True)
+    (tmp_path / 'var' / 'run' / '.restart').touch()
+    (tmp_path / 'var' / 'start-script-lock').mkdir()
+    (tmp_path / 'var' / 'start-script-lock' / 'pid').write_bytes(b'\xff\xfe1234')
+
+    with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)):
+        assert utils.restart_in_progress() is False
+
+
+def test_restart_in_progress_unreadable_lock(tmp_path):
+    """Check that a marker whose lock pid can't be read does not count: the control script makes it readable."""
+    (tmp_path / 'var' / 'run').mkdir(parents=True)
+    (tmp_path / 'var' / 'run' / '.restart').touch()
+    (tmp_path / 'var' / 'start-script-lock').mkdir()
+
+    with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
+            patch('builtins.open', side_effect=PermissionError):
+        assert utils.restart_in_progress() is False
+
+
+@pytest.mark.parametrize('kill_effect, expected', [
+    (None, True),
+    (PermissionError, True),
+    (ProcessLookupError, False),
+    (OverflowError, False),
+])
+def test_process_exists(kill_effect, expected):
+    """Check that signal 0 tells a live process, whoever runs it, from a missing one.
+
+    Parameters
+    ----------
+    kill_effect : Exception or None
+        What os.kill raises.
+    expected : bool
+        Expected result.
+    """
+    with patch('wazuh.core.cluster.utils.os.kill', side_effect=kill_effect) as kill_mock:
+        assert utils.process_exists(1234) is expected
+
+    kill_mock.assert_called_once_with(1234, 0)
 
 
 @pytest.mark.parametrize('node_type, apid_reported', [

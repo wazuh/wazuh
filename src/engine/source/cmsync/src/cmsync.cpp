@@ -154,7 +154,20 @@ bool CMSync::syncSpace(Space& space)
         case CycleStatus::FailedTransport:
         case CycleStatus::FailedSink:
         case CycleStatus::FailedConfig:
-            LOG_WARNING("[{}] Failed to synchronize space '{}': {}", COMPONENT_NAME, space.name, outcome.detail);
+            // The engine stops this service before the router and the indexer connector, so a cycle still
+            // running fails against them; that is an abort, not a fault. A genuine failure that coincides with
+            // the stop is reported the same way: the engine is stopping and the space is FAILED either way.
+            if (m_shutdownRequested.load())
+            {
+                LOG_INFO("[{}] Synchronization aborted for space '{}' by the shutdown: {}",
+                         COMPONENT_NAME,
+                         space.name,
+                         outcome.detail);
+            }
+            else
+            {
+                LOG_WARNING("[{}] Failed to synchronize space '{}': {}", COMPONENT_NAME, space.name, outcome.detail);
+            }
             space.status = base::SyncStatus::FAILED;
             break;
     }
@@ -313,6 +326,7 @@ void CMSync::requestShutdown()
     m_shutdownRequested.store(true);
     for (auto& space : m_spaces)
     {
+        space.sink->requestShutdown();
         space.topic->requestStop();
     }
     LOG_INFO("[{}] Shutdown requested", COMPONENT_NAME);

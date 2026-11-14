@@ -277,6 +277,12 @@ typedef enum {
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
 
 /**
+ * @brief Whether w_agent_token_bootstrap() will enroll: a token is present and the agent has
+ *        neither an anchor nor a key. Only that path can outlast wazuh-control's start deadline.
+ */
+bool w_agent_token_bootstrap_will_enroll(void);
+
+/**
  * @brief Turns a W_TOKEN_BOOTSTRAP_PENDING result into TRANSIENT while the pending window lasts,
  *        and into PERMANENT (with a logged error) once it has run out.
  *

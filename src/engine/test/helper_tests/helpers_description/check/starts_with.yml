@@ -1,0 +1,81 @@
+# Name of the helper function
+name: starts_with
+
+metadata:
+  description: |
+    Checks whether the target string starts with `prefix`.
+
+    Behavior:
+    - Byte-wise, case-sensitive prefix comparison; no locale or Unicode normalization is applied.
+    - `prefix` is a literal string or a reference to a string field.
+
+    Build errors:
+    - `prefix` is an empty literal.
+    - `prefix` is a literal that is not a string (an unquoted number, boolean or null).
+    - `prefix` is a reference to a schema field whose type is not a string type.
+    - The target is a schema field whose type is not a string type.
+
+    Notes:
+    - A reference that resolves to an empty string is not rejected: the check is true (every string starts with the empty string).
+    - `ends_with` is the mirror check; `contains` searches anywhere in the string; `regex_match('^...')` is
+      the pattern alternative.
+  group: string
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The reference given as `prefix` does not exist or is not a string.
+    - The target string does not start with `prefix`.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  prefix:
+    type: string
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      prefix: hello
+    target_field: hello wazuh!
+    should_pass: true
+    description: The target string starts with the prefix.
+  - arguments:
+      prefix: hello!
+    target_field: hello wazuh!
+    should_pass: false
+    description: The target string does not start with the prefix.
+  - arguments:
+      prefix: wazuh!
+    target_field: hello wazuh!
+    should_pass: false
+    description: The prefix occurs at the end of the string, not at the start.
+  - arguments:
+      prefix: Hello
+    target_field: hello wazuh!
+    should_pass: false
+    description: The comparison is case-sensitive.
+  - arguments:
+      prefix: hello
+    target_field: 123
+    should_pass: false
+    description: The target field is a number, not a string.
+  - arguments:
+      prefix:
+        source: value
+        value: ""
+    target_field: hello wazuh!
+    should_pass: false
+    description: An empty literal is rejected at build time.

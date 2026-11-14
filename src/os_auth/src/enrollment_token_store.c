@@ -47,6 +47,10 @@
 /* Characters of a base64url encoded 16 byte secret */
 #define ETOKEN_SECRET_CHARS 22
 
+/* Characters of the ISO 8601 UTC rendering of a timestamp ("2026-11-22T07:03:52Z"), with room to
+ * spare for a time_t whose year does not fit in four digits */
+#define ETOKEN_TIME_CHARS 31
+
 /* Format version of the file. Bumped only for a change a version 1 reader could not survive */
 #define ETOKEN_STORE_VERSION 1
 
@@ -329,6 +333,22 @@ static void etoken_hex(const uint8_t *in, size_t len, char *out) {
     }
 
     out[len * 2] = '\0';
+}
+
+/**
+ * @brief ISO 8601 UTC rendering of a timestamp, for the operator-facing log lines. @p out needs
+ * ETOKEN_TIME_CHARS + 1 bytes.
+ *
+ * UTC rather than local time, so the same line read on two hosts means the same instant. A
+ * timestamp gmtime_r() cannot represent falls back to the raw epoch: a log line is never worth
+ * losing the value over.
+ */
+static void etoken_format_time(time_t when, char *out, size_t size) {
+    struct tm tm;
+
+    if (gmtime_r(&when, &tm) == NULL || strftime(out, size, "%Y-%m-%dT%H:%M:%SZ", &tm) == 0) {
+        snprintf(out, size, "%ld", (long) when);
+    }
 }
 
 /**
@@ -978,6 +998,8 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
     w_etoken_t token;
     uint8_t id_bytes[W_ETOKEN_ID_BYTES];
     char summary[OS_SIZE_1024];
+    char expires_text[ETOKEN_TIME_CHARS + 1];
+    char uses_text[16];
     char *text = NULL;
     char *id = NULL;
     int attempt;
@@ -1167,9 +1189,19 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
     /* Rendered before the mutex is released, because `adr` and `description` belong to the entry in
      * the array and a concurrent reload would replace it -- but LOGGED afterwards, so nothing that
      * writes to a file or a socket runs while the enrollment threads are waiting for the store */
+    etoken_format_time(entry.expires, expires_text, sizeof(expires_text));
+
+    /* 0 means "as many enrollments as the token's lifetime allows": spelled out, because a bare 0
+     * reads as "no uses left" */
+    if (entry.max_uses == 0) {
+        snprintf(uses_text, sizeof(uses_text), "unlimited");
+    } else {
+        snprintf(uses_text, sizeof(uses_text), "%u", entry.max_uses);
+    }
+
     snprintf(summary, sizeof(summary),
-             "Enrollment token '%s' minted for '%s' (expires %ld, max_uses %u, credential %s)%s%s",
-             entry.id, entry.adr, (long) entry.expires, entry.max_uses,
+             "Enrollment token '%s' minted for '%s' (expires %s, max_uses %s, credential %s)%s%s",
+             entry.id, entry.adr, expires_text, uses_text,
              entry.has_secret ? "yes" : "no",
              entry.description != NULL ? ", description " : "",
              entry.description != NULL ? entry.description : "");

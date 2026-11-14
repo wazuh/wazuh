@@ -85,7 +85,7 @@ sequenceDiagram
 
 ### Delta Sync Split Into Multiple Blocks
 
-`Mode::DELTA` splits the queue into as many `FullSession`s as needed to stay under `FULLSESSION_MAX_BYTES`; each block is its own independent session with its own session id.
+`Mode::DELTA` splits the queue into as many `FullSession`s as needed to stay under the `<agent><batch><size>` byte cap (default `FULLSESSION_MAX_BYTES`); each block is its own independent session with its own session id.
 
 ```mermaid
 sequenceDiagram

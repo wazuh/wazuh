@@ -647,7 +647,9 @@ test_name: UPDATE POLICIES RBAC
 
 stages:
 
-  - name: Update one specified policy in the system (Allow)
+  # Policy 103 is linked to roles 103 and 105, and this user is denied 'security:update' over both: a new
+  # body would change what those roles grant, so it is refused even though the policy itself is allowed.
+  - name: Update the body of a policy linked to roles the user cannot update (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies/103"
@@ -655,7 +657,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: administratorPolicyModified
         policy:
           actions:
             - agent:read
@@ -664,6 +665,22 @@ stages:
             - agent:id:097
             - agent:id:002
             - agent:id:003
+    response:
+      status_code: 403
+      json:
+        error: 4000
+        detail: "Permission denied: Resource type: role:id, resources: role:id:103, role:id:105"
+
+  # A rename does not change what the linked roles grant, so the permission over the policy is enough.
+  - name: Rename one specified policy in the system (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies/103"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: administratorPolicyModified
     response:
       status_code: 200
       json:
@@ -674,12 +691,11 @@ stages:
               name: administratorPolicyModified
               policy:
                 actions:
-                  - agent:read
-                effect: deny
+                  - agent:update
+                  - agent:delete
+                effect: allow
                 resources:
-                  - agent:id:097
-                  - agent:id:002
-                  - agent:id:003
+                  - agent:id:*
               roles: !anything
           failed_items: []
           total_affected_items: 1
@@ -1221,12 +1237,11 @@ stages:
               name: administratorPolicyModified
               policy:
                 actions:
-                  - agent:read
-                effect: deny
+                  - agent:update
+                  - agent:delete
+                effect: allow
                 resources:
-                  - agent:id:097
-                  - agent:id:002
-                  - agent:id:003
+                  - agent:id:*
               roles: []
           failed_items: []
           total_affected_items: 1

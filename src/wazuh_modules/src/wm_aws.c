@@ -603,7 +603,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     char *line;
     char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-        wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+        wm_sendmsg_with_reconnect(usec, &aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ, WM_AWS_LOGTAG);
     }
 
     os_free(trail_title);
@@ -763,7 +763,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     char *line;
     char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-        wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+        wm_sendmsg_with_reconnect(usec, &aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ, WM_AWS_LOGTAG);
     }
 
     os_free(output);
@@ -904,7 +904,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     char *line;
     char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-        wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+        wm_sendmsg_with_reconnect(usec, &aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ, WM_AWS_LOGTAG);
     }
 
     os_free(output);

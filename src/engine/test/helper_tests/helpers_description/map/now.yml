@@ -1,0 +1,28 @@
+# Name of the helper function
+name: now
+
+metadata:
+  description: |
+    Maps the current UTC time to the target field as a date string with second precision.
+
+    Behavior:
+    - The result has the form `YYYY-MM-DDTHH:MM:SSZ`, for example `2024-05-17T15:10:58Z`, with no
+      fractional part.
+    - It is the wall-clock time at which the event is processed, not the event time.
+
+    Build errors:
+    - Any argument.
+
+    Notes:
+    - `now_epoch` gives the same instant as an integer number of seconds.
+    - `epoch_to_date` writes 6 fractional digits and `parse_date` writes 3.
+  group: date
+  fails_when: []
+
+helper_type: map
+
+is_variadic: false
+
+output:
+  type: string
+  subset: string

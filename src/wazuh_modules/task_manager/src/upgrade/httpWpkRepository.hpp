@@ -15,6 +15,7 @@
 
 #include <chrono>
 #include <string>
+#include <string_view>
 
 namespace task_manager::upgrade
 {
@@ -70,7 +71,22 @@ namespace task_manager::upgrade
              * every request fail here instead.
              */
             std::string caBundlePath;
+            /**
+             * @brief The User-Agent sent on every request. Build it with userAgentFor().
+             *
+             * Never empty: with no CURLOPT_USERAGENT libcurl sends no header at all, and a CDN
+             * whose WAF runs the AWS core rule set (NoUserAgent_HEADER) answers that with 403.
+             */
+            std::string userAgent {"wazuh-manager"};
         };
+
+        /**
+         * @brief The User-Agent for a manager of the given version: "wazuh-manager/5.0.0".
+         *
+         * @param managerVersion __wazuh_version as the shim hands it, e.g. "v5.0.0". The leading
+         *                       `v` is dropped; an empty version yields the bare product name.
+         */
+        static std::string userAgentFor(std::string_view managerVersion);
 
         HttpWpkRepository();
         explicit HttpWpkRepository(Options options);

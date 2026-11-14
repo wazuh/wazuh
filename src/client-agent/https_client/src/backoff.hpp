@@ -58,6 +58,12 @@ class Backoff final
             m_attempt = 0;
         }
 
+        /// A uniform [0, 1) sample from this backoff's random source.
+        double jitter01()
+        {
+            return m_random.uniform01();
+        }
+
     private:
         static constexpr uint32_t MAX_ATTEMPT_SHIFT = 20; ///< Overflow guard; cap rules anyway.
 

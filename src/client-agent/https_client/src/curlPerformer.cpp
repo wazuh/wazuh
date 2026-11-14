@@ -197,6 +197,7 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     response.status = handle->perform();
     response.httpCode = handle->responseCode();
     response.localIp = handle->localIp();
+    response.requestSent = handle->requestSent();
     response.curlError = handle->curlError();
     response.tlsFailure = handle->tlsFailureDetail();
     response.caFileLoadFailed = handle->caFileLoadFailed();

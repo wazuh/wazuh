@@ -99,6 +99,10 @@ small and nothing exists anywhere a reader could see until `commit`, so every pa
 `collectOrphanNamespaces()` deletes the space's namespaces that no route serves — what a process
 killed between import and route swap leaves behind. Without a readable router it deletes nothing.
 
+A failed route swap is logged at `ERROR`. After `requestShutdown()` — which `CMSync` calls when the
+engine stops, before the router goes down — it is logged at `INFO` as `Synchronization aborted for
+space '<space>' by the shutdown: <error>`; the commit is rejected and rolled back either way.
+
 | Situation | Result | Why |
 |---|---|---|
 | No policy document in the indexer | `Skip` | Nothing to deploy, nothing to tear down |
@@ -172,7 +176,8 @@ cmcontent/
 - **releasableIndexer** — forwarding, dropping its share on release, failing after it, waiting for
   a request in flight.
 - **rulesetSink** — the token read from the router, orphan collection, malformed metadata, teardown,
-  resource bucketing, route creation and hot-swap, old-namespace deletion, every reject and rollback.
+  resource bucketing, route creation and hot-swap, old-namespace deletion, every reject and rollback,
+  and the level of a failed route swap with and without the shutdown.
 - **iocTypeSink** — staging naming, lower-cased keys, malformed documents skipped, target creation,
   hot-swap, rollback, abort, leftover staging cleanup, an unregistered staging handle.
 - **engineTokenStore** — delegation, clear as an empty token, failures reported by value, callback

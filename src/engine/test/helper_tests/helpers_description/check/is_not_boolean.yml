@@ -1,0 +1,51 @@
+# Name of the helper function
+name: is_not_boolean
+
+metadata:
+  description: |
+    Checks whether the target field exists and does not hold a JSON boolean.
+
+    Behavior:
+    - True when the target exists and its value is neither the JSON literal `true` nor `false`; `null` and
+      the strings `"true"` and `"false"` count as "not a boolean".
+    - A missing target gives false, so this is not the same as `NOT is_boolean(...)`, which is true for a
+      missing field.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is neither a schema field nor a temporary field rooted at `_`.
+    - Any argument is given.
+
+    Notes:
+    - Use `exists` or `not_exists` to decide about a missing field explicitly.
+  group: type
+  fails_when:
+    - The target field does not exist.
+    - The target field is a boolean.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - array
+    - object
+    - string
+
+test:
+  - target_field: true
+    should_pass: false
+    description: The target field is a boolean.
+  - target_field: 234
+    should_pass: true
+    description: The target field is a number, not a boolean.
+  - target_field:
+      key: value
+    should_pass: true
+    description: The target field is an object, not a boolean.
+  - target_field: "true"
+    should_pass: true
+    description: The string "true" is not a boolean.

@@ -5,6 +5,7 @@
 #include <api/adapter/adapter.hpp>
 #include <base/eventParser.hpp>
 #include <cmstore/icmstore.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 #include <router/iapi.hpp>
 #include <schemf/ivalidator.hpp>
 
@@ -33,7 +34,7 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
 inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester,
                              const std::shared_ptr<cm::store::ICMStore>& store,
                              const std::shared_ptr<schemf::IValidator>& schemaValidator,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/tester/session/post", sessionPost(tester));
     server->addRoute(httpsrv::Method::POST, "/_internal/tester/session/delete", sessionDelete(tester));

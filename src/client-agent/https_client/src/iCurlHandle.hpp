@@ -140,6 +140,9 @@ class ICurlHandle
         virtual TransportStatus perform() = 0;
         virtual long responseCode() = 0;
         virtual std::string localIp() = 0; ///< CURLINFO_LOCAL_IP after perform().
+        /// True when the last perform() sent the request on an established connection
+        /// (CURLINFO_REQUEST_SIZE > 0), so the manager may have acted on it.
+        virtual bool requestSent() = 0;
         /// libcurl's own reason for the last perform(), empty when it succeeded.
         /// The error class plus, when libcurl supplied one, the TLS/OpenSSL detail
         /// behind it -- the part TransportStatus cannot carry.

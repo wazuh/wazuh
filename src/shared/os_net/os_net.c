@@ -213,9 +213,18 @@ int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid
         }
 
         /* Bind through the pinned descriptor; where /proc is unavailable (a chrooted daemon) bind by
-         * path inside the private directory. /proc presence is decided up front, not from the bind result. */
+         * path inside the private directory. /proc presence is decided up front, not from the bind result.
+         * Only Linux resolves /proc/self/fd/N as a link to the open directory: Solaris 11 has /proc/self/fd
+         * but cannot look up a name below an fd entry, so the bind fails there and every daemon fails to start.
+         * Elsewhere bind by path; the fchmodat()/fchownat()/renameat() below still go through the pinned
+         * descriptor and fail if the socket did not land in it. */
         int bret;
-        if (access("/proc/self/fd", X_OK) == 0) {
+#ifdef __linux__
+        const int bind_via_proc = (access("/proc/self/fd", X_OK) == 0);
+#else
+        const int bind_via_proc = 0;
+#endif
+        if (bind_via_proc) {
             char fdpath[32];
             struct sockaddr_un fd_us;
             int blen = snprintf(fdpath, sizeof(fdpath), "/proc/self/fd/%d/s", dfd);

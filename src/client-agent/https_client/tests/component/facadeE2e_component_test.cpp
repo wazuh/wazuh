@@ -897,6 +897,7 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
     hc_config_t config = tlsConfig();
     config.server_port = port;
     std::strncpy(config.agent_key, oldKey.c_str(), sizeof(config.agent_key) - 1);
+    config.unknown_agent_retry_ms = 1500;
     hc_callbacks_t callbacks {};
     callbacks.on_startup_result = onReenrollStartup;
     callbacks.on_reenroll_required = onReenroll;
@@ -911,8 +912,9 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
     ASSERT_TRUE(hc_start(handle));
     ASSERT_TRUE(waitFor(recorder.startups, 1, 3000)); // First registration (old key).
 
-    // After the rotation the old key 401s -> exactly one re-enroll callback.
-    ASSERT_TRUE(waitFor(recorder.reenrollCount, 1, 6000));
+    // After the rotation the old key 401s -> exactly one re-enroll callback, once the agent has
+    // retried the held credential for the whole unknown_agent window.
+    ASSERT_TRUE(waitFor(recorder.reenrollCount, 1, 8000));
     // The swapped key re-registers: a second accepted startup.
     ASSERT_TRUE(waitFor(recorder.startups, 2, 6000));
     hc_destroy(handle);

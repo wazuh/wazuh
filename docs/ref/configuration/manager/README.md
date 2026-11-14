@@ -46,8 +46,12 @@ element is rejected as a duplicate.
     listener is enabled and `auth.port` only while authd's port-1515 listener starts; the Server API port,
     55000 by default, lives in `api.yaml` and is **not** compared with them) and, unless `--skip-file-checks`, the existence of the
     certificate files the configuration names (`remote.https.certificate`, `key`, `ca`,
-    `ca_certificate`, `auth.ssl_agent_ca`, `ssl_manager_cert`, `ssl_manager_key`; `indexer.ssl.*` is not
-    checked). Silent on success; on failure it prints every problem it finds in one run, one line each,
+    `ca_certificate`, `auth.ssl_agent_ca`, `ssl_manager_cert`, `ssl_manager_key`) and, also unless
+    `--skip-file-checks`, that every `indexer.ssl` file (each listed CA, `certificate`, `key`) is named directly in
+    `/etc/wazuh-manager/certs` — the rule the credential check applies at start, so a 4.x
+    `/etc/filebeat/certs/...` path is refused here with
+    `(1244): Invalid configuration at '/indexer/ssl/certificate_authorities/0': /etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs, [...]`;
+    whether those files exist is left to the start, which may import them from a co-located indexer). Silent on success; on failure it prints every problem it finds in one run, one line each,
     with the JSON pointer of the offending option:
     `(1244): Invalid configuration at '/remote/legacy/port': does not satisfy 'maximum' [...]`
     (`'/'` for syntax problems, which name the line instead). The lines come in the order of the file:
@@ -67,10 +71,10 @@ element is rejected as a duplicate.
   - What `validate` does not judge, and the start does: the `indexer.ssl` certificate and key (both default
     to empty, so one set without the other passes `validate` and the API's `PUT`; the credential check refuses
     it at the next start with `INVALID indexer.ssl.<missing>: must be set together with indexer.ssl.<other>`,
-    error 22), where the TLS files lie and what they hold (the
+    error 22), whether the `indexer.ssl` files exist, where the other TLS files lie and what they hold (the
     credential check refuses a path outside `/etc/wazuh-manager/certs` for `remote.https.certificate`,
     `remote.https.key`, `remote.https.ca_certificate`, `auth.ssl_manager_cert` and `auth.ssl_manager_key`
-    (the `auth` pair whatever `auth.disabled` says) and the `indexer.ssl` files — `remote.https.ca` and
+    (the `auth` pair whatever `auth.disabled` says) — `remote.https.ca` and
     `auth.ssl_agent_ca` are not confined — and an expired or mismatched pair —
     [Credentials](../../getting-started/credentials.md)), the internal options (read by each daemon and
     judged by its `-t`, with the exceptions listed below), and what only a running system shows (an

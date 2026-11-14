@@ -1,0 +1,76 @@
+# Name of the helper function
+name: parse_alphanumeric
+
+metadata:
+  description: |
+    Checks that the whole input string is alphanumeric and stores it in the target field.
+
+    Behavior:
+    - Accepts one or more ASCII letters or digits, plus any character listed in the optional `extra_chars`
+      string; non-ASCII bytes are not accepted.
+    - The whole input must match; the string is stored unchanged and replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - `extra_chars` is not a literal string, or more than 2 arguments are given.
+    - The target field is a schema field that is not text-like (text, keyword, wildcard and the like).
+
+    Notes:
+    - `regex_match` tests a pattern without writing anything; `regex_extract` extracts a capture group.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is empty or contains a character that is neither alphanumeric nor in extra_chars.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  extra_chars:
+    type: string
+    generate: string
+    source: value
+    optional: true
+
+# the previous value of the target is replaced whatever its type
+skipped:
+  - different_target_field_type
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      input: Hello2024
+    target_field: any_value
+    should_pass: true
+    expected: Hello2024
+    description: An alphanumeric string is stored unchanged
+  - arguments:
+      input: Not{isalphanum}
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a character that is not alphanumeric
+  - arguments:
+      input: Hello-2024
+      extra_chars: "-"
+    target_field: any_value
+    should_pass: true
+    expected: Hello-2024
+    description: The characters listed in extra_chars are accepted too
+  - arguments:
+      input: Hello 2024
+      extra_chars: "-"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a character that is neither alphanumeric nor in extra_chars

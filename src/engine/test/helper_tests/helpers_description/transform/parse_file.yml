@@ -1,0 +1,81 @@
+# Name of the helper function
+name: parse_file
+
+metadata:
+  description: |
+    Splits the input file path into its parts and writes them as members of the target object.
+
+    Behavior:
+    - The whole non-empty input is the path. The separator is `\` when the input contains any backslash,
+      otherwise `/`.
+    - These members are written into the target field as strings, keeping any other member it has; a target
+      that is not an object becomes one:
+      - `path`: the text before the last separator; `/` when the separator is the first character; the whole
+        input when there is no separator.
+      - `name`: the text after the last separator, or the whole input when there is no separator.
+      - `ext`: the lowercased text after the last `.` of the name, or an empty string.
+      - `drive_letter`: only in backslash mode, the first character when it is an uppercase letter from `B`
+        to `Y` (`A` and `Z` are not recognized, and the `:` is not checked).
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - The input is not validated as a path: any non-empty string is split.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is empty.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and a target of another type is turned into an object
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      input: C:\Windows\System32\program.exe
+    target_field: any_value
+    should_pass: true
+    expected:
+      path: C:\Windows\System32
+      ext: exe
+      drive_letter: C
+      name: program.exe
+    description: A Windows path yields the drive letter, path, name and extension
+  - arguments:
+      input: /var/log/syslog.LOG
+    target_field: any_value
+    should_pass: true
+    expected:
+      path: /var/log
+      ext: log
+      name: syslog.LOG
+    description: A Unix path has no drive letter and the extension is lowercased
+  - arguments:
+      input: /file.txt
+    target_field: any_value
+    should_pass: true
+    expected:
+      path: /
+      ext: txt
+      name: file.txt
+    description: A file in the root directory has the path /

@@ -129,14 +129,19 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
                 p++;
             }
 
+            /* A line with only whitespace adds nothing to the message */
+            if (*p == '\0') {
+                continue;
+            }
+
             /* Append to the saved buffer, leaving room for the separator and the terminator. Copy the exact
              * length: ASAN's strncat check spans one byte past the write, so a line that fills the buffer to its
              * last byte is reported as overlapping the adjacent str */
-            const size_t append_len = strlen(str);
+            const size_t append_len = strlen(p);
 
             if (sizeof(buffer) - buffer_len > append_len + 1) {
                 buffer[buffer_len] = ' ';
-                memcpy(buffer + buffer_len + 1, str, append_len + 1);
+                memcpy(buffer + buffer_len + 1, p, append_len + 1);
             }
         }
 

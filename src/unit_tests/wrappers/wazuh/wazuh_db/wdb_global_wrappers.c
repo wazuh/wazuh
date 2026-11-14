@@ -153,14 +153,6 @@ int __wrap_wdb_global_delete_agent_belong(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-cJSON* __wrap_wdb_global_find_agent(__attribute__((unused)) wdb_t *wdb,
-                                    const char *name,
-                                    const char *ip) {
-    check_expected(name);
-    check_expected(ip);
-    return mock_ptr_type(cJSON*);
-}
-
 cJSON* __wrap_wdb_global_find_group(__attribute__((unused)) wdb_t *wdb,
                                     char *group_name) {
     check_expected(group_name);
@@ -243,11 +235,6 @@ cJSON* __wrap_wdb_global_get_agent_info(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_global_reset_agents_connection(__attribute__((unused)) wdb_t *wdb, const char *sync_status) {
-    check_expected(sync_status);
-    return mock();
-}
-
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)) wdb_t *wdb,
                                                                int last_agent_id,
                                                                const char* connection_status,
@@ -272,13 +259,6 @@ wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_
     check_expected(agent_registration_delta);
     *output = mock_ptr_type(cJSON*);
     return mock();
-}
-
-cJSON* __wrap_wdb_global_get_groups_integrity(__attribute__((unused)) wdb_t *wdb,
-                                              os_sha1 hash) {
-
-    check_expected(hash);
-    return mock_ptr_type(cJSON*);
 }
 
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,

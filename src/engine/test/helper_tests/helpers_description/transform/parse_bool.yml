@@ -1,0 +1,91 @@
+# Name of the helper function
+name: parse_bool
+
+metadata:
+  description: |
+    Converts the input string `true` or `false` to a boolean and stores it in the target field.
+
+    Behavior:
+    - The whole input must be `true` or `false`, compared case-insensitively (`TRUE` and `False` are
+      accepted).
+    - `1`, `0`, `yes`, `no` and surrounding spaces are rejected.
+    - The boolean replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not a boolean.
+
+    Notes:
+    - `to_bool` converts a number (any non-zero value is true) instead of a string.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not true or false, in any letter case.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: boolean
+  generate: boolean
+
+test:
+  - arguments:
+      input: "true"
+    target_field: any_value
+    should_pass: true
+    expected: true
+    description: The string true becomes the boolean true
+  - arguments:
+      input: "TRUE"
+    target_field: any_value
+    should_pass: true
+    expected: true
+    description: The comparison is case-insensitive
+  - arguments:
+      input: "false"
+    target_field: any_value
+    should_pass: true
+    expected: false
+    description: The string false becomes the boolean false
+  - arguments:
+      input: "1"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a numeric string
+  - arguments:
+      input: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on any other string
+  - arguments:
+      input: hello
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: An array target is left unchanged when the input is not a boolean
+  - arguments:
+      input: hello
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: An object target is left unchanged when the input is not a boolean

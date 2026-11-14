@@ -25,6 +25,20 @@ int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locm
     return mock();
 }
 
+// Checks the descriptor the caller passes in under the name "queue", like __wrap_wm_sendmsg().
+int __wrap_wm_sendmsg_with_reconnect(int usec, int *queue_ptr, const char *message, const char *locmsg, char loc, const char *tag) {
+    int queue = *queue_ptr;
+
+    check_expected(usec);
+    check_expected(queue);
+    check_expected(message);
+    check_expected(locmsg);
+    check_expected(loc);
+    check_expected(tag);
+
+    return mock();
+}
+
 int __wrap_wm_state_io(const char * tag,
                        int op,
                        void *state,

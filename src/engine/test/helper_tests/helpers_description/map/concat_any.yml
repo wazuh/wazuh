@@ -1,34 +1,48 @@
+# Name of the helper function
 name: concat_any
 
 metadata:
   description: |
-    The function `concat` concatenates various types of data including strings, numbers, and objects.
-    The function receives two or more operands and concatenates them in the order they are provided.
-    The result of the concatenation is stored in the field `field`.
-  keywords:
-    - different_types
+    Concatenates two or more values in argument order, without a separator, skipping the references
+    that are missing, and maps the resulting string to the target field.
 
+    Behavior:
+    - Every argument is a literal or a reference of type string, number or object.
+    - A missing reference contributes nothing; the other arguments are concatenated as `concat`
+      does: strings as is, literal numbers and objects as compact JSON, referenced integers in
+      decimal, referenced doubles with 6 fixed decimals and referenced objects as compact JSON.
+    - At least one reference must resolve; a literal never counts.
+
+    Build errors:
+    - Fewer than 2 arguments.
+    - No argument is a reference (use `concat` to join literals).
+    - A literal that is a boolean, an array or `null`.
+    - A referenced schema field whose type is not string, number or object.
+
+    Notes:
+    - `concat` fails as soon as one reference is missing; both give the same result when every
+      reference exists.
+    - `array_append_any` is the array counterpart: it skips missing references too.
+  group: string
+  fails_when:
+    - "every reference is missing, whatever literals the call has"
+    - "a referenced field that exists is a boolean, an array, `null` or an integer above 2^63-1"
 
 helper_type: map
 
-# Indicates whether the helper function supports a variable number of arguments
 is_variadic: true
 
-# Arguments expected by the helper function
 arguments:
-  operand_left:
+  value:
     type:
       - string
       - number
       - object
-    source: both # Includes values or references (their names start with $)
+    source: both
 
-  operand_right:
-    type:
-      - string
-      - number
-      - object
-    source: both # Includes values or references (their names start with $)
+# The generator builds a call with one argument per declared argument, below the minimum of two
+skipped:
+  - success_cases
 
 output:
   type: string
@@ -36,29 +50,52 @@ output:
 
 test:
   - arguments:
-      operand_left: "hello"
-      operand_right: " "
-      operand_right_1: "yes"
+      value:
+        source: reference
+        value: "hello"
+      value_1:
+        source: value
+        value: " "
+      value_2:
+        source: value
+        value: "yes"
     should_pass: true
     expected: hello yes
-    description: Concatenate a string with another empty one
+    description: Concatenate a reference and literals in argument order
   - arguments:
-      operand_left:
+      value:
         source: reference
         value: null
-      operand_right:
+      value_1:
         source: reference
         value: "hello"
     should_pass: true
     expected: hello
-    description: Try to concatenate an existing reference with a non-existing reference
+    description: Skip a missing reference and keep the one that exists
   - arguments:
-      operand_left:
+      value:
         source: reference
         value: null
-      operand_right:
+      value_1:
         source: value
         value: "hello"
-    should_pass: true
-    expected: hello
-    description: Trying to concatenate a value with a reference does not exist
+    should_pass: false
+    description: Fail when every reference is missing although a literal is present
+  - arguments:
+      value:
+        source: reference
+        value: null
+      value_1:
+        source: reference
+        value: null
+    should_pass: false
+    description: Fail when every argument is a missing reference
+  - arguments:
+      value:
+        source: reference
+        value: true
+      value_1:
+        source: value
+        value: "hello"
+    should_pass: false
+    description: Fail when a referenced field exists but is a boolean

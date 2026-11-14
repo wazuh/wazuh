@@ -1,0 +1,214 @@
+# Name of the helper function
+name: lookup_merge
+
+metadata:
+  description: |
+    Merges the value stored under `key` in `object` into the target field.
+
+    Behavior:
+    - `object` and `key` work as in `lookup`: a literal object, a definition or a reference to an object,
+      and a literal string or a reference to a string matched literally against the top-level keys.
+    - The target field must already exist and have the same type as the value: both objects, or both arrays.
+    - Objects, default mode: the top-level members of the value are added to the target; on a shared key the
+      value wins and a nested object is replaced as a whole.
+    - Objects, `deep` mode: a shared key whose value is an object or an array is merged recursively; a scalar
+      value overwrites the target member.
+    - Arrays, both modes: a de-duplicated union; the elements of the value that are not already in the
+      target are appended in their order, nothing is removed or duplicated.
+    - The source object is not modified.
+    - When the target field is a schema field the value is validated against its type before the merge.
+
+    Build errors:
+    - `object` is a literal that is not an object, or a reference to a schema field that is not an object.
+    - `key` is a literal that is not a string.
+    - `key` is an empty literal, or a reference to a schema field that is not a string.
+    - A third argument other than the literal `deep`, or more than 3 arguments.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - In `deep` mode an object or array in the value whose counterpart in the target has another type fails
+      the operation; the target is left untouched.
+    - `merge` merges a whole field (and deletes it afterwards); `kvdb_lookup_merge` merges a KVDB value.
+  group: object
+  fails_when:
+    - The key reference does not exist or is not a string, or the key is not a member of the object.
+    - The object reference does not exist or is not an object.
+    - The target field does not exist or its type differs from the type of the value.
+    - The value is neither an object nor an array.
+    - In deep mode, a nested member is an object or array in the value and has another type in the target.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  object:
+    type: object
+    generate: object
+    source: both
+  key:
+    type: string
+    generate: string
+    source: both
+  mode:
+    type: string
+    generate: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - deep
+
+# Key not found
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v0: k0
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+    description: The members of the selected value are added to the target object
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+        input_key_2:
+          v2: k2
+      key: input_key_not_found
+    target_field:
+      v0: k0
+    should_pass: false
+    description: Fails when the key is not a member of the object
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+      nested:
+        n1: value1
+    description: Without deep a nested object of the value replaces the one of the target as a whole
+  - arguments:
+      object:
+        input_key_1:
+          b: a-value
+          c: a-value
+      key: input_key_1
+    target_field:
+      a: b-value
+      c: b-value
+    should_pass: true
+    expected:
+      a: b-value
+      b: a-value
+      c: a-value
+    description: On a shared key the value wins
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+      mode: deep
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+      nested:
+        n1: value1
+        n2: value2
+    description: In deep mode a nested object is merged with the one of the target
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+          other_nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+      mode: deep
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+      other_nested:
+        n1: value1
+      nested:
+        n2: value2
+    description: In deep mode a nested object that only exists in the value is added
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+      mode: deep
+    target_field:
+      v1: k1
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v1: k1
+      nested:
+        n1: value1
+        n2: value2
+    description: In deep mode the existing members of the target are kept while nested objects are merged
+  - arguments:
+      object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_not_exists
+      mode: deep
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: false
+    description: In deep mode a key that is not a member of the object fails as well

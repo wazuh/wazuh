@@ -1,34 +1,47 @@
+# Name of the helper function
 name: concat
 
 metadata:
   description: |
-    The function `concat` concatenates various types of data including strings, numbers, and objects.
-    The function receives two or more operands and concatenates them in the order they are provided.
-    The result of the concatenation is stored in the field `field`.
-  keywords:
-    - different_types
+    Concatenates two or more values in argument order, without a separator, and maps the resulting
+    string to the target field.
 
+    Behavior:
+    - Every argument is a literal or a reference of type string, number or object.
+    - A string is used as is.
+    - A literal number or object is written as compact JSON: `1.2` gives `1.2` and `{"a": 1}` gives
+      `{"a":1}`.
+    - A referenced integer is written in decimal and a referenced double with 6 fixed decimals (`1.2`
+      gives `1.200000`, as `to_string` does); a referenced object is written as compact JSON.
+
+    Build errors:
+    - Fewer than 2 arguments.
+    - A literal that is a boolean, an array or `null`.
+    - A referenced schema field whose type is not string, number or object.
+
+    Notes:
+    - `concat_any` skips the references that are missing instead of failing.
+    - `join` concatenates the strings of an array with a separator.
+  group: string
+  fails_when:
+    - "any referenced field is missing"
+    - "a referenced field is a boolean, an array, `null` or an integer above 2^63-1"
 
 helper_type: map
 
-# Indicates whether the helper function supports a variable number of arguments
 is_variadic: true
 
-# Arguments expected by the helper function
 arguments:
-  operand_left:
+  value:
     type:
       - string
       - number
       - object
-    source: both # Includes values or references (their names start with $)
+    source: both
 
-  operand_right:
-    type:
-      - string
-      - number
-      - object
-    source: both # Includes values or references (their names start with $)
+# The generator builds a call with one argument per declared argument, below the minimum of two
+skipped:
+  - success_cases
 
 output:
   type: string
@@ -36,34 +49,57 @@ output:
 
 test:
   - arguments:
-      operand_left: "hello"
-      operand_right: " "
-      operand_right_1: "no"
-      operand_right_2: "yes"
-      operand_right_3: "yes"
+      value: "hello"
+      value_1: " "
+      value_2: "no"
+      value_3: "yes"
+      value_4: "yes"
     should_pass: true
     expected: hello noyesyes
     description: Concatenate several strings in argument order
   - arguments:
-      operand_left:
+      value:
         source: reference
         value: null
-      operand_right:
+      value_1:
         source: value
         value: "hello"
     should_pass: false
-    description: Trying to concatenate a value with a reference does not exist
+    description: Fail when a referenced field is missing
   - arguments:
-      operand_left:
+      value:
         source: reference
         value:
           key: value
-      operand_right:
+      value_1:
         source: value
         value: 2
-      operand_right_1:
+      value_2:
         source: reference
         value: hello
     should_pass: true
     expected: "{\"key\":\"value\"}2hello"
-    description: Concat object, number and string
+    description: Concatenate a referenced object, a literal number and a referenced string
+  - arguments:
+      value:
+        source: reference
+        value: 1.5
+      value_1:
+        source: value
+        value: "-"
+      value_2:
+        source: value
+        value: 1.5
+    should_pass: true
+    expected: "1.500000-1.5"
+    description: Write a referenced double with 6 decimals and a literal double as compact JSON
+  - arguments:
+      value:
+        source: reference
+        value: 42
+      value_1:
+        source: value
+        value: " items"
+    should_pass: true
+    expected: "42 items"
+    description: Write a referenced integer in decimal

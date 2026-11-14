@@ -88,7 +88,7 @@ def manager():
 
 
 @pytest.fixture()
-def restart_agentd():
+def restart_agentd(short_unknown_agent_window):
     """Start agentd for one case and stop it afterwards, whatever the case did."""
     try:
         control_service('restart', daemon=AGENT_DAEMON)

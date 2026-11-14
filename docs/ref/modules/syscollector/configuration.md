@@ -26,7 +26,7 @@ Enable or disable the Syscollector module.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When disabled, no inventory scans are performed
+- **Note:** When disabled, no inventory scans are performed. If the Syscollector database already exists, the module notifies the manager to remove the agent's inventory indices and then deletes its local databases
 
 #### interval
 
@@ -50,7 +50,7 @@ Maximum events per second for stateless/real-time inventory events.
 
 - **Default value:** `50`
 - **Allowed values:** `0` to `1000000`
-- **Note:** Set to `0` for unlimited (not recommended). This limit applies only to stateless inventory events, not synchronization messages.
+- **Note:** `0` is accepted but has no effect: the module keeps the default of `50`, and there is no unlimited setting. This limit applies only to stateless inventory events, not synchronization messages.
 
 #### notify_first_scan
 
@@ -163,13 +163,14 @@ Enable or disable Syscollector synchronization persistence.
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
 - **Note:** When disabled, Syscollector only generates stateless events without persistence
+- **Note:** A `max_eps` element inside `<synchronization>` (accepted by 4.x) is ignored and reported at INFO level
 
 ### interval
 
 How often to trigger synchronization with the manager.
 
 - **Default value:** `300` (5 minutes)
-- **Allowed values:** `1` to unlimited (seconds)
+- **Allowed values:** `1` to `4294967295` seconds; time suffixes (`s`, `m`, `h`, `d`, `w`) are accepted
 - **Note:** Lower values provide faster synchronization but increase manager load. Higher values reduce network traffic but delay inventory delivery.
 
 ### integrity_interval
@@ -177,8 +178,8 @@ How often to trigger synchronization with the manager.
 Time between integrity checks for each inventory table.
 
 - **Default value:** `86400` (24 hours)
-- **Allowed values:** `0` to `4294967295` (seconds). There is no minimum, and `0` does not disable the check: each table is then validated after every successful synchronization
-- **Note:** Each of the 13 inventory tables (osinfo, hwinfo, packages, processes, ports, network_iface, network_protocol, network_address, users, groups, services, browser_extensions, hotfixes) is checked independently. When the interval elapses for a table:
+- **Allowed values:** `0` to `4294967295` seconds; time suffixes (`s`, `m`, `h`, `d`, `w`) are accepted. There is no minimum, and `0` does not disable the check: each table is then validated after every successful synchronization
+- **Note:** Each enabled inventory table (osinfo, hwinfo, packages, processes, ports, network_iface, network_protocol, network_address, users, groups, services, browser_extensions and, on Windows, hotfixes) is checked independently. When the interval elapses for a table:
   1. Agent calculates checksum-of-checksums for the table
   2. Sends checksum to manager for validation
   3. If checksums match: integrity confirmed, `last_sync_time` updated
@@ -377,14 +378,14 @@ Optimized for large-scale deployments with fast networks:
 
 - **packages:** Varies by distribution (RPM, DEB, APK, etc.)
 - **services:** Typically systemd units on modern distributions
-- **hotfixes:** Not applicable (category disabled)
+- **hotfixes:** Not applicable (the option is ignored with a warning)
 - **Configuration file:** `/var/ossec/etc/ossec.conf`
 
 ### macOS
 
 - **packages:** Includes .pkg files and Homebrew packages
 - **services:** launchd services and agents
-- **hotfixes:** Not applicable (category disabled)
+- **hotfixes:** Not applicable (the option is ignored with a warning)
 - **Configuration file:** `/Library/Ossec/etc/ossec.conf`
 
 ### All Platforms

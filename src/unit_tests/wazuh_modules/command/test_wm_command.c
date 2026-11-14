@@ -208,12 +208,13 @@ static void wm_command_prepare_single_iteration(void) {
 }
 
 static void wm_command_expect_sendmsg_json(void) {
-    expect_any(__wrap_wm_sendmsg, usec);
-    expect_any(__wrap_wm_sendmsg, queue);
-    expect_check(__wrap_wm_sendmsg, message, check_wm_sendmsg_message_is_valid_command_json, 0);
-    expect_string(__wrap_wm_sendmsg, locmsg, WM_COMMAND_CONTEXT.name);
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 0);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, usec);
+    expect_any(__wrap_wm_sendmsg_with_reconnect, queue);
+    expect_check(__wrap_wm_sendmsg_with_reconnect, message, check_wm_sendmsg_message_is_valid_command_json, 0);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, WM_COMMAND_CONTEXT.name);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_COMMAND_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 0);
 }
 
 static size_t wm_command_build_base_len_for_test(const char *event_start,
@@ -498,12 +499,13 @@ void test_interval_execution(void **state) {
     expect_any_count(__wrap__mtdebug1, formatted_msg, TEST_MAX_DATES + verify_debug_calls);
 
     // Queue sends: 1 event per iteration.
-    expect_any_count(__wrap_wm_sendmsg, usec, TEST_MAX_DATES);
-    expect_any_count(__wrap_wm_sendmsg, queue, TEST_MAX_DATES);
-    expect_any_count(__wrap_wm_sendmsg, message, TEST_MAX_DATES);
-    expect_any_count(__wrap_wm_sendmsg, locmsg, TEST_MAX_DATES);
-    expect_any_count(__wrap_wm_sendmsg, loc, TEST_MAX_DATES);
-    will_return_always(__wrap_wm_sendmsg, 0);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, usec, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, queue, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, message, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, locmsg, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, loc, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg_with_reconnect, tag, TEST_MAX_DATES);
+    will_return_always(__wrap_wm_sendmsg_with_reconnect, 0);
 
     expect_any_always(__wrap_wm_validate_command, command);
     expect_any_always(__wrap_wm_validate_command, digest);

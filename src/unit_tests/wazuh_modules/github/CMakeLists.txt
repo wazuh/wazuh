@@ -12,7 +12,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND tests_names "test_wm_github")
 set(WM_GITHUB_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
                           -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,StartMQ -Wl,--wrap,sleep \
-                          -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg -Wl,--wrap,OSRegex_Compile \
+                          -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg_with_reconnect -Wl,--wrap,OSRegex_Compile \
                           -Wl,--wrap,wm_state_io -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
                           -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
                           -Wl,--wrap,isDebug -Wl,--wrap,w_query_agentd")

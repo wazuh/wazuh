@@ -76,11 +76,11 @@ Integrates with Wazuh's Agent Sync Protocol for reliable manager communication.
 ## Data Flow
 
 ### **Initialization Flow**
-1. `wm_sca_main()` loads the SCA dynamic library and sets up callbacks
-2. `sca_start()` initializes the SCA implementation with configuration
-3. `SecurityConfigurationAssessment::Setup` callbacks and other configuration values.
-4. Agent Sync Protocol handle is created if synchronization is enabled
-5. `SecurityConfigurationAssessment::Run ` Starts the execution flow
+1. `wm_sca_main()` loads the SCA dynamic library, sets up callbacks and the synchronization parameters
+2. `sca_init()` creates the SCA implementation, opens `sca.db` and creates the Agent Sync Protocol handle (regardless of whether synchronization is enabled; the setting only controls the synchronization thread and the persistence of stateful events)
+3. `wm_sca_main()` waits until wazuh-agentd answers the `getdoclimits sca` query and sets the sync limit
+4. `sca_start()` calls `SecurityConfigurationAssessment::Setup` with the configuration values
+5. `SecurityConfigurationAssessment::Run` starts the execution flow
 
 ### **Scan Execution Flow**
 1. `SecurityConfigurationAssessment::Run()` executes the main loop
@@ -99,14 +99,17 @@ Integrates with Wazuh's Agent Sync Protocol for reliable manager communication.
 The SCA module includes automatic recovery to detect and resolve synchronization inconsistencies:
 
 1. Each time `integrity_interval` elapses, an integrity check is performed
-2. Agent calculates checksum-of-checksums from the `sca_check` table
+2. Agent calculates checksum-of-checksums from the synced checks of the `sca_check` table
 3. Checksum is sent to manager via `requiresFullSync()` in Agent Sync Protocol
 4. Manager compares agent checksum with its indexed data
 5. On mismatch, full recovery is triggered:
-   - All checks are loaded from local database
-   - Stateful messages are rebuilt in the indexer-required format
-   - Full synchronization sends all data to manager
+   - The version of every check is increased, so the resent documents outrank those already indexed
+   - A DataClean notification clears the manager's index
+   - The synced checks are loaded from the local database and their stateful messages are rebuilt in the indexer-required format
+   - A DELTA synchronization sends them all to the manager
 6. `last_integrity_check` timestamp is stored in `sca_metadata` table
+
+The checksum covers only the checks with `sync = 1` whose result is not `Not run`, and the recovery resends only those rows. The integrity check runs from the synchronization thread right after a successful synchronization, and only if `integrity_interval` is greater than `0`.
 
 ```
 Sync Thread (wm_sca_sync_module)
@@ -128,10 +131,11 @@ Check if integrity_interval elapsed
                    │
                    └─► Mismatch → Perform full recovery
                                   │
-                                  ├─► Load all checks from DB
-                                  ├─► Clear in-memory sync data
+                                  ├─► Increase the version of every check
+                                  ├─► Send DataClean for the SCA index
+                                  ├─► Load the synced checks from DB
                                   ├─► Rebuild stateful messages
-                                  └─► Trigger FULL synchronization
+                                  └─► Trigger DELTA synchronization
 ```
 
 ---
@@ -141,6 +145,8 @@ Check if integrity_interval elapsed
 The SCA module operates with the following threads:
 
 * **Main Thread** (`wm_sca_main`): Runs the SCA implementation and handles policy execution
+* **Flush Worker** (`Utils::AsyncFlushController`): Runs the flush requested by the `flush` command, so the command returns at once
+* **Query and Sync Response Threads**: Coordination queries (`pause`, `flush`, ...) and manager sync responses arrive on the wazuh-modulesd dispatcher thread, and agent-info calls the query handler in-process from its own thread. They are serialized against the resource teardown by a shared/exclusive mutex
 * **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled). The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, which resends the full snapshot under the new ID. While that resend keeps failing, the 30 seconds double on each failed attempt, up to the synchronization interval; a cycle that could not try (for example because a flush was sending) keeps the period
 
 ---
@@ -243,7 +249,7 @@ When all SCA policies are removed from configuration while the module remains en
 
 | Scenario | Action |
 |----------|--------|
-| **All policies removed** | DataClean sent to manager → DB tables cleared → module exits |
+| **All policies removed** | DataClean sent to manager → sync and SCA databases deleted → module exits |
 | **Partial removal** | DBSync generates delete events → module continues with remaining policies |
 
 ### Flow
@@ -262,8 +268,8 @@ No enabled policies found?
                 │
                 └─► Has data → Send DataClean notification
                               │
-                              ├─► Clear sca_policy table
-                              ├─► Clear sca_check table
+                              ├─► Delete the sync protocol database
+                              ├─► Delete the SCA database (sca.db)
                               └─► Exit module
 ```
 
@@ -273,7 +279,7 @@ A failed DataClean is retried one scan interval later. Each attempt waits for a 
 
 ## Coordination Commands Architecture
 
-The coordination commands provide external control over SCA operations, allowing the agent-info to coordinate module behavior. SCA implements a **synchronous blocking model** using C++ threading primitives, similar to Syscollector.
+The coordination commands provide external control over SCA operations, allowing the agent-info to coordinate module behavior. `pause` is a **synchronous blocking** command implemented with C++ threading primitives. `flush` is **asynchronous**: it starts the work in a background worker and returns, and the caller polls `is_flush_completed` for the outcome.
 
 ### Command Types
 
@@ -332,20 +338,25 @@ SCA Resumes Normal Operations
 Flush Command Received
          │
          ▼
-Check if Sync Protocol Initialized
+AsyncFlushController::startFlush()
          │
-         ├─► Not Initialized → Return 0 (nothing to flush)
+         ├─► No controller → Return -1 (error 1 in the response)
          │
-         └─► Initialized
-             │
-             ▼
+         └─► Flush started, or one already running → Return 0 at once
+                      │
+                      ▼  (background worker: executeFlushSync())
+        Sync protocol not initialized → Done (success, nothing to flush)
+                      │
+                      ▼
 Wait for any SCA synchronization or recovery DataClean in progress, then hold both off until done
-             │
-             ▼
+                      │  (module stopping → Done with error)
+                      ▼
 Call synchronizeModule(Mode::DELTA)
-             │
-             ├─► Waits for manager acknowledgment
-             └─► Returns sync result
+                      │
+                      ├─► Waits for manager acknowledgment
+                      └─► Stores the result (success or error)
+
+is_flush_completed → in_progress while the worker runs, completed + result afterwards
 ```
 
 #### Version Management Commands
@@ -397,11 +408,16 @@ Return 0 (success) or -1 (error)
 - Persisted via Agent Sync Protocol for reliable delivery
 - Synchronized with manager during periodic sync sessions
 - Include check and policy data with operation types (CREATE, MODIFY, DELETE)
+- Never generated for a check whose result is `Not run`
+- Not published until the first synchronization has completed
 
 ### Stateless Events
 - Sent immediately through the message queue system
 - Used for real-time SCA alerts and notifications
 - No local persistence or retry mechanism
+- Not generated for deleted checks or for a check whose result is `Not run`
+- For a modified check, only generated when the result changed from a real result (not from `Not run`)
+- Policy changes found when the policies are loaded are not reported until the first synchronization has completed; check results from a scan are always reported
 
 ---
 
@@ -412,7 +428,7 @@ SCA integrates with the [Schema Validator](../utils/schema-validator/README.md) 
 ### Purpose
 
 - **Prevent Indexing Errors**: Validate check results before they reach the indexer
-- **Prevent Integrity Sync Loops**: Invalid checks are removed from local databases to avoid repeated sync attempts
+- **Prevent Integrity Sync Loops**: Checks that fail validation are removed from the local database to avoid repeated sync attempts
 - **Improve Data Quality**: Ensure all indexed data conforms to expected types and structures
 - **Provide Detailed Error Reporting**: Specific field paths and validation failures for debugging
 
@@ -461,7 +477,7 @@ if (validationPassed)
 }
 
 // Delete checks that failed schema validation (batch delete with transaction)
-DeleteFailedChecksFromDB(failedChecks);
+HandleFailedChecks(std::move(failedChecks));
 ```
 
 **Key characteristics:**
@@ -469,19 +485,19 @@ DeleteFailedChecksFromDB(failedChecks);
 - Failed checks accumulated
 - Batch deletion after all checks processed
 
-#### 3. During Recovery (performRecovery)
+#### 3. During Recovery and the First Synchronization (synchronizeDatabaseSnapshot)
 
-When performing integrity recovery, only valid items are synchronized:
+When resending the whole local state (integrity recovery, first synchronization, agent ID change), only valid items are synchronized. `<reason>` is the reason of the resend, such as `recovery` or `initial synchronization`:
 
 ```cpp
-auto validationResult = validator->validate(statefulMessage.dump());
+auto validationResult = validator->validate(payload);
 
 if (!validationResult.isValid)
 {
     // Log validation errors
-    std::string errorMsg = "Schema validation failed for SCA recovery message (policy: " +
-                           policyId + ", check: " + checkId + ", index: " +
-                           std::string(SCA_SYNC_INDEX) + "). Errors: ";
+    std::string errorMsg = "Schema validation failed for SCA " + syncReason +
+                           " message (policy: " + policyId + ", check: " + checkId +
+                           ", index: " + std::string(SCA_SYNC_INDEX) + "). Errors: ";
 
     for (const auto& error : validationResult.errors)
     {
@@ -489,9 +505,8 @@ if (!validationResult.isValid)
     }
 
     LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
-    LoggingHelper::getInstance().log(LOG_ERROR, "Raw recovery event that failed validation: " +
-                                     statefulMessage.dump());
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping persistence of invalid recovery event");
+    LoggingHelper::getInstance().log(LOG_ERROR, "Raw event that failed validation: " + payload);
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping invalid SCA snapshot event for check " + checkId);
     shouldPersist = false;
 }
 ```
@@ -517,8 +532,8 @@ bool ValidateAndHandleStatefulMessage(const nlohmann::json& statefulEvent,
 ```
 
 **Behavior:**
-- Returns `true` if validation passed or validator not initialized
-- Returns `false` if validation failed
+- Returns `true` if validation passed or the validator factory is not initialized
+- Returns `false` if validation failed, if the stateful event is empty (for example a `Not run` check), or if no validator exists for the index (a warning is logged and the message is discarded)
 - Logs detailed error messages with field paths and expected types
 - Logs raw event data for debugging
 - Accumulates failed checks in `failedChecks` vector for deferred deletion
@@ -644,12 +659,7 @@ LoggingHelper::getInstance().log(LOG_DEBUG,
     "Check " + checkId + " not found in DB (may have been deleted due to validation failure), skipping report");
 ```
 
-**Previous Behavior:** Logged as `LOG_WARNING` without explanation
-
-**New Behavior:**
-- Changed to `LOG_DEBUG` level (expected behavior, not an error)
-- More specific message indicating probable cause
-- Prevents log flooding when checks are deleted due to validation failures
+The message is logged at debug level because this is expected behavior, not an error, and it avoids log flooding when checks are deleted due to validation failures.
 
 **Occurs when:**
 - A check fails validation and is deleted from the database
@@ -690,7 +700,7 @@ If the schema validator is not initialized:
 ### Performance Considerations
 
 - **Deferred Deletion**: Batch transaction minimizes database overhead
-- **Validation Caching**: Validator is obtained once and reused
+- **Validator Factory**: The validators are initialized once from embedded resources and shared
 - **Early Exit**: Validation happens before queuing (saves sync protocol overhead)
 - **Graceful Degradation**: Validation can be disabled without affecting core functionality
 

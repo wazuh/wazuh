@@ -51,6 +51,7 @@ void expect_wfopen(const char * __filename, const char * __modes, FILE *ret);
 
 FILE *__wrap_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
 void expect_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode, FILE *ret);
+void expect_w_fopen_nofollow_errno(const char * basedir, const char * filename, const char * mode, FILE *ret, int error);
 FILE *__wrap_w_fopen_vetted_follow(const char * path, const char * mode);
 void expect_w_fopen_vetted_follow(const char * path, const char * mode, FILE *ret);
 

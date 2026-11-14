@@ -125,6 +125,11 @@ RulesetDeployment RulesetSpaceSink::deployment() const noexcept
     return deployment;
 }
 
+void RulesetSpaceSink::requestShutdown() noexcept
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+}
+
 void RulesetSpaceSink::collectOrphanNamespaces() noexcept
 {
     auto crud = m_crud.lock();
@@ -381,7 +386,16 @@ content_manager::CommitResult RulesetSpaceSink::commit(const content_manager::Co
         // The namespace was imported but nothing points at it, so it is garbage; removing it here
         // is what keeps the store from accumulating one dead namespace per failed cycle.
         discardStaging();
-        LOG_ERROR("[{}] Failed to sync the namespace in route for space '{}': {}", LOG_MODULE_NAME, m_space, e.what());
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO(
+                "[{}] Synchronization aborted for space '{}' by the shutdown: {}", LOG_MODULE_NAME, m_space, e.what());
+        }
+        else
+        {
+            LOG_ERROR(
+                "[{}] Failed to sync the namespace in route for space '{}': {}", LOG_MODULE_NAME, m_space, e.what());
+        }
         return CommitResult {CommitStatus::RejectedRetrySame, e.what()};
     }
 

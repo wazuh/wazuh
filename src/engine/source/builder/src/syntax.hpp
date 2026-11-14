@@ -52,7 +52,7 @@ const auto CATEGORY_PATH = json::Json::formatJsonPath("wazuh.integration.categor
 // Fields preserved when discarding events (index_discarded_events = false)
 namespace discard
 {
-constexpr auto TARGET_FIELD = "wazuh.space.event_discarded"; ///< Target field for discard_events helper
+constexpr auto TARGET_FIELD = "wazuh.space.event_discarded"; ///< Target field for the discard_event helper
 } // namespace discard
 
 constexpr auto CONDITION_NAME =

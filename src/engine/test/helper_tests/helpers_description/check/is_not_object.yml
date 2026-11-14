@@ -1,0 +1,47 @@
+# Name of the helper function
+name: is_not_object
+
+metadata:
+  description: |
+    Checks whether the target field exists and does not hold a JSON object.
+
+    Behavior:
+    - True when the target exists and its JSON type is anything but object; `null` counts as "not an object".
+    - A missing target gives false, so this is not the same as `NOT is_object(...)`, which is true for a
+      missing field.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is neither a schema field nor a temporary field rooted at `_`.
+    - Any argument is given.
+
+    Notes:
+    - Use `exists` or `not_exists` to decide about a missing field explicitly.
+  group: type
+  fails_when:
+    - The target field does not exist.
+    - The target field is an object.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - array
+    - string
+    - boolean
+
+test:
+  - target_field:
+      key: value
+    should_pass: false
+    description: The target field is an object.
+  - target_field: 234
+    should_pass: true
+    description: The target field is a number, not an object.
+  - target_field: [1,2,3,4]
+    should_pass: true
+    description: The target field is an array, not an object.

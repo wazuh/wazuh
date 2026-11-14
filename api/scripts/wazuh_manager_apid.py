@@ -321,6 +321,36 @@ def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
                 raise SystemExit(0) from exc
 
 
+def _check_bind_addresses(hosts, port: int) -> None:
+    """Bind every configured address once and release it, to fail a start that can never bind.
+
+    Runs before pyDaemon(): after it, the launch has already returned 0 to wazuh-manager-control
+    and a bind failure only ends the daemon. A port in use is not failed here, since the bind
+    after daemonizing retries it.
+
+    Parameters
+    ----------
+    hosts : str or list of str
+        Host or hosts to bind on.
+    port : int
+        Port to bind on every host.
+
+    Raises
+    ------
+    OSError
+        No address could be bound, a host could not be resolved, or the bind failed for a reason
+        other than the address being in use.
+    """
+    try:
+        sockets = _bind_listening_sockets(hosts, port, retries=0)
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE:
+            return
+        raise
+    for sock in sockets:
+        sock.close()
+
+
 def start(params: dict):
     """Run the Wazuh API.
 
@@ -680,6 +710,15 @@ if __name__ == '__main__':
         except APIError as e:
             print(f"Error when trying to start the Wazuh API. {e}")
             sys.exit(1)
+
+    # Check the configured addresses as the service user while still in the foreground, so an
+    # address this host can never bind fails the launch instead of only the daemon.
+    try:
+        _check_bind_addresses(uvicorn_params['host'], uvicorn_params['port'])
+    except OSError as e:
+        logger.error(e)
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
 
     # Daemonize unless running in the foreground (pyDaemon exits the parent with 0 and sends stdout
     # and stderr to /dev/null, so every start-up check must come before it)

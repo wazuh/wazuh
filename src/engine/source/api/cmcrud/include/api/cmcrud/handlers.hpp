@@ -7,6 +7,7 @@
 #include <cmcrud/icmcrudservice.hpp>
 
 #include <api/adapter/adapter.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 #include <router/iapi.hpp>
 
 namespace api::cmcrud::handlers
@@ -38,7 +39,7 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
 /*************** Registration helper ***************/
 inline void registerHandlers(std::shared_ptr<cm::crud::ICrudService> crud,
                              const std::shared_ptr<::router::ITesterAPI>& tester,
-                             const std::shared_ptr<httpsrv::Server>& server,
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server,
                              int64_t maxResourcePayloadBytes,
                              int64_t maxKvdbPayloadBytes)
 {

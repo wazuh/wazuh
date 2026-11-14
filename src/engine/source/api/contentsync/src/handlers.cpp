@@ -13,7 +13,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 adapter::RouteHandler triggerSync(const std::shared_ptr<scheduler::TriggerableTask>& task, std::string what)
 {
-    return [weakTask = std::weak_ptr(task), what = std::move(what)](const httplib::Request&, httplib::Response& res)
+    return [weakTask = std::weak_ptr(task), what = std::move(what)](const httpsrv::Request&, httpsrv::Response& res)
     {
         auto taskPtr = weakTask.lock();
         if (!taskPtr)

@@ -102,20 +102,6 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
                                    Mode_t mode);
 
-/// @brief asp_sync_module() with a tighter block limit for this one call.
-///
-/// For callers that synchronize while holding locks other threads wait on, so the time they
-/// hold them stays bounded. Whatever is left stays queued for the next regular cycle.
-///
-/// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param mode Synchronization mode.
-/// @param max_blocks Most blocks this call may send. Zero, or a value above the configured
-///                   per-cycle limit, uses that limit.
-/// @return Same as asp_sync_module().
-SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
-                                           Mode_t mode,
-                                           uint32_t max_blocks);
-
 /// @brief Checks if a module index requires full synchronization.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
@@ -138,7 +124,7 @@ bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* d
 /// @brief Synchronizes metadata or groups with the server without sending data.
 ///
 /// This function handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
-/// Sent as one FullSession carrying Start and End (no data items).
+/// Sent as one FullSession carrying only the Start (no data items).
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (must be MODE_METADATA_DELTA, MODE_METADATA_CHECK, MODE_GROUP_DELTA, or MODE_GROUP_CHECK)
 /// @param indices Array of index name strings that will be updated by the manager.
@@ -154,8 +140,8 @@ SyncModuleResult_t asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
 /// @brief Notifies the manager about data cleaning for specified indices.
 ///
 /// This function sends DataClean messages for each index in the provided array.
-/// Sent as one FullSession carrying Start, a DataClean per index, and End.
-/// Upon receiving Ok, it clears the local database and returns true.
+/// Sent as one FullSession carrying the Start and a DataClean per index.
+/// When the manager accepts it, it clears the local database and returns true.
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param indices Array of index name strings to clean.
 /// @param indices_count Number of indices in the array.

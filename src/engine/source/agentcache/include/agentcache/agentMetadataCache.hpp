@@ -26,6 +26,7 @@
 #include <fastmetrics/iMetric.hpp>
 #include <fastmetrics/metric_names.hpp>
 #include <fastmetrics/registry.hpp>
+#include <rapidjson/document.h>
 
 namespace agentcache
 {
@@ -184,7 +185,8 @@ public:
      * @return Parsed header and Retrieved, Inserted, Updated or BypassedCapacity outcome.
      * Capacity bypass still parses and validates identity; it never returns an older header.
      * @throws IdentityError On a non-canonical ID or an absent, ambiguous, non-string or mismatched
-     *         identity in the header, including dotted aliases. Existing entries remain unchanged.
+     *         identity in the header, including dotted aliases, or a dotted member name that would expand
+     *         into `wazuh.*` (see dottedNameReachesWazuh()). Existing entries remain unchanged.
      * @throws std::runtime_error On invalid JSON.
      */
     GetResult getOrParse(std::string_view trustedAgentId, std::string_view headerStr)
@@ -223,6 +225,12 @@ public:
         if (hasDottedIdentityAlias(*parsed))
         {
             throw IdentityError("AgentMetadataCache: dotted alias of /wazuh/agent/id in header");
+        }
+
+        // Any other dotted member name the indexer would expand into the manager-owned wazuh.* fields.
+        if (dottedNameReachesWazuh(headerStr))
+        {
+            throw IdentityError("AgentMetadataCache: dotted header member names must not reach wazuh.*");
         }
 
         const auto candidateBytes = entryBytes(headerStr.size(), agentId.size(), parsed->getAllocatedMemory());
@@ -498,6 +506,87 @@ private:
     static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's index.
 
     std::chrono::steady_clock::rep nowRep() const { return m_clock().time_since_epoch().count(); }
+
+    /**
+     * @brief Whether a dotted member name of the header would expand into the `wazuh.*` fields.
+     *
+     * The header is merged into every event of its batch, and the nested `wazuh.agent.id` it carries
+     * is the validated identity (the worker stamps only the timestamp, the event id and, optionally,
+     * the nested cluster fields). A dotted member name ("wazuh.agent.id", "agent.id" inside `wazuh`,
+     * ...) stays a literal sibling through the merge, and the indexer expands it into a second value
+     * of the same field. A dotted name expands only below the object holding it, so
+     * exactly two places can reach `wazuh.*`: a root member whose first segment is `wazuh`, and any
+     * member inside the root `wazuh` object. Dotted names elsewhere are left alone.
+     *
+     * Runs on a cache miss only, after json::Json::compact() accepted the text (so it is valid JSON
+     * within the engine's nesting limit). It parses the text again because json::Json exposes no recursive
+     * member-name traversal; the parse is iterative and the walk uses an explicit stack.
+     */
+    static bool dottedNameReachesWazuh(std::string_view headerStr)
+    {
+        rapidjson::Document doc;
+        doc.Parse<rapidjson::kParseIterativeFlag>(headerStr.data(), headerStr.size());
+        if (doc.HasParseError())
+        {
+            return true; // Unreachable after compact() accepted it; refuse rather than trust it.
+        }
+        if (!doc.IsObject())
+        {
+            return false; // Unreachable: the id lookup already required an object.
+        }
+
+        constexpr std::string_view WAZUH {"wazuh"};
+        for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it)
+        {
+            const std::string_view name {it->name.GetString(), it->name.GetStringLength()};
+            const auto dot = name.find('.');
+            if (dot != std::string_view::npos)
+            {
+                if (name.substr(0, dot) == WAZUH)
+                {
+                    return true;
+                }
+                continue;
+            }
+            if (name == WAZUH && hasDottedMemberName(it->value))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Whether any member name inside @p subtree, at any depth, contains a '.' (explicit stack).
+    static bool hasDottedMemberName(const rapidjson::Value& subtree)
+    {
+        std::vector<const rapidjson::Value*> pending {&subtree};
+        while (!pending.empty())
+        {
+            const auto* value = pending.back();
+            pending.pop_back();
+
+            if (value->IsObject())
+            {
+                for (auto it = value->MemberBegin(); it != value->MemberEnd(); ++it)
+                {
+                    if (std::string_view {it->name.GetString(), it->name.GetStringLength()}.find('.')
+                        != std::string_view::npos)
+                    {
+                        return true;
+                    }
+                    pending.push_back(&it->value);
+                }
+            }
+            else if (value->IsArray())
+            {
+                for (const auto& element : value->GetArray())
+                {
+                    pending.push_back(&element);
+                }
+            }
+        }
+        return false;
+    }
 
     struct CacheEntry
     {

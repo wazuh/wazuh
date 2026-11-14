@@ -19,7 +19,14 @@ api-communication/
         ├── client.py        # APIClient: send(), jsend(), send_recv()
         ├── endpoints.py     # get_endpoint(): request message -> (error, endpoint, HTTP method)
         └── proto/           # Generated Python protobuf modules (*_pb2.py, *_pb2.pyi)
+tests/
+└── test_client.py           # APIClient against a Unix-socket server answering like the engine
 ```
+
+`tests/` runs with `python3 -m pytest tools/api-communication/tests` from `src/engine/`, after installing the
+package and `pytest`; CI runs it in the `api_tests` job of `5_testintegration_engine.yml`. The same answers from
+the real engine (an unknown path, a body over a route's limit) are covered end to end by the engine-it
+`api_transport` suite.
 
 The `proto/` modules are generated from the engine's `.proto` files in `src/engine/source/proto/src/`.
 
@@ -46,6 +53,12 @@ Both return a tuple `(error, response)`: `error` is `None` on success, and other
 error, an unparsable response, or the `error` field of a response whose `status` is not `OK`), with an empty
 dictionary as `response`.
 
+Answers the API server gives before any endpoint handler runs are errors too, in both `send()`/`jsend()` and
+`send_recv()`: a JSON `{"error": "<message>", "code": <status>}` (unknown path `404`, wrong method `405`, busy or
+stopping `503`, no answer in time `504`) becomes `Error <status>: <message>`, the plain-text `413` its own text,
+and any other non-JSON error `Error <status>: <body>`. `send_recv()` still returns an endpoint handler's own error
+answer (a JSON with `status`) as the response, for the caller to read.
+
 For example, to get a resource from a namespace:
 
 ```python
@@ -66,4 +79,12 @@ if error:
     sys.exit(f'Error getting the resource: {error}')
 
 print(json.dumps(response['jsonContent'], indent=4))
+```
+
+# Tests
+
+From `src/engine/tools/api-communication/`, with the package and `pytest` installed:
+
+```bash
+python3 -m pytest tests
 ```

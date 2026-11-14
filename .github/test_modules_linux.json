@@ -18,6 +18,26 @@
       ]
     },
     {
+      "name": "agent_control",
+      "pytest_target": "test_agent_control/",
+      "tiers": ["0"],
+      "timeout_minutes": 60,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/init/templates/wazuh-agent.service",
+        "src/init/wazuh-client.sh",
+        "src/init/init.sh",
+        "packages/debs/SPECS/wazuh-agent/**",
+        "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
+        "tests/integration/unit_control.py",
+        "tests/integration/start_lock.py",
+        "tests/integration/agent_daemons.py",
+        "tests/integration/test_agent_control/**"
+      ]
+    },
+    {
       "name": "aws",
       "pytest_target": "test_aws/",
       "pytest_extra_args": "-k \"not inspector\"",

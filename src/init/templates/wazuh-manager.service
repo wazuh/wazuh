@@ -9,7 +9,7 @@ LimitNOFILE=65536
 TimeoutSec=45
 # Start waits up to ~130 s for analysisd's engine API (wait_for_wazuh_engine_ready in
 # wazuh-manager-control); a shorter start timeout would report a systemd timeout instead of the
-# script's own error. Stop keeps the 45 s above.
+# script's own error. Stop keeps the 45 s above, for ExecStop and again for ExecStopPost.
 TimeoutStartSec=180
 
 # Sandboxing. No manager daemon chroots into the installation directory any more: the unit confines all
@@ -45,6 +45,15 @@ SystemCallErrorNumber=EPERM
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop
+# A restart that arrives during a reload makes systemd skip ExecStop and, with KillMode=process,
+# signal only the reload script. This stops the daemons left behind, so the start that follows
+# brings up every one of them. It is skipped when the start or stop failed on its own (exit-code):
+# a refused start, or one that gave up on the lock, leaves the daemons that were already running
+# alone, and a failed start has already stopped what it started. A start cut by TimeoutStartSec
+# (timeout) still gets the stop. systemd before 232 leaves SERVICE_RESULT empty, so the stop always
+# runs there. The agent unit has no such check: a wazuh-agentd that fails on its own is exit-code
+# too, and that is one of the cases its ExecStopPost is for.
+ExecStopPost=/bin/sh -c '[ "$${SERVICE_RESULT}" = exit-code ] || exec WAZUH_HOME_TMP/bin/wazuh-manager-control stop'
 ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control reload
 
 KillMode=process

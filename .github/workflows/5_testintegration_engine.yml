@@ -16,6 +16,8 @@ on:
       - 'src/engine/test/engine-test-utils/**'
       - 'src/engine/test/helper_tests/**'
       - 'src/engine/test/integration_tests/**'
+      # The committed copy of the generated reference is diffed by the helper_tests job
+      - 'docs/ref/modules/engine/ref-helper-functions.md'
       - 'src/engine/tools/api-communication/**'
       - 'src/engine/tools/engine-suite/**'
       # Copied into the test store by setupEnvironment.py:13-20
@@ -53,6 +55,11 @@ on:
       # linked by indexer_connector (indexer_connector/CMakeLists.txt:52); wazuh-manager-keystore
       # (keystore/CMakeLists.txt:42) is run by setupEnvironment.py:53-82
       - 'src/shared_modules/keystore/**'
+      # httpsrv links the shared HTTP-over-UDS transport (guarded add_subdirectory in
+      # source/httpsrv/CMakeLists.txt); its own tests are another component's tree.
+      - 'src/shared_modules/uds_http_server/**/CMakeLists.txt'
+      - 'src/shared_modules/uds_http_server/include/**'
+      - 'src/shared_modules/uds_http_server/src/**'
       # Other components' test trees, harnesses and tools: never linked into the engine.
       - '!src/shared_modules/utils/tests/**'
       - '!src/shared_modules/utils/benchmark/**'
@@ -282,6 +289,9 @@ jobs:
     - name: Validate helper descriptions
       run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
 
+    - name: Check registered helpers and descriptions agree
+      run: python3 ${{env.ENGINE_DIR}}/test/helper_tests/check_registry.py --registry ${{env.ENGINE_DIR}}/source/builder/src/register.hpp --descriptions ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
+
     - name: Generate tests
       run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
 
@@ -290,6 +300,9 @@ jobs:
 
     - name: Validate documentation generation
       run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
+
+    - name: Check generated reference is committed
+      run: diff -u docs/ref/modules/engine/ref-helper-functions.md /tmp/helper_docs/ref-helper-functions.md
 
   api_tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -363,6 +376,11 @@ jobs:
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
         pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/engine-it
+        pip install pytest
+
+    - name: API client tests
+      # The installed api-communication package against a fake Unix-socket server; no engine needed.
+      run: python3 -m pytest ${{env.ENGINE_DIR}}/tools/api-communication/tests
 
     - name: Download timezone database
       uses: ./.github/actions/download_s3_artifact
