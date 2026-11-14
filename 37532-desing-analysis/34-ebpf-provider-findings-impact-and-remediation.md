@@ -412,13 +412,18 @@ Sin esto, el gating de la sección nueva —la trampa descrita en §34.1— no t
 
 ### Verificación NO ejecutada, y qué falta
 
-1. **El prebuilt de x86 está regenerado; el de arm64 no.** F1, F8, F9 y F4 tocan `rt_file.bpf.c` o `rt_event_contract.h`, que es lo que cubre el digest de `CMakeLists.txt:171-172`.
+1. **Los dos prebuilts están regenerados.** F1, F8, F9 y F4 tocan `rt_file.bpf.c` o `rt_event_contract.h`, que es lo que cubre el digest de `CMakeLists.txt:171-172`, así que ambos objetos quedaron obsoletos y el build fallaba.
 
-   El de x86 se reconstruyó en la VM `wazuh_manager` —Ubuntu 24.04.5, kernel 7.0.0-42-generic, clang 18.1.3: **el mismo host, kernel y clang que su predecesor**, así que las únicas entradas que cambiaron son los dos archivos del digest. Verificado allí con `bpftool prog loadall`: pinan los 15 programas, incluido `kprobe__mnt_want_write_file`, y se crea `wire_map`. El verificador acepta el empaquetado de offset variable de `append_task_cwd()` y la admisión adelantada. Después se corrió sobre un kernel **distinto** del de compilación, el 6.6 de esta máquina, que es para lo que existe CO-RE: leak, drops, filter, skip y paths pasan contra ese archivo exacto. `cmake` ya no reporta STALE con el guard en su ON por defecto.
+   **x86**: reconstruido en la VM `wazuh_manager` —Ubuntu 24.04.5, kernel 7.0.0-42-generic, clang 18.1.3: **el mismo host, kernel y clang que su predecesor**, así que las únicas entradas que cambiaron son los dos archivos del digest. `bpftool prog loadall` pina los 15 programas y crea `wire_map`. Después se corrió sobre un kernel **distinto** del de compilación, el 6.6 de esta máquina, que es para lo que existe CO-RE: leak, drops, filter, skip y paths pasan contra ese archivo exacto.
 
-   **arm64 sigue obsoleto.** Necesita un `vmlinux.h` volcado de un host aarch64 y aquí no hay ninguno; un toolchain cruzado no ayudaría, porque el ELF BPF es independiente de arquitectura y el header es la única entrada que depende de ella. Un build de arm64 sigue fallando el guard.
+   **arm64**: la VM aarch64 tiene `bpftool` pero no clang, y no lo necesita — el ELF BPF es independiente de arquitectura, y el header más `-D__TARGET_ARCH_arm64` son las únicas entradas que dependen de ella. Header volcado por SSH de Ubuntu aarch64 6.8.0-139-generic, objeto compilado en la workstation con el mismo clang 18.1.3. Verificado **sobre** aarch64, no sólo compilado para aarch64: `loadall` pina los 15 programas, y los tests de kernel, compilados con el `cc` de esa VM, dan leak/drops/filter/skip/paths en verde, `paths` con `ALL OK`.
+
+   El header de arm64 pasó de 6.12 a 6.8 y conserva lo que importaba: su `struct renamedata` sigue teniendo `new_dir` y no `new_parent`, así que el objeto arm64 sigue ejercitando el fallback de `bpf_core_field_exists()` que el header 7.0 del x86 no alcanza. Comprobado en el BTF de ese host antes de compilar.
+
+   `cmake` ya no reporta STALE en ninguna de las dos con el guard en su ON por defecto.
+
 2. **Dos objetos distintos corrieron los tests**, y conviene no confundirlos: durante el desarrollo, uno compilado contra un `vmlinux.h` prestado de otro árbol; al final, **el prebuilt commiteado**, que es el artefacto que se publica. Las dos tandas pasan.
-3. **Sólo se probó en un kernel.** 6.6 de WSL2, cgroup v2 unificado, sin BPF LSM activo: el peldaño ejercitado fue el de kprobes. Ni la rama de `bpf_d_path`, ni la de LSM walk, ni cgroup v1, ni los kernels de la familia RHEL.
+3. **Tres kernels, ningún LSM.** 6.6 x86_64 (WSL2), 7.0 x86_64 y 6.8 aarch64, todos con cgroup v2 unificado y **sin BPF LSM activo**, así que el peldaño ejercitado fue siempre el de kprobes. Sin probar: la rama de `bpf_d_path`, la de LSM walk, cgroup v1, y toda la matriz de la familia RHEL (4.18) que el `.provenance` anterior listaba — la más exigente con el verificador, y el objeto nuevo le añade una sonda, un mapa y una escritura de offset variable.
 4. **Nada medido.** Ni el coste del hoisting de F8, ni la frecuencia real del camino por descriptor de F1, ni el coste de la confirmación de F2.
 
 ### Tests que estos cambios deberían llevar y no llevan
