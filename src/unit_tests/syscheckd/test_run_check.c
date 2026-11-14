@@ -1547,6 +1547,21 @@ void test_fim_has_configured_paths_with_directories(void **state) {
     assert_true(result);
 }
 
+#if defined(__linux__) && !defined(TEST_WINAGENT)
+void test_fim_has_configured_paths_container_only(void **state) {
+    OSList *directories = syscheck.directories;
+    syscheck.directories = NULL;
+    syscheck.container_enabled = 1;
+
+    assert_true(fim_has_configured_paths());
+
+    syscheck.container_enabled = 0;
+    assert_false(fim_has_configured_paths());
+
+    syscheck.directories = directories;
+}
+#endif
+
 // When the persisted marker indicates the first sync already completed in a previous run,
 // start_daemon must prime fim_first_sync_completed to 1 before fim_scan() so agent-info does
 // not defer coordination during the startup baseline-scan window.
@@ -1699,6 +1714,9 @@ int main(void) {
         cmocka_unit_test(test_fim_has_configured_directories_null_list),
         cmocka_unit_test(test_fim_has_configured_directories_with_directories),
         cmocka_unit_test(test_fim_has_configured_paths_with_directories),
+#if defined(__linux__) && !defined(TEST_WINAGENT)
+        cmocka_unit_test(test_fim_has_configured_paths_container_only),
+#endif
         cmocka_unit_test(test_prime_fim_first_sync_from_marker_sets_flag_when_present),
         cmocka_unit_test(test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent),
         cmocka_unit_test(test_fim_has_data_in_database_no_entries),

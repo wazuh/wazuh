@@ -40,6 +40,7 @@ static const char* CS_XML_SYSCHECK = "syscheck";
 static const char* CS_XML_SYSCOLLECTOR = "syscollector";
 static const char* CS_XML_ENABLED = "enabled";
 static const char* CS_XML_DIRECTORIES = "directories";
+static const char* CS_XML_FREQUENCY = "frequency";
 static const char* CS_XML_FILE_LIMIT = "file_limit";
 
 static const char* CS_ATTR_CONTAINER_NAME = "container_name";
@@ -374,6 +375,29 @@ static int cs_read_syscheck_block(const OS_XML* xml, xml_node* node, syscheck_co
             }
 
             cs_read_container_attr(syscheck, children[i]->content, children[i]->attributes, children[i]->values);
+        }
+        else if (strcmp(children[i]->element, CS_XML_FREQUENCY) == 0)
+        {
+            /* Require a leading digit before w_parse_time() sees the value,
+             * because strtol() reads both "" and a bare unit like "h" as 0.
+             * Zero is meaningful here -- it turns the periodic walk off -- so
+             * neither may silently disable container walks instead of being reported. */
+            const char* content = children[i]->content;
+            const long value = (content && *content >= '0' && *content <= '9') ? w_parse_time(content) : -1;
+
+            if (value < 0 || value > INT_MAX)
+            {
+                /* Fail open so a typo does not disable monitoring. Zero is a
+                 * deliberate request to never run the periodic walk, so only
+                 * invalid values leave the configured default in place. */
+                mwarn("Invalid <%s> value '%s' in <container_security><syscheck>. Keeping the container walk "
+                      "frequency unchanged; use 0 to never run the periodic walk.",
+                      CS_XML_FREQUENCY,
+                      content ? content : "");
+                continue;
+            }
+
+            syscheck->container_frequency = (int)value;
         }
         else if (strcmp(children[i]->element, CS_XML_FILE_LIMIT) == 0)
         {

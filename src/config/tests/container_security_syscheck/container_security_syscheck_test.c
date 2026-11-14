@@ -312,10 +312,10 @@ static void CaseUnknownChildWarns(void)
     printf("case 15: an unknown child of <syscheck> is named\n");
     log_reset();
     ParseXml("<container_security><syscheck>"
-             "  <frequency>300</frequency>"
+             "  <unknown_option>300</unknown_option>"
              "  <directories>/data</directories>"
              "</syscheck></container_security>");
-    Check(log_contains("frequency"), "the unknown element is quoted back");
+    Check(log_contains("unknown_option"), "the unknown element is quoted back");
     Check(g_warn_count > 0, "a warning was emitted");
 }
 
@@ -378,6 +378,104 @@ static void CaseRetiredContainerTagWarns(void)
     Check(log_contains("<container_security>"), "and where it moved to");
 }
 
+static void CaseFrequencySeconds(void)
+{
+    printf("case 18: container frequency seconds\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency>1800</frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 1800, "container walk frequency is 1800 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count == 0, "no warnings");
+}
+
+static void CaseFrequencyDuration(void)
+{
+    printf("case 19: container frequency duration\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency>12h</frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 43200, "container walk frequency is 43200 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count == 0, "no warnings");
+}
+
+static void CaseFrequencyZero(void)
+{
+    printf("case 20: container frequency zero\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency>0</frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 0, "container walk frequency is 0 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count == 0, "no warnings");
+}
+
+static void CaseFrequencyMalformed(void)
+{
+    printf("case 21: container frequency malformed\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency>invalid</frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 43200, "container walk frequency is 43200 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count > 0, "a warning was emitted");
+    Check(log_contains("Invalid <frequency>"), "the invalid element is named");
+    Check(log_contains("use 0 to never run"), "the warning explains how to disable periodic walks");
+}
+
+static void CaseFrequencyAbsent(void)
+{
+    printf("case 22: container frequency absent\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  ""
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 43200, "container walk frequency is 43200 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count == 0, "no warnings");
+}
+
+static void CaseFrequencyEmpty(void)
+{
+    printf("case 23: container frequency empty\n");
+    log_reset();
+    /* Reported rather than obeyed. strtol() reads "" as 0, and 0 is a real value
+     * here -- it turns the periodic walk off -- so an empty element must not be
+     * allowed to disable container walks by accident. */
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency></frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 43200, "container walk frequency is 43200 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count > 0, "a warning was emitted");
+    Check(log_contains("Invalid <frequency>"), "the invalid element is named");
+}
+
+static void CaseFrequencyBareUnit(void)
+{
+    printf("case 24: container frequency bare unit\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency>h</frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 43200, "container walk frequency is 43200 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count > 0, "a warning was emitted");
+    Check(log_contains("Invalid <frequency>"), "the invalid element is named");
+}
+
 int main(void)
 {
     printf("<container_security><syscheck> configuration parser contract\n\n");
@@ -399,6 +497,13 @@ int main(void)
     CaseUnknownChildWarns();
     CaseEnabledWithoutDirectories();
     CaseRetiredContainerTagWarns();
+    CaseFrequencySeconds();
+    CaseFrequencyDuration();
+    CaseFrequencyZero();
+    CaseFrequencyMalformed();
+    CaseFrequencyAbsent();
+    CaseFrequencyEmpty();
+    CaseFrequencyBareUnit();
 
     printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
 

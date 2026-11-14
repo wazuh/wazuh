@@ -15,6 +15,7 @@
 #include "recovery.h"
 #ifdef __linux__
 #include <sched.h>
+#include "container_baseline_fim.h"
 #endif
 #include <time.h>
 
@@ -342,6 +343,8 @@ STATIC bool fim_has_configured_paths(void) {
 #ifdef WIN32
     bool has_registries = fim_has_configured_registries();
     return has_directories || has_registries;
+#elif defined(__linux__)
+    return has_directories || syscheck.container_enabled;
 #else
     return has_directories;
 #endif
@@ -752,6 +755,9 @@ void start_daemon()
     int curr_day = 0;
     time_t curr_time = 0;
     time_t prev_time_sk = 0;
+#ifdef __linux__
+    time_t prev_time_container = 0;
+#endif
     char curr_hour[12];
     struct tm tm_result = { .tm_sec = 0 };
 
@@ -928,6 +934,11 @@ void start_daemon()
 
     // Before entering in daemon mode itself
     prev_time_sk = time(0);
+#ifdef __linux__
+    /* main() already walked the containers at startup, so wait a full interval
+     * before walking again, independently of the host scan schedule. */
+    prev_time_container = time(0);
+#endif
 
     // If the scan_time or scan_day is set, we need to handle the current day/time on the loop.
     if (syscheck.scan_time || syscheck.scan_day) {
@@ -1022,6 +1033,13 @@ void start_daemon()
         if (!fim_shutdown_process_on() && (((curr_time - prev_time_sk) > syscheck.time) || run_now)) {
             prev_time_sk = fim_scan();
         }
+#ifdef __linux__
+        if (!fim_shutdown_process_on() && syscheck.container_enabled && syscheck.container_frequency > 0 &&
+                (curr_time - prev_time_container) >= syscheck.container_frequency) {
+            fim_run_container_baseline();
+            prev_time_container = time(0);
+        }
+#endif
         sleep(SYSCHECK_WAIT);
     }
 }
