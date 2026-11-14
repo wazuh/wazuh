@@ -1,0 +1,208 @@
+# Name of the helper function
+name: kvdb_decode_bitmask
+
+metadata:
+  description: |
+    Decodes a hexadecimal bit mask with a lookup table stored in a KVDB and appends the values of the set
+    bits to the target array.
+
+    Behavior:
+    - `db` and `table` are literal strings resolved when the asset is built: the value stored under `table`
+      in the KVDB `db` must be a non-empty object whose keys are decimal bit positions from `0` to `63` (`0`
+      is the least significant bit) and whose values all share one JSON type. The table does not need to
+      define every bit.
+    - `mask` is a reference to a string field holding a hexadecimal number, with or without a `0x` prefix
+      (for example `21` or `0x0A`), read as a 64-bit value.
+    - For each bit set in the mask, from bit 0 upwards, the table value of that position is appended to the
+      target array; a bit without an entry in the table is skipped.
+    - A missing target field is created; a target that exists but is not an array is overwritten with the
+      new array. Values are appended without a duplicate check.
+    - The lookup table is loaded when the asset is built: the operation works on that snapshot.
+
+    Build errors:
+    - The KVDB does not exist, is not declared by the integration or is disabled.
+    - `table` is not a key of the KVDB, or its value is not an object with decimal keys in `0..63` and
+      values of one type.
+    - `db` or `table` is not a literal string, or `mask` is not a reference.
+    - A number of arguments other than 3.
+    - The target field is a schema field whose elements are not strings.
+
+    Notes:
+    - A mask with no decodable bit (a mask of `0` included) makes the operation fail and leaves the target
+      unchanged.
+    - `kvdb_lookup_append` appends the values of a list of keys instead of the values of the set bits.
+  group: kvdb
+  fails_when:
+    - The mask reference does not exist, is not a string or is not a hexadecimal number.
+    - No bit of the mask has an entry in the table (a mask of 0 included).
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db:
+    type: string
+    generate: string
+    source: value
+  table:
+    type: string
+    generate: string
+    source: value
+  mask:
+    type: string
+    generate: hexadecimal
+    source: reference
+
+# a target of another type is overwritten, and random tables do not exist in the KVDB
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  # DB does not exist -> build-time error
+  - arguments:
+      db:
+        source: value
+        value: "non-existing-db"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1"
+    target_field: []
+    should_pass: false
+    expected: []
+    description: Rejected at build time because the KVDB does not exist
+
+  # Table does not exist in existing DB -> build-time error
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "non_existing_table"
+      mask:
+        source: reference
+        value: "1"
+    target_field: []
+    should_pass: false
+    expected: []
+    description: Rejected at build time because the table is not a key of the KVDB
+
+  # Single bit 0 set -> "Create Child"
+  # mask = 0x1 -> bit position 0
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1"
+    target_field: []
+    should_pass: true
+    expected: [Create Child]
+    description: Decodes a mask with bit 0 set into the corresponding value of the table
+
+  # Bits 0 and 4 set -> ["Create Child", "Read Property"]
+  # mask = 0x11 -> bits 0 and 4
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "11"
+    target_field: []
+    should_pass: true
+    expected:
+      - Create Child
+      - Read Property
+    description: Decodes a mask with several bits set, from the lowest bit upwards
+
+  # Bits 8 and 12 set -> only bit 8 is present in the table
+  # mask = 0x1100 -> bits 8 and 12; only "8" exists in access_mask
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1100"
+    target_field: []
+    should_pass: true
+    expected: [Control Access]
+    description: Skips the set bits that have no entry in the table
+
+  # Append behavior: existing array + decoded value for bit 16
+  # mask = 0x10000 -> bit 16 -> "DELETE"
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "10000"
+    target_field:
+      - Base
+    should_pass: true
+    expected:
+      - Base
+      - DELETE
+    description: Appends the decoded values to an existing array
+
+  # A target that is not an array is overwritten
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "1"
+    target_field: Base
+    should_pass: true
+    expected:
+      - Create Child
+    description: A target that is not an array is replaced by the new array
+
+  # Mask with no mapped bits at all -> failure, target remains unchanged
+  # mask = 0x8000 -> bit 15, which is not present in access_mask
+  - arguments:
+      db:
+        source: value
+        value: "windows_kerberos_status_code_to_code_name"
+      table:
+        source: value
+        value: "access_mask"
+      mask:
+        source: reference
+        value: "8000"
+    target_field:
+      - Base
+    should_pass: false
+    expected:
+      - Base
+    description: Fails and leaves the target unchanged when no set bit has an entry in the table

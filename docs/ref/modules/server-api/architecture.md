@@ -206,7 +206,24 @@ One socket is bound per address that each entry in `api.yaml`'s `host` (a list, 
 
 A real bind failure (the port already in use, permission denied, ...) is all-or-nothing per attempt: every socket opened so far in that attempt is closed before the next attempt or before raising. The one exception is an address whose family isn't available on this system at all -- opening the socket fails with `EAFNOSUPPORT` on a kernel booted with `ipv6.disable=1`, or the bind fails with `EADDRNOTAVAIL`/`EAFNOSUPPORT` when IPv6 is disabled through `net.ipv6.conf.all.disable_ipv6` -- which is what `asyncio.loop.create_server()` tolerated too: that address is skipped and the attempt proceeds with whatever else binds, so the API can end up serving on only one address family if the other one isn't available on this host at all. The attempt only fails this way if every address ends up skipped.
 
+Before it daemonizes, while still in the foreground and after dropping privileges (unless run with `-r`), the launcher binds every configured address once, with no retry, and closes those sockets again (`_check_bind_addresses()`). Any failure there other than a busy port ends the launch itself: an address this host cannot bind (not assigned to any interface, so every address is skipped and the error is `could not bind on any address out of [...]`), a host that cannot be resolved, or a permission error. The reason is logged in `api.log` at `ERROR` level and printed as `Error when trying to start the Wazuh API. <reason>`, and the launch exits with code 1, so `wazuh-manager-control start` reports `wazuh-manager-apid did not start correctly.` and exits 1. A busy port (`EADDRINUSE`) is not failed there: the bind after daemonizing retries it, as described below.
+
 ```
+                  ┌──────────────────────────────────────────────┐
+                  │  foreground, before daemonizing: bind every  │
+                  │  resolved 'host' address once, then close it │
+                  └──────────────────────────────────────────────┘
+                        │                          │
+            any error but EADDRINUSE   all bound, or EADDRINUSE
+                        │                          │
+       ┌────────────────▼───────────────┐          │
+       │ ERROR in api.log, exit 1;      │          │
+       │ wazuh-manager-control reports  │          │
+       │ did not start correctly        │          │
+       └────────────────────────────────┘          ▼
+                                      daemonize, write PID files
+                                                   │
+                                                   ▼
                   ┌──────────────────────────────────────────────┐
                   │  bind one socket per resolved 'host' address │
                   └──────────────────────────────────────────────┘

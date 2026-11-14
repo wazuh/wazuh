@@ -1,0 +1,55 @@
+# Name of the helper function
+name: is_null
+
+metadata:
+  description: |
+    Checks whether the target field is present with the value `null`.
+
+    Behavior:
+    - True only when the target exists and its value is the JSON literal `null`.
+    - A missing target gives false: an absent field is not a null field.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is neither a schema field nor a temporary field rooted at `_`.
+    - Any argument is given.
+
+    Notes:
+    - `not_exists` is the check for an absent field.
+    - `is_not_null` is not the negation of this helper: both are false for a missing field.
+  group: type
+  fails_when:
+    - The target field does not exist.
+    - The target field holds a value other than null.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# The field can hold any JSON type; the check passes only for null
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - target_field: null
+    should_pass: true
+    description: The target field is present with the value null.
+  - target_field: "hello"
+    should_pass: false
+    description: The target field is a string, not null.
+  - target_field: 0
+    should_pass: false
+    description: The target field is a number, not null.
+  - target_field: false
+    should_pass: false
+    description: The target field is a boolean, not null.
+  - target_field:
+      key: value
+    should_pass: false
+    description: The target field is an object, not null.

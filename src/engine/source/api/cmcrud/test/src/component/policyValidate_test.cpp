@@ -75,7 +75,7 @@ std::string promoteBody()
     "resources": {{
       "kvdbs": [],
       "decoders": [{{"id": "{dec}", "name": "decoder/root/0", "enabled": true,
-                    "normalize": [{{"map": [{{"@timestamp": "get_date()"}}]}}]}}],
+                    "normalize": [{{"map": [{{"@timestamp": "now()"}}]}}]}}],
       "integrations": [{{"id": "{integ}", "metadata": {{"title": "race"}}, "enabled": true, "category": "security",
                         "decoders": ["{dec}"], "kvdbs": []}}],
       "filters": [],

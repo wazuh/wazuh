@@ -122,8 +122,25 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         std::string encodedPath = std::get<SEARCH_FIELD_PATH>(data);
         FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
-        queryBuilder.rowFilter("WHERE path LIKE ?")
-        .rowFilterBindText(encodedPath);
+        // Callers pass "<path><separator>%": select every path that starts with "<path><separator>".
+        // The separator check keeps the range inside one directory and the incremented byte below 0xFF.
+        const auto size {encodedPath.size()};
+
+        if (size < 3 || '%' != encodedPath[size - 1] || ('/' != encodedPath[size - 2] && '\\' != encodedPath[size - 2]))
+        {
+            FIMDB::instance().logFunction(LOG_DEBUG, "Path search ignored, the value does not end in a separator and '%': " + std::get<SEARCH_FIELD_PATH>(data));
+            return;
+        }
+
+        encodedPath.pop_back();
+
+        // Range scan: the upper bound is the prefix with its last byte (the separator) incremented.
+        auto upperBound { encodedPath };
+        ++upperBound.back();
+
+        queryBuilder.rowFilter("WHERE path >= ? AND path < ?")
+        .rowFilterBindText(encodedPath)
+        .rowFilterBindText(upperBound);
     }
     else
     {

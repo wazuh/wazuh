@@ -193,6 +193,26 @@ touch "${WORK}/reload_fail/fail-wazuh-manager-modulesd"
 check "reload fails when a daemon does not start" "1" "$(control reload_fail reload)"
 check "a failed reload leaves only remoted running" "wazuh-manager-remoted" "$(running reload_fail)"
 
+# A restart refused by its checks has not taken the lock yet: the lock, and the start and restart markers,
+# belong to the run that holds it.
+new_tree refused_while_locked
+sleep 300 &
+holder=$!
+mkdir "${WORK}/refused_while_locked/var/start-script-lock"
+echo "${holder}" > "${WORK}/refused_while_locked/var/start-script-lock/pid"
+: > "${WORK}/refused_while_locked/var/run/wazuh-manager-db.start"
+: > "${WORK}/refused_while_locked/var/run/.restart"
+printf 'Invalid configuration\n' > "${WORK}/refused_while_locked/testfail-wazuh-manager-analysisd"
+check "a restart refused by a daemon's -t fails" "1" "$(control refused_while_locked restart)"
+check "the refused restart leaves the holder's lock" "${holder}" \
+    "$(cat "${WORK}/refused_while_locked/var/start-script-lock/pid")"
+check "the refused restart leaves the holder's start markers" "yes" \
+    "$([ -e "${WORK}/refused_while_locked/var/run/wazuh-manager-db.start" ] && echo yes || echo no)"
+check "the refused restart leaves the holder's restart marker" "yes" \
+    "$([ -e "${WORK}/refused_while_locked/var/run/.restart" ] && echo yes || echo no)"
+kill "${holder}"
+wait "${holder}" 2>/dev/null
+
 # A daemon's -t refuses the check that the service-control helper runs before an API restart: the
 # refusal and its reason (the last line of the test's output) reach the manager log, since the
 # helper's own output reaches no log.
@@ -215,6 +235,76 @@ check "check is refused by modulesd's -t" "1" "$(control check_refused_c check)"
 check "the last line of the test's output is logged, undated" \
     "wazuh-manager-control: ERROR: wazuh-manager-modulesd: Configuration error: wazuh-manager-modulesd: CRITICAL: (2302): Invalid definition for vulnerability-detection.scan_workers: 99." \
     "$(sed 's/^[^ ]* [^ ]* //' "${WORK}/check_refused_c/logs/wazuh-manager.log")"
+
+# The restart marker (var/run/.restart), which the API reports as 'restarting', exists only while its
+# restart or reload holds the lock.
+
+# Plants the lock and the marker a restart leaves when it is killed holding the lock: a systemctl restart
+# merged into a running reload kills the reload's script.
+killed_restart() {
+
+    local dir="${WORK}/$1" pid
+
+    sh -c 'exit 0' &
+    pid=$!
+    wait "${pid}"
+    mkdir "${dir}/var/start-script-lock"
+    echo "${pid}" > "${dir}/var/start-script-lock/pid"
+    : > "${dir}/var/run/.restart"
+    # Killed while starting the daemons, after this one's start marker.
+    : > "${dir}/var/run/wazuh-manager-db.start"
+
+}
+
+marker() {
+
+    [ -e "${WORK}/$1/var/run/.restart" ] && echo yes || echo no
+
+}
+
+new_tree restart_marker
+control restart_marker start > /dev/null
+check "restart succeeds" "0" "$(control restart_marker restart)"
+check "a finished restart leaves no marker" "no" "$(marker restart_marker)"
+
+new_tree stop_killed_restart
+control stop_killed_restart start > /dev/null
+killed_restart stop_killed_restart
+check "stop takes the lock of a killed restart" "0" "$(control stop_killed_restart stop)"
+check "stop drops the marker of a killed restart" "no" "$(marker stop_killed_restart)"
+check "stop drops the start markers of a killed restart" "no" \
+    "$([ -e "${WORK}/stop_killed_restart/var/run/wazuh-manager-db.start" ] && echo yes || echo no)"
+check "stop stops every daemon" "" "$(running stop_killed_restart)"
+
+new_tree start_killed_restart
+killed_restart start_killed_restart
+check "start takes the lock of a killed restart" "0" "$(control start_killed_restart start)"
+check "start drops the marker of a killed restart" "no" "$(marker start_killed_restart)"
+
+new_tree status_killed_restart
+control status_killed_restart start > /dev/null
+killed_restart status_killed_restart
+control status_killed_restart status > /dev/null
+check "status drops the marker of a killed restart" "no" "$(marker status_killed_restart)"
+check "status drops the start markers of a killed restart" "no" \
+    "$([ -e "${WORK}/status_killed_restart/var/run/wazuh-manager-db.start" ] && echo yes || echo no)"
+
+# A restart waiting for the lock has not written its marker yet, so a stop holding the lock can't drop it.
+new_tree queued_restart
+control queued_restart start > /dev/null
+sleep 300 &
+holder=$!
+mkdir "${WORK}/queued_restart/var/start-script-lock"
+echo "${holder}" > "${WORK}/queued_restart/var/start-script-lock/pid"
+control queued_restart restart > "${WORK}/queued_restart/status" &
+queued=$!
+sleep 3
+check "a restart waiting for the lock writes no marker" "no" "$(marker queued_restart)"
+kill "${holder}"
+wait "${holder}" 2>/dev/null
+wait "${queued}"
+check "the queued restart runs once the lock is free" "0" "$(cat "${WORK}/queued_restart/status")"
+check "the queued restart leaves no marker" "no" "$(marker queued_restart)"
 
 echo
 echo "${checks} checks, ${failures} failed"

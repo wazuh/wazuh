@@ -38,6 +38,65 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
                                                             const char *manager_message);
 STATIC int w_enrollment_fallback_credential_exists(void);
 
+/* Kid of the last attempt whose outcome is unknown, empty when none. A mutex rather than a C11
+ * atomic, for the same mingw reason as g_https_client_lock (https_client_bridge.c). */
+static char w_enroll_unknown_kid[sizeof(((hc_enroll_request_t *)0)->enroll_kid)] = "";
+static pthread_mutex_t w_enroll_unknown_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void w_enrollment_unknown_set(const char *kid) {
+    w_mutex_lock(&w_enroll_unknown_lock);
+    snprintf(w_enroll_unknown_kid, sizeof(w_enroll_unknown_kid), "%s", kid != NULL ? kid : "");
+    w_mutex_unlock(&w_enroll_unknown_lock);
+}
+
+void w_enrollment_clear_outcome_unknown(void) {
+    w_enrollment_unknown_set(NULL);
+}
+
+static bool w_enrollment_unknown_matches(const char *kid) {
+    bool matches;
+
+    w_mutex_lock(&w_enroll_unknown_lock);
+    matches = kid != NULL && kid[0] != '\0' && strcmp(w_enroll_unknown_kid, kid) == 0;
+    w_mutex_unlock(&w_enroll_unknown_lock);
+
+    return matches;
+}
+
+bool w_enrollment_note_outcome_unknown(const hc_enroll_result_t *result, const char *enroll_kid) {
+    char alert[96];
+    bool ambiguous = false;
+
+    assert(result != NULL);
+
+    if (result->http_code == 0) {
+        ambiguous = result->request_sent
+                    && !w_enrollment_tls_rejection(result->transport_error, alert, sizeof(alert));
+    } else if (result->http_code == 503) {
+        w_enroll_error_t error;
+
+        w_enrollment_parse_error(result, &error);
+        /* authd's code -2: the request reached authd but no answer came back in time. */
+        ambiguous = error.has_numeric_code && error.authd_code == -2;
+    } else if (result->http_code == 504) {
+        /* An intermediary that may have forwarded the request before giving up. Remoted itself
+         * never answers 504 on /enroll. */
+        ambiguous = true;
+    }
+
+    if (ambiguous) {
+        w_enrollment_unknown_set(enroll_kid);
+    }
+
+    return ambiguous;
+}
+
+/* A 200 the agent cannot use: the manager applied the enrollment and the result is lost. */
+static void w_enrollment_unusable_answer(const char *enroll_kid, bool *keep_unknown) {
+    w_enrollment_unknown_set(enroll_kid);
+    *keep_unknown = true;
+}
+
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
     out->body_json = NULL;
@@ -221,22 +280,88 @@ void w_enroll_request_destroy(w_enroll_request_t *request) {
  * the other would name the wrong thing entirely, and an operator acting on it would go looking for
  * a token that does not exist.
  */
-const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
+bool w_enrollment_is_token_kid(const char *enroll_kid) {
     static const size_t token_kid_chars = 22;
     size_t i;
 
     if (enroll_kid == NULL || strlen(enroll_kid) != token_kid_chars) {
-        return "(id unknown)";
+        return false;
     }
 
     for (i = 0; i < token_kid_chars; i++) {
         const char c = enroll_kid[i];
         if (!isalnum((unsigned char)c) && c != '-' && c != '_') {
-            return "(id unknown)";
+            return false;
         }
     }
 
-    return enroll_kid;
+    return true;
+}
+
+const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
+    return w_enrollment_is_token_kid(enroll_kid) ? enroll_kid : "(id unknown)";
+}
+
+/* The alert arrives as libcurl's error text (OpenSSL's reason string, the same on every platform
+ * the agent bundles OpenSSL on), with no HTTP status, so without this it reads as an unreachable
+ * manager. Only the certificate-related alerts count: they mean the manager was reached and
+ * refused this agent's identity, which retrying cannot change. Any other alert, or no alert at
+ * all, keeps its existing classification. */
+bool w_enrollment_tls_rejection(const char *transport_error, char *reason, size_t size) {
+    static const char *const alerts[] = {
+        "alert certificate required", "alert unknown ca", "alert bad certificate",
+        "alert certificate expired", "alert certificate revoked", "alert certificate unknown",
+        "alert unsupported certificate", "alert access denied",
+    };
+    const char *match = NULL;
+    const char *start;
+    size_t len;
+
+    if (transport_error == NULL || reason == NULL || size == 0) {
+        return false;
+    }
+
+    for (size_t i = 0; i < sizeof(alerts) / sizeof(alerts[0]) && match == NULL; i++) {
+        match = strstr(transport_error, alerts[i]);
+    }
+
+    if (match == NULL) {
+        return false;
+    }
+
+    /* Back to the protocol prefix ("tlsv13 ", "sslv3 "), which OpenSSL puts after the last ':'. */
+    start = match;
+    while (start > transport_error && start[-1] != ':') {
+        start--;
+    }
+
+    len = strcspn(start, ",");
+    if (len >= size) {
+        len = size - 1;
+    }
+
+    memcpy(reason, start, len);
+    reason[len] = '\0';
+
+    return true;
+}
+
+uint32_t w_enrollment_timeout_ms(void) {
+    static bool warned = false;
+    static pthread_mutex_t warned_lock = PTHREAD_MUTEX_INITIALIZER;
+    const uint32_t timeout_ms = (uint32_t)getDefine_Int_default("agent", "https_enroll_timeout", 1000, 600000,
+                                                                HC_DEFAULT_ENROLL_TIMEOUT_MS);
+
+    w_mutex_lock(&warned_lock);
+    if (timeout_ms < HC_MANAGER_REQUEST_TIMEOUT_MS && !warned) {
+        warned = true;
+        mwarn("agent.https_enroll_timeout (%u ms) is below the manager's default enrollment wait "
+              "(%u ms): the agent may abandon an enrollment the manager still applies.",
+              (unsigned)timeout_ms, HC_MANAGER_REQUEST_TIMEOUT_MS);
+    }
+    w_mutex_unlock(&warned_lock);
+
+    return timeout_ms;
 }
 
 void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t *out) {
@@ -337,9 +462,10 @@ const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *e
     return words;
 }
 
-w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
-    assert(result != NULL);
-
+/* @p keep_unknown is set when the refusal was explained by the earlier lost answer, or the answer
+ * was itself lost, either of which keeps that record alive for the next one. */
+STATIC w_enroll_status_t w_enrollment_handle_answer(const hc_enroll_result_t *result, const char *enroll_kid,
+                                                    bool *keep_unknown) {
     if (result->http_code == 0) {
         /* Enrollment is the first thing an agent does, so a misconfigured CA or an
          * unreachable manager surfaces here before anything else. */
@@ -353,6 +479,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         cJSON *response = cJSON_Parse(result->body);
         if (!response) {
             merror("Enrollment response is not valid JSON.");
+            w_enrollment_unusable_answer(enroll_kid, keep_unknown);
             return W_ENROLL_ERR_SERVER;
         }
 
@@ -368,6 +495,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                 !OS_IsValidID(id->valuestring) || !OS_IsValidName(name->valuestring) ||
                 !OS_IsValidIP(ip->valuestring, NULL) || !OS_IsValidName(key->valuestring)) {
             merror("Enrollment response has a missing or invalid field.");
+            w_enrollment_unusable_answer(enroll_kid, keep_unknown);
             cJSON_Delete(response);
             return W_ENROLL_ERR_SERVER;
         }
@@ -379,6 +507,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         if (reenroll_secret != NULL &&
                 (!cJSON_IsString(reenroll_secret) || !OS_IsValidReenrollSecret(reenroll_secret->valuestring))) {
             merror("Enrollment response carries a malformed re-enrollment secret.");
+            w_enrollment_unusable_answer(enroll_kid, keep_unknown);
             cJSON_Delete(response);
             return W_ENROLL_ERR_SERVER;
         }
@@ -390,6 +519,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         if (reenroll_secret != NULL &&
                 w_reenroll_secret_store(id->valuestring, reenroll_secret->valuestring) != 0) {
             /* w_reenroll_secret_store() logged the reason. */
+            w_enrollment_unusable_answer(enroll_kid, keep_unknown);
             cJSON_Delete(response);
             return W_ENROLL_ERR_SERVER;
         }
@@ -400,6 +530,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         cJSON_Delete(response);
 
         if (w_enrollment_store_key_entry(line) != 0) {
+            w_enrollment_unusable_answer(enroll_kid, keep_unknown);
             return W_ENROLL_ERR_SERVER;
         }
 
@@ -416,6 +547,8 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     char token_reason[32];
     const char *token_refusal = w_enrollment_token_refusal(result->http_code, &error, token_reason,
                                                            sizeof(token_reason));
+    const bool token_kid = w_enrollment_is_token_kid(enroll_kid);
+    const bool reenroll_kid = enroll_kid != NULL && enroll_kid[0] != '\0' && !token_kid;
 
     if (token_refusal != NULL) {
         /* Named with the token id: the operator has to replace this token, and a fleet
@@ -423,6 +556,15 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
          * the class or code. */
         merror("Enrollment token %s %s (%s). A new enrollment token is needed.",
                w_enrollment_token_id_or_unknown(enroll_kid), token_refusal, token_reason);
+
+        if (result->http_code == 403 && authd_code == 9024 && token_kid &&
+                w_enrollment_unknown_matches(enroll_kid)) {
+            *keep_unknown = true;
+            merror("An earlier attempt with this token timed out or got no answer. It most likely "
+                   "registered this agent and used the token's last use. Delete the agent on the "
+                   "manager before enrolling again with a new enrollment token.");
+        }
+
         return W_ENROLL_ERR_AUTH_FATAL;
     }
 
@@ -434,7 +576,18 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             status = W_ENROLL_ERR_INVALID_REQUEST;
             break;
         case 401:
-            status = w_enrollment_classify_auth_failure(auth_class, manager_message);
+            if (reenroll_kid && auth_class != NULL && strcmp(auth_class, "invalid_signature") == 0 &&
+                    w_enrollment_unknown_matches(enroll_kid)) {
+                *keep_unknown = true;
+                merror("Re-enrollment was refused for this agent's own credential after an earlier "
+                       "attempt timed out or got no answer. The manager most likely applied that attempt "
+                       "and rotated the credential after the agent gave up, so the stored one is stale. "
+                       "The agent keeps retrying, and every retry will be refused until this agent is "
+                       "deleted on the manager and enrolled again with a new enrollment token.");
+                status = W_ENROLL_ERR_AUTH_RETRY;
+            } else {
+                status = w_enrollment_classify_auth_failure(auth_class, manager_message);
+            }
             break;
         case 403:
             /* Besides a refused token, handled above, two 403s told apart by the envelope:
@@ -467,8 +620,24 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             }
             break;
         case 409:
-            merror("Enrollment rejected by the manager: duplicate agent.%s%s",
-                   manager_message ? " " : "", manager_message ? manager_message : "");
+            if (reenroll_kid && authd_code == 9030 && w_enrollment_unknown_matches(enroll_kid)) {
+                *keep_unknown = true;
+                merror("A re-enrollment is already in progress on the manager after an earlier attempt of "
+                       "this agent timed out or got no answer. That attempt most likely rotated the "
+                       "credential. The agent keeps retrying; if the retries are then refused as an "
+                       "invalid signature, delete this agent on the manager and enroll it again with a "
+                       "new enrollment token.");
+            } else if (token_kid && (authd_code == 9007 || authd_code == 9008) &&
+                       w_enrollment_unknown_matches(enroll_kid)) {
+                *keep_unknown = true;
+                merror("Enrollment was refused as a duplicate after an earlier attempt in this start timed "
+                       "out or got no answer. The manager most likely registered this agent from that "
+                       "attempt. Delete the agent on the manager and enroll again with a new enrollment "
+                       "token.");
+            } else {
+                merror("Enrollment rejected by the manager: duplicate agent.%s%s",
+                       manager_message ? " " : "", manager_message ? manager_message : "");
+            }
             status = W_ENROLL_ERR_DUPLICATE;
             break;
         case 404:
@@ -500,6 +669,29 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                    manager_message ? " " : "", manager_message ? manager_message : "");
             status = W_ENROLL_ERR_SERVER;
             break;
+    }
+
+    return status;
+}
+
+w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
+    bool keep_unknown = false;
+    w_enroll_status_t status;
+
+    assert(result != NULL);
+
+    w_enrollment_note_outcome_unknown(result, enroll_kid);
+
+    status = w_enrollment_handle_answer(result, enroll_kid, &keep_unknown);
+
+    /* Only a stored key or a 4xx from authd settles the earlier attempt; 407, 408 and 429 come
+     * from intermediaries or the transport. */
+    const long code = result->http_code;
+    const bool verdict = (code == 200 && status == W_ENROLL_OK) ||
+                         (code >= 400 && code < 500 && code != 407 && code != 408 && code != 429);
+
+    if (verdict && !keep_unknown) {
+        w_enrollment_clear_outcome_unknown();
     }
 
     return status;

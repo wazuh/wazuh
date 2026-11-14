@@ -54,7 +54,10 @@ paths:
         of their values: these dotted names resolve to the same indexed identity path. This also
         applies to escaped names such as `wazuh\u002eagent\u002eid`, and to names with trailing dots
         along the identity path (`wazuh.`, `agent.`, `id.`, or dotted aliases with trailing dots).
-        Dotted names in unrelated paths and off-path duplicates are accepted.
+        Any other dotted member name that the indexer would expand into `wazuh.*` is rejected too:
+        a root member whose first segment is `wazuh` (`wazuh.cluster.name`) and any dotted name
+        inside the root `wazuh` object, at any depth. Dotted names outside `wazuh.*` and off-path
+        duplicates are accepted.
         Violations return 400 before any event is enqueued. A cache hit reuses only a previously
         validated (agent id, exact header bytes) pair.
 

@@ -59,15 +59,15 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapBuilderTest,
     testing::Values(
-        /*** Epoch From System ***/
+        /*** Epoch From System (now_epoch) ***/
         MapT({}, opBuilderHelperEpochTimeFromSystem, SUCCESS()),
         MapT({makeValue(R"("value")")}, opBuilderHelperEpochTimeFromSystem, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperEpochTimeFromSystem, FAILURE()),
-        /*** Get Date ***/
+        /*** Get Date (now) ***/
         MapT({}, opBuilderHelperGetDate, SUCCESS()),
         MapT({makeValue(R"("value")")}, opBuilderHelperGetDate, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperGetDate, FAILURE()),
-        /*** Date From Epoch ***/
+        /*** Date From Epoch (epoch_to_date) ***/
         MapT({}, opBuilderHelperDateFromEpochTime, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperDateFromEpochTime, FAILURE()),
         MapT({makeValue(R"(123456789)")}, opBuilderHelperDateFromEpochTime, FAILURE()),
@@ -79,7 +79,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Array))),
         MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
         MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Null))),
-        /*** Date To Epoch ***/
+        /*** Date To Epoch (date_to_epoch) ***/
         MapT({}, opBuilderHelperDateToEpochTime, FAILURE()),
         MapT({makeValue(R"("2024-05-17T15:10:58Z")")}, opBuilderHelperDateToEpochTime, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, SUCCESS(customRefExpected())),
@@ -95,7 +95,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(stypeRefExpected(schemf::Type::BOOLEAN))),
         MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(stypeRefExpected(schemf::Type::WILDCARD))),
         MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(stypeRefExpected(schemf::Type::TEXT))),
-        // empty format literal → build-time FAILURE
+        // empty format literal -> build-time FAILURE
         MapT({makeRef("ref"), makeValue(R"("")")}, opBuilderHelperDateToEpochTime, FAILURE()),
         MapT({makeRef("ref"), makeValue(R"("%FT%TZ%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")")},
              opBuilderHelperDateToEpochTime,
@@ -113,11 +113,11 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapOperationTest,
     testing::Values(
-        /*** Epoch From System ***/
+        /*** Epoch From System (now_epoch) ***/
         MapT("{}", opBuilderHelperEpochTimeFromSystem, {}, SUCCESS(IGNORE_MAP_RESULT)),
-        /*** Get date ***/
+        /*** Get date (now) ***/
         MapT("{}", opBuilderHelperGetDate, {}, SUCCESS(IGNORE_MAP_RESULT)),
-        /*** Date From Epoch ***/
+        /*** Date From Epoch (epoch_to_date) ***/
         MapT(R"({"ref": 1706172785})",
              opBuilderHelperDateFromEpochTime,
              {makeRef("ref")},
@@ -150,7 +150,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"ref": {}})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": true})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": null})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
-        /*** Date To Epoch ***/
+        /*** Date To Epoch (date_to_epoch) ***/
         // Epoch start
         MapT(R"({"ref": "1970-01-01T00:00:00Z"})",
              opBuilderHelperDateToEpochTime,
@@ -217,7 +217,7 @@ INSTANTIATE_TEST_SUITE_P(
                      j.setDouble(1715958658.0);
                      return j;
                  }()))),
-        // No timezone → assume UTC
+        // No timezone -> assume UTC
         MapT(R"({"ref": "2024-05-17T15:10:58"})",
              opBuilderHelperDateToEpochTime,
              {makeRef("ref"), makeValue(R"("%FT%T")")},
@@ -284,7 +284,7 @@ INSTANTIATE_TEST_SUITE_P(
                      j.setDouble(static_cast<double>(us) / 1'000'000.0);
                      return j;
                  }()))),
-        // Date-only with explicit format (%F) → success at midnight UTC
+        // Date-only with explicit format (%F) -> success at midnight UTC
         MapT(R"({"ref": "1970-01-02"})",
              opBuilderHelperDateToEpochTime,
              {makeRef("ref"), makeValue(R"("%F")")},
@@ -337,17 +337,17 @@ INSTANTIATE_TEST_SUITE_P(
                      j.setDouble(1715958658.0);
                      return j;
                  }()))),
-        // Without format but offset present → should fail
+        // Without format but offset present -> should fail
         MapT(R"({"ref": "2024-05-17T12:10:58-03:00"})",
              opBuilderHelperDateToEpochTime,
              {makeRef("ref")},
              FAILURE(customRefExpected())),
-        // Invalid format token → parse fails
+        // Invalid format token -> parse fails
         MapT(R"({"ref": "2024-05-17T15:10:58Z"})",
              opBuilderHelperDateToEpochTime,
              {makeRef("ref"), makeValue(R"("%Q")")},
              FAILURE(customRefExpected())),
-        // format ok but not matching → parse fails
+        // format ok but not matching -> parse fails
         MapT(R"({"ref": "2024/05/17 15:10:58Z"})",
              opBuilderHelperDateToEpochTime,
              {makeRef("ref"), makeValue(R"("%FT%TZ")")},

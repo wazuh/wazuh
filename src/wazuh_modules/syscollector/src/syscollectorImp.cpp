@@ -19,6 +19,7 @@
 #include <iostream>
 #include <stack>
 #include <set>
+#include <unordered_set>
 #include <chrono>
 #include <thread>
 
@@ -295,18 +296,6 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
     }
 
     return Utils::asciiToHex(hash.hash());
-}
-
-static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
-{
-    const auto it
-    {
-        std::find_if (input.begin(), input.end(), [&keyValue](const auto & elem)
-        {
-            return elem.at(keyValue.first) == keyValue.second;
-        })
-    };
-    return it != input.end();
 }
 
 void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
@@ -1865,6 +1854,8 @@ nlohmann::json Syscollector::getPortsData()
     if (!data.is_null())
     {
         sanitizeJsonValue(data);
+        std::unordered_set<std::string> seenItemIds;
+        seenItemIds.reserve(data.size());
 
         for (auto& item : data)
         {
@@ -1877,7 +1868,7 @@ nlohmann::json Syscollector::getPortsData()
                 {
                     const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                    if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    if (seenItemIds.insert(itemId).second)
                     {
                         item["checksum"] = getItemChecksum(item);
                         item["item_id"] = itemId;
@@ -1893,7 +1884,7 @@ nlohmann::json Syscollector::getPortsData()
                     {
                         const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                        if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        if (seenItemIds.insert(itemId).second)
                         {
                             item["checksum"] = getItemChecksum(item);
                             item["item_id"] = itemId;
@@ -1906,7 +1897,7 @@ nlohmann::json Syscollector::getPortsData()
             {
                 const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                if (seenItemIds.insert(itemId).second)
                 {
                     item["checksum"] = getItemChecksum(item);
                     item["item_id"] = itemId;
@@ -2604,6 +2595,12 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // #38601: true once either protocol actually opened a session with queued items. Success
     // alone cannot say that -- an empty queue reports success without contacting the manager.
     bool sentAnything = false;
+    // True when either protocol stopped at its per-cycle block limit, so entries may still be
+    // queued for the next cycle.
+    bool reachedBlockLimit = false;
+    // True when either protocol was stopped mid-cycle. A stop between two blocks still reports
+    // success, so a caller logging an outcome has to check this first.
+    bool stopped = false;
     std::string failureReason;
 
     // Sync regular (non-VD) data
@@ -2611,6 +2608,8 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     {
         SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
         sentAnything = sentAnything || result.sentAnything;
+        reachedBlockLimit = reachedBlockLimit || result.reachedBlockLimit;
+        stopped = stopped || result.stopped;
 
         if (result.success)
         {
@@ -2684,6 +2683,8 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     {
         SyncModuleResult vdResult = synchronizeVDTables(mode);
         sentAnything = sentAnything || vdResult.sentAnything;
+        reachedBlockLimit = reachedBlockLimit || vdResult.reachedBlockLimit;
+        stopped = stopped || vdResult.stopped;
 
         if (!vdResult.success)
         {
@@ -2774,7 +2775,9 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // is the field persistVDFirstSyncIfNeeded() gates the VD first-sync marker on.
     return {.success = overallSuccess,
             .failureReason = std::move(failureReason),
-            .sentAnything = sentAnything};
+            .stopped = stopped,
+            .sentAnything = sentAnything,
+            .reachedBlockLimit = reachedBlockLimit};
 }
 // LCOV_EXCL_STOP
 
@@ -5336,9 +5339,23 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
     }
 
     m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-    bool recoverySucceeded = syncModule(Mode::DELTA).success;
+    const SyncModuleResult recoveryResult = syncModule(Mode::DELTA);
 
-    if (recoverySucceeded)
+    if (recoveryResult.stopped || m_stopping.load())
+    {
+        // A stop between two blocks reports success while rows are still queued, so neither
+        // "completed" message would be true. The rows stay in the on-disk queue.
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " interrupted: module is stopping. The queued entries "
+                      "will be sent by a later synchronization.");
+    }
+    else if (recoveryResult.success && recoveryResult.reachedBlockLimit)
+    {
+        // The cycle stopped at its block limit, so the queue may still hold rows of this index;
+        // the next synchronization sends them.
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " completed; some entries are still queued and will "
+                      "be sent in the next synchronization.");
+    }
+    else if (recoveryResult.success)
     {
         m_logFunction(LOG_INFO, "Recovery of index " + index + " completed.");
     }

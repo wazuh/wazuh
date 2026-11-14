@@ -8,14 +8,14 @@
 # Foundation.
 
 # Drives the agent's wazuh-control (wazuh-client.sh) start, restart and reload against a throwaway
-# install directory whose daemons are stubs: each one starts a background sleep and writes its pid
-# file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1. A log-<daemon>
-# file is appended to logs/ossec.log as the daemon starts (after emptying it, with a rotate-<daemon>
-# file; after turning a symlinked log into a regular copy of its target, with a realfile-<daemon>
-# file), a gone-<daemon> file makes it exit 0 with no pid file, as a daemon that dies once in the
-# background, and a late-<daemon> file makes it write its pid file 2 s after exiting, as one still
-# starting. Checks which daemons are left running when one of them does not start, and what the
-# start reports.
+# install directory whose daemons are stubs: each one starts a background sleep under the daemon's
+# path, as wazuh-control recognizes a daemon by its program name, and writes its pid file, as a
+# daemon does once it is up, unless a fail-<daemon> file asks it to exit 1. A log-<daemon> file is
+# appended to logs/ossec.log as the daemon starts (after emptying it, with a rotate-<daemon> file;
+# after turning a symlinked log into a regular copy of its target, with a realfile-<daemon> file), a
+# gone-<daemon> file makes it exit 0 with no pid file, as a daemon that dies once in the background,
+# and a late-<daemon> file makes it write its pid file 2 s after exiting, as one still starting.
+# Checks which daemons are left running when one of them does not start, and what the start reports.
 #
 #   ./test_wazuh_control.sh
 
@@ -42,7 +42,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DAEMON_STUB='#!/bin/sh
+DAEMON_STUB='#!/bin/bash
 dir=$(cd "$(dirname "$0")/.." && pwd)
 name=$(basename "$0")
 if [ "$1" = "-t" ]; then
@@ -59,10 +59,10 @@ fi
 [ -f "${dir}/log-${name}" ] && cat "${dir}/log-${name}" >> "${dir}/logs/ossec.log"
 [ -f "${dir}/gone-${name}" ] && exit 0
 if [ -f "${dir}/late-${name}" ]; then
-    ( sleep 2; sleep 300 > /dev/null 2>&1 & echo $! > "${dir}/var/run/${name}-$!.pid" ) > /dev/null 2>&1 &
+    ( sleep 2; (exec -a "$0" sleep 300) > /dev/null 2>&1 & echo $! > "${dir}/var/run/${name}-$!.pid" ) > /dev/null 2>&1 &
     exit 0
 fi
-sleep 300 > /dev/null 2>&1 &
+(exec -a "$0" sleep 300) > /dev/null 2>&1 &
 echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
 '
@@ -374,6 +374,53 @@ touch "${WORK}/start_partial/fail-wazuh-modulesd"
 check "start fails again on the daemon that is down" "1" "$(control start_partial start)"
 check "only what that start brought up is stopped" "wazuh-execd wazuh-agentd wazuh-syscheckd" "$(running start_partial)"
 
+# The pid file of an agent that did not stop cleanly can name a pid that another process took since,
+# for instance after a reboot. A stop must leave that process alone, and a start must not take it for
+# the daemon.
+new_tree pid_taken_stop
+sleep 300 > /dev/null 2>&1 &
+other=$!
+echo "${other}" > "${WORK}/pid_taken_stop/var/run/wazuh-execd-${other}.pid"
+check "stop succeeds when another process has a daemon's pid" "0" "$(control pid_taken_stop stop)"
+check "stop leaves that process running" "running" "$(kill -0 "${other}" 2>/dev/null && echo running)"
+check "stop drops the pid file that names it" "" "$(ls "${WORK}/pid_taken_stop/var/run")"
+kill "${other}"
+drop_tree pid_taken_stop
+
+new_tree pid_taken_start
+sleep 300 > /dev/null 2>&1 &
+other=$!
+echo "${other}" > "${WORK}/pid_taken_start/var/run/wazuh-execd-${other}.pid"
+check "start succeeds when another process has a daemon's pid" "0" "$(control pid_taken_start start)"
+check "start brings up that daemon" "1" "$(grep -c '^Started wazuh-execd' "${WORK}/pid_taken_start/start.out")"
+check "start leaves that process running" "running" "$(kill -0 "${other}" 2>/dev/null && echo running)"
+check "start drops the pid file that names it" "" \
+    "$(ls "${WORK}/pid_taken_start/var/run/wazuh-execd-${other}.pid" 2>/dev/null)"
+kill "${other}"
+drop_tree pid_taken_start
+
+# Daemons are recognized by their program name, so an installation reached through a symlink stops
+# the daemons it started under its real path.
+new_tree pid_symlink
+control pid_symlink start > /dev/null
+ln -s "${WORK}/pid_symlink" "${WORK}/pid_symlink_link"
+PATH="${WORK}/pid_symlink/stubbin:${PATH}" "${WORK}/pid_symlink_link/bin/wazuh-control" stop > /dev/null 2>&1
+check "stop through a symlink to the installation stops every daemon" "" "$(running pid_symlink)"
+rm -f "${WORK}/pid_symlink_link"
+drop_tree pid_symlink
+
+# ps cuts its lines to an exported COLUMNS even into a pipe, which would hide the daemon's name.
+# The pids are taken before the stop: a stop that misses its daemons drops their pid files as stale.
+new_tree pid_columns
+control pid_columns start > /dev/null
+pids=$(cat "${WORK}/pid_columns/var/run/"*.pid)
+(export COLUMNS=20; control pid_columns stop > /dev/null)
+left=""
+for pid in ${pids}; do kill -0 "${pid}" 2>/dev/null && left="${left} ${pid}"; done
+check "stop with a short COLUMNS exported stops every daemon" "" "${left}"
+for pid in ${left}; do kill "${pid}"; done
+drop_tree pid_columns
+
 new_tree restart_fail
 control restart_fail start > /dev/null
 touch "${WORK}/restart_fail/fail-wazuh-agentd"
@@ -474,8 +521,66 @@ check "restart with a configuration error keeps the daemons" "${before}" "$(pids
 new_tree sd_start
 systemd_host sd_start active "${SESSION_CGROUP}"
 check "start on an active unit runs in wazuh-control" "0" "$(control sd_start start)"
-check "start on an active unit does not call systemctl" "" "$(systemctl_calls sd_start)"
+check "start on an active unit only asks whose unit it is and whether it is starting" "${PROBE}" \
+    "$(systemctl_calls sd_start)"
 check "start on an active unit brings the daemons up" "${DAEMONS}" "$(running sd_start)"
+
+# A start while the unit is starting waits for it, without the lock: between ExecStartPre and
+# ExecStart it would otherwise bring the daemons up outside the unit, and the unit would fail.
+new_tree sd_start_wait
+systemd_host sd_start_wait activating "${SESSION_CGROUP}"
+control sd_start_wait start > /dev/null &
+waiter=$!
+sleep 1
+check "start while the unit is starting leaves the lock free while it waits" "" \
+    "$(ls -d "${WORK}/sd_start_wait/var/start-script-lock" 2>/dev/null)"
+wait "${waiter}"
+check "start while the unit is starting says it waits" "1" \
+    "$(grep -c '^wazuh-agent.service is activating: waiting for it to finish.$' "${WORK}/sd_start_wait/start.out")"
+check "start on a unit that stays starting still brings the daemons up" "${DAEMONS}" "$(running sd_start_wait)"
+drop_tree sd_start_wait
+
+# The race itself: while that start waits, the unit's ExecStart takes the lock and brings the daemons
+# up. The waiting start then finds them running and starts none of its own. The tree has one cgroup
+# file for every process, so it moves to the unit's once the first start has looked at it.
+new_tree sd_start_race
+systemd_host sd_start_race activating "${SESSION_CGROUP}"
+tree="${WORK}/sd_start_race"
+PATH="${tree}/stubbin:${PATH}" "${tree}/bin/wazuh-control" start > "${tree}/waiter.out" 2>&1 &
+waiter=$!
+sleep 1
+printf '%s\n' "${UNIT_CGROUP}" > "${tree}/cgroup"
+control_as_exec sd_start_race start self > /dev/null
+started="$(pids sd_start_race)"
+echo active > "${tree}/unit-state"
+wait "${waiter}"
+check "ExecStart during a waiting start brings the daemons up" "5" "$(grep -c '^Started ' "${tree}/start.out")"
+check "the waiting start then starts none of its own" "0 5" \
+    "$(grep -c '^Started ' "${tree}/waiter.out") $(grep -c 'already running' "${tree}/waiter.out")"
+check "the daemons ExecStart started keep running" "${started}" "$(pids sd_start_race)"
+drop_tree sd_start_race
+
+# The unit's own ExecStart runs while the unit is starting, and must not wait for itself.
+for who in self parent; do
+    new_tree sd_start_exec
+    systemd_host sd_start_exec activating "${UNIT_CGROUP}"
+    check "start from ExecStart (${who}) while the unit is starting runs at once" "0" \
+        "$(control_as_exec sd_start_exec start "${who}")"
+    check "start from ExecStart (${who}) does not ask the unit's state" "show -p PIDFile wazuh-agent.service
+show -p ControlPID wazuh-agent.service" "$(systemctl_calls sd_start_exec)"
+    check "start from ExecStart (${who}) brings the daemons up" "${DAEMONS}" "$(running sd_start_exec)"
+    drop_tree sd_start_exec
+done
+
+# A start that something the daemons launched runs inside the unit's cgroup waits like any other.
+new_tree sd_start_child
+systemd_host sd_start_child activating "${UNIT_CGROUP}"
+echo 1 > "${WORK}/sd_start_child/control-pid"
+echo active > "${WORK}/sd_start_child/unit-settle"
+control sd_start_child start > /dev/null
+check "start launched by a daemon while the unit is starting asks whether it is" "${PROBE_IN}
+is-active wazuh-agent.service" "$(systemctl_calls sd_start_child)"
+drop_tree sd_start_child
 
 # Inside the unit's cgroup, an active unit means the call comes from something the daemons
 # launched (an upgrade's installer): it goes to systemctl.
@@ -651,6 +756,23 @@ for action in restart start; do
     check "${action} with a configuration error keeps a lock it did not take" "$$" \
         "$(cat "${WORK}/badconf_lock_${action}/var/start-script-lock/pid" 2>/dev/null)"
 done
+
+# Each package ships its control script alone, so the start-lock code is copied in both: a fix to one
+# must reach the other.
+lock_code() {
+
+    awk '/^write_pid\(\)/ {on=1} /^lock\(\)/ {on=0} on' "$1"
+
+}
+check "the agent's and the manager's start-lock code are the same" \
+    "$(lock_code "${SCRIPT_DIR}/../wazuh-server.sh")" "$(lock_code "${TARGET}")"
+
+# A run stalled while taking the lock loses it to a run that reclaims it, and must notice.
+. "${SCRIPT_DIR}/start_lock_races.sh"
+check "a run that stalls before writing its pid doesn't share the lock" "one at a time" \
+    "$(lock_race "${TARGET}" before_open)"
+check "a run that stalls while writing its pid doesn't share the lock" "one at a time" \
+    "$(lock_race "${TARGET}" after_open)"
 
 echo
 echo "${checks} checks, ${failures} failed"

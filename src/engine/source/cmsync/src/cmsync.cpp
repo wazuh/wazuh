@@ -839,10 +839,20 @@ bool CMSync::synchronize()
                                 newNsId.toStr(),
                                 ex.what());
                 }
-                LOG_ERROR("[{}] Failed to sync namespace in route for space '{}': {}",
-                          LOG_MODULE_NAME,
-                          nsState.getOriginSpace(),
-                          e.what());
+                if (isShutdownRequested())
+                {
+                    LOG_INFO("[{}] Synchronization aborted for space '{}' by the shutdown: {}",
+                             LOG_MODULE_NAME,
+                             nsState.getOriginSpace(),
+                             e.what());
+                }
+                else
+                {
+                    LOG_ERROR("[{}] Failed to sync namespace in route for space '{}': {}",
+                              LOG_MODULE_NAME,
+                              nsState.getOriginSpace(),
+                              e.what());
+                }
                 nsState.setSyncStatus(base::SyncStatus::FAILED);
                 updateSpacesStatusSnapshot();
                 continue;
@@ -881,10 +891,20 @@ bool CMSync::synchronize()
         {
             nsState.setSyncStatus(base::SyncStatus::FAILED);
             updateSpacesStatusSnapshot();
-            LOG_WARNING("[{}] Failed to synchronize namespace for space '{}': {}",
-                        LOG_MODULE_NAME,
-                        nsState.getOriginSpace(),
-                        e.what());
+            if (isShutdownRequested())
+            {
+                LOG_INFO("[{}] Synchronization aborted for space '{}' by the shutdown: {}",
+                         LOG_MODULE_NAME,
+                         nsState.getOriginSpace(),
+                         e.what());
+            }
+            else
+            {
+                LOG_WARNING("[{}] Failed to synchronize namespace for space '{}': {}",
+                            LOG_MODULE_NAME,
+                            nsState.getOriginSpace(),
+                            e.what());
+            }
         }
     }
 
@@ -904,6 +924,11 @@ void CMSync::requestShutdown()
 {
     m_shutdownRequested.store(true, std::memory_order_relaxed);
     LOG_INFO("[{}] Shutdown requested", LOG_MODULE_NAME);
+}
+
+bool CMSync::isShutdownRequested() const
+{
+    return m_shutdownRequested.load(std::memory_order_relaxed);
 }
 
 void CMSync::updateSpacesStatusSnapshot()

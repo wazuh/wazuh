@@ -30,6 +30,7 @@
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
 #include <cmsync/cmsync.hpp>
+#include <cmsync/routeStatusReporter.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
@@ -325,6 +326,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
+    std::shared_ptr<cm::sync::RouteStatusReporter> routeStatusReporter;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
     std::size_t agentMetadataCacheCleanInterval {0}; // validated with the cache, before any event is accepted
@@ -692,6 +694,19 @@ int main(int argc, char* argv[])
             LOG_INFO("Content Manager Sync Service initialized");
 
             exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
+
+            // Logs whether incoming events have an enabled route. Registered after the CMSync and orchestrator
+            // handlers so that it stops before them: the router is empty once shut down, which is not a lost route.
+            routeStatusReporter = std::make_shared<cm::sync::RouteStatusReporter>(
+                [orchestrator]()
+                {
+                    const auto entries = orchestrator->getEntries();
+                    return std::any_of(entries.begin(),
+                                       entries.end(),
+                                       [](const auto& e) { return e.status() == router::env::State::ENABLED; });
+                },
+                firstStart);
+            exitHandler.add([routeStatusReporter]() { routeStatusReporter->requestShutdown(); });
         }
 
         // IOCSync
@@ -918,47 +933,6 @@ int main(int argc, char* argv[])
 
         if (enableProcessing)
         {
-            // Helper to check if the orchestrator has any enabled route.
-            const auto hasEnabledRoutes = [&orchestrator]()
-            {
-                const auto entries = orchestrator->getEntries();
-                return std::any_of(entries.begin(),
-                                   entries.end(),
-                                   [](const auto& e) { return e.status() == router::env::State::ENABLED; });
-            };
-
-            // Tracks the last reported state. nullopt = no prior report, so the
-            // first observation always logs.
-            auto lastWarned = std::make_shared<std::optional<bool>>();
-
-            // Logs only on state transitions (no routes <-> at least one enabled route).
-            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned, firstStart]()
-            {
-                const bool shouldWarn = !hasEnabledRoutes();
-                if (*lastWarned == shouldWarn)
-                {
-                    return;
-                }
-                *lastWarned = shouldWarn;
-                if (shouldWarn)
-                {
-                    if (firstStart)
-                    {
-                        LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded "
-                                 "until content synchronization completes");
-                    }
-                    else
-                    {
-                        LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
-                                    "until content synchronization completes");
-                    }
-                }
-                else
-                {
-                    LOG_INFO("[CMSync] Event processing is now active");
-                }
-            };
-
             // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
             // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
             // entries is recorded by the cache itself (agent.cache.evictions).
@@ -996,7 +970,7 @@ int main(int argc, char* argv[])
                                        {
                                            // Detect external loss of routes between sync runs
                                            // (e.g., manual route deletion).
-                                           reportRouteStatus();
+                                           routeStatusReporter->report();
 
                                            // Expand the router worker pool before the initial
                                            // content synchronization. This ensures the initial sync
@@ -1013,7 +987,7 @@ int main(int argc, char* argv[])
                                            cmSyncPending->store(pending);
 
                                            // Detect recovery (or re-loss) after sync.
-                                           reportRouteStatus();
+                                           routeStatusReporter->report();
                                        },
                                        .nextInterval = cmSyncNextInterval});
             scheduler->scheduleTaskFirst("cm-sync-task");

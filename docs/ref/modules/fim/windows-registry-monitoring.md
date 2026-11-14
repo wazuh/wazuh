@@ -49,7 +49,8 @@ The FIM module supports multiple attributes such as `check_all` and `report_chan
 The `windows_registry` option supports several attributes:
 
 - **check_all** (default: `yes`)
-  - File size
+  - Value size and type
+  - Owner, group and permissions
   - Last modification date
   - MD5, SHA1, and SHA256 hashes
 
@@ -114,7 +115,7 @@ HKEY_LOCAL_MACHINE\SYSTEM\Setup
             └── level_4
 ```
 
-If not specified, the default value is defined by `syscheck.default_max_depth`.
+If not specified, the default value is `512`.
 
 ---
 

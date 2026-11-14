@@ -27,6 +27,8 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeValue(R"("string")"), makeValue(R"("string")")}, opfilter::opBuilderHelperEndsWith, FAILURE()),
         // Value
         FilterT({makeValue(R"("string")")}, opfilter::opBuilderHelperEndsWith, SUCCESS()),
+        // An empty suffix is a build error
+        FilterT({makeValue(R"("")")}, opfilter::opBuilderHelperEndsWith, FAILURE()),
         FilterT({makeValue(R"(2)")}, opfilter::opBuilderHelperEndsWith, FAILURE()),
         FilterT({makeValue(R"(1.2)")}, opfilter::opBuilderHelperEndsWith, FAILURE()),
         FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperEndsWith, FAILURE()),
@@ -235,7 +237,22 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(customRef())),
         // Missing target field
         FilterT(R"({"other": "value"})", opfilter::opBuilderHelperEndsWith, "target", {makeValue(R"("v")")}, FAILURE()),
-        FilterT(R"({"ref": "value"})",
+        FilterT(
+            R"({"ref": "value"})", opfilter::opBuilderHelperEndsWith, "target", {makeRef("ref")}, FAILURE(customRef())),
+        // Empty suffix: a literal is refused at build time, a reference that resolves to "" matches at runtime
+        FilterT(R"({"target": "value", "ref": ""})",
+                opfilter::opBuilderHelperEndsWith,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRef())),
+        FilterT(R"({"target": "", "ref": ""})",
+                opfilter::opBuilderHelperEndsWith,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRef())),
+        // Empty target
+        FilterT(R"({"target": ""})", opfilter::opBuilderHelperEndsWith, "target", {makeValue(R"("e")")}, FAILURE()),
+        FilterT(R"({"target": "", "ref": "e"})",
                 opfilter::opBuilderHelperEndsWith,
                 "target",
                 {makeRef("ref")},

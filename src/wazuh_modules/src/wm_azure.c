@@ -88,7 +88,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
         snprintf(msg, OS_SIZE_6144, "Starting Azure-logs scan.");
-        SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
+        wm_sendmsg_with_reconnect(0, &queue_fd, msg, "rootcheck", ROOTCHECK_MQ, WM_AZURE_LOGTAG);
 
         for (curr_api = azure_config->api_config; curr_api; curr_api = curr_api->next) {
             if (curr_api->type == LOG_ANALYTICS) {
@@ -118,7 +118,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
         }
 
         snprintf(msg, OS_SIZE_6144, "Ending Azure-logs scan.");
-        SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
+        wm_sendmsg_with_reconnect(0, &queue_fd, msg, "rootcheck", ROOTCHECK_MQ, WM_AZURE_LOGTAG);
 
         mtdebug1(WM_AZURE_LOGTAG, "Fetching logs finished.");
 

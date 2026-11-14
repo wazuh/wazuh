@@ -31,17 +31,6 @@ public:
         return *this;
     }
 
-    WazuhDBQueryBuilder& agent(const std::string& id)
-    {
-        if (!Utils::isNumber(id))
-        {
-            throw std::runtime_error("Invalid agent id");
-        }
-
-        m_query += "agent " + id + " sql ";
-        return *this;
-    }
-
     WazuhDBQueryBuilder& selectAll()
     {
         m_query += "SELECT * ";
@@ -137,36 +126,6 @@ public:
             throw std::runtime_error("Invalid command");
         }
         m_query += "global select-" + command + " ";
-        return *this;
-    }
-
-    WazuhDBQueryBuilder& agentGetOsInfoCommand(const std::string& id)
-    {
-        if (!Utils::isNumber(id))
-        {
-            throw std::runtime_error("Invalid agent id");
-        }
-        m_query += "agent " + id + " osinfo get ";
-        return *this;
-    }
-
-    WazuhDBQueryBuilder& agentGetHotfixesCommand(const std::string& id)
-    {
-        if (!Utils::isNumber(id))
-        {
-            throw std::runtime_error("Invalid agent id");
-        }
-        m_query += "agent " + id + " hotfix get ";
-        return *this;
-    }
-
-    WazuhDBQueryBuilder& agentGetPackagesCommand(const std::string& id)
-    {
-        if (!Utils::isNumber(id))
-        {
-            throw std::runtime_error("Invalid agent id");
-        }
-        m_query += "agent " + id + " package get ";
         return *this;
     }
 

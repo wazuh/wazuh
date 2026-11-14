@@ -20,6 +20,13 @@ int __wrap_wm_sendmsg(int usec,
                       const char *locmsg,
                       char loc);
 
+int __wrap_wm_sendmsg_with_reconnect(int usec,
+                                     int *queue_ptr,
+                                     const char *message,
+                                     const char *locmsg,
+                                     char loc,
+                                     const char *tag);
+
 int __wrap_wm_state_io(const char * tag,
                        int op,
                        void *state,

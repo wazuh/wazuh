@@ -2,10 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 from wazuh.tests.test_security import db_setup  # noqa
 
@@ -170,6 +172,11 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     ({'actions': ['agent:read'], 'resources': ['agent:bogusfield:*'], 'effect': 'allow'}, False),
     ({'actions': ['agent:read'], 'resources': ['agent:id:001&bogus:id:*'], 'effect': 'allow'}, False),
     ({'actions': ['agent:read'], 'resources': ['agent:id'], 'effect': 'allow'}, False),
+    # Resources a token could not be built from (4500 for every holder of a linked role)
+    ({'actions': ['agent:read'], 'resources': ['agent:group:web&node:id:master&agent:id:001'], 'effect': 'allow'},
+     False),
+    ({'actions': ['agent:read'], 'resources': ['agent:id:\u0660\u0660\u0661'], 'effect': 'allow'}, False),
+    ({'actions': ['agent:read'], 'resources': ['agent:group:w\u00e9b'], 'effect': 'allow'}, False),
     # Empty lists grant or deny nothing
     ({'actions': [], 'resources': ['agent:id:*'], 'effect': 'allow'}, False),
     ({'actions': ['agent:read'], 'resources': [], 'effect': 'allow'}, False),
@@ -181,6 +188,38 @@ def test_is_valid_rbac_policy(policy, expected):
     from wazuh.core.security import is_valid_rbac_policy
 
     assert is_valid_rbac_policy(policy) is expected
+
+
+@pytest.mark.parametrize('policy', [
+    {'actions': ['agent:read'], 'resources': ['agent:id:*'], 'effect': 'allow'},
+    {'actions': ['agent:read', 'group:read'], 'resources': ['agent:id:001', 'group:id:default'], 'effect': 'deny'},
+    {'actions': ['agent:create'], 'resources': ['*:*:*'], 'effect': 'allow'},
+    {'actions': ['agent:read'], 'resources': ['agent:group:web&node:id:master'], 'effect': 'allow'},
+    {'actions': ['agent:read'], 'resources': ['agent:group:web-1.a/b'], 'effect': 'allow'},
+])
+def test_a_stored_policy_builds_a_token(policy):
+    """Whatever a policy write accepts, the token preprocessor accepts too.
+
+    Otherwise a body stored through `PUT /security/policies` would make every holder of the linked roles
+    fail authorization with 4500 on its next request.
+    """
+    from wazuh.core.security import is_valid_rbac_policy
+    from wazuh.rbac.preprocessor import PreProcessor
+
+    assert is_valid_rbac_policy(policy)
+    PreProcessor().process_policy(policy)
+
+
+def test_default_policies_are_valid():
+    """The stricter write check still accepts every policy the installation seeds."""
+    from wazuh.core.security import is_valid_rbac_policy
+
+    with open(os.path.join(os.path.dirname(__file__), '..', '..', 'rbac', 'default', 'policies.yaml')) as f:
+        defaults = yaml.safe_load(f)['default_policies']
+
+    bodies = [body for group in defaults.values() for body in group['policies'].values()]
+    assert bodies
+    assert [body for body in bodies if not is_valid_rbac_policy(body)] == []
 
 
 @pytest.mark.parametrize('rule, expected', [

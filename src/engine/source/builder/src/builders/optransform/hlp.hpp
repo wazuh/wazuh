@@ -136,18 +136,6 @@ TransformOp uriParseBuilder(const Reference& targetField,
                             const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Helper function of user agent parser from HLP
- *
- * @param targetField target field of the helper
- * @param opArgs vector of parameters as present in the raw definition
- * @param buildCtx Build context
- * @return TransformOp Expression of the operation
- */
-TransformOp userAgentParseBuilder(const Reference& targetField,
-                                  const std::vector<OpArg>& opArgs,
-                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
  * @brief Helper function of FQDN parser from HLP
  *
  * @param targetField target field of the helper

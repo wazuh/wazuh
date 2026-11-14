@@ -178,6 +178,10 @@ def test_unknown_agent_re_enrolls_with_the_stored_secret_and_keeps_the_id(
 
     assert wait_for(lambda: enroll_requests(manager), timeout=SETTLE), \
         'unknown_agent did not provoke a re-enrollment'
+    expect_log('https_client: the manager does not know this agent yet (401, unknown_agent); '
+               'retrying the current credential with backoff before re-enrolling.')
+    expect_log('https_client: the manager still answers unknown_agent after retrying the current '
+               'credential; re-enrolling.')
     expect_log('https_client: credential rejected (401); re-enrolling.')
 
     request = enroll_requests(manager)[0]

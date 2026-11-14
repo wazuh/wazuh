@@ -12,6 +12,8 @@
 #include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
+#include "captureLogs.hpp"
+
 namespace
 {
 
@@ -87,22 +89,6 @@ router::prod::Entry makeRouterEntry(const std::string& name,
     entry.status(state);
     entry.hash(hash);
     return entry;
-}
-
-// Engine log lines of a call: INFO/DEBUG go to stdout, WARNING and above to stderr (base::logging CustomSink)
-struct CapturedLogs
-{
-    std::string info;
-    std::string warn;
-};
-
-template<typename Fn>
-CapturedLogs captureLogs(Fn&& fn)
-{
-    testing::internal::CaptureStdout();
-    testing::internal::CaptureStderr();
-    fn();
-    return {testing::internal::GetCapturedStdout(), testing::internal::GetCapturedStderr()};
 }
 
 class CMSyncConstructorTest : public ::testing::Test
@@ -564,8 +550,48 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenGetEntryFails)
     EXPECT_CALL(*router, getEntry("cmsync_standard"))
         .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(base::Error {"route error"})));
 
-    // The per-namespace catch block handles the error without throwing
-    EXPECT_NO_THROW(sync->synchronize());
+    // The per-namespace catch block handles the error without throwing, and reports it as a warning
+    logging::setLevel(logging::Level::Info);
+    const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
+    logging::setLevel(logging::Level::Warn);
+    EXPECT_EQ(countAtLevel(logs.warn,
+                           "warning",
+                           "Failed to synchronize namespace for space 'standard': Failed to get route entry for "
+                           "'cmsync_standard': route error"),
+              1)
+        << logs.warn;
+    EXPECT_EQ(logs.info.find("by the shutdown"), std::string::npos) << logs.info;
+    EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
+}
+
+// The router is torn down by the engine shutdown during the route lookup: the space fails, logged as an abort
+TEST_F(CMSyncSynchronizeTest, ReportsRouteLookupAbortedByShutdownAsInfo)
+{
+    auto state = createStoredStateWithNs("standard", "old_ns");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+                                   ::testing::Return(std::optional(std::make_pair(std::string("hash1"), true)))));
+
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(
+            ::testing::Return(base::RespOrError<router::prod::Entry>(base::Error {"Orchestrator has been shutdown"})));
+
+    logging::setLevel(logging::Level::Info);
+    const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
+    logging::setLevel(logging::Level::Warn);
+    EXPECT_EQ(countAtLevel(logs.info,
+                           "info",
+                           "Synchronization aborted for space 'standard' by the shutdown: Failed to get route entry "
+                           "for 'cmsync_standard': Orchestrator has been shutdown"),
+              1)
+        << logs.info;
+    EXPECT_EQ(logs.warn.find("Failed to synchronize namespace"), std::string::npos) << logs.warn;
+    EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
 }
 
 // Error: hot-swap fails — should rollback new namespace and continue
@@ -602,8 +628,56 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
     // Rollback: delete newly created namespace
     EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
 
-    // Should not throw — error is caught per-namespace
-    EXPECT_NO_THROW(sync->synchronize());
+    // Should not throw — error is caught per-namespace and reported as an error
+    logging::setLevel(logging::Level::Info);
+    const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
+    logging::setLevel(logging::Level::Warn);
+    EXPECT_EQ(countAtLevel(logs.warn, "error", "Failed to sync namespace in route for space 'standard': "), 1)
+        << logs.warn;
+    EXPECT_EQ(logs.info.find("by the shutdown"), std::string::npos) << logs.info;
+    EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
+}
+
+// The engine shutdown starts while the new content is imported: the hot swap meets the stopped router, the new
+// namespace is rolled back and the space fails, logged as an abort
+TEST_F(CMSyncSynchronizeTest, ReportsRouteSyncAbortedByShutdownAsInfo)
+{
+    auto state = createStoredStateWithNs("standard", "old_ns");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
+
+    auto entry = makeRouterEntry("cmsync_standard", "old_ns", 1, router::env::State::ENABLED, "old_hash");
+    EXPECT_CALL(*router, existsEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(true))
+        .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));
+
+    EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
+    wiconnector::PolicyResources resources;
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+        .WillOnce(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }));
+
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+        .WillOnce(::testing::Return(base::Error {"Hot swap aborted: orchestrator shutting down"}));
+    EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
+
+    logging::setLevel(logging::Level::Info);
+    const auto logs = captureLogs([&]() { EXPECT_NO_THROW(sync->synchronize()); });
+    logging::setLevel(logging::Level::Warn);
+    EXPECT_EQ(countAtLevel(logs.info, "info", "Synchronization aborted for space 'standard' by the shutdown: "), 1)
+        << logs.info;
+    EXPECT_EQ(countAtLevel(logs.info, "info", "Hot swap aborted: orchestrator shutting down"), 1) << logs.info;
+    EXPECT_EQ(logs.warn.find("Failed to sync namespace in route"), std::string::npos) << logs.warn;
+    EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
 }
 
 // Error: importNamespace fails during download — rolls back and rethrows (caught per-namespace)

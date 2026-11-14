@@ -122,7 +122,7 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             break;
 
         case SyncResult::PAYLOAD_TOO_LARGE:
-            failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
+            failureReason = "Manager rejected the session as too large (413); it is retried on the next cycle. If this repeats, the session exceeds the manager's budget.";
             break;
 
         case SyncResult::FEED_NOT_READY:
@@ -326,17 +326,6 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
-    return synchronizeModuleUpTo(mode, option, m_maxBlocksPerSync);
-}
-
-SyncModuleResult AgentSyncProtocol::synchronizeModuleBounded(Mode mode, size_t maxBlocks)
-{
-    const size_t limit = (maxBlocks > 0 && maxBlocks < m_maxBlocksPerSync) ? maxBlocks : m_maxBlocksPerSync;
-    return synchronizeModuleUpTo(mode, Option::SYNC, limit);
-}
-
-SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks)
-{
     // Validate synchronization mode
     if (mode != Mode::DELTA)
     {
@@ -394,7 +383,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option opti
 
     clearSyncState();
 
-    return synchronizeDeltaByBlocks(option, maxBlocks);
+    return synchronizeDeltaByBlocks(option);
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
@@ -402,7 +391,7 @@ bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
     return option == Option::VDFIRST || option == Option::VDSYNC;
 }
 
-SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size_t maxBlocks)
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
 {
     try
     {
@@ -429,7 +418,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
     bool sentAny = false;
     size_t blocksSent = 0;
 
-    while (!shouldStop() && blocksSent < maxBlocks)
+    while (!shouldStop() && blocksSent < m_maxBlocksPerSync)
     {
         std::vector<PersistedData> dataToSync;
 
@@ -559,7 +548,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
             .awaitingPrerequisite = awaitingPrerequisite,
             .localTransportUnavailable = false,
             .sentAnything = sentAny,
-            .feedNotReady = feedNotReady};
+            .feedNotReady = feedNotReady,
+            // A VD sync fetches the whole queue in its first block, so reaching the limit
+            // leaves nothing behind.
+            .reachedBlockLimit = !uncapped && success && blocksSent >= m_maxBlocksPerSync};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool expectedFailure)
@@ -877,11 +869,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 
     clearSyncState();
 
-    // For metadata and group modes, we don't send any data items
-    // We only send Start (with Size=0 and the indices array) and End messages
+    // Metadata and group modes carry no data items: one message with only the Start
+    // (Size=0 and the indices array).
     bool success = false;
 
-    // Metadata and group modes carry no items: just Start and End in one message.
     SessionContent content;
     content.mode = mode;
     content.indices = indices;
@@ -1576,7 +1567,8 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
             m_logger(LOG_DEBUG, "Checksum mismatch detected by manager (409): " + std::string(body));
             break;
 
-        case 413: // Session larger than the manager's total in-flight budget; must be split.
+        case 413: // Session larger than the manager's total in-flight budget. Not split: it is
+            // retried on the next cycle and keeps failing while it stays over the budget.
             m_syncState.lastSyncResult = SyncResult::PAYLOAD_TOO_LARGE;
             m_logger(LOG_WARNING, "Session rejected as too large by the manager (413): " + std::string(body));
             break;

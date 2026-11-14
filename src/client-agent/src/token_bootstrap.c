@@ -859,59 +859,6 @@ static void token_apply_client_identity(hc_config_t *config) {
     }
 }
 
-/**
- * @brief Whether a request that got no HTTP status failed because the manager refused the TLS
- *        handshake over the agent's client certificate, and which alert it sent.
- *
- * The alert arrives as libcurl's error text (OpenSSL's reason string, the same on every platform
- * the agent bundles OpenSSL on), with no HTTP status, so without this it reads as an unreachable
- * manager. Only the certificate-related alerts count: they mean the manager was reached and
- * refused this agent's identity, which retrying cannot change. Any other alert, or no alert at
- * all, keeps its existing classification.
- *
- * @param transport_error The request's transport error text.
- * @param reason Receives the alert as OpenSSL names it, e.g. "tlsv13 alert certificate required".
- * @param size Size of @p reason.
- */
-STATIC bool token_tls_rejection(const char *transport_error, char *reason, size_t size) {
-    static const char *const alerts[] = {
-        "alert certificate required", "alert unknown ca", "alert bad certificate",
-        "alert certificate expired", "alert certificate revoked", "alert certificate unknown",
-        "alert unsupported certificate", "alert access denied",
-    };
-    const char *match = NULL;
-    const char *start;
-    size_t len;
-
-    if (transport_error == NULL || reason == NULL || size == 0) {
-        return false;
-    }
-
-    for (size_t i = 0; i < sizeof(alerts) / sizeof(alerts[0]) && match == NULL; i++) {
-        match = strstr(transport_error, alerts[i]);
-    }
-
-    if (match == NULL) {
-        return false;
-    }
-
-    /* Back to the protocol prefix ("tlsv13 ", "sslv3 "), which OpenSSL puts after the last ':'. */
-    start = match;
-    while (start > transport_error && start[-1] != ':') {
-        start--;
-    }
-
-    len = strcspn(start, ",");
-    if (len >= size) {
-        len = size - 1;
-    }
-
-    memcpy(reason, start, len);
-    reason[len] = '\0';
-
-    return true;
-}
-
 w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                                              w_token_enroll_report_t *report) {
     w_etoken_t token;
@@ -934,9 +881,14 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     hc_enroll_result_t enroll_result;
     token_snapshot_t snapshot = {NULL};
     bool anchor_changed = false;
+    uint32_t enroll_timeout_ms;
 
     assert(opts != NULL);
     assert(opts->token_text != NULL);
+
+    /* Read before anything is fetched or staged: an invalid value ends the process, and must not
+     * leave a staged anchor behind. */
+    enroll_timeout_ms = opts->anchor_only ? 0 : w_enrollment_timeout_ms();
 
     if (report != NULL) {
         memset(report, 0, sizeof(*report));
@@ -1024,7 +976,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             char tls_alert[96];
 
             if (fetch_result.http_code == 0
-                    && token_tls_rejection(fetch_result.transport_error, tls_alert, sizeof(tls_alert))) {
+                    && w_enrollment_tls_rejection(fetch_result.transport_error, tls_alert, sizeof(tls_alert))) {
                 fetch_transient = false;
                 token_report_fail(report, "/cacerts tls_rejected -- the manager refused the TLS handshake "
                        "(%s): check the <agent><ssl> certificate and key against its "
@@ -1243,6 +1195,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     enroll_config.verify_mode = HC_VERIFY_FULL;
     strncpy(enroll_config.ca_path, anchor_file.name, sizeof(enroll_config.ca_path) - 1);
     token_apply_client_identity(&enroll_config);
+    enroll_config.enroll_timeout_ms = enroll_timeout_ms;
 
     memset(&enroll_request, 0, sizeof(enroll_request));
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);
@@ -1318,7 +1271,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     if (!hc_enroll(&enroll_config, &enroll_request, &enroll_result) || enroll_result.http_code == 0) {
         char tls_alert[96];
         const bool tls_rejected = (enroll_result.http_code == 0
-                && token_tls_rejection(enroll_result.transport_error, tls_alert, sizeof(tls_alert)));
+                && w_enrollment_tls_rejection(enroll_result.transport_error, tls_alert, sizeof(tls_alert)));
 
         /* Reported, not only logged: wazuh-agent-auth silences the log's stderr echo, so the
          * operator would otherwise see the class and no cause. */
@@ -1330,6 +1283,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             token_report_fail(report, "The verified enrollment request could not be sent%s%s.",
                               enroll_result.transport_error[0] != '\0' ? ": " : "",
                               enroll_result.transport_error[0] != '\0' ? enroll_result.transport_error : "");
+        }
+
+        /* No answer: the manager may still have registered the agent, which explains a later duplicate refusal. */
+        if (enroll_result.http_code == 0) {
+            w_enrollment_note_outcome_unknown(&enroll_result, enroll_request.enroll_kid);
         }
 
         if (report != NULL) {
@@ -1537,6 +1495,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
               : "Token bootstrap: enrollment succeeded; the agent's trust anchor is unchanged.");
 
     return W_TOKEN_ENROLL_OK;
+}
+
+bool w_agent_token_bootstrap_will_enroll(void) {
+    return IsFile(AGENT_ANCHOR_CA) != 0 && FileSize(KEYS_FILE) <= 0 && IsFile(AGENT_ENROLLMENT_TOKEN_FILE) == 0;
 }
 
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
