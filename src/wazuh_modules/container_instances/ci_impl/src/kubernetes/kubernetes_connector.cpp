@@ -284,7 +284,12 @@ namespace wazuh::container_instances
             // One list; the watch cache normally already holds the pod, this is
             // the cold-path fallback only.
             const auto list = m_client.listPods();
-            m_ownersGeneration = m_workloadIndex.generation();
+            // Deliberately does NOT touch m_ownersGeneration: this refreshes ONE
+            // container, and that marker records the generation the FULL reconcile
+            // rebuilt every record with. Advancing it here both races the connector
+            // thread that owns it and makes the equality checks in
+            // handleWatchEvent()/run() miss the pending full reconcile, stranding
+            // every OTHER container on stale owner attribution.
             const auto workloads = m_workloadIndex.latest();
 
             for (const auto& pod : list.pods)
