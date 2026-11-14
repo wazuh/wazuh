@@ -227,7 +227,9 @@ Con la decodificación en el motor el punto 2 desaparece y el acoplamiento se re
 
 ### Nota sobre el doc 32
 
-Toda la aritmética de presión de ring del [doc 32](32-single-load-vs-multi-load-comparative-design.md) está calculada sobre los 12.424 bytes fijos. Con registro compacto el problema cae ~41× y **el argumento a favor de la opción B2 se debilita**: conviene arreglar F4 antes de decidir nada sobre carga única.
+Toda la aritmética de presión de ring del [doc 32](32-single-load-vs-multi-load-comparative-design.md) está calculada sobre los 12.424 bytes fijos, así que con un registro compacto esos números caen ~41×.
+
+**Esto no abre ninguna decisión de diseño.** El diseño es N cargas (opción A) y sigue siéndolo; el doc 32 es exploratorio y ya concluye lo mismo. El efecto de F4 es que el argumento que aquel documento construye para B2 queda aún más débil.
 
 ---
 
@@ -375,7 +377,7 @@ Tres tandas. El criterio es el acoplamiento al artefacto BPF, no la severidad.
 11. F4 paso 2: empaquetado completo, `RT_ABI_MAJOR` 2. El paso 1 sólo como escalón intermedio si hace falta entregar algo antes.
 12. F5: LPM trie opcional por handle, con la validación en userspace intacta.
 
-**Decidir F4 antes que cualquier cosa del doc 32.** La comparación carga única vs N cargas está construida sobre los 12.424 bytes fijos.
+F4 desactualiza los números del doc 32, que están construidos sobre los 12.424 bytes fijos. No hay nada que decidir ahí: el diseño es N cargas y aquel documento es exploratorio.
 
 ---
 

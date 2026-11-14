@@ -196,7 +196,7 @@ Macros enteros y enums de C no requieren `stdint.h` ni biblioteca hospedada, as�
 2. **Doc 30 §30.8** presenta el retiro de `modern.bpf.c` como una migración que portó sus arreglos. Portó cuatro arreglos de defectos y **perdió cinco capacidades**, tres de ellas con consecuencias de correctitud: ver §33.1.
 3. **[Doc 31 §31.1.2](31-ebpf-engine-as-platform-open-questions.md)** plantea el registro de tamaño variable como decisión de diseño a futuro. Es una regresión a recuperar.
 4. **Doc 31 §31.4.2** plantea "intentos vs operaciones confirmadas" como pregunta abierta. 4.14.11 ya lo resolvió.
-5. **[Doc 32](32-single-load-vs-multi-load-comparative-design.md)** calcula toda la presión de ring sobre el registro fijo de 12.424 bytes. Con un registro compacto el problema se reduce ~41×, lo que **debilita el argumento a favor de la opción B2** que ese documento construye.
+5. **[Doc 32](32-single-load-vs-multi-load-comparative-design.md)** calcula toda la presión de ring sobre el registro fijo de 12.424 bytes, así que con un registro compacto esos números caen ~41×. No cambia nada de diseño: aquel documento es exploratorio y ya concluye quedarse en N cargas (opción A), que es el diseño vigente. Lo que cambia es que el argumento que allí se construye para B2 se debilita todavía más.
 6. **Comentarios desactualizados** que citan 12.416 bytes y ~675 registros: el valor actual es 12.424 y ~674.
 
 ---

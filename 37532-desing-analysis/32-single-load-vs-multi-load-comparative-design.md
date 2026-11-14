@@ -1,6 +1,13 @@
 # 32 — Diseño comparativo: una carga compartida vs N cargas
 
-Documento de decisión. Compara el diseño actual del motor `ebpf_provider` — **una carga del objeto BPF por consumidor** (spike #37396 ADR-001) — contra la alternativa de **una sola carga compartida** por todos los consumidores.
+> **Estado: exploratorio. No propone un cambio de diseño.**
+>
+> El diseño es y sigue siendo **N cargas (opción A, ADR-001)**. Este documento existe sólo
+> para entender las ventajas y desventajas de cada forma, y su conclusión es quedarse en A.
+> Nada aquí está pendiente de decisión, y las referencias que otros documentos hacen a él
+> son a sus números, no a una propuesta abierta.
+
+Compara el diseño actual del motor `ebpf_provider` — **una carga del objeto BPF por consumidor** (spike #37396 ADR-001) — contra la alternativa de **una sola carga compartida** por todos los consumidores, para entender qué cuesta cada forma.
 
 El estado actual está en [`30-ebpf-provider-design-summary.md`](30-ebpf-provider-design-summary.md); los puntos abiertos a escala de plataforma, en [`31-ebpf-engine-as-platform-open-questions.md`](31-ebpf-engine-as-platform-open-questions.md) §31.2. Este documento resuelve §31.2.1 y §31.2.3 hasta donde se puede sin medir.
 
