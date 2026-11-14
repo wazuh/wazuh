@@ -186,7 +186,7 @@
   <rule id="428" level="10">
     <if_sid>420</if_sid>
     <match>IP blocked due to exceeded number of logins attempts</match>>
-    <description>Wazuh API: Warning event - IP: $(srcip) blocked due to exceeded loging attemps.</description>
+    <description>Wazuh API: Warning event - IP: $(srcip) blocked due to exceeded login attempts.</description>
     <group>gpg13_3.3,hipaa_164.312.e.1,nist_800_53_AC.7,pci_dss_8.2</group>
     <mitre>
       <id>T1110</id>
