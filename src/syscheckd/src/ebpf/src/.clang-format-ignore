@@ -1,0 +1,2 @@
+# Keyed into the libbpf-bootstrap external (packages/externals/deps.py): formatting it changes the published artifact.
+modern.bpf.c

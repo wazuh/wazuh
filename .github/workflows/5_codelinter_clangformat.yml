@@ -4,28 +4,14 @@ on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-    # The action checks only `find <path> -name '*.cpp' -o -name '*.hpp'` in each of the fifteen
-    # trees below (.github/actions/clang_format/action.yml), against the nearest .clang-format:
-    # headers (.h), CMake files and docs in those trees cannot change its result.
+    # The action checks C/C++ sources only (.github/actions/clang_format/action.yml), against the nearest
+    # .clang-format: CMake files and docs cannot change its result.
     # upload_s3_artifact is not listed: it only uploads the error file of a failed check.
     paths:
       - .clang-format
       - src/engine/.clang-format
-      - src/shared_modules/indexer_connector/**/*.[ch]pp
-      - src/shared_modules/content_manager/**/*.[ch]pp
-      - src/shared_modules/utils/**/*.[ch]pp
-      - src/shared_modules/metrics/**/*.[ch]pp
-      - src/shared_modules/manager_config/**/*.[ch]pp
-      - src/shared_modules/ca_bundle/**/*.[ch]pp
-      - src/shared_modules/manager_certs/**/*.[ch]pp
-      - src/wazuh_modules/inventory_sync_server/**/*.[ch]pp
-      - src/wazuh_modules/task_manager/**/*.[ch]pp
-      - src/wazuh_modules/keystore_server/**/*.[ch]pp
-      - src/shared_modules/keystore/**/*.[ch]pp
-      - src/shared_modules/uds_http_server/**/*.[ch]pp
-      - src/wazuh_modules/vulnerability_scanner/**/*.[ch]pp
-      - src/remoted/remoted_module/**/*.[ch]pp
-      - src/engine/**/*.[ch]pp
+      - src/**/*.[ch]
+      - src/**/*.[ch]pp
       - .github/workflows/5_codelinter_clangformat.yml
       - .github/actions/clang_format/**
 
@@ -220,6 +206,52 @@ jobs:
           path: src/engine
           id: engine
 
+      # Agent and common code: every C/C++ source in src/ except the manager-only modules above, the engine and
+      # third-party code
+      - name: Agent - Coding style
+        id: agent_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src
+          id: agent
+          pathspec: |
+            src/*.c
+            src/*.h
+            src/*.cpp
+            src/*.hpp
+            :!src/external
+            :!src/engine
+            :!src/os_auth
+            :!src/remoted
+            :!src/util
+            :!src/wazuh_db
+            :!src/shared_modules/ca_bundle
+            :!src/shared_modules/content_manager
+            :!src/shared_modules/indexer_connector
+            :!src/shared_modules/keystore
+            :!src/shared_modules/manager_certs
+            :!src/shared_modules/manager_config
+            :!src/shared_modules/metrics
+            :!src/shared_modules/uds_http_server
+            :!src/wazuh_modules/inventory_sync_server
+            :!src/wazuh_modules/keystore_server
+            :!src/wazuh_modules/task_manager
+            :!src/wazuh_modules/vulnerability_scanner
+            :!src/wazuh_modules/src/wm_database.*
+            :!src/wazuh_modules/src/wm_inventory_sync_server.*
+            :!src/wazuh_modules/src/wm_keystore_server.*
+            :!src/wazuh_modules/src/wm_task_manager.*
+            :!src/wazuh_modules/src/wm_vulnerability_scanner.*
+            :!src/unit_tests/os_auth
+            :!src/unit_tests/remoted
+            :!src/unit_tests/util
+            :!src/unit_tests/wazuh_db
+            :!src/unit_tests/wazuh_modules/database
+            :!src/unit_tests/wazuh_modules/vulnerability_detection
+
       - name: Check all coding style results
         if: always()
         run: |
@@ -283,6 +315,10 @@ jobs:
 
           if [ "${{ steps.engine_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS Engine"
+          fi
+
+          if [ "${{ steps.agent_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Agent"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then
