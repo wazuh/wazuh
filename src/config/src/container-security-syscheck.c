@@ -378,12 +378,12 @@ static int cs_read_syscheck_block(const OS_XML* xml, xml_node* node, syscheck_co
         }
         else if (strcmp(children[i]->element, CS_XML_FREQUENCY) == 0)
         {
-            /* An empty element is rejected before w_parse_time() sees it, because
-             * strtol() reads "" as 0 and 0 is a meaningful value here -- it turns
-             * the periodic walk off. Left to the parser, <frequency></frequency>
-             * would silently disable container walks instead of being reported. */
+            /* Require a leading digit before w_parse_time() sees the value,
+             * because strtol() reads both "" and a bare unit like "h" as 0.
+             * Zero is meaningful here -- it turns the periodic walk off -- so
+             * neither may silently disable container walks instead of being reported. */
             const char* content = children[i]->content;
-            const long value = (content && *content) ? w_parse_time(content) : -1;
+            const long value = (content && *content >= '0' && *content <= '9') ? w_parse_time(content) : -1;
 
             if (value < 0 || value > INT_MAX)
             {

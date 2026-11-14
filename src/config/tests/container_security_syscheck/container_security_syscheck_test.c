@@ -462,6 +462,20 @@ static void CaseFrequencyEmpty(void)
     Check(log_contains("Invalid <frequency>"), "the invalid element is named");
 }
 
+static void CaseFrequencyBareUnit(void)
+{
+    printf("case 24: container frequency bare unit\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <frequency>h</frequency>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_frequency == 43200, "container walk frequency is 43200 seconds");
+    Check(c && c->container_enabled == 1, "container monitoring remains enabled");
+    Check(g_warn_count > 0, "a warning was emitted");
+    Check(log_contains("Invalid <frequency>"), "the invalid element is named");
+}
+
 int main(void)
 {
     printf("<container_security><syscheck> configuration parser contract\n\n");
@@ -489,6 +503,7 @@ int main(void)
     CaseFrequencyMalformed();
     CaseFrequencyAbsent();
     CaseFrequencyEmpty();
+    CaseFrequencyBareUnit();
 
     printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
 
