@@ -144,6 +144,23 @@ static void test_Test_WModule_sca_invalid_content_is_reported(void **state) {
     assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
 }
 
+/* A group's agent.conf names its SCA policies by their path on the agent: a policy shipped in the group folder is
+ * etc/shared/<file> there. The manager cannot resolve that path and must not warn that the file is missing. */
+static void test_Test_WModule_sca_agent_policy_path_no_warning(void **state) {
+    if (write_conf("<agent_config>"
+                    "<sca>"
+                    "<policies>"
+                    "<policy>etc/shared/no_such_policy_on_the_manager.yml</policy>"
+                    "<policy enabled=\"no\">/var/ossec/ruleset/sca/no_such_policy.yml</policy>"
+                    "</policies>"
+                    "</sca>"
+                    "</agent_config>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(Test_WModule(TEST_CONF_PATH), 0);
+}
+
 /* verify-agent-conf runs the SCA reader too: its errors carry the running program's tag, not the
  * modulesd tag the configuration library was built with. */
 static void test_Test_WModule_sca_error_uses_program_tag(void **state) {
@@ -206,6 +223,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_Test_WModule_sca_valid_content_is_accepted, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_error_uses_program_tag, teardown_conf_file),
+        cmocka_unit_test_teardown(test_Test_WModule_sca_agent_policy_path_no_warning, teardown_conf_file),
         cmocka_unit_test(test_Read_WModule_syscollector_warns_without_agent_cfg),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

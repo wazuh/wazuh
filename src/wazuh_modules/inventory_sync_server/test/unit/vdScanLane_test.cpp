@@ -191,6 +191,28 @@ TEST(VdScanLaneTest, AFailedScanAnswers500WithZeroDocumentsIndexed)
     EXPECT_EQ(0, fixture.events->m_syncFlushes.load());
 }
 
+/// Same split the indexing failures already make: a scan that failed while the indexer is
+/// unreachable is a transient outage the agent should back off from, so it answers 503 and not the
+/// 500 the agent logs as a protocol error. Nothing is indexed either way.
+TEST(VdScanLaneTest, AFailedScanWithAnUnavailableIndexerAnswers503)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "scan";
+    }
+    fixture.events->m_syncAvailable.store(false);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("Service unavailable"));
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "a failed scan still indexes NOTHING";
+    EXPECT_EQ(0, fixture.events->m_syncFlushes.load());
+}
+
 TEST(VdScanLaneTest, ALegitimateSkipStillIndexesAndAnswers200)
 {
     LaneUnderTest fixture;
@@ -707,6 +729,22 @@ TEST(VdScanLaneTest, EachScanOutcomeMapsToTheStatusTheDispatcherNeeds)
 
         EXPECT_EQ(status, responder->get().status) << "outcome " << static_cast<int>(outcome);
     }
+}
+
+/// The on-demand route makes the same distinction, so the Task Manager dispatcher backs off instead
+/// of burning its attempt budget against an indexer that is simply down.
+TEST(VdScanLaneTest, AFailedOnDemandScanWithAnUnavailableIndexerAnswers503)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdAgentScanOutcome.store(invsync::vd::AgentScanOutcome::Failed);
+    fixture.events->m_syncAvailable.store(false);
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("Service unavailable"));
 }
 
 /**

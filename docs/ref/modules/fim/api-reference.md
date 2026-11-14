@@ -60,7 +60,7 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 
 **Parameters:**
 - `handle`: Sync protocol handle from `asp_create()`
-- `id`: Unique identifier (SHA1 hash of file path)
+- `id`: Unique identifier (SHA1 of the file path; for registry rows, SHA1 of `arch:path` for keys and `path:arch:value` for values, with `arch` as a number: `0` for the 32-bit view, `1` for the 64-bit view)
 - `operation`: Operation type (`OPERATION_CREATE`, `OPERATION_MODIFY`, `OPERATION_DELETE`)
 - `index`: Sync index name
 - `data`: JSON string containing file/registry data
@@ -161,14 +161,15 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
 
 **Usage Example:**
 ```c
-// Notify data clean for disabled FIM components
+// Notify data clean for the indices that still hold entries (up to 3 on Windows, 1 on Linux/Unix).
+// Recovery calls it with the single index of the table being resent.
 const char* indices_to_clean[] = {
     FIM_FILES_SYNC_INDEX,
     FIM_REGISTRY_KEYS_SYNC_INDEX,
     FIM_REGISTRY_VALUES_SYNC_INDEX
 };
 
-bool notify_success = asp_notify_data_clean(syscheck.sync_handle, indices_to_clean, 3);
+bool notify_success = asp_notify_data_clean(syscheck.sync_handle, indices_to_clean, indices_count);
 ```
 
 #### `asp_delete_database()`
@@ -311,16 +312,17 @@ int fim_execute_pause(void);
 
 **Returns:**
 - `0` if pause request was accepted or FIM is already paused
-- `-1` on error
+- `-1` if FIM is stopping
 
 **Description:**
 
 This function sets an atomic flag (`fim_pause_requested`) to signal FIM threads to pause their operations. The function returns immediately without waiting for operations to complete. Use `fim_execute_is_pause_completed()` to poll the pause status.
 
 **Behavior:**
-- Sets `fim_pause_requested` atomic flag to `1`
+- Returns `-1` if FIM is stopping
+- Sets `fim_pausing_is_allowed` to `0` and `fim_pause_requested` to `1`
 - Returns immediately (non-blocking)
-- FIM threads check this flag and pause when safe
+- The sync thread skips its regular cycles while the flag is set (it still serves a flush); scans are held off only once `fim_execute_is_pause_completed()` acquires the scan mutexes
 - Idempotent: safe to call multiple times
 
 **Usage Example:**
@@ -335,7 +337,7 @@ if (result == 0) {
 
 #### `fim_execute_is_pause_completed()`
 
-Checks whether the FIM pause operation has completed.
+Tries to complete the pause requested by `fim_execute_pause()`. It does not only read flags: on success it **acquires the FIM scan mutexes** and keeps them until `fim_execute_resume()`.
 
 **Signature:**
 ```c
@@ -343,20 +345,23 @@ int fim_execute_is_pause_completed(void);
 ```
 
 **Returns:**
-- `0` if pause is completed (FIM is fully paused)
-- `1` if pause is still in progress
-- `-1` on error
+- `0` if FIM is paused: this call acquired the scan mutexes, or an earlier call already did
+- `0` also when no pause request is active (nothing to wait for; no mutex is taken)
+- `1` if a scan mutex is busy; call it again later. The holder can be a scheduled scan, realtime processing, or FIM's own sync thread (`fim_run_integrity()`), which keeps the scan and realtime mutexes during the agent-ID resync and the integrity checks, including their DataClean and checksum round trips to the manager. A long recovery can therefore outlast `agent_info`'s pause polling (30 attempts, 1 second apart)
+- `-1` if FIM is stopping; any pause in progress is cancelled and its mutexes released
 
 **Description:**
 
-This function checks atomic flags to determine if FIM has acknowledged the pause request and all scanning operations have stopped. It should be called repeatedly (polling) after `fim_execute_pause()` until it returns `0`.
+Call it repeatedly (polling) after `fim_execute_pause()` until it returns `0` or `-1`. It never blocks: it uses `pthread_mutex_trylock()` and releases whatever it took if one lock fails.
 
 **Behavior:**
-- Reads `fim_pause_requested` and `fim_pausing_is_allowed` atomic flags
-- Returns immediately (non-blocking)
-- Returns `0` when both conditions are met:
-  - Pause was requested (`fim_pause_requested = 1`)
-  - FIM acknowledged the pause (`fim_pausing_is_allowed = 1`)
+- If FIM is stopping, releases a pause already acknowledged, clears `fim_pause_requested` and returns `-1`
+- If `fim_pausing_is_allowed` is already set, returns `0` (the mutexes are already held)
+- If `fim_pause_requested` is not set, returns `0` without taking anything
+- Otherwise tries, in order, `fim_scan_mutex`, `fim_realtime_mutex` and, on Windows, `fim_registry_scan_mutex`; if any is busy, releases the ones taken and returns `1`
+- With all of them held, checks the stop flag again (returning `-1` after releasing them if a stop arrived meanwhile), sets `fim_pausing_is_allowed` to `1` and returns `0`
+
+**Mutex ownership:** after a `0` that acquired them, the mutexes stay locked until `fim_execute_resume()` releases them, so every successful pause must be followed by `fim_execute_resume()`. If FIM stops before that, the stop path releases them instead.
 
 **Usage Example:**
 ```c
@@ -368,16 +373,20 @@ int max_attempts = 100;
 for (int i = 0; i < max_attempts; i++) {
     int status = fim_execute_is_pause_completed();
     if (status == 0) {
-        // Pause completed successfully
+        // Paused: the scan mutexes are held until fim_execute_resume()
         break;
     } else if (status == 1) {
-        // Still in progress, wait and retry
+        // A scan still holds a mutex, wait and retry
         sleep(1);
     } else {
-        // Error occurred
+        // -1: FIM is stopping, the pause was cancelled
         break;
     }
 }
+
+// ... coordinated work ...
+
+fim_execute_resume();
 ```
 
 #### `fim_execute_resume()`
@@ -390,16 +399,15 @@ int fim_execute_resume(void);
 ```
 
 **Returns:**
-- `0` on success
-- `-1` on error
+- `0` always (also when no pause was requested)
 
 **Description:**
 
-This function clears the pause request flag and releases all scan mutexes, allowing FIM threads to resume their operations. The function completes synchronously.
+This function clears the pause request flag and, if the pause had been acknowledged, releases the scan mutexes, allowing FIM threads to resume their operations. The function completes synchronously.
 
 **Behavior:**
-- Checks if FIM is actually paused
-- Releases all scan mutexes:
+- Returns `0` without doing anything if no pause was requested
+- If the pause was acknowledged (`fim_pausing_is_allowed` set), releases the scan mutexes:
   - `fim_realtime_mutex`
   - `fim_scan_mutex`
   - `fim_registry_scan_mutex` (Windows only)
@@ -431,14 +439,15 @@ int fim_execute_flush(void);
 ```
 
 **Returns:**
-- `0` if flush request was accepted or synchronization is disabled
-- `-1` on error
+- `0` if flush request was accepted, a flush is already in progress, or synchronization is disabled
+- `-1` if FIM is stopping
 
 **Description:**
 
 This function sets atomic flags to trigger an immediate synchronization of all pending FIM changes, bypassing the normal sync interval. The function returns immediately without waiting for synchronization to complete. Use `fim_execute_is_flush_completed()` to poll the flush status.
 
 **Behavior:**
+- Returns `-1` if FIM is stopping
 - Checks if synchronization is enabled
 - Checks if a flush is already in progress (idempotent)
 - Sets atomic flags:
@@ -467,19 +476,21 @@ int fim_execute_is_flush_completed(void);
 ```
 
 **Returns:**
-- `0` if flush completed successfully
+- `0` if flush completed successfully (or synchronization is disabled)
 - `1` if flush is still in progress
 - `-1` if flush completed with error
+- `-2` if FIM is stopping; the flush result is not reported
 
 **Description:**
 
-This function checks atomic flags to determine if the flush operation has finished and retrieves the result. It should be called repeatedly (polling) after `fim_execute_flush()` until it returns `0` or `-1`.
+This function checks atomic flags to determine if the flush operation has finished and retrieves the result. It should be called repeatedly (polling) after `fim_execute_flush()` until it returns anything other than `1`: a poller that only stops on `0` or `-1` keeps polling during shutdown (forever, if it has no attempt limit), because every call then returns `-2`.
 
 **Behavior:**
 - Reads atomic flags:
   - `fim_flush_in_progress` (0 = idle, 1 = active)
   - `fim_flush_result` (0 = success, -1 = error)
 - Returns immediately (non-blocking)
+- If FIM is stopping, returns `-2` before reading anything
 - If synchronization is disabled, returns `0` immediately
 
 **Usage Example:**
@@ -497,6 +508,9 @@ for (int i = 0; i < max_attempts; i++) {
     } else if (status == 1) {
         // Still in progress, wait and retry
         sleep(1);
+    } else if (status == -2) {
+        // FIM is stopping, stop polling
+        break;
     } else {
         // Flush failed
         break;
@@ -522,8 +536,8 @@ FIM coordination commands follow an **asynchronous pattern with polling**:
    └─► Wait/sleep between polls
 
 3. Operation completes
-   ├─► fim_execute_is_pause_completed() → 0 (success)
-   ├─► fim_execute_is_flush_completed() → 0 or -1 (success/error)
+   ├─► fim_execute_is_pause_completed() → 0 (paused, scan mutexes held) or -1 (stopping)
+   ├─► fim_execute_is_flush_completed() → 0 or -1 (success/error), -2 (stopping)
 ```
 
 **Advantages of this pattern:**
@@ -532,13 +546,12 @@ FIM coordination commands follow an **asynchronous pattern with polling**:
 - Status monitoring: can check progress at any interval
 - Thread-safe: uses atomic operations
 
-**Comparison with Syscollector:**
-| Feature | FIM | Syscollector |
-|---------|-----|--------------|
-| Pattern | Asynchronous + polling | Synchronous blocking |
-| Pause/Flush | Returns immediately | Waits for completion |
-| Status check | Separate `is_completed()` functions | Not needed |
-| Implementation | Atomic flags | Condition variables |
-| Use case | Legacy C codebase | Modern C++ codebase |
+**Comparison with Syscollector and SCA:**
+| Feature | FIM | Syscollector / SCA |
+|---------|-----|--------------------|
+| Pause | Asynchronous: `fim_execute_pause()` returns at once, `fim_execute_is_pause_completed()` acquires the scan mutexes | Synchronous: `pause()` waits until scans and syncs finish |
+| Flush | Asynchronous: the sync thread runs it | Asynchronous: `flush()` starts a worker (`Utils::AsyncFlushController`) and returns |
+| Status check | `fim_execute_is_pause_completed()`, `fim_execute_is_flush_completed()` | `is_flush_completed` command (`in_progress` / `completed`); none for pause |
+| Implementation | Atomic flags and mutexes | Condition variables and a flush worker thread |
 
 ---

@@ -25,18 +25,14 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_queries = 227;
     wdb_state.queries_breakdown.global_breakdown.sql_queries = 8;
     wdb_state.queries_breakdown.global_breakdown.backup_queries = 6;
-    wdb_state.queries_breakdown.global_breakdown.vacuum_queries = 3;
     wdb_state.queries_breakdown.global_breakdown.commit_queries = 4;
-    wdb_state.queries_breakdown.global_breakdown.get_fragmentation_queries = 5;
     wdb_state.queries_breakdown.global_breakdown.agent.insert_agent_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.update_agent_data_queries = 16;
     wdb_state.queries_breakdown.global_breakdown.agent.update_keepalive_queries = 12;
     wdb_state.queries_breakdown.global_breakdown.agent.set_agent_credentials_queries = 3;
     wdb_state.queries_breakdown.global_breakdown.agent.update_connection_status_queries = 0;
-    wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.delete_agent_queries = 20;
     wdb_state.queries_breakdown.global_breakdown.agent.select_agent_group_queries = 0;
-    wdb_state.queries_breakdown.global_breakdown.agent.find_agent_queries = 1;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_queries = 2;
     wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_queries = 1;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_queries = 0;
@@ -45,12 +41,10 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.agent.sync_agent_info_set_queries = 2;
     wdb_state.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.set_agent_groups_queries = 5;
-    wdb_state.queries_breakdown.global_breakdown.agent.get_groups_integrity_queries = 2;
     wdb_state.queries_breakdown.global_breakdown.group.insert_agent_group_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.group.delete_group_queries = 1;
     wdb_state.queries_breakdown.global_breakdown.group.select_groups_queries = 84;
     wdb_state.queries_breakdown.global_breakdown.group.find_group_queries = 10;
-    wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_queries = 10;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.open_calls_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.open_calls_time.tv_usec = 123456;
@@ -58,12 +52,8 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.sql_time.tv_usec = 1523;
     wdb_state.queries_breakdown.global_breakdown.backup_time.tv_sec = 1;
     wdb_state.queries_breakdown.global_breakdown.backup_time.tv_usec = 145452;
-    wdb_state.queries_breakdown.global_breakdown.vacuum_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.vacuum_time.tv_usec = 11111;
     wdb_state.queries_breakdown.global_breakdown.commit_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.commit_time.tv_usec = 12222;
-    wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.get_fragmentation_time.tv_usec = 22222;
     wdb_state.queries_breakdown.global_breakdown.agent.insert_agent_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.insert_agent_time.tv_usec = 580960;
     wdb_state.queries_breakdown.global_breakdown.agent.update_agent_data_time.tv_sec = 0;
@@ -74,14 +64,10 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.agent.set_agent_credentials_time.tv_usec = 4321;
     wdb_state.queries_breakdown.global_breakdown.agent.update_connection_status_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.update_connection_status_time.tv_usec = 148903;
-    wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_time.tv_usec = 100020;
     wdb_state.queries_breakdown.global_breakdown.agent.delete_agent_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.delete_agent_time.tv_usec = 1202;
     wdb_state.queries_breakdown.global_breakdown.agent.select_agent_group_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.select_agent_group_time.tv_usec = 152300;
-    wdb_state.queries_breakdown.global_breakdown.agent.find_agent_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.agent.find_agent_time.tv_usec = 78120;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_time.tv_usec = 152358;
     wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_time.tv_sec = 0;
@@ -98,8 +84,6 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time.tv_usec = 8460;
     wdb_state.queries_breakdown.global_breakdown.agent.set_agent_groups_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.set_agent_groups_time.tv_usec = 61500;
-    wdb_state.queries_breakdown.global_breakdown.agent.get_groups_integrity_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.agent.get_groups_integrity_time.tv_usec = 1200;
     wdb_state.queries_breakdown.global_breakdown.group.insert_agent_group_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.group.insert_agent_group_time.tv_usec = 10230;
     wdb_state.queries_breakdown.global_breakdown.group.delete_group_time.tv_sec = 0;
@@ -108,8 +92,6 @@ static int test_setup(void** state)
     wdb_state.queries_breakdown.global_breakdown.group.select_groups_time.tv_usec = 10560;
     wdb_state.queries_breakdown.global_breakdown.group.find_group_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.group.find_group_time.tv_usec = 510;
-    wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_time.tv_usec = 25600;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_time.tv_usec = 12500;
     wdb_state.queries_breakdown.mitre_queries = 2;
@@ -161,12 +143,8 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_queries_db, "sql")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(global_queries_db, "backup"));
     assert_int_equal(cJSON_GetObjectItem(global_queries_db, "backup")->valueint, 6);
-    assert_non_null(cJSON_GetObjectItem(global_queries_db, "vacuum"));
-    assert_int_equal(cJSON_GetObjectItem(global_queries_db, "vacuum")->valueint, 3);
     assert_non_null(cJSON_GetObjectItem(global_queries_db, "commit"));
     assert_int_equal(cJSON_GetObjectItem(global_queries_db, "commit")->valueint, 4);
-    assert_non_null(cJSON_GetObjectItem(global_queries_db, "get_fragmentation"));
-    assert_int_equal(cJSON_GetObjectItem(global_queries_db, "get_fragmentation")->valueint, 5);
 
     cJSON* global_queries_tables = cJSON_GetObjectItem(global_queries_breakdown, "tables");
 
@@ -181,14 +159,10 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "set-agent-credentials")->valueint, 3);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-connection-status"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "update-connection-status")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "reset-agents-connection"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "reset-agents-connection")->valueint, 0);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "delete-agent"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "delete-agent")->valueint, 20);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-agent-group"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-agent-group")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "find-agent"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "find-agent")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-agent-info"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-agent-info")->valueint, 2);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-all-agents"));
@@ -206,8 +180,6 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "sync-agent-groups-get")->valueint, 0);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "set-agent-groups"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "set-agent-groups")->valueint, 5);
-    assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-groups-integrity"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-groups-integrity")->valueint, 2);
 
     cJSON* global_group_queries_breakdown = cJSON_GetObjectItem(global_queries_tables, "group");
     assert_non_null(cJSON_GetObjectItem(global_group_queries_breakdown, "insert-agent-group"));
@@ -220,8 +192,6 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_group_queries_breakdown, "find-group")->valueint, 10);
 
     cJSON* global_belongs_queries_breakdown = cJSON_GetObjectItem(global_queries_tables, "belongs");
-    assert_non_null(cJSON_GetObjectItem(global_belongs_queries_breakdown, "select-group-belong"));
-    assert_int_equal(cJSON_GetObjectItem(global_belongs_queries_breakdown, "select-group-belong")->valueint, 10);
     assert_non_null(cJSON_GetObjectItem(global_belongs_queries_breakdown, "get-group-agents"));
     assert_int_equal(cJSON_GetObjectItem(global_belongs_queries_breakdown, "get-group-agents")->valueint, 0);
 
@@ -245,12 +215,12 @@ void test_wazuhdb_create_state_json(void** state)
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4864); // + the 4 ms of set-agent-credentials and the 12 of commit
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 4625); // + the 4 ms of set-agent-credentials and the 12 of commit
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "global"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 4849); // + the 12 ms of commit
+    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 4610); // + the 12 ms of commit
 
     cJSON* global_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "global_breakdown");
 
@@ -261,12 +231,8 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_time_db, "sql")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_time_db, "backup"));
     assert_int_equal(cJSON_GetObjectItem(global_time_db, "backup")->valueint, 1145);
-    assert_non_null(cJSON_GetObjectItem(global_time_db, "vacuum"));
-    assert_int_equal(cJSON_GetObjectItem(global_time_db, "vacuum")->valueint, 11);
     assert_non_null(cJSON_GetObjectItem(global_time_db, "commit"));
     assert_int_equal(cJSON_GetObjectItem(global_time_db, "commit")->valueint, 12);
-    assert_non_null(cJSON_GetObjectItem(global_time_db, "get_fragmentation"));
-    assert_int_equal(cJSON_GetObjectItem(global_time_db, "get_fragmentation")->valueint, 22);
 
     cJSON* global_time_tables = cJSON_GetObjectItem(global_time_breakdown, "tables");
 
@@ -281,14 +247,10 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "set-agent-credentials")->valueint, 4);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "update-connection-status"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "update-connection-status")->valueint, 148);
-    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "reset-agents-connection"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "reset-agents-connection")->valueint, 100);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "delete-agent"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "delete-agent")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "select-agent-group"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "select-agent-group")->valueint, 152);
-    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "find-agent"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "find-agent")->valueint, 78);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info")->valueint, 152);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-all-agents"));
@@ -306,8 +268,6 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "sync-agent-groups-get")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "set-agent-groups"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "set-agent-groups")->valueint, 61);
-    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-groups-integrity"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-groups-integrity")->valueint, 1);
 
     cJSON* global_group_time_breakdown = cJSON_GetObjectItem(global_time_tables, "group");
     assert_non_null(cJSON_GetObjectItem(global_group_time_breakdown, "insert-agent-group"));
@@ -320,8 +280,6 @@ void test_wazuhdb_create_state_json(void** state)
     assert_int_equal(cJSON_GetObjectItem(global_group_time_breakdown, "find-group")->valueint, 0);
 
     cJSON* global_belongs_time_breakdown = cJSON_GetObjectItem(global_time_tables, "belongs");
-    assert_non_null(cJSON_GetObjectItem(global_belongs_time_breakdown, "select-group-belong"));
-    assert_int_equal(cJSON_GetObjectItem(global_belongs_time_breakdown, "select-group-belong")->valueint, 25);
     assert_non_null(cJSON_GetObjectItem(global_belongs_time_breakdown, "get-group-agents"));
     assert_int_equal(cJSON_GetObjectItem(global_belongs_time_breakdown, "get-group-agents")->valueint, 12);
 

@@ -1,0 +1,72 @@
+# Name of the helper function
+name: parse_double
+
+metadata:
+  description: |
+    Converts the input string to a 64-bit floating-point number and stores it in the target field.
+
+    Behavior:
+    - The input must match `-?[0-9]+(.[0-9]*)?([eE][+-]?[0-9]+)?`: an optional minus sign, digits, an
+      optional fraction and an optional exponent; no plus sign, no leading `.`, no `inf` or `nan`, no
+      surrounding spaces.
+    - The value is stored as a double, with 64-bit precision.
+    - The number replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not double, float, half_float or scaled_float.
+
+    Notes:
+    - `parse_float` stores the value with 32-bit precision; `to_int` converts a number to an integer.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a number in the accepted syntax.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: number
+  generate: double
+
+test:
+  - arguments:
+      input: "23.45"
+    target_field: any_value
+    should_pass: true
+    expected: 23.45
+    description: A decimal number is stored with its precision
+  - arguments:
+      input: "1.5e2"
+    target_field: any_value
+    should_pass: true
+    expected: 150.0
+    description: An exponent is accepted
+  - arguments:
+      input: "+1"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a leading plus sign
+  - arguments:
+      input: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a string that is not a number

@@ -215,7 +215,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     spec.bodyLength = bodyLength;
     // The reply is copied into a HC_MAX_ENROLL_BODY buffer; a larger one could only arrive truncated.
     spec.maxResponseBytes = HC_MAX_ENROLL_BODY - 1;
-    spec.timeoutMs = m_config.requestTimeoutMs;
+    spec.timeoutMs = m_config.enrollTimeoutMs;
 
     return m_performer.perform(spec);
 }

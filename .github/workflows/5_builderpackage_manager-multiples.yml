@@ -81,6 +81,8 @@ on:
       # Integration suites run by test_modules_manager.json (and their shared configuration).
       - "tests/integration/conftest.py"
       - "tests/integration/pytest.ini"
+      - "tests/integration/start_lock.py"
+      - "tests/integration/unit_control.py"
       - "tests/integration/test_manager_control/**"
       - "tests/integration/test_api/**"
       - "tests/integration/test_wazuh_db/**"

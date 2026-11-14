@@ -103,19 +103,33 @@ alert_data *GetAlertData(int flag, FILE *fp) {
     alert_data *al_data;
     os_calloc(1, sizeof(alert_data), al_data);
 
-    int _r = 0, issyscheck = 0;
+    int _r = 0, issyscheck = 0, partial = 0;
     size_t log_size = 0;
     char *p;
     char str[OS_MAXSTR + 1];
     str[OS_MAXSTR] = '\0';
 
     while (fgets(str, OS_MAXSTR, fp) != NULL) {
+        /* The rest of a line longer than the buffer is not a new line */
+        int continued = partial;
+        partial = strchr(str, '\n') == NULL;
+        if (continued) {
+            continue;
+        }
+
         /* End of alert */
         if (strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0) {
             char *m;
             size_t z = 0;
             /* End of the alert. */
-            if (_r == 2) {
+            if (_r == 2 && al_data->log == NULL) {
+                /* Every alert ends with its log; a record without log lines is malformed, drop it */
+                mdebug1("Dropping alerts.log record '%s' without log lines.", al_data->alertid ? al_data->alertid : "");
+                FreeAlertData(al_data);
+                os_calloc(1, sizeof(alert_data), al_data);
+                _r = 0;
+                issyscheck = 0;
+            } else if (_r == 2) {
                 if (fseek(fp, -strlen(str), SEEK_CUR) != -1) {
                     return (al_data);
                 } else {
@@ -321,7 +335,7 @@ alert_data *GetAlertData(int flag, FILE *fp) {
     }
 
     // We reached the end of the alert and the information is saved.
-    if (feof(fp) && *str == '\0' && _r == 2) {
+    if (feof(fp) && *str == '\0' && _r == 2 && al_data->log != NULL) {
         return al_data;
     }
 

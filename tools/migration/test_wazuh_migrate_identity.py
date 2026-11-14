@@ -27,6 +27,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
+import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -129,11 +130,17 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
     groups = set()
     configurations = {}
     reject_agents = set()
+    reject_configurations = set()
+    shared_dir = None   # where POST /groups creates the group folder, as the manager does
+
+    # What a fresh 5.0 manager holds in default/agent.conf: comments and an empty element.
+    STOCK_DEFAULT = "<!-- Shared agent configuration of this group. -->\n\n<agent_config>\n\n</agent_config>\n"
 
     @classmethod
     def reset(cls):
         cls.calls, cls.agents, cls.groups = [], {}, {"default"}
-        cls.configurations, cls.reject_agents = {}, set()
+        cls.configurations = {"default": cls.STOCK_DEFAULT}
+        cls.reject_agents, cls.reject_configurations, cls.shared_dir = set(), set(), None
 
     def log_message(self, *args):
         pass
@@ -163,6 +170,8 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             return self._send(200, {"data": {"token": "stub-token"}, "error": 0})
         if self.path == "/groups":
             FakeManager.groups.add(body["group_id"])
+            if FakeManager.shared_dir:
+                os.makedirs(os.path.join(FakeManager.shared_dir, body["group_id"]), exist_ok=True)
             return self._send(200, {"data": {}, "error": 0})
         if self.path == "/agents/insert":
             agent_id = int(body["id"])
@@ -170,8 +179,9 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
                 return self._send(400, {"data": {"failed_items": [
                     {"error": {"message": "Agent ID already in use"}, "id": [body["id"]]}]},
                     "error": 1})
+            # The manager puts every inserted agent in default.
             FakeManager.agents[agent_id] = {"name": body["name"], "ip": body.get("ip"),
-                                            "key": body["key"], "groups": []}
+                                            "key": body["key"], "groups": ["default"]}
             return self._send(200, {"data": {"id": body["id"]}, "error": 0})
         return self._send(404, {"title": "Not Found"})
 
@@ -186,20 +196,40 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
                                         "detail": "Invalid Content-type (%s), expected"
                                                   " ['application/xml']"
                                                   % self.headers.get("Content-Type")})
-            FakeManager.configurations[self.path.split("/")[2]] = body
+            name = self.path.split("/")[2]
+            if name in FakeManager.reject_configurations:
+                return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
+            FakeManager.configurations[name] = body
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
-            _, _, agent_id, _, group = self.path.split("/", 4)
+            parts = urllib.parse.urlsplit(self.path)
+            _, _, agent_id, _, group = parts.path.split("/", 4)
             if int(agent_id) not in FakeManager.agents:
                 return self._send(404, {"data": {"failed_items": [
                     {"error": {"message": "Agent does not exist"}, "id": [agent_id]}]},
                     "error": 1})
-            FakeManager.agents[int(agent_id)]["groups"].append(group)
+            groups = FakeManager.agents[int(agent_id)]["groups"]
+            if "force_single_group=true" in parts.query:
+                groups[:] = [group]
+            elif group in groups:
+                return self._send(400, {"data": {"failed_items": [
+                    {"error": {"message": "The group is already assigned to the agent"},
+                     "id": [agent_id]}]}, "error": 1})
+            else:
+                groups.append(group)
             return self._send(200, {"data": {}, "error": 0})
         return self._send(404, {"title": "Not Found"})
 
     def do_GET(self):
         FakeManager.calls.append(("GET", self.path, None))
+        if self.path.startswith("/groups/") and "/files/agent.conf" in self.path:
+            body = FakeManager.configurations.get(self.path.split("/")[2], "").encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/xml; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return None
         if self.path.startswith("/agents"):
             items = [{"id": "000", "name": "manager", "group": []}] + [
                 {"id": "%03d" % i, "name": a["name"], "group": a["groups"]}
@@ -235,6 +265,8 @@ class MigrationToolTest(unittest.TestCase):
         self.source = build_source(os.path.join(base, "source"))
         self.target = build_target(os.path.join(base, "target"))
         self.target_conf = build_target_conf(os.path.join(base, "target-conf"))
+        FakeManager.shared_dir = os.path.join(self.target_conf, "shared")
+        os.makedirs(os.path.join(FakeManager.shared_dir, "default"))
         self.bundle = os.path.join(base, "bundle")
         self.password = os.path.join(base, "pw")
         with open(self.password, "w") as handle:
@@ -261,6 +293,24 @@ class MigrationToolTest(unittest.TestCase):
     def manifest(self):
         with open(os.path.join(self.bundle, "manifest.json")) as handle:
             return json.load(handle)
+
+    def output_of(self, step, *extra):
+        """(exit code, standard output, standard error) of export, do_import or check."""
+        import io, contextlib as cl
+        out, err = io.StringIO(), io.StringIO()
+        with cl.redirect_stdout(out), cl.redirect_stderr(err):
+            code = step(*extra)
+        return code, out.getvalue(), err.getvalue()
+
+    def write_group_file(self, group, name, content):
+        with open(os.path.join(self.source, "etc", "shared", group, name), "w") as handle:
+            handle.write(content)
+
+    def customize_default(self):
+        self.write_group_file("default", "agent.conf",
+                              "<!-- 4.x -->\n<agent_config>\n  <syscheck>\n"
+                              "    <directories>/root/fim-test</directories>\n"
+                              "  </syscheck>\n</agent_config>\n")
 
     # -- export
 
@@ -327,8 +377,9 @@ class MigrationToolTest(unittest.TestCase):
             recorded = FakeManager.agents[agent_id]
             self.assertEqual(name, recorded["name"])
             self.assertEqual("%064x" % agent_id, recorded["key"], "the 4.x key is reused as is")
-            self.assertEqual([g for g in groups if g != "default"], recorded["groups"],
-                             "default is not assigned: every agent lands in it anyway")
+            self.assertEqual(groups, recorded["groups"],
+                             "exactly the 4.x groups, in the 4.x order: an agent that was not in"
+                             " default does not stay there")
 
     def test_import_writes_no_manager_files(self):
         self.assertEqual(0, self.export())
@@ -409,7 +460,8 @@ class MigrationToolTest(unittest.TestCase):
 
     def test_a_missing_configuration_directory_is_refused(self):
         self.assertEqual(0, self.export("--with-password"))
-        os.rmdir(self.target_conf)
+        shutil.rmtree(self.target_conf)
+        FakeManager.shared_dir = None  # the stub would create it again with the group folders
         self.assertEqual(2, self.do_import("--with-password"))
 
     def test_rbac_import_stages_the_api_upgrade(self):
@@ -535,6 +587,178 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(0, self.do_import())
         FakeManager.agents[1]["groups"] = []
         self.assertEqual(1, self.check())
+
+    def test_check_reports_a_membership_the_bundle_did_not_carry(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        FakeManager.agents[1]["groups"].insert(0, "default")
+        code, out, _ = self.output_of(self.check)
+        self.assertEqual(1, code, "web-ubuntu24 was not in default on 4.x")
+        self.assertIn("also in default", out)
+
+    def test_check_reports_groups_in_another_order(self):
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        FakeManager.agents[1]["groups"].reverse()
+        code, out, _ = self.output_of(self.check)
+        self.assertEqual(1, code, "the order decides which group's setting wins")
+        self.assertIn("in the order pci-scope, linux-servers", out)
+
+    # -- the default group
+
+    def test_a_stock_default_group_is_not_carried(self):
+        self.write_group_file("default", "rootkit_files.txt", "stock\n")
+        code, out, _ = self.output_of(self.export)
+        self.assertEqual(0, code)
+        self.assertFalse(self.manifest()["default_group"]["customized"])
+        self.assertNotIn("rootkit_files.txt", out, "4.x ships it in every default group")
+        self.assertEqual(0, self.do_import())
+        self.assertEqual(FakeManager.STOCK_DEFAULT, FakeManager.configurations["default"],
+                         "nothing to merge into the 5.0 default")
+
+    def test_a_customized_default_group_is_merged_after_the_5x_one(self):
+        self.customize_default()
+        code, out, _ = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertIn("customized agent.conf, merged at import", out,
+                      "the dry run says the default group is carried")
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        merged = FakeManager.configurations["default"]
+        self.assertTrue(merged.startswith(FakeManager.STOCK_DEFAULT.rstrip()),
+                        "the 5.0 default is kept")
+        self.assertIn("<directories>/root/fim-test</directories>", merged,
+                      "the 4.x settings applied to every agent")
+        self.assertEqual(0, self.check())
+
+        FakeManager.reject_agents = {1, 2, 3}  # already there: only the merge is of interest here
+        self.assertEqual(1, self.do_import("--force"))
+        self.assertEqual(merged, FakeManager.configurations["default"],
+                         "a second import does not append the 4.x settings again")
+
+    def test_check_reports_a_default_group_without_the_4x_settings(self):
+        self.customize_default()
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        FakeManager.configurations["default"] = FakeManager.STOCK_DEFAULT
+        code, out, _ = self.output_of(self.check)
+        self.assertEqual(1, code)
+        self.assertIn("default group's agent.conf does not hold the 4.x settings", out)
+
+    def test_a_default_group_the_manager_refuses_does_not_stop_the_import(self):
+        self.customize_default()
+        self.assertEqual(0, self.export())
+        FakeManager.reject_configurations = {"default"}
+        code, _, err = self.output_of(self.do_import)
+        self.assertEqual(1, code, "a partial import is not a success")
+        self.assertIn("default group were not merged", err)
+        self.assertEqual({a[0] for a in AGENTS}, set(FakeManager.agents),
+                         "the agents still went in")
+
+    # -- SCA policies in a group folder
+
+    def add_sca_policy(self):
+        self.write_group_file("linux-servers", "acme_web_baseline.yml", "policy:\n  id: acme\n")
+        self.write_group_file("linux-servers", "agent.conf",
+                              "<agent_config os=\"Linux\">\n  <sca>\n    <policies>\n"
+                              "      <policy>etc/shared/acme_web_baseline.yml</policy>\n"
+                              "    </policies>\n  </sca>\n</agent_config>\n")
+
+    def test_an_sca_policy_the_group_loads_is_carried(self):
+        self.add_sca_policy()
+        code, out, _ = self.output_of(self.export)
+        self.assertEqual(0, code)
+        group = {g["name"]: g for g in self.manifest()["groups"]}["linux-servers"]
+        self.assertEqual(["acme_web_baseline.yml"], group["sca_policies"])
+        self.assertEqual([], group["extra_files"], "it is not reported as left behind")
+        self.assertNotIn("acme_web_baseline.yml not migrated", out)
+        self.assertEqual(0, self.do_import())
+        installed = os.path.join(self.target_conf, "shared", "linux-servers", "acme_web_baseline.yml")
+        with open(installed) as handle:
+            self.assertEqual("policy:\n  id: acme\n", handle.read())
+        self.assertEqual(0o660, os.stat(installed).st_mode & 0o777)
+        self.assertEqual(0, self.check())
+        os.remove(installed)
+        self.assertEqual(1, self.check(), "check looks for the policy too")
+
+    def test_a_windows_policy_path_is_recognised(self):
+        self.write_group_file("pci-scope", "win_baseline.yml", "policy: {}\n")
+        self.write_group_file("pci-scope", "agent.conf",
+                              "<agent_config os=\"Windows\"><sca><policies>"
+                              "<policy>shared\\win_baseline.yml</policy>"
+                              "</policies></sca></agent_config>")
+        self.assertEqual(0, self.export())
+        group = {g["name"]: g for g in self.manifest()["groups"]}["pci-scope"]
+        self.assertEqual(["win_baseline.yml"], group["sca_policies"])
+        self.assertEqual(["custom-list.txt"], group["extra_files"])
+
+    # -- what will not work the same on 5.0
+
+    def test_removed_settings_are_named_in_the_dry_run_export_and_import(self):
+        self.write_group_file("db-servers", "agent.conf",
+                              "<agent_config>\n  <labels>\n    <label key=\"role\">database</label>\n"
+                              "  </labels>\n  <!-- <client_buffer/> is commented out -->\n"
+                              "</agent_config>\n")
+        dry = self.output_of(self.export, "--dry-run")
+        real = self.output_of(self.export)
+        imported = self.output_of(self.do_import)
+        for code, out, _ in (dry, real, imported):
+            self.assertEqual(0, code)
+            self.assertEqual(1, out.count("group 'db-servers': <labels> is ignored by 5.0 agents"),
+                             "named once, on standard output, at every step")
+            self.assertIn("wazuh.agent.groups", out, "and what to use instead")
+            self.assertNotIn("client_buffer", out, "a commented-out element is not a setting")
+            self.assertEqual(1, out.count("custom-list.txt not migrated"))
+        reviewed = [out.split("Review before going on")[1].split("\n\n")[0] for _, out, _ in (dry, real)]
+        self.assertEqual(reviewed[0], reviewed[1], "the dry run reviews exactly what the export reviews")
+
+    def test_manager_features_that_stop_at_cutover_are_listed(self):
+        with open(os.path.join(self.source, "etc", "ossec.conf"), "w") as handle:
+            handle.write("<ossec_config>\n"
+                         "  <integration><name>slack</name><hook_url>x</hook_url></integration>\n"
+                         "  <active-response><disabled>no</disabled></active-response>\n"
+                         "  <active-response><command>firewall-drop</command><location>local</location>"
+                         "</active-response>\n"
+                         "  <wodle name=\"open-scap\"><disabled>yes</disabled></wodle>\n"
+                         "  <remote><connection>syslog</connection><port>514</port></remote>\n"
+                         "</ossec_config>\n"
+                         "<ossec_config>\n"
+                         "  <localfile><log_format>syslog</log_format><location>/var/log/auth.log</location>"
+                         "</localfile>\n"
+                         "</ossec_config>\n")
+        code, out, _ = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertIn("integrations (Slack", out)
+        self.assertIn("active responses stop", out, "a block with a <command> configures a response")
+        self.assertIn("(1 block(s))", out.split("active responses stop")[1].split("\n")[0],
+                      "the 4.x global <active-response> block configures none")
+        self.assertNotIn("OpenSCAP", out, "a disabled block did nothing on 4.x either")
+        self.assertIn("stops receiving syslog", out)
+        self.assertIn("monitored its own host (localfile)", out)
+        self.assertEqual(0, self.export())
+        code, out, _ = self.output_of(self.do_import)
+        self.assertIn("integrations (Slack", out, "the import repeats it from the bundle")
+
+    def test_an_agent_conf_that_does_not_parse_is_reported(self):
+        self.write_group_file("db-servers", "agent.conf", "<agent_config><syscheck></agent_config>")
+        code, out, _ = self.output_of(self.export)
+        self.assertEqual(0, code)
+        self.assertIn("group 'db-servers': agent.conf is not well-formed XML", out)
+
+    def test_a_version_2_bundle_is_imported_with_a_notice(self):
+        self.assertEqual(0, self.export())
+        path = os.path.join(self.bundle, "manifest.json")
+        manifest = self.manifest()
+        manifest["bundle_version"], manifest["tool_version"] = 2, "2.0.0"
+        del manifest["default_group"]
+        for group in manifest["groups"]:
+            del group["sca_policies"]
+        with open(path, "w") as handle:
+            json.dump(manifest, handle)
+        code, _, err = self.output_of(self.do_import)
+        self.assertEqual(0, code)
+        self.assertIn("carried neither the default group's agent.conf", err)
+        self.assertEqual(0, self.check())
 
     # -- verifying the API it sends the password and the agent keys to
 

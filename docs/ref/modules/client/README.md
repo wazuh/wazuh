@@ -51,7 +51,7 @@ The client module is responsible for:
 - **Trust anchor:** `etc/certs/root-ca.pem`, owned by the `wazuh` user (`0640`) inside `etc/certs`, which is root-owned, group-writable and sticky (`01770 root:wazuh`). The agent replaces the anchor itself when the manager publishes a new CA bundle, so the directory has to admit that write; it is made by renaming a staging file over the anchor, never by writing through it. What bounds that: the sticky bit limits the agent to entries it owns, and the directory staying root-owned keeps the agent from loosening its own mode. The `.anchor-committed` marker beside it is root-owned, so an agent that has held an anchor cannot erase the record of it -- an anchor that later goes missing is refused at startup (`4125`) instead of silently resolving to no verification, unless `<verification_mode>` says explicitly what was intended. It lives outside `ossec.conf` so a configuration-management converge cannot remove it, and the manager cannot push one through centralized configuration.
 - **Per-agent key:** every request after enrollment is authenticated with the agent's own key from `client.keys`, which is never transmitted.
 - **Re-enrollment secret:** a per-agent credential that recovers a lost key without an operator visit and without a shared secret.
-- **Anti-tampering:** monitors agent files for unauthorized modifications.
+- **Anti-tampering:** refuses to remove the agent package unless the removal is validated against the Server API (Linux agents installed from a DEB or RPM package).
 
 ---
 
@@ -72,7 +72,7 @@ Quick configuration example:
 </agent>
 
 <anti_tampering>
-  <disabled>no</disabled>
+  <package_uninstallation>yes</package_uninstallation>
 </anti_tampering>
 ```
 
@@ -309,14 +309,16 @@ If events are being dropped due to buffer overflow:
 1. Check the accumulator limits in `<agent><batch>` (`size`, `interval`)
 2. Verify network connectivity is stable
 
-### Anti-Tampering Alerts
+### Agent package cannot be removed
 
-If anti-tampering is triggering false positives:
+If `apt remove` or `yum remove` of the agent fails with `Validation host not provided. Uninstallation
+cannot be continued.`, uninstall protection is on: `<anti_tampering><package_uninstallation>` is `yes` in
+the group's `agent.conf` (which wins) or in the local `ossec.conf`.
 
-1. Review recent legitimate changes to agent files
-2. Verify file permissions are correct
-3. Check if system updates modified agent files
-4. Temporarily disable to test: `<disabled>yes</disabled>` in `<anti_tampering>`
+1. Check the value the agent applies: `GET /agents/{agent_id}/config/agent/anti_tampering`
+2. Validate the removal: set `VALIDATION_HOST` and `VALIDATION_TOKEN` (or `VALIDATION_LOGIN`) for the
+   package command, or in a root-owned `/var/ossec/etc/uninstall_validation.env`
+3. Or turn it off: set `package_uninstallation` to `no` where it is set, and wait for the agent to apply it
 
 ---
 

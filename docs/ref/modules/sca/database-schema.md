@@ -40,7 +40,6 @@ This table stores data for each security policy used in the SCA module, includin
 
 **Indexes:**
 - Primary key on `id` for fast policy lookups
-- Index on `file` for policy file tracking
 
 **Example Data:**
 ```sql
@@ -103,9 +102,7 @@ This table stores individual checks associated with a policy. Each check include
 
 **Indexes:**
 - Primary key on `id` for fast check lookups
-- Foreign key on `policy_id` for policy-check relationships
-- Index on `result` for filtering by check status
-- Composite index on `(policy_id, result)` for policy-specific result queries
+- `policy_id` references `sca_policy(id)`; there are no secondary indexes
 
 **Result Values:**
 - `Not run`: Check has not been executed yet
@@ -162,7 +159,7 @@ VALUES (
 - **Type**: One-to-Many
 - **Description**: Each policy contains multiple checks
 - **Foreign Key**: `sca_check.policy_id` references `sca_policy.id`
-- **Cascade**: When a policy is deleted, all associated checks are deleted
+- **Cascade**: The foreign key has no `ON DELETE CASCADE`. When a policy is removed from the configuration, the checks of that policy are removed by the next policy synchronization, which generates the delete events
 
 ---
 

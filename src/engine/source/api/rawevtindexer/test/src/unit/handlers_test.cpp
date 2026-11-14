@@ -49,10 +49,8 @@ INSTANTIATE_TEST_SUITE_P(
         RawEventIndexerHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::raweventindexer::IRawEventIndexer>& rawIndexer)
             { return getRawEventIndexerStatus(rawIndexer); },

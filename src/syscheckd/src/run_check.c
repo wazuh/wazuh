@@ -815,6 +815,7 @@ void start_daemon()
     char diff_file_dir[PATH_MAX];
     char diff_registry_dir[PATH_MAX];
     char diff_local_dir[PATH_MAX];
+    char diff_tmp_dir[PATH_MAX];
 
 
     // The contents of the report_changes diff directory must be deleted whenever the agent is started.
@@ -832,6 +833,11 @@ void start_daemon()
     snprintf(diff_local_dir, PATH_MAX, "%s/local/", DIFF_DIR);
     if (cldir_ex(diff_local_dir) == -1 && errno != ENOENT) {
         merror("Unable to clear directory '%s': %s (%d)", diff_local_dir, strerror(errno), errno);
+    }
+    // Scratch folders left behind by an interrupted diff
+    snprintf(diff_tmp_dir, PATH_MAX, "%s/tmp/", DIFF_DIR);
+    if (cldir_ex(diff_tmp_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_tmp_dir, strerror(errno), errno);
     }
 
     if (syscheck.disabled) {
@@ -1353,6 +1359,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 mdebug1("Pending flush request completed via normal sync path.");
             }
 
+            // Tables whose rows a recovery below queued for resending; sent once the mutexes are
+            // released.
+            bool recovered[sizeof(table_names) / sizeof(table_names[0])] = {false};
+
             // Lock FIM's scheduled and realtime scans only for the recovery/integrity
             // process, which reads and writes the file_entry table. Skipped once shutdown
             // is in progress.
@@ -1369,9 +1379,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // not something this check introduces: the checksum loop below has always run
                 // the same primitive under the same mutexes, and after a re-enrollment every
                 // table mismatches, so it did the same work later rather than less of it.
-                // Shrinking that critical section around the manager round trip is #38705.
+                // Only the queueing part of that primitive stays here (the version bump, the
+                // table read, the DataClean and the persist); sending the queued rows waits for
+                // the unlock below. The DataClean and the integrity checksum requests are still
+                // manager round trips made with the mutexes held.
                 if (fim_resync_on_agent_id_change(syscheck.sync_handle, table_names, table_count,
-                                                  directories_snapshot)) {
+                                                  directories_snapshot, recovered)) {
                     // Both markers move together, and only once the resync above proved the
                     // manager accepted it. first_sync_completed is normally already set here,
                     // but not always: an agent deleted before its very first sync finished
@@ -1383,13 +1396,18 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 }
 
                 fim_recovery_run_integrity_checks(syscheck.sync_handle, table_names, table_count,
-                                                  directories_snapshot, syscheck.integrity_interval);
+                                                  directories_snapshot, syscheck.integrity_interval, recovered);
 
                 #ifdef WIN32
                 w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
                 #endif
                 w_mutex_unlock(&syscheck.fim_realtime_mutex);
                 w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+                // Outside the mutexes: the recovered rows are already queued, and sending them is
+                // the same unlocked work the regular sync above does, so the scans and the
+                // realtime thread are not held back for the manager round trips.
+                fim_recovery_sync_recovered_tables(syscheck.sync_handle, table_names, table_count, recovered);
             }
 
             // Clean up the directories snapshot

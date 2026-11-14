@@ -1,0 +1,95 @@
+# Name of the helper function
+name: is_key_of
+
+metadata:
+  description: |
+    Checks whether the target string is a key of `object`.
+
+    Behavior:
+    - The target string is matched literally against the top-level member names of `object`: there is no
+      dot-path descent, so `a.b` only matches a member literally named `a.b`, never a member `b` nested in
+      `a`.
+    - `object` is an object literal, a definition or a reference to an object field.
+    - The value stored under the key is irrelevant; a key holding `null` counts.
+
+    Build errors:
+    - `object` is a literal that is not an object.
+    - `object` is a reference to a schema field whose type is not `object` (`nested` and `flat_object`
+      fields are rejected).
+    - The target is a schema field whose type is not a string type.
+
+    Notes:
+    - `in_kvdb` is the same check against a KVDB.
+    - `has_only_keys` checks the opposite direction: the keys of a target object against a list.
+  group: object
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The reference given as `object` does not exist or is not an object.
+    - No top-level key of `object` is equal to the target string.
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  object:
+    type: object
+    generate: object
+    source: both # includes values or references (their names start with $)
+
+# the generated success cases use an object that does not have the generated target as a key
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      object:
+        source: reference
+        value: null
+    target_field: key
+    should_pass: false
+    description: The reference given as object does not exist.
+  - arguments:
+      object:
+        key: value
+    target_field: key-not-exist
+    should_pass: false
+    description: The target string is not a key of the object.
+  - arguments:
+      object:
+        key: value
+    target_field: key
+    should_pass: true
+    description: The target string is a key of the object.
+  - arguments:
+      object:
+        a.b: 1
+    target_field: a.b
+    should_pass: true
+    description: A key containing a dot is matched literally.
+  - arguments:
+      object:
+        a:
+          b: 1
+    target_field: a.b
+    should_pass: false
+    description: The target is not read as a path, so a.b does not match the nested member b of a.
+  - arguments:
+      object:
+        key: null
+    target_field: key
+    should_pass: true
+    description: A key holding null counts.
+  - arguments:
+      object:
+        key: value
+    target_field: 42
+    should_pass: false
+    description: The target field is a number, not a string.

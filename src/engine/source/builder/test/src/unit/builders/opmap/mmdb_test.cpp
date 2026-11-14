@@ -56,8 +56,8 @@ auto customRefExpected(const json::Json& value)
     };
 }
 
-// AS: Builder getters for building test
-namespace as
+// ASN: Builder getters for building test
+namespace asn
 {
 mapbuildtest::BuilderGetter getBuilderNoLocator()
 {
@@ -88,7 +88,7 @@ mapbuildtest::BuilderGetter getBuilderWLocator(bool failLocator = false)
     };
 }
 
-// AS operation
+// ASN operation
 mapbuildtest::BuilderGetter getBuilderLocatorNoResult()
 {
     return [=]()
@@ -147,7 +147,7 @@ mapbuildtest::BuilderGetter getBuilderLocatorResult(bool hasASN, bool hasASOrg)
     };
 }
 
-} // namespace as
+} // namespace asn
 
 // Geo builder
 namespace city
@@ -181,7 +181,7 @@ mapbuildtest::BuilderGetter getBuilderWLocator(bool failLocator = false)
     };
 }
 
-// AS operation
+// Geo operation
 mapbuildtest::BuilderGetter getBuilderLocatorNoResult(bool validIP = true)
 {
     return [=]()
@@ -369,20 +369,22 @@ namespace mapbuildtest
 {
 /*** ASN ***/
 INSTANTIATE_TEST_SUITE_P(
-    BuilderAS,
+    BuilderASN,
     MapBuilderWithDepsTest,
     testing::Values(
-        // Only accept a ref with a ip to map an object
-        MapDepsT({}, as::getBuilderNoLocator(), FAILURE(expectContext())),
-        MapDepsT({makeValue(R"("value")")}, as::getBuilderNoLocator(), FAILURE(expectContext())),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::TEXT))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::KEYWORD))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::INTEGER))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
-        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(customRefExpected())),
-        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
-        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(true), FAILURE(expectTypeRef(schemf::Type::IP, true)))
+        // Only accept exactly one ref with an ip to map an object
+        MapDepsT({}, asn::getBuilderNoLocator(), FAILURE(expectContext())),
+        MapDepsT({makeValue(R"("value")")}, asn::getBuilderNoLocator(), FAILURE(expectContext())),
+        MapDepsT({makeRef("ref"), makeRef("ref")}, asn::getBuilderNoLocator(), FAILURE(expectContext())),
+        MapDepsT({makeRef("ref"), makeValue(R"("value")")}, asn::getBuilderNoLocator(), FAILURE(expectContext())),
+        MapDepsT({makeRef("ref")}, asn::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::TEXT))),
+        MapDepsT({makeRef("ref")}, asn::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::KEYWORD))),
+        MapDepsT({makeRef("ref")}, asn::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::INTEGER))),
+        MapDepsT({makeRef("ref")}, asn::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
+        MapDepsT({makeRef("ref")}, asn::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
+        MapDepsT({makeRef("ref")}, asn::getBuilderWLocator(), SUCCESS(customRefExpected())),
+        MapDepsT({makeRef("ref")}, asn::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
+        MapDepsT({makeRef("ref")}, asn::getBuilderWLocator(true), FAILURE(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
     testNameFormatter<MapBuilderWithDepsTest>("mmdb_asn"));
@@ -392,9 +394,11 @@ INSTANTIATE_TEST_SUITE_P(
     BuilderGeo,
     MapBuilderWithDepsTest,
     testing::Values(
-        // Only accept a ref with a ip to map an object
+        // Only accept exactly one ref with an ip to map an object
         MapDepsT({}, city::getBuilderNoLocator(), FAILURE()),
         MapDepsT({makeValue(R"("value")")}, city::getBuilderNoLocator(), FAILURE()),
+        MapDepsT({makeRef("ref"), makeRef("ref")}, city::getBuilderNoLocator(), FAILURE()),
+        MapDepsT({makeRef("ref"), makeValue(R"("value")")}, city::getBuilderNoLocator(), FAILURE()),
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::TEXT, true))),
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::KEYWORD, true))),
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::INTEGER, true))),
@@ -413,44 +417,44 @@ namespace mapoperatestest
 {
 /*** ASN ***/
 INSTANTIATE_TEST_SUITE_P(
-    BuilderOpAs,
+    BuilderOpAsn,
     MapOperationWithDepsTest,
     testing::Values(
         // Bad ref
         MapDepsT(
-            R"({"ref": {"some":"data"}})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": {}})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": false})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": ["::1"]})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": 123})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": 123.34})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": {"some":"data"}})", asn::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": {}})", asn::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": false})", asn::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": ["::1"]})", asn::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": 123})", asn::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": 123.34})", asn::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
         MapDepsT(
-            R"({"ref": "1.2.3.4"})", as::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": "1.2.3.4"})", asn::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
         // No result
         MapDepsT(
-            R"({"ref": "1.2.3.4"})", as::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": "1.2.3.4"})", asn::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
         // Partial result
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderLocatorResult(false, false),
+                 asn::getBuilderLocatorResult(false, false),
                  {makeRef("ref")},
                  FAILURE(customRefExpected())),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderLocatorResult(true, false),
+                 asn::getBuilderLocatorResult(true, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"number": 123})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderLocatorResult(false, true),
+                 asn::getBuilderLocatorResult(false, true),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"organization": {"name": "AS Org"}})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderLocatorResult(true, true),
+                 asn::getBuilderLocatorResult(true, true),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"number": 123, "organization": {"name": "AS Org"}})"})))
         // End of test values
         ),
     testNameFormatter<MapOperationWithDepsTest>("mmdb_asn"));
 
-/*** ASN ***/
+/*** Geo ***/
 INSTANTIATE_TEST_SUITE_P(
     BuilderOpGeo,
     MapOperationWithDepsTest,
@@ -553,5 +557,5 @@ INSTANTIATE_TEST_SUITE_P(
                 )"})))
         // End of test values
         ),
-    testNameFormatter<MapOperationWithDepsTest>("mmdb_asn"));
+    testNameFormatter<MapOperationWithDepsTest>("mmdb_city"));
 } // namespace mapoperatestest

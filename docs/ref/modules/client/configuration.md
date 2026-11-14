@@ -254,7 +254,7 @@ Agent configuration profile (used with centralized configuration via `agent.conf
 Interval between agent keep-alive notifications to the manager.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer (seconds).
+- **Allowed values:** Non-negative integer (seconds, digits only). `0` means the default (`10`).
 - **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
   `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
   `notify_time` only has to be comfortably below that figure — see
@@ -447,6 +447,7 @@ Delay in seconds after successful enrollment before starting normal agent operat
 - **Default value:** `20`
 - **Allowed values:** Positive integer (seconds) from `1` upward
 - **Note:** Allows time for manager to process new agent before receiving events; `0` is invalid and rejected by parser
+- **Enrollment token:** not applied after an enrollment-token bootstrap. The agent connects at once, and a node that has not loaded the new key yet answers `401 unknown_agent`, which the agent retries with that key for up to `agent.https_unknown_agent_retry` (see [HTTPS Connection Timing](#https-connection-timing)) instead of re-enrolling.
 
 #### use_source_ip
 
@@ -545,11 +546,17 @@ and ignored, with a warning.
 
 ## Anti-Tampering Configuration (`<anti_tampering>`)
 
-Protects against unauthorized agent modifications and uninstallation.
+Protects the agent package against uninstallation.
 
-**Platform:** Linux/Unix only (not available on Windows or macOS)
+**Platform:** Linux agents installed from a DEB or RPM package: their uninstaller enforces it. Windows
+agents do not know the section, and a configuration holding it is invalid there.
 
-**Note:** To disable anti-tampering, remove or comment out the entire `<anti_tampering>` block. There is no disable option within the block.
+**Where to set it:** the agent's local `ossec.conf`, or the group's `agent.conf` inside an
+`<agent_config os="Linux">` block (see [Centralized configuration](../agent-management/centralized-configuration.md)).
+A value in the group's `agent.conf` wins over the local one. A commented-out block counts as absent.
+
+**To turn it off:** set `package_uninstallation` to `no`, or remove the block. The section has no other
+option: any other child, `<disabled>` included, makes the configuration invalid.
 
 ### package_uninstallation
 
@@ -557,7 +564,9 @@ Prevent agent package uninstallation.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Behavior:** When enabled, prevents `apt remove`, `yum remove`, etc.
+- **Behavior:** When `yes`, removing the package (`apt remove`, `yum remove`, ...) is refused unless it is
+  validated against the Server API with the `VALIDATION_HOST` and `VALIDATION_TOKEN` (or
+  `VALIDATION_LOGIN`) variables, from the environment or a root-owned `etc/uninstall_validation.env`.
 
 ---
 
@@ -601,8 +610,20 @@ figure against `<global><agents_disconnection_time>` before raising either.
 ```ini
 # Per-request budget for /control, /stateless, /stats and /config, in
 # milliseconds (default: 10000, range 1000-600000). Covers DNS, TCP, TLS and
-# transfer -- there is no separate connect or handshake timeout.
+# transfer -- there is no separate connect or handshake timeout. It does not
+# apply to /enroll, which has its own budget below.
 agent.https_request_timeout=10000
+
+# Per-request budget for POST /enroll, in milliseconds (default: 35000,
+# range 1000-600000). It applies to every enrollment the agent sends: the
+# first-boot token bootstrap, wazuh-agent-auth, and re-enrollment. All of them
+# read it from internal_options.conf / local_internal_options.conf in the
+# installation directory, so an override in local_internal_options.conf holds
+# for each. It has to stay above what the manager still spends on the request
+# -- remoted's http_request_timeout (30 s by default) -- so the agent receives
+# the manager's answer instead of abandoning an enrollment that is applied
+# anyway. Below 30000 the agent logs a warning once.
+agent.https_enroll_timeout=35000
 
 # Per-request budget for large transfers: /stateful and both POST /download
 # kinds, config and WPK (default: 90000, range 1000-3600000)
@@ -616,6 +637,12 @@ agent.https_backoff_cap=60000
 # Retry cadence for Startup after the manager rejects the agent's version,
 # in seconds (default: 60, range 1-86400)
 agent.https_rejected_retry_interval=60
+
+# How long a 401 unknown_agent (a manager node that has not synced this
+# agent's key yet) is retried with the current credential before
+# re-enrolling, in milliseconds (default: 30000, range 1000-600000). An
+# attempt started just before the end still runs to its request timeout.
+agent.https_unknown_agent_retry=30000
 
 # Compress request bodies with zstd (default: 1, range 0-1). On a 415 the
 # agent retries once uncompressed and disables compression for that stream;
@@ -673,8 +700,9 @@ defaults). A first synchronization larger than that, such as the Windows registr
 several intervals to reach the indexer, and items queued after it wait their turn. Syscollector's
 vulnerability detection sync is bounded too, but it has no byte budget, so its first block already
 carries everything queued. FIM's recovery resync (after an agent ID change or a failed integrity check)
-runs while it holds the scan locks, so it sends at most 10 blocks per table whatever this option says,
-and the regular cycle sends the rest. The value is read once, when the agent starts.
+queues every entry while it holds the scan locks and sends them after releasing them, in one cycle with
+this same limit; if entries are left, it logs that they will be sent in the next synchronization. The
+value is read once, when the agent starts.
 
 ### Buffer Settings
 

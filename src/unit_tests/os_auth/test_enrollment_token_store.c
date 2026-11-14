@@ -660,7 +660,7 @@ static void test_reload_if_changed_picks_up_external_write(void **state) {
     os_free(external_pin);
 }
 
-/* --- Purge, cap and byte ceiling (issue #38994) ------------------------------------------------- */
+/* --- Purge, cap and byte ceiling ------------------------------------------------- */
 
 /**
  * @brief Write a store file of @p count synthetic tokens and load it.
@@ -1325,6 +1325,59 @@ static void test_an_entry_with_a_negative_expiry_is_dropped_and_the_others_load(
     cJSON_Delete(root);
 }
 
+/* --- What the mint says in the log (issue #40694) ----------------------------------------------- */
+
+/// The last line __wrap__minfo() was given, kept so a case can assert on what the operator reads.
+static char last_minfo[OS_MAXSTR];
+
+/* A cmocka check that accepts anything and records it: the summary carries a randomly drawn token
+ * id, so it cannot be declared up front with expect_string() */
+static int capture_minfo(const LargestIntegralType value, const LargestIntegralType check_data) {
+    (void)check_data;
+
+    snprintf(last_minfo, sizeof(last_minfo), "%s", (const char *)(uintptr_t)value);
+
+    return 1;
+}
+
+/* The expiry reaches the log as ISO 8601 in UTC, not as the epoch an operator would have to
+ * convert, and an unlimited token says so instead of showing the 0 that means it */
+static void test_the_mint_log_spells_out_the_expiry_and_an_unlimited_max_uses(void **state) {
+    (void)state;
+    etoken_mint_t mint;
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_check(__wrap__minfo, formatted_msg, capture_minfo, 0);
+
+    /* A fixed `now`, so the rendered expiry is a constant this case can name */
+    build_mint(&mint, "wazuh-1", 3600, 0, NULL, 0);
+    assert_int_equal(etoken_store_create(&mint, (time_t)1800000000, &data), 0);
+    etoken_mint_free(&mint);
+    cJSON_Delete(data);
+
+    assert_non_null(strstr(last_minfo, "(expires 2027-01-15T09:00:00Z, max_uses unlimited, credential yes)"));
+}
+
+/* A bounded token still shows its number, and a description is still appended */
+static void test_the_mint_log_shows_a_bounded_max_uses_as_a_number(void **state) {
+    (void)state;
+    etoken_mint_t mint;
+    cJSON *data = NULL;
+
+    expect_any_mdebug1();
+    expect_check(__wrap__minfo, formatted_msg, capture_minfo, 0);
+
+    build_mint(&mint, "wazuh-1", 3600, 5, "lab rollout", 1);
+    assert_int_equal(etoken_store_create(&mint, (time_t)1800000000, &data), 0);
+    etoken_mint_free(&mint);
+    cJSON_Delete(data);
+
+    assert_non_null(strstr(last_minfo,
+                           "(expires 2027-01-15T09:00:00Z, max_uses 5, credential no), "
+                           "description lab rollout"));
+}
+
 /* --- The endpoint the token carries ------------------------------------------------------------ */
 
 static void test_adr_build_drops_the_defaults(void **state) {
@@ -1396,6 +1449,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_a_lifetime_that_would_overflow_the_expiry_is_refused, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_the_longest_accepted_lifetime_is_minted_and_reloads, setup_store, teardown_store),
         cmocka_unit_test_setup_teardown(test_an_entry_with_a_negative_expiry_is_dropped_and_the_others_load, setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_the_mint_log_spells_out_the_expiry_and_an_unlimited_max_uses,
+                                        setup_store, teardown_store),
+        cmocka_unit_test_setup_teardown(test_the_mint_log_shows_a_bounded_max_uses_as_a_number,
+                                        setup_store, teardown_store),
         cmocka_unit_test(test_adr_build_drops_the_defaults),
     };
 

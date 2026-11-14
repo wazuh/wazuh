@@ -306,8 +306,12 @@ paths:
         carrier. Names are compared after JSON unescaping; off-path repetitions are not rejected
         by the identity check. A cache hit reuses validation of the same id and exact header bytes.
         Send the H-line id exactly as it appears in the token's `sub`; different zero padding
-        is rejected. Invalid H-line JSON and ambiguous or mismatched identity are rejected by the
-        engine before enqueueing. The engine also validates H/E framing. Its 400 is relayed as
+        is rejected. Build the `wazuh` fields from nested objects
+        (`{"wazuh":{"agent":{"id":...}}}`): a root member name whose first segment is `wazuh`
+        (`"wazuh.agent.id"`) or a dotted member name anywhere inside `wazuh` (`"agent.id"`) is
+        refused, because the indexer would expand it into a second value of the same field.
+        Invalid H-line JSON, such a dotted member name and ambiguous or mismatched identity are
+        rejected by the engine before enqueueing. The engine also validates H/E framing. Its 400 is relayed as
         the same neutral `400 Invalid event batch` response.
       requestBody:
         required: true

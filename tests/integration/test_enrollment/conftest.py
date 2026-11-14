@@ -12,10 +12,29 @@ from wazuh_testing.constants.paths.configurations import (AGENT_REENROLL_SECRET_
                                                           DEFAULT_AUTHD_PASS_PATH,
                                                           WAZUH_CLIENT_KEYS_PATH)
 from wazuh_testing.tools.simulators.remoted_simulator import DEFAULT_MANAGER_ENDPOINT_PREFIX, RemotedSimulator
+from wazuh_testing.utils.configuration import (get_local_internal_options_dict,
+                                               set_local_internal_options_dict)
 from wazuh_testing.utils.file import write_file, remove_file
 from wazuh_testing.utils.services import control_service
 
 MANAGER_ADDRESS = '127.0.0.1'
+
+# The agent retries a 401 unknown_agent for this long (default 30 s) before re-enrolling;
+# re-enrollment tests need it shorter than their wait timeouts.
+UNKNOWN_AGENT_RETRY_MS = '1000'
+
+
+@pytest.fixture()
+def short_unknown_agent_window():
+    """Shorten the agent's unknown_agent retry window for one case, then restore the options."""
+    backup = get_local_internal_options_dict()
+    options = dict(backup)
+    options['agent.https_unknown_agent_retry'] = UNKNOWN_AGENT_RETRY_MS
+    set_local_internal_options_dict(options)
+
+    yield
+
+    set_local_internal_options_dict(backup)
 
 
 @pytest.fixture(scope='module')
@@ -25,7 +44,7 @@ def shutdown_agentd(request):
 
 
 @pytest.fixture()
-def restart_agentd(test_metadata):
+def restart_agentd(test_metadata, short_unknown_agent_window):
     """
     Restart Agentd and control if it is expected to fail or not.
     """
@@ -96,11 +115,12 @@ def configure_socket_listener(request, test_metadata):
 
     For scenarios that start with a real pre-existent key, w_agentd_keys_init()
     (start_agent.c) sees keys.keysize > 0 and skips enrollment entirely at startup, so
-    the agent only re-enrolls later, once two consecutive 401s on /control escalate
-    through AuthGate.reportAuthFailure() (ControlStateMachine treats a dropped/refused
-    connection alone as a mere TransientFailure and never escalates it) -- the listener
-    starts in REJECT_AUTH for those cases so that escalation actually happens; the same
-    instance still serves /enroll normally, so the re-enrollment attempt succeeds.
+    the agent only re-enrolls later, once the 401s on /control outlast the unknown_agent
+    retry window and escalate through AuthGate.reportAuthFailure() (ControlStateMachine
+    treats a dropped/refused connection alone as a mere TransientFailure and never
+    escalates it) -- the listener starts in REJECT_AUTH for those cases so that
+    escalation actually happens; the same instance still serves /enroll normally, so the
+    re-enrollment attempt succeeds.
     """
 
     manager_address = '::1' if 'ipv6' in test_metadata else MANAGER_ADDRESS

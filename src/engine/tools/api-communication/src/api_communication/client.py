@@ -65,6 +65,32 @@ class APIClient:
         return msg
 
     @staticmethod
+    def _status_error(response: httpx.Response) -> Optional[str]:
+        """Error message for a non-200 answer that no endpoint handler produced, or None.
+
+        The server answers some requests itself, before any handler runs: unknown path (404), wrong method (405),
+        busy or stopping (503), no answer in time (504) and other protocol errors carry a JSON body
+        {"error": "<message>", "code": <status>}; a body over the limit gets a plain-text 413. Those are errors,
+        never responses to parse. A handler's own error answer (a protobuf JSON with a "status" field) returns None,
+        so the caller reads it as it always did.
+        """
+        if response.status_code == 200:
+            return None
+        if not response.text:
+            return f'Error {response.status_code} while sending request'
+        try:
+            body = response.json()
+        except ValueError:
+            # Plain text: the documented 413 message, or the server's own 500 "Internal server error".
+            if response.status_code == 413:
+                return response.text
+            return f'Error {response.status_code}: {response.text}'
+        if (isinstance(body, dict) and 'status' not in body and isinstance(body.get('error'), str)
+                and isinstance(body.get('code'), int)):
+            return f'Error {body["code"]}: {body["error"]}'
+        return None
+
+    @staticmethod
     def _send_http(client: httpx.Client, method: str, url: str, body: str, header: dict, timeout: Optional[int] = None):
         if method == "delete":
             # Older httpx versions don't accept body args on delete() directly.
@@ -109,10 +135,9 @@ class APIClient:
                                        header,
                                        DEFAULT_TIMEOUT)
 
-            if response.status_code != 200:
-                # Check if the error contains a message
-                if not response.text:
-                    return f'Error {response.status_code} while sending request', {}
+            status_error = self._status_error(response)
+            if status_error:
+                return status_error, {}
             return None, response.json()
 
         except httpx.HTTPError as e:
@@ -157,14 +182,10 @@ class APIClient:
         except Exception as e:
             return f'Unknown error: {e}', {}
 
-        # Error from server
-        if response.status_code != 200:
-            # Check if the error contains a message
-            if not response.text:
-                return f'Error {response.status_code} while sending request', {}
-
-            if response.status_code == 413:
-                return response.text or "Payload too large.", {}
+        # Error from the server itself (not from an endpoint handler)
+        status_error = self._status_error(response)
+        if status_error:
+            return status_error, {}
 
         # Response from server endpoint handler
         try:

@@ -11,6 +11,7 @@
  */
 
 #include "serverSelector_test.hpp"
+#include "healthBody.hpp"
 #include "monitoring.hpp"
 #include <map>
 #include <memory>
@@ -130,15 +131,15 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
                     // Phase 1: green and yellow servers available, red server down
                     if (url.find("9209") != std::string::npos)
                     {
-                        response = R"([{"status":"green"}])";
+                        response = probe_test::healthBody("green");
                     }
                     else if (url.find("9210") != std::string::npos)
                     {
-                        response = R"([{"status":"red"}])";
+                        response = probe_test::healthBody("red");
                     }
                     else if (url.find("9211") != std::string::npos)
                     {
-                        response = R"([{"status":"yellow"}])";
+                        response = probe_test::healthBody("yellow");
                     }
                     callCount++;
                 }
@@ -148,7 +149,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
                     if (url.find("9209") != std::string::npos || url.find("9210") != std::string::npos ||
                         url.find("9211") != std::string::npos)
                     {
-                        response = R"([{"status":"red"}])";
+                        response = probe_test::healthBody("red");
                     }
                     callCount++;
                 }
@@ -157,11 +158,11 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
                     // Phase 3: only server 1 available
                     if (url.find("9209") != std::string::npos)
                     {
-                        response = R"([{"status":"green"}])";
+                        response = probe_test::healthBody("green");
                     }
                     else if (url.find("9210") != std::string::npos || url.find("9211") != std::string::npos)
                     {
-                        response = R"([{"status":"red"}])";
+                        response = probe_test::healthBody("red");
                     }
                     callCount++;
                 }

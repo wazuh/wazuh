@@ -1,0 +1,97 @@
+# Name of the helper function
+name: parse_binary
+
+metadata:
+  description: |
+    Checks that the input string is valid standard base64 and stores it, unchanged, in the target field.
+
+    Behavior:
+    - Accepts one or more characters of the standard alphabet `A-Z`, `a-z`, `0-9`, `+` and `/`, followed by
+      up to two `=` padding characters, with a total length that is a multiple of 4.
+    - Whitespace and the URL-safe characters `-` and `_` are rejected.
+    - The string is not decoded: it is stored as it is and replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is neither binary nor text-like.
+
+    Notes:
+    - `decode_hex` decodes hexadecimal text; nothing decodes base64.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not valid standard base64 (character set, padding or length).
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      input: SGVsbG8sIFdvcmxkIQ==
+    target_field: any_value
+    should_pass: true
+    expected: SGVsbG8sIFdvcmxkIQ==
+    description: A valid base64 string is stored unchanged
+  - arguments:
+      input: SGVsbG8=
+    target_field: any_value
+    should_pass: true
+    expected: SGVsbG8=
+    description: A single padding character is accepted
+  - arguments:
+      input: SGVsbG8
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails because the length is not a multiple of 4
+  - arguments:
+      input: SGVs-G8=
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on the URL-safe alphabet
+  - arguments:
+      input: not base64
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a space and on characters outside the alphabet
+  - arguments:
+      input: not base64
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: An array target is left unchanged when the input is not base64
+  - arguments:
+      input: not base64
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: An object target is left unchanged when the input is not base64
+  - arguments:
+      input: not base64
+    target_field: true
+    should_pass: false
+    expected: true
+    description: A boolean target is left unchanged when the input is not base64

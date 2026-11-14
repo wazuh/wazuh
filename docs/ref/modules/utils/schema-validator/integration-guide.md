@@ -69,7 +69,13 @@ bool YourModule::validateSchemaAndLog(const std::string& data,
 
     if (!validator)
     {
-        return true; // No validator for this index
+        // No schema for this index: discard instead of sending it unvalidated
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+        }
+
+        return false;
     }
 
     auto validationResult = validator->validate(data);
@@ -97,6 +103,8 @@ bool YourModule::validateSchemaAndLog(const std::string& data,
     return false;
 }
 ```
+
+Only the "validation disabled" branch (the factory failed to initialize at startup) lets a message through unchecked. An initialized factory with no schema for `index` discards the message, as Syscollector, SCA and the C interface (`schema_validator_validate()`) do: sending it unvalidated could put a document the indexer rejects into the sync queue.
 
 ### Step 4: Validate Before Sending Data
 
@@ -341,7 +349,15 @@ bool Syscollector::validateSchemaAndLog(const std::string& data,
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message
+        // instead of queuing it unvalidated, since we cannot guarantee it matches
+        // the schema the indexer expects.
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+        }
+
+        return false;
     }
 
     auto validationResult = validator->validate(data);
@@ -391,7 +407,7 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(
 {
     if (statefulEvent.empty())
     {
-        return true;
+        return false;
     }
 
     auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
@@ -405,7 +421,10 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message.
+        LoggingHelper::getInstance().log(LOG_WARNING,
+                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+        return false;
     }
 
     std::string statefulData = statefulEvent.dump();
@@ -654,8 +673,8 @@ TEST_F(SchemaValidatorTest, InvalidMessage)
 class MockSchemaValidator : public SchemaValidator::ISchemaValidatorEngine
 {
 public:
-    MOCK_METHOD(ValidationResult, validate, (const std::string&), (override));
-    MOCK_METHOD(ValidationResult, validate, (const nlohmann::json&), (override));
+    MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const std::string&), (override));
+    MOCK_METHOD(SchemaValidator::ValidationResult, validate, (const nlohmann::json&), (override));
     MOCK_METHOD(std::string, getSchemaName, (), (const, override));
 };
 
@@ -663,8 +682,13 @@ TEST_F(YourModuleTest, ValidationFailureHandling)
 {
     // Create mock validator that always fails
     auto mockValidator = std::make_shared<MockSchemaValidator>();
-    ON_CALL(*mockValidator, validate(testing::_))
-        .WillByDefault(testing::Return(ValidationResult{false, {"Test error"}}));
+    SchemaValidator::ValidationResult failure;
+    failure.isValid = false;
+    failure.errors = {"Test error"};
+
+    // validate() is overloaded, so the argument matcher must name the overload
+    ON_CALL(*mockValidator, validate(testing::An<const std::string&>()))
+        .WillByDefault(testing::Return(failure));
 
     // Inject mock
     std::map<std::string, std::shared_ptr<SchemaValidator::ISchemaValidatorEngine>> mocks;
@@ -677,6 +701,15 @@ TEST_F(YourModuleTest, ValidationFailureHandling)
     // Test your module's handling of validation failure
     bool result = yourModule->processData(testData, "test-index");
     EXPECT_FALSE(result); // Should handle validation failure correctly
+}
+```
+
+The factory is a process-wide singleton, and `initialize()` does nothing once it is set up, so a test that injects mocks must reset it afterwards. Otherwise later tests in the same binary keep seeing only the mock:
+
+```cpp
+void YourModuleTest::TearDown()
+{
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 ```
 
@@ -711,8 +744,10 @@ if (!factory.isInitialized())
 auto validator = factory.getValidator(index);
 if (!validator)
 {
-    m_logFunction(LOG_WARNING, "No validator found for index: " + index);
-    // Continue without validation
+    // The factory is initialized but has no schema for this exact index name:
+    // discard the message, as the shipped modules do, and fix the index name
+    m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+    return false;
 }
 ```
 

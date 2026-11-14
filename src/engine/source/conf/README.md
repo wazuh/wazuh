@@ -163,6 +163,12 @@ and `AGENT_METADATA_CACHE_MAX_BYTES` (default 134217728). Each zero limit indepe
 unlimited. The cache validates upper bounds; startup also validates TTL and cleanup intervals.
 See the [engine settings](../../../../docs/ref/modules/engine/configuration.md#agent-metadata-cache).
 
+The enriched-events ingest server is sized by three `size_t` keys: `SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES`
+(default 67108864), `SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS` (default 1024) and
+`SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES` (default 268435456). Their ranges are checked by
+`api::event::validateIngestLimits()` before the server listens. See the
+[engine settings](../../../../docs/ref/modules/engine/configuration.md#engine-api-server).
+
 ## Implementation Details
 
 ### Validation

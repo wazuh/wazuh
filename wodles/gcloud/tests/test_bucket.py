@@ -429,6 +429,7 @@ def test_WazuhGCloudBucket_process_blob(mock_client, mock_load_information, mock
     """Test process_blob sends formatted messages to the socket and request blob deletion if required."""
     num_events = 100
     mock_load_information.return_value = [f"event {i}" for i in range(num_events)]
+    mock_send_msg.return_value = True
     bucket = GCSAccessLogs(**get_wodle_config(delete_file=delete_file))
     bucket.db_table_name = TEST_TABLE_NAME
     bucket.bucket = MagicMock()
@@ -437,6 +438,31 @@ def test_WazuhGCloudBucket_process_blob(mock_client, mock_load_information, mock
     assert num_messages_sent == num_events
     if delete_file:
         bucket.bucket.delete_blob.assert_called_with("blob")
+
+
+@patch('buckets.access_logs.GCSAccessLogs.send_msg')
+@patch('buckets.access_logs.GCSAccessLogs.initialize_socket')
+@patch('buckets.access_logs.GCSAccessLogs.load_information_from_file')
+@patch('buckets.bucket.storage.client.Client.from_service_account_json')
+@pytest.mark.parametrize('delete_file', [False, True])
+def test_WazuhGCloudBucket_process_blob_skips_event_too_long(mock_client, mock_load_information, mock_socket,
+                                                             mock_send_msg, delete_file):
+    """Test process_blob logs which blob an event too long for the socket came from, and keeps processing the blob as
+    with any other event, deleting it if required."""
+    mock_load_information.return_value = ["event 1", "event 2", "event 3"]
+    mock_send_msg.side_effect = [True, False, True]
+    bucket = GCSAccessLogs(**get_wodle_config(delete_file=delete_file))
+    bucket.db_table_name = TEST_TABLE_NAME
+    bucket.bucket = MagicMock()
+
+    assert bucket.process_blob(create_mocked_blob("blob")) == 3
+
+    assert mock_send_msg.call_count == 3
+    bucket.logger.error.assert_called_once_with(f'Skipped an event of "blob" in {bucket.bucket_name}')
+    if delete_file:
+        bucket.bucket.delete_blob.assert_called_once_with("blob")
+    else:
+        bucket.bucket.delete_blob.assert_not_called()
 
 
 @patch('buckets.access_logs.GCSAccessLogs.load_information_from_file')

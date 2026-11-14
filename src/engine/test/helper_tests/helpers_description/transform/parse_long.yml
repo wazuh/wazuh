@@ -1,0 +1,74 @@
+# Name of the helper function
+name: parse_long
+
+metadata:
+  description: |
+    Converts the input string to a 64-bit signed integer and stores it in the target field.
+
+    Behavior:
+    - The input must match `-?[0-9]+(.[0-9]*)?`: an optional minus sign, digits and an optional fraction; no
+      plus sign, exponent or surrounding spaces.
+    - The fraction is dropped (truncation toward zero): `42.23` gives `42`.
+    - The value must fit in a 64-bit signed integer; otherwise the operation fails ("Number is out of range").
+    - The integer replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not long, byte, short or integer.
+
+    Notes:
+    - A value written into a byte, short or integer schema field is not range-checked at runtime.
+    - `to_int` converts a number instead of a string; `hex_to_int` converts hexadecimal text.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a decimal number in the accepted syntax.
+    - The value does not fit in a 64-bit signed integer.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: number
+  generate: integer
+
+test:
+  - arguments:
+      input: "12345"
+    target_field: any_value
+    should_pass: true
+    expected: 12345
+    description: A positive integer is stored
+  - arguments:
+      input: "-42"
+    target_field: any_value
+    should_pass: true
+    expected: -42
+    description: A negative integer is stored
+  - arguments:
+      input: "42.23"
+    target_field: any_value
+    should_pass: true
+    expected: 42
+    description: The fraction is dropped
+  - arguments:
+      input: "12a3"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a string with characters that are not digits

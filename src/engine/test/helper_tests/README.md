@@ -12,16 +12,17 @@
 1. [Running all tests](#running-all-tests)
 1. [How to write a test](#how-to-write-a-test)
     1. [Schema](#schema)
-    2. [Arguments property](#arguments-property)
+    2. [Metadata property](#metadata-property)
+    3. [Arguments property](#arguments-property)
         1. [Types](#types)
         2. [Subsets](#subsets)
         3. [Source](#source)
         4. [Restrictions](#restrictions)
-    3. [General restrictions property](#general-restrictions-property)
-    4. [Target field property](#target-field-property)
-    5. [Output property](#output-property)
-    6. [Skipped property](#skipped-property)
-    7. [Test property](#test-property)
+    4. [General restrictions property](#general-restrictions-property)
+    5. [Target field property](#target-field-property)
+    6. [Output property](#output-property)
+    7. [Skipped property](#skipped-property)
+    8. [Test property](#test-property)
 1. [How generate helper functions documentation](#how-generate-helper-functions-documentation)
     1. [Generate documentation for a particular helper function](#generate-documentation-for-a-particular-helper-function)
     2. [Generate documentation for a particular type of helper function](#generate-documentation-for-a-particular-type-of-helper-function)
@@ -53,9 +54,9 @@ helper_tests/
 │   └── config.env           # Engine configuration copied into the environment by `init`
 ├── engine-helper-test       # The engine-helper-test Python package
 ├── helpers_description      # One YAML description per helper function
-│   ├── filter
+│   ├── check
 │   ├── map
-│   └── transformation
+│   └── transform
 ├── mmdb
 │   ├── testdb-asn.mmdb
 │   └── testdb-city.mmdb
@@ -201,8 +202,8 @@ Each helper descriptor file is verified before the construction of the test case
 Below are the mandatory properties that the file should have:
 
 - name: Details the name of the helper function that will be evaluated for the construction of the test cases.
-- metadata: An object with a mandatory `description` and the `keywords` list (read by `generate-doc`).
-- helper_type: It is only possible to set one of the types supported by the engine [map, filter, transformation]
+- metadata: An object with the mandatory `description`, `group` and `fails_when` properties (see [Metadata property](#metadata-property)).
+- helper_type: It is only possible to set one of the kinds supported by the engine [check, map, transform]. A `check` helper is used in `check` stages and `first_of` branches, a `map` helper in `map` stages, and a `transform` is a map helper that reads and modifies its target field in place.
 - is_variadic: Indicates whether or not the helper function admits a number of variable arguments.
 - output: Mandatory for `map` helpers (see [Output property](#output-property)).
 
@@ -210,9 +211,44 @@ Once the minimum necessary for the helper descriptor has been defined, optional 
 
 - arguments: Includes information about the helper arguments such as accepted types and allowed fonts, among other things.
 - general_restrictions: This property is useful when there is some type of restriction between the values that the helper arguments can take.
-- target_field: This property is useful for the filter and transformation type helpers. Allows you to set the specific type and subtype of the value that the target_field will have
+- target_field: This property is useful for the check and transform type helpers. Allows you to set the specific type and subtype of the value that the target_field will have
 - skipped: Allows you to ignore the results of a particular test suite (see [Skipped property](#skipped-property)).
-- test: This property, in contrast to automatic tests that are generated based on the description of the arguments, allows you to generate a test with specific types and sources as long as it respects the information of each argument.
+- test: This property, in contrast to automatic tests that are generated based on the description of the arguments, allows you to generate a test with specific types and sources as long as it respects the information of each argument. An `expected` value is asserted by the runner whenever it is present, falsy values included (`""`, `0`, `false`, `[]`); leave it out when the outcome is not asserted.
+
+## Metadata property
+
+`metadata` describes the helper for the generated reference. `validate` rejects a file that lacks any of
+its three properties, and a file that still carries the removed `keywords` list.
+
+- description: Free text, printed as the helper's description. The convention is one sentence stating what
+  the helper does and the role of the target field, followed by the `Behavior:`, `Build errors:` and
+  `Notes:` lists.
+- group: The section of the reference that lists the helper. Exactly one of `type`, `comparison`, `string`,
+  `array`, `object`, `number`, `date`, `network`, `syslog`, `kvdb`, `parse`, `event`. The helpers of the
+  `kvdb` group also get the test KVDB resource printed after their examples.
+- fails_when: A list of strings (empty when the helper cannot fail once the asset is built), each one a condition
+  under which the helper fails at runtime: a
+  `check` helper evaluates to false, a `map` or `transform` helper leaves the target field unchanged.
+  Build-time rejections belong in the description instead.
+- deletes_arguments (optional): the names of the arguments whose referenced field the helper removes from the
+  event on success (`merge` and `rename` delete their `source`). The generated examples drop those fields from
+  the outcome event.
+
+```yaml
+metadata:
+  description: |
+    Checks whether the target string ends with `suffix`.
+
+    Behavior:
+    - The comparison is byte-wise and case-sensitive.
+
+    Build errors:
+    - `suffix` is an empty literal.
+  group: string
+  fails_when:
+    - The target field is missing or is not a string.
+    - The target string does not end with `suffix`.
+```
 
 ## Arguments property
 
@@ -342,7 +378,7 @@ rest based on the information in the arguments property. A restriction may have 
 
 ## Target field property
 
-This property is used for the filter and transformation type helpers. defines the type and corresponding subtype for the target_field.
+This property is used for the check and transform type helpers. defines the type and corresponding subtype for the target_field.
 ```
 target_field:
   type: array
@@ -388,7 +424,7 @@ skipped:
 ## Test property
 
 Allows custom tests to be carried out, respecting the information defined in each argument. As for its operation, it is dual. Since you can simply put a value to each argument and the generator will create different versions of the argument according to the information already established or you can manually choose which specific source you want. The latter is useful for arguments that admit both sources (both) and it is required to test a source and a particular value, for example for helpers that admit absences of references (any suffix).
-On the other hand, if the helper in its is_variadic property is defined as variadic, you can add more arguments than the defined ones, named `<last argument id>_<number>` (for example `operand_right_1`); the generator will respect the source and type of the last argument. For `filter` and `transformation` helpers every test must set `target_field`.
+On the other hand, if the helper in its is_variadic property is defined as variadic, you can add more arguments than the defined ones, named `<last argument id>_<number>` (for example `operand_right_1`); the generator will respect the source and type of the last argument. For `check` and `transform` helpers every test must set `target_field`.
 Configuration that only indicates values and leaves the source assignment in the hands of the generator:
 ```
 test:
@@ -420,7 +456,8 @@ test:
 # How generate helper functions documentation
 `-o/--output-path` is mandatory. The default exporter is `mark_down`, which writes every processed helper
 into a single `ref-helper-functions.md` in the output directory (the `html` and `pdf` exporters write
-nothing). The commands below run from `src/engine/`.
+nothing): an index grouped by `metadata.group`, then one document per helper in the same order. The
+commands below run from `src/engine/`.
 
 ## Generate documentation for a particular helper function
 ```bash
@@ -428,7 +465,7 @@ engine-helper-test -e /tmp/environment generate-doc --input-file test/helper_tes
 ```
 ## Generate documentation for a particular type of helper function
 ```bash
-engine-helper-test -e /tmp/environment generate-doc --input-dir test/helper_tests/helpers_description/map -o test/helper_tests/documentation
+engine-helper-test -e /tmp/environment generate-doc --input-dir test/helper_tests/helpers_description/check -o test/helper_tests/documentation
 ```
 
 ## Generate documentation for all helper functions

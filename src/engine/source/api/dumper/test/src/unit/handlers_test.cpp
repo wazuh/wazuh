@@ -48,10 +48,8 @@ INSTANTIATE_TEST_SUITE_P(
         DumperHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::dumper::IDumper>& dumper) { return activateDumper(dumper); },
             []()
@@ -83,10 +81,8 @@ INSTANTIATE_TEST_SUITE_P(
         DumperHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::dumper::IDumper>& dumper) { return deactivateDumper(dumper); },
             []()
@@ -119,10 +115,8 @@ INSTANTIATE_TEST_SUITE_P(
         DumperHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::dumper::IDumper>& dumper) { return getDumperStatus(dumper); },
             []()
@@ -141,19 +135,19 @@ TEST(DumperHandlerLogTest, ActivateAndDeactivateAreLogged)
     auto activate = activateDumper(dumper);
     auto deactivate = deactivateDumper(dumper);
 
-    httplib::Request req;
-    httplib::Response res;
+    httpsrv::Request req;
+    httpsrv::Response res;
 
     testing::internal::CaptureStdout();
     activate(req, res);
     auto logs = testing::internal::GetCapturedStdout();
-    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(res.status, 200);
     EXPECT_NE(logs.find("Event dumper activated"), std::string::npos) << logs;
 
     testing::internal::CaptureStdout();
     deactivate(req, res);
     logs = testing::internal::GetCapturedStdout();
-    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(res.status, 200);
     EXPECT_NE(logs.find("Event dumper deactivated"), std::string::npos) << logs;
 
     logging::testInit();

@@ -510,6 +510,28 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     EXPECT_EQ(503, response.httpCode);
 }
 
+TEST(CurlPerformerTest, RequestSentIsReadFromTheHandleAfterPerform)
+{
+    const bool cases[] = {true, false};
+
+    for (const bool sent : cases)
+    {
+        auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+        auto* handle = mock.get();
+        // A timeout after the request went out and a connect failure before it: both end
+        // with no HTTP status, and only this flag tells them apart.
+        EXPECT_CALL(*handle, perform())
+        .WillOnce(Return(sent ? TransportStatus::Timeout : TransportStatus::ConnectFail));
+        EXPECT_CALL(*handle, requestSent()).WillOnce(Return(sent));
+
+        auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+        const auto response = performer.perform(HttpRequestSpec {});
+
+        EXPECT_EQ(sent, response.requestSent);
+        EXPECT_EQ(0, response.httpCode);
+    }
+}
+
 TEST(CurlPerformerTest, TlsFullMode)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();

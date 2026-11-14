@@ -22,6 +22,7 @@ int __wrap_SendMSG(__attribute__((unused)) int queue, const char *message, const
 }
 
 int __wrap_SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) {
+    check_expected(queue);
     check_expected(message);
     check_expected(locmsg);
     check_expected(loc);
@@ -49,6 +50,12 @@ int __wrap_StartMQPredicated(const char *path, short int type, __attribute__((un
     return mock();
 }
 
+int __wrap_MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
+    check_expected(path);
+    check_expected_ptr(fn_ptr);
+    return mock();
+}
+
 void expect_StartMQPredicated_call(const char *qpath, int type, bool (*fn_ptr)(), int ret) {
     expect_string(__wrap_StartMQPredicated, path, qpath);
     expect_value(__wrap_StartMQPredicated, type, type);
@@ -64,6 +71,7 @@ void expect_SendMSG_call(const char *message, const char *locmsg, char loc, int 
 }
 
 void expect_SendMSGPredicated_call(const char *message, const char *locmsg, char loc, bool (*fn_ptr)(), int ret) {
+    expect_any(__wrap_SendMSGPredicated, queue);
     expect_string(__wrap_SendMSGPredicated, message, message);
     expect_string(__wrap_SendMSGPredicated, locmsg, locmsg);
     expect_value(__wrap_SendMSGPredicated, loc, loc);

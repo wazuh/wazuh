@@ -13,6 +13,7 @@
 #ifndef _SHARED_INDEXER_SESSION_TEST_HPP
 #define _SHARED_INDEXER_SESSION_TEST_HPP
 
+#include "healthBody.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "monitoring.hpp"
 #include "serverSelector.hpp"
@@ -69,7 +70,7 @@ namespace shared_session_test
                 [&counter](auto /*requestParams*/, PostRequestParametersVariant postParams, auto /*configParams*/)
                 {
                     ++counter;
-                    std::string response {R"([{"status":"green"}])"};
+                    std::string response {probe_test::healthBody("green")};
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);

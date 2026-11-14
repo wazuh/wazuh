@@ -356,6 +356,14 @@ The other 4.x options carry over: `<name>`, `<node_name>`, `<node_type>`, `<key>
 `<bind_addr>`, `<nodes>` and `<hidden>`. `<key>` is now mandatory and must be exactly 32 alphanumeric
 characters; `<hidden>` is still accepted but has no effect.
 
+> **Warning: set `<bind_addr>` and `<nodes>` explicitly.** Their 5.0 defaults are loopback:
+> `bind_addr` defaults to `127.0.0.1` and `nodes` to a single `127.0.0.1`, and the generated
+> configuration of a fresh 5.0 install writes the same values. A 4.x block that relied on 4.x
+> defaults by leaving either out gets these instead: a master without `<bind_addr>` listens on
+> loopback only, so no worker on another host can join, and a worker without `<nodes>` dials
+> `127.0.0.1` instead of the master. Write the master's address in `<bind_addr>` on the master and
+> in `<nodes>` on every node.
+
 **4.x:**
 ```xml
 <cluster>

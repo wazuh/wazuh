@@ -15,13 +15,14 @@ indexer.
 |---|---|---|
 | Agent identities: ids, names, keys (`client.keys`) | Kept. Agents reconnect without re-enrolling. | Step 3 |
 | Agent registry: registration date, last known version and OS, group membership (`global.db`) | Kept, including assignments made from the manager or the API that never reached the agent's `ossec.conf`. | Step 3 |
-| Group folders (`/etc/wazuh-manager/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0. | Step 3 |
+| Group folders (`/etc/wazuh-manager/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0; settings 5.0 agents ignore are listed in [Groups](#groups). SCA policies shipped in a group folder still work. | Step 3 |
+| The `default` group's `agent.conf` | Not overwritten: the 5.0 package ships its own. A customized 4.x one is appended to it, or its settings stop applying to every agent. | [Step 1](#1-back-up-the-4x-manager), [Step 3](#groups) |
 | Enrollment password (`authd.pass`) | Kept on the manager only if 4.x agents still have to enroll. 5.0 agents enroll with a token; the 5.0 package upgrade deletes the endpoint's default copy, and an agent uses a password only from a file placed there by hand. | [Step 3](#enrollment-password) |
 | API users, roles and policies (`rbac.db`) | Kept, including passwords, which then replace the ones the 5.0 install generated. | [Step 3](#api-users-roles-and-policies) |
 | Manager configuration | Rewritten by hand into `wazuh-manager.conf`. | Step 4 |
 | TLS material | Not carried automatically. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager at install or given to it, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
 | Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
-| Agent labels | Removed in 5.0 on both sides. Not migrated. | |
+| Agent labels | Removed in 5.0 on both sides. A `<labels>` block in an `agent.conf` is carried with the file but ignored, and `agent.labels.*` no longer reaches events, rules or dashboards. Group membership (`wazuh.agent.groups`) is the closest replacement. | [Groups](#groups) |
 | Agent `000`, the manager monitoring its own host | Removed. Nothing collects the server host's logs, file integrity, SCA or inventory until an agent is installed on it. | [Monitoring the server host](../../ref/getting-started/installation.md#monitoring-the-server-host) |
 | Frequency and correlation rules (`frequency`, `timeframe`, `if_matched_sid`), such as 5712 and 5763 for SSH brute force | Removed. Each finding keeps the severity of the single event it matched, so repeated failures never escalate: a brute force produces many `low` findings. | [Repeated events](rules-4x-to-5x.md#alerting-on-repeated-events) |
 | Custom rules, decoders and CDB lists | Not migrated. Decoders and CDB lists are rewritten as engine decoders and KVDBs; rules are rewritten as Sigma-based detection rules, which the indexer evaluates (the engine has no rules). | [Rules](rules-4x-to-5x.md), [decoders](xml-decoders-migration.md), [CDB lists](cdb-to-kvdb-migration.md) |
@@ -67,7 +68,30 @@ stopped. Installing it out of the fleet's reach, as [Step 2](#2-install-the-50-m
 gives you both at once — the API answers on loopback while no agent can reach the manager.
 
 Read this section either way: the decisions it describes are still yours, and the tool cannot carry
-what no endpoint accepts, which is listed in its README. Run it with `--dry-run` first.
+what no endpoint accepts, which is listed in its README. Run its `export` with `--dry-run` first: it
+ends with a **Review before going on** list, per group, of the `agent.conf` settings 5.0 agents
+ignore and the files it leaves behind, and of the features the 4.x `ossec.conf` configures that stop
+at cutover, each with the guide that rebuilds it. The real `export` and the `import` print the same
+list.
+
+The two methods do not keep the same things:
+
+| | Migration tool | Manual steps |
+|---|---|---|
+| Agent ids, names and keys | Kept | Kept |
+| Registration date (`dateAdd`) | The time of the import: `POST /agents/insert` accepts none | Kept |
+| Version and OS until the agent reconnects | Empty, status `never_connected` | The 4.x values, status `disconnected` |
+| Group membership | Exactly the 4.x groups, in the 4.x order | Exactly the 4.x groups, from `global.db` |
+| Custom groups' `agent.conf` | Kept | Kept |
+| `default` group's `agent.conf` | Appended to the 5.0 one when the 4.x one sets anything | Appended by hand ([Groups](#groups)) |
+| SCA policies in a group folder | Kept when the group's `agent.conf` loads them | Kept, with the whole folder |
+| Other files in a group folder | Named in the review, left behind | Kept, with the whole folder |
+| Enrollment password | `--with-password` | [Enrollment password](#enrollment-password) |
+| API users, roles and policies | `--with-rbac` | [API users, roles and policies](#api-users-roles-and-policies) |
+| Verification | `check` | The queries in [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) |
+
+Use the manual steps only if you need the registration dates or the 4.x version and OS before the
+agents reconnect. Neither method carries the API users, roles and policies unless you ask for them.
 Its `import` and `check` commands address the 5.0 manager through two directories:
 `--target-dir` (the installation, default `/var/wazuh-manager`) and `--target-conf-dir` (the
 configuration directory, default `/etc/wazuh-manager`), which is where `authd.pass` is installed and
@@ -82,6 +106,7 @@ mkdir -p /root/wazuh-4x-backup && cd /var/ossec
 cp etc/client.keys etc/authd.pass queue/db/global.db api/configuration/security/rbac.db /root/wazuh-4x-backup/
 cp etc/ossec.conf etc/local_internal_options.conf api/configuration/api.yaml /root/wazuh-4x-backup/
 (cd /var/ossec/etc && tar -czf /root/wazuh-4x-backup/groups.tar.gz --exclude='shared/default' --exclude='*/merged.mg' shared/*/)
+cp etc/shared/default/agent.conf /root/wazuh-4x-backup/default-agent.conf
 tar -czf /root/wazuh-4x-backup/ruleset.tar.gz -C /var/ossec/etc rules decoders lists
 # Only if 4.x agents must keep their rootkit and audit checks until they are upgraded (see below)
 mkdir -p /root/wazuh-4x-backup/rootcheck && cp /var/ossec/etc/shared/default/*.txt /root/wazuh-4x-backup/rootcheck/
@@ -103,8 +128,10 @@ not exist, and tar writes an empty archive and exits `2`. Check the archive list
 moving on to step 2, which uninstalls 4.x and takes the originals with it.
 
 The `default` group is excluded on purpose: the 5.0 package ships its own `default` folder and
-`shared/*/` would otherwise overwrite it with the 4.x files. If you customized
-`shared/default/agent.conf`, copy that single file and merge it into the 5.0 one by hand.
+`shared/*/` would otherwise overwrite it with the 4.x files. Its `agent.conf` is saved on its own
+line instead: what it sets applies to every agent, so if you customized it, append it to the 5.0 one
+in [step 3](#groups). Nothing warns you if you skip that: every agent silently stops applying those
+settings.
 
 **4.x agents lose their rootcheck signatures.** The 4.x `default` folder also carries
 `rootkit_files.txt`, `rootkit_trojans.txt` and the CIS and system audit files (`cis_*_rcl.txt`,
@@ -405,10 +432,19 @@ have no counterpart in 5.0 (agent labels were removed). Columns dropped in 5.0 (
 
 ```bash
 tar -xzf /root/wazuh-4x-backup/groups.tar.gz -C /etc/wazuh-manager
+# Only if you customized the 4.x default group's agent.conf: keep the 5.0 file and append the 4.x one
+cat /root/wazuh-4x-backup/default-agent.conf >> /etc/wazuh-manager/shared/default/agent.conf
 # Only if you saved the 4.x rootcheck files in step 1
 install -m 0660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/rootcheck/*.txt /etc/wazuh-manager/shared/default/
 chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/
 ```
+
+An `agent.conf` is a sequence of `<agent_config>` elements, so appending the 4.x file keeps both: the
+5.0 file holds only comments and an empty element. The migration tool does the same at `import`.
+
+SCA policy files in a group folder still work on 5.0: the group's agents receive them in their own
+`etc/shared/` (`shared\` on Windows), where the `<policy>` path in the group's `agent.conf` names
+them. Keep them in the folder.
 
 The rootcheck files are only for 4.x agents; a 5.0 agent receives them in its `etc/shared/` but never
 reads them. Remove them from `default` once every agent in it runs 5.0.
@@ -417,7 +453,15 @@ Group membership came with `global.db`: an agent assigned to a group from the da
 or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.conf` never mentioned
 it. Review every `agent.conf` against the 5.0 agent configuration reference before starting.
 A removed option such as `scan_on_start` or `check_files`, or a top-level `<labels>` block (the
-4.x agent labels), only produces a warning, and `verify-agent-conf` still returns OK. A `<labels>`
+4.x agent labels), only produces a warning, and `verify-agent-conf` still returns OK. The top-level
+settings a 5.0 agent ignores this way are `<labels>`, `<client_buffer>` (batching moved to
+`<agent><batch>`), `<integration>`, `<email_alerts>`, `<reports>`, `<syslog_output>`,
+`<agentless>`, `<database_output>`, `<alerts>`, `<command>`, `<ruleset>`, `<rule_test>`,
+`<agent-key-polling>` and `<fluent-forward>`. Each one logs
+`WARNING: (1223): '<name>' is no longer supported and will be ignored.` on the manager when the
+group is saved and on every agent of the group, repeatedly. Remove them. For `<labels>`, nothing
+carries `agent.labels.*` into 5.0 events any more: rules, dashboards or integrations that used a
+label need another key, such as group membership (`wazuh.agent.groups`). A `<labels>`
 wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
 section, it is rejected (`(1230): Invalid element in the configuration`) and the configuration
 does not compile; see [`label`](../../ref/modules/logcollector/configuration.md#label). A
@@ -598,8 +642,10 @@ Every agent appears with its 4.x id, name, version, groups and registration date
 `disconnected` until it reconnects. If you used the migration tool instead of the SQL in Step 3, two of
 those differ: `dateAdd` is the moment the tool inserted the agent (`POST /agents/insert` accepts no
 registration date), and version and OS stay empty until the agent's first keepalive. Its `check`
-command compares the manager against the bundle and names any agent missing, renamed, outside its
-groups, or present without having been in the bundle.
+command compares the manager against the bundle and names any agent missing, renamed, present
+without having been in the bundle, or whose groups differ from the 4.x ones (a group missing, an
+extra one such as `default`, or a different order). It also checks that the `default` group holds
+the 4.x settings the bundle carried and that every carried SCA policy is in its group folder.
 
 ## 6. Reconnect the 4.x agents
 

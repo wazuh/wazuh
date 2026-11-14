@@ -121,6 +121,20 @@ waits, and stops every topic, so an in-flight download winds down at its next pa
 declares its topic after its sink, so destroying the service waits for an in-flight cycle before the
 sink it is using goes away.
 
+The engine stops `CMSync` before the router and the indexer connector, so a cycle still running can
+fail against them (`Orchestrator has been shutdown`, an aborted indexer query). Once the flag is set,
+such a failure is logged at `INFO` as `Synchronization aborted for space '<space>' by the shutdown:
+<error>` instead of the `WARNING` `Failed to synchronize space …`, and the space is still `FAILED`.
+`requestShutdown()` also tells each space's sink (`RulesetSpaceSink::requestShutdown()`), whose failed
+route swap is then logged the same way instead of the `ERROR` `Failed to sync the namespace in route
+for space …`. Any failure after the request is reported as an abort, including a genuine one that
+coincides with the stop: the engine is stopping and the space is `FAILED` either way.
+
+The `RouteStatusReporter` of the `cm-sync-task` is stopped before `CMSync` (and so before the
+orchestrator, whose `getEntries()` returns no routes once shut down): from the return of its
+`requestShutdown()` on, the task logs neither `No active routes available` nor `Event processing is
+now active`, also for a report already querying the router.
+
 ## Directory Structure
 
 ```
@@ -128,13 +142,19 @@ cmsync/
 ├── CMakeLists.txt
 ├── README.md
 ├── interface/cmsync/icmsync.hpp     # ICMSync + SpaceStatus
-├── include/cmsync/cmsync.hpp        # CMSync
-├── src/cmsync.cpp
+├── include/cmsync/
+│   ├── cmsync.hpp                   # CMSync
+│   └── routeStatusReporter.hpp      # RouteStatusReporter (route status logging of the cm-sync-task)
+├── src/
+│   ├── cmsync.cpp
+│   └── routeStatusReporter.cpp
 └── test/
     ├── mocks/cmsync/mockCMSync.hpp  # MockCMSync
     └── src/
-        ├── unit/cmsync_test.cpp       # Orchestration, through a scripted topic
-        └── component/cmsync_test.cpp  # Real registrations, far ends faked
+        ├── unit/captureLogs.hpp                # Captures the engine log lines of a call, with their level
+        ├── unit/cmsync_test.cpp                # Orchestration, through a scripted topic
+        ├── unit/routeStatusReporter_test.cpp   # RouteStatusReporter
+        └── component/cmsync_test.cpp           # Real registrations, far ends faked
 ```
 
 ## Public Interface
@@ -176,6 +196,24 @@ constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t 
 }
 ```
 
+### `RouteStatusReporter`
+
+Logs whether incoming events have an enabled route. `main.cpp` builds it with a callback over the orchestrator's `getEntries()` and calls `report()` before and after each `synchronize()` of the `cm-sync-task`.
+
+```cpp
+class RouteStatusReporter
+{
+public:
+    RouteStatusReporter(std::function<bool()> hasEnabledRoutes, bool firstStart);
+    void report();          // logs only on a transition; the first report always logs
+    void requestShutdown(); // idempotent, thread-safe; afterwards report() logs nothing
+};
+```
+
+- Transition to "no enabled route": `WARNING [CMSync] No active routes available. Incoming events will be discarded until content synchronization completes`, or `INFO` on the first start of the engine (no content synchronized yet).
+- Transition to "at least one enabled route": `INFO [CMSync] Event processing is now active`.
+- `report()` queries the callback without a lock, then checks the shutdown, updates the last reported state and logs under one mutex, which `requestShutdown()` also takes. Once `requestShutdown()` has returned nothing is logged, including by a `report()` that was already querying the router, and `requestShutdown()` never waits for the router. A callback exception propagates and leaves the reported state unchanged.
+
 ## CMake Targets
 
 | Target | Type | Alias | Links |
@@ -190,8 +228,14 @@ constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t 
 
 - **Unit** — one topic per tracked space whose sink is also its token store, orphan collection at
   startup, the record and the deployment read back, a malformed record rejected, the status table
-  above, retries, shutdown, the early-retry return value and `earlyRetryInterval()`, and the logging
+  above, retries, shutdown (a failure after the request logged as an abort at `INFO`, the same failure
+  without it at `WARNING`), the early-retry return value and `earlyRetryInterval()`, and the logging
   of a missing space and of a recovery.
+- **Unit** (`routeStatusReporter_test.cpp`) — `RouteStatusReporter` against the real log lines and
+  their level (`captureLogs()` and `countAtLevel()` of `captureLogs.hpp`, shared with
+  `cmsync_test.cpp`): the first-start INFO vs restart WARNING, transitions only, silence after
+  `requestShutdown()`, a report parked in the router query while `requestShutdown()` returns, and
+  callback exceptions.
 - **Component** — `CMSync` over real registrations with the router and stores faked: a cycle
   against an empty indexer defers or finds nothing without failing, and shutdown stops the run.
 - The download and deployment are covered by `cmcontent_utest` and `content_manager_utest`.
@@ -200,5 +244,5 @@ constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t 
 
 | Module | Dependency | Role |
 |---|---|---|
-| `main.cpp` | `cmsync::cmsync` | Builds `CMSync` (only when event processing is enabled) and the `cm-sync-task` that runs it |
+| `main.cpp` | `cmsync::cmsync` | Builds `CMSync` (only when event processing is enabled) and the `cm-sync-task` that runs it; builds the `RouteStatusReporter` that task calls around each `synchronize()`, and stops it before `CMSync` and the orchestrator |
 | `api::status` | `cmsync::icmsync` | Reports per-space status through `GET /status` |

@@ -34,6 +34,9 @@ namespace
 
     constexpr auto SHUTTING_DOWN_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto SCAN_FAILED_BODY {R"({"error":"vulnerability scan failed","code":500})"};
+    /* A scan that failed because the indexer is unreachable is retryable, so it answers 503 rather
+     * than the 500 an agent logs as a protocol error. */
+    constexpr auto SCAN_INDEXER_UNAVAILABLE_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto FEED_NOT_READY_BODY {R"({"error":"vulnerability feed not ready","code":503})"};
 
     /* On-demand scan outcomes. The caller is the Task Manager's dispatcher, which classifies by
@@ -316,6 +319,22 @@ namespace invsync::vd
                 m_registry->release(item.session.agentId, AgentInFlightRegistry::Lane::Scan);
             };
 
+            // A failed scan is answered 500, EXCEPT when the cause is an unreachable indexer: that is
+            // transient and retryable, so it answers 503 like respondConnectorFailure() does for the
+            // non-scan failures. Without this a cluster outage reaches the agent as a protocol error
+            // it cannot act on, instead of "manager not ready".
+            const auto indexerUnavailable = [&]()
+            {
+                try
+                {
+                    return !connector.isAvailable();
+                }
+                catch (...) // LCOV_EXCL_LINE -- isAvailable() does not throw in the real connector
+                {
+                    return false;
+                }
+            };
+
             if (m_stopping.load(std::memory_order_acquire))
             {
                 finish(503, SHUTTING_DOWN_BODY);
@@ -406,10 +425,21 @@ namespace invsync::vd
                     case AgentScanOutcome::Failed:
                     default:
                         m_scansFailed->add();
-                        LOGFN_WARN(logFn(),
-                                   "The on-demand vulnerability scan for agent %s failed. The caller will retry.",
-                                   item.session.agentId.c_str());
-                        finish(500, SCAN_FAILED_BODY);
+                        if (indexerUnavailable())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "The on-demand vulnerability scan for agent %s failed and the indexer is "
+                                       "unreachable. Answering 503; the caller will retry.",
+                                       item.session.agentId.c_str());
+                            finish(503, SCAN_INDEXER_UNAVAILABLE_BODY);
+                        }
+                        else
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "The on-demand vulnerability scan for agent %s failed. The caller will retry.",
+                                       item.session.agentId.c_str());
+                            finish(500, SCAN_FAILED_BODY);
+                        }
                         break;
                 }
 
@@ -470,12 +500,25 @@ namespace invsync::vd
             {
                 observeScanDuration();
                 m_scansFailed->add();
-                LOGFN_WARN(logFn(),
-                           "The vulnerability scan for agent %s failed: %s. Answering 500 with NOTHING indexed; the "
-                           "agent will retry scan and ingest together.",
-                           item.session.agentId.c_str(),
-                           e.what());
-                finish(500, SCAN_FAILED_BODY);
+                if (indexerUnavailable())
+                {
+                    LOGFN_WARN(logFn(),
+                               "The vulnerability scan for agent %s failed and the indexer is unreachable: %s. "
+                               "Answering 503 with NOTHING indexed; the agent will retry scan and ingest together.",
+                               item.session.agentId.c_str(),
+                               e.what());
+                    finish(503, SCAN_INDEXER_UNAVAILABLE_BODY);
+                }
+                else
+                {
+                    LOGFN_WARN(
+                        logFn(),
+                        "The vulnerability scan for agent %s failed: %s. Answering 500 with NOTHING indexed; the "
+                        "agent will retry scan and ingest together.",
+                        item.session.agentId.c_str(),
+                        e.what());
+                    finish(500, SCAN_FAILED_BODY);
+                }
                 continue;
             }
 

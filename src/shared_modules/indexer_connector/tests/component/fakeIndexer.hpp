@@ -96,10 +96,16 @@ public:
     }
 
     /**
-     * @brief Number of `GET /_cat/health` requests served since this server started.
+     * @brief Number of health-check requests served since this server started.
      *
-     * Lets a test assert how many health-check ROUNDS happened, which is the observable difference
-     * between connectors that each build their own monitor and connectors sharing one IndexerSession.
+     * Counts a request to the index-scoped `GET /_cluster/health/<pattern>` the connector probes
+     * with. It is deliberately not keyed to a literal path -- that is what let this counter keep
+     * its meaning across the move from the cluster-wide `/_cat/health` -- and what it measures is a
+     * health-check ROUND, the observable difference between connectors that each build their own
+     * monitor and connectors sharing one IndexerSession.
+     *
+     * The cluster-wide route is NOT served any more: serving both would let a regression back to
+     * `/_cat/health` pass the component suite unnoticed.
      *
      * @return The request count.
      */
@@ -177,26 +183,35 @@ public:
      */
     void run()
     {
-        // Endpoint where the health status is returned.
-        m_server.Get("/_cat/health",
+        // Endpoint where the health status of a set of indices is returned.
+        //
+        // Registered as a regular expression so that ANY index pattern matches, the
+        // `wazuh-*,.wazuh-*` the manager asks for included: httplib builds a RegexMatcher for every
+        // pattern that carries no `/:` path parameter and runs it over the URL-decoded request path,
+        // so the `*` and `,` of the suffix are matched as the literal characters they are.
+        m_server.Get(R"(/_cluster/health(/.*)?)",
                      [this](const httplib::Request& req, httplib::Response& res)
                      {
                          ++m_healthRequests;
-                         const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
-                                                                       {"timestamp", "23:51:04"},
-                                                                       {"cluster", "wazuh-cluster"},
+                         // `_cluster/health` answers with a bare object, unlike the cluster-wide
+                         // `_cat/health` this replaced, which answered with an array of one row.
+                         // Driven by `m_health`, so setHealth() still governs what the probe sees.
+                         const auto response = nlohmann::json::object({{"cluster_name", "wazuh-cluster"},
                                                                        {"status", m_health},
-                                                                       {"node.total", "1"},
-                                                                       {"node.data", "1"},
-                                                                       {"discovered_cluster_manager", "true"},
-                                                                       {"shards", "166"},
-                                                                       {"pri", "166"},
-                                                                       {"relo", "0"},
-                                                                       {"init", "0"},
-                                                                       {"unassign", "0"},
-                                                                       {"pending_tasks", "0"},
-                                                                       {"max_task_wait_time", "-"},
-                                                                       {"active_shards_percent", "100.0%"}}});
+                                                                       {"timed_out", false},
+                                                                       {"number_of_nodes", 1},
+                                                                       {"number_of_data_nodes", 1},
+                                                                       {"discovered_master", true},
+                                                                       {"active_primary_shards", 166},
+                                                                       {"active_shards", 166},
+                                                                       {"relocating_shards", 0},
+                                                                       {"initializing_shards", 0},
+                                                                       {"unassigned_shards", 0},
+                                                                       {"delayed_unassigned_shards", 0},
+                                                                       {"number_of_pending_tasks", 0},
+                                                                       {"number_of_in_flight_fetch", 0},
+                                                                       {"task_max_waiting_in_queue_millis", 0},
+                                                                       {"active_shards_percent_as_number", 100.0}});
 
                          std::stringstream ss;
                          ss << response.dump();
