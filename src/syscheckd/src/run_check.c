@@ -343,6 +343,8 @@ STATIC bool fim_has_configured_paths(void) {
 #ifdef WIN32
     bool has_registries = fim_has_configured_registries();
     return has_directories || has_registries;
+#elif defined(__linux__)
+    return has_directories || syscheck.container_enabled;
 #else
     return has_directories;
 #endif
