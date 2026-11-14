@@ -412,8 +412,12 @@ Sin esto, el gating de la sección nueva —la trampa descrita en §34.1— no t
 
 ### Verificación NO ejecutada, y qué falta
 
-1. **Los objetos prebuilt siguen sin regenerar, y el build falla hasta que lo estén.** F1, F8 y F9 tocan `rt_file.bpf.c` o `rt_event_contract.h`, y el digest de `CMakeLists.txt:171-172` cubre ambos. Todo lo de arriba se hizo con `-DRT_BPF_STRICT_PREBUILT=OFF`. No se pueden regenerar aquí: hace falta un `bpftool btf dump` del kernel del host —esta máquina no tiene `bpftool` funcional— y la verificación de carga sobre la matriz de kernels que registra `prebuilt/x86/rt_file.bpf.o.provenance`. El `vmlinux.h` vendorizado no sirve y nunca ha servido (`prebuilt/README.md`).
-2. **El objeto con el que corrieron los tests de kernel se compiló contra un `vmlinux.h` prestado** (el de los selftests de libbpf en otro árbol), no contra el que registra el `.provenance`. Compila, pasa `check_bpf_symbols.sh`, carga y attachea en 6.6 — pero no es el artefacto que se publicaría.
+1. **El prebuilt de x86 está regenerado; el de arm64 no.** F1, F8, F9 y F4 tocan `rt_file.bpf.c` o `rt_event_contract.h`, que es lo que cubre el digest de `CMakeLists.txt:171-172`.
+
+   El de x86 se reconstruyó en la VM `wazuh_manager` —Ubuntu 24.04.5, kernel 7.0.0-42-generic, clang 18.1.3: **el mismo host, kernel y clang que su predecesor**, así que las únicas entradas que cambiaron son los dos archivos del digest. Verificado allí con `bpftool prog loadall`: pinan los 15 programas, incluido `kprobe__mnt_want_write_file`, y se crea `wire_map`. El verificador acepta el empaquetado de offset variable de `append_task_cwd()` y la admisión adelantada. Después se corrió sobre un kernel **distinto** del de compilación, el 6.6 de esta máquina, que es para lo que existe CO-RE: leak, drops, filter, skip y paths pasan contra ese archivo exacto. `cmake` ya no reporta STALE con el guard en su ON por defecto.
+
+   **arm64 sigue obsoleto.** Necesita un `vmlinux.h` volcado de un host aarch64 y aquí no hay ninguno; un toolchain cruzado no ayudaría, porque el ELF BPF es independiente de arquitectura y el header es la única entrada que depende de ella. Un build de arm64 sigue fallando el guard.
+2. **Dos objetos distintos corrieron los tests**, y conviene no confundirlos: durante el desarrollo, uno compilado contra un `vmlinux.h` prestado de otro árbol; al final, **el prebuilt commiteado**, que es el artefacto que se publica. Las dos tandas pasan.
 3. **Sólo se probó en un kernel.** 6.6 de WSL2, cgroup v2 unificado, sin BPF LSM activo: el peldaño ejercitado fue el de kprobes. Ni la rama de `bpf_d_path`, ni la de LSM walk, ni cgroup v1, ni los kernels de la familia RHEL.
 4. **Nada medido.** Ni el coste del hoisting de F8, ni la frecuencia real del camino por descriptor de F1, ni el coste de la confirmación de F2.
 
