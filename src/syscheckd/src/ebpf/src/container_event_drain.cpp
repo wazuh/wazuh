@@ -1440,8 +1440,9 @@ namespace fim_container_events
                  * reached.
                  *
                  * Dropping the batch is the right failure: it was already consumed
-                 * from staging, every mode here is idempotent, and the whole-node
-                 * reconciliation floor re-derives whatever this pass did not do. */
+                 * from staging and every mode here is idempotent. The reconciliation
+                 * floor retries cleanup of absent containers; file changes in
+                 * surviving containers wait for the next enabled periodic walk. */
                 try
                 {
                     const auto request = PlanFor(batch);
@@ -1453,12 +1454,14 @@ namespace fim_container_events
                 catch (const std::exception& err)
                 {
                     LogError(std::string {"Container eBPF drain: the reconcile consumer dropped a batch: "} +
-                             err.what() + ". The reconciliation floor will re-derive it.");
+                             err.what() + ". Absent-container cleanup will be retried by reconciliation; file changes "
+                             "wait for the next enabled periodic container walk.");
                 }
                 catch (...)
                 {
                     LogError("Container eBPF drain: the reconcile consumer dropped a batch for an unknown "
-                             "reason. The reconciliation floor will re-derive it.");
+                             "reason. Absent-container cleanup will be retried by reconciliation; file changes "
+                             "wait for the next enabled periodic container walk.");
                 }
             }
         }
@@ -1623,16 +1626,9 @@ namespace fim_container_events
         if (impl->handle == nullptr)
         {
             /* Expected on any host without the capability. Host FIM keeps working.
-             * Deliberately NOT "container FIM falls back to scheduled baselines":
-             * there is no scheduled container baseline to fall back to —
-             * fim_run_container_baseline() runs once from main(), and the only
-             * thing that re-runs it is this drain's own rebaselineAll.
-             *
-             * The admission-only resolver and consumer still run the periodic
-             * reconciliation floor and clean up reported removals, so a removed
-             * container's rows can be deleted without the engine. Neither is a
-             * periodic container walk, though: file changes inside a surviving
-             * container are not detected without the engine.
+             * The admission-only resolver and consumer still reconcile removals.
+             * Changes inside surviving containers rely on the periodic walk from
+             * start_daemon(), when its container frequency is greater than zero.
              *
              * The caller turns this into a WARNING when container directories are
              * actually configured; the detail stays here at debug level. */

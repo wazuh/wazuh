@@ -47,6 +47,10 @@ typedef struct fim_container_host_api_t
      *  rather than copied so a configuration reload is picked up. */
     const syscheck_config* config;
 
+    /** Database lifetime barrier, acquired before the container state lock. */
+    pthread_mutex_t* scan_mutex;
+    bool (*shutdown_process_on)(void);
+
     /** The lock guarding the daemon's synced-document counters. The container
      *  counters deliberately share it, so the two populations cannot interleave
      *  an update -- which means it has to be the daemon's own lock, not one of

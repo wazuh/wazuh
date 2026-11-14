@@ -32,6 +32,10 @@ extern "C"
 
 extern "C" void container_reporting_test_host(int limit);
 extern "C" void container_reporting_test_row_limit(int limit);
+extern "C" void container_reporting_test_frequency(int frequency);
+extern "C" void container_reporting_test_shutdown(bool value);
+extern "C" int container_reporting_test_scan_trylock(void);
+extern "C" void container_reporting_test_scan_unlock(void);
 
 /* Defined in container_baseline_fim.cpp under WAZUH_UNIT_TESTING: the drain's own
  * reconcile handler, which has internal linkage there. */
@@ -1975,6 +1979,21 @@ TEST_F(ContainerReportingTest, AnEngineFailureStillWarnsThatChangesWillNotBeDete
     }), 1);
 }
 
+TEST_F(ContainerReportingTest, AnEngineFailureReportsTheEnabledPeriodicWalk)
+{
+    container_reporting_test_frequency(1800);
+    fim_container_events_start();
+    fim_container_events_stop();
+    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto & warning)
+    {
+        return warning.find("periodic container walk every 1800 seconds") != std::string::npos;
+    }), 1);
+    EXPECT_EQ(std::count_if(warnings.begin(), warnings.end(), [](const auto & warning)
+    {
+        return warning.find("will NOT be detected") != std::string::npos;
+    }), 0);
+}
+
 TEST_F(ContainerReportingTest, AFailedDrainSettlesAdmissionWithoutAnotherFilesystemWalk)
 {
     admission = {{"a", true}, {"b", false}};
@@ -2668,4 +2687,62 @@ TEST_F(ContainerReportingTest, AnUnregisteredHostStillReleasesTheRow)
     fim_container_baseline_set_host_api(nullptr);
     EXPECT_EQ(fim_persist_baseline_row("a:/etc/one", OPERATION_CREATE, "idx", cJSON_CreateObject(), 1), -1);
     EXPECT_TRUE(persisted.empty());
+}
+
+TEST_F(ContainerReportingTest, ConsumerBaselineHoldsTheDatabaseLifetimeBarrierAndReleasesOnException)
+{
+    files = {{"a", {"/etc/one"}}};
+    bool injected = false;
+    inside_walk = [&]
+    {
+        injected = true;
+        // Probe from another thread: POSIX does not require a normal mutex to
+        // diagnose a trylock by its owner.
+        auto probe = std::async(std::launch::async, []
+        {
+            const int result = container_reporting_test_scan_trylock();
+            if (result == 0) container_reporting_test_scan_unlock();
+            return result;
+        });
+        EXPECT_EQ(probe.get(), EBUSY);
+        throw std::runtime_error("injected walk failure");
+    };
+    fim_container_events::ReconcileRequest request;
+    request.mode = fim_container_events::ReconcileMode::rebaselineAll;
+    fim_container_reconcile_batch_for_testing(request);
+    EXPECT_TRUE(injected);
+    const int result = container_reporting_test_scan_trylock();
+    EXPECT_EQ(result, 0);
+    if (result == 0) container_reporting_test_scan_unlock();
+}
+
+TEST_F(ContainerReportingTest, EveryConsumerModeRechecksShutdownAfterTheDatabaseBarrier)
+{
+    using fim_container_events::ReconcileMode;
+    files = {{"a", {"/etc/one"}}};
+    fim_run_container_baseline();
+    for (const auto mode : {ReconcileMode::rebaselineAll, ReconcileMode::rewalkContainer,
+                           ReconcileMode::rereadPaths, ReconcileMode::deletePaths,
+                           ReconcileMode::containerGone, ReconcileMode::sweepAbsent})
+    {
+        container_reporting_test_shutdown(false);
+        ASSERT_EQ(container_reporting_test_scan_trylock(), 0);
+        fim_container_events::ReconcileRequest request;
+        request.mode = mode;
+        request.container_id = "a";
+        request.paths = {"/etc/one"};
+        auto batch = std::async(std::launch::async, [&]
+        {
+            fim_container_reconcile_batch_for_testing(request);
+        });
+        EXPECT_EQ(batch.wait_for(std::chrono::milliseconds(50)), std::future_status::timeout);
+        container_reporting_test_shutdown(true);
+        container_reporting_test_scan_unlock();
+        batch.get();
+        EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 1);
+        const int result = container_reporting_test_scan_trylock();
+        EXPECT_EQ(result, 0);
+        if (result == 0) container_reporting_test_scan_unlock();
+    }
+    container_reporting_test_shutdown(false);
 }
