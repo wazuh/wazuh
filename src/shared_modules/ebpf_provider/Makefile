@@ -26,10 +26,13 @@ INCLUDES := -Iinclude -Ibpf -I../common
 
 all: rt_engine_harness
 
-vmlinux.h:
-	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > bpf/vmlinux.h
+# Target name must BE the file it produces, or make re-runs it on every build
+# and fails on a host whose bpftool cannot dump BTF even when bpf/vmlinux.h is
+# already there.
+bpf/vmlinux.h:
+	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > $@
 
-rt_file.bpf.o: bpf/rt_file.bpf.c vmlinux.h include/rt_event_contract.h tools/check_bpf_symbols.sh
+rt_file.bpf.o: bpf/rt_file.bpf.c bpf/vmlinux.h include/rt_event_contract.h tools/check_bpf_symbols.sh
 	$(CLANG) -O2 -g -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) -Ibpf -c bpf/rt_file.bpf.c -o $@
 	./tools/check_bpf_symbols.sh $@
 
