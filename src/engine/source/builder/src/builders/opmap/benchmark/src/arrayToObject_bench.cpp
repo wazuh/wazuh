@@ -105,8 +105,7 @@ void runMap(benchmark::State& state, const MapOp& op, const std::string& text, s
     // input_bytes is the size of the input event text.
     state.counters["input_bytes"] = static_cast<double>(text.size());
 
-    // Untimed guard: runs the whole op once, so the wall clock of single-iteration sizes is about twice the reported
-    // time.
+    // Untimed guard: runs the whole op once.
     {
         const auto check = op(event);
         if (!check || !check.payload().isObject() || check.payload().size() != members)
@@ -210,13 +209,16 @@ void BM_DeleteFieldsWithValue(benchmark::State& state)
 } // namespace
 
 // =============================================================================
-// Registrations: a range sweep and a single large run per benchmark.
+// Registrations: a range sweep per benchmark. The helpers that build an object from an array run every size the same
+// way, plus two small sizes for the per-event cost; delete_fields_with_value keeps a single run of its largest size.
 // =============================================================================
 
-#define REGISTER_SCALING_BENCH(name)                                                                                   \
-    BENCHMARK(name)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);                              \
-    BENCHMARK(name)->Arg(65536)->Iterations(1)->Unit(benchmark::kMicrosecond)
+// Small arrays: per-event cost with few elements.
+BENCHMARK(BM_ArrayToObject)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ArrayToObjectChanges)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
 
-REGISTER_SCALING_BENCH(BM_ArrayToObject);
-REGISTER_SCALING_BENCH(BM_ArrayToObjectChanges);
-REGISTER_SCALING_BENCH(BM_DeleteFieldsWithValue);
+BENCHMARK(BM_ArrayToObject)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ArrayToObjectChanges)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond);
+
+BENCHMARK(BM_DeleteFieldsWithValue)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_DeleteFieldsWithValue)->Arg(65536)->Iterations(1)->Unit(benchmark::kMicrosecond);

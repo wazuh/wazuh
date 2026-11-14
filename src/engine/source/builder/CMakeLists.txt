@@ -165,6 +165,7 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
 	${UNIT_SRC_DIR}/builders/opmap/arrayObj_to_MapKv_test.cpp
 	${UNIT_SRC_DIR}/builders/opmap/array_extract_key_obj_test.cpp
+	${UNIT_SRC_DIR}/builders/opmap/arrayToObject_diff_test.cpp
 
 	# Enrichment Builders
 	${UNIT_SRC_DIR}/builders/enrichment/geo_test.cpp

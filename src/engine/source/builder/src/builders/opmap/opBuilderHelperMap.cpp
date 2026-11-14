@@ -21,6 +21,7 @@
 #include <re2/re2.h>
 
 #include <base/error.hpp>
+#include <base/jsonPathWriter.hpp>
 #include <base/utils/communityId.hpp>
 #include <base/utils/hash.hpp>
 #include <base/utils/ipUtils.hpp>
@@ -1729,6 +1730,8 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
 
         json::Json result;
         result.setObject();
+        // One writer for the whole result: it indexes the object once it has many members
+        json::PathWriter writer(result);
 
         size_t inserts {0};
 
@@ -1761,7 +1764,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
 
                 const std::string basePath = json::Json::formatJsonPath(normalizedKey, /*skipDot=*/true);
 
-                result.set(basePath, valueOpt.value());
+                writer.set(basePath, valueOpt.value());
                 ++inserts;
             }
         }
@@ -1960,6 +1963,8 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
 
         json::Json result;
         result.setObject();
+        // One writer for the whole result: it indexes the object once it has many members
+        json::PathWriter writer(result);
 
         size_t inserts {0};
 
@@ -1998,11 +2003,11 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                 {
                     if (relPath.empty())
                     {
-                        result.set(basePath, value);
+                        writer.set(basePath, value);
                     }
                     else
                     {
-                        result.set(fmt::format("{}{}", basePath, relPath), value);
+                        writer.set(fmt::format("{}{}", basePath, relPath), value);
                     }
                 };
 
