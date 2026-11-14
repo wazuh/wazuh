@@ -47,7 +47,7 @@
 #include <unistd.h>
 
 #define SKIP_EXIT 77
-#define EVENTS_PER_CHILD 4000 /* an unpolled ring holds ~675 of these records */
+#define EVENTS_PER_CHILD 4000 /* an unpolled ring holds ~674 of these records */
 #define MAX_REPORTED 64
 
 static int g_failures = 0;

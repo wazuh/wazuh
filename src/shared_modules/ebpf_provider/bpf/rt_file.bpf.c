@@ -26,6 +26,10 @@
 #define O_CREAT       0100
 #define O_ACCMODE     00000003
 
+/* iattr.ia_valid bit saying ia_file is set. A UAPI-adjacent constant from
+ * fs.h, which carries no BTF, so it cannot be read from vmlinux.h. */
+#define ATTR_FILE     (1 << 13)
+
 #define MAX_PATH_COMPONENTS  320
 #define PERCPU_BUF_SIZE      (1 << 15)
 #define HALF_BUF_SIZE        (PERCPU_BUF_SIZE >> 1)
@@ -166,7 +170,7 @@ struct
 /* In-kernel cgroup filtering.
  *
  * Without it every consumer receives every write-intent open on the host, as a
- * 12,416-byte record into an 8 MiB ring — roughly 675 records in flight. A
+ * 12,424-byte record into an 8 MiB ring — roughly 674 records in flight. A
  * container-scoped consumer pays that whole firehose to learn about a handful
  * of cgroups, and it is what makes loss reachable at all: measured, 198,000
  * events from ten parallel producers dropped 203, while the same producer count
@@ -188,33 +192,10 @@ struct
  * The mode lives in a map rather than a .rodata constant so that a consumer can
  * change it on a live handle; the allowlist has to be mutable anyway, because
  * containers are created after the engine is opened.
- */
-#define RT_CGROUP_MODE_ALL       0
-#define RT_CGROUP_MODE_ALLOWLIST 1
-
-/* filter_cfg slots. Two scalars in one array rather than a struct value, so
- * rt_set_cgroup_mode() can keep rewriting the mode on a live handle without a
- * read-modify-write of anything else. */
-#define FILTER_CFG_KEY_MODE 0
-#define FILTER_CFG_KEY_SKIP 1
-
-/* Which v1 controller hierarchy to read a container's cgroup id from, stored
- * as index+1 so that an unwritten slot — array maps start zeroed — means "not
- * configured" and is distinguishable from subsystem 0, which is a real
- * controller (cpuset).
  *
- * Unset is the normal case: on a unified or hybrid host
- * bpf_get_current_cgroup_id() already reports a usable per-cgroup id, and this
- * path is never taken. */
-#define FILTER_CFG_KEY_V1_SUBSYS 2
-
-/* An upper bound for the verifier, not a kernel limit. CGROUP_SUBSYS_COUNT is
- * build-dependent (15 on the hosts measured); anything at or above this is
- * refused rather than read. */
-#define RT_V1_SUBSYS_MAX 64
-
-/* Mirrors RT_SKIP_PROC_CONTEXT in rt_engine.h; the two must stay in step. */
-#define RT_SKIP_PROC_CONTEXT (1u << 0)
+ * The slot keys, RT_CGROUP_MODE_*, RT_SKIP_PROC_CONTEXT and RT_V1_SUBSYS_MAX
+ * all come from rt_event_contract.h, which both sides include.
+ */
 
 struct
 {
@@ -395,6 +376,21 @@ statfunc int event_is_wanted(__u64 cgroup_id)
     }
 
     return bpf_map_lookup_elem(&cgroup_allow_map, &cgroup_id) != NULL;
+}
+
+/* Admission for one event, resolved before anything expensive.
+ *
+ * Returns 0 when the event must be dropped. On admission the cgroup id goes
+ * out through `out` rather than the return value, because 0 is a legitimate id
+ * (a pure cgroup v1 host with no controller configured reports it) and must
+ * not read as a rejection. */
+statfunc int rt_admit(__u64* out)
+{
+    const __u64 cgroup_id = current_container_cgroup_id();
+
+    *out = cgroup_id;
+
+    return event_is_wanted(cgroup_id);
 }
 
 /* Per-event work this handle's consumer has opted out of. Read after the filter
@@ -664,17 +660,11 @@ statfunc __u32 get_mnt_ns_inum(struct task_struct* task)
     return BPF_CORE_READ(mnt_ns, ns.inum);
 }
 
-statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __u64 dev)
+/* `cgroup_id` comes from rt_admit(), which every caller ran BEFORE resolving a
+ * path. Resolving it again here would be a second walk of the v1 hierarchy on
+ * such hosts, and re-checking admission would be dead code. */
+statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __u64 dev, __u64 cgroup_id)
 {
-    /* Resolved once, up front: the filter needs it before deciding whether to
-     * reserve, and the event needs it afterwards. */
-    __u64 cgroup_id = current_container_cgroup_id();
-
-    if (!event_is_wanted(cgroup_id))
-    {
-        return;
-    }
-
     struct rt_file_event* evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
     if (!evt)
     {
@@ -800,13 +790,20 @@ int kprobe__vfs_open(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -826,6 +823,13 @@ int BPF_PROG(file_open_dpath, struct file* file)
     if (!f_inode || !is_regular_file(f_inode))
         return 0;
 
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     char* full_path = bpf_map_lookup_elem(&dpath_map, &(__u32) {0});
     if (!full_path)
         return 0;
@@ -834,7 +838,7 @@ int BPF_PROG(file_open_dpath, struct file* file)
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -855,13 +859,20 @@ int BPF_PROG(file_open_walk, struct file* file)
 
     struct dentry* dentry = BPF_CORE_READ(file, f_path.dentry);
     struct vfsmount* mnt = BPF_CORE_READ(file, f_path.mnt);
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -897,12 +908,19 @@ int BPF_PROG(path_unlink_dpath, struct path* path, struct dentry* dentry)
     struct inode* d_inode = BPF_CORE_READ(dentry, d_inode);
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_lsm_dpath(path, dentry);
     if (!full_path)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -915,12 +933,19 @@ int BPF_PROG(path_unlink_walk, struct path* path, struct dentry* dentry)
     struct vfsmount* mnt = BPF_CORE_READ(path, mnt);
     if (!mnt)
         return 0;
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -932,12 +957,19 @@ statfunc int path_rename_dpath_event(struct path* dir, struct dentry* dentry,
     struct inode* d_inode = BPF_CORE_READ(old_dentry, d_inode);
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_lsm_dpath(dir, dentry);
     if (!full_path)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -964,12 +996,19 @@ statfunc int path_rename_walk_event(struct path* dir, struct dentry* dentry,
     struct vfsmount* mnt = BPF_CORE_READ(dir, mnt);
     if (!mnt)
         return 0;
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -1016,9 +1055,38 @@ int kprobe__mnt_want_write(struct pt_regs* ctx)
     return 0;
 }
 
+/* The VFS has TWO doors for declaring write intent, and the one above is only
+ * the path-based half. mnt_want_write_file() is the half taken by everything
+ * that operates on an open descriptor — fchmod(), fchown(), ftruncate(),
+ * futimens() — and it is handed a struct file, not a vfsmount.
+ *
+ * Without this program those operations find no mount for the thread, and
+ * get_write_mnt() below returns NULL, which makes the walker stop at the
+ * FILESYSTEM root instead of the mount root: a path relative to the
+ * superblock, silently, with no flag and no drop counted. On a host with /var
+ * mounted separately, /var/log/app.log is reported as /log/app.log and a
+ * consumer's prefix filter then discards it (doc 34, F1).
+ *
+ * This is NOT an event source: it writes the map and nothing else, so it has
+ * no type bit and the loader attaches it best-effort. */
+SEC("kprobe/mnt_want_write_file")
+int kprobe__mnt_want_write_file(struct pt_regs* ctx)
+{
+    __u64 id = bpf_get_current_pid_tgid();
+    __u64 mnt = (__u64)BPF_CORE_READ((struct file*)PT_REGS_PARM1(ctx), f_path.mnt);
+    bpf_map_update_elem(&write_mnt_map, &id, &mnt, BPF_ANY);
+    return 0;
+}
+
 /* Match is_mounted() to exclude private mounts such as overlayfs's upper
  * layer, and require the claimed mount to belong to this superblock.
- * NULL lets the walker stop at the filesystem root. */
+ * NULL lets the walker stop at the filesystem root.
+ *
+ * The entry is NOT consumed: vfs_rename has two programs attached that both
+ * resolve a path for the same thread, so deleting it in the first would blind
+ * the second. The cost is that a stale mount from an earlier operation can be
+ * returned; the superblock equality below is what bounds that to a mount of
+ * the same filesystem. */
 statfunc struct vfsmount* get_write_mnt(struct super_block* sb)
 {
     __u64 id = bpf_get_current_pid_tgid();
@@ -1039,10 +1107,19 @@ SEC("kprobe/security_inode_setattr")
 int kprobe__security_inode_setattr(struct pt_regs* ctx)
 {
     /* CORE reads avoid conditional direct ctx accesses that strict verifiers
-     * reject as modified ctx pointer dereferences. */
+     * reject as modified ctx pointer dereferences.
+     *
+     * The iattr travels with the dentry, from the SAME argument position: the
+     * 6.0 signature inserted mnt_idmap/user_namespace in front, and enterprise
+     * kernels backport it (RHEL 9 on 5.14), so which argument holds what is
+     * decided by whichever one is a valid dentry — not by the version. */
     struct dentry* dentry = resolve_dentry((struct dentry*)PT_REGS_PARM1_CORE(ctx));
+    struct iattr* attr = (struct iattr*)PT_REGS_PARM2_CORE(ctx);
     if (!dentry)
+    {
         dentry = resolve_dentry((struct dentry*)PT_REGS_PARM2_CORE(ctx));
+        attr = (struct iattr*)PT_REGS_PARM3_CORE(ctx);
+    }
     if (!dentry)
         return 0;
 
@@ -1053,13 +1130,29 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
 
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
+    /* An fd-based attribute change carries the file it came from, and that is
+     * the authoritative mount for this operation — better than whatever
+     * get_write_mnt() cached for the thread, which the two-door problem above
+     * can leave stale or empty. Guarded on the field existing: ia_file is not
+     * load-bearing kernel API and the 4.14 original flagged it as the thing to
+     * guard if it ever goes away. */
+    if (bpf_core_field_exists(attr->ia_file) && (BPF_CORE_READ(attr, ia_valid) & ATTR_FILE))
+        mnt = BPF_CORE_READ(attr, ia_file, f_path.mnt);
+
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_ATTR, full_path, inode, dev);
+    submit_event(RT_EV_FILE_ATTR, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -1086,13 +1179,20 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
 
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -1152,11 +1252,18 @@ statfunc int vfs_rename_event(struct pt_regs* ctx, bool old)
 
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
+    /* Admission BEFORE the path walk: current_container_cgroup_id() does not
+     * depend on the resolved path, so a filtered-out cgroup must not pay for
+     * one (doc 34, F8). */
+    __u64 cgroup_id = 0;
+    if (!rt_admit(&cgroup_id))
+        return 0;
+
     const char* full_path = rt_slot_str(
         RT_SLOT_EVENT, rt_walk_path_at(old ? old_dentry : new_dentry, mnt, RT_SLOT_EVENT));
     if (full_path)
     {
-        submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+        submit_event(RT_EV_FILE_RENAME, full_path, inode, dev, cgroup_id);
     }
     return 0;
 }

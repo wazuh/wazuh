@@ -100,34 +100,9 @@ struct rt_filter
     unsigned int skip_mask;
 };
 
-/* Skip the process-context fields: cwd, parent_cwd and parent_comm. They cost
- * two full dentry walks per event, which on the kprobe path — the majority
- * configuration — is the dominant per-event cost. The fields are still present
- * in the record and still null-terminated; they simply arrive empty, so a
- * consumer that sets this must not read them. `ppid` is unaffected: it is a
- * single field read, not a walk. */
-#define RT_SKIP_PROC_CONTEXT (1u << 0)
-
-enum rt_cgroup_mode
-{
-    /* Submit every event. What host whodata needs: it is not container-scoped
-     * and must see the whole node. The default. */
-    RT_CGROUP_MODE_ALL = 0,
-
-    /* Submit only events whose cgroup_id has been added with
-     * rt_allow_cgroup(). Everything else is discarded in the kernel, before a
-     * 12,416-byte ring reservation is even attempted.
-     *
-     * IMPORTANT for a container consumer: in this mode an event from a cgroup
-     * you have not added is invisible, not merely unattributed. That removes
-     * "an event arrived for a cgroup I do not know" as a discovery path — which
-     * is the fallback that otherwise covers a container created after startup,
-     * or one missed by a baseline that raced its runtime's first enumeration.
-     * So allowlist mode makes a create-time trigger from container_instances a
-     * hard prerequisite rather than an optimisation. Start in
-     * RT_CGROUP_MODE_ALL if you do not have one. */
-    RT_CGROUP_MODE_ALLOWLIST = 1,
-};
+/* RT_SKIP_PROC_CONTEXT (the value for rt_filter.skip_mask) and
+ * enum rt_cgroup_mode live in rt_event_contract.h: the BPF program reads both
+ * out of filter_cfg, so they are part of the contract, not of this API. */
 
 #define RT_FILE_OPEN_BIT   (1u << RT_EV_FILE_OPEN)
 #define RT_FILE_ATTR_BIT   (1u << RT_EV_FILE_ATTR)

@@ -48,7 +48,7 @@
 #include <unistd.h>
 
 #define SKIP_EXIT 77
-#define EVENTS_PER_CHILD 300 /* well under the ring's ~675-record capacity */
+#define EVENTS_PER_CHILD 300 /* well under the ring's ~674-record capacity */
 
 static int g_failures = 0;
 

@@ -42,16 +42,6 @@
 #include <string.h>
 #include <sys/stat.h>
 
-/* filter_cfg slots, mirroring the same names in bpf/rt_file.bpf.c. The two
- * must stay in step: the BPF side reads these keys. */
-#define FILTER_CFG_KEY_MODE 0
-#define FILTER_CFG_KEY_SKIP 1
-/* index+1, so an unwritten slot means "not configured" and stays
- * distinguishable from subsystem 0, which is a real controller. Must match
- * bpf/rt_file.bpf.c. */
-#define FILTER_CFG_KEY_V1_SUBSYS 2
-#define RT_V1_SUBSYS_MAX         64
-
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
 #define KERNEL_BTF_FILE "/sys/kernel/btf/vmlinux"
@@ -422,6 +412,17 @@ static unsigned int type_bit_for_section(const char* sec)
     return 0;
 }
 
+/* The two write-intent bookkeeping probes. Neither emits an event, so neither
+ * has a type bit: they are selected from what the EMITTING programs need, and
+ * they must both be recognised here or a new one would fall through to the
+ * type-bit path, get autoload=false and never attach -- which looks exactly
+ * like not having added it at all. */
+static int is_write_mnt_probe(const char* sec)
+{
+    return sec && (strcmp(sec, "kprobe/mnt_want_write") == 0 ||
+                   strcmp(sec, "kprobe/mnt_want_write_file") == 0);
+}
+
 static void select_programs(struct bpf_object* obj, unsigned int type_mask, int prefer_lsm, int prefer_dpath,
                             const struct rt_log_target* log)
 {
@@ -433,9 +434,9 @@ static void select_programs(struct bpf_object* obj, unsigned int type_mask, int 
         const char* name = g_libbpf.prog_name(prog);
         int keep = 0;
 
-        /* This auxiliary probe emits no event, so it has no type bit.
-         * Defer it until the dependent programs' actual selection is known. */
-        if (sec && strcmp(sec, "kprobe/mnt_want_write") == 0)
+        /* These auxiliary probes emit no event, so they have no type bit.
+         * Defer them until the dependent programs' actual selection is known. */
+        if (is_write_mnt_probe(sec))
         {
             continue;
         }
@@ -473,7 +474,7 @@ static void select_programs(struct bpf_object* obj, unsigned int type_mask, int 
     while ((prog = g_libbpf.next_program(obj, prog)) != NULL)
     {
         const char* sec = g_libbpf.section_name(prog);
-        if (sec && strcmp(sec, "kprobe/mnt_want_write") == 0)
+        if (is_write_mnt_probe(sec))
         {
             const char* name = g_libbpf.prog_name(prog);
             g_libbpf.set_autoload(prog, need_write_mnt);
@@ -724,8 +725,24 @@ static rt_handle_t open_attempt(const struct rt_filter* filter, int prefer_lsm, 
         struct bpf_link* link = g_libbpf.attach(prog);
         if (!link || (unsigned long)link >= (unsigned long)-4095)
         {
-            *failure = 2;
             const char* name = g_libbpf.prog_name(prog);
+
+            /* The write-intent probes emit nothing: losing one degrades path
+             * resolution for the operations that take that VFS door, and
+             * nothing else. Failing the open over it would walk the whole
+             * fallback ladder and end with NO engine at all, which is far
+             * worse than a filesystem-relative path. Every emitting program
+             * stays fatal. */
+            if (is_write_mnt_probe(g_libbpf.section_name(prog)))
+            {
+                rt_log(&h->log, RT_LOG_WARN,
+                       "could not attach the write-intent probe '%s'; paths for operations that take "
+                       "that VFS path will resolve against the filesystem root instead of the mount.",
+                       name ? name : "?");
+                continue;
+            }
+
+            *failure = 2;
             snprintf(failed_prog, RT_PROG_NAME_MAX, "%s", name ? name : "?");
             rt_log(&h->log, RT_LOG_DEBUG, "failed to attach '%s' (%s programs)", failed_prog,
                    file_hooks_name(prefer_lsm, prefer_dpath));

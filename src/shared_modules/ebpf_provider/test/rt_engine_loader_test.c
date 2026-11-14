@@ -32,6 +32,9 @@ static int g_failures;
     } while (0)
 
 static atomic_int g_opens, g_symbols, g_closes, g_objects, g_warnings, g_errors, g_early, g_all_errors;
+/* WARN lines about a write-intent probe that could not attach: the open must
+ * survive one, so it is counted separately from the fatal paths. */
+static atomic_int g_aux_warnings;
 static pthread_barrier_t g_start;
 static pthread_mutex_t g_gate = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_cond = PTHREAD_COND_INITIALIZER;
@@ -77,7 +80,19 @@ static struct fake_program g_programs[] = {
     {"kprobe/vfs_rename", "kprobe__vfs_rename_old", 0},
     {"lsm/path_rename", "path_rename_old_dpath", 0},
     {"lsm/path_rename", "path_rename_old_walk", 0},
+    /* Appended, not inserted: bits[] and the index conditions in fake_load()
+     * are positional. The engine must select this one exactly like index 0 --
+     * it is the descriptor-based half of the same write-intent bookkeeping. */
+    {"kprobe/mnt_want_write_file", "mnt_want_write_file", 0},
 };
+
+/* The write-intent probes emit nothing and the engine attaches them
+ * best-effort, so a scenario that fails "the first attach" must not land on
+ * one of these or it would be testing the wrong rule. */
+static int is_aux_section(const char* sec)
+{
+    return sec && strncmp(sec, "kprobe/mnt_want_write", 21) == 0;
+}
 
 FILE* __real_fopen(const char*, const char*);
 FILE* __wrap_fopen(const char* path, const char* mode)
@@ -111,11 +126,12 @@ static int fake_load(struct bpf_object* obj)
     const int walk = !kprobe && g_rung == 2;
     const unsigned int bits[] = {0, RT_FILE_OPEN_BIT, RT_FILE_ATTR_BIT, RT_FILE_UNLINK_BIT, RT_FILE_RENAME_BIT,
         RT_FILE_OPEN_BIT, RT_FILE_OPEN_BIT, RT_FILE_UNLINK_BIT, RT_FILE_UNLINK_BIT, RT_FILE_RENAME_BIT, RT_FILE_RENAME_BIT, 0,
-        RT_FILE_RENAME_BIT, RT_FILE_RENAME_BIT, RT_FILE_RENAME_BIT};
+        RT_FILE_RENAME_BIT, RT_FILE_RENAME_BIT, RT_FILE_RENAME_BIT, 0};
     for (unsigned int i = 0; i < sizeof(g_programs) / sizeof(*g_programs); ++i)
     {
         int expected = (bits[i] & g_mask) != 0;
-        if (i == 0) expected = (g_mask & (RT_FILE_ATTR_BIT | (kprobe ? RT_FILE_UNLINK_BIT | RT_FILE_RENAME_BIT : 0))) != 0;
+        if (i == 0 || is_aux_section(g_programs[i].sec))
+            expected = (g_mask & (RT_FILE_ATTR_BIT | (kprobe ? RT_FILE_UNLINK_BIT | RT_FILE_RENAME_BIT : 0))) != 0;
         else if ((i >= 5 && i <= 10) || i == 13 || i == 14)
             expected &= !kprobe && ((i % 2 == 0) == walk);
         else if (i == 1 || i == 3 || i == 4 || i == 12) expected &= kprobe;
@@ -127,10 +143,14 @@ static int fake_load(struct bpf_object* obj)
 }
 static struct bpf_link* fake_attach(struct bpf_program* prog)
 {
-    (void)prog;
+    const int aux = is_aux_section(fake_section(prog));
+
+    /* Ladder 10: ONLY the write-intent probes fail. The open must survive it,
+     * on the first rung, with a warning and no error. */
+    if (g_ladder == 10) return aux ? NULL : (++g_live, (struct bpf_link*)1);
     if (g_ladder == 9 && g_rung == 1) return NULL;
     if (g_ladder == 9 && g_rung == 2) return NULL;
-    if (((g_ladder == 4 || g_ladder == 5) && g_rung == 1) || (g_ladder == 6 && g_rung == 2))
+    if (!aux && (((g_ladder == 4 || g_ladder == 5) && g_rung == 1) || (g_ladder == 6 && g_rung == 2)))
     {
         if (g_attach_count++ == (g_mask == RT_FILE_ALL_BITS ? 1 : 0)) return g_ladder == 5 ? (struct bpf_link*)-22L : NULL;
     }
@@ -219,6 +239,10 @@ static void capture_log(int level, const char* msg, void* user)
     if (level == RT_LOG_ERROR && strstr(msg, "missing symbol"))
     {
         atomic_fetch_add(&g_errors, 1);
+    }
+    if (level == RT_LOG_WARN && strstr(msg, "write-intent probe"))
+    {
+        atomic_fetch_add(&g_aux_warnings, 1);
     }
     if (level == RT_LOG_ERROR)
     {
@@ -322,11 +346,20 @@ static int ladder_scenario(int ladder, unsigned int mask)
     filter.type_mask = mask;
     filter.log = capture_log;
     rt_handle_t handle = rt_open(&filter);
-    CHECK((handle != NULL) == (ladder < 8), "ladder %d mask %u failed", ladder, mask);
+    CHECK((handle != NULL) == (ladder < 8 || ladder == 10), "ladder %d mask %u failed", ladder, mask);
     /* A step that recovers is not an error; a ladder where every step fails is exactly one. */
-    CHECK(g_all_errors == (ladder < 8 ? 0 : 1), "ladder %d mask %u logged %d ERROR line(s)", ladder, mask,
-          (int)g_all_errors);
-    const int rungs = ladder == 3 || ladder == 6 || ladder == 8 ? 3 : ladder == 1 || ladder == 7 ? 1 : 2;
+    CHECK(g_all_errors == (ladder < 8 || ladder == 10 ? 0 : 1), "ladder %d mask %u logged %d ERROR line(s)", ladder,
+          mask, (int)g_all_errors);
+    if (ladder == 10)
+    {
+        /* The probe is only selected when something that needs a mount is, so
+         * the warning is expected exactly then -- and never more than once per
+         * selected probe. */
+        const int expected = (mask & RT_FILE_ATTR_BIT) != 0;
+        CHECK((atomic_load(&g_aux_warnings) > 0) == expected, "ladder 10 mask %u aux warnings %d", mask,
+              (int)atomic_load(&g_aux_warnings));
+    }
+    const int rungs = ladder == 3 || ladder == 6 || ladder == 8 ? 3 : ladder == 1 || ladder == 7 || ladder == 10 ? 1 : 2;
     CHECK(g_rung == rungs, "expected %d rungs, got %d", rungs, g_rung);
     if (ladder >= 4 && ladder <= 6 && mask == RT_FILE_ALL_BITS)
         CHECK(g_destroyed > 0, "partial attachment was not destroyed");
@@ -355,7 +388,7 @@ int main(void)
                   "mode %d order %d failed (status %d)", mode, reverse, status);
         }
     }
-    for (int ladder = 1; ladder <= 9; ++ladder)
+    for (int ladder = 1; ladder <= 10; ++ladder)
     {
         for (unsigned int mask = 2; mask <= RT_FILE_ALL_BITS; mask += 2)
         {
