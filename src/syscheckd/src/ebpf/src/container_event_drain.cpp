@@ -699,8 +699,10 @@ namespace fim_container_events
 
             if (ev->event_type == RT_EV_FILE_RENAME)
             {
-                /* The event names the destination only; the source path is never
-                 * reported by anything. See C21 and ContainerEventRouter::onRename. */
+                /* Both ends arrive, as two events in no guaranteed order, with
+                 * nothing in the record saying which end this one is — so neither
+                 * path can be acted on directly. See C21 and
+                 * ContainerEventRouter::onRename for why that escalates. */
                 router.onRename(ev->cgroup_id);
                 return;
             }
@@ -711,6 +713,24 @@ namespace fim_container_events
 
             if (length == 0) return;
 
+            const std::string path{ev->filename, length};
+
+            /* Drop what no configured directory covers BEFORE it takes a slot of the
+             * per-container path budget. The reconcile applies the same test anyway
+             * (SelectReconcilePaths / DeleteUnlinkedPaths), so this changes nothing
+             * about what is reported — it stops a burst of irrelevant paths from
+             * overflowing the budget and escalating the container to a full re-walk.
+             *
+             * Deliberately AFTER the loss branch above: a drop report must escalate
+             * whatever the filename says. config.monitored_roots is read-only after
+             * construction, so no lock. */
+            if (!config.monitored_roots.empty() &&
+                    std::none_of(config.monitored_roots.begin(), config.monitored_roots.end(),
+                                 [&path](const std::string& root) { return PathIsUnder(path, root.c_str()); }))
+            {
+                return;
+            }
+
             if (ev->event_type == RT_EV_FILE_UNLINK)
             {
                 /* The kernel names the removed file, so this is not the inference
@@ -718,13 +738,13 @@ namespace fim_container_events
                  * ordinary path would have the re-read find nothing and, correctly,
                  * do nothing, which is why an in-container `rm` used to go
                  * unreported until something else forced a walk. */
-                router.onUnlink(ev->cgroup_id, std::string{ev->filename, length});
+                router.onUnlink(ev->cgroup_id, path);
                 return;
             }
 
             /* ev->pid feeds the staging buffer's settle, not the routing: a path
              * whose writer has exited can be read at once. */
-            router.onEvent(ev->cgroup_id, std::string{ev->filename, length}, ev->pid);
+            router.onEvent(ev->cgroup_id, path, ev->pid);
         }
 
         void drainLoop()

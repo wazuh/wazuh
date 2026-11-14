@@ -89,7 +89,7 @@ namespace fim_container_events
         unsigned long long drops_deferred{0};/* drop reports for a not-yet-identified cgroup */
         unsigned long long global_escalations{0}; /* whole-node re-baselines requested */
         unsigned long long late_escalations{0};   /* containers identified after their events */
-        unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
+        unsigned long long renames_routed{0};     /* renames escalated (no source/destination bit in the record) */
         unsigned long long discovery_escalations{0}; /* containers walked because the kernel filter had not reached them */
         unsigned long long removals{0};              /* containers the runtime reported gone, queued for cleanup */
     };
@@ -201,15 +201,21 @@ namespace fim_container_events
                 }
             }
 
-            /* A rename. The engine reports the DESTINATION path only — bpf/
-             * rt_file.bpf.c's kprobe__vfs_rename builds its path from `new_dentry`
-             * — so the source path is never named by any event, before or after.
+            /* A rename. The engine reports BOTH ends — two RT_EV_FILE_RENAME
+             * events, one per path, from two separately attached programs, in no
+             * guaranteed order (bpf/rt_file.bpf.c: kprobe__vfs_rename /
+             * kprobe__vfs_rename_old, and the same split on both LSM variants;
+             * rt_event_contract.h documents the pair). What is missing is any way
+             * to tell WHICH end an event names: nothing in the record distinguishes
+             * source from destination. Both carry the same inode/dev, which pairs
+             * them but does not order them.
              *
-             * Staging just the destination would therefore be silently wrong:
-             * `mv /etc/passwd /etc/passwd.bak` inside a container would reconcile
-             * the new name and leave the stored row for /etc/passwd describing a
-             * file that no longer exists, with nothing to ever correct it. A
-             * deletion that FIM never reports is the worst class of bug this
+             * So the destination cannot be acted on and the source cannot be
+             * deleted. Staging both as ordinary changed paths would reconcile the
+             * new name and leave the stored row for the old one describing a file
+             * that no longer exists: a path re-read runs with
+             * may_detect_deletions=false (D15), so the read that finds nothing does
+             * nothing. A deletion FIM never reports is the worst class of bug this
              * consumer can have.
              *
              * So a rename escalates its container instead. That sounds expensive and
@@ -218,10 +224,18 @@ namespace fim_container_events
              * re-walk. A package upgrade renaming a thousand files costs exactly
              * what one renaming a single file costs.
              *
-             * The real fix belongs in the engine — appending the source path to the
-             * event record, a MINOR ABI bump. It is not free: the record grows from
-             * 12,416 to ~16,512 bytes, cutting the 8 MiB ring from ~675 records to
-             * ~508 for every event class to fix one. Worth measuring before taking.
+             * The fix belongs in the engine and is cheap: ONE bit in the record's
+             * `flags` marking the source end. Two of sixteen bits are used and
+             * `_reserved0` is free, so it costs no bytes — do NOT append the source
+             * path, which is what an earlier version of this comment proposed; that
+             * grows the record from 12,424 to ~16,520 bytes and cuts the 8 MiB ring
+             * from ~674 records to ~508 for every event class to fix one.
+             *
+             * The bit alone is still not enough to delete the source: these are
+             * entry-time hooks with no completion report, so the rename may have
+             * failed. Targeted deletion needs that too (see doc 34, F2/F6); until
+             * then the bit only narrows the reconcile's scope. Keep this escalation
+             * as the fallback for unmarked records either way.
              */
             void onRename(std::uint64_t cgroup_id)
             {

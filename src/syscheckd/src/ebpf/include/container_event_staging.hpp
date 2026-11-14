@@ -11,9 +11,10 @@
  * Two threads meet here, and the shape of this class is dictated by three
  * measured facts rather than by taste:
  *
- * 1. The drain thread must never block. An 8 MiB ring buffer holds ~675
- *    12,416-byte records — about 2.4 seconds of a burst measured at 8,400
- *    events/s. Anything slow on the drain path overflows the kernel ring, and
+ * 1. The drain thread must never block. An 8 MiB ring buffer holds ~674
+ *    12,424-byte records — about 80 ms of a burst measured at 8,400 events/s,
+ *    because the record is a fixed 12,424 bytes however short its paths are
+ *    (doc 34, F4). Anything slow on the drain path overflows the kernel ring, and
  *    every kernel-side drop escalates a container to a full re-walk. So the
  *    drain does nothing here but a hash insert under a short lock.
  *
@@ -557,7 +558,7 @@ namespace fim_container_events
              * the same mutex the drain takes, so the total has to stay small
              * against the drain's budget: at the measured 8,400 events/s the drain
              * wants the lock every ~119 us, and 64 probes is on the order of 200 us
-             * against 2.4 s of ring capacity. Paths not probed this round are
+             * against ~80 ms of ring capacity. Paths not probed this round are
              * probed on the next, or fall through to their deadline. */
             static constexpr std::size_t kMaxPidProbes = 64;
 

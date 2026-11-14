@@ -1210,22 +1210,7 @@ namespace
     /// file that does not exist inside the container. Requiring a staged path to sit
     /// under something the operator actually configured discards those, because no
     /// realistic configuration monitors the runtime's snapshot directory.
-    bool PathIsUnder(const std::string& path, const char* root)
-    {
-        if (root == nullptr || root[0] == '\0') return false;
-
-        const std::string prefix{root};
-
-        if (prefix == "/") return path.size() > 1 && path[0] == '/';
-
-        if (path.size() < prefix.size()) return false;
-
-        if (path.compare(0, prefix.size(), prefix) != 0) return false;
-
-        // Exactly the configured entry, or a child of it. The length check is what
-        // stops "/etc" matching "/etcpasswd".
-        return path.size() == prefix.size() || path[prefix.size()] == '/';
-    }
+    using fim_container_events::PathIsUnder;
 
     /// Turns the staged paths into one zero-recursion MonitoredPath each, keeping
     /// the hash policy of whichever configured entry contains them.
@@ -1324,6 +1309,90 @@ namespace
                  request.paths.size() - deleted - skipped);
     }
 
+    /// Confirms the removals an unlink batch claims, then deletes their rows.
+    ///
+    /// RT_EV_FILE_UNLINK is emitted from the ENTRY of the kernel's unlink path,
+    /// before the operation can fail — the record carries no completion and no
+    /// return status (doc 34, F2). It names an ATTEMPT. Deleting the stored row on
+    /// that alone turns a denied `rm` into a DELETE alert for a file still on disk,
+    /// and drops FIM's row for it until something else forces a walk.
+    ///
+    /// Host whodata already does the equivalent check — fim_whodata_event() in
+    /// src/syscheckd/src/fim_scan.c w_lstat()s the path and only treats a MISSING
+    /// one as removed. This is the same rule, reusing the single-file re-read a
+    /// path reconcile already performs:
+    ///
+    ///   connector unavailable   keep every row. "Found nothing" read out of a
+    ///                           failed connector would delete on an outage.
+    ///   nothing found           the removals happened. Delete exactly those rows.
+    ///   something still there   at least one named file exists, and a batch
+    ///                           re-read cannot say WHICH. Delete nothing and ask
+    ///                           for a container re-walk — the only action that can
+    ///                           establish absence per path, since it sees whole
+    ///                           directories.
+    ///
+    /// A re-walk is NOT requested in the first two cases: the common one is an
+    /// `rm` that succeeded, and that must stay one targeted delete.
+    ///
+    /// Returns true when the caller must run that re-walk.
+    ///
+    /// shortcut: this still cannot prove the removal SUCCEEDED, only that the file
+    /// is absent by the time the batch is served. A successful unlink still in
+    /// flight reads as present and costs a re-walk instead of a delete. Upgrade
+    /// when the engine reports completion (doc 34, F2 step 2).
+    bool ConfirmUnlinkedPaths(const fim_container_events::ReconcileRequest& request,
+                              const cb_monitored_path_t*                    configured,
+                              size_t                                        configured_count)
+    {
+        std::vector<std::string> storage;
+        const auto selected = SelectReconcilePaths(request.paths, configured, configured_count, storage);
+
+        if (selected.empty())
+        {
+            // Nothing under a configured root, so there is nothing to confirm and
+            // nothing to delete. DeleteUnlinkedPaths applies the same filter and
+            // logs the skip, so let it account for them.
+            DeleteUnlinkedPaths(request, configured, configured_count);
+            return false;
+        }
+
+        // may_detect_deletions=false for the same reason every path reconcile sets
+        // it (D15/C27): these rows are a subset of the container's files by design.
+        BaselineDriver driver{/*may_detect_deletions=*/false, CB_FIM_ORIGIN_EVENT};
+
+        const int outcome = cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                               request.container_id.c_str(),
+                                                               selected.data(),
+                                                               static_cast<int>(selected.size()),
+                                                               dbsync_sink,
+                                                               context_sink,
+                                                               status_sink,
+                                                               fim_container_baseline_rate_limit,
+                                                               &driver);
+
+        if (outcome < 0)
+        {
+            LogDebug("Container FIM reconcile: connector unavailable while confirming %zu unlinked path(s) "
+                     "for container '%s'; its rows are kept and the next event or scheduled baseline "
+                     "retries.",
+                     selected.size(), request.container_id.c_str());
+            return false;
+        }
+
+        // refused() counts files the row cap would not store -- which means they
+        // EXIST. Presence, like a row.
+        if (driver.rows() > 0 || driver.refused() > 0)
+        {
+            LogDebug("Container FIM reconcile: %zu of the %zu path(s) container '%s' reported unlinked are "
+                     "still present; deleting nothing and re-walking it instead.",
+                     driver.rows() + driver.refused(), selected.size(), request.container_id.c_str());
+            return true;
+        }
+
+        DeleteUnlinkedPaths(request, configured, configured_count);
+        return false;
+    }
+
     /// Acts on one batch from the eBPF drain. Runs on the consumer thread, so
     /// nothing here may throw out of it.
     void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
@@ -1373,13 +1442,47 @@ namespace
 
         if (request.container_id.empty()) return;
 
+        // Handled before everything below, and in its own lock scope, because it can
+        // end in a re-walk and that must be requested with the container state lock
+        // RELEASED -- a re-walk refreshes admission first, and that call can block on
+        // the connector. It also needs no admission snapshot of its own: it either
+        // removes stored rows or hands over to the re-walk, which takes its own.
+        if (request.mode == ReconcileMode::deletePaths)
+        {
+            bool needs_walk = false;
+
+            {
+                std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+
+                cb_monitored_path_t* paths      = nullptr;
+                size_t               path_count = 0;
+
+                if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
+
+                if (!paths || path_count == 0U) return;
+
+                needs_walk = ConfirmUnlinkedPaths(request, paths, path_count);
+                fim_free_container_monitored_paths(paths);
+            }
+
+            if (!needs_walk) return;
+
+            // One level of recursion, and it cannot repeat: rewalkContainer does not
+            // route back here.
+            fim_container_events::ReconcileRequest walk;
+            walk.mode                 = ReconcileMode::rewalkContainer;
+            walk.container_id         = request.container_id;
+            walk.may_detect_deletions = true;
+            ReconcileBatch(walk);
+            return;
+        }
+
         // Fetch before taking the transaction lock: recovery must not queue
         // behind a connector timeout. A pending reply still carries the sampled
         // generation, so a newer install cannot be overwritten while we wait.
         std::optional<AdmissionReply> admissionReply;
 
-        if (request.mode != ReconcileMode::deletePaths
-                && fim_container_admission_is_stale(request.container_id.c_str()))
+        if (fim_container_admission_is_stale(request.container_id.c_str()))
         {
             admissionReply = fetchContainerAdmission();
         }
@@ -1392,13 +1495,6 @@ namespace
         if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
 
         if (!paths || path_count == 0U) return;
-
-        if (request.mode == ReconcileMode::deletePaths)
-        {
-            DeleteUnlinkedPaths(request, paths, path_count);
-            fim_free_container_monitored_paths(paths);
-            return;
-        }
 
         // The admission snapshot is taken once, by the startup walk. A container
         // created after it is in neither of its sets, which the storage path can
@@ -1865,6 +1961,16 @@ extern "C" void fim_container_events_start(void)
     if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
 
     const bool configured = paths != nullptr && path_count > 0U;
+
+    /* Copied, not borrowed: the collector allocates the array but the
+     * internal_path strings belong to the parsed configuration. */
+    std::vector<std::string> monitored_roots;
+
+    for (size_t i = 0; configured && i < path_count; ++i)
+    {
+        if (paths[i].internal_path != nullptr) monitored_roots.emplace_back(paths[i].internal_path);
+    }
+
     fim_free_container_monitored_paths(paths);
 
     if (!configured) return;
@@ -1875,6 +1981,7 @@ extern "C" void fim_container_events_start(void)
     // started".
     fim_container_events::DrainConfig config;
     config.connector_socket_path = CB_DEFAULT_CONNECTOR_SOCKET_PATH;
+    config.monitored_roots       = std::move(monitored_roots);
 
     // A daemonised agent's CWD is not its install directory, so the engine's
     // CWD-relative fallback would not find the object.

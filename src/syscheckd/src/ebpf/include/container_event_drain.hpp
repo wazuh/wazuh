@@ -16,16 +16,16 @@
  * THREE threads, which deserves a justification since syscheckd is not short of
  * them:
  *
- *   drain     rt_poll() only. Must never block: an 8 MiB ring holds ~675
- *             12,416-byte records, about 2.4 s of a burst measured at 8,400
+ *   drain     rt_poll() only. Must never block: an 8 MiB ring holds ~674
+ *             12,424-byte records, about 80 ms of a burst measured at 8,400
  *             events/s, and every kernel-side drop escalates a container to a
  *             full re-walk. It does one hash lookup per event and nothing else.
  *
  *   resolver  container_instances IPC. Its client's default timeout is 1 s —
  *             three orders of magnitude more than the drain can afford per
  *             event — so this cannot share the drain's thread. Even two
- *             resolves per poll cycle would risk 2 s of blocking against 2.4 s
- *             of ring capacity.
+ *             resolves per poll cycle would risk 2 s of blocking against the
+ *             ~80 ms of ring capacity above -- 25x over, not a margin.
  *
  *   consumer  Re-reads files and re-walks containers, so it blocks on disk for
  *             as long as a walk takes. Folding it into the resolver would stall
@@ -52,9 +52,30 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace fim_container_events
 {
+    /// True when `path` IS `root` or sits under it. Shared by the drain's
+    /// pre-staging filter and by the reconcile path selection, so both answer the
+    /// same question the same way.
+    ///
+    /// The boundary check is what stops "/etc" matching "/etcpasswd".
+    inline bool PathIsUnder(const std::string& path, const char* root)
+    {
+        if (root == nullptr || root[0] == '\0') return false;
+
+        const std::string prefix{root};
+
+        if (prefix == "/") return path.size() > 1 && path[0] == '/';
+
+        if (path.size() < prefix.size()) return false;
+
+        if (path.compare(0, prefix.size(), prefix) != 0) return false;
+
+        return path.size() == prefix.size() || path[prefix.size()] == '/';
+    }
+
 
     /* CONSUMER OUTAGE policy: tolerate brief connector failures before the first
      * verdict, but never hold a node indefinitely when the connector is down.
@@ -82,6 +103,20 @@ namespace fim_container_events
 
         /* container_instances IPC socket. */
         std::string connector_socket_path;
+
+        /* The configured <container_security><syscheck><directories> roots, as
+         * in-container absolute paths. The drain drops any event path that is not
+         * under one of them BEFORE staging it: the reconcile applies the same test
+         * later (SelectReconcilePaths/DeleteUnlinkedPaths), so everything filtered
+         * here was going to be discarded anyway — but only after it had consumed a
+         * slot of the per-container path budget below, and a burst of irrelevant
+         * paths that exhausts that budget costs a full container re-walk.
+         *
+         * The configuration is global, not per-container, and is read once before
+         * the worker threads start, so this needs no cache and no lock. EMPTY means
+         * "filter disabled": the collection failed, and dropping every event would
+         * be worse than staging irrelevant ones. */
+        std::vector<std::string> monitored_roots;
 
         std::size_t max_paths_per_container{4096};
         std::size_t max_containers{512};
@@ -127,7 +162,7 @@ namespace fim_container_events
         std::size_t max_resolves_per_cycle{32};
 
         /* Discard events from cgroups that are not containers in the KERNEL, before
-         * a 12,416-byte ring reservation is attempted, instead of in this process.
+         * a 12,424-byte ring reservation is attempted, instead of in this process.
          *
          * Worth having because the ratio is lopsided: unfiltered, this consumer
          * receives every file write on the host and discards the overwhelming
