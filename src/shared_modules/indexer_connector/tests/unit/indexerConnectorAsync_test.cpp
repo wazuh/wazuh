@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -97,6 +98,158 @@ namespace
                                                  posts.end(),
                                                  [needle](const std::string& post)
                                                  { return post.find(needle) != std::string::npos; }));
+    }
+
+    // Items of a mocked _bulk response.
+    constexpr auto ITEM_CREATED = R"({"create":{"_index":".ds-wazuh-events-v5-system-activity-000001","status":201}})";
+    constexpr auto ITEM_BLOCKED =
+        R"({"create":{"_index":".ds-wazuh-events-v5-system-activity-000001","status":403,"error":{"type":"cluster_block_exception","reason":"index [.ds-wazuh-events-v5-system-activity-000001] blocked by: [FORBIDDEN/8/index write (api)];"}}})";
+    constexpr auto ITEM_THROTTLED =
+        R"({"create":{"_index":".ds-wazuh-events-v5-system-activity-000001","status":429,"error":{"type":"es_rejected_execution_exception","reason":"rejected execution of coordinating operation"}}})";
+    constexpr auto ITEM_MAPPER_ERROR =
+        R"({"create":{"_index":".ds-wazuh-events-v5-system-activity-000001","status":400,"error":{"type":"mapper_parsing_exception","reason":"failed to parse field [field]"}}})";
+
+    // Documents of a posted bulk body, in order: each entry is an action line followed by its document.
+    std::vector<std::string> documentsOf(const std::string& body)
+    {
+        std::vector<std::string> documents;
+        std::istringstream stream(body);
+        std::string line;
+        bool isDocument = false;
+        while (std::getline(stream, line))
+        {
+            if (isDocument)
+            {
+                documents.push_back(line);
+            }
+            isDocument = !isDocument;
+        }
+        return documents;
+    }
+
+    // HTTP 200 bulk response with one item per document of `body`, the item chosen by `itemFor`.
+    std::string bulkResponseFor(const std::string& body, const std::function<std::string(const std::string&)>& itemFor)
+    {
+        std::string items;
+        bool errors = false;
+        for (const auto& document : documentsOf(body))
+        {
+            const auto item = itemFor(document);
+            errors = errors || item.find(R"("error")") != std::string::npos;
+            items += (items.empty() ? "" : ",") + item;
+        }
+        return std::string(R"({"took":1,"errors":)") + (errors ? "true" : "false") + R"(,"items":[)" + items + "]}";
+    }
+
+    // Answers a mocked POST with an HTTP 200 and `response` as its body.
+    void answerWith(const PostRequestParametersVariant& postParams, const std::string& response)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(response));
+        }
+    }
+
+    // Bodies posted to the mocked indexer, with a wait for the n-th one.
+    class PostLog
+    {
+    public:
+        // Records a body and returns its 1-based position.
+        size_t record(const std::string& body)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_posts.push_back(body);
+            m_cv.notify_all();
+            return m_posts.size();
+        }
+
+        bool waitFor(size_t count, std::chrono::seconds timeout = std::chrono::seconds(20))
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            return m_cv.wait_for(lock, timeout, [this, count]() { return m_posts.size() >= count; });
+        }
+
+        size_t count() const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_posts.size();
+        }
+
+        std::vector<std::string> posts() const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_posts;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::condition_variable m_cv;
+        std::vector<std::string> m_posts;
+    };
+
+    // Backoff pauses seen by IndexerBulkQueue's PauseObserver, each with the number of posts made before it.
+    class PauseLog
+    {
+    public:
+        struct Pause
+        {
+            std::chrono::milliseconds delay;
+            bool external;
+            size_t posts;
+        };
+
+        // The observer captures both logs by reference: declare them before the connector.
+        IndexerBulkQueue::PauseObserver observer(const PostLog& posts)
+        {
+            return [this, &posts](std::chrono::milliseconds delay, bool externalRequest)
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_pauses.push_back({delay, externalRequest, posts.count()});
+            };
+        }
+
+        std::vector<Pause> pauses() const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_pauses;
+        }
+
+        // External pauses requested after exactly `posts` posts.
+        std::vector<Pause> externalAfter(size_t posts) const
+        {
+            std::vector<Pause> result;
+            for (const auto& pause : pauses())
+            {
+                if (pause.external && pause.posts == posts)
+                {
+                    result.push_back(pause);
+                }
+            }
+            return result;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::vector<Pause> m_pauses;
+    };
+
+    // Polls `condition` until it holds or `timeout` expires.
+    bool eventually(const std::function<bool()>& condition, std::chrono::seconds timeout = std::chrono::seconds(10))
+    {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!condition())
+        {
+            if (std::chrono::steady_clock::now() >= deadline)
+            {
+                return false;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return true;
     }
 } // namespace
 
@@ -952,124 +1105,82 @@ TEST_F(IndexerConnectorAsyncTest, HandleError429TooManyRequests)
     EXPECT_GE(callCount, 2);
 }
 
-// cluster_block_exception arrives as HTTP 200 with a per-item error: the bulk send itself succeeded,
-// so IndexerBulkQueue has nothing to retry - the blocked item is discarded (logged + counted) and
-// only a future send is paused via requestBackoff(). Unlike a retried failure (429, 503, transport),
-// the blocked batch's data must never reappear in a later send.
-TEST_F(IndexerConnectorAsyncTest, ClusterBlockExceptionItemsAreDiscardedNotRetried)
+// An HTTP 200 bulk response can reject some of its items. The ones the indexer refused without writing them,
+// for a reason that goes away on its own (cluster_block_exception: writes blocked; 429: load shedding), go
+// back to the front of the queue in their original order and are resent after one backoff pause, ahead of
+// newer data. Items that were written and items with any other error are not resent: data streams have no
+// _id, so a resend would duplicate the document.
+TEST_F(IndexerConnectorAsyncTest, MixedRejectionsRequeueOnlyBlockedAndThrottledItemsInOrder)
 {
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    std::promise<void> firstCallPromise;
-    std::future<void> firstCallFuture = firstCallPromise.get_future();
-    std::promise<void> secondCallPromise;
-    std::future<void> secondCallFuture = secondCallPromise.get_future();
-    std::atomic<int> callIndex {0};
+    PostLog posts;
+    PauseLog pauses;
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [this, &firstCallPromise, &secondCallPromise, &callIndex](
-                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
             {
-                this->callCount++;
-                const int currentCall = ++callIndex;
-
-                std::string data;
-                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
-                {
-                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
-                }
-                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
-                {
-                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
-                }
-                else
-                {
-                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
-                }
-                this->receivedData.push_back(data);
-
-                if (currentCall == 1)
-                {
-                    std::string clusterBlockResponse = R"({
-                        "took": 1,
-                        "errors": true,
-                        "items": [
-                            {
-                                "create": {
-                                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
-                                    "status": 403,
-                                    "error": {
-                                        "type": "cluster_block_exception",
-                                        "reason": "index [.ds-wazuh-events-v5-system-activity-000001] blocked by: [FORBIDDEN/8/index write (api)];"
-                                    }
-                                }
-                            },
-                            {"create": {"_index": "test-index", "status": 201}},
-                            {"create": {"_index": "test-index", "status": 201}},
-                            {"create": {"_index": "test-index", "status": 201}},
-                            {"create": {"_index": "test-index", "status": 201}}
-                        ]
-                    })";
-
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(clusterBlockResponse);
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(std::move(clusterBlockResponse));
-                    }
-                    firstCallPromise.set_value();
-                }
-                else
-                {
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
-                    }
-                    secondCallPromise.set_value();
-                }
+                const auto body = postedData(requestParams);
+                const auto position = posts.record(body);
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [position](const std::string& document) -> std::string
+                                           {
+                                               if (position > 1)
+                                               {
+                                                   return ITEM_CREATED;
+                                               }
+                                               if (document.find("value1") != std::string::npos)
+                                               {
+                                                   return ITEM_BLOCKED;
+                                               }
+                                               if (document.find("value2") != std::string::npos)
+                                               {
+                                                   return ITEM_THROTTLED;
+                                               }
+                                               if (document.find("value3") != std::string::npos)
+                                               {
+                                                   return ITEM_MAPPER_ERROR;
+                                               }
+                                               return ITEM_CREATED;
+                                           }));
             }));
 
-    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
-        const std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
-        connector.bulkIndexDataStream("wazuh-events-v5-system-activity", data);
+        connector.bulkIndexDataStream("wazuh-events-v5-system-activity",
+                                      R"({"field":"value)" + std::to_string(i) + R"("})");
     }
+    ASSERT_TRUE(posts.waitFor(1)) << "Timeout waiting for the first bulk";
+    ASSERT_EQ(documentsOf(posts.posts()[0]).size(), 4u) << "the four documents must go out in one bulk";
 
-    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the initial cluster-blocked bulk";
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value4"})");
+    ASSERT_TRUE(posts.waitFor(2)) << "Timeout waiting for the bulk after the rejections";
 
-    // Pushed only after the first (blocked) bulk was sent, so the next send is unambiguously a fresh
-    // batch, not a race with the first one still being formed.
-    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value5"})");
+    // The blocked and the throttled items come first, in their original order, then the newer document.
+    EXPECT_EQ(documentsOf(posts.posts()[1]),
+              (std::vector<std::string> {R"({"field":"value1"})", R"({"field":"value2"})", R"({"field":"value4"})"}));
+    EXPECT_EQ(countPostsWith(posts.posts(), "value0"), 1u) << "an indexed item is not resent";
+    EXPECT_EQ(countPostsWith(posts.posts(), "value3"), 1u) << "an item with another error is not resent";
 
-    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the next bulk after a cluster block";
-
-    EXPECT_EQ(callCount, 2);
-    ASSERT_GE(receivedData.size(), 2);
-
-    // None of the first bulk's items - including the blocked one - should have been retried/reinserted.
-    for (int i = 0; i < 5; ++i)
-    {
-        EXPECT_EQ(receivedData[1].find("value" + std::to_string(i)), std::string::npos)
-            << "value" << i << " should not have been retried after a cluster_block_exception";
-    }
-    // Only the genuinely new data goes out in the next send.
-    EXPECT_NE(receivedData[1].find("value5"), std::string::npos);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+    EXPECT_EQ(pauses.externalAfter(1).size(), 1u) << "one backoff pause before the resend";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                "Indexer rejected 2 document(s) in this batch (cluster_block_exception: 1, HTTP 429: "
+                                "1); requeued for retry. Backing off future sends."),
+              1u);
+    EXPECT_TRUE(
+        eventually([&logs]() { return logs.containsAtLevel(Log::LOGLEVEL_WARNING, "mapper_parsing_exception"); }))
+        << "the other error is still logged with its document";
+    EXPECT_FALSE(logs.contains("cluster_block_exception - reason")) << "no per-document WARN for a requeued item";
 }
 
 TEST(IndexerPrintableForLogTest, ControlBytesAreEscapedAndTheEntryTerminatorDropped)
@@ -1137,175 +1248,71 @@ TEST_F(IndexerConnectorAsyncTest, ADocumentErrorIsLoggedOnOneBoundedLine)
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, " bytes)"), 1u);
 }
 
-// Verifies a cluster_block_exception makes IndexerBulkQueue pause before the next bulk, and that the
-// pause is ordered before that next send. With this fixture's limits (RetryDelay = 1s, the default
-// MaxRetryDelay = 15s, at least twice the base) nextDelay() is never below baseDelay: a first occurrence is
-// uniform in [baseDelay, 1.5 * baseDelay] and later ones start at the previous exponential delay (see
+// Verifies a cluster_block_exception makes IndexerBulkQueue pause before the next bulk, which resends the
+// blocked items first. With this fixture's limits (RetryDelay = 1s, the default MaxRetryDelay = 15s, at least
+// twice the base) nextDelay() is never below baseDelay: a first occurrence is uniform in
+// [baseDelay, 1.5 * baseDelay] and later ones start at the previous exponential delay (see
 // IndexerExponentialBackoffTest), so the requested delay has a deterministic floor. That the pause really
 // sleeps is IndexerBulkQueueTest.ExternalBackoffPausesTheNextSendForTheRequestedDelay.
 // The pause is observed through IndexerBulkQueue's PauseObserver hook, not the wall clock. Limit: this
-// proves the pause was requested and ordered before the 3rd send, not that the wait_for actually slept.
+// proves the pause was requested and ordered before the next send, not that the wait_for actually slept.
 TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockException)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    static constexpr auto clusterBlockResponse = R"({
-        "took": 1,
-        "errors": true,
-        "items": [
-            {
-                "create": {
-                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
-                    "status": 403,
-                    "error": {
-                        "type": "cluster_block_exception",
-                        "reason": "index [.ds-wazuh-events-v5-system-activity-000001] blocked by: [FORBIDDEN/8/index write (api)];"
-                    }
-                }
-            }
-        ]
-    })";
-    static constexpr auto cleanResponse = R"({"took":1,"errors":false,"items":[]})";
+    PostLog posts;
+    PauseLog pauses;
 
-    // Pause history, written by the dispatcher thread through the observer. Declared before the connector so
-    // they outlive its queue (the observer captures them by reference).
-    struct PauseRecord
-    {
-        std::chrono::milliseconds delay;
-        bool external;
-        int posts;
-    };
-    std::vector<PauseRecord> pauses;
-    std::mutex pausesMutex;
-    std::condition_variable pausesCv;
-
-    std::promise<void> firstCallPromise;
-    std::future<void> firstCallFuture = firstCallPromise.get_future();
-    std::promise<void> secondCallPromise;
-    std::future<void> secondCallFuture = secondCallPromise.get_future();
-    std::promise<void> thirdCallPromise;
-    std::future<void> thirdCallFuture = thirdCallPromise.get_future();
-    std::atomic<int> callIndex {0};
-
+    // The first two bulks are blocked as a whole, the third one is indexed.
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [this, &firstCallPromise, &secondCallPromise, &thirdCallPromise, &callIndex](
-                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
             {
-                this->callCount++;
-                const int currentCall = ++callIndex;
-
-                std::string data;
-                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
-                {
-                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
-                }
-                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
-                {
-                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
-                }
-                else
-                {
-                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
-                }
-                this->receivedData.push_back(data);
-
-                const bool blocked = currentCall <= 2;
-                const char* response = blocked ? clusterBlockResponse : cleanResponse;
-
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(response));
-                }
-
-                if (currentCall == 1)
-                {
-                    firstCallPromise.set_value();
-                }
-                else if (currentCall == 2)
-                {
-                    secondCallPromise.set_value();
-                }
-                else if (currentCall == 3)
-                {
-                    thirdCallPromise.set_value();
-                }
+                const auto body = postedData(requestParams);
+                const auto position = posts.record(body);
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [position](const std::string&) -> std::string
+                                           { return position <= 2 ? ITEM_BLOCKED : ITEM_CREATED; }));
             }));
 
-    // Records each pause together with the number of posts received so far.
-    IndexerBulkQueue::PauseObserver observer =
-        [&pauses, &pausesMutex, &pausesCv, &callIndex](std::chrono::milliseconds delay, bool externalRequest)
-    {
-        {
-            std::lock_guard<std::mutex> lock(pausesMutex);
-            pauses.push_back({delay, externalRequest, callIndex.load()});
-        }
-        pausesCv.notify_all();
-    };
-
     IndexerConnectorAsyncImplRetryableBulk connector(
-        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, observer);
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
 
-    // 1. Send a first bulk.
+    // 1. Send a first bulk; it comes back blocked.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+    ASSERT_TRUE(posts.waitFor(1)) << "Timeout waiting for the first (blocked) bulk";
 
-    // 2. It comes back with a cluster_block_exception (handled above).
-    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the first (blocked) bulk";
-
-    // 3. Enqueue new, independent events right away - this becomes the second bulk, also reported as
-    // blocked. Whether the first block's pause lands before or after it, an external pause must follow it.
+    // 2. A new event joins the blocked one in the second bulk, also blocked.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+    ASSERT_TRUE(posts.waitFor(2)) << "Timeout waiting for the second (also blocked) bulk";
 
-    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the second (also blocked) bulk";
-
-    // 4. Wait for the dispatcher to request an external pause after the second post. The block signal
-    // arrives through the response logger, so it may only be picked up a dispatcher loop later.
-    std::chrono::milliseconds pauseDelay {};
-    {
-        std::unique_lock<std::mutex> lock(pausesMutex);
-        const auto findPause = [&pauses]()
-        {
-            return std::find_if(pauses.begin(),
-                                pauses.end(),
-                                [](const PauseRecord& record) { return record.external && record.posts >= 2; });
-        };
-        ASSERT_TRUE(pausesCv.wait_for(lock, std::chrono::seconds(10), [&]() { return findPause() != pauses.end(); }))
-            << "Timeout waiting for the backoff pause after the second blocked bulk";
-        pauseDelay = findPause()->delay;
-    }
-
-    // 5. The requested pause has the RetryDelay (1s) floor.
-    EXPECT_GE(pauseDelay, std::chrono::milliseconds(1000))
+    // 3. The response is classified before the processor returns, so the pause after the second post is
+    // requested before anything else is sent.
+    ASSERT_TRUE(eventually([&pauses]() { return !pauses.externalAfter(2).empty(); }))
+        << "Timeout waiting for the backoff pause after the second blocked bulk";
+    EXPECT_GE(pauses.externalAfter(2).front().delay, std::chrono::milliseconds(1000))
         << "The backoff pause after a cluster block should be at least baseDelay (1000ms)";
+    ASSERT_EQ(pauses.externalAfter(1).size(), 1u) << "one pause after the first blocked bulk too";
 
-    // Only now enqueue the third bulk: the pause above was ordered before it is sent.
+    // 4. Only now enqueue the third event: it is sent after the pause, behind the blocked ones.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value2"})");
+    ASSERT_TRUE(posts.waitFor(3)) << "Timeout waiting for the third bulk";
 
-    ASSERT_EQ(thirdCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the third bulk";
-
-    // 6. None of the earlier bulks' data was ever resent.
-    EXPECT_EQ(callCount, 3);
-    ASSERT_GE(receivedData.size(), 3);
-    EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
-    EXPECT_EQ(receivedData[1].find("value0"), std::string::npos);
-    EXPECT_NE(receivedData[1].find("value1"), std::string::npos);
-    EXPECT_EQ(receivedData[2].find("value0"), std::string::npos);
-    EXPECT_EQ(receivedData[2].find("value1"), std::string::npos);
-    EXPECT_NE(receivedData[2].find("value2"), std::string::npos);
+    const auto sent = posts.posts();
+    EXPECT_EQ(sent.size(), 3u);
+    EXPECT_EQ(documentsOf(sent[0]), (std::vector<std::string> {R"({"field":"value0"})"}));
+    EXPECT_EQ(documentsOf(sent[1]), (std::vector<std::string> {R"({"field":"value0"})", R"({"field":"value1"})"}));
+    EXPECT_EQ(documentsOf(sent[2]),
+              (std::vector<std::string> {R"({"field":"value0"})", R"({"field":"value1"})", R"({"field":"value2"})"}));
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
 }
 
 // A per-item 429 inside an HTTP 200 bulk response (the indexer shedding load, e.g. its parent circuit
-// breaker tripping) backs off the next send and counts the rejected items in getDroppedEvents(), with one
-// WARN per batch and no per-document WARN carrying the payload. The items are not resent.
-TEST_F(IndexerConnectorAsyncTest, PerItem429BacksOffAndCountsDroppedItems)
+// breaker tripping) requeues the rejected items and backs off the next send. They are not counted in
+// getDroppedEvents(); the batch gets one WARN and no per-document WARN carrying the payload.
+TEST_F(IndexerConnectorAsyncTest, PerItem429IsRequeuedNotCountedAsDropped)
 {
     // Installed before the connector: its threads log until the connector is destroyed.
     ScopedLogCapture logs;
@@ -1345,65 +1352,25 @@ TEST_F(IndexerConnectorAsyncTest, PerItem429BacksOffAndCountsDroppedItems)
         ]
     })";
 
-    struct PauseRecord
-    {
-        bool external;
-        int posts;
-    };
-    std::vector<PauseRecord> pauses;
-    std::mutex pausesMutex;
-    std::condition_variable pausesCv;
-
-    std::promise<void> firstCallPromise;
-    std::future<void> firstCallFuture = firstCallPromise.get_future();
-    std::promise<void> secondCallPromise;
-    std::future<void> secondCallFuture = secondCallPromise.get_future();
-    std::atomic<int> callIndex {0};
+    PostLog posts;
+    PauseLog pauses;
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [this, &firstCallPromise, &secondCallPromise, &callIndex](
-                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
             {
-                this->callCount++;
-                const int currentCall = ++callIndex;
-                this->receivedData.push_back(postedData(requestParams));
-
-                if (currentCall == 1)
+                if (posts.record(postedData(requestParams)) == 1)
                 {
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(throttledResponse);
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(std::string(throttledResponse));
-                    }
-                    firstCallPromise.set_value();
+                    answerWith(postParams, throttledResponse);
                 }
                 else
                 {
                     answerSuccess(postParams);
-                    if (currentCall == 2)
-                    {
-                        secondCallPromise.set_value();
-                    }
                 }
             }));
 
-    IndexerBulkQueue::PauseObserver observer =
-        [&pauses, &pausesMutex, &pausesCv, &callIndex](std::chrono::milliseconds, bool externalRequest)
-    {
-        {
-            std::lock_guard<std::mutex> lock(pausesMutex);
-            pauses.push_back({externalRequest, callIndex.load()});
-        }
-        pausesCv.notify_all();
-    };
-
     IndexerConnectorAsyncImplMultiItemBulk connector(
-        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, observer);
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
 
     for (int i = 0; i < 3; ++i)
     {
@@ -1411,43 +1378,388 @@ TEST_F(IndexerConnectorAsyncTest, PerItem429BacksOffAndCountsDroppedItems)
                                       R"({"field":"value)" + std::to_string(i) + R"("})");
     }
 
-    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the throttled bulk";
-    ASSERT_NE(receivedData[0].find("value2"), std::string::npos) << "the three documents must go out in one bulk";
+    ASSERT_TRUE(posts.waitFor(1)) << "Timeout waiting for the throttled bulk";
+    ASSERT_EQ(documentsOf(posts.posts()[0]).size(), 3u) << "the three documents must go out in one bulk";
 
-    // The response is classified on the logger thread: the pause request is the signal it was handled.
-    // Nothing else is queued until the pause shows up: a clean answer to a next bulk sent before the
-    // dispatcher picks the request up would reset it (reportHealthyResponse()), so the pause would never run.
-    {
-        std::unique_lock<std::mutex> lock(pausesMutex);
-        ASSERT_TRUE(pausesCv.wait_for(lock,
-                                      std::chrono::seconds(10),
-                                      [&pauses]()
-                                      {
-                                          return std::any_of(pauses.begin(),
-                                                             pauses.end(),
-                                                             [](const PauseRecord& record)
-                                                             { return record.external && record.posts >= 1; });
-                                      }))
-            << "Timeout waiting for the backoff pause after the throttled bulk";
-    }
-
+    // The response was classified before the processor returned: the next send follows the pause.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value3"})");
-    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
-        << "Timeout waiting for the bulk after the throttled one";
+    ASSERT_TRUE(posts.waitFor(2)) << "Timeout waiting for the bulk after the throttled one";
 
-    EXPECT_EQ(connector.getDroppedEvents(), 2u) << "only the two 429 items are dropped";
-    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Indexer rejected 2 document(s) in this batch with HTTP 429"),
+    EXPECT_EQ(connector.getDroppedEvents(), 0u) << "requeued items are not dropped";
+    EXPECT_EQ(pauses.externalAfter(1).size(), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                "Indexer rejected 2 document(s) in this batch (cluster_block_exception: 0, HTTP 429: "
+                                "2); requeued for retry."),
               1u);
     EXPECT_FALSE(logs.contains("Error indexing document")) << "no per-document WARN with the payload";
 
-    // The rejected items are not resent: the next bulk carries only the new document.
-    ASSERT_GE(receivedData.size(), 2u);
-    for (int i = 0; i < 3; ++i)
+    // The rejected items are resent first, in order; the indexed one is not.
+    EXPECT_EQ(documentsOf(posts.posts()[1]),
+              (std::vector<std::string> {R"({"field":"value0"})", R"({"field":"value1"})", R"({"field":"value3"})"}));
+}
+
+// A block that lasts several attempts and then lifts: the blocked items are resent after every pause and indexed
+// exactly once, the pauses grow while the block lasts, and the first clean response resets the backoff, so a
+// later block starts again from the base delay.
+TEST_F(IndexerConnectorAsyncTest, BlockLiftedAfterSeveralAttemptsIndexesEveryItemOnce)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+    PauseLog pauses;
+
+    // Bulks 1-3 and 5 are blocked, the others indexed.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                const auto position = posts.record(body);
+                const bool blocked = position <= 3 || position == 5;
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [blocked](const std::string&) -> std::string
+                                           { return blocked ? ITEM_BLOCKED : ITEM_CREATED; }));
+            }));
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+    ASSERT_TRUE(posts.waitFor(4)) << "Timeout waiting for the bulk sent once the block lifted";
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value2"})");
+    ASSERT_TRUE(posts.waitFor(6)) << "Timeout waiting for the bulk sent once the second block lifted";
+
+    const auto sent = posts.posts();
+    const std::vector<std::string> first {R"({"field":"value0"})", R"({"field":"value1"})"};
+    const std::vector<std::string> second {R"({"field":"value2"})"};
+    for (size_t i = 0; i < 4; ++i)
     {
-        EXPECT_EQ(receivedData[1].find("value" + std::to_string(i)), std::string::npos);
+        EXPECT_EQ(documentsOf(sent[i]), first) << "bulk " << i + 1;
     }
-    EXPECT_NE(receivedData[1].find("value3"), std::string::npos);
+    EXPECT_EQ(documentsOf(sent[4]), second);
+    EXPECT_EQ(documentsOf(sent[5]), second);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+
+    // Base delay 1s, cap 15s: 1st pause in [1s, 1.5s], 3rd in [2s, 4s]; none after the clean 4th bulk; the
+    // block after it starts again from [1s, 1.5s].
+    ASSERT_EQ(pauses.externalAfter(1).size(), 1u);
+    ASSERT_EQ(pauses.externalAfter(3).size(), 1u);
+    ASSERT_EQ(pauses.externalAfter(5).size(), 1u);
+    EXPECT_LE(pauses.externalAfter(1).front().delay, std::chrono::milliseconds(1500));
+    EXPECT_GE(pauses.externalAfter(3).front().delay, std::chrono::milliseconds(2000));
+    EXPECT_TRUE(pauses.externalAfter(4).empty()) << "a clean response requests no pause";
+    EXPECT_GE(pauses.externalAfter(5).front().delay, std::chrono::milliseconds(1000));
+    EXPECT_LE(pauses.externalAfter(5).front().delay, std::chrono::milliseconds(1500)) << "the backoff was reset";
+}
+
+// A block that never lifts is retried without a limit, bounded by the queue: newer events that do not fit are
+// dropped, counted and logged as an overflow, nothing else is lost, and the queue holds at most max_queue_bytes
+// plus the batch it put back.
+TEST_F(IndexerConnectorAsyncTest, NeverLiftingBlockOverflowsAndCountsDrops)
+{
+    constexpr size_t MAX_QUEUE_BYTES {400};
+    constexpr size_t EVENTS {14};
+
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                posts.record(body);
+                answerWith(postParams,
+                           bulkResponseFor(body, [](const std::string&) -> std::string { return ITEM_BLOCKED; }));
+            }));
+
+    // Unsigned: the connector ignores a signed max_queue_bytes.
+    config["max_queue_bytes"] = MAX_QUEUE_BYTES;
+    IndexerConnectorAsyncImplMultiItemBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (size_t i = 0; i < 4; ++i)
+    {
+        connector.bulkIndexDataStream("wazuh-events-v5-system-activity",
+                                      R"({"field":"value)" + std::to_string(i) + R"("})");
+    }
+    ASSERT_TRUE(posts.waitFor(1)) << "Timeout waiting for the first blocked bulk";
+
+    for (size_t i = 4; i < EVENTS; ++i)
+    {
+        connector.bulkIndexDataStream("wazuh-events-v5-system-activity",
+                                      R"({"field":"value)" + std::to_string(i) + R"("})");
+    }
+    ASSERT_TRUE(posts.waitFor(3)) << "Timeout waiting for the blocked bulk to be resent";
+
+    const auto sent = posts.posts();
+    const auto retried = documentsOf(sent[2]);
+    EXPECT_EQ(documentsOf(sent[1]), retried) << "the head of the queue keeps being resent as it is";
+    ASSERT_GE(retried.size(), 4u);
+    EXPECT_EQ(retried[0], R"({"field":"value0"})") << "the first blocked items stay at the head";
+    EXPECT_EQ(retried[3], R"({"field":"value3"})");
+
+    const auto dropped = connector.getDroppedEvents();
+    EXPECT_GT(dropped, 0u);
+    EXPECT_EQ(retried.size() + dropped, EVENTS) << "every event is either still queued or counted as dropped";
+    EXPECT_LE(connector.getQueueSize(), MAX_QUEUE_BYTES + sent[2].size());
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Starting to discard events"));
+}
+
+// Global log function whose per-document error lines block until released, keeping the error-logger thread busy.
+class BlockingDocumentLog
+{
+public:
+    BlockingDocumentLog()
+        : m_previous(Log::GLOBAL_LOG_FUNCTION)
+    {
+        // assignLogFunction() is a no-op when a function is already installed, so drop the current one first.
+        Log::deassignLogFunction();
+        Log::assignLogFunction(
+            [this](const int, const char*, const char*, const int, const char*, const char* format, va_list args)
+            {
+                char buffer[2048];
+                va_list copy;
+                va_copy(copy, args);
+                vsnprintf(buffer, sizeof(buffer), format, copy);
+                va_end(copy);
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_lines.emplace_back(buffer);
+                if (std::string_view(format).find("Error %s document") != std::string_view::npos)
+                {
+                    m_blocked = true;
+                    m_cv.notify_all();
+                    m_cv.wait(lock, [this]() { return m_released; });
+                }
+            });
+    }
+
+    ~BlockingDocumentLog()
+    {
+        release();
+        Log::deassignLogFunction();
+        Log::assignLogFunction(m_previous);
+    }
+
+    BlockingDocumentLog(const BlockingDocumentLog&) = delete;
+    BlockingDocumentLog& operator=(const BlockingDocumentLog&) = delete;
+
+    void release()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_released = true;
+        m_cv.notify_all();
+    }
+
+    bool waitUntilBlocked()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_cv.wait_for(lock, std::chrono::seconds(10), [this]() { return m_blocked; });
+    }
+
+    bool contains(std::string_view needle) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return std::any_of(m_lines.begin(),
+                           m_lines.end(),
+                           [needle](const std::string& line) { return line.find(needle) != std::string::npos; });
+    }
+
+private:
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)> m_previous;
+    mutable std::mutex m_mutex;
+    std::condition_variable m_cv;
+    std::vector<std::string> m_lines;
+    bool m_blocked {false};
+    bool m_released {false};
+};
+
+// The error-logger queue only carries diagnostics: with the logger busy and its queue full, the error details of a
+// batch are dropped, but its blocked items are still requeued and resent.
+TEST_F(IndexerConnectorAsyncTest, RetryableItemsAreRequeuedWhenTheLoggerQueueIsFull)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    BlockingDocumentLog logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+    PauseLog pauses;
+
+    // Bulks 1-3: the "bad" documents fail with a mapping error, "held" is blocked. Later bulks are indexed.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                const auto position = posts.record(body);
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [position](const std::string& document) -> std::string
+                                           {
+                                               if (position > 3)
+                                               {
+                                                   return ITEM_CREATED;
+                                               }
+                                               return document.find("held") != std::string::npos ? ITEM_BLOCKED
+                                                                                                 : ITEM_MAPPER_ERROR;
+                                           }));
+            }));
+
+    config["logger_queue_size"] = 1;
+    config["logger_threads"] = 1;
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
+    // Destroyed before the connector, whose destructor joins the blocked logger thread.
+    struct ReleaseOnExit
+    {
+        BlockingDocumentLog& log;
+        ~ReleaseOnExit()
+        {
+            log.release();
+        }
+    } releaseOnExit {logs};
+
+    // 1. The logger thread takes the first batch's error and blocks on it.
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"bad0"})");
+    ASSERT_TRUE(posts.waitFor(1));
+    ASSERT_TRUE(logs.waitUntilBlocked()) << "the logger thread never logged the first document error";
+
+    // 2. The second batch's error fills the logger queue.
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"bad1"})");
+    ASSERT_TRUE(posts.waitFor(2));
+
+    // 3. The third batch mixes a document error with a blocked item: its details do not fit in the logger queue.
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"bad2"})");
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"held"})");
+    ASSERT_TRUE(posts.waitFor(3));
+    ASSERT_EQ(documentsOf(posts.posts()[2]), (std::vector<std::string> {R"({"field":"bad2"})", R"({"field":"held"})"}));
+
+    ASSERT_TRUE(posts.waitFor(4)) << "the blocked item was never resent";
+    EXPECT_EQ(documentsOf(posts.posts()[3]), (std::vector<std::string> {R"({"field":"held"})"}));
+    EXPECT_EQ(pauses.externalAfter(3).size(), 1u);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+    EXPECT_TRUE(logs.contains("Indexer error-logger queue is full (1 elements)"));
+}
+
+// A response that reports errors but whose items cannot be matched with the events sent (here, more items than
+// events) is not guessed at: nothing is requeued, one WARN says so, and the backoff is left as it was - neither
+// reset as for a healthy response nor raised.
+TEST_F(IndexerConnectorAsyncTest, UnclassifiableResponseRequeuesNothingAndKeepsTheBackoff)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+    PauseLog pauses;
+
+    // Bulks 1, 2 and 4 are blocked; bulk 3 gets two items for its one event; later bulks are indexed.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                const auto position = posts.record(body);
+                if (position == 3)
+                {
+                    answerWith(postParams,
+                               std::string(R"({"took":1,"errors":true,"items":[)") + ITEM_BLOCKED + "," + ITEM_BLOCKED +
+                                   "]}");
+                    return;
+                }
+                const bool blocked = position <= 4;
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [blocked](const std::string&) -> std::string
+                                           { return blocked ? ITEM_BLOCKED : ITEM_CREATED; }));
+            }));
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+    ASSERT_TRUE(posts.waitFor(3)) << "Timeout waiting for the unclassifiable answer";
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+    ASSERT_TRUE(posts.waitFor(5)) << "Timeout waiting for the bulk after the next block";
+
+    const auto sent = posts.posts();
+    EXPECT_EQ(countPostsWith(sent, "value0"), 3u) << "nothing is requeued from an unclassifiable response";
+    EXPECT_EQ(documentsOf(sent[3]), (std::vector<std::string> {R"({"field":"value1"})"}));
+    EXPECT_EQ(documentsOf(sent[4]), (std::vector<std::string> {R"({"field":"value1"})"}));
+
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                "Indexer bulk response reports errors but could not be classified (item count "
+                                "mismatch): 1 document(s) were not requeued and their delivery is unknown."),
+              1u);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+
+    // No pause after the unclassifiable answer, and the next block continues the backoff where the two before it
+    // left it (3rd step, [2s, 4s]) instead of restarting from [1s, 1.5s].
+    for (const auto& pause : pauses.pauses())
+    {
+        EXPECT_NE(pause.posts, 3u) << "no pause follows the unclassifiable answer";
+    }
+    ASSERT_EQ(pauses.externalAfter(4).size(), 1u);
+    EXPECT_GE(pauses.externalAfter(4).front().delay, std::chrono::milliseconds(2000)) << "the backoff was not reset";
+}
+
+// Requeue WARNs are rate-limited like the discard ones: the first opens a window, the next ones inside it are
+// only counted, and they are summarized once the window has lasted the summary interval.
+TEST_F(IndexerConnectorAsyncTest, RequeueWarningsAreRateLimited)
+{
+    constexpr size_t SUMMARY_INTERVAL_SEC {5};
+
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+    // Bulks 1 and 2 are blocked, the others indexed.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                const bool blocked = posts.record(body) <= 2;
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [blocked](const std::string&) -> std::string
+                                           { return blocked ? ITEM_BLOCKED : ITEM_CREATED; }));
+            }));
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, {}, SUMMARY_INTERVAL_SEC);
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+    ASSERT_TRUE(posts.waitFor(1));
+    const auto windowOpened = std::chrono::steady_clock::now();
+    // The second block comes about 2s later (pause + flush), inside the window.
+    ASSERT_TRUE(posts.waitFor(3)) << "Timeout waiting for the bulk sent once the block lifted";
+
+    // A response after the interval closes the window with its summary.
+    std::this_thread::sleep_until(windowOpened + std::chrono::seconds(SUMMARY_INTERVAL_SEC + 1));
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+    ASSERT_TRUE(posts.waitFor(4));
+    // A post is recorded before it is answered: wait for its response to be handled.
+    ASSERT_TRUE(eventually([&logs]() { return logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Requeues continue:"); }));
+
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Indexer rejected 1 document(s) in this batch"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Requeues continue: 1 document(s) in 1 batch(es)"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Requeues continue:"), 1u);
 }
 
 // A 500 is not retried: each batch is sent once, discarded and counted.

@@ -59,9 +59,9 @@ TEST_F(IndexerBulkQueueTest, PushSendsQueuedDataToProcessor)
     EXPECT_EQ(received.front(), "payload-1");
 }
 
-// Mirrors the cluster_block_exception scenario: the caller observed the send already succeeded
-// (so there's nothing here to retry), it just wants the *next* send delayed. That must never cause
-// the already-sent data to be lost, duplicated, or resent, and new data must still arrive intact.
+// The caller observed the send already succeeded and only wants the *next* send delayed (what is
+// to be resent goes back through requeueFront()). requestBackoff() alone must never cause the
+// already-sent data to be lost, duplicated, or resent, and new data must still arrive intact.
 TEST_F(IndexerBulkQueueTest, RequestBackoffDoesNotDropOrDuplicateData)
 {
     std::promise<void> firstSentPromise;
@@ -102,7 +102,7 @@ TEST_F(IndexerBulkQueueTest, RequestBackoffDoesNotDropOrDuplicateData)
     queue.push(std::string("first-batch"));
     ASSERT_EQ(firstSentFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
 
-    // Simulates the response logger reporting a cluster_block_exception for the batch just sent.
+    // Simulates the connector asking for a pause after the batch just sent.
     queue.requestBackoff(firstSequence.load());
     queue.push(std::string("second-batch"));
 
@@ -452,4 +452,128 @@ TEST_F(IndexerBulkQueueTest, RecordDiscardedAddsToDroppedEventsOnly)
     EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "total discarded: 2)."), 1U);
     EXPECT_FALSE(capture.contains("total discarded: 7"));
     EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_INFO, "Resuming event acceptance after 2 discarded events."), 1U);
+}
+
+// Entries the processor puts back go to the front, in their order, ahead of data pushed after them.
+TEST_F(IndexerBulkQueueTest, RequeueFrontPutsEntriesBackInOrderAheadOfNewData)
+{
+    constexpr size_t THREE_ENTRIES_BYTES {3};
+    std::promise<void> firstSentPromise;
+    std::future<void> firstSentFuture = firstSentPromise.get_future();
+    std::promise<void> secondSentPromise;
+    std::future<void> secondSentFuture = secondSentPromise.get_future();
+    std::vector<std::vector<std::string>> batches;
+    std::mutex batchesMutex;
+    IndexerBulkQueue* self {nullptr};
+
+    IndexerBulkQueue queue(
+        [&](uint64_t /*sequence*/, std::vector<std::string>& batch)
+        {
+            size_t count;
+            {
+                std::lock_guard<std::mutex> lock(batchesMutex);
+                batches.push_back(batch);
+                count = batches.size();
+            }
+            if (count == 1)
+            {
+                // As the connector does for the items an HTTP 200 bulk response rejected.
+                self->requeueFront({batch[1], batch[2]});
+                firstSentPromise.set_value();
+            }
+            else if (count == 2)
+            {
+                secondSentPromise.set_value();
+            }
+        },
+        UNLIMITED_BYTES,
+        THREE_ENTRIES_BYTES,
+        FLUSH_INTERVAL_SEC,
+        RETRY_DELAY_SEC,
+        MAX_RETRY_DELAY_SEC);
+    self = &queue;
+
+    queue.push(std::string("a"));
+    queue.push(std::string("b"));
+    queue.push(std::string("c"));
+    ASSERT_EQ(firstSentFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    queue.push(std::string("d"));
+    ASSERT_EQ(secondSentFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+
+    std::lock_guard<std::mutex> lock(batchesMutex);
+    EXPECT_EQ(batches[0], (std::vector<std::string> {"a", "b", "c"}));
+    EXPECT_EQ(batches[1], (std::vector<std::string> {"b", "c", "d"}));
+}
+
+// Like the requeue of a failed send, requeueFront() ignores maxBytes and drops nothing; pushes that do not fit after
+// it are dropped and counted as usual.
+TEST_F(IndexerBulkQueueTest, RequeueFrontIgnoresMaxBytes)
+{
+    constexpr size_t MAX_BYTES {4};
+    constexpr size_t LARGE_BULK_BYTES {1024};
+    constexpr size_t LONG_FLUSH_SEC {60};
+
+    IndexerBulkQueue queue([](uint64_t /*sequence*/, std::vector<std::string>& /*batch*/) {},
+                           MAX_BYTES,
+                           LARGE_BULK_BYTES,
+                           LONG_FLUSH_SEC,
+                           RETRY_DELAY_SEC,
+                           MAX_RETRY_DELAY_SEC);
+
+    queue.push(std::string("abcd"));
+    queue.requeueFront({"xyz", "uv"});
+
+    EXPECT_EQ(queue.byteSize(), 9U);
+    EXPECT_EQ(queue.droppedEvents(), 0U);
+
+    queue.push(std::string("e"));
+    EXPECT_EQ(queue.droppedEvents(), 1U);
+    EXPECT_EQ(queue.byteSize(), 9U);
+}
+
+// Once the queue is stopping, requeued entries are discarded like the rest of the buffer.
+TEST_F(IndexerBulkQueueTest, RequeueFrontAfterStopIsANoOp)
+{
+    IndexerBulkQueue queue([](uint64_t /*sequence*/, std::vector<std::string>& /*batch*/) {},
+                           UNLIMITED_BYTES,
+                           SEND_ON_EVERY_PUSH,
+                           FLUSH_INTERVAL_SEC,
+                           RETRY_DELAY_SEC,
+                           MAX_RETRY_DELAY_SEC);
+    queue.stop();
+
+    EXPECT_NO_THROW(queue.requeueFront({"late"}));
+    EXPECT_EQ(queue.byteSize(), 0U);
+    EXPECT_EQ(queue.droppedEvents(), 0U);
+}
+
+// Requeued entries that reach the bulk threshold wake the worker instead of waiting for the flush interval.
+TEST_F(IndexerBulkQueueTest, RequeueFrontWakesTheWorkerWhenTheBatchIsFull)
+{
+    constexpr size_t FOUR_BYTES {4};
+    constexpr size_t LONG_FLUSH_SEC {60};
+    std::promise<std::vector<std::string>> sentPromise;
+    std::future<std::vector<std::string>> sentFuture = sentPromise.get_future();
+    std::atomic<bool> sent {false};
+
+    IndexerBulkQueue queue(
+        [&](uint64_t /*sequence*/, std::vector<std::string>& batch)
+        {
+            if (!sent.exchange(true))
+            {
+                sentPromise.set_value(batch);
+            }
+        },
+        UNLIMITED_BYTES,
+        FOUR_BYTES,
+        LONG_FLUSH_SEC,
+        RETRY_DELAY_SEC,
+        MAX_RETRY_DELAY_SEC);
+
+    queue.requeueFront({"ab", "cd"});
+
+    ASSERT_EQ(sentFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready)
+        << "the worker waited for the flush interval";
+    EXPECT_EQ(sentFuture.get(), (std::vector<std::string> {"ab", "cd"}));
 }
