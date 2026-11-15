@@ -569,6 +569,15 @@ public:
     uint64_t getDroppedEvents() const;
 
     /**
+     * @brief Get the total number of requeued events.
+     *
+     * @return The number of items an HTTP 200 bulk response rejected with a 429 or a cluster_block_exception
+     * that were put back in the queue to be resent. It counts requeue attempts, not unique documents: an
+     * item requeued three times counts three.
+     */
+    uint64_t getRequeuedEvents() const;
+
+    /**
      * @brief Create a Point In Time (PIT) for the specified indices.
      *
      * Creates a PIT context that can be used for consistent pagination across multiple search requests.

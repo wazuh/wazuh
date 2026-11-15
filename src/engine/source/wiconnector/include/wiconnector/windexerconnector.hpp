@@ -166,6 +166,11 @@ public:
     uint64_t getDroppedEvents() override;
 
     /**
+     * @copydoc IWIndexerConnector::getRequeuedEvents
+     */
+    uint64_t getRequeuedEvents() override;
+
+    /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
      *
      * This method ensures that the underlying asynchronous indexer connector is properly

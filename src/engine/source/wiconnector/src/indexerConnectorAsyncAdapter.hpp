@@ -34,6 +34,7 @@ public:
 
     uint64_t getQueueSize() const override { return m_inner->getQueueSize(); }
     uint64_t getDroppedEvents() const override { return m_inner->getDroppedEvents(); }
+    uint64_t getRequeuedEvents() const override { return m_inner->getRequeuedEvents(); }
 
     PointInTime createPointInTime(const std::vector<std::string>& indices,
                                   std::string_view keepAlive,

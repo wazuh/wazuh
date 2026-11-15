@@ -504,6 +504,7 @@ TEST_F(IndexerBulkQueueTest, RequeueFrontPutsEntriesBackInOrderAheadOfNewData)
     std::lock_guard<std::mutex> lock(batchesMutex);
     EXPECT_EQ(batches[0], (std::vector<std::string> {"a", "b", "c"}));
     EXPECT_EQ(batches[1], (std::vector<std::string> {"b", "c", "d"}));
+    EXPECT_EQ(queue.requeuedEvents(), 2U);
 }
 
 // Like the requeue of a failed send, requeueFront() ignores maxBytes and drops nothing; pushes that do not fit after
@@ -526,6 +527,7 @@ TEST_F(IndexerBulkQueueTest, RequeueFrontIgnoresMaxBytes)
 
     EXPECT_EQ(queue.byteSize(), 9U);
     EXPECT_EQ(queue.droppedEvents(), 0U);
+    EXPECT_EQ(queue.requeuedEvents(), 2U);
 
     queue.push(std::string("e"));
     EXPECT_EQ(queue.droppedEvents(), 1U);
@@ -546,6 +548,7 @@ TEST_F(IndexerBulkQueueTest, RequeueFrontAfterStopIsANoOp)
     EXPECT_NO_THROW(queue.requeueFront({"late"}));
     EXPECT_EQ(queue.byteSize(), 0U);
     EXPECT_EQ(queue.droppedEvents(), 0U);
+    EXPECT_EQ(queue.requeuedEvents(), 0U) << "discarded entries are not counted as requeued";
 }
 
 // Requeued entries that reach the bulk threshold wake the worker instead of waiting for the flush interval.

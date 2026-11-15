@@ -153,6 +153,13 @@ public:
         return m_totalDroppedCount.load();
     }
 
+    /// Total entries put back with requeueFront() since construction: requeue attempts, so an entry
+    /// requeued three times counts three. Entries discarded because the queue is stopping are not counted.
+    uint64_t requeuedEvents() const
+    {
+        return m_totalRequeuedCount.load();
+    }
+
     /// Counts events the processor discarded after an indexer response (they never reached the
     /// index). They add to droppedEvents() but not to the overflow accounting of push().
     void recordDiscarded(size_t events)
@@ -175,6 +182,7 @@ public:
             return;
         }
 
+        m_totalRequeuedCount += entries.size();
         for (auto it = entries.rbegin(); it != entries.rend(); ++it)
         {
             m_totalBytes += it->size();
@@ -423,6 +431,8 @@ private:
     std::atomic<size_t> m_droppedCount {0};
     // Public total: overflow plus recordDiscarded(); see droppedEvents().
     std::atomic<size_t> m_totalDroppedCount {0};
+    // Entries put back with requeueFront(); see requeuedEvents().
+    std::atomic<size_t> m_totalRequeuedCount {0};
     // Overflow-only total, the one the overflow summaries in logOverflow() report.
     std::atomic<size_t> m_overflowDroppedTotal {0};
     bool m_firstOverflowLogged {false};

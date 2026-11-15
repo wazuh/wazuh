@@ -473,6 +473,16 @@ uint64_t WIndexerConnector::getDroppedEvents()
     return m_indexerConnectorAsync->getDroppedEvents();
 }
 
+uint64_t WIndexerConnector::getRequeuedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getRequeuedEvents();
+}
+
 void WIndexerConnector::index(std::string_view index, std::string_view data)
 {
     std::shared_lock lock(m_mutex);

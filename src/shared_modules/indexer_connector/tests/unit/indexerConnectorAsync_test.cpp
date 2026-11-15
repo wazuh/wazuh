@@ -1172,6 +1172,7 @@ TEST_F(IndexerConnectorAsyncTest, MixedRejectionsRequeueOnlyBlockedAndThrottledI
     EXPECT_EQ(countPostsWith(posts.posts(), "value3"), 1u) << "an item with another error is not resent";
 
     EXPECT_EQ(connector.getDroppedEvents(), 0u);
+    EXPECT_EQ(connector.getRequeuedEvents(), 2u) << "neither the indexed item nor the other error is requeued";
     EXPECT_EQ(pauses.externalAfter(1).size(), 1u) << "one backoff pause before the resend";
     EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
                                 "Indexer rejected 2 document(s) in this batch (cluster_block_exception: 1, HTTP 429: "
@@ -1443,6 +1444,8 @@ TEST_F(IndexerConnectorAsyncTest, BlockLiftedAfterSeveralAttemptsIndexesEveryIte
     EXPECT_EQ(documentsOf(sent[4]), second);
     EXPECT_EQ(documentsOf(sent[5]), second);
     EXPECT_EQ(connector.getDroppedEvents(), 0u);
+    EXPECT_EQ(connector.getRequeuedEvents(), 7u)
+        << "requeue attempts, not documents: two items on three blocked bulks, then one item once";
 
     // Base delay 1s, cap 15s: 1st pause in [1s, 1.5s], 3rd in [2s, 4s]; none after the clean 4th bulk; the
     // block after it starts again from [1s, 1.5s].
@@ -1704,6 +1707,7 @@ TEST_F(IndexerConnectorAsyncTest, UnclassifiableResponseRequeuesNothingAndKeepsT
                                 "mismatch): 1 document(s) were not requeued and their delivery is unknown."),
               1u);
     EXPECT_EQ(connector.getDroppedEvents(), 0u);
+    EXPECT_EQ(connector.getRequeuedEvents(), 3u) << "bulks 1, 2 and 4 requeue one item each; bulk 3 none";
 
     // No pause after the unclassifiable answer, and the next block continues the backoff where the two before it
     // left it (3rd step, [2s, 4s]) instead of restarting from [1s, 1.5s].

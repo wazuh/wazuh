@@ -958,6 +958,11 @@ public:
         return m_queue->droppedEvents();
     }
 
+    uint64_t getRequeuedEvents() const
+    {
+        return m_queue->requeuedEvents();
+    }
+
     PointInTime
     createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
     {

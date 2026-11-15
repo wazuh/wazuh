@@ -2474,9 +2474,17 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted. Items a successful response rejected with a per-item `429` or a `cluster_block_exception` are requeued and retried, not dropped; while such rejections last, the queue fills up and the new events it refuses are counted here (see the [indexer connector retry behavior](../indexer_connector/README.md#retry-and-backoff-behavior)).
+Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted. Items a successful response rejected with a per-item `429` or a `cluster_block_exception` are requeued and retried, not dropped (see `indexer.events.requeued`); while such rejections last, the queue fills up and the new events it refuses are counted here (see the [indexer connector retry behavior](../indexer_connector/README.md#retry-and-backoff-behavior)).
 
 **Used for:** detecting loss conditions and overload situations.
+
+---
+
+##### `indexer.events.requeued`
+
+Number of items the indexer rejected with a per-item `429` (load shedding) or a `cluster_block_exception` (writes blocked) inside a successful `_bulk` response, and that the connector put back in its queue to resend, since the indexer connector started. It is a pull metric (type `pull` in the dump) and reads `0` while no connector exists. It counts requeue attempts, not unique documents: an item rejected on three consecutive sends counts three. Items still waiting when the manager stops are lost with the rest of the queue, and are not counted in `indexer.events.dropped`.
+
+**Used for:** detecting an indexer that refuses writes or sheds load. A value that keeps growing across reads means the rejections have not stopped; then watch `indexer.queue.usage.percent` and `indexer.events.dropped`.
 
 ---
 
