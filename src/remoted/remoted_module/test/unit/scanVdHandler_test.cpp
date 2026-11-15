@@ -38,16 +38,13 @@
 
 using namespace std::chrono_literals;
 using remoted::common::VdClient;
-using remoted::downstream::DownstreamCallback;
-using remoted::downstream::DownstreamError;
-using remoted::downstream::DownstreamRequest;
-using remoted::downstream::DownstreamResponse;
 using remoted::downstream::IDownstreamClient;
 using remoted::endpoints::scanvd::ScanVdOutcome;
 using remoted::endpoints::scanvd::ScanVdResponse;
 using remoted::scanvd::makeScanVdMetrics;
 using remoted::scanvd::ScanVdHandlerImpl;
 using remoted::scanvd::ScanVdMetrics;
+using remoted::test::CapturingClient;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
 using remoted::test::makeVdHttpClient;
@@ -88,25 +85,6 @@ namespace
         wazuh::metrics::Manager metricsManager;
         ScanVdMetrics metrics;
         ScanVdHandlerImpl handler;
-    };
-
-    /// Records the request it is handed and answers 200 at once, without touching a socket.
-    class CapturingClient final : public IDownstreamClient
-    {
-    public:
-        void sendAsync(DownstreamRequest req, std::shared_ptr<const void>, DownstreamCallback onComplete) override
-        {
-            body = std::string {req.body};
-            request = std::move(req);
-            request.body = {};
-            DownstreamResponse response;
-            response.status = 200;
-            response.body = "{}";
-            onComplete(DownstreamError::None, std::move(response));
-        }
-
-        DownstreamRequest request;
-        std::string body;
     };
 
     /// A listener that never accepts, its accept backlog filled to the brim: the next connect is refused

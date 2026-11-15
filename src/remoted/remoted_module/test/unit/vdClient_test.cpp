@@ -22,6 +22,7 @@
 
 using namespace std::chrono_literals;
 using remoted::common::VdClient;
+using remoted::test::CapturingClient;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
 using remoted::test::makeVdHttpClient;
@@ -47,6 +48,23 @@ TEST(VdClientTest, FreshInstanceQueriesVdOnFirstCall)
 
     EXPECT_EQ(client.getOffset(), 12345u);
     EXPECT_EQ(server.offsetRequestCount(), 1u);
+}
+
+TEST(VdClientTest, TheOffsetQueryCarriesItsOwnDeadlines)
+{
+    const auto socketPath = makeUniqueVdSocketPath("request-shape");
+    auto capturing = std::make_shared<CapturingClient>(R"({"offset":5})");
+    VdClient client(capturing, socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    EXPECT_EQ(client.getOffset(), 5u);
+    EXPECT_EQ(capturing->request.socketPath, socketPath);
+    EXPECT_EQ(capturing->request.method, remoted::http::Method::Get);
+    EXPECT_EQ(capturing->request.path, "/vulnerability-detector/offset");
+    EXPECT_TRUE(capturing->body.empty());
+    // The /scan/vd budget is computed from these two constants, so the query must set them itself
+    // rather than inherit whatever the shared client is configured with.
+    EXPECT_EQ(capturing->request.writeTimeoutMs, VdClient::OFFSET_WRITE_TIMEOUT_SECONDS * 1000);
+    EXPECT_EQ(capturing->request.responseTimeoutMs, VdClient::OFFSET_READ_TIMEOUT_SECONDS * 1000);
 }
 
 TEST(VdClientTest, CachedValueServedWithoutRequeryingWithinTtl)
