@@ -804,16 +804,14 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
      * the line back cannot change where the agent connects. INFO rather than WARNING:
      * nothing is wrong, the configuration is simply written in the older spelling. */
     if (legacy_tags_used) {
-        /* The trailing '/' is always emitted: with a prefix it separates it, and with
-         * none it is the opt-out spelling -- so an <endpoint></endpoint> opt-out is
-         * suggested back as "host:port/" and keeps meaning the same thing. An IPv6
+        /* Named as an <endpoint> spells it, so an <endpoint></endpoint> opt-out is
+         * suggested back as "host:port/" and keeps meaning the same thing, and an IPv6
          * literal is bracketed, or its trailing group would read as the port. */
-        const bool is_ipv6 = strchr(logr->server[0].rip, ':') != NULL;
+        char *name = w_agent_manager_name(&logr->server[0]);
 
         minfo("<agent><manager><address> and <port> are deprecated. Replace them with a "
-              "single <endpoint>%s%s%s:%d/%s</endpoint>",
-              is_ipv6 ? "[" : "", logr->server[0].rip, is_ipv6 ? "]" : "",
-              port, endpoint);
+              "single <endpoint>%s</endpoint>", name);
+        os_free(name);
     }
     logr->server[0].max_retries = max_retries;
     logr->server[0].retry_interval = retry_interval;

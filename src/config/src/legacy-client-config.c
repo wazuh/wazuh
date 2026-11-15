@@ -179,14 +179,13 @@ int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__
      * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
      * whole point. The composed value is the one now in use, so pasting it changes
      * nothing about where the agent connects. */
+    char *name = w_agent_manager_name(&logr->server[0]);
+
     minfo("<agent><manager><endpoint> is not configured. Using <client><server><address> '%s' "
           "with the default port %d and the default endpoint prefix '%s'. Replace the "
-          "<client><server> block with a single <endpoint>%s%s%s:%d/%s</endpoint>",
-          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX,
-          (strchr(logr->server[0].rip, ':') != NULL) ? "[" : "",
-          logr->server[0].rip,
-          (strchr(logr->server[0].rip, ':') != NULL) ? "]" : "",
-          DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
+          "<client><server> block with a single <endpoint>%s</endpoint>",
+          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX, name);
+    os_free(name);
 
     return (0);
 }

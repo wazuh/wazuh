@@ -60,3 +60,18 @@ void w_agent_set_manager(agent *logr, const char *host, int port, const char *en
     logr->server = server;
     logr->server_count = 1;
 }
+
+char *w_agent_manager_name(const agent_server *server)
+{
+    /* A deprecated <server-hostname> entry is stored as "host/". */
+    const int host_len = (int)strcspn(server->rip, "/");
+    const bool is_ipv6 = strchr(server->rip, ':') != NULL;
+    const char *prefix = server->endpoint ? server->endpoint : "";
+    const size_t size = strlen(server->rip) + strlen(prefix) + sizeof("[]:65535/");
+    char *name = NULL;
+
+    os_malloc(size, name);
+    snprintf(name, size, "%s%.*s%s:%d/%s", is_ipv6 ? "[" : "", host_len, server->rip,
+             is_ipv6 ? "]" : "", server->port, prefix);
+    return name;
+}

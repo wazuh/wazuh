@@ -33,4 +33,13 @@ void w_agent_free_managers(agent *logr);
 void w_agent_set_manager(agent *logr, const char *host, int port, const char *endpoint,
                          uint32_t scope_id);
 
+/**
+ * @brief Name a manager entry the way an <endpoint> spells it: host:port/prefix, an IPv6
+ *        host in brackets. The '/' is always there, so an entry with no prefix reads as
+ *        the "host:port/" opt-out.
+ *
+ * @return The name, allocated; free it.
+ */
+char *w_agent_manager_name(const agent_server *server);
+
 #endif /* AGENT_MANAGER_ENTRY_H */
