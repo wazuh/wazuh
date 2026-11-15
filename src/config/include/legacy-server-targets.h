@@ -49,6 +49,15 @@ void w_legacy_targets_end_block(w_legacy_targets_t *targets);
 bool w_legacy_targets_chosen(const w_legacy_targets_t *targets, size_t *index);
 
 /**
+ * @brief Quote every value as written, for a warning: "'a', 'b'". Each value is named once,
+ *        and `except`, the one in use, not at all.
+ *
+ * @param except Value left out; NULL leaves none out.
+ * @return The list, allocated; NULL when nothing is left to name.
+ */
+char *w_legacy_targets_quote(const w_legacy_targets_t *targets, const char *except);
+
+/**
  * @brief Release every value and reset the list.
  */
 void w_legacy_targets_free(w_legacy_targets_t *targets);

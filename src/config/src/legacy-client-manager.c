@@ -60,8 +60,40 @@ static void w_set_legacy_address(agent *logr, const char *address)
 }
 
 /* An <endpoint> is parsed exactly as one under <agent><manager> would be; an <address> gets
- * the 5.x HTTPS port and the manager's default prefix. OS_INVALID when the chosen <endpoint>
- * doesn't parse (logged). */
+ * the 5.x HTTPS port and the manager's default prefix. OS_INVALID when an <endpoint> doesn't
+ * parse (logged). */
+static int w_set_legacy_target(agent *logr, const w_legacy_target_t *target)
+{
+    if (target->is_endpoint) {
+        return w_set_legacy_endpoint(logr, target->value);
+    }
+
+    w_set_legacy_address(logr, target->value);
+    return 0;
+}
+
+/* 5.x connects to a single manager (#37702), so a 4.x failover list loses all but one. The
+ * dropped ones are named as written, so they can be found in the file. `chosen` is the
+ * legacy target in use, NULL when <agent> set the manager and every target is dropped. */
+static void w_warn_legacy_dropped(const w_legacy_targets_t *targets, const char *chosen,
+                                  const agent_server *in_use)
+{
+    char *ignored = w_legacy_targets_quote(targets, chosen);
+    char *name = ignored ? w_agent_manager_name(in_use) : NULL;
+
+    if (ignored && chosen) {
+        mwarn("The legacy <client> block names more than one manager, and only one is "
+              "supported. Using '%s', ignoring %s.", name, ignored);
+    } else if (ignored) {
+        mwarn("<server> inside the legacy <client> block is ignored: the manager is already "
+              "set to '%s'. Ignoring %s.", name, ignored);
+    }
+
+    os_free(name);
+    os_free(ignored);
+}
+
+/* The chosen target becomes the manager and the others are named in a warning. */
 static int w_legacy_client_set_manager(agent *logr, const w_legacy_targets_t *targets)
 {
     size_t chosen = 0;
@@ -70,11 +102,11 @@ static int w_legacy_client_set_manager(agent *logr, const w_legacy_targets_t *ta
         return 0;
     }
 
-    if (targets->items[chosen].is_endpoint) {
-        return w_set_legacy_endpoint(logr, targets->items[chosen].value);
+    if (w_set_legacy_target(logr, &targets->items[chosen]) < 0) {
+        return OS_INVALID;
     }
 
-    w_set_legacy_address(logr, targets->items[chosen].value);
+    w_warn_legacy_dropped(targets, targets->items[chosen].value, &logr->server[0]);
     return 0;
 }
 
@@ -82,10 +114,11 @@ static int w_legacy_client_set_manager(agent *logr, const w_legacy_targets_t *ta
  * @brief Make the legacy <client> targets the agent's manager, once the whole file is read.
  *
  * An <agent> that set a manager, through <manager> or the deprecated <server-ip> or
- * <server-hostname>, wins wherever it sits in the file, and the legacy targets are only
- * dropped. Otherwise the first <client> block that names a manager decides it: its last
- * <endpoint> wins, else its last <address>. Only the target in use is parsed, so a malformed
- * one the agent doesn't use cannot fail the configuration.
+ * <server-hostname>, wins wherever it sits in the file, and the legacy targets are named in
+ * a warning. Otherwise the first <client> block that names a manager decides it: its last
+ * <endpoint> wins, else its last <address>, and every other target of the file is named in
+ * a warning. Only the target in use is parsed, so a malformed one the agent doesn't use
+ * cannot fail the configuration.
  *
  * @param d1 Agent configuration.
  * @return 0 on success, OS_INVALID when the chosen <endpoint> doesn't parse (logged).
@@ -99,7 +132,9 @@ int Settle_Legacy_Client(void *d1)
         return 0;
     }
 
-    if (!logr->server) {
+    if (logr->server) {
+        w_warn_legacy_dropped(logr->legacy_targets, NULL, &logr->server[0]);
+    } else {
         ret = w_legacy_client_set_manager(logr, logr->legacy_targets);
     }
 

@@ -48,6 +48,42 @@ bool w_legacy_targets_chosen(const w_legacy_targets_t *targets, size_t *index)
            w_legacy_targets_find_last(targets, false, index);
 }
 
+/* A value already named, or the one in use, adds nothing to the warning. */
+static bool w_legacy_targets_leaves_out(const w_legacy_targets_t *targets, size_t i, const char *except)
+{
+    if (except && strcmp(targets->items[i].value, except) == 0) {
+        return true;
+    }
+
+    for (size_t j = 0; j < i; j++) {
+        if (strcmp(targets->items[j].value, targets->items[i].value) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void w_legacy_targets_append_quoted(char **list, const char *value)
+{
+    wm_strcat(list, *list ? ", '" : "'", '\0');
+    wm_strcat(list, value, '\0');
+    wm_strcat(list, "'", '\0');
+}
+
+char *w_legacy_targets_quote(const w_legacy_targets_t *targets, const char *except)
+{
+    char *list = NULL;
+
+    for (size_t i = 0; i < targets->count; i++) {
+        if (!w_legacy_targets_leaves_out(targets, i, except)) {
+            w_legacy_targets_append_quoted(&list, targets->items[i].value);
+        }
+    }
+
+    return list;
+}
+
 void w_legacy_targets_free(w_legacy_targets_t *targets)
 {
     for (size_t i = 0; i < targets->count; i++) {

@@ -1111,6 +1111,10 @@ static void test_legacy_client_enrollment_is_read_once_agent_set_the_address(voi
     assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                  &agent_xml, &agent_nodes, &cfg), 0);
 
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<server> inside the legacy <client> block is ignored: the manager is already "
+                  "set to '10.0.0.5:1600/wazuh-manager'. Ignoring '10.0.0.1'.");
+
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address></server>"
                                          "<enrollment><agent_name>vm-ubuntu</agent_name></enrollment>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
@@ -1361,6 +1365,9 @@ static void test_legacy_client_takes_the_last_address(void **state) {
                   "<agent><manager><endpoint> is not configured. Using <client><server><address> "
                   "'10.0.0.2' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
                   "<client><server> block with a single <endpoint>10.0.0.2:1517/wazuh-manager</endpoint>");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The legacy <client> block names more than one manager, and only one is supported. "
+                  "Using '10.0.0.2:1517/wazuh-manager', ignoring '10.0.0.1'.");
 
     assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
 
@@ -1431,6 +1438,10 @@ static void test_agent_manager_below_a_legacy_client_wins(void **state) {
     assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                       &agent_xml, &agent_nodes, &cfg), 0);
 
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<server> inside the legacy <client> block is ignored: the manager is already "
+                  "set to '10.0.0.5:1600/wazuh-manager'. Ignoring '10.0.0.1'.");
+
     assert_int_equal(Settle_Legacy_Client(&cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
@@ -1451,6 +1462,10 @@ static void test_legacy_client_is_ignored_once_agent_set_the_address(void **stat
 
     assert_int_equal(parse_agent("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                  &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "<server> inside the legacy <client> block is ignored: the manager is already "
+                  "set to '10.0.0.5:1600/wazuh-manager'. Ignoring '10.0.0.1'.");
 
     assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
                                          &legacy_xml, &legacy_nodes, &cfg), 0);
