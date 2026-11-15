@@ -13,6 +13,7 @@
 #include "os_net.h"
 #include "config.h"
 #include "sec.h"
+#include "agent-manager-entry.h"
 
 /* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
  * shared/src/url.c links the same library -- so this adds no new one. */
@@ -779,26 +780,10 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
 
 
     /* Single <manager> block: the last one prevails (#37702 restriction 2) and
-     * server rotation is removed (restriction 3), so replace any previous entry
-     * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
-    if (logr->server) {
-        if (logr->server_count > 0) {
-            mwarn("Only one <manager> block is supported; the last one prevails.");
-        }
-        for (int k = 0; logr->server[k].rip; k++) {
-            os_free(logr->server[k].rip);
-            os_free(logr->server[k].endpoint);
-        }
-        os_free(logr->server);
-        logr->server = NULL;
-        logr->server_count = 0;
-    }
-
-    os_calloc(2, sizeof(agent_server), logr->server);
-    os_strdup(rip, logr->server[0].rip);
-    if (strchr(logr->server[0].rip, ':') != NULL) {
-        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+     * server rotation is removed (restriction 3), so the entry is replaced, not
+     * appended to. */
+    if (logr->server && logr->server_count > 0) {
+        mwarn("Only one <manager> block is supported; the last one prevails.");
     }
 
     /* <endpoint> absent entirely: default to the manager's own default prefix so an
@@ -810,11 +795,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         snprintf(endpoint, sizeof(endpoint), "%s", DEFAULT_AGENT_ENDPOINT_PREFIX);
     }
 
-    if (endpoint[0] != '\0') {
-        os_strdup(endpoint, logr->server[0].endpoint);
-    }
-    logr->server[0].scope_id = scope_id;
-    logr->server[0].port = port;
+    w_agent_set_manager(logr, rip, port, endpoint, scope_id);
 
     /* #38624: <address>/<port> still work, but tell the operator exactly what to write
      * instead. The suggestion is built from the values just resolved -- not from the
@@ -835,7 +816,6 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     }
     logr->server[0].max_retries = max_retries;
     logr->server[0].retry_interval = retry_interval;
-    logr->server_count = 1;
 
     /* Names <endpoint>, not the <port> tag: since #38624 the port is a component of
      * <endpoint>, so pointing the operator at a <port> element sends them looking for
@@ -1389,16 +1369,7 @@ int Test_Agent(const char * path){
 
 void Free_Agent(agent * config){
     if (config) {
-        int i;
-
-        if (config->server) {
-            for (i = 0; config->server[i].rip; i++) {
-                free(config->server[i].rip);
-                free(config->server[i].endpoint);
-            }
-
-            free(config->server);
-        }
+        w_agent_free_managers(config);
 
         free(config->profile);
 

@@ -13,6 +13,7 @@
 #include "shared.h"
 #include "client-config.h"
 #include "config.h"
+#include "agent-manager-entry.h"
 
 /* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
 static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
@@ -158,22 +159,7 @@ int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__
         os_free(address);
         os_free(endpoint_value);
 
-        os_calloc(2, sizeof(agent_server), logr->server);
-        os_strdup(host, logr->server[0].rip);
-
-        if (strchr(logr->server[0].rip, ':') != NULL) {
-            os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-            OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-        }
-
-        if (endpoint[0] != '\0') {
-            os_strdup(endpoint, logr->server[0].endpoint);
-        }
-
-        logr->server[0].scope_id = scope_id;
-        logr->server[0].port = port;
-        logr->server_count = 1;
-
+        w_agent_set_manager(logr, host, port, endpoint, scope_id);
         return (0);
     }
 
@@ -181,20 +167,13 @@ int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__
         return (0);
     }
 
-    os_calloc(2, sizeof(agent_server), logr->server);
-    logr->server[0].rip = address;
-    if (strchr(logr->server[0].rip, ':') != NULL) {
-        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-    }
-    logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
     /* 4.x had no <endpoint> concept at all -- any <port> under this legacy
      * <client><server> block was never read either (see this function's own
      * docstring), so a WPK-upgraded agent always reconnects on the 5.x HTTPS
      * port with the manager's default reverse-proxy prefix, never the old
      * 4.x port or unprefixed requests. */
-    os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[0].endpoint);
-    logr->server_count = 1;
+    w_agent_set_manager(logr, address, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX, 0);
+    os_free(address);
 
     /* A 4.x file has no <endpoint> at all, so say exactly what to write -- this is the
      * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
