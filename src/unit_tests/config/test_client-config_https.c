@@ -923,6 +923,28 @@ static void test_agent_manager_endpoint_too_long_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+/* os_realloc() leaves new memory as it finds it (ASan fills it with 0xbe), and an unset
+ * scope_id was appended to an IPv6 host as its zone. */
+static void test_deprecated_server_ip_entry_starts_empty(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The <server-ip> tag is deprecated, please use <manager><endpoint> instead.");
+    expect_valid_ip("2001:db8::1");
+
+    assert_int_equal(parse_agent("<server-ip>2001:db8::1</server-ip>", &xml, &nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "2001:db8::1");
+    assert_int_equal(cfg.server[0].scope_id, 0);
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_null(cfg.server[1].rip);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_legacy_client_address_is_the_fallback(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -2177,6 +2199,7 @@ int main(void) {
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_doubled_slash),
         cmocka_unit_test(test_agent_manager_endpoint_rejects_a_dot_dot_segment),
         cmocka_unit_test(test_agent_manager_endpoint_too_long_is_rejected),
+        cmocka_unit_test(test_deprecated_server_ip_entry_starts_empty),
         cmocka_unit_test(test_legacy_client_address_is_the_fallback),
         cmocka_unit_test(test_legacy_client_reads_an_endpoint),
         cmocka_unit_test(test_legacy_client_endpoint_defaults_port_and_prefix),

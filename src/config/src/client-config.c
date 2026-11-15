@@ -229,16 +229,17 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         // Add extra server (legacy configuration)
         if (rip) {
             os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
+            // os_realloc() does not zero new memory: the new entry and the NULL-rip sentinel
+            // after it start empty, so no field is left to whatever the allocator returned
+            // (an unset scope_id was appended to an IPv6 host as its zone).
+            memset(logr->server + logr->server_count, 0, 2 * sizeof(agent_server));
             os_strdup(rip, logr->server[logr->server_count].rip);
-            logr->server[logr->server_count].port = 0;
-            // os_realloc() does not zero new memory; this old <server-ip>/<server-hostname>
-            // syntax never had an <endpoint> concept, so default it the same way a WPK-upgraded
-            // 4.x <client><server> config does (see Read_Legacy_Client()).
+            // This old <server-ip>/<server-hostname> syntax never had an <endpoint> concept,
+            // so default it the same way a WPK-upgraded 4.x <client><server> config does.
             os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[logr->server_count].endpoint);
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
             logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
-            memset(logr->server + logr->server_count + 1, 0, sizeof(agent_server));
             logr->server_count++;
         }
     }
