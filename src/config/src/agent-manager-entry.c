@@ -21,17 +21,22 @@ void w_agent_free_managers(agent *logr)
     logr->server_count = 0;
 }
 
+/* An IPv6 host is stored expanded. A host with a ':' that doesn't expand, such as a
+ * hostname written with its port, is kept as written, however long it is. */
 static char *w_agent_manager_host(const char *host)
 {
+    char expanded[IPSIZE + 1];
     char *stored = NULL;
 
-    os_strdup(host, stored);
+    if (strchr(host, ':') != NULL && strlen(host) <= IPSIZE) {
+        snprintf(expanded, sizeof(expanded), "%s", host);
 
-    if (strchr(stored, ':') != NULL) {
-        os_realloc(stored, IPSIZE + 1, stored);
-        OS_ExpandIPv6(stored, IPSIZE);
+        if (OS_ExpandIPv6(expanded, sizeof(expanded)) == OS_SUCCESS) {
+            host = expanded;
+        }
     }
 
+    os_strdup(host, stored);
     return stored;
 }
 

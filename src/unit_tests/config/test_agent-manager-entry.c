@@ -85,6 +85,29 @@ static void test_set_manager_expands_an_ipv6_host(void **state) {
     Free_Agent(&cfg);
 }
 
+/* Longer than an IPv6 address, so it can't be one: it used to be cut to that size and left
+ * without its terminator, and everything that printed it read past the buffer. */
+static void test_set_manager_keeps_a_long_host_with_a_colon_whole(void **state) {
+    agent cfg = { .server = NULL };
+    const char *host = "long-manager-hostname.example.internal.corp:1517";
+
+    w_agent_set_manager(&cfg, host, 1517, "wazuh-manager", 0);
+
+    assert_string_equal(cfg.server[0].rip, host);
+
+    Free_Agent(&cfg);
+}
+
+static void test_set_manager_keeps_a_host_that_does_not_expand(void **state) {
+    agent cfg = { .server = NULL };
+
+    w_agent_set_manager(&cfg, "wazuh-server:1517", 1517, "wazuh-manager", 0);
+
+    assert_string_equal(cfg.server[0].rip, "wazuh-server:1517");
+
+    Free_Agent(&cfg);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_set_manager_stores_one_entry),
@@ -92,6 +115,8 @@ int main(void) {
         cmocka_unit_test(test_set_manager_accepts_the_strings_of_the_earlier_entry),
         cmocka_unit_test(test_set_manager_stores_no_empty_endpoint),
         cmocka_unit_test(test_set_manager_expands_an_ipv6_host),
+        cmocka_unit_test(test_set_manager_keeps_a_long_host_with_a_colon_whole),
+        cmocka_unit_test(test_set_manager_keeps_a_host_that_does_not_expand),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
