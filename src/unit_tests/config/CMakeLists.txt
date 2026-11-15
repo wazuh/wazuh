@@ -58,6 +58,11 @@ if(NOT ${TARGET} STREQUAL "manager")
                               -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                               -Wl,--wrap=fim_db_teardown -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
+    list(APPEND config_names "test_legacy-server-targets")
+    list(APPEND config_flags "-Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,syscom_dispatch \
+                              -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                              -Wl,--wrap=fim_db_teardown -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
     list(APPEND config_names "test_client-config_https")
     # The syscheck/dbsync wraps mirror the sibling test above: on winagent this
     # binary pulls win_utils.obj and win_service.obj out of DEPENDENCIES_O, and
