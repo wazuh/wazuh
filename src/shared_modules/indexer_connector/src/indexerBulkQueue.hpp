@@ -160,6 +160,35 @@ public:
         m_totalDroppedCount += events;
     }
 
+    /// Puts entries back at the FRONT of the queue, in the given order and ahead of anything pushed since:
+    /// the items of a successful _bulk response that the indexer rejected without writing them, so they are
+    /// resent before newer data. Like the requeue of a failed send in dispatch(), it ignores maxBytes (the
+    /// overshoot is at most one batch) and counts nothing as dropped. Once the queue is stopping the entries
+    /// are discarded, as the rest of the buffer is.
+    void requeueFront(std::vector<std::string>&& entries)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_running)
+        {
+            logDebug1(
+                LOGGER_DEFAULT_TAG, "IndexerBulkQueue stopping: discarding %zu requeued event(s).", entries.size());
+            return;
+        }
+
+        for (auto it = entries.rbegin(); it != entries.rend(); ++it)
+        {
+            m_totalBytes += it->size();
+            m_buffer.push_front(std::move(*it));
+        }
+
+        // Called from the processor, the dispatch loop checks the threshold itself before waiting; this
+        // wakes it when the caller is another thread.
+        if (m_totalBytes >= m_bulkMaxBytes.load())
+        {
+            m_cv.notify_one();
+        }
+    }
+
     /// Current bulk max bytes threshold.
     size_t bulkMaxBytes() const
     {
@@ -173,7 +202,8 @@ public:
     }
 
     /// Requests a pause (shared backoff) before the dispatch thread's next send - e.g. an OpenSearch
-    /// HTTP 200 with a per-item cluster_block_exception. Coalesces repeated calls into one pause.
+    /// HTTP 200 whose items were rejected with a cluster_block_exception or a 429 and requeued with
+    /// requeueFront(). Coalesces repeated calls into one pause.
     ///
     /// @param sequence Batch's sequence id (see Processor). Only applied if newer than the last
     ///                 applied report, so a stale, out-of-order classification can't win.
@@ -370,8 +400,8 @@ private:
     // requestBackoff()/reportHealthyResponse() calls for out-of-order detection.
     uint64_t m_nextSequence {0};
     // Shared backoff for "pause before the next send" (processor exception or requestBackoff()).
-    // Guarded by m_backoffStateMutex, not atomic: reportHealthyResponse()/requestBackoff() can call
-    // into it from the response logger's thread(s), concurrently with dispatch()'s nextDelay().
+    // Guarded by m_backoffStateMutex, not atomic: reportHealthyResponse()/requestBackoff() are public and
+    // may be called from any thread, concurrently with dispatch()'s nextDelay().
     std::mutex m_backoffStateMutex;
     IndexerExponentialBackoff m_backoff;
     bool m_externalBackoffPending {false};
