@@ -14,6 +14,7 @@
 #include "config.h"
 #include "sec.h"
 #include "agent-manager-entry.h"
+#include "legacy-server-targets.h"
 
 /* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
  * shared/src/url.c links the same library -- so this adds no new one. */
@@ -1381,6 +1382,12 @@ void Free_Agent(agent * config){
         os_free(config->enrollment.groups);
         os_free(config->enrollment.agent_address);
         os_free(config->enrollment.authorization_pass_path);
+
+        /* Left by a read that failed before settling them. */
+        if (config->legacy_targets) {
+            w_legacy_targets_free(config->legacy_targets);
+            os_free(config->legacy_targets);
+        }
     }
 }
 

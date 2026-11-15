@@ -50,9 +50,9 @@ static int parse_agent(const char *xml_str, OS_XML *xml, xml_node ***nodes, agen
     return parse_agent_into(xml_str, xml, nodes, cfg);
 }
 
-/* Parses `xml_str` as the body of a legacy 4.x <client>...</client>. Does not reset
- * cfg, so it can run after parse_agent() on the same struct. */
-static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+/* Parses `xml_str` as the body of a legacy 4.x <client>...</client> with more of the file
+ * still to read: its targets are recorded, not settled. Does not reset cfg. */
+static int read_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
     if (OS_ReadXMLString(xml_str, xml) != 0) {
         return OS_INVALID;
     }
@@ -62,6 +62,16 @@ static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nod
     }
 
     return Read_Legacy_Client(xml, *nodes, cfg, NULL);
+}
+
+/* Parses `xml_str` as a legacy <client> block that ends the file, then settles its manager
+ * as ReadConfig() does. Does not reset cfg, so it can run after parse_agent(). */
+static int parse_legacy_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+    if (read_legacy_client(xml_str, xml, nodes, cfg) != 0) {
+        return OS_INVALID;
+    }
+
+    return Settle_Legacy_Client(cfg);
 }
 
 static void cleanup(OS_XML *xml, xml_node **nodes, agent *cfg) {
@@ -1403,7 +1413,10 @@ static void test_legacy_client_without_an_address_sets_no_server(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_agent_block_replaces_a_legacy_address(void **state) {
+/* A <client> above <agent> used to be applied, logged as in use, and then replaced with a
+ * warning about a second <manager> block the file doesn't have. Its targets now wait for
+ * the end of the file, so <agent> simply wins. */
+static void test_agent_manager_below_a_legacy_client_wins(void **state) {
     OS_XML legacy_xml = {0};
     OS_XML agent_xml = {0};
     xml_node **legacy_nodes;
@@ -1412,19 +1425,13 @@ static void test_agent_block_replaces_a_legacy_address(void **state) {
 
     memset(&cfg, 0, sizeof(cfg));
 
-    expect_string(__wrap__minfo, formatted_msg,
-                  "<agent><manager><endpoint> is not configured. Using <client><server><address> "
-                  "'10.0.0.1' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the "
-                  "<client><server> block with a single <endpoint>10.0.0.1:1517/wazuh-manager</endpoint>");
-
-    assert_int_equal(parse_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
-                                         &legacy_xml, &legacy_nodes, &cfg), 0);
-
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "Only one <manager> block is supported; the last one prevails.");
+    assert_int_equal(read_legacy_client("<server><address>10.0.0.1</address><port>1517</port></server>",
+                                        &legacy_xml, &legacy_nodes, &cfg), 0);
 
     assert_int_equal(parse_agent_into("<manager><endpoint>10.0.0.5:1600</endpoint></manager>",
                                       &agent_xml, &agent_nodes, &cfg), 0);
+
+    assert_int_equal(Settle_Legacy_Client(&cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.5");
@@ -2207,7 +2214,7 @@ int main(void) {
         cmocka_unit_test(test_legacy_client_takes_the_last_address),
         cmocka_unit_test(test_legacy_client_keeps_a_long_address_with_a_colon_whole),
         cmocka_unit_test(test_legacy_client_without_an_address_sets_no_server),
-        cmocka_unit_test(test_agent_block_replaces_a_legacy_address),
+        cmocka_unit_test(test_agent_manager_below_a_legacy_client_wins),
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),
         cmocka_unit_test(test_legacy_client_reads_the_enrollment_identity),
         cmocka_unit_test(test_legacy_client_enrollment_is_read_once_agent_set_the_address),

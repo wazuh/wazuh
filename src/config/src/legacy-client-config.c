@@ -14,7 +14,6 @@
 #include "client-config.h"
 #include "config.h"
 #include "legacy-server-targets.h"
-#include "legacy-client-manager.h"
 
 /* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
 static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
@@ -114,30 +113,28 @@ static int w_read_legacy_children(const OS_XML *xml, XML_NODE node, agent *logr,
  *        under <server>, and the whole <enrollment> sub-block.
  *
  * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
- * only has <client>. The manager is taken when <agent> did not already provide one - so
- * <agent> wins whichever block comes first - and <enrollment> is read because it carries
- * the agent's identity, which has no 5.x replacement inside the legacy block: dropping it
- * makes the agent re-register under its hostname with no groups. Every other direct child
+ * only has <client>. The <server> targets are recorded on the agent configuration and
+ * settled once the whole file is read (Settle_Legacy_Client()), so <agent> wins wherever
+ * it sits. <enrollment> is read because it carries the agent's identity, which has no 5.x
+ * replacement inside the legacy block: dropping it makes the agent re-register under its
+ * hostname with no groups. Every other direct child
  * is ignored, and says so, since the block is 4.x's and its options are not. <server>'s
  * own children other than <address> and <endpoint> stay silent: neither <port> nor
  * <protocol> is read, and the message printed for the address already names the port in
  * use and a copy-pasteable replacement for the whole block.
- *
- * The last <endpoint> wins, else the last <address>. Only that one is parsed, so a
- * malformed legacy <endpoint> cannot fail a configuration that is not using it.
  */
 int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     agent *logr = (agent *)d1;
-    w_legacy_targets_t targets = {0};
-    /* Captured before the block sets a manager of its own. */
-    const bool manager_taken = (logr->server != NULL);
-    int ret = w_read_legacy_children(xml, node, logr, &targets);
 
-    if (ret == 0 && !manager_taken) {
-        ret = w_legacy_client_set_manager(logr, &targets);
+    if (!logr->legacy_targets) {
+        os_calloc(1, sizeof(w_legacy_targets_t), logr->legacy_targets);
     }
 
-    w_legacy_targets_free(&targets);
-    return ret < 0 ? OS_INVALID : 0;
+    if (w_read_legacy_children(xml, node, logr, logr->legacy_targets) < 0) {
+        return OS_INVALID;
+    }
+
+    w_legacy_targets_end_block(logr->legacy_targets);
+    return 0;
 }

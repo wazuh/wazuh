@@ -386,8 +386,8 @@ int get_ossec_server()
 
     /* Block precedence first, tag second: <agent><manager> is checked in full
      * (endpoint, then its own deprecated address) before ever looking at
-     * <client><server> -- mirrors Read_Legacy_Client()'s address_taken gate
-     * (legacy-client-config.c), which skips the legacy block entirely once <agent>
+     * <client><server> -- mirrors Settle_Legacy_Client()
+     * (legacy-client-manager.c), which drops the legacy targets once <agent>
      * has resolved anything, regardless of which tag it used. Checking
      * endpoint-anywhere before address-anywhere would let a legacy
      * <client><server><endpoint> (from an installer-patched preserved 4.x

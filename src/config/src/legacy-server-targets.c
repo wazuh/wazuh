@@ -20,12 +20,19 @@ void w_legacy_targets_add(w_legacy_targets_t *targets, const char *value, bool i
     target->is_endpoint = is_endpoint;
 }
 
+void w_legacy_targets_end_block(w_legacy_targets_t *targets)
+{
+    if (targets->first_block == 0) {
+        targets->first_block = targets->count;
+    }
+}
+
 /* An <endpoint> carries the whole target, so the last one wins over any <address>,
- * wherever it appears. */
+ * wherever it appears in the first block. */
 static bool w_legacy_targets_find_last(const w_legacy_targets_t *targets, bool is_endpoint,
                                        size_t *index)
 {
-    for (size_t i = targets->count; i > 0; i--) {
+    for (size_t i = targets->first_block; i > 0; i--) {
         if (targets->items[i - 1].is_endpoint == is_endpoint) {
             *index = i - 1;
             return true;
@@ -49,4 +56,5 @@ void w_legacy_targets_free(w_legacy_targets_t *targets)
 
     os_free(targets->items);
     targets->count = 0;
+    targets->first_block = 0;
 }

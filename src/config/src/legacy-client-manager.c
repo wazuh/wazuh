@@ -7,8 +7,14 @@
  * Foundation
  */
 
+/* Settle_Legacy_Client(), declared in config.h beside Read_Legacy_Client(): once the whole
+ * file is read, the targets of the legacy <client> blocks make the agent's manager unless
+ * <agent> set one. */
+
 #include "shared.h"
-#include "legacy-client-manager.h"
+#include "config.h"
+#include "client-config.h"
+#include "legacy-server-targets.h"
 #include "agent-manager-entry.h"
 
 /* An <endpoint> written here by the installer carries the whole target, so it is parsed
@@ -53,7 +59,10 @@ static void w_set_legacy_address(agent *logr, const char *address)
     os_free(name);
 }
 
-int w_legacy_client_set_manager(agent *logr, const w_legacy_targets_t *targets)
+/* An <endpoint> is parsed exactly as one under <agent><manager> would be; an <address> gets
+ * the 5.x HTTPS port and the manager's default prefix. OS_INVALID when the chosen <endpoint>
+ * doesn't parse (logged). */
+static int w_legacy_client_set_manager(agent *logr, const w_legacy_targets_t *targets)
 {
     size_t chosen = 0;
 
@@ -67,4 +76,34 @@ int w_legacy_client_set_manager(agent *logr, const w_legacy_targets_t *targets)
 
     w_set_legacy_address(logr, targets->items[chosen].value);
     return 0;
+}
+
+/**
+ * @brief Make the legacy <client> targets the agent's manager, once the whole file is read.
+ *
+ * An <agent> that set a manager, through <manager> or the deprecated <server-ip> or
+ * <server-hostname>, wins wherever it sits in the file, and the legacy targets are only
+ * dropped. Otherwise the first <client> block that names a manager decides it: its last
+ * <endpoint> wins, else its last <address>. Only the target in use is parsed, so a malformed
+ * one the agent doesn't use cannot fail the configuration.
+ *
+ * @param d1 Agent configuration.
+ * @return 0 on success, OS_INVALID when the chosen <endpoint> doesn't parse (logged).
+ */
+int Settle_Legacy_Client(void *d1)
+{
+    agent *logr = (agent *)d1;
+    int ret = 0;
+
+    if (!logr->legacy_targets) {
+        return 0;
+    }
+
+    if (!logr->server) {
+        ret = w_legacy_client_set_manager(logr, logr->legacy_targets);
+    }
+
+    w_legacy_targets_free(logr->legacy_targets);
+    os_free(logr->legacy_targets);
+    return ret;
 }

@@ -46,9 +46,27 @@ static void test_targets_chosen_is_the_last_address(void **state) {
 
     w_legacy_targets_add(&targets, "10.0.0.1", false);
     w_legacy_targets_add(&targets, "10.0.0.2", false);
+    w_legacy_targets_end_block(&targets);
 
     assert_true(w_legacy_targets_chosen(&targets, &chosen));
     assert_int_equal(chosen, 1);
+
+    w_legacy_targets_free(&targets);
+}
+
+/* The first <client> block that names a manager decides it, as in 5.0.0. */
+static void test_targets_chosen_ignores_later_blocks(void **state) {
+    w_legacy_targets_t targets = {0};
+    size_t chosen = 7;
+
+    w_legacy_targets_end_block(&targets);
+    w_legacy_targets_add(&targets, "10.0.0.1", false);
+    w_legacy_targets_end_block(&targets);
+    w_legacy_targets_add(&targets, "10.0.0.5:8443", true);
+    w_legacy_targets_end_block(&targets);
+
+    assert_true(w_legacy_targets_chosen(&targets, &chosen));
+    assert_int_equal(chosen, 0);
 
     w_legacy_targets_free(&targets);
 }
@@ -61,6 +79,7 @@ static void test_targets_chosen_prefers_the_last_endpoint_wherever_it_is(void **
     w_legacy_targets_add(&targets, "10.0.0.5", true);
     w_legacy_targets_add(&targets, "10.0.0.6:8443", true);
     w_legacy_targets_add(&targets, "10.0.0.1", false);
+    w_legacy_targets_end_block(&targets);
 
     assert_true(w_legacy_targets_chosen(&targets, &chosen));
     assert_int_equal(chosen, 1);
@@ -72,10 +91,12 @@ static void test_targets_free_resets_the_list(void **state) {
     w_legacy_targets_t targets = {0};
 
     w_legacy_targets_add(&targets, "10.0.0.1", false);
+    w_legacy_targets_end_block(&targets);
     w_legacy_targets_free(&targets);
 
     assert_null(targets.items);
     assert_int_equal(targets.count, 0);
+    assert_int_equal(targets.first_block, 0);
 }
 
 int main(void) {
@@ -83,6 +104,7 @@ int main(void) {
         cmocka_unit_test(test_targets_add_copies_the_value),
         cmocka_unit_test(test_targets_chosen_is_false_when_empty),
         cmocka_unit_test(test_targets_chosen_is_the_last_address),
+        cmocka_unit_test(test_targets_chosen_ignores_later_blocks),
         cmocka_unit_test(test_targets_chosen_prefers_the_last_endpoint_wherever_it_is),
         cmocka_unit_test(test_targets_free_resets_the_list),
     };

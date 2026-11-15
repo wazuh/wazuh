@@ -14,6 +14,9 @@
 #include "shared.h"
 #include <stdatomic.h>
 
+/* The targets of the legacy <client> blocks, see legacy-server-targets.h. */
+struct w_legacy_targets;
+
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
     unsigned int remote_conf:1;
@@ -156,6 +159,7 @@ typedef struct _agent {
     agent_report stats_report;  ///< Periodic /stats push (<agent><stats_report>).
     agent_report config_report; ///< Periodic /config push (<agent><config_report>).
     agent_enrollment enrollment; ///< Agent-side enrollment over HTTPS (<agent><enrollment>).
+    struct w_legacy_targets *legacy_targets; ///< Legacy <client> targets, settled once the whole file is read.
 } agent;
 
 /* Anti tampering config */

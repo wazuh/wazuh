@@ -25,6 +25,7 @@ typedef struct {
 typedef struct w_legacy_targets {
     w_legacy_target_t *items;
     size_t count;
+    size_t first_block; ///< Targets of the first <client> block that named any; it decides the manager.
 } w_legacy_targets_t;
 
 /**
@@ -33,8 +34,14 @@ typedef struct w_legacy_targets {
 void w_legacy_targets_add(w_legacy_targets_t *targets, const char *value, bool is_endpoint);
 
 /**
+ * @brief Mark the end of a <client> block. The first block that named a target is the one
+ *        the manager comes from; the targets of later blocks are only named in a warning.
+ */
+void w_legacy_targets_end_block(w_legacy_targets_t *targets);
+
+/**
  * @brief Find the target the agent connects to: the last <endpoint>, else the last
- *        <address>.
+ *        <address>, of the first <client> block that named any.
  *
  * @param index Receives the position of that target in targets->items.
  * @return false when there is no target at all.
