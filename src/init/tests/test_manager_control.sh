@@ -322,11 +322,16 @@ control planted_link start > /dev/null
 printf 'CANARY-word1 secondword\n' > "${WORK}/planted_link/canary"
 old="$(cat "${WORK}/planted_link/var/run/wazuh-manager-clusterd"-*.pid)"
 ln -s "${WORK}/planted_link/canary" "${WORK}/planted_link/var/run/wazuh-manager-clusterd-0.pid"
+# A live pid in the name gets past the numeric check, so the link reaches the process checks too.
+sleep 300 > /dev/null 2>&1 &
+foreign=$!
+ln -s "${WORK}/planted_link/canary" "${WORK}/planted_link/var/run/wazuh-manager-clusterd-${foreign}.pid"
 check "restart passes over a pid file linked to another file" "0" "$(control planted_link restart)"
 check "the linked file is not printed" "" \
     "$(grep -h -e CANARY -e secondword "${WORK}/planted_link/out" "${WORK}/planted_link/err")"
 check "the daemon beside the link is stopped" "no" "$(kill -0 "${old}" 2>/dev/null && echo yes || echo no)"
 check "every daemon runs after that restart" "${DAEMONS}" "$(running planted_link)"
+kill "${foreign}" 2>/dev/null
 
 new_tree planted_pid
 control planted_pid start > /dev/null
