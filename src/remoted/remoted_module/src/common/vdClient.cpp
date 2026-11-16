@@ -114,7 +114,18 @@ namespace remoted::common
         // and response deadlines, see queryVdModule()) must never run while held, or every
         // concurrent caller of getFeedState() -- i.e. every agent's /control notify on this node --
         // would serialize behind it.
-        const auto result = queryVdModule();
+        //
+        // Anything queryVdModule() throws (building the request, formatting a warning) is a failed
+        // query: the completion below must run, or m_refreshInProgress stays set and VD is never
+        // queried again by this instance.
+        QueryResult result {false, 0, true};
+        try
+        {
+            result = queryVdModule();
+        }
+        catch (...) // NOLINT(bugprone-empty-catch)
+        {
+        }
 
         std::lock_guard<std::mutex> lock(m_mutex);
         m_refreshInProgress = false;
