@@ -19,7 +19,7 @@ What it handles:
 | Indexer password (`wazuh-manager` user on the indexer) | no: supplied or read from the indexer | the manager's keystore |
 | The manager's CA | yes: minted at installation, or staged by you | `<CONF>/ca/`, published in `<CONF>/export/ca.pem` |
 | Agent listener and Server API pairs | yes: issued at installation, or staged by you | `<CONF>/certs/remoted.pem`, `apid.pem` |
-| Indexer CA and client pair | no: imported from the indexer, or staged by you | `<CONF>/certs/indexer-ca.pem`, `indexer-connector.pem` |
+| Indexer CA, and a client pair only when the configuration names one | no: imported from the indexer, or staged by you | `<CONF>/certs/indexer-ca.pem`; the pair under its configured names |
 
 ## Files and modes
 
@@ -40,17 +40,14 @@ all. The resolver never repairs an owner or a mode: an entry that does not match
 | `<CONF>/export/` | `root:root 0700`, exactly | resolver | what the manager publishes for the dashboard on the same host |
 | `<CONF>/export/credentials.env` | `root:root 0600` (`0600` exactly) | resolver | the two Server API passwords |
 | `<CONF>/export/ca.pem` | `root:root 0644` | resolver | copy of `ca/root-ca.pem`: what clients verify the Server API with |
-| `<CONF>/export/dashboard-client.pem` | `root:root 0644` | resolver (masters) or you | the dashboard's client certificate, for a future import ([What the dashboard takes from the manager](#what-the-dashboard-takes-from-the-manager)) |
-| `<CONF>/export/dashboard-client-key.pem` | `root`, no group or other bit (the resolver writes `0600 root:root`) | resolver (masters) or you | its private key |
-| `<CONF>/export/.dashboard-client.issued` | `root`, no group or other bit (`0600 root:root`) | resolver | marker: the fingerprints of the pair the resolver wrote |
 | `<CONF>/certs/` | `root:wazuh-manager 0750`, exactly | installer | TLS material the daemons read |
 | `<CONF>/certs/root-ca.pem` | `root:wazuh-manager 0640`, exactly | resolver (only when absent) | the agents' CA bundle, served by remoted |
 | `<CONF>/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager 0640`, exactly | resolver or you | agent listener pair |
 | `<CONF>/certs/apid.pem`, `apid-key.pem` | `root:wazuh-manager 0640`, exactly | resolver or you | Server API pair |
 | `<CONF>/certs/indexer-ca.pem` | `root:wazuh-manager 0640`, exactly | resolver (import) or you | the CA the indexer connector trusts |
-| `<CONF>/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager 0640`, exactly | resolver (import) or you | client pair the manager presents to the indexer |
+| `<CONF>/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager 0640`, exactly | resolver (import) or you | client pair the manager presents to the indexer, only when `indexer.ssl.certificate` and `indexer.ssl.key` name them ([Configured file names](#configured-file-names)) |
 | `<CONF>/certs/.indexer-ca.imported`, `.indexer-connector.imported` | `root:wazuh-manager 0640` | resolver | markers: these files were imported, not staged |
-| `/etc/wazuh-indexer/export/` | `root`, any group, not group- or world-writable; `credentials.env` and `manager-client-key.pem` root's with no group or other bit (`0600`) | `wazuh-indexer` | read only: `credentials.env`, `ca.pem`, `manager-client.pem`, `manager-client-key.pem` |
+| `/etc/wazuh-indexer/export/` | `root`, any group, not group- or world-writable; `credentials.env` and `manager-client-key.pem` root's with no group or other bit (`0600`) | `wazuh-indexer` | read only: `credentials.env`, `ca.pem`, and `manager-client.pem`, `manager-client-key.pem` for a configured client pair when the indexer publishes them |
 | `/var/wazuh-manager/api/configuration/security/rbac.db` | `wazuh-manager:wazuh-manager 0640` (not checked by the resolver) | resolver (through `rbac_control.py`, as the service user) | Server API users, roles and policies |
 | `/var/wazuh-manager/queue/keystore/` | `wazuh-manager:wazuh-manager 0750`, files `0640` (not checked by the resolver) | resolver (through `wazuh-manager-keystore`) | the indexer username and password |
 
@@ -68,9 +65,9 @@ list: `ca/`, `export/` and `local.env` are root's.
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | subject alternative names of the agent listener pair | discovered ([Subject alternative names](#subject-alternative-names)) |
 | `WAZUH_MANAGER_APID_CERT_SANS` | subject alternative names of the Server API pair; never inherits remoted's list | discovered |
 
-`WAZUH_MANAGER_CERT_SANS` is gone: it named the indexer client pair, which now comes from the indexer. When it is
-set, a run that issues a server pair prints
-`resolve-credentials: WARNING: WAZUH_MANAGER_CERT_SANS is ignored: it named the indexer client pair, which now comes from the indexer`
+`WAZUH_MANAGER_CERT_SANS` is not used: the manager issues no indexer client pair. When it is set, a run that
+issues a server pair prints
+`resolve-credentials: WARNING: WAZUH_MANAGER_CERT_SANS is ignored: it named the indexer client pair, which the manager does not issue`
 and goes on (a run that issues nothing does not read it).
 
 Each key is looked up in order, and the first value found wins:
@@ -169,37 +166,6 @@ manager, both in `<CONF>/export/`:
 No key of the manager is published. `ca/root-ca.key` stays in `ca/` (`root:root 0400`) and is never copied to the
 dashboard: the certificate alone is enough to verify the API.
 
-**A client pair, prepared for later.** A master also publishes `export/dashboard-client.pem` (`root:root 0644`) and
-`export/dashboard-client-key.pem` (`root:root 0600`): a certificate issued by the manager's CA with
-`CN=wazuh-dashboard`, `CA:FALSE` and `extendedKeyUsage` `clientAuth` only, and a key of its own, never the CA's or
-`apid-key.pem`'s. Nothing uses it yet: the Server API does not ask for a client certificate (`https.use_ca` stays
-off) and the dashboard still logs in with the password, so the pair is there to be imported when that changes. A
-node configured as a worker issues none, and leaves in place the pair it issued at install, while still configured
-as master.
-
-- **When it is issued.** By every writing mode (`--install`, `--upgrade`, `--prestart`) when it is absent and `ca/`
-  holds the CA's key: `resolve-credentials: /etc/wazuh-manager/export/dashboard-client.pem: issued; DN …`.
-- **When it changes.** The pair the resolver issued is reissued by the next start when it no longer chains to
-  `ca/root-ca.pem` (the CA was staged again or rotated) or when it expired:
-  `… reissued (<why>); the dashboard must import it again`. Copy it again wherever the dashboard keeps it.
-- **Your own pair.** Put `dashboard-client.pem` (the leaf, then any intermediate CAs) and
-  `dashboard-client-key.pem` in `export/` with the modes above. The resolver tells its pair from yours with
-  `export/.dashboard-client.issued`, which records the fingerprints of what it wrote: a pair without it, or whose
-  content no longer matches it, is yours. Yours is checked (key, `CA:FALSE`, `clientAuth`, issued by the manager's
-  CA, inside its validity window, a key of its own) but never replaced; each defect is a `WARNING`, and none refuses
-  the start while client certificates are not required:
-  `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; provided by the operator, kept as it is (nothing uses it yet: …)`.
-  On a master, an unsafe entry (a key readable by others, a link, another owner) is `UNSAFE`, like any other; a worker does not check the pair at all.
-- **A CA without its key.** With only an external CA's certificate in `ca/` — the layout of every distributed
-  installation, where the CA key stays on the host that generated the PKI — the manager cannot issue the pair. While
-  nothing uses it, that is not a warning, only an informational line on the resolver's output (the journal, not
-  `wazuh-manager.log`):
-  `resolve-credentials: dashboard client pair not generated: /etc/wazuh-manager/ca has no key (nothing uses it yet: …); to provide one, issue it from that CA into /etc/wazuh-manager/export`.
-  To provide one, issue it from that CA and put it in `export/` as above. The resolver's own pair that needs
-  reissuing (expired, or no longer issued by the CA) is still a `WARNING` when the key is gone:
-  `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; not reissued: /etc/wazuh-manager/ca has no key`.
-- **`--clear`** removes the resolver's pair with its marker, and keeps yours.
-
 **Dashboard on the same host.** It reads both files as root; nothing has to be copied.
 
 **Dashboard on another host.** Copy the certificate to it, and put the password in the dashboard's
@@ -249,8 +215,8 @@ A mode is required: without one the resolver prints its usage and exits `2`.
 
 | Mode | Called by | Does | Exit |
 |------|-----------|------|------|
-| `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` on a fresh install | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs (and, on a master, the [dashboard client pair](#what-the-dashboard-takes-from-the-manager)), imports the indexer trust | `0` whatever it reports; `2` only for the cases below |
-| `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade, `install.sh` on an update | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` when the copy there is absent or differs; issues a missing dashboard client pair; validates the CA and the server pairs, never mints a CA or issues a server pair | `0` whatever it reports; `2` only for the cases below |
+| `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` on a fresh install | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs, imports the indexer trust | `0` whatever it reports; `2` only for the cases below |
+| `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade, `install.sh` on an update | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` when the copy there is absent or differs; validates the CA and the server pairs, never mints a CA or issues a server pair | `0` whatever it reports; `2` only for the cases below |
 | `--prestart` | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` (skipped while `wazuh-manager-modulesd` is running) | every `--check` test, then what `--upgrade` does, then the `--check` tests again on the result; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
 | `--check` | `wazuh-manager-control` on `start`, `restart`, `reload` and `check`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
@@ -279,7 +245,7 @@ CA was staged in `/etc/wazuh-manager/ca` without its key (`MISSING …/certs/rem
 repeating `--install` changes nothing, so the next steps name the pairs instead: place this node's certificate
 pairs it reports missing in `/etc/wazuh-manager/certs` (for example from `wazuh-certificates.tar`) and start the
 manager, with no new `--install`; they add that the node does not need the root CA private key. When only
-what the manager consumes is missing (the indexer's password, CA or client pair), it says `Supply them as each
+what the manager consumes is missing (the indexer's password, CA or configured client pair), it says `Supply them as each
 entry above says, then start the manager: the start completes them, no new --install is needed.`
 
 `install.sh` reads the resolver's output the same way: when any `MISSING`, `INVALID` or `UNSAFE` line was
@@ -299,26 +265,24 @@ resolve-credentials: CA CN=wazuh-manager-node1,OU=Wazuh,O=Wazuh,L=California,C=U
 resolve-credentials: wrote /etc/wazuh-manager/certs/root-ca.pem (the manager's CA)
 resolve-credentials: /etc/wazuh-manager/certs/remoted.pem: issued; DN CN=node1,OU=Wazuh,O=Wazuh,L=California,C=US; SANs DNS:node1, IP:192.0.2.10, DNS:localhost, IP:127.0.0.1, IP:::1
 resolve-credentials: /etc/wazuh-manager/certs/apid.pem: issued; DN CN=node1,OU=Wazuh,O=Wazuh,L=California,C=US; SANs DNS:node1, IP:192.0.2.10, DNS:localhost, IP:127.0.0.1, IP:::1
-resolve-credentials: /etc/wazuh-manager/export/dashboard-client.pem: issued; DN CN=wazuh-dashboard,OU=Wazuh,O=Wazuh,L=California,C=US; the dashboard imports it from here
 MISSING /etc/wazuh-manager/certs/indexer-ca.pem: install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there
-MISSING /etc/wazuh-manager/certs/indexer-connector.pem: install wazuh-indexer on this host first, or stage a pair issued by the indexer's CA for this node
 ```
 
-The advice for the indexer's CA and client pair follows the state of `/etc/wazuh-indexer/export`: the lines
-above are printed when that directory does not exist. When it exists but lacks a file, the indexer on this host
-did not publish it, which installing it again does not change. That is the case after the installation
-assistant, which keeps the indexer's CA key on the host where its `-g` ran: the indexer publishes its CA, which is
-imported, but no client pair for the manager:
+The advice for the indexer's CA follows the state of `/etc/wazuh-indexer/export`: the line above is printed when
+that directory does not exist. When it exists but lacks `ca.pem`, the indexer on this host did not publish it,
+which installing it again does not change: `the Wazuh indexer on this host published no ca.pem in
+/etc/wazuh-indexer/export: stage the indexer's CA certificate as certs/indexer-ca.pem`.
+
+A [configured client pair](#configured-file-names) under the default names gets the same two kinds of advice:
+`install wazuh-indexer on this host first, or stage a pair issued by the indexer's CA for this node` without the
+export, and, when the export holds no client pair for the manager:
 
 ```text
-resolve-credentials: /etc/wazuh-manager/certs/indexer-ca.pem: imported from /etc/wazuh-indexer/export
 MISSING /etc/wazuh-manager/certs/indexer-connector.pem: the Wazuh indexer on this host published no manager client pair in /etc/wazuh-indexer/export (its CA key is not on this host, as after the installation assistant): stage this node's pair, issued by the indexer's CA (wazuh-install-files.tar with the installation assistant), as certs/indexer-connector.pem and certs/indexer-connector-key.pem
 ```
 
-Stage the pair from `wazuh-install-files.tar` (this node's certificate and key) as
-`/etc/wazuh-manager/certs/indexer-connector.pem` and `indexer-connector-key.pem`, `root:wazuh-manager 0640`, then
-start the manager. A missing `ca.pem` in an existing export reads `the Wazuh indexer on this host published no
-ca.pem in /etc/wazuh-indexer/export: stage the indexer's CA certificate as certs/indexer-ca.pem`.
+Stage this node's pair, issued by the indexer's CA, as `/etc/wazuh-manager/certs/indexer-connector.pem` and
+`indexer-connector-key.pem`, `root:wazuh-manager 0640`, then start the manager.
 
 ## When the manager does not start
 
@@ -330,7 +294,7 @@ ever carries a secret.
 | `MISSING` | something a start needs is absent; `--prestart` refuses, and `--check` reports it too for what `--prestart` could not complete either (`ca/root-ca.pem`, the agents' bundle, a server pair such as `certs/remoted.pem`, an indexer file with nothing in the export to import), but never for the indexer password, which only `--prestart` looks for | `MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env …` |
 | `INVALID` | something in place is wrong | `INVALID /etc/wazuh-manager/local.env:2: not a NAME=value line` · `INVALID WAZUH_INDEXER_MANAGER_PASSWORD: must be 12 to 64 characters (set in /etc/wazuh-manager/local.env:1)` · `INVALID /etc/wazuh-manager/certs/remoted.pem: expired` |
 | `UNSAFE` | an entry root may not trust: wrong owner or mode (a secret readable by others than root), a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
-| `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, the client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
+| `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, a configured client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
 
 `wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log` (dated and tagged
 like every log line: `<date> wazuh-manager-control: ERROR: UNSAFE …`, a resolver `WARNING` as `WARNING`), starts
@@ -416,7 +380,7 @@ discovered names). It never uses anything the account wrote, and never discloses
 ## Certificates
 
 The manager uses two server pairs of its own, both issued by its CA (directly or through intermediate CAs), plus the
-indexer's CA and a client pair the indexer issued for it:
+indexer's CA, and a client pair the indexer issued for it only when the configuration names one:
 
 | File | Role | Comes from |
 |------|------|------------|
@@ -424,7 +388,7 @@ indexer's CA and a client pair the indexer issued for it:
 | `certs/apid.pem` | the Server API | the manager's CA |
 | `certs/root-ca.pem` | the bundle agents and remoted trust; may hold rotation CAs | the manager's CA, written once |
 | `certs/indexer-ca.pem` | what the indexer connector trusts | the indexer |
-| `certs/indexer-connector.pem` | what the manager presents to the indexer | the indexer |
+| `certs/indexer-connector.pem` | what the manager presents to the indexer, when configured | the indexer |
 
 ### The manager's CA
 
@@ -487,7 +451,7 @@ The resolver checks the files the daemons are configured to serve, under whateve
 | `remote.https.ca_certificate` (the agents' bundle, `GET /cacerts`) | `/etc/wazuh-manager/wazuh-manager.conf` | `/etc/wazuh-manager/certs/root-ca.pem` | same |
 | `https.cert`, `https.key` (Server API) | `/var/wazuh-manager/api/configuration/api.yaml` | `apid.pem`, `apid-key.pem` | resolves against `/etc/wazuh-manager/certs`, so a bare file name is the usual form |
 | `indexer.ssl.certificate_authorities` (the indexer's CAs) | `/etc/wazuh-manager/wazuh-manager.conf` | none (an empty list); the generated configuration lists `/etc/wazuh-manager/certs/indexer-ca.pem` | resolves against `/var/wazuh-manager`, so it is refused |
-| `indexer.ssl.certificate`, `indexer.ssl.key` (the client pair) | `/etc/wazuh-manager/wazuh-manager.conf` | none; the generated configuration names `/etc/wazuh-manager/certs/indexer-connector.pem`, `/etc/wazuh-manager/certs/indexer-connector-key.pem` | same |
+| `indexer.ssl.certificate`, `indexer.ssl.key` (the client pair) | `/etc/wazuh-manager/wazuh-manager.conf` | none (no client pair), as in the generated configuration | same |
 
 - **Only directly in `/etc/wazuh-manager/certs`.** The service account can edit both configuration files, so a name
   anywhere else, or one with a `.` or `..` component, is refused and never opened:
@@ -523,8 +487,10 @@ For the indexer connection:
   must hold only CA certificates.
 - **An empty CA list** makes the connector verify the indexer against the system's trust store: no CA file is
   wanted, and the client pair gets the leaf checks only (key, validity, not a CA, `clientAuth`), with no chain test.
-- **No client pair** (`certificate` and `key` both empty) means none is wanted or imported. One set without the other
-  is refused: `INVALID indexer.ssl.key: must be set together with indexer.ssl.certificate (set in /etc/wazuh-manager/wazuh-manager.conf)`.
+- **No client pair** (`certificate` and `key` both empty, the default) means none is wanted or imported: the connector
+  authenticates with the `wazuh-manager` user and the indexer password alone. Set both for an indexer that requires
+  client certificates. One set without the other is refused:
+  `INVALID indexer.ssl.key: must be set together with indexer.ssl.certificate (set in /etc/wazuh-manager/wazuh-manager.conf)`.
 - A configuration with no `<ssl>` block takes the schema's defaults, an empty CA list and no client pair, so nothing
   is imported or required; the generated configuration always has the block.
 
@@ -555,25 +521,26 @@ out only by setting the list yourself.
 
 ### Indexer trust
 
-The indexer CA and the client pair under their default names follow one rule, decided by a marker file in `certs/`
-(files under [configured names](#configured-file-names) are always staged):
+The indexer CA, and a client pair configured under the default names `indexer-connector.pem` and
+`indexer-connector-key.pem`, follow one rule, decided by a marker file in `certs/` (files under other
+[configured names](#configured-file-names) are always staged):
 
 | State in `certs/` | What happens |
 |-------------------|--------------|
-| absent | imported from `/etc/wazuh-indexer/export/` (`ca.pem`, `manager-client.pem`, `manager-client-key.pem`) when the indexer is on this host, the marker written first; otherwise `MISSING` |
+| absent | imported from `/etc/wazuh-indexer/export/` (`ca.pem`, and for a configured pair `manager-client.pem`, `manager-client-key.pem`) when the indexer on this host publishes them, the marker written first; otherwise `MISSING` |
 | present with its marker (imported) | imported again when the indexer's files change; kept when they do not, or when the export is gone |
 | present without a marker (staged by you) | validated, never replaced |
 | one file of the pair only | `INVALID … half a pair` |
 
 The CA file must hold CA certificates inside their validity window; an intermediate CA kept there is trusted as it
-is. The client pair must chain to one of them, directly or through intermediate CAs that follow the leaf in
+is. A configured client pair must chain to one of them, directly or through intermediate CAs that follow the leaf in
 `indexer-connector.pem`. Every CA on the path must be valid now, allowed to sign and, when it restricts its
 `extendedKeyUsage`, allowed `clientAuth`. The leaf must be inside its window, not be a CA, match its key, and carry
 an `extendedKeyUsage` with `clientAuth`. A pair without it is refused.
 
-The CA and the pair are taken from the export together or not at all: the pair that will be in place must chain
-to the CA that will be in place. An export whose new CA comes with a pair that is refused, or that does not issue the
-pair already in place, changes nothing, and is reported against the export:
+With a client pair configured, the CA and the pair are taken from the export together or not at all: the pair that
+will be in place must chain to the CA that will be in place. An export whose new CA comes with a pair that is
+refused, or that does not issue the pair already in place, changes nothing, and is reported against the export:
 
 ```text
 INVALID /etc/wazuh-indexer/export/manager-client.pem: its key does not match it
@@ -593,8 +560,8 @@ the rotation happens at the first start after the new set is valid. A node that 
 starts, and its indexer connection works once the clock is right. The connector still validates TLS itself, so such
 material is not used until it is valid.
 
-Every writing run then names the client pair in place, as it names the server pairs: its subject and its subject
-alternative names, `none` when it has none (a client certificate need not have any; `-q` drops the line):
+Every writing run then names a configured client pair in place, as it names the server pairs: its subject and its
+subject alternative names, `none` when it has none (a client certificate need not have any; `-q` drops the line):
 
 ```text
 resolve-credentials: /etc/wazuh-manager/certs/indexer-connector.pem: DN CN=wazuh-manager,OU=Wazuh,O=Wazuh; SANs none
@@ -605,15 +572,16 @@ An import interrupted halfway, with the marker written but not every file, is re
 through, and the `--prestart` that follows finishes it.
 
 `<indexer><ssl><certificate_authorities><ca>` in the generated configuration names
-`/etc/wazuh-manager/certs/indexer-ca.pem`.
+`/etc/wazuh-manager/certs/indexer-ca.pem` and sets no client pair.
 
 ### Using certificates issued elsewhere
 
 To run the manager on your own PKI, stage the CA in `<CONF>/ca/`, the server pairs and the bundle in
-`<CONF>/certs/`, and for an indexer on another host its CA, the client pair it issued for this node and the
-indexer password. The CA and `local.env` can be staged before installing, in a `root:root` `/etc/wazuh-manager`
-you create; the files of `certs/` need the `wazuh-manager` group, so they are staged after installing, before the
-first start (a Debian package also re-owns files staged before it). The procedure, with the commands, is in
+`<CONF>/certs/`, and for an indexer on another host its CA and the indexer password (plus the client pair it
+issued for this node, when the configuration names one). The CA and `local.env` can be staged before installing,
+in a `root:root` `/etc/wazuh-manager` you create; the files of `certs/` need the `wazuh-manager` group, so they are
+staged after installing, before the first start (a Debian package also re-owns files staged before it). The
+procedure, with the commands, is in
 [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere). Staged files carry
 no marker, so the resolver validates them at every start and never replaces them.
 
@@ -669,11 +637,11 @@ It removes:
 - the two server pairs and `certs/root-ca.pem`;
 - the indexer files that carry an import marker, and their markers;
 - the CA in `ca/`, only when its mint marker is there;
-- the contents of `export/`, except a dashboard client pair you provided;
+- the contents of `export/`;
 - `rbac.db`;
 - the keystore's contents.
 
-It keeps a CA you staged, indexer files you staged, a dashboard client pair you provided and `local.env`, and says
+It keeps a CA you staged, indexer files you staged and `local.env`, and says
 so for each:
 
 ```text

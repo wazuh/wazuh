@@ -294,7 +294,7 @@ In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is alw
 
 **Certificate paths changed**
 
-In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Filebeat is no longer used, the manager connects to the indexer directly, so the paths must point to the manager's own certificates.
+In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Filebeat is no longer used, the manager connects to the indexer directly, so the paths must point to the manager's own certificates. The 5.0 manager needs only the indexer's CA: it authenticates with the `wazuh-manager` user and the indexer password from the keystore, so `<certificate>` and `<key>` are left out unless the indexer requires client certificates ([Indexer Connector configuration](../../ref/modules/indexer_connector/configuration.md#client-certificate)).
 
 **4.x:**
 ```xml
@@ -323,15 +323,13 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
 > [!NOTE]
-> The 5.0 installer generates the `<indexer>` section with these absolute paths, in the manager's
-> configuration directory `/etc/wazuh-manager`. Keep them there: every TLS path the manager is configured
+> The 5.0 installer generates the `<indexer>` section with this absolute path, in the manager's
+> configuration directory `/etc/wazuh-manager`. Keep it there: every TLS path the manager is configured
 > with must name a file directly inside `/etc/wazuh-manager/certs`. A relative path resolves against the
 > installation directory `/var/wazuh-manager`, so it is outside `certs/`, and the start is refused
 > (`Invalid credentials. Exiting`). The schema accepts such a path; the credential check does not. See

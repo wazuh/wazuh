@@ -249,26 +249,21 @@ there are three choices:
 A cluster must give every node the same CA, through either of the last two, because `ca/` and `certs/` are not
 synchronized between nodes and an agent that fails over to a node under a different CA refuses it.
 
-**The indexer's trust.** The connector trusts `certs/indexer-ca.pem` and presents `certs/indexer-connector.pem`
-and its key, a client pair the indexer's CA issued for this manager with `extendedKeyUsage` `clientAuth`. For a 4.x
-indexer, stage the 4.x CA (the one `wazuh-certs-tool` created) as `indexer-ca.pem`. The 4.x node certificate cannot
-be the client pair: `wazuh-certs-tool` issues it with no `extendedKeyUsage`, and the manager refuses such a pair.
-Issue one with the 4.x CA instead:
+**The indexer's trust.** The connector trusts `certs/indexer-ca.pem` and authenticates with the `wazuh-manager`
+user and the indexer password; it presents no client certificate unless the configuration names one. For a 4.x
+indexer, stage the 4.x CA (the one `wazuh-certs-tool` created) as `indexer-ca.pem`:
 
 ```bash
-openssl req -new -nodes -newkey rsa:2048 -keyout indexer-connector-key.pem -out connector.csr -subj "/CN=<node name>"
-printf 'basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n' > connector.ext
-openssl x509 -req -in connector.csr -CA root-ca.pem -CAkey root-ca.key -CAcreateserial -days 3650 -sha256 \
-    -extfile connector.ext -out indexer-connector.pem
 sudo install -m 0640 -o root -g wazuh-manager root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
-sudo install -m 0640 -o root -g wazuh-manager indexer-connector.pem indexer-connector-key.pem /etc/wazuh-manager/certs/
 ```
 
-Stage them after installing the package, before the first start: the `wazuh-manager` group exists only from then,
+Stage it after installing the package, before the first start: the `wazuh-manager` group exists only from then,
 and nothing re-owns a file staged later, so every file in `certs/` must already be `root:wazuh-manager` `0640`. A
 file with any other group or mode refuses the start (`UNSAFE /etc/wazuh-manager/certs/indexer-ca.pem: group is
-root, not wazuh-manager`, `Unsafe credentials. Exiting`). Staged without an import marker, they are validated at
-every start and never replaced.
+root, not wazuh-manager`, `Unsafe credentials. Exiting`). Staged without an import marker, it is validated at
+every start and never replaced. An indexer that requires client certificates needs a pair with `extendedKeyUsage`
+`clientAuth`, which the 4.x node certificate lacks; see
+[Configured file names](../../ref/getting-started/credentials.md#configured-file-names).
 
 Two requirements come from the fleet rather than from whoever signs:
 
