@@ -35,6 +35,31 @@ void fim_container_baseline_set_host_api(const fim_container_host_api_t* api)
     g_host = *api;
 }
 
+/* Doing nothing without a registered host API is deliberate, not defensive:
+ * the unit tests link this bridge with a stub that registers no mutex, and the
+ * library is also linked by tools that never run a daemon. In both the barrier
+ * has nothing to protect, because there is no teardown racing a batch. */
+void fim_container_scan_lock(void)
+{
+    if (g_host.scan_mutex != NULL) {
+        w_mutex_lock(g_host.scan_mutex);
+    }
+}
+
+void fim_container_scan_unlock(void)
+{
+    if (g_host.scan_mutex != NULL) {
+        w_mutex_unlock(g_host.scan_mutex);
+    }
+}
+
+/* Reported as "not shutting down" when unregistered, for the same reason: a
+ * caller that cannot be racing a teardown must not abandon its batch. */
+int fim_container_shutdown_process_on(void)
+{
+    return g_host.shutdown_process_on != NULL && g_host.shutdown_process_on();
+}
+
 /* The daemon's live configuration, or NULL before registration. Every caller
  * checks: unregistered behaves as "nothing configured", which is the same
  * answer an agent with no <container_security> block gives. */
@@ -522,6 +547,11 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
     }
 
     return 0;
+}
+
+int fim_container_baseline_frequency(void)
+{
+    return (host_config() != NULL) ? host_config()->container_frequency : 0;
 }
 
 int fim_container_baseline_row_limit(void)

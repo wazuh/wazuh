@@ -1430,11 +1430,39 @@ namespace fim_container_events
             {
                 if (!staging.nextBatch(batch, 500)) continue;
 
-                const auto request = PlanFor(batch);
+                /* The thread boundary, so the containment belongs here rather than
+                 * only in the handler. An exception that leaves this function
+                 * reaches std::thread and terminates syscheckd -- host FIM and all
+                 * -- over one container's failed reconcile. The handler states the
+                 * same rule in its own doc comment and guards its branches, but a
+                 * branch added later that forgets to must not be able to take the
+                 * process down, and PlanFor() allocates before the handler is even
+                 * reached.
+                 *
+                 * Dropping the batch is the right failure: it was already consumed
+                 * from staging and every mode here is idempotent. The reconciliation
+                 * floor retries cleanup of absent containers; file changes in
+                 * surviving containers wait for the next enabled periodic walk. */
+                try
+                {
+                    const auto request = PlanFor(batch);
 
-                if (request.empty() || !handler) continue;
+                    if (request.empty() || !handler) continue;
 
-                handler(request);
+                    handler(request);
+                }
+                catch (const std::exception& err)
+                {
+                    LogError(std::string {"Container eBPF drain: the reconcile consumer dropped a batch: "} +
+                             err.what() + ". Absent-container cleanup will be retried by reconciliation; file changes "
+                             "wait for the next enabled periodic container walk.");
+                }
+                catch (...)
+                {
+                    LogError("Container eBPF drain: the reconcile consumer dropped a batch for an unknown "
+                             "reason. Absent-container cleanup will be retried by reconciliation; file changes "
+                             "wait for the next enabled periodic container walk.");
+                }
             }
         }
 
@@ -1499,13 +1527,30 @@ namespace fim_container_events
         if (m_impl != nullptr) return m_impl->handle != nullptr;
 
         auto impl = new Impl(config);
+
+        /* Assigned here rather than beside the other full-start wiring below,
+         * because every admissionOnly() return site precedes that point and the
+         * consumer it now starts would otherwise spin against an empty handler
+         * for the life of the process. */
+        impl->handler = std::move(handler);
+
         const auto admissionOnly = [this, impl]()
         {
-            // Only drainLoop needs the ring, and there is no file-event batch
-            // for a consumer without it. Keep the one resolver alive indefinitely
-            // to own generation checks, publication and reconciliation.
+            /* Only drainLoop needs the ring. The consumer does not, and it has
+             * work here whether or not the engine ever opened: the resolver keeps
+             * refreshing the container list, so the cgroup map still reports
+             * removals through onGone() and the reconciliation floor is still
+             * raised on its own interval. Both are staged for a consumer, and
+             * without one they accumulate against a reader that does not exist --
+             * a removed container's rows then survive until syscheckd restarts
+             * (#40329), on exactly the hosts that have no other cleanup path.
+             *
+             * This cleanup does not provide a periodic container walk: without
+             * kernel file events, changes inside a surviving container still
+             * have no event-driven detection path. */
             m_impl = impl;
             impl->startResolver();
+            impl->consumer_thread = std::thread([impl] { impl->consumerLoop(); });
             return false;
         };
 
@@ -1581,18 +1626,9 @@ namespace fim_container_events
         if (impl->handle == nullptr)
         {
             /* Expected on any host without the capability. Host FIM keeps working.
-             * Deliberately NOT "container FIM falls back to scheduled baselines":
-             * there is no scheduled container baseline to fall back to —
-             * fim_run_container_baseline() runs once from main(), and the only
-             * thing that re-runs it is this drain's own rebaselineAll.
-             *
-             * Nor does the reconciliation floor cover it, which is worth saying
-             * plainly because the floor exists precisely to catch what nothing
-             * else reports: it is scheduled by THIS drain's resolver loop, so a
-             * host that gets no further than here has no floor either. Container
-             * FIM then reports the node as it stood when the agent started —
-             * every container listed at that moment, and nothing about any
-             * container created or removed since.
+             * The admission-only resolver and consumer still reconcile removals.
+             * Changes inside surviving containers rely on the periodic walk from
+             * start_daemon(), when its container frequency is greater than zero.
              *
              * The caller turns this into a WARNING when container directories are
              * actually configured; the detail stays here at debug level. */
@@ -1752,8 +1788,6 @@ namespace fim_container_events
                     "probably keying on different number spaces.");
         }
 
-        impl->handler = std::move(handler);
-
         impl->allowlist_active = (filter.cgroup_mode == RT_CGROUP_MODE_ALLOWLIST);
 
         /* Seed the map before the drain starts, so containers that already exist are
@@ -1827,6 +1861,18 @@ namespace fim_container_events
         m_impl->wakeResolver();
 
         if (m_impl->resolver_thread.joinable()) m_impl->resolver_thread.join();
+
+        /* The consumer is deliberately NOT stopped or joined here, although
+         * admission-only startup now owns one too. This function's contract is to
+         * join admission work "without joining a potentially long file walk", and
+         * in admission-only mode the consumer can be inside exactly that: a
+         * container the resolver has just discovered populates CgroupListDelta's
+         * `escalate`, which stages a whole-container re-walk. Joining it would let
+         * shutdown block for as long as that walk takes.
+         *
+         * So this mode is left behaving precisely like a full start, where the
+         * consumer is likewise left running and the process exits out from under
+         * it. */
     }
 
     void ContainerEventDrain::stop()

@@ -498,8 +498,9 @@ int main(int argc, char **argv)
     fim_initialize();
 
 #ifdef __linux__
-    // Baseline container files once at startup, independent of the whodata
-    // provider: it enriches FIM state with container_instances metadata, it
+    // Baseline container files at startup, independent of the whodata
+    // provider; start_daemon() repeats the walk when its container frequency is
+    // greater than zero. It enriches FIM state with container_instances metadata; it
     // doesn't depend on eBPF vs audit for change detection. No-op when no
     // container directories are configured, sync is disabled, or
     // container_instances isn't running.
@@ -518,6 +519,8 @@ int main(int argc, char **argv)
         const fim_container_host_api_t container_host_api = {
             .config = &syscheck,
             .synced_docs_mutex = &synced_docs_mutex,
+            .scan_mutex = &syscheck.fim_scan_mutex,
+            .shutdown_process_on = fim_shutdown_process_on,
             .rate_limit = check_max_fps,
             .attributes_json = fim_attributes_json,
             .calculate_dbsync_difference = fim_calculate_dbsync_difference,
