@@ -955,13 +955,19 @@ private:
         // /status reachability; null when enrollment is disabled, omitted from /status then.
         registerTokenKeySourceDiagnostics(enrollTokenKeySource);
 
+        // http_request_timeout bounds the WHOLE HTTP request, so it is the ceiling the AuthdClient's
+        // dequeue-time deadline is capped by (issue #41339). Widened first and narrowed once at the
+        // end, like its three siblings in this file.
+        const auto resolvedHttpRequestTimeoutMs =
+            static_cast<std::uint32_t>(static_cast<long long>(config.requestTimeoutSec) * 1000);
         m_authdClient =
             std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
                                                                m_config.worker_node,
                                                                enrollConfig.authdConnectTimeoutMs,
                                                                enrollConfig.authdResponseTimeoutMs,
                                                                enrollConfig.authdMaxQueueSize,
-                                                               enrollConfig.authdWorkerThreads);
+                                                               enrollConfig.authdWorkerThreads,
+                                                               resolvedHttpRequestTimeoutMs);
 
         registerAuthdQueueDiagnostics(m_authdClient);
 

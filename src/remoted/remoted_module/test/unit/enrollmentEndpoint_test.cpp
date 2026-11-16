@@ -717,10 +717,44 @@ TEST(EnrollmentEndpointTest, RequestNeverIncludesForceIdOrKey)
     EXPECT_FALSE(j["arguments"].contains("force"));
     EXPECT_FALSE(j["arguments"].contains("id"));
     EXPECT_FALSE(j["arguments"].contains("key"));
-    // And no enrollment token was used, so no token_id either: the Open/password request stays
-    // byte-identical to what authd received before tokens existed (issue #38993). Nor a re-enrollment.
+    // And no enrollment token was used, so no token_id either (issue #38993). Nor a re-enrollment.
+    // Not byte-identical to the pre-token request any more: every /enroll now also carries
+    // `deadline_ms` (issue #41339), asserted end to end in DeadlineReachesAuthdFromTheHandler.
     EXPECT_FALSE(j["arguments"].contains("token_id"));
     EXPECT_FALSE(j["arguments"].contains("reenroll"));
+}
+
+TEST(EnrollmentEndpointTest, DeadlineReachesAuthdFromTheHandler)
+{
+    // Issue #41339: the HANDLER stamps the arrival instant and the AuthdClient worker turns it into
+    // an absolute deadline at dequeue time. This is the only test that covers that whole hop: the
+    // AuthdClient-level cases build an AuthdAddRequest by hand, so they would still pass if the
+    // handler never filled arrivalMs and the wire carried no deadline at all.
+    std::string captured;
+    std::mutex mu;
+    const std::string path = makeUniqueSocketPath("enrollment_endpoint_deadline");
+    FakeUdsServer server(path,
+                         [&](const std::string& req)
+                         {
+                             std::lock_guard<std::mutex> lock(mu);
+                             captured = req;
+                             return R"({"error":0,"data":{"id":"1","name":"n","ip":"i","key":"k"}})";
+                         });
+
+    const auto beforeMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    run(openModeConfig(), kValidBody, path);
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto j = nlohmann::json::parse(captured);
+    ASSERT_TRUE(j["arguments"].contains("deadline_ms"));
+    ASSERT_TRUE(j["arguments"]["deadline_ms"].is_number());
+    // In the future, and inside the budget the client was built with: the default AuthdClient here
+    // resolves to connect 2 s + response 5 s (master), capped by http_request_timeout (30 s).
+    const auto deadline = j["arguments"]["deadline_ms"].get<std::int64_t>();
+    EXPECT_GT(deadline, beforeMs);
+    EXPECT_LE(deadline, beforeMs + 30000 + 5000);
 }
 
 // -----------------------------------------------------------------------------
