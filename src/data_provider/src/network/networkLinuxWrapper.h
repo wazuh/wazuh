@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cctype>
 #include <ifaddrs.h>
+#include <map>
 #include <memory>
 #include <netinet/in.h>
 #include <net/if_arp.h>
@@ -402,17 +403,11 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string gatewayV6() const override
         {
-            if (m_gatewaysV6)
-            {
-                const auto it { m_gatewaysV6->find(this->name()) };
+            // Without the scan's shared map, read the whole table for this call.
+            const auto gateways { m_gatewaysV6 ? m_gatewaysV6 : std::make_shared<const IPv6Gateways>(parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"))) };
+            const auto it { gateways->find(this->name()) };
 
-                if (m_gatewaysV6->end() != it)
-                {
-                    return it->second;
-                }
-            }
-
-            return UNKNOWN_VALUE;
+            return gateways->end() != it ? it->second : UNKNOWN_VALUE;
         }
 
         // First ::/0 gateway of each interface in /proc/net/ipv6_route format. Lines that cannot be a
@@ -448,7 +443,10 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                 const auto lineStart { start };
                 start = end + 1;
 
-                if (first == std::string::npos || first >= end || routeTable.compare(first, IPV6_HEX_LENGTH, ANY_ADDRESS) != 0)
+                // Destination check: the first field must be exactly 32 zeros (::) for a ::/0 route.
+                if (first == std::string::npos || first + IPV6_HEX_LENGTH >= end ||
+                        routeTable.compare(first, IPV6_HEX_LENGTH, ANY_ADDRESS) != 0 ||
+                        (routeTable[first + IPV6_HEX_LENGTH] != ' ' && routeTable[first + IPV6_HEX_LENGTH] != '\t'))
                 {
                     continue;
                 }
@@ -459,7 +457,6 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                 const auto fields { Utils::split(line, ' ') };
 
                 if (GatewayV6FileFields::Size == fields.size() &&
-                        fields.at(GatewayV6FileFields::Destination).compare(ANY_ADDRESS) == 0 &&
                         fields.at(GatewayV6FileFields::DestinationPrefix).compare("00") == 0 &&
                         fields.at(GatewayV6FileFields::SourcePrefix).compare("00") == 0 &&
                         fields.at(GatewayV6FileFields::NextHop).size() == IPV6_HEX_LENGTH &&

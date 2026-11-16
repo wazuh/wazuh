@@ -210,7 +210,7 @@ static std::string gatewayV6Of(const std::string& routeTable, const std::string&
 {
     const auto gateways { NetworkLinuxInterface::parseGatewaysV6(routeTable) };
     const auto it { gateways.find(ifName) };
-    return gateways.end() != it ? it->second : " ";
+    return gateways.end() != it ? it->second : UNKNOWN_VALUE;
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_DefaultRoute)
@@ -291,6 +291,15 @@ TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_MalformedInput)
     EXPECT_NO_THROW(gatewayV6Of(table, "eth0"));
     EXPECT_EQ(" ", gatewayV6Of(table, "eth0"));
     EXPECT_EQ(" ", gatewayV6Of("", "eth0"));
+
+    // A destination longer than 32 zeros is not ::, even if the rest of the line is a valid gateway route.
+    const std::string longDestination
+    {
+        "000000000000000000000000000000000 00 00000000000000000000000000000000 00 fe800000000000000000000000000001 00000400 00000001 00000000 00000003     eth0\n"
+    };
+    EXPECT_EQ(" ", gatewayV6Of(longDestination, "eth0"));
+    // The destination ends at a tab as well as at a space.
+    EXPECT_EQ("fe80::1", gatewayV6Of("00000000000000000000000000000000\t00 00000000000000000000000000000000 00 fe800000000000000000000000000001 00000400 00000001 00000000 00000003     eth0\n", "eth0"));
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_RedHatDhcpStatusStripsQuotes)
@@ -563,9 +572,8 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperEntryWithoutAddresses)
     EXPECT_EQ("", wrapper.broadcastV6());
 }
 
-TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_WrapperUsesSharedMapWithoutReadingTable)
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_WrapperAnswersFromSharedMap)
 {
-    // WM_SYS_NET_DIR has no ipv6_route for these links, so any answer comes from the shared map.
     const auto gateways { std::make_shared<const IPv6Gateways>(IPv6Gateways { { "wztest0", "fe80::1" }, { "wztest1", "fe80::2" } }) };
     FakeAddressEntry first { "wztest0" };
     FakeAddressEntry second { "wztest1" };
@@ -573,7 +581,24 @@ TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_WrapperUsesSharedMapWithoutReadin
 
     EXPECT_EQ("fe80::1", NetworkLinuxInterface(&first.entry, "wztest0", nullptr, gateways).gatewayV6());
     EXPECT_EQ("fe80::2", NetworkLinuxInterface(&second.entry, "wztest1", nullptr, gateways).gatewayV6());
-    EXPECT_EQ(" ", NetworkLinuxInterface(&third.entry, "wztest2", nullptr, gateways).gatewayV6());
+    EXPECT_EQ(UNKNOWN_VALUE, NetworkLinuxInterface(&third.entry, "wztest2", nullptr, gateways).gatewayV6());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_WrapperWithSharedMapDoesNotReadTable)
+{
+    // A link with a ::/0 route on this host: only a read of the table could report its gateway.
+    const auto hostGateways { NetworkLinuxInterface::parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route")) };
+
+    if (hostGateways.empty())
+    {
+        GTEST_SKIP() << "This host has no IPv6 default route";
+    }
+
+    const auto& ifName { hostGateways.begin()->first };
+    FakeAddressEntry fake { ifName };
+
+    EXPECT_EQ(hostGateways.begin()->second, NetworkLinuxInterface(&fake.entry, ifName).gatewayV6());
+    EXPECT_EQ(UNKNOWN_VALUE, NetworkLinuxInterface(&fake.entry, ifName, nullptr, std::make_shared<const IPv6Gateways>()).gatewayV6());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperLinkWithoutSystemData)
