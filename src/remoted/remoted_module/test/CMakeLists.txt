@@ -68,8 +68,8 @@ target_include_directories(
           # control/*.hpp include "json.hpp" (nlohmann); remoted_module gets that dir PRIVATE so
           # the utest translation units need it added here too.
           ${SRC_FOLDER}/external/nlohmann
-          # The task-manager fake (fakeTaskServer.hpp) and adminServer_test.cpp's client are cpp-httplib;
-          # remoted_module itself does not use it, so the tests add it on their own.
+          # adminServer_test.cpp's client is cpp-httplib; remoted_module itself does not use it, so the
+          # tests add it on their own.
           ${SRC_FOLDER}/external/cpp-httplib)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
