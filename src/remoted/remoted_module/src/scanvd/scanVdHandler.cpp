@@ -227,14 +227,15 @@ namespace remoted::scanvd
 
     namespace
     {
-        std::shared_ptr<remoted::downstream::IDownstreamClient>
-        requireClient(std::shared_ptr<remoted::downstream::IDownstreamClient> httpClient)
+        /// Both collaborators are dereferenced on every request, so a null one is refused up front.
+        template<typename T>
+        std::shared_ptr<T> requireNonNull(std::shared_ptr<T> collaborator, const char* what)
         {
-            if (!httpClient)
+            if (!collaborator)
             {
-                throw std::invalid_argument("ScanVdHandlerImpl needs an HTTP client for VD's socket");
+                throw std::invalid_argument(what);
             }
-            return httpClient;
+            return collaborator;
         }
     } // namespace
 
@@ -246,12 +247,13 @@ namespace remoted::scanvd
                                          long writeTimeoutSeconds)
         // <=0 -> the compiled-in default: a config that never ran through
         // remoted_module_control_config() must not turn every request into an immediate timeout.
-        : m_impl(std::make_unique<Impl>(std::move(vdClient),
-                                        requireClient(std::move(httpClient)),
-                                        metrics,
-                                        std::move(vdModulesdSocketPath),
-                                        readTimeoutSeconds > 0 ? readTimeoutSeconds : VD_SCAN_READ_TIMEOUT_SECONDS,
-                                        writeTimeoutSeconds > 0 ? writeTimeoutSeconds : VD_SCAN_WRITE_TIMEOUT_SECONDS))
+        : m_impl(std::make_unique<Impl>(
+              requireNonNull(std::move(vdClient), "ScanVdHandlerImpl needs a VdClient"),
+              requireNonNull(std::move(httpClient), "ScanVdHandlerImpl needs an HTTP client for VD's socket"),
+              metrics,
+              std::move(vdModulesdSocketPath),
+              readTimeoutSeconds > 0 ? readTimeoutSeconds : VD_SCAN_READ_TIMEOUT_SECONDS,
+              writeTimeoutSeconds > 0 ? writeTimeoutSeconds : VD_SCAN_WRITE_TIMEOUT_SECONDS))
     {
     }
 

@@ -58,6 +58,7 @@ namespace remoted::scanvd
         }
 
         /**
+         * @param vdClient The offset cache every request is checked against. Must not be null.
          * @param httpClient Client for VD's socket, the same one VdClient holds (see
          * VdClient::httpClientConfig()). Must not be null; it must stay running for as long as
          * handleVdScan() can be called.
