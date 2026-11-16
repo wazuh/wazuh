@@ -17,6 +17,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <stdexcept>
 #include <string_view>
 #include <thread>
 
@@ -1717,6 +1718,161 @@ TEST_F(IndexerConnectorAsyncTest, UnclassifiableResponseRequeuesNothingAndKeepsT
     }
     ASSERT_EQ(pauses.externalAfter(4).size(), 1u);
     EXPECT_GE(pauses.externalAfter(4).front().delay, std::chrono::milliseconds(2000)) << "the backoff was not reset";
+}
+
+// Global log function that records every line and throws from those whose format contains `needle`, at most
+// `throws` times: a log line failing to be written (an allocation failure while formatting it), in miniature.
+class ThrowingLog
+{
+public:
+    ThrowingLog(std::string needle, size_t throws)
+        : m_previous(Log::GLOBAL_LOG_FUNCTION)
+        , m_needle(std::move(needle))
+        , m_throwsLeft(throws)
+    {
+        // assignLogFunction() is a no-op when a function is already installed, so drop the current one first.
+        Log::deassignLogFunction();
+        Log::assignLogFunction(
+            [this](const int, const char*, const char*, const int, const char*, const char* format, va_list args)
+            {
+                char buffer[2048];
+                va_list copy;
+                va_copy(copy, args);
+                vsnprintf(buffer, sizeof(buffer), format, copy);
+                va_end(copy);
+                bool fail = false;
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    m_lines.emplace_back(buffer);
+                    if (m_throwsLeft > 0 && std::string_view(format).find(m_needle) != std::string_view::npos)
+                    {
+                        --m_throwsLeft;
+                        ++m_thrown;
+                        fail = true;
+                    }
+                }
+                if (fail)
+                {
+                    throw std::runtime_error("log line could not be written");
+                }
+            });
+    }
+
+    ~ThrowingLog()
+    {
+        Log::deassignLogFunction();
+        Log::assignLogFunction(m_previous);
+    }
+
+    ThrowingLog(const ThrowingLog&) = delete;
+    ThrowingLog& operator=(const ThrowingLog&) = delete;
+
+    bool contains(std::string_view needle) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return std::any_of(m_lines.begin(),
+                           m_lines.end(),
+                           [needle](const std::string& line) { return line.find(needle) != std::string::npos; });
+    }
+
+    size_t thrown() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_thrown;
+    }
+
+private:
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)> m_previous;
+    const std::string m_needle;
+    mutable std::mutex m_mutex;
+    std::vector<std::string> m_lines;
+    size_t m_throwsLeft;
+    size_t m_thrown {0};
+};
+
+// Once the rejected items are back in the queue, a failing log line only loses that line: the requeue WARNING
+// throwing does not make the batch be reported as unclassified, and the items are resent exactly once.
+TEST_F(IndexerConnectorAsyncTest, FailingRequeueWarningDoesNotReportTheBatchAsUnclassified)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ThrowingLog logs("Indexer rejected %zu document(s)", 1);
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+    PauseLog pauses;
+
+    // The first bulk is blocked, the others indexed.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                const bool blocked = posts.record(body) == 1;
+                answerWith(postParams,
+                           bulkResponseFor(body,
+                                           [blocked](const std::string&) -> std::string
+                                           { return blocked ? ITEM_BLOCKED : ITEM_CREATED; }));
+            }));
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+    ASSERT_TRUE(posts.waitFor(2)) << "the blocked item was never resent";
+
+    EXPECT_EQ(logs.thrown(), 1u) << "the requeue WARNING must have failed for this test to mean anything";
+    EXPECT_FALSE(logs.contains("could not be classified")) << "the items were requeued, not left undecided";
+    EXPECT_EQ(documentsOf(posts.posts()[1]), (std::vector<std::string> {R"({"field":"value0"})"}))
+        << "resent once, not also as part of a resent batch";
+    EXPECT_EQ(connector.getRequeuedEvents(), 1u);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+    EXPECT_EQ(pauses.externalAfter(1).size(), 1u) << "the backoff was requested before the WARNING failed";
+}
+
+// Nothing logged from the success callback may escape it, not even the warning about a response that cannot be
+// classified, written again from the exception handler: an exception there would make the whole batch be sent
+// again.
+TEST_F(IndexerConnectorAsyncTest, FailingUnclassifiedWarningDoesNotResendTheBatch)
+{
+    // Installed before the connector: its threads log until the connector is destroyed. Both the warning and its
+    // second attempt from the exception handler fail.
+    ThrowingLog logs("could not be classified (%s)", 2);
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    PostLog posts;
+
+    // The first bulk gets two items for its one event (unclassifiable); later bulks are indexed.
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&posts](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const auto body = postedData(requestParams);
+                if (posts.record(body) == 1)
+                {
+                    answerWith(postParams,
+                               std::string(R"({"took":1,"errors":true,"items":[)") + ITEM_BLOCKED + "," + ITEM_BLOCKED +
+                                   "]}");
+                    return;
+                }
+                answerWith(postParams,
+                           bulkResponseFor(body, [](const std::string&) -> std::string { return ITEM_CREATED; }));
+            }));
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+    ASSERT_TRUE(posts.waitFor(1));
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+    ASSERT_TRUE(posts.waitFor(2));
+
+    EXPECT_EQ(logs.thrown(), 2u) << "both attempts to write the warning must have failed";
+    EXPECT_EQ(documentsOf(posts.posts()[1]), (std::vector<std::string> {R"({"field":"value1"})"}))
+        << "the unclassifiable batch is not sent again";
+    EXPECT_EQ(connector.getRequeuedEvents(), 0u);
 }
 
 // Requeue WARNs are rate-limited like the discard ones: the first opens a window, the next ones inside it are

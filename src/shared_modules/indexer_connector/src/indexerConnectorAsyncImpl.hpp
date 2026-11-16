@@ -631,14 +631,15 @@ public:
                             }
                             m_queue->requeueFront(std::move(entries));
                             m_queue->requestBackoff(sequence);
+                            decided = true;
                             noteRequeue(verdict.clusterBlocked, verdict.throttled);
                         }
                         else
                         {
                             // Item errors present, but none asked the connector to slow down.
                             m_queue->reportHealthyResponse(sequence);
+                            decided = true;
                         }
-                        decided = true;
 
                         if (!verdict.otherErrors)
                         {
@@ -663,10 +664,18 @@ public:
                     }
                     catch (...)
                     {
-                        // After the decision only the logger handoff can fail; its details are lost.
+                        // Once the queue holds the decision, only log lines and the logger handoff can fail: the
+                        // items are where they belong and only their log lines are lost.
                         if (!decided)
                         {
-                            noteUnclassified("internal error", dataQueue.size());
+                            try
+                            {
+                                noteUnclassified("internal error", dataQueue.size());
+                            }
+                            catch (...)
+                            {
+                                // Not even this log line may escape, for the reason above.
+                            }
                         }
                     }
                 };
