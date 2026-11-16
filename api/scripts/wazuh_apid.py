@@ -166,11 +166,12 @@ def start(params: dict):
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool,
-                                               getattr(sys.modules[__name__], f'spawn_{name}'))
-                          for name, pool in common.mp_pools.get().items()]))
+        async def _spawn_pools():
+            loop = asyncio.get_running_loop()
+            await asyncio.gather(*[loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
+                                   for name, pool in common.mp_pools.get().items()])
+
+        asyncio.run(_spawn_pools())
 
     # Set up API
     app = AsyncApp(
