@@ -14,6 +14,29 @@
 #include "os_net/os_net.h"
 
 
+/* Mask the API key, the hook URL and its path (what requests prints on errors) in a line of script output */
+static void mask_secrets(char *line, size_t size, const IntegratorConfig *config)
+{
+    const char *secrets[3] = { config->hookurl, NULL, config->apikey };
+    const char *scheme;
+    char *masked;
+    int i;
+
+    if (config->hookurl) {
+        scheme = strstr(config->hookurl, "://");
+        secrets[1] = strchr(scheme ? scheme + 3 : config->hookurl, '/');
+    }
+
+    for (i = 0; i < 3; i++) {
+        /* Single-character values would mask unrelated text and wstr_replace() never ends on empty ones */
+        if (secrets[i] && strlen(secrets[i]) > 1) {
+            masked = wstr_replace(line, secrets[i], "*****");
+            snprintf(line, size, "%s", masked);
+            os_free(masked);
+        }
+    }
+}
+
 void OS_IntegratorD(IntegratorConfig **integrator_config)
 {
     int s = 0;
@@ -446,8 +469,9 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if (cmd) {
                 wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
                 if (wfd) {
-                    char buffer[4096];
+                    char buffer[4096] = "";
                     while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
+                        mask_secrets(buffer, sizeof(buffer), integrator_config[s]);
                         mdebug2("%s", buffer);
                     }
                     int wp_closefd = wpclose(wfd);
@@ -455,7 +479,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         int wstatus = WEXITSTATUS(wp_closefd);
                         if (wstatus == 127) {
                             // 127 means error in exec
-                            merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
+                            merror("Couldn't execute command (%s). Check file and permissions.", integrator_config[s]->path);
                         } else if(wstatus != 0){
                             merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, INTEGRATORDIR);
                             merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, INTEGRATORDIR, buffer);
@@ -464,7 +488,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                             mdebug1("Command ran successfully.");
                         }
                     } else {
-                        merror("Command (%s) execution exited abnormally.", exec_full_cmd);
+                        merror("Command (%s) execution exited abnormally.", integrator_config[s]->path);
                     }
 
                 } else {
