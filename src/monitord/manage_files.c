@@ -17,6 +17,15 @@ static const char *(months[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 static void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext);
 
+static void compress_manager_log(const char *path, const char *tag) {
+    if (mond.global.compression_method == W_LOG_COMPRESSION_ZSTD &&
+        (strcmp(tag, "archive") == 0 || strcmp(tag, "alerts") == 0)) {
+        OS_CompressLogZstd(path);
+    } else {
+        OS_CompressLog(path);
+    }
+}
+
 void manage_files(int cday, int cmon, int cyear)
 {
     time_t tm;
@@ -48,13 +57,13 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
 
     if (mond.compress) {
         os_snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-        OS_CompressLog(logfile_r);
+        compress_manager_log(logfile_r, tag);
 
         for (i = 1;
              os_snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext),
              !IsFile(logfile_r) && FileSize(logfile_r) > 0;
              i++) {
-            OS_CompressLog(logfile_r);
+            compress_manager_log(logfile_r, tag);
         }
     }
 }

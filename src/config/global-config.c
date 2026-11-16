@@ -417,6 +417,17 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 return (OS_INVALID);
             }
         }
+        /* Compression for rotated manager alerts and archives. */
+        else if (strcmp(node[i]->element, "compression_method") == 0) {
+            if (strcmp(node[i]->content, "gzip") == 0) {
+                if (Config) Config->compression_method = W_LOG_COMPRESSION_GZIP;
+            } else if (strcmp(node[i]->content, "zstd") == 0) {
+                if (Config) Config->compression_method = W_LOG_COMPRESSION_ZSTD;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        }
         /* Compress alerts */
         else if (strcmp(node[i]->element, xml_compress_alerts) == 0) {
             /* removed from here -- compatibility issues only */

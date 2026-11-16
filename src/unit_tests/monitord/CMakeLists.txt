@@ -35,7 +35,7 @@ set_target_properties(
     LINKER_LANGUAGE C
 )
 
-target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} ${SRC_FOLDER}/external/zstd/lib/libzstd.a -lpthread)
 target_link_libraries(MAILD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 #include wrappers

@@ -37,6 +37,7 @@ int GlobalConf(const char *cfgfile)
     int modules = 0;
 
     /* Default values */
+    Config.compression_method = W_LOG_COMPRESSION_GZIP;
     Config.logall = 0;
     Config.logall_json = 0;
     Config.stats = 4;
@@ -144,6 +145,7 @@ cJSON *getGlobalConfig(void) {
     if (Config.zeromq_output_server_cert) cJSON_AddStringToObject(global, "zeromq_server_cert", Config.zeromq_output_server_cert);
     if (Config.zeromq_output_client_cert) cJSON_AddStringToObject(global, "zeromq_client_cert", Config.zeromq_output_client_cert);
     if (Config.jsonout_output) cJSON_AddStringToObject(global, "jsonout_output", "yes"); else cJSON_AddStringToObject(global, "jsonout_output", "no");
+    cJSON_AddStringToObject(global, "compression_method", Config.compression_method == W_LOG_COMPRESSION_ZSTD ? "zstd" : "gzip");
     if (Config.alerts_log) cJSON_AddStringToObject(global, "alerts_log", "yes"); else cJSON_AddStringToObject(global, "alerts_log", "no");
     cJSON_AddNumberToObject(global, "stats", Config.stats);
     cJSON_AddNumberToObject(global, "memory_size", Config.memorysize);

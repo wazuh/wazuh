@@ -2243,7 +2243,26 @@ monitor_o := $(monitor_c:.c=.o)
 monitord/%.o: monitord/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
 
-wazuh-monitord: ${monitor_o} os_maild/sendcustomemail.o
+ZSTD_VERSION := 1.5.7
+ZSTD_DIR := external/zstd
+ZSTD_LIB := $(ZSTD_DIR)/lib/libzstd.a
+
+ifeq ($(filter ${TARGET},server local),${TARGET})
+deps: $(ZSTD_DIR)/lib/zstd.h
+endif
+
+$(ZSTD_DIR)/lib/zstd.h:
+	curl -fL --retry 3 https://github.com/facebook/zstd/releases/download/v$(ZSTD_VERSION)/zstd-$(ZSTD_VERSION).tar.gz -o external/zstd.tar.gz
+	echo "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3  external/zstd.tar.gz" | sha256sum -c -
+	mkdir -p $(ZSTD_DIR)
+	tar -xzf external/zstd.tar.gz --strip-components=1 -C $(ZSTD_DIR)
+
+$(ZSTD_LIB): $(ZSTD_DIR)/lib/zstd.h
+	$(MAKE) -C $(ZSTD_DIR)/lib libzstd.a CFLAGS="-O2 -fPIC"
+
+monitord/compress_zstd.o: $(ZSTD_DIR)/lib/zstd.h
+
+wazuh-monitord: ${monitor_o} os_maild/sendcustomemail.o $(ZSTD_LIB)
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
@@ -2723,7 +2742,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??*
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) $(ZSTD_DIR) external/zstd.tar.gz shared_modules/http-request/* shared_modules/http-request/.??*
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
