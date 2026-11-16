@@ -310,6 +310,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     // Update agent data to keep context of events to forward
                     cJSON *agent_data = cJSON_CreateObject();
                     char *agent_version = w_strndup(version->valuestring, OS_SIZE_32);
+                    // The bound can leave a truncated multibyte character at the end
+                    *(char *)w_utf8_drop(agent_version) = '\0';
                     cJSON_AddStringToObject(agent_data, "version", agent_version);
                     os_free(agent_version);
                     if (!OSHash_Update_ex(agent_data_hash, key->id, agent_data) &&
