@@ -1720,6 +1720,68 @@ TEST_F(IndexerConnectorAsyncTest, UnclassifiableResponseRequeuesNothingAndKeepsT
     EXPECT_GE(pauses.externalAfter(4).front().delay, std::chrono::milliseconds(2000)) << "the backoff was not reset";
 }
 
+// The other two ways a response that reports errors cannot be matched with its batch: a body that does not parse,
+// and one without an items array. Like the item-count mismatch, nothing is requeued, no backoff is requested, and the
+// WARNING names the reason.
+TEST_F(IndexerConnectorAsyncTest, UnparseableOrItemlessResponseRequeuesNothing)
+{
+    const std::vector<std::pair<std::string, std::string>> cases {
+        {R"({"took":1,"errors":true,)", "unparseable response"},
+        {R"({"took":1,"errors":true})", "no items array"},
+    };
+
+    for (const auto& [firstResponse, reason] : cases)
+    {
+        SCOPED_TRACE(reason);
+
+        // Installed before the connector: its threads log until the connector is destroyed.
+        ScopedLogCapture logs;
+
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        PostLog posts;
+        PauseLog pauses;
+
+        // The first bulk gets the unclassifiable answer, later bulks are indexed.
+        EXPECT_CALL(mockHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&posts, firstResponse = firstResponse](
+                    RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+                {
+                    const auto body = postedData(requestParams);
+                    if (posts.record(body) == 1)
+                    {
+                        answerWith(postParams, firstResponse);
+                        return;
+                    }
+                    answerWith(postParams,
+                               bulkResponseFor(body, [](const std::string&) -> std::string { return ITEM_CREATED; }));
+                }));
+
+        {
+            IndexerConnectorAsyncImplMultiItemBulk connector(
+                config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer(posts));
+
+            connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+            ASSERT_TRUE(posts.waitFor(1));
+            connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+            // The second bulk is taken only after the first response was handled.
+            ASSERT_TRUE(posts.waitFor(2));
+
+            EXPECT_EQ(documentsOf(posts.posts()[1]), (std::vector<std::string> {R"({"field":"value1"})"}))
+                << "nothing from the unclassifiable batch is resent";
+            EXPECT_EQ(connector.getRequeuedEvents(), 0u);
+            EXPECT_EQ(connector.getDroppedEvents(), 0u);
+            EXPECT_TRUE(pauses.pauses().empty()) << "no backoff is requested";
+            EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING,
+                                             "Indexer bulk response reports errors but could not be classified (" +
+                                                 reason + "): 1 document(s) were not requeued"));
+        }
+        testing::Mock::VerifyAndClearExpectations(&mockHttpRequest);
+    }
+}
+
 // Global log function that records every line and throws from those whose format contains `needle`, at most
 // `throws` times: a log line failing to be written (an allocation failure while formatting it), in miniature.
 class ThrowingLog
