@@ -134,13 +134,11 @@ void test_OS_IntegratorD(void **state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, "test");
+    will_return(__wrap_getline, strdup("test"));
 
     expect_string(__wrap__mdebug2, formatted_msg, "test");
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, 0);
+    will_return(__wrap_getline, NULL);
 
     will_return(__wrap_wpclose, 0);
 
@@ -174,13 +172,11 @@ void test_OS_IntegratorD(void **state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, "test");
+    will_return(__wrap_getline, strdup("test"));
 
     expect_string(__wrap__mdebug2, formatted_msg, "test");
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, 0);
+    will_return(__wrap_getline, NULL);
 
     will_return(__wrap_wpclose, 0);
 
@@ -245,6 +241,14 @@ void test_OS_IntegratorD_output_masked(void **state) {
                               .hookurl = "https://hooks.example/services/T000/CANARY_HOOK", .alert_format = "json" };
     IntegratorConfig *integrator_config[] = { &hook, NULL };
     wfd_t wfd = { .file_out = (FILE *)1 };
+    char long_line[4200];
+    char long_masked[4200];
+
+    /* The hook path spans byte 4095, where a fixed 4096-byte read would split it */
+    memset(long_line, 'x', 4080);
+    snprintf(long_line + 4080, sizeof(long_line) - 4080, "/services/T000/CANARY_HOOK\n");
+    memset(long_masked, 'x', 4080);
+    snprintf(long_masked + 4080, sizeof(long_masked) - 4080, "*****\n");
 
     will_return(__wrap_jqueue_open, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
@@ -254,18 +258,18 @@ void test_OS_IntegratorD_output_masked(void **state) {
     expect_alert_file("/tmp/custom-hook-1111-2222.alert", "File /tmp/custom-hook-1111-2222.alert was written.");
     will_return(__wrap_wpopenv, &wfd);
 
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, "Arguments: CANARY_API_KEY https://hooks.example/services/T000/CANARY_HOOK\n");
+    will_return(__wrap_getline, strdup("Arguments: CANARY_API_KEY https://hooks.example/services/T000/CANARY_HOOK\n"));
     expect_string(__wrap__mdebug2, formatted_msg, "Arguments: ***** *****\n");
 
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='hooks.example', port=443): "
-                              "Max retries exceeded with url: /services/T000/CANARY_HOOK\n");
+    will_return(__wrap_getline, strdup(long_line));
+    expect_string(__wrap__mdebug2, formatted_msg, long_masked);
+
+    will_return(__wrap_getline, strdup("requests.exceptions.ConnectionError: HTTPSConnectionPool(host='hooks.example', port=443): "
+                              "Max retries exceeded with url: /services/T000/CANARY_HOOK\n"));
     expect_string(__wrap__mdebug2, formatted_msg, "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='hooks.example', port=443): "
                                                   "Max retries exceeded with url: *****\n");
 
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_getline, NULL);
 
     will_return(__wrap_wpclose, 1 << 8);
     expect_string(__wrap__merror, formatted_msg, "Unable to run integration for custom-hook -> integrations");
@@ -300,11 +304,9 @@ void test_OS_IntegratorD_output_not_carried_over(void **state) {
 
     expect_alert_file("/tmp/custom-first-1111-2222.alert", "File /tmp/custom-first-1111-2222.alert was written.");
     will_return(__wrap_wpopenv, &wfd);
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, "output of the first integration\n");
+    will_return(__wrap_getline, strdup("output of the first integration\n"));
     expect_string(__wrap__mdebug2, formatted_msg, "output of the first integration\n");
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
     expect_string(__wrap_unlink, file, "/tmp/custom-first-1111-2222.alert");
@@ -312,8 +314,7 @@ void test_OS_IntegratorD_output_not_carried_over(void **state) {
 
     expect_alert_file("/tmp/custom-second-1111-2222.alert", "File /tmp/custom-second-1111-2222.alert was written.");
     will_return(__wrap_wpopenv, &wfd);
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, 1 << 8);
     expect_string(__wrap__merror, formatted_msg, "Unable to run integration for custom-second -> integrations");
     expect_string(__wrap__merror, formatted_msg, "While running custom-second -> integrations. Output:  ");
@@ -347,8 +348,7 @@ void test_OS_IntegratorD_exec_errors_hide_arguments(void **state) {
 
     expect_alert_file("/tmp/custom-noexec-1111-2222.alert", "File /tmp/custom-noexec-1111-2222.alert was written.");
     will_return(__wrap_wpopenv, &wfd);
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, 127 << 8);
     expect_string(__wrap__merror, formatted_msg, "Couldn't execute command (integrations/custom-noexec). Check file and permissions.");
     expect_string(__wrap_unlink, file, "/tmp/custom-noexec-1111-2222.alert");
@@ -356,8 +356,7 @@ void test_OS_IntegratorD_exec_errors_hide_arguments(void **state) {
 
     expect_alert_file("/tmp/custom-killed-1111-2222.alert", "File /tmp/custom-killed-1111-2222.alert was written.");
     will_return(__wrap_wpopenv, &wfd);
-    expect_value(__wrap_fgets, __stream, wfd.file_out);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, SIGKILL);
     expect_string(__wrap__merror, formatted_msg, "Command (integrations/custom-killed) execution exited abnormally.");
     expect_string(__wrap_unlink, file, "/tmp/custom-killed-1111-2222.alert");
