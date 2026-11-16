@@ -271,7 +271,7 @@
     <if_sid>99003</if_sid>
     <field name="query.type">\.*</field>
     <field name="rcode">NOERROR</field>
-    <description>Amazon Security Lake - Route 53 - Succsessful DNS request [$(query.type)] "$(query.hostname)" from $(src_endpoint.ip).</description>
+    <description>Amazon Security Lake - Route 53 - Successful DNS request [$(query.type)] "$(query.hostname)" from $(src_endpoint.ip).</description>
     <mitre>
       <id>T1071.004</id>
       <id>T1584.002</id>
