@@ -89,7 +89,8 @@ namespace remoted::downstream
         int writeTimeoutMs {0};
     };
 
-    /// @brief Delivered exactly once, on an internal I/O thread, when the response arrives or on error.
+    /// @brief Delivered at most once, on an internal I/O thread, when the response arrives or on error (see
+    /// IDownstreamClient for when it is not delivered at all).
     using DownstreamCallback = std::function<void(DownstreamError, DownstreamResponse)>;
 
     /**
@@ -98,7 +99,10 @@ namespace remoted::downstream
      * Contract: `sendAsync` returns immediately. The implementation holds `bodyKeepAlive` only until
      * the request body has been fully written (send complete) and then drops it -- that is what frees
      * the caller's payload (and its in-flight byte reservation) at send time, before the response is
-     * awaited. `onComplete` is invoked exactly once.
+     * awaited. While the client runs, `onComplete` is invoked exactly once. A request still pending
+     * when the client stops, or sent after it stopped, never invokes it: the callback is destroyed with
+     * the client. A caller that must not wait on such a request bounds the wait (see sendBlocking()) or
+     * stops sending before the client stops.
      */
     class IDownstreamClient
     {

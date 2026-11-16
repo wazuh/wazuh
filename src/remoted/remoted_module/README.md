@@ -1284,9 +1284,11 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
   `VersionMismatch` unless the request's `feed_offset` matches exactly.
 - Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
   `vd-http.sock` UDS socket `VdClient` uses for `/offset`, through the same client — see below and
-  this endpoint's Lifecycle), with a fixed 1 s connect deadline and a read/write timeout each
+  this endpoint's Lifecycle), with a fixed 1 s connect deadline, a read/write timeout each
   configurable via `remoted.vd_scan_read_timeout`/`remoted.vd_scan_write_timeout` (default
-  5 s each): VD answers at **admission** — a readiness preflight plus recording a `vd_scan` manager
+  5 s each), and the same 64 KiB cap on VD's answer as the offset query
+  (`VdClient::MAX_RESPONSE_BODY_BYTES`; a larger answer is a relay failure,
+  `vd_unreachable (response_too_large)`): VD answers at **admission** — a readiness preflight plus recording a `vd_scan` manager
   task (a pending one for the same agent is coalesced) — so the round trip is inline route work,
   never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any other answer → `VdRejected` carrying
@@ -1318,7 +1320,9 @@ since it's the same client instance — this is the rest of its contract. `getOf
 3. On a failed refresh, the last known-good value is returned (0 if none was ever obtained), and
    the next attempt is gated to a short, separate `failureRetryInterval` (default 5s) rather than
    the normal 30s TTL — recovers quickly once VD comes back, without hammering it (or serializing
-   every caller) on every single call during an outage.
+   every caller) on every single call during an outage. An exception while querying (building the
+   request, formatting a warning) is a failed refresh too, so the refresher always hands its turn
+   back.
 4. The round trip itself goes through the client shared with the scan request
    (`downstream::sendBlocking()` over an `AsioUdsHttpClient`): 1 s each to connect, send and receive
    the answer, a 64 KiB cap on VD's answer (`VdClient::MAX_RESPONSE_BODY_BYTES`), and a backstop 1 s
