@@ -4942,6 +4942,30 @@ void test_validate_control_msg_startup_long_agent_version(void** state)
     assert_int_equal(strlen(__real_OSHash_Get(agent_data_hash, "001")), OS_SIZE_32);
 }
 
+void test_validate_control_msg_startup_multibyte_agent_version(void** state)
+{
+    char version[OS_SIZE_32 + 2];
+
+    // The bound falls between the two bytes of the last character
+    memset(version, 'A', OS_SIZE_32 - 1);
+    snprintf(version + OS_SIZE_32 - 1, 3, "\xC3\xA9");
+    expect_agent_version_add(2);
+
+    startup_with_version(version);
+
+    version[OS_SIZE_32 - 1] = '\0';
+    assert_string_equal(__real_OSHash_Get(agent_data_hash, "001"), version);
+}
+
+void test_validate_control_msg_startup_agent_version_not_added(void** state)
+{
+    expect_agent_version_add(0);
+
+    startup_with_version("v4.6.0");
+
+    assert_null(__real_OSHash_Get(agent_data_hash, "001"));
+}
+
 void test_validate_control_msg_get_agent_version_fail(void** state)
 {
     keyentry key;
@@ -5652,6 +5676,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_replaces_agent_version, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_agent_version_already_added, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_long_agent_version, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_multibyte_agent_version, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_agent_version_not_added, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_validate_control_msg_get_agent_version_fail, setup_globals, teardown_globals),
         // Tests save_controlmsg
         cmocka_unit_test_setup_teardown(test_save_controlmsg_agent_invalid_version, setup_globals_no_test_mode, teardown_globals),
