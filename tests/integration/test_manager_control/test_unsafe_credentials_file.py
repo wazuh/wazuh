@@ -767,8 +767,8 @@ def test_refuses_when_the_check_cannot_run(json_output, breaker):
 
 
 def _stage_indexer_trust(leaf_days, key_mismatch=False):
-    """Replace the indexer CA and client pair in certs/ with a throwaway CA and a pair it issued, valid between
-    `leaf_days` (days from now), owned and moded as the installer leaves them."""
+    """Replace the indexer CA in certs/ with a throwaway CA, and stage and configure a client pair it issued, valid
+    between `leaf_days` (days from now), owned and moded as the installer leaves them."""
     now = datetime.datetime.now(datetime.timezone.utc)
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'test-indexer-ca')])
@@ -803,13 +803,20 @@ def _stage_indexer_trust(leaf_days, key_mismatch=False):
     for marker in INDEXER_IMPORT_MARKERS:
         if marker.exists():
             marker.unlink()
+    # The generated configuration names no client pair, and the resolver checks only one it names.
+    conf = CONF_DIR / 'wazuh-manager.conf'
+    text = conf.read_text()
+    anchor = '</certificate_authorities>'
+    assert text.count(anchor) == 1, f"'{anchor}' is not in the installed configuration exactly once"
+    conf.write_text(text.replace(anchor, f'{anchor}<certificate>{INDEXER_TRUST[1]}</certificate>'
+                                         f'<key>{INDEXER_TRUST[2]}</key>'))
 
 
 @pytest.fixture
 def indexer_trust():
-    """Swap the indexer CA and client pair for test material, staged (no import marker); put the originals and their
-    markers back and restart on them."""
-    snapshots = [_Snapshot(path) for path in (*INDEXER_TRUST, *INDEXER_IMPORT_MARKERS)]
+    """Swap the indexer CA for test material and configure a client pair it issued, staged (no import marker); put
+    the originals, their markers and the configuration back and restart on them."""
+    snapshots = [_Snapshot(path) for path in (*INDEXER_TRUST, *INDEXER_IMPORT_MARKERS, CONF_DIR / 'wazuh-manager.conf')]
     try:
         yield _stage_indexer_trust
     finally:
@@ -828,9 +835,9 @@ def test_start_warns_on_expired_indexer_pair(indexer_trust):
     wazuh_min_version: 5.0.0
 
     test_phases:
-        - setup: Stop the manager and stage an indexer CA with a client pair it issued that expired yesterday.
+        - setup: Stop the manager, stage an indexer CA and configure a client pair it issued that expired yesterday.
         - test: Run 'start'.
-        - teardown: Put the original indexer files back and restart the manager.
+        - teardown: Put the original indexer files and configuration back and restart the manager.
 
     assertions:
         - The exit code is zero and every daemon is running.
@@ -868,9 +875,9 @@ def test_start_refuses_indexer_pair_with_another_key(indexer_trust):
     wazuh_min_version: 5.0.0
 
     test_phases:
-        - setup: Stop the manager and stage an indexer CA with a valid client pair whose key is another one.
+        - setup: Stop the manager, stage an indexer CA and configure a valid client pair whose key is another one.
         - test: Run 'start'.
-        - teardown: Put the original indexer files back and restart the manager.
+        - teardown: Put the original indexer files and configuration back and restart the manager.
 
     assertions:
         - The exit code is not zero and no daemon is alive.

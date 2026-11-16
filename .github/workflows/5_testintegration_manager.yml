@@ -224,8 +224,7 @@ jobs:
           # the host. The pairs come from the devcontainer copy of the installation assistant tool; the
           # manager node's SAN carries DNS:wazuh-manager, which the integration tests assert on the
           # listener certificate. The listener pair is installed for the Server API as well (serverAuth,
-          # leaf followed by the CA, SAN including localhost, which the tests connect to), and the
-          # manager node's own certificate, issued with clientAuth, is the indexer client pair.
+          # leaf followed by the CA, SAN including localhost, which the tests connect to).
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -253,8 +252,6 @@ jobs:
           # closed to the group) would make the dropped service fail to start.
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/root-ca.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/indexer-ca.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$MANAGER_CONF_DIR/certs/indexer-connector.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$MANAGER_CONF_DIR/certs/indexer-connector-key.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/remoted.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$MANAGER_CONF_DIR/certs/remoted-key.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/apid.pem"
