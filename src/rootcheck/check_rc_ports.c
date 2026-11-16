@@ -27,7 +27,8 @@
  * the Send-Q backlog nor a peer port can hide a local port. It is counted
  * from the end because older ss releases may glue State and Recv-Q, and
  * only on lines with two fields or more, since awk aborts on $(NF-1) of an
- * empty line. A failing ss makes the pipeline exit 2 instead of reporting
+ * empty line. Do not add -p, -e, -o or -Z: their trailing column would make
+ * it the peer. A failing ss makes the pipeline exit 2 instead of reporting
  * the port as missing, and so does a listing with no sockets: it only runs
  * for a port bind() found in use.
  */
