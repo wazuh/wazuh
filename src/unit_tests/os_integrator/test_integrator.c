@@ -201,9 +201,182 @@ void test_OS_IntegratorD(void **state) {
     cJSON_Delete(op_json);
 }
 
+#define SHORT_ALERT "{\"rule\":{\"level\":3,\"id\":\"5715\"},\"id\":\"1\"}"
+
+static int setup_test_mode(void **state) {
+    (void) state;
+    test_mode = 1;
+    return OS_SUCCESS;
+}
+
+static int teardown_test_mode(void **state) {
+    (void) state;
+    test_mode = 0;
+    return OS_SUCCESS;
+}
+
+static void expect_enable_integration(const char *file, const char *enabled_msg) {
+    expect_string(__wrap_File_DateofChange, file, file);
+    will_return(__wrap_File_DateofChange, 1);
+    expect_string(__wrap__minfo, formatted_msg, enabled_msg);
+}
+
+static void expect_read_alert(void) {
+    will_return(__wrap_FOREVER, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "jqueue_next()");
+    will_return(__wrap_jqueue_next, cJSON_Parse(SHORT_ALERT));
+    expect_string(__wrap__mdebug1, formatted_msg, "Sending new alert.");
+}
+
+static void expect_alert_file(const char *file, const char *written_msg) {
+    will_return(__wrap_time, 1111);
+    will_return(__wrap_os_random, 2222);
+    expect_string(__wrap_wfopen, path, file);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
+    expect_fprintf((FILE *)1, SHORT_ALERT "\n", 0);
+    expect_string(__wrap__mdebug2, formatted_msg, written_msg);
+    expect_fclose((FILE *)1, 0);
+}
+
+void test_OS_IntegratorD_output_masked(void **state) {
+    (void) state;
+    IntegratorConfig hook = { .name = "custom-hook", .apikey = "CANARY_API_KEY",
+                              .hookurl = "https://hooks.example/services/T000/CANARY_HOOK", .alert_format = "json" };
+    IntegratorConfig *integrator_config[] = { &hook, NULL };
+    wfd_t wfd = { .file_out = (FILE *)1 };
+
+    will_return(__wrap_jqueue_open, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+    expect_enable_integration("integrations/custom-hook", "Enabling integration for: 'custom-hook'.");
+
+    expect_read_alert();
+    expect_alert_file("/tmp/custom-hook-1111-2222.alert", "File /tmp/custom-hook-1111-2222.alert was written.");
+    will_return(__wrap_wpopenv, &wfd);
+
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, "Arguments: CANARY_API_KEY https://hooks.example/services/T000/CANARY_HOOK\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "Arguments: ***** *****\n");
+
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='hooks.example', port=443): "
+                              "Max retries exceeded with url: /services/T000/CANARY_HOOK\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='hooks.example', port=443): "
+                                                  "Max retries exceeded with url: *****\n");
+
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_wpclose, 1 << 8);
+    expect_string(__wrap__merror, formatted_msg, "Unable to run integration for custom-hook -> integrations");
+    expect_string(__wrap__merror, formatted_msg, "While running custom-hook -> integrations. Output: "
+                                                 "requests.exceptions.ConnectionError: HTTPSConnectionPool(host='hooks.example', port=443): "
+                                                 "Max retries exceeded with url: *****\n ");
+    expect_string(__wrap__merror, formatted_msg, "Exit status was: 1");
+
+    expect_string(__wrap_unlink, file, "/tmp/custom-hook-1111-2222.alert");
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    OS_IntegratorD(integrator_config);
+
+    os_free(hook.path);
+}
+
+void test_OS_IntegratorD_output_not_carried_over(void **state) {
+    (void) state;
+    IntegratorConfig first = { .name = "custom-first", .alert_format = "json" };
+    IntegratorConfig second = { .name = "custom-second", .alert_format = "json" };
+    IntegratorConfig *integrator_config[] = { &first, &second, NULL };
+    wfd_t wfd = { .file_out = (FILE *)1 };
+
+    will_return(__wrap_jqueue_open, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+    expect_enable_integration("integrations/custom-first", "Enabling integration for: 'custom-first'.");
+    expect_enable_integration("integrations/custom-second", "Enabling integration for: 'custom-second'.");
+
+    expect_read_alert();
+
+    expect_alert_file("/tmp/custom-first-1111-2222.alert", "File /tmp/custom-first-1111-2222.alert was written.");
+    will_return(__wrap_wpopenv, &wfd);
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, "output of the first integration\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "output of the first integration\n");
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_wpclose, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
+    expect_string(__wrap_unlink, file, "/tmp/custom-first-1111-2222.alert");
+    will_return(__wrap_unlink, 0);
+
+    expect_alert_file("/tmp/custom-second-1111-2222.alert", "File /tmp/custom-second-1111-2222.alert was written.");
+    will_return(__wrap_wpopenv, &wfd);
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_wpclose, 1 << 8);
+    expect_string(__wrap__merror, formatted_msg, "Unable to run integration for custom-second -> integrations");
+    expect_string(__wrap__merror, formatted_msg, "While running custom-second -> integrations. Output:  ");
+    expect_string(__wrap__merror, formatted_msg, "Exit status was: 1");
+    expect_string(__wrap_unlink, file, "/tmp/custom-second-1111-2222.alert");
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    OS_IntegratorD(integrator_config);
+
+    os_free(first.path);
+    os_free(second.path);
+}
+
+void test_OS_IntegratorD_exec_errors_hide_arguments(void **state) {
+    (void) state;
+    IntegratorConfig noexec = { .name = "custom-noexec", .apikey = "CANARY_API_KEY",
+                                .hookurl = "https://custom.example/CANARY_HOOK", .alert_format = "json" };
+    IntegratorConfig killed = { .name = "custom-killed", .apikey = "CANARY_API_KEY",
+                                .hookurl = "https://custom.example/CANARY_HOOK", .alert_format = "json" };
+    IntegratorConfig *integrator_config[] = { &noexec, &killed, NULL };
+    wfd_t wfd = { .file_out = (FILE *)1 };
+
+    will_return(__wrap_jqueue_open, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+    expect_enable_integration("integrations/custom-noexec", "Enabling integration for: 'custom-noexec'.");
+    expect_enable_integration("integrations/custom-killed", "Enabling integration for: 'custom-killed'.");
+
+    expect_read_alert();
+
+    expect_alert_file("/tmp/custom-noexec-1111-2222.alert", "File /tmp/custom-noexec-1111-2222.alert was written.");
+    will_return(__wrap_wpopenv, &wfd);
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_wpclose, 127 << 8);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't execute command (integrations/custom-noexec). Check file and permissions.");
+    expect_string(__wrap_unlink, file, "/tmp/custom-noexec-1111-2222.alert");
+    will_return(__wrap_unlink, 0);
+
+    expect_alert_file("/tmp/custom-killed-1111-2222.alert", "File /tmp/custom-killed-1111-2222.alert was written.");
+    will_return(__wrap_wpopenv, &wfd);
+    expect_value(__wrap_fgets, __stream, wfd.file_out);
+    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_wpclose, SIGKILL);
+    expect_string(__wrap__merror, formatted_msg, "Command (integrations/custom-killed) execution exited abnormally.");
+    expect_string(__wrap_unlink, file, "/tmp/custom-killed-1111-2222.alert");
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    OS_IntegratorD(integrator_config);
+
+    os_free(noexec.path);
+    os_free(killed.path);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_OS_IntegratorD, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_IntegratorD_output_masked, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_OS_IntegratorD_output_not_carried_over, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_OS_IntegratorD_exec_errors_hide_arguments, setup_test_mode, teardown_test_mode),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
