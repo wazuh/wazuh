@@ -426,8 +426,9 @@ class NetworkLinuxAddressResolver final
 
                 auto nexthopsLength { static_cast<int>(RTA_PAYLOAD(multipath)) };
 
-                for (auto nexthop { static_cast<const rtnexthop*>(RTA_DATA(multipath)) }; nexthopsLength >= static_cast<int>(sizeof(rtnexthop)) && RTNH_OK(nexthop, nexthopsLength);
-                        nexthopsLength -= static_cast<int>(RTNH_ALIGN(nexthop->rtnh_len)), nexthop = RTNH_NEXT(nexthop))
+                auto nexthop { static_cast<const rtnexthop*>(RTA_DATA(multipath)) };
+
+                while (nexthopsLength >= static_cast<int>(sizeof(rtnexthop)) && RTNH_OK(nexthop, nexthopsLength))
                 {
                     auto nexthopAttributesLength { static_cast<int>(nexthop->rtnh_len) - static_cast<int>(RTNH_LENGTH(0)) };
 
@@ -439,6 +440,9 @@ class NetworkLinuxAddressResolver final
                             addGateway(gateways, static_cast<unsigned int>(nexthop->rtnh_ifindex), RTA_DATA(attribute));
                         }
                     }
+
+                    nexthopsLength -= static_cast<int>(RTNH_ALIGN(nexthop->rtnh_len));
+                    nexthop = RTNH_NEXT(nexthop);
                 }
             }
 
