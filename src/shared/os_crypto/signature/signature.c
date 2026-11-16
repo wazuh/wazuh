@@ -139,7 +139,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
     struct statvfs vfs;
 
     if (fstatvfs(fileno(fileout), &vfs) < 0) {
-        merror(FSTAT_ERROR, target, errno, strerror(errno));
+        merror("Could not get the free disk space for '%s': %s", target, strerror(errno));
         goto cleanup;
     }
 

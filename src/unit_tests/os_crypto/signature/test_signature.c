@@ -360,7 +360,7 @@ void test_w_wpk_unsign_statvfs_error(void ** state) {
     join(target, "out");
     write_wpk(source, content, sizeof(content));
     vfs_mode = VFS_FAIL;
-    snprintf(msg, sizeof(msg), FSTAT_ERROR, target, EIO, strerror(EIO));
+    snprintf(msg, sizeof(msg), "Could not get the free disk space for '%s': %s", target, strerror(EIO));
     expect_string(__wrap__merror, formatted_msg, msg);
 
     assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
