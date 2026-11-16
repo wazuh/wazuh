@@ -159,6 +159,9 @@ namespace GatewayFileFields
     };
 }
 
+// Interface name -> IPv6 default gateway, read once per scan.
+using IPv6Gateways = std::map<std::string, std::string>;
+
 namespace GatewayV6FileFields
 {
     enum
@@ -231,6 +234,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         std::string m_gateway;
         std::string m_metrics;
         std::shared_ptr<const IPv4AddressFlags> m_addressFlags;
+        std::shared_ptr<const IPv6Gateways> m_gatewaysV6;
 
         // Prefix length of an IPv4 entry, counted from its netmask; 0 without one.
         unsigned int prefixLength() const
@@ -283,11 +287,13 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
     public:
         // interfaceName is the link holding the entry; for IPv4 entries ifa_name is the address label.
-        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName, std::shared_ptr<const IPv4AddressFlags> addressFlags = nullptr)
+        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName, std::shared_ptr<const IPv4AddressFlags> addressFlags = nullptr,
+                              std::shared_ptr<const IPv6Gateways> gatewaysV6 = nullptr)
             : m_interfaceAddress{ addrs }
             , m_interfaceName{ interfaceName }
             , m_gateway{UNKNOWN_VALUE}
             , m_addressFlags{ std::move(addressFlags) }
+            , m_gatewaysV6{ std::move(gatewaysV6) }
         {
             if (!addrs)
             {
@@ -396,11 +402,22 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string gatewayV6() const override
         {
-            return parseGatewayV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"), this->name());
+            if (m_gatewaysV6)
+            {
+                const auto it { m_gatewaysV6->find(this->name()) };
+
+                if (m_gatewaysV6->end() != it)
+                {
+                    return it->second;
+                }
+            }
+
+            return UNKNOWN_VALUE;
         }
 
-        // Next hop of the ::/0 route of ifName in /proc/net/ipv6_route format
-        static std::string parseGatewayV6(const std::string& routeTable, const std::string& ifName)
+        // First ::/0 gateway of each interface in /proc/net/ipv6_route format. Lines that cannot be a
+        // ::/0 route are skipped without being split, as the table can hold tens of thousands of routes.
+        static IPv6Gateways parseGatewaysV6(const std::string& routeTable)
         {
             constexpr auto IPV6_HEX_LENGTH { 32 };
             constexpr auto RTF_UP_GATEWAY { 0x0003 };
@@ -415,16 +432,33 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                     });
                 }
             };
-            std::string retVal { UNKNOWN_VALUE };
+            IPv6Gateways retVal;
+            size_t start { 0 };
 
-            for (auto& line : Utils::split(routeTable, '\n'))
+            while (start < routeTable.size())
             {
+                auto end { routeTable.find('\n', start) };
+
+                if (std::string::npos == end)
+                {
+                    end = routeTable.size();
+                }
+
+                const auto first { routeTable.find_first_not_of(" \t", start) };
+                const auto lineStart { start };
+                start = end + 1;
+
+                if (first == std::string::npos || first >= end || routeTable.compare(first, IPV6_HEX_LENGTH, ANY_ADDRESS) != 0)
+                {
+                    continue;
+                }
+
+                auto line { routeTable.substr(lineStart, end - lineStart) };
                 Utils::replaceAll(line, "\t", " ");
                 line = Utils::trimRepeated(Utils::trim(line), ' ');
                 const auto fields { Utils::split(line, ' ') };
 
                 if (GatewayV6FileFields::Size == fields.size() &&
-                        fields.at(GatewayV6FileFields::Iface).compare(ifName) == 0 &&
                         fields.at(GatewayV6FileFields::Destination).compare(ANY_ADDRESS) == 0 &&
                         fields.at(GatewayV6FileFields::DestinationPrefix).compare("00") == 0 &&
                         fields.at(GatewayV6FileFields::SourcePrefix).compare("00") == 0 &&
@@ -443,8 +477,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                         address.s6_addr[i] = static_cast<uint8_t>(std::stoul(nextHop.substr(i * 2, 2), nullptr, 16));
                     }
 
-                    retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
-                    break;
+                    retVal.emplace(fields.at(GatewayV6FileFields::Iface), Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address));
                 }
             }
 
