@@ -66,6 +66,7 @@ Both connectors retry transient failures using an exponential backoff with jitte
 
 | Status of the `_bulk` request | Sync | Async |
 |---|---|---|
+| 200 with per-item 429 or `cluster_block_exception` | flush fails; caller must re-stage and retry | only rejected items requeued at the front in their original order, with backoff and no attempt limit (see below) |
 | 429, or no HTTP response (timeout, connection refused, TLS failure) | retried within the budget below | retried, without an attempt limit |
 | 503 Service Unavailable | retried within the budget below | sent up to 10 times: the 10th consecutive 503 answer to the batch at the head of the queue discards it |
 | 502 Bad Gateway, 504 Gateway Timeout | retried within the budget below | discarded, not retried |
