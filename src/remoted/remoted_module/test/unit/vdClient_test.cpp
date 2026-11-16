@@ -281,10 +281,11 @@ TEST(VdClientTest, AnOversizedOffsetAnswerIsAFailedQuery)
 
     // Valid JSON carrying a different offset, but past the response cap: had it been read, the offset
     // would now be 200.
-    const std::string padding(VdClient::MAX_RESPONSE_BODY_BYTES, 'x');
-    server.setOffsetHandler(
-        [&padding](const httplib::Request&, httplib::Response& res)
-        { res.set_content(R"({"offset":200,"padding":")" + padding + R"("})", "application/json"); });
+    // Captured by value: the server keeps the handler, and it outlives this test's locals.
+    const std::string body =
+        R"({"offset":200,"padding":")" + std::string(VdClient::MAX_RESPONSE_BODY_BYTES, 'x') + R"("})";
+    server.setOffsetHandler([body](const httplib::Request&, httplib::Response& res)
+                            { res.set_content(body, "application/json"); });
     std::this_thread::sleep_for(TEST_CACHE_TTL + 20ms);
 
     EXPECT_EQ(client.getOffset(), 100u) << "an answer over the cap must fail the query and keep the last offset";

@@ -34,6 +34,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace std::chrono_literals;
@@ -87,6 +88,53 @@ namespace
         ScanVdHandlerImpl handler;
     };
 
+    /// Owns one descriptor: a member or vector element of this type is closed even when the object
+    /// holding it throws from its constructor, where that object's own destructor never runs.
+    class OwnedFd
+    {
+    public:
+        explicit OwnedFd(int fd = -1) noexcept
+            : m_fd(fd)
+        {
+        }
+        OwnedFd(OwnedFd&& other) noexcept
+            : m_fd(std::exchange(other.m_fd, -1))
+        {
+        }
+        OwnedFd& operator=(OwnedFd&& other) noexcept
+        {
+            if (this != &other)
+            {
+                reset();
+                m_fd = std::exchange(other.m_fd, -1);
+            }
+            return *this;
+        }
+        OwnedFd(const OwnedFd&) = delete;
+        OwnedFd& operator=(const OwnedFd&) = delete;
+        ~OwnedFd()
+        {
+            reset();
+        }
+
+        int get() const noexcept
+        {
+            return m_fd;
+        }
+
+    private:
+        void reset() noexcept
+        {
+            if (m_fd >= 0)
+            {
+                ::close(m_fd);
+                m_fd = -1;
+            }
+        }
+
+        int m_fd;
+    };
+
     /// A listener that never accepts, its accept backlog filled to the brim: the next connect is refused
     /// with EAGAIN at once instead of waiting for a slot.
     class FullBacklogListener
@@ -95,44 +143,45 @@ namespace
         explicit FullBacklogListener(std::string path)
             : m_path(std::move(path))
         {
-            ::unlink(m_path.c_str());
             sockaddr_un addr {};
-            addr.sun_family = AF_UNIX;
-            std::strncpy(addr.sun_path, m_path.c_str(), sizeof(addr.sun_path) - 1);
-            m_listenFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
-            if (m_listenFd < 0 || ::bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 ||
-                ::listen(m_listenFd, 0) != 0)
+            if (m_path.size() >= sizeof(addr.sun_path))
             {
-                throw std::runtime_error(std::string {"listener setup failed: "} + std::strerror(errno));
+                throw std::invalid_argument("socket path too long for sockaddr_un: " + m_path);
             }
-            for (int attempt = 0; attempt < 64; ++attempt)
+            addr.sun_family = AF_UNIX;
+            std::memcpy(addr.sun_path, m_path.c_str(), m_path.size() + 1);
+
+            ::unlink(m_path.c_str());
+            m_listenFd = OwnedFd {::socket(AF_UNIX, SOCK_STREAM, 0)};
+            if (m_listenFd.get() < 0 ||
+                ::bind(m_listenFd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 ||
+                ::listen(m_listenFd.get(), 0) != 0)
             {
-                const int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
-                if (fd < 0)
+                const int error = errno;
+                ::unlink(m_path.c_str());
+                throw std::runtime_error(std::string {"listener setup failed: "} + std::strerror(error));
+            }
+            constexpr int maxFillers = 64;
+            m_fillers.reserve(maxFillers);
+            for (int attempt = 0; attempt < maxFillers; ++attempt)
+            {
+                OwnedFd fd {::socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0)};
+                if (fd.get() < 0)
                 {
                     break;
                 }
-                if (::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
+                if (::connect(fd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
                 {
-                    const int error = errno;
-                    ::close(fd);
-                    m_full = (error == EAGAIN);
+                    m_full = (errno == EAGAIN);
                     break;
                 }
-                m_fillers.push_back(fd);
+                m_fillers.push_back(std::move(fd));
             }
         }
 
+        // The descriptors close in their own destructors; only the path is left to remove.
         ~FullBacklogListener()
         {
-            for (const int fd : m_fillers)
-            {
-                ::close(fd);
-            }
-            if (m_listenFd >= 0)
-            {
-                ::close(m_listenFd);
-            }
             ::unlink(m_path.c_str());
         }
 
@@ -146,8 +195,8 @@ namespace
 
     private:
         std::string m_path;
-        int m_listenFd {-1};
-        std::vector<int> m_fillers;
+        OwnedFd m_listenFd;
+        std::vector<OwnedFd> m_fillers;
         bool m_full {false};
     };
 
@@ -182,6 +231,14 @@ TEST(ScanVdHandlerTest, RejectsANullHttpClient)
     const auto vdClient = std::make_shared<VdClient>(makeVdHttpClient(), makeUniqueVdSocketPath("null-client"));
 
     EXPECT_THROW((ScanVdHandlerImpl {vdClient, nullptr, metrics}), std::invalid_argument);
+}
+
+TEST(ScanVdHandlerTest, RejectsANullVdClient)
+{
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
+
+    EXPECT_THROW((ScanVdHandlerImpl {nullptr, makeVdHttpClient(), metrics}), std::invalid_argument);
 }
 
 /**

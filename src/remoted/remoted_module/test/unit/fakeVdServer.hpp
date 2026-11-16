@@ -8,10 +8,11 @@
  * Foundation.
  *
  * Stands in for the VD module's /vulnerability-detector/offset (and /scan) endpoints. Unlike
- * fakeUdsServer.hpp (which emulates the WazuhDBClient/TaskClient SizeHeaderProtocol), VdClient
- * and ScanVdHandlerImpl are real httplib::Client callers speaking real HTTP -- so this fake is a
- * real httplib::Server bound to a UDS socket, not a hand-rolled protocol stub, to avoid subtly
- * diverging from how the real VD module actually behaves (status codes, body framing, etc.).
+ * fakeUdsServer.hpp (which emulates WazuhDBClient's `[uint32_t size][payload]` SizeHeaderProtocol),
+ * VdClient and ScanVdHandlerImpl speak real HTTP/1.1 through remoted's AsioUdsHttpClient -- so this
+ * fake is a real httplib::Server bound to a UDS socket, not a hand-rolled protocol stub, to avoid
+ * subtly diverging from how the real VD module actually behaves (status codes, body framing, etc.).
+ * cpp-httplib is a test-only dependency here; the module itself does not use it.
  */
 
 #ifndef _REMOTED_MODULE_TEST_FAKE_VD_SERVER_HPP
