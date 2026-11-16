@@ -296,6 +296,8 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     // Update agent data to keep context of events to forward
                     char *agent_version = w_strndup(version->valuestring, OS_SIZE_32);
+                    // The bound can leave a truncated multibyte character at the end
+                    *(char *)w_utf8_drop(agent_version) = '\0';
                     if (!OSHash_Update_ex(agent_data_hash, key->id, agent_version) &&
                         OSHash_Add_ex(agent_data_hash, key->id, agent_version) != 2) {
                         os_free(agent_version);
