@@ -23,13 +23,15 @@
 
 #ifdef __linux__
 /* iproute2 counterpart of netstat. No -H: older ss releases reject it. Only
- * the local address column (4th) is matched, so neither the header, the
- * Send-Q backlog nor a peer port can hide a local port. A failing ss makes
- * the pipeline exit 2 instead of reporting the port as missing, and so does
- * a listing with no sockets: it only runs for a port bind() found in use.
+ * the local address column (next to last) is matched, so neither the header,
+ * the Send-Q backlog nor a peer port can hide a local port. It is counted
+ * from the end because older ss releases may glue State and Recv-Q. A
+ * failing ss makes the pipeline exit 2 instead of reporting the port as
+ * missing, and so does a listing with no sockets: it only runs for a port
+ * bind() found in use.
  */
 #define SS              "{ ss -an --%s 2> /dev/null || echo FAIL; } | " \
-                        "awk '/^FAIL$/ {e = 1} $4 ~ /:%d$/ {f = 1} " \
+                        "awk '/^FAIL$/ {e = 1} $(NF-1) ~ /:%d$/ {f = 1} " \
                         "END {exit (e || NR < 2) ? 2 : !f}' > /dev/null 2>&1"
 #define SS_PROBE        "ss -an --tcp > /dev/null 2>&1 && " \
                         "ss -an --udp > /dev/null 2>&1 && " \
