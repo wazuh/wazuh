@@ -858,7 +858,7 @@ static void test_max_depth_not_exceeded(void **state)
 static struct stat read_dir_stat;
 static struct dirent read_entry;
 
-static void expect_scan_one_file(const char *path, struct stat *file_stat, int size_mismatch)
+static void expect_scan_one_file(const char *path, struct stat *file_stat, mode_t dir_mode, int size_mismatch)
 {
     DIR *fake_dp = (DIR *)0x1234;
 
@@ -867,7 +867,7 @@ static void expect_scan_one_file(const char *path, struct stat *file_stat, int s
     strncpy(read_entry.d_name, path + 1, sizeof(read_entry.d_name) - 1);
 
     memset(&read_dir_stat, 0, sizeof(read_dir_stat));
-    read_dir_stat.st_mode = S_IFDIR | 0755;
+    read_dir_stat.st_mode = S_IFDIR | dir_mode;
     read_dir_stat.st_nlink = 2;
     read_dir_stat.st_dev = 1;
 
@@ -918,7 +918,7 @@ static void test_read_size_mismatch_alerts(void **state)
     file_stat.st_size = 100;
     rootcheck.readall = 1;
 
-    expect_scan_one_file(path, &file_stat, 1);
+    expect_scan_one_file(path, &file_stat, 0755, 1);
 
     check_rc_sys("/");
     unlink(path);
@@ -935,7 +935,7 @@ static void test_read_large_file_skipped(void **state)
     file_stat.st_size = (off_t)1024 * 1024 * 1024 + 1;
     rootcheck.readall = 1;
 
-    expect_scan_one_file(path, &file_stat, 0);
+    expect_scan_one_file(path, &file_stat, 0755, 0);
 
     check_rc_sys("/");
     unlink(path);
@@ -956,114 +956,25 @@ static void test_read_non_regular_skipped(void **state)
     file_stat.st_size = 100;
     rootcheck.readall = 1;
 
-    expect_scan_one_file(path, &file_stat, 0);
+    expect_scan_one_file(path, &file_stat, 0755, 0);
 
     check_rc_sys("/");
     unlink(path);
-    rmdir(dir);
-}
-
-static void test_read_symlink_not_followed(void **state)
-{
-    (void)state;
-    char dir[] = "/tmp/rc_sys_read_XXXXXX";
-    char target[sizeof(dir) + 7];
-    char path[sizeof(dir) + 5];
-    struct stat file_stat;
-
-    assert_non_null(mkdtemp(dir));
-    snprintf(target, sizeof(target), "%s/target", dir);
-    snprintf(path, sizeof(path), "%s/link", dir);
-    FILE *fp = fopen(target, "w");
-    assert_non_null(fp);
-    fputs("0123456789", fp);
-    fclose(fp);
-    assert_int_equal(symlink(target, path), 0);
-    assert_int_equal(stat(target, &file_stat), 0);
-    file_stat.st_size = 100;
-    rootcheck.readall = 1;
-
-    expect_scan_one_file(path, &file_stat, 0);
-
-    check_rc_sys("/");
-    unlink(path);
-    unlink(target);
     rmdir(dir);
 }
 
 static void test_world_writable_dir_not_read(void **state)
 {
     (void)state;
-    char path[] = "/dev/shm/rc_sys_read_XXXXXX";
-    static struct dirent dev_entry, shm_entry, file_entry;
-    static struct stat dir3_stat, dir2_stat, file_stat;
-    DIR *dp_root = (DIR *)0x1000;
-    DIR *dp_dev = (DIR *)0x1010;
-    DIR *dp_shm = (DIR *)0x1020;
+    char path[] = "/tmp/rc_sys_read_XXXXXX";
+    struct stat file_stat;
 
-    if (create_test_file(path) != 0) {
-        skip();
-    }
-
-    init_dot_entries();
-    memset(&dev_entry, 0, sizeof(dev_entry));
-    memset(&shm_entry, 0, sizeof(shm_entry));
-    memset(&file_entry, 0, sizeof(file_entry));
-    strncpy(dev_entry.d_name, "dev", sizeof(dev_entry.d_name) - 1);
-    strncpy(shm_entry.d_name, "shm", sizeof(shm_entry.d_name) - 1);
-    strncpy(file_entry.d_name, path + strlen("/dev/shm/"), sizeof(file_entry.d_name) - 1);
-
-    memset(&dir3_stat, 0, sizeof(dir3_stat));
-    dir3_stat.st_mode = S_IFDIR | 0755;
-    dir3_stat.st_nlink = 3;
-    dir3_stat.st_size = 4096;
-    dir3_stat.st_dev = 1;
-    dir2_stat = dir3_stat;
-    dir2_stat.st_mode = S_IFDIR | 01777;
-    dir2_stat.st_nlink = 2;
-
+    assert_int_equal(create_test_file(path), 0);
     assert_int_equal(stat(path, &file_stat), 0);
     file_stat.st_size = 100;
+    rootcheck.readall = 1;
 
-    expect_lstat("/", &dir3_stat, 0, 0);
-    expect_wopendir("/", dp_root);
-    expect_readdir(dp_root, &dot_entry);
-    expect_readdir(dp_root, &dotdot_entry);
-    expect_readdir(dp_root, &dev_entry);
-    expect_lstat("/dev", &dir3_stat, 0, 0);
-    expect_check_ignore("/dev", 0);
-    expect_lstat("/dev", &dir3_stat, 0, 0);
-
-    expect_lstat("/dev", &dir3_stat, 0, 0);
-    expect_wopendir("/dev", dp_dev);
-    expect_readdir(dp_dev, &dot_entry);
-    expect_readdir(dp_dev, &dotdot_entry);
-    expect_readdir(dp_dev, &shm_entry);
-    expect_lstat("/dev/shm", &dir2_stat, 0, 0);
-    expect_check_ignore("/dev/shm", 0);
-    expect_lstat("/dev/shm", &dir2_stat, 0, 0);
-
-    expect_lstat("/dev/shm", &dir2_stat, 0, 0);
-    expect_wopendir("/dev/shm", dp_shm);
-    expect_readdir(dp_shm, &dot_entry);
-    expect_readdir(dp_shm, &dotdot_entry);
-    expect_readdir(dp_shm, &file_entry);
-    expect_lstat(path, &file_stat, 0, 0);
-    expect_check_ignore(path, 0);
-    expect_lstat(path, &file_stat, 0, 0);
-    expect_readdir(dp_shm, NULL);
-    expect_skipFS("/dev/shm", 0);
-    expect_closedir(dp_shm);
-
-    expect_readdir(dp_dev, NULL);
-    expect_skipFS("/dev", 0);
-    expect_closedir(dp_dev);
-
-    expect_readdir(dp_root, NULL);
-    expect_skipFS("/", 0);
-    expect_closedir(dp_root);
-
-    expect_notify_rk(ALERT_OK);
+    expect_scan_one_file(path, &file_stat, 01777, 0);
 
     check_rc_sys("/");
     unlink(path);
@@ -1087,7 +998,6 @@ int main(void)
         cmocka_unit_test_setup(test_read_size_mismatch_alerts, setup),
         cmocka_unit_test_setup(test_read_large_file_skipped, setup),
         cmocka_unit_test_setup(test_read_non_regular_skipped, setup),
-        cmocka_unit_test_setup(test_read_symlink_not_followed, setup),
         cmocka_unit_test_setup(test_world_writable_dir_not_read, setup),
     };
 

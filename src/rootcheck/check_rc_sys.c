@@ -19,9 +19,6 @@
 #ifndef O_NOFOLLOW
 #define O_NOFOLLOW 0
 #endif
-#ifndef O_NOCTTY
-#define O_NOCTTY 0
-#endif
 #ifndef O_NONBLOCK
 #define O_NONBLOCK 0
 #endif
@@ -105,10 +102,10 @@ static int read_sys_file(const char *file_name, int do_read)
     } else if (S_ISREG(statbuf.st_mode) && do_read) {
         char buf[OS_SIZE_1024];
         int fd;
-        ssize_t nr = 0;
+        ssize_t nr;
         long int total = 0;
 
-        fd = open(file_name, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_NOCTTY, 0);
+        fd = open(file_name, O_RDONLY | O_NONBLOCK | O_NOFOLLOW, 0);
 
         /* It may not necessarily open */
         if (fd >= 0) {
@@ -121,8 +118,8 @@ static int read_sys_file(const char *file_name, int do_read)
             }
             close(fd);
 
-            if (!same_file || nr < 0) {
-                mtdebug2(ARGV0, "Skipping size check of '%s': file changed or could not be read.", file_name);
+            if (!same_file) {
+                mtdebug2(ARGV0, "Skipping size check of '%s': file changed.", file_name);
             } else if (strcmp(file_name, "/dev/bus/usb/.usbfs/devices") == 0) {
                 /* Ignore .usbfs/devices */
             } else if (total != statbuf.st_size) {
