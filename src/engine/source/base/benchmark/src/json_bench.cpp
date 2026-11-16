@@ -764,3 +764,65 @@ static void BM_GetArray_Large(benchmark::State& state)
     state.counters["text_bytes"] = static_cast<double>(text.size());
 }
 BENCHMARK(BM_GetArray_Large)->Arg(1500)->Arg(13000)->Unit(benchmark::kMillisecond);
+
+// --- formatJsonPath escaping ---
+
+/**
+ * formatJsonPath(skipDot = true) of a path made only of '/': every character is escaped.
+ */
+static void BM_FormatJsonPath_Slash(benchmark::State& state)
+{
+    const std::string input(static_cast<size_t>(state.range(0)), '/');
+    for (auto _ : state)
+    {
+        auto r = Json::formatJsonPath(input, true);
+        benchmark::DoNotOptimize(r);
+    }
+    state.SetBytesProcessed(int64_t(state.iterations()) * state.range(0));
+}
+BENCHMARK(BM_FormatJsonPath_Slash)
+    ->Arg(8 << 10)
+    ->Arg(16 << 10)
+    ->Arg(32 << 10)
+    ->Arg(64 << 10)
+    ->Unit(benchmark::kMicrosecond);
+
+/**
+ * formatJsonPath(skipDot = true) of a path made only of '~': every character is escaped.
+ */
+static void BM_FormatJsonPath_Tilde(benchmark::State& state)
+{
+    const std::string input(static_cast<size_t>(state.range(0)), '~');
+    for (auto _ : state)
+    {
+        auto r = Json::formatJsonPath(input, true);
+        benchmark::DoNotOptimize(r);
+    }
+    state.SetBytesProcessed(int64_t(state.iterations()) * state.range(0));
+}
+BENCHMARK(BM_FormatJsonPath_Tilde)
+    ->Arg(8 << 10)
+    ->Arg(16 << 10)
+    ->Arg(32 << 10)
+    ->Arg(64 << 10)
+    ->Unit(benchmark::kMicrosecond);
+
+/**
+ * formatJsonPath(skipDot = true) of a path with nothing to escape (control case).
+ */
+static void BM_FormatJsonPath_Plain(benchmark::State& state)
+{
+    const std::string input(static_cast<size_t>(state.range(0)), 'a');
+    for (auto _ : state)
+    {
+        auto r = Json::formatJsonPath(input, true);
+        benchmark::DoNotOptimize(r);
+    }
+    state.SetBytesProcessed(int64_t(state.iterations()) * state.range(0));
+}
+BENCHMARK(BM_FormatJsonPath_Plain)
+    ->Arg(8 << 10)
+    ->Arg(16 << 10)
+    ->Arg(32 << 10)
+    ->Arg(64 << 10)
+    ->Unit(benchmark::kMicrosecond);

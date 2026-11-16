@@ -224,6 +224,7 @@ set(BENCH_SRC_DIR ${SRC_DIR}/builders/enrichment/benchmark/src/)
 
 add_executable(builder_benchmark
     ${BENCH_SRC_DIR}/geoEnrichment_bench.cpp
+    ${SRC_DIR}/builders/opmap/benchmark/src/stringReplace_bench.cpp
 )
 target_include_directories(builder_benchmark
     PRIVATE
