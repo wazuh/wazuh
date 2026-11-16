@@ -8,12 +8,14 @@
 # Foundation.
 
 # Drives the manager's wazuh-manager-control (wazuh-server.sh) start, restart and reload against a
-# throwaway install directory whose programs are stubs: each daemon starts a background sleep and
-# writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1;
-# its -t passes unless a testfail-<daemon> file holds the output it prints on stderr before exiting 1;
+# throwaway install directory whose programs are stubs: each daemon starts a background sleep under
+# its own name and writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file
+# asks it to exit 1 (a plant-<daemon> file makes it leave an empty <daemon>-1.pid first); its -t
+# passes unless a testfail-<daemon> file holds the output it prints on stderr before exiting 1;
 # wazuh-manager-conf accepts the configuration (a master, authd enabled); the bundled interpreter
 # answers the engine readiness probe; there is no credential resolver, so the credential steps are
-# skipped. Checks which daemons are left running when one of them does not start.
+# skipped. Checks which daemons are left running when one of them does not start, and that a pid
+# file planted in var/run is neither read nor taken for a process that is not the daemon.
 #
 #   ./test_manager_control.sh
 
@@ -41,7 +43,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DAEMON_STUB='#!/bin/sh
+# The control script takes a pid for the daemon only when its cmdline names it: the binary, or for
+# apid and clusterd the python script, whose name has underscores.
+DAEMON_STUB='#!/bin/bash
 dir=$(cd "$(dirname "$0")/.." && pwd)
 name=$(basename "$0")
 if [ "$1" = "-t" ]; then
@@ -50,7 +54,12 @@ if [ "$1" = "-t" ]; then
     exit 1
 fi
 [ -f "${dir}/fail-${name}" ] && exit 1
-sleep 300 > /dev/null 2>&1 &
+[ -f "${dir}/plant-${name}" ] && : > "${dir}/var/run/${name}-1.pid"
+case "${name}" in
+    *-apid|*-clusterd) title="${dir}/framework/scripts/${name//-/_}.py" ;;
+    *) title="$0" ;;
+esac
+exec -a "${title}" sleep 300 > /dev/null 2>&1 &
 echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
 '
@@ -305,6 +314,60 @@ wait "${holder}" 2>/dev/null
 wait "${queued}"
 check "the queued restart runs once the lock is free" "0" "$(cat "${WORK}/queued_restart/status")"
 check "the queued restart leaves no marker" "no" "$(marker queued_restart)"
+
+# var/run is writable by the service account, which can run a restart through the setuid helper: a pid
+# file it plants there may link to a file it cannot read, or name a process that is not the daemon.
+new_tree planted_link
+control planted_link start > /dev/null
+printf 'CANARY-word1 secondword\n' > "${WORK}/planted_link/canary"
+old="$(cat "${WORK}/planted_link/var/run/wazuh-manager-clusterd"-*.pid)"
+ln -s "${WORK}/planted_link/canary" "${WORK}/planted_link/var/run/wazuh-manager-clusterd-0.pid"
+check "restart passes over a pid file linked to another file" "0" "$(control planted_link restart)"
+check "the linked file is not printed" "" \
+    "$(grep -h -e CANARY -e secondword "${WORK}/planted_link/out" "${WORK}/planted_link/err")"
+check "the daemon beside the link is stopped" "no" "$(kill -0 "${old}" 2>/dev/null && echo yes || echo no)"
+check "every daemon runs after that restart" "${DAEMONS}" "$(running planted_link)"
+
+new_tree planted_pid
+control planted_pid start > /dev/null
+sleep 300 > /dev/null 2>&1 &
+foreign=$!
+old="$(cat "${WORK}/planted_pid/var/run/wazuh-manager-modulesd"-*.pid)"
+echo "${foreign}" > "${WORK}/planted_pid/var/run/wazuh-manager-modulesd-${foreign}.pid"
+echo "${foreign}" > "${WORK}/planted_pid/var/run/wazuh-manager-db-word.pid"
+check "restart passes over pid files naming another process" "0" "$(control planted_pid restart)"
+check "that process is not signalled" "yes" "$(kill -0 "${foreign}" 2>/dev/null && echo yes || echo no)"
+check "the daemon beside them is stopped" "no" "$(kill -0 "${old}" 2>/dev/null && echo yes || echo no)"
+check "every daemon runs after that restart" "${DAEMONS}" "$(running planted_pid)"
+kill "${foreign}" 2>/dev/null
+
+# The engine's pid comes from its pid file's name: one planted while it starts is not taken for it.
+new_tree planted_engine
+touch "${WORK}/planted_engine/plant-wazuh-manager-analysisd"
+check "start passes over a planted engine pid file" "0" "$(control planted_engine start)"
+check "the planted engine pid file is removed" "no" \
+    "$([ -e "${WORK}/planted_engine/var/run/wazuh-manager-analysisd-1.pid" ] && echo yes || echo no)"
+check "every daemon runs after that start" "${DAEMONS}" "$(running planted_engine)"
+
+# A process of another user is not the daemon even when its cmdline names it; only root can start one.
+if [ "$(id -u)" = 0 ]; then
+    new_tree planted_user
+    control planted_user start > /dev/null
+    setpriv --reuid=nobody --regid="$(id -g nobody)" --clear-groups \
+        bash -c 'exec -a wazuh-manager-db sleep 300' > /dev/null 2>&1 &
+    foreign=$!
+    for _ in $(seq 50); do
+        grep -q wazuh-manager-db "/proc/${foreign}/cmdline" 2>/dev/null && break
+        sleep 0.1
+    done
+    echo "${foreign}" > "${WORK}/planted_user/var/run/wazuh-manager-db-${foreign}.pid"
+    check "restart passes over a pid file naming another user's process" "0" "$(control planted_user restart)"
+    check "that user's process is not signalled" "yes" \
+        "$(kill -0 "${foreign}" 2>/dev/null && echo yes || echo no)"
+    kill "${foreign}" 2>/dev/null
+else
+    echo "skip - a process of another user (needs root)"
+fi
 
 echo
 echo "${checks} checks, ${failures} failed"
