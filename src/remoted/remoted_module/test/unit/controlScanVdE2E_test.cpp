@@ -138,8 +138,8 @@ namespace
 
             vdServer = std::make_unique<remoted::test::FakeVdServer>(vdSocketPath);
             vdServer->setOffset(12345);
-            vdServer->setScanHandler([](const httplib::Request&, httplib::Response& res)
-                                     { res.set_content("{}", "application/json"); });
+            vdServer->setScanHandler([](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+                                     { res = wazuh::uds_http::HttpResponse::json(200, "{}"); });
 
             registry = std::make_shared<AgentRegistry>();
             wdbClient = std::make_shared<WazuhDBClient>(cfg.wdbSocketPath,
@@ -229,8 +229,9 @@ TEST(ControlScanVdE2ETest, NotifyResponseOmitsVdFeedOffsetWhileVdIsDisabled)
     {
         GTEST_SKIP() << "openssl not available to generate a test certificate";
     }
-    f.vdServer->setOffsetHandler([](const httplib::Request&, httplib::Response& res)
-                                 { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+    f.vdServer->setOffsetHandler(
+        [](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+        { res = wazuh::uds_http::HttpResponse::json(200, R"({"offset":0,"enabled":false})"); });
 
     const std::string body =
         R"({"type":"notify","agent":{"version":"5.0.0"},"host":{"hostname":"h1","ip":"127.0.0.1",)"
@@ -292,11 +293,8 @@ TEST(ControlScanVdE2ETest, ScanVdRefusedByVdIsAnHonest503OverRealHttp)
     // The negative twin of the 200 case: VD refuses at admission, and the agent must SEE that
     // -- the old design answered 200 here and dropped the scan later if retries ran out.
     f.vdServer->setScanHandler(
-        [](const httplib::Request&, httplib::Response& res)
-        {
-            res.status = 503;
-            res.set_content(R"({"error":"scan_queue_full","retryable":true})", "application/json");
-        });
+        [](const wazuh::uds_http::HttpRequest&, wazuh::uds_http::HttpResponse& res)
+        { res = wazuh::uds_http::HttpResponse::json(503, R"({"error":"scan_queue_full","retryable":true})"); });
 
     const std::string body = R"({"type":"feed_update","feed_offset":12345})";
     const auto raw = remoted::test::sendSignedRequest(f.port, remoted::test::testAgentKey(), "/scan/vd", body);
