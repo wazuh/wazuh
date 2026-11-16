@@ -12,6 +12,7 @@
 #ifndef _NETWORK_LINUX_ADDRESS_RESOLVER_H
 #define _NETWORK_LINUX_ADDRESS_RESOLVER_H
 
+#include <algorithm>
 #include <cerrno>
 #include <fcntl.h>
 #include <ifaddrs.h>
@@ -30,6 +31,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "networkHelper.h"
 
@@ -81,12 +83,65 @@ using IPv4AddressFlags = std::map<IPv4AddressKey, uint32_t>;
 // Interface name -> IPv6 default gateway, read once per listing.
 using IPv6Gateways = std::map<std::string, std::string>;
 
+// One ::/0 route of the dump, in dump order. nexthopId is set when the route names a nexthop object
+// (RTA_NH_ID); a route that only names it has no interface or gateway until the nexthop dump resolves it.
+struct IPv6Route
+{
+    std::string link;
+    std::string gateway;
+    uint32_t nexthopId { 0 };
+};
+
+// Nexthop object of the RTM_GETNEXTHOP dump: either one IPv6 gateway on one interface, or a group of
+// other nexthop ids.
+struct IPv6Nexthop
+{
+    std::string link;
+    std::string gateway;
+    std::vector<uint32_t> members;
+    bool isGroup { false };
+};
+
+using IPv6Nexthops = std::map<uint32_t, IPv6Nexthop>;
+
 // getifaddrs() names IPv4 addresses after their label, which can be any string, and does not
 // expose the owning link. These helpers recover it from the kernel's RTM_GETADDR dump.
 class NetworkLinuxAddressResolver final
 {
         static constexpr unsigned int DUMP_SEQUENCE { 1 };
         static constexpr int DUMP_ATTEMPTS { 3 };
+        static constexpr const char* IF_INET6_PATH { "/proc/net/if_inet6" };
+
+        // Kernel headers older than 5.3 lack the nexthop objects: these are the values and the exact layouts of
+        // RTA_NH_ID, RTM_NEWNEXTHOP, RTM_GETNEXTHOP, struct nhmsg, the NHA_* attributes and struct nexthop_grp.
+        static constexpr unsigned short ROUTE_ATTRIBUTE_NH_ID { 30 };
+        static constexpr unsigned short MESSAGE_NEW_NEXTHOP { 104 };
+        static constexpr unsigned short MESSAGE_GET_NEXTHOP { 106 };
+        static constexpr unsigned short NEXTHOP_ATTRIBUTE_ID { 1 };
+        static constexpr unsigned short NEXTHOP_ATTRIBUTE_GROUP { 2 };
+        static constexpr unsigned short NEXTHOP_ATTRIBUTE_BLACKHOLE { 4 };
+        static constexpr unsigned short NEXTHOP_ATTRIBUTE_OIF { 5 };
+        static constexpr unsigned short NEXTHOP_ATTRIBUTE_GATEWAY { 6 };
+
+        struct NexthopMessage
+        {
+            unsigned char family;
+            unsigned char scope;
+            unsigned char protocol;
+            unsigned char reserved;
+            uint32_t flags;
+        };
+
+        struct NexthopGroupEntry
+        {
+            uint32_t id;
+            unsigned char weight;
+            unsigned char reserved1;
+            unsigned short reserved2;
+        };
+
+        static_assert(8 == sizeof(NexthopMessage), "NexthopMessage must match struct nhmsg");
+        static_assert(8 == sizeof(NexthopGroupEntry), "NexthopGroupEntry must match struct nexthop_grp");
 
         class NetlinkSocket final
         {
@@ -210,7 +265,7 @@ class NetworkLinuxAddressResolver final
             return records;
         }
 
-        static IPv6Gateways requestRouteDump()
+        static std::vector<IPv6Route> requestRoutes()
         {
             NetlinkSocket netlink;
 
@@ -234,13 +289,55 @@ class NetworkLinuxAddressResolver final
                 throw std::runtime_error { "Cannot request the netlink route dump" };
             }
 
-            IPv6Gateways gateways;
-            readDump(netlink, "Cannot read the netlink route dump", [&gateways](const void* data, const size_t length)
+            std::vector<IPv6Route> routes;
+            readDump(netlink, "Cannot read the netlink route dump", [&routes](const void* data, const size_t length)
             {
-                return parseRouteMessages(data, length, DUMP_SEQUENCE, gateways);
+                return parseRouteMessages(data, length, DUMP_SEQUENCE, routes);
             });
 
-            return gateways;
+            return routes;
+        }
+
+        static IPv6Gateways requestRouteDump()
+        {
+            const auto routes { requestRoutes() };
+
+            const auto nexthops { hasPendingRoute(routes) ? requestNexthopDump() : IPv6Nexthops {} };
+
+            return selectGateways(routes, nexthops);
+        }
+
+        static IPv6Nexthops requestNexthopDump()
+        {
+            NetlinkSocket netlink;
+
+            struct
+            {
+                nlmsghdr header;
+                NexthopMessage message;
+            } request {};
+
+            request.header.nlmsg_len = NLMSG_LENGTH(sizeof(NexthopMessage));
+            request.header.nlmsg_type = MESSAGE_GET_NEXTHOP;
+            request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+            request.header.nlmsg_seq = DUMP_SEQUENCE;
+            request.message.family = AF_UNSPEC;
+
+            sockaddr_nl kernel {};
+            kernel.nl_family = AF_NETLINK;
+
+            if (sendto(netlink.fd(), &request, request.header.nlmsg_len, 0, reinterpret_cast<sockaddr*>(&kernel), sizeof(kernel)) < 0)
+            {
+                throw std::runtime_error { "Cannot request the netlink nexthop dump" };
+            }
+
+            IPv6Nexthops nexthops;
+            readDump(netlink, "Cannot read the netlink nexthop dump", [&nexthops](const void* data, const size_t length)
+            {
+                return parseNexthopMessages(data, length, DUMP_SEQUENCE, nexthops);
+            });
+
+            return nexthops;
         }
 
         static bool isDumpDone(const nlmsghdr* header, const char* failure)
@@ -277,18 +374,50 @@ class NetworkLinuxAddressResolver final
             return false;
         }
 
-        static void addGateway(IPv6Gateways& gateways, const unsigned int index, const void* gateway)
+        // Names the gateway's link. Returns false for the same all-zero gateway the /proc table lists for the
+        // routes that are not via a router, and for a link without a name.
+        static bool nameGateway(const unsigned int index, const void* gateway, std::string& link, std::string& address)
         {
             const in6_addr any {};
             char linkName[IF_NAMESIZE] {};
 
-            // The same all-zero gateway the /proc table lists for the routes that are not via a router.
             if (0 == std::memcmp(gateway, &any, sizeof(any)) || !if_indextoname(index, linkName))
             {
-                return;
+                return false;
             }
 
-            gateways.emplace(linkName, Utils::NetworkHelper::IAddressToBinary(AF_INET6, gateway));
+            link = linkName;
+            address = Utils::NetworkHelper::IAddressToBinary(AF_INET6, gateway);
+            return true;
+        }
+
+        static void addRoute(std::vector<IPv6Route>& routes, const unsigned int index, const void* gateway, const uint32_t nexthopId)
+        {
+            IPv6Route route;
+            route.nexthopId = nexthopId;
+
+            if (nameGateway(index, gateway, route.link, route.gateway))
+            {
+                routes.push_back(std::move(route));
+            }
+        }
+
+        // A group adds nothing itself; the caller expands its members. Returns nullptr for an unknown id.
+        static const IPv6Nexthop* addNexthopGateway(IPv6Gateways& gateways, const IPv6Nexthops& nexthops, const uint32_t id)
+        {
+            const auto it { nexthops.find(id) };
+
+            if (nexthops.end() == it)
+            {
+                return nullptr;
+            }
+
+            if (!it->second.isGroup)
+            {
+                gateways.emplace(it->second.link, it->second.gateway);
+            }
+
+            return &it->second;
         }
 
     public:
@@ -360,9 +489,10 @@ class NetworkLinuxAddressResolver final
             return true;
         }
 
-        // Selects the routes /proc/net/ipv6_route lists with RTF_UP|RTF_GATEWAY and ::/0 (any table, unicast, not cached, one gateway per ECMP nexthop), keeping the first per interface.
-        // Returns false on NLMSG_DONE.
-        static bool parseRouteMessages(const void* buffer, const size_t length, const unsigned int sequence, IPv6Gateways& gateways)
+        // Appends, in dump order, the routes /proc/net/ipv6_route lists with RTF_UP|RTF_GATEWAY and ::/0 (any table, unicast,
+        // not cached, one route per ECMP nexthop). With net.ipv4.nexthop_compat_mode=0 a route through a nexthop object carries
+        // only RTA_NH_ID, so it is appended with that id and no gateway. Returns false on NLMSG_DONE.
+        static bool parseRouteMessages(const void* buffer, const size_t length, const unsigned int sequence, std::vector<IPv6Route>& routes)
         {
             auto remaining { static_cast<int>(length) };
 
@@ -394,6 +524,7 @@ class NetworkLinuxAddressResolver final
                 unsigned int index { 0 };
                 const void* gateway { nullptr };
                 const rtattr* multipath { nullptr };
+                uint32_t nexthopId { 0 };
                 auto attributesLength { static_cast<int>(RTM_PAYLOAD(header)) };
 
                 for (auto attribute { RTM_RTA(message) }; RTA_OK(attribute, attributesLength); attribute = RTA_NEXT(attribute, attributesLength))
@@ -412,13 +543,21 @@ class NetworkLinuxAddressResolver final
                     {
                         multipath = attribute;
                     }
+                    else if (ROUTE_ATTRIBUTE_NH_ID == attribute->rta_type && payloadLength >= sizeof(nexthopId))
+                    {
+                        std::memcpy(&nexthopId, RTA_DATA(attribute), sizeof(nexthopId));
+                    }
                 }
 
                 if (!multipath)
                 {
                     if (gateway)
                     {
-                        addGateway(gateways, index, gateway);
+                        addRoute(routes, index, gateway, nexthopId);
+                    }
+                    else if (0 != nexthopId)
+                    {
+                        routes.push_back({ "", "", nexthopId });
                     }
 
                     continue;
@@ -437,7 +576,7 @@ class NetworkLinuxAddressResolver final
                     {
                         if (RTA_GATEWAY == attribute->rta_type && RTA_PAYLOAD(attribute) >= sizeof(in6_addr))
                         {
-                            addGateway(gateways, static_cast<unsigned int>(nexthop->rtnh_ifindex), RTA_DATA(attribute));
+                            addRoute(routes, static_cast<unsigned int>(nexthop->rtnh_ifindex), RTA_DATA(attribute), nexthopId);
                         }
                     }
 
@@ -449,6 +588,122 @@ class NetworkLinuxAddressResolver final
             return true;
         }
 
+        // Blackhole, IPv4 and gateway-less nexthops cannot be a default gateway, so they are dropped. Returns false on NLMSG_DONE.
+        static bool parseNexthopMessages(const void* buffer, const size_t length, const unsigned int sequence, IPv6Nexthops& nexthops)
+        {
+            auto remaining { static_cast<int>(length) };
+
+            for (auto header { static_cast<const nlmsghdr*>(buffer) }; NLMSG_OK(header, remaining); header = NLMSG_NEXT(header, remaining))
+            {
+                if (sequence != header->nlmsg_seq)
+                {
+                    continue;
+                }
+
+                if (isDumpDone(header, "Netlink nexthop dump failed"))
+                {
+                    return false;
+                }
+
+                if (MESSAGE_NEW_NEXTHOP != header->nlmsg_type || header->nlmsg_len < NLMSG_LENGTH(sizeof(NexthopMessage)))
+                {
+                    continue;
+                }
+
+                const auto message { static_cast<const NexthopMessage*>(NLMSG_DATA(header)) };
+                auto attribute { reinterpret_cast<const rtattr*>(reinterpret_cast<const char*>(message) + NLMSG_ALIGN(sizeof(NexthopMessage))) };
+                auto attributesLength { static_cast<int>(NLMSG_PAYLOAD(header, sizeof(NexthopMessage))) };
+
+                uint32_t id { 0 };
+                uint32_t index { 0 };
+                const void* gateway { nullptr };
+                const rtattr* group { nullptr };
+                auto blackhole { false };
+
+                while (RTA_OK(attribute, attributesLength))
+                {
+                    const auto payloadLength { RTA_PAYLOAD(attribute) };
+
+                    if (NEXTHOP_ATTRIBUTE_ID == attribute->rta_type && payloadLength >= sizeof(id))
+                    {
+                        std::memcpy(&id, RTA_DATA(attribute), sizeof(id));
+                    }
+                    else if (NEXTHOP_ATTRIBUTE_OIF == attribute->rta_type && payloadLength >= sizeof(index))
+                    {
+                        std::memcpy(&index, RTA_DATA(attribute), sizeof(index));
+                    }
+                    else if (NEXTHOP_ATTRIBUTE_GATEWAY == attribute->rta_type && AF_INET6 == message->family && payloadLength >= sizeof(in6_addr))
+                    {
+                        gateway = RTA_DATA(attribute);
+                    }
+                    else if (NEXTHOP_ATTRIBUTE_GROUP == attribute->rta_type)
+                    {
+                        group = attribute;
+                    }
+                    else if (NEXTHOP_ATTRIBUTE_BLACKHOLE == attribute->rta_type)
+                    {
+                        blackhole = true;
+                    }
+
+                    attribute = RTA_NEXT(attribute, attributesLength);
+                }
+
+                if (0 == id || blackhole)
+                {
+                    continue;
+                }
+
+                IPv6Nexthop nexthop;
+
+                if (group)
+                {
+                    nexthop.isGroup = true;
+                    const auto count { RTA_PAYLOAD(group) / sizeof(NexthopGroupEntry) };
+
+                    for (size_t position { 0 }; position < count; ++position)
+                    {
+                        NexthopGroupEntry entry {};
+                        std::memcpy(&entry, static_cast<const char*>(RTA_DATA(group)) + position * sizeof(entry), sizeof(entry));
+                        nexthop.members.push_back(entry.id);
+                    }
+                }
+                else if (!gateway || !nameGateway(index, gateway, nexthop.link, nexthop.gateway))
+                {
+                    continue;
+                }
+
+                nexthops.emplace(id, std::move(nexthop));
+            }
+
+            return true;
+        }
+
+        // Keeps the first gateway of each interface, in route order. A route through a nexthop object takes the gateway
+        // of that nexthop, or of every member of its group (one level: a member that is a group adds nothing). An id
+        // the dump does not list adds nothing.
+        static IPv6Gateways selectGateways(const std::vector<IPv6Route>& routes, const IPv6Nexthops& nexthops)
+        {
+            IPv6Gateways gateways;
+
+            for (const auto& route : routes)
+            {
+                if (!route.gateway.empty())
+                {
+                    gateways.emplace(route.link, route.gateway);
+                    continue;
+                }
+
+                const auto nexthop { addNexthopGateway(gateways, nexthops, route.nexthopId) };
+
+                for (size_t position { 0 }; nexthop && position < nexthop->members.size(); ++position)
+                {
+                    addNexthopGateway(gateways, nexthops, nexthop->members[position]);
+                }
+            }
+
+            return gateways;
+        }
+
         // Only an interrupted dump is retried; any other failure would fail again.
         static std::vector<IPv4AddressRecord> dumpIPv4Addresses()
         {
@@ -456,8 +711,44 @@ class NetworkLinuxAddressResolver final
         }
 
         // The kernel walks the tables in /proc/net/ipv6_route order, so the first route of an interface is the same one.
+        // Differs from /proc only for a default route through a nexthop group: every member is reported, /proc lists the first.
         static IPv6Gateways dumpIPv6DefaultGateways()
         {
+            return dumpIPv6DefaultGatewaysIfEnabled(IF_INET6_PATH);
+        }
+
+        static bool hasPendingRoute(const std::vector<IPv6Route>& routes)
+        {
+            return std::any_of(routes.begin(), routes.end(), [](const IPv6Route & route)
+            {
+                return route.gateway.empty() && 0 != route.nexthopId;
+            });
+        }
+
+        // True when a route goes through a nexthop object, whether or not the kernel also lists its gateways inline.
+        static bool usesNexthopObjects(const std::vector<IPv6Route>& routes)
+        {
+            return std::any_of(routes.begin(), routes.end(), [](const IPv6Route & route)
+            {
+                return 0 != route.nexthopId;
+            });
+        }
+
+        // Unresolved ::/0 routes; used by the tests to detect a host that routes through nexthop objects.
+        static std::vector<IPv6Route> dumpIPv6Routes()
+        {
+            return retryInterrupted(requestRoutes);
+        }
+
+        // With ipv6.disable=1 the kernel has no AF_INET6 handler and answers an AF_INET6 route dump with every family, so
+        // without /proc/net/if_inet6 there is nothing to ask.
+        static IPv6Gateways dumpIPv6DefaultGatewaysIfEnabled(const std::string& interfacesPath)
+        {
+            if (!Utils::existsRegular(interfacesPath))
+            {
+                return {};
+            }
+
             return retryInterrupted(requestRouteDump);
         }
 
