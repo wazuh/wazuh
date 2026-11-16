@@ -8,7 +8,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 WORKDIR /wazuh
 COPY . .
 ARG JOBS=4
-RUN make -C src TARGET=server deps -j${JOBS} && make -C src TARGET=server -j${JOBS}
+RUN mkdir -p src/external && make -C src TARGET=server deps -j${JOBS} && make -C src TARGET=server -j${JOBS}
 RUN cd src && make TARGET=server -f Makefile -f ../tests/compression/Makefile compression-test-driver -j${JOBS}
 RUN python3 tests/compression/test_docker.py && python3 tests/compression/test_daemon.py
 CMD ["bash"]
