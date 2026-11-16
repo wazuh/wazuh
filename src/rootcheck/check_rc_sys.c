@@ -16,8 +16,10 @@
 #define RC_SYS_MAX_DEPTH 256
 #define RC_SYS_MAX_READ_SIZE (1024 * 1024 * 1024)
 
-#ifndef O_NOFOLLOW
-#define O_NOFOLLOW 0
+#ifdef O_NOFOLLOW
+#define RC_SYS_O_NOFOLLOW O_NOFOLLOW
+#else
+#define RC_SYS_O_NOFOLLOW 0
 #endif
 #ifndef O_NONBLOCK
 #define O_NONBLOCK 0
@@ -97,15 +99,17 @@ static int read_sys_file(const char *file_name, int do_read)
     }
 
     /* Check if the size from stats is the same as when we read the file */
-    if (S_ISREG(statbuf.st_mode) && do_read && statbuf.st_size > RC_SYS_MAX_READ_SIZE) {
-        mtdebug1(ARGV0, "Skipping size check of '%s': file too large.", file_name);
-    } else if (S_ISREG(statbuf.st_mode) && do_read) {
+    if (S_ISREG(statbuf.st_mode) && do_read) {
         char buf[OS_SIZE_1024];
-        int fd;
+        int fd = -1;
         ssize_t nr;
         long int total = 0;
 
-        fd = open(file_name, O_RDONLY | O_NONBLOCK | O_NOFOLLOW, 0);
+        if (statbuf.st_size > RC_SYS_MAX_READ_SIZE) {
+            mtdebug1(ARGV0, "Skipping size check of '%s': file too large.", file_name);
+        } else {
+            fd = open(file_name, O_RDONLY | O_NONBLOCK | RC_SYS_O_NOFOLLOW, 0);
+        }
 
         /* It may not necessarily open */
         if (fd >= 0) {

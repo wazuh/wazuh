@@ -894,6 +894,7 @@ static void expect_scan_one_file(const char *path, struct stat *file_stat, mode_
     }
 }
 
+/* 10 bytes on disk: a read with any other lstat size raises an alert */
 static int create_test_file(char *path)
 {
     int fd = mkstemp(path);
@@ -980,6 +981,84 @@ static void test_world_writable_dir_not_read(void **state)
     unlink(path);
 }
 
+static void test_read_content_larger_than_size_alerts(void **state)
+{
+    (void)state;
+    char path[] = "/tmp/rc_sys_read_XXXXXX";
+    struct stat file_stat;
+
+    assert_int_equal(create_test_file(path), 0);
+    assert_int_equal(stat(path, &file_stat), 0);
+    file_stat.st_size = 5;
+    rootcheck.readall = 1;
+
+    expect_scan_one_file(path, &file_stat, 0755, 1);
+
+    check_rc_sys("/");
+    unlink(path);
+}
+
+static void test_subdir_of_world_writable_dir_not_read(void **state)
+{
+    (void)state;
+    char path[] = "/tmp/rc_sys_read_XXXXXX";
+    struct stat file_stat;
+    struct stat sub_stat = {0};
+    static struct dirent sub_entry;
+    DIR *fake_dp_root = (DIR *)0x1234;
+    DIR *fake_dp_sub = (DIR *)0x5678;
+
+    assert_int_equal(create_test_file(path), 0);
+    assert_int_equal(stat(path, &file_stat), 0);
+    file_stat.st_size = 100;
+    rootcheck.readall = 1;
+
+    init_dot_entries();
+    memset(&sub_entry, 0, sizeof(sub_entry));
+    strncpy(sub_entry.d_name, "tmp", sizeof(sub_entry.d_name) - 1);
+    memset(&read_entry, 0, sizeof(read_entry));
+    strncpy(read_entry.d_name, path + strlen("/tmp/"), sizeof(read_entry.d_name) - 1);
+
+    memset(&read_dir_stat, 0, sizeof(read_dir_stat));
+    read_dir_stat.st_mode = S_IFDIR | 01777;
+    read_dir_stat.st_nlink = 3;
+    read_dir_stat.st_dev = 1;
+
+    sub_stat.st_mode = S_IFDIR | 0755;
+    sub_stat.st_nlink = 2;
+    sub_stat.st_size = 4096;
+    sub_stat.st_dev = 1;
+
+    expect_lstat("/", &read_dir_stat, 0, 0);
+    expect_wopendir("/", fake_dp_root);
+    expect_readdir(fake_dp_root, &dot_entry);
+    expect_readdir(fake_dp_root, &dotdot_entry);
+    expect_readdir(fake_dp_root, &sub_entry);
+    expect_lstat("/tmp", &sub_stat, 0, 0);
+    expect_check_ignore("/tmp", 0);
+    expect_lstat("/tmp", &sub_stat, 0, 0);
+
+    expect_lstat("/tmp", &sub_stat, 0, 0);
+    expect_wopendir("/tmp", fake_dp_sub);
+    expect_readdir(fake_dp_sub, &dot_entry);
+    expect_readdir(fake_dp_sub, &dotdot_entry);
+    expect_readdir(fake_dp_sub, &read_entry);
+    expect_lstat(path, &file_stat, 0, 0);
+    expect_check_ignore(path, 0);
+    expect_lstat(path, &file_stat, 0, 0);
+    expect_readdir(fake_dp_sub, NULL);
+    expect_skipFS("/tmp", 0);
+    expect_closedir(fake_dp_sub);
+
+    expect_readdir(fake_dp_root, NULL);
+    expect_skipFS("/", 0);
+    expect_closedir(fake_dp_root);
+    expect_notify_rk(ALERT_OK);
+
+    check_rc_sys("/");
+    unlink(path);
+}
+
 /* ===================================================================
  * Main
  * =================================================================== */
@@ -999,6 +1078,8 @@ int main(void)
         cmocka_unit_test_setup(test_read_large_file_skipped, setup),
         cmocka_unit_test_setup(test_read_non_regular_skipped, setup),
         cmocka_unit_test_setup(test_world_writable_dir_not_read, setup),
+        cmocka_unit_test_setup(test_read_content_larger_than_size_alerts, setup),
+        cmocka_unit_test_setup(test_subdir_of_world_writable_dir_not_read, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
