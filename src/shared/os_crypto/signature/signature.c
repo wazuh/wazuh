@@ -37,8 +37,12 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
     int retval = -1;
     long offset;
     ssize_t length;
+#ifdef WIN32
+    struct _stat64 statbuf;
+#else
     struct stat statbuf;
-    off_t remaining;
+#endif
+    int64_t remaining;
 
     // Read signed file
 
@@ -47,18 +51,18 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
     int fd;
 
     if (fd = w_open_path_vetted(source, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0), fd < 0) {
-        merror("opening input file: %s", strerror(errno));
+        merror("opening input file '%s': %s", source, strerror(errno));
         goto cleanup;
     }
 
     if (filein = fdopen(fd, "rb"), !filein) {
-        merror("opening input file: %s", strerror(errno));
+        merror("opening input file '%s': %s", source, strerror(errno));
         close(fd);
         goto cleanup;
     }
 #else
     if (filein = wfopen(source, "rb"), !filein) {
-        merror("opening input file: %s", strerror(errno));
+        merror("opening input file '%s': %s", source, strerror(errno));
         goto cleanup;
     }
 #endif
@@ -107,7 +111,13 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    if (fstat(fileno(filein), &statbuf) < 0) {
+#ifdef WIN32
+    const int stat_result = _fstat64(_fileno(filein), &statbuf);
+#else
+    const int stat_result = fstat(fileno(filein), &statbuf);
+#endif
+
+    if (stat_result < 0) {
         merror(FSTAT_ERROR, source, errno, strerror(errno));
         goto cleanup;
     }
@@ -117,7 +127,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    remaining = statbuf.st_size - offset;
+    remaining = (int64_t)statbuf.st_size - offset;
 
     if (fileout = wfopen(target, "wb"), !fileout) {
         merror("Opening output file: %s", strerror(errno));

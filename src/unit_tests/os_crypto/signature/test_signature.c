@@ -39,11 +39,14 @@ static unsigned char content[CONTENT_LEN];
 // File to append PAYLOAD to right before the signature is checked
 static const char * append_on_verify;
 
-// File to append PAYLOAD to while its content is being read
-static const char * append_on_read;
+// What to do to the file once its content starts being read
+typedef enum { ON_READ_NONE, ON_READ_APPEND, ON_READ_SHRINK, ON_READ_REWRITE } on_read_t;
+static on_read_t on_read;
+static const char * on_read_path;
 
-// Free space fstatvfs() reports, when set
-static bool no_free_space;
+// What fstatvfs() reports
+typedef enum { VFS_REAL, VFS_NO_SPACE, VFS_PLENTY, VFS_FAIL } vfs_mode_t;
+static vfs_mode_t vfs_mode;
 
 int __real_EVP_PKEY_verify(EVP_PKEY_CTX * ctx, const unsigned char * sig, size_t siglen, const unsigned char * tbs, size_t tbslen);
 
@@ -63,27 +66,56 @@ int __wrap_EVP_PKEY_verify(EVP_PKEY_CTX * ctx, const unsigned char * sig, size_t
 int __real_EVP_DigestUpdate(EVP_MD_CTX * ctx, const void * data, size_t count);
 
 int __wrap_EVP_DigestUpdate(EVP_MD_CTX * ctx, const void * data, size_t count) {
-    if (append_on_read) {
-        FILE * fp = fopen(append_on_read, "ab");
+    struct stat st;
+    FILE * fp;
 
-        if (fp) {
+    switch (on_read) {
+    case ON_READ_APPEND:
+        if (fp = fopen(on_read_path, "ab"), fp) {
             fwrite(PAYLOAD, 1, sizeof(PAYLOAD), fp);
             fclose(fp);
         }
+        break;
 
-        append_on_read = NULL;
+    case ON_READ_SHRINK:
+        // Past what stdio may already hold in its buffer
+        if (stat(on_read_path, &st) == 0) {
+            assert_int_equal(truncate(on_read_path, st.st_size - 1000), 0);
+        }
+        break;
+
+    case ON_READ_REWRITE:
+        // The first bytes of the content, already read at this point
+        if (stat(on_read_path, &st) == 0 && (fp = fopen(on_read_path, "r+b"), fp)) {
+            fseek(fp, st.st_size - CONTENT_LEN, SEEK_SET);
+            fwrite(PAYLOAD, 1, sizeof(PAYLOAD), fp);
+            fclose(fp);
+        }
+        break;
+
+    case ON_READ_NONE:
+        break;
     }
 
+    on_read = ON_READ_NONE;
     return __real_EVP_DigestUpdate(ctx, data, count);
 }
 
 int __real_fstatvfs(int fd, struct statvfs * buf);
 
 int __wrap_fstatvfs(int fd, struct statvfs * buf) {
+    if (vfs_mode == VFS_FAIL) {
+        errno = EIO;
+        return -1;
+    }
+
     int ret = __real_fstatvfs(fd, buf);
 
-    if (ret == 0 && no_free_space) {
+    if (ret == 0 && vfs_mode == VFS_NO_SPACE) {
         buf->f_bavail = 0;
+    } else if (ret == 0 && vfs_mode == VFS_PLENTY) {
+        buf->f_frsize = 4096;
+        buf->f_bavail = 1 << 20;
     }
 
     return ret;
@@ -160,11 +192,11 @@ static void assert_file_equals(const char * path, const unsigned char * data, si
     os_free(read_back);
 }
 
-static void expect_opening_error(int error) {
+static void expect_opening_error(const char * source, int error) {
     // expect_string() keeps the pointer until the call is checked
     static char msg[PATH_MAX + OS_SIZE_256];
 
-    snprintf(msg, sizeof(msg), "opening input file: %s", strerror(error));
+    snprintf(msg, sizeof(msg), "opening input file '%s': %s", source, strerror(error));
     expect_string(__wrap__merror, formatted_msg, msg);
 }
 
@@ -219,8 +251,9 @@ static int teardown_group(void ** state) {
 
 static int teardown_test(void ** state) {
     append_on_verify = NULL;
-    append_on_read = NULL;
-    no_free_space = false;
+    on_read = ON_READ_NONE;
+    on_read_path = NULL;
+    vfs_mode = VFS_REAL;
     return cldir_ex(work_dir);
 }
 
@@ -296,7 +329,8 @@ void test_w_wpk_unsign_grows_while_read(void ** state) {
     join(source, "agent.wpk");
     join(target, "out");
     write_wpk(source, content, sizeof(content));
-    append_on_read = source;
+    on_read = ON_READ_APPEND;
+    on_read_path = source;
 
     assert_int_equal(w_wpk_unsign(source, target, ca_store), 0);
     assert_file_equals(target, content, sizeof(content));
@@ -310,11 +344,72 @@ void test_w_wpk_unsign_no_free_space(void ** state) {
     join(source, "agent.wpk");
     join(target, "out");
     write_wpk(source, content, sizeof(content));
-    no_free_space = true;
+    vfs_mode = VFS_NO_SPACE;
     snprintf(msg, sizeof(msg), "Not enough disk space to extract '%s'.", source);
     expect_string(__wrap__merror, formatted_msg, msg);
 
     assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
+}
+
+void test_w_wpk_unsign_statvfs_error(void ** state) {
+    char source[PATH_MAX];
+    char target[PATH_MAX];
+    static char msg[PATH_MAX + OS_SIZE_256];
+
+    join(source, "agent.wpk");
+    join(target, "out");
+    write_wpk(source, content, sizeof(content));
+    vfs_mode = VFS_FAIL;
+    snprintf(msg, sizeof(msg), FSTAT_ERROR, target, EIO, strerror(EIO));
+    expect_string(__wrap__merror, formatted_msg, msg);
+
+    assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
+}
+
+// A short file read is reported, not taken as the end of the content
+void test_w_wpk_unsign_shrinks_while_read(void ** state) {
+    char source[PATH_MAX];
+    char target[PATH_MAX];
+
+    join(source, "agent.wpk");
+    join(target, "out");
+    write_wpk(source, content, sizeof(content));
+    on_read = ON_READ_SHRINK;
+    on_read_path = source;
+    expect_string(__wrap__merror, formatted_msg, "Invalid input file (reading content).");
+
+    assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
+}
+
+// Bytes changed after they were read do not reach the output
+void test_w_wpk_unsign_rewritten_while_read(void ** state) {
+    char source[PATH_MAX];
+    char target[PATH_MAX];
+
+    join(source, "agent.wpk");
+    join(target, "out");
+    write_wpk(source, content, sizeof(content));
+    on_read = ON_READ_REWRITE;
+    on_read_path = source;
+
+    assert_int_equal(w_wpk_unsign(source, target, ca_store), 0);
+    assert_file_equals(target, content, sizeof(content));
+}
+
+// A write error, reported by fwrite() or only on the final fclose()
+void test_w_wpk_unsign_write_error(void ** state) {
+    char source[PATH_MAX];
+
+    if (access("/dev/full", W_OK) != 0) {
+        skip();
+    }
+
+    join(source, "agent.wpk");
+    write_wpk(source, content, sizeof(content));
+    vfs_mode = VFS_PLENTY;
+    expect_string(__wrap__merror, formatted_msg, "writing output file.");
+
+    assert_int_equal(w_wpk_unsign(source, "/dev/full", ca_store), -1);
 }
 
 void test_w_wpk_unsign_output_error(void ** state) {
@@ -342,7 +437,7 @@ void test_w_wpk_unsign_symlink(void ** state) {
     write_wpk(real, content, sizeof(content));
     assert_int_equal(symlink(real, source), 0);
 
-    expect_opening_error(ELOOP);
+    expect_opening_error(source, ELOOP);
 
     assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
 }
@@ -358,7 +453,7 @@ void test_w_wpk_unsign_hardlink(void ** state) {
     write_wpk(real, content, sizeof(content));
     assert_int_equal(link(real, source), 0);
 
-    expect_opening_error(EMLINK);
+    expect_opening_error(source, EMLINK);
 
     assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
 }
@@ -372,7 +467,7 @@ void test_w_wpk_unsign_fifo(void ** state) {
     join(target, "out");
     assert_int_equal(mkfifo(source, 0600), 0);
 
-    expect_opening_error(EINVAL);
+    expect_opening_error(source, EINVAL);
 
     assert_int_equal(w_wpk_unsign(source, target, ca_store), -1);
 }
@@ -385,6 +480,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_w_wpk_unsign_append_after_read, teardown_test),
         cmocka_unit_test_teardown(test_w_wpk_unsign_grows_while_read, teardown_test),
         cmocka_unit_test_teardown(test_w_wpk_unsign_no_free_space, teardown_test),
+        cmocka_unit_test_teardown(test_w_wpk_unsign_statvfs_error, teardown_test),
+        cmocka_unit_test_teardown(test_w_wpk_unsign_shrinks_while_read, teardown_test),
+        cmocka_unit_test_teardown(test_w_wpk_unsign_rewritten_while_read, teardown_test),
+        cmocka_unit_test_teardown(test_w_wpk_unsign_write_error, teardown_test),
         cmocka_unit_test_teardown(test_w_wpk_unsign_output_error, teardown_test),
         cmocka_unit_test_teardown(test_w_wpk_unsign_symlink, teardown_test),
         cmocka_unit_test_teardown(test_w_wpk_unsign_hardlink, teardown_test),
