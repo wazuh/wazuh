@@ -26,7 +26,7 @@ def median(values):
 
 def csv_file(path, rows):
     with path.open("w", newline="") as target:
-        writer = csv.DictWriter(target, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(target, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -126,7 +126,9 @@ def main():
     def save(fig, name, caption):
         fig.tight_layout(pad=1.8)
         fig.savefig(output / f"{name}.png", dpi=180, bbox_inches="tight")
-        fig.savefig(output / f"{name}.svg", bbox_inches="tight")
+        svg = output / f"{name}.svg"
+        fig.savefig(svg, bbox_inches="tight")
+        svg.write_text("\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n")
         plt.close(fig)
         figures.append((name, caption))
 
