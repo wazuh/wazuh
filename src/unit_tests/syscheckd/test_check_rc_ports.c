@@ -29,9 +29,9 @@ char total_ports_udp[65535 + 1];
 #define SS_PROBE_CMD    "ss -an --tcp > /dev/null 2>&1 && ss -an --udp > /dev/null 2>&1 && " \
                         "awk 'BEGIN {exit 0}' > /dev/null 2>&1"
 #define SS_TCP_22       "{ ss -an --tcp 2> /dev/null || echo FAIL; } | awk '/^FAIL$/ {e = 1} " \
-                        "$(NF-1) ~ /:22$/ {f = 1} END {exit (e || NR < 2) ? 2 : !f}' > /dev/null 2>&1"
+                        "NF > 1 && $(NF-1) ~ /:22$/ {f = 1} END {exit (e || NR < 2) ? 2 : !f}' > /dev/null 2>&1"
 #define SS_UDP_53       "{ ss -an --udp 2> /dev/null || echo FAIL; } | awk '/^FAIL$/ {e = 1} " \
-                        "$(NF-1) ~ /:53$/ {f = 1} END {exit (e || NR < 2) ? 2 : !f}' > /dev/null 2>&1"
+                        "NF > 1 && $(NF-1) ~ /:53$/ {f = 1} END {exit (e || NR < 2) ? 2 : !f}' > /dev/null 2>&1"
 #define NETSTAT_TCP_22  "netstat -an | grep \"^tcp\" | grep \"[^0-9]22 \" > /dev/null 2>&1"
 
 #define ALL_PORTS_OK    "No kernel-level rootkit hiding any port.\n      " \
@@ -431,6 +431,9 @@ static void test_ss_pipeline_exit_codes(void **state)
     assert_int_equal(run_with_stub_ss(SS_HEADER "echo 'ESTAB0 0 10.0.0.1:40000 10.0.0.2:22'", SS_TCP_22), 1);
     /* Newer ss header, with a Process column */
     assert_int_equal(run_with_stub_ss("echo 'State Recv-Q Send-Q Local Address:Port Peer Address:Port Process'\n"
+                                      "echo 'LISTEN 0 128 0.0.0.0:22 0.0.0.0:*'", SS_TCP_22), 0);
+    /* Empty and blank lines do not abort awk */
+    assert_int_equal(run_with_stub_ss(SS_HEADER "echo ''\necho '   '\n"
                                       "echo 'LISTEN 0 128 0.0.0.0:22 0.0.0.0:*'", SS_TCP_22), 0);
     /* ss failing */
     assert_int_equal(run_with_stub_ss("exit 1", SS_TCP_22), 2);
