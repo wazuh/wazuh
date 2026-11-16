@@ -38,6 +38,16 @@
 #define NLM_F_DUMP_INTR 0x10
 #endif
 
+// Absent from kernel headers older than 2.6.
+#ifndef RTA_MULTIPATH
+#define RTA_MULTIPATH 9
+#endif
+
+// RTM_F_CLONED marks the cached routes; absent from headers that predate the route cache split.
+#ifndef RTM_F_CLONED
+#define RTM_F_CLONED 0x200
+#endif
+
 // IFA_FLAGS is an enum value, absent from kernel headers older than 3.14
 #ifndef IFA_FLAGS
 #define IFA_FLAGS 8
@@ -67,6 +77,9 @@ using IPv4AddressLinks = std::map<std::pair<std::string, std::string>, std::vect
 // same address twice with different prefixes, each with its own flags.
 using IPv4AddressKey = std::tuple<std::string, std::string, unsigned int>;
 using IPv4AddressFlags = std::map<IPv4AddressKey, uint32_t>;
+
+// Interface name -> IPv6 default gateway, read once per listing.
+using IPv6Gateways = std::map<std::string, std::string>;
 
 // getifaddrs() names IPv4 addresses after their label, which can be any string, and does not
 // expose the owning link. These helpers recover it from the kernel's RTM_GETADDR dump.
@@ -113,6 +126,57 @@ class NetworkLinuxAddressResolver final
                 }
         };
 
+        template<typename Dump>
+        static auto retryInterrupted(Dump dump) -> decltype(dump())
+        {
+            for (auto attempt { 1 }; ; ++attempt)
+            {
+                try
+                {
+                    return dump();
+                }
+                catch (const NetlinkDumpInterrupted&)
+                {
+                    if (attempt >= DUMP_ATTEMPTS)
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+
+        template<typename Parser>
+        static void readDump(const NetlinkSocket& netlink, const char* failure, Parser parse)
+        {
+            std::vector<char> buffer(32768);
+            auto pending { true };
+
+            while (pending)
+            {
+                sockaddr_nl sender {};
+                socklen_t senderLength { sizeof(sender) };
+                const auto received { recvfrom(netlink.fd(), buffer.data(), buffer.size(), 0, reinterpret_cast<sockaddr*>(&sender), &senderLength) };
+
+                if (received < 0 && EINTR == errno)
+                {
+                    continue;
+                }
+
+                if (received <= 0)
+                {
+                    throw std::runtime_error { failure };
+                }
+
+                // Only the kernel answers the dump.
+                if (0 != sender.nl_pid)
+                {
+                    continue;
+                }
+
+                pending = parse(buffer.data(), static_cast<size_t>(received));
+            }
+        }
+
         static std::vector<IPv4AddressRecord> requestDump()
         {
             NetlinkSocket netlink;
@@ -138,35 +202,93 @@ class NetworkLinuxAddressResolver final
             }
 
             std::vector<IPv4AddressRecord> records;
-            std::vector<char> buffer(32768);
-            auto pending { true };
-
-            while (pending)
+            readDump(netlink, "Cannot read the netlink address dump", [&records](const void* data, const size_t length)
             {
-                sockaddr_nl sender {};
-                socklen_t senderLength { sizeof(sender) };
-                const auto received { recvfrom(netlink.fd(), buffer.data(), buffer.size(), 0, reinterpret_cast<sockaddr*>(&sender), &senderLength) };
-
-                if (received < 0 && EINTR == errno)
-                {
-                    continue;
-                }
-
-                if (received <= 0)
-                {
-                    throw std::runtime_error { "Cannot read the netlink address dump" };
-                }
-
-                // Only the kernel answers the dump.
-                if (0 != sender.nl_pid)
-                {
-                    continue;
-                }
-
-                pending = parseAddressMessages(buffer.data(), static_cast<size_t>(received), DUMP_SEQUENCE, records);
-            }
+                return parseAddressMessages(data, length, DUMP_SEQUENCE, records);
+            });
 
             return records;
+        }
+
+        static IPv6Gateways requestRouteDump()
+        {
+            NetlinkSocket netlink;
+
+            struct
+            {
+                nlmsghdr header;
+                rtmsg message;
+            } request {};
+
+            request.header.nlmsg_len = NLMSG_LENGTH(sizeof(rtmsg));
+            request.header.nlmsg_type = RTM_GETROUTE;
+            request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+            request.header.nlmsg_seq = DUMP_SEQUENCE;
+            request.message.rtm_family = AF_INET6;
+
+            sockaddr_nl kernel {};
+            kernel.nl_family = AF_NETLINK;
+
+            if (sendto(netlink.fd(), &request, request.header.nlmsg_len, 0, reinterpret_cast<sockaddr*>(&kernel), sizeof(kernel)) < 0)
+            {
+                throw std::runtime_error { "Cannot request the netlink route dump" };
+            }
+
+            IPv6Gateways gateways;
+            readDump(netlink, "Cannot read the netlink route dump", [&gateways](const void* data, const size_t length)
+            {
+                return parseRouteMessages(data, length, DUMP_SEQUENCE, gateways);
+            });
+
+            return gateways;
+        }
+
+        static bool isDumpDone(const nlmsghdr* header, const char* failure)
+        {
+            // The kernel can set the flag on any message of the dump, NLMSG_DONE included.
+            if (header->nlmsg_flags & NLM_F_DUMP_INTR)
+            {
+                throw NetlinkDumpInterrupted { failure };
+            }
+
+            if (NLMSG_DONE == header->nlmsg_type)
+            {
+                // NLMSG_DONE carries the dump's own result.
+                int result { 0 };
+
+                if (header->nlmsg_len >= NLMSG_LENGTH(sizeof(result)))
+                {
+                    std::memcpy(&result, NLMSG_DATA(header), sizeof(result));
+                }
+
+                if (result < 0)
+                {
+                    throw std::runtime_error { failure };
+                }
+
+                return true;
+            }
+
+            if (NLMSG_ERROR == header->nlmsg_type)
+            {
+                throw std::runtime_error { failure };
+            }
+
+            return false;
+        }
+
+        static void addGateway(IPv6Gateways& gateways, const unsigned int index, const void* gateway)
+        {
+            const in6_addr any {};
+            char linkName[IF_NAMESIZE] {};
+
+            // The same all-zero gateway the /proc table lists for the routes that are not via a router.
+            if (0 == std::memcmp(gateway, &any, sizeof(any)) || !if_indextoname(index, linkName))
+            {
+                return;
+            }
+
+            gateways.emplace(linkName, Utils::NetworkHelper::IAddressToBinary(AF_INET6, gateway));
         }
 
     public:
@@ -182,33 +304,9 @@ class NetworkLinuxAddressResolver final
                     continue;
                 }
 
-                // The kernel can set the flag on any message of the dump, NLMSG_DONE included.
-                if (header->nlmsg_flags & NLM_F_DUMP_INTR)
+                if (isDumpDone(header, "Netlink address dump failed"))
                 {
-                    throw NetlinkDumpInterrupted { "Netlink address dump interrupted" };
-                }
-
-                if (NLMSG_DONE == header->nlmsg_type)
-                {
-                    // NLMSG_DONE carries the dump's own result.
-                    int result { 0 };
-
-                    if (header->nlmsg_len >= NLMSG_LENGTH(sizeof(result)))
-                    {
-                        std::memcpy(&result, NLMSG_DATA(header), sizeof(result));
-                    }
-
-                    if (result < 0)
-                    {
-                        throw std::runtime_error { "Netlink address dump failed" };
-                    }
-
                     return false;
-                }
-
-                if (NLMSG_ERROR == header->nlmsg_type)
-                {
-                    throw std::runtime_error { "Netlink address dump failed" };
                 }
 
                 if (RTM_NEWADDR != header->nlmsg_type || header->nlmsg_len < NLMSG_LENGTH(sizeof(ifaddrmsg)))
@@ -262,23 +360,101 @@ class NetworkLinuxAddressResolver final
             return true;
         }
 
-        // Only an interrupted dump is retried; any other failure would fail again.
-        static std::vector<IPv4AddressRecord> dumpIPv4Addresses()
+        // Selects the routes /proc/net/ipv6_route lists with RTF_UP|RTF_GATEWAY and ::/0 (any table, unicast, not cached, one gateway per ECMP nexthop), keeping the first per interface.
+        // Returns false on NLMSG_DONE.
+        static bool parseRouteMessages(const void* buffer, const size_t length, const unsigned int sequence, IPv6Gateways& gateways)
         {
-            for (auto attempt { 1 }; ; ++attempt)
+            auto remaining { static_cast<int>(length) };
+
+            for (auto header { static_cast<const nlmsghdr*>(buffer) }; NLMSG_OK(header, remaining); header = NLMSG_NEXT(header, remaining))
             {
-                try
+                if (sequence != header->nlmsg_seq)
                 {
-                    return requestDump();
+                    continue;
                 }
-                catch (const NetlinkDumpInterrupted&)
+
+                if (isDumpDone(header, "Netlink route dump failed"))
                 {
-                    if (attempt >= DUMP_ATTEMPTS)
+                    return false;
+                }
+
+                if (RTM_NEWROUTE != header->nlmsg_type || header->nlmsg_len < NLMSG_LENGTH(sizeof(rtmsg)))
+                {
+                    continue;
+                }
+
+                const auto message { static_cast<const rtmsg*>(NLMSG_DATA(header)) };
+
+                if (AF_INET6 != message->rtm_family || 0 != message->rtm_dst_len || 0 != message->rtm_src_len ||
+                        RTN_UNICAST != message->rtm_type || (message->rtm_flags & RTM_F_CLONED))
+                {
+                    continue;
+                }
+
+                unsigned int index { 0 };
+                const void* gateway { nullptr };
+                const rtattr* multipath { nullptr };
+                auto attributesLength { static_cast<int>(RTM_PAYLOAD(header)) };
+
+                for (auto attribute { RTM_RTA(message) }; RTA_OK(attribute, attributesLength); attribute = RTA_NEXT(attribute, attributesLength))
+                {
+                    const auto payloadLength { RTA_PAYLOAD(attribute) };
+
+                    if (RTA_OIF == attribute->rta_type && payloadLength >= sizeof(index))
                     {
-                        throw;
+                        std::memcpy(&index, RTA_DATA(attribute), sizeof(index));
+                    }
+                    else if (RTA_GATEWAY == attribute->rta_type && payloadLength >= sizeof(in6_addr))
+                    {
+                        gateway = RTA_DATA(attribute);
+                    }
+                    else if (RTA_MULTIPATH == attribute->rta_type)
+                    {
+                        multipath = attribute;
+                    }
+                }
+
+                if (!multipath)
+                {
+                    if (gateway)
+                    {
+                        addGateway(gateways, index, gateway);
+                    }
+
+                    continue;
+                }
+
+                auto nexthopsLength { static_cast<int>(RTA_PAYLOAD(multipath)) };
+
+                for (auto nexthop { static_cast<const rtnexthop*>(RTA_DATA(multipath)) }; nexthopsLength >= static_cast<int>(sizeof(rtnexthop)) && RTNH_OK(nexthop, nexthopsLength);
+                        nexthopsLength -= static_cast<int>(RTNH_ALIGN(nexthop->rtnh_len)), nexthop = RTNH_NEXT(nexthop))
+                {
+                    auto nexthopAttributesLength { static_cast<int>(nexthop->rtnh_len) - static_cast<int>(RTNH_LENGTH(0)) };
+
+                    for (auto attribute { RTNH_DATA(nexthop) }; RTA_OK(attribute, nexthopAttributesLength);
+                            attribute = RTA_NEXT(attribute, nexthopAttributesLength))
+                    {
+                        if (RTA_GATEWAY == attribute->rta_type && RTA_PAYLOAD(attribute) >= sizeof(in6_addr))
+                        {
+                            addGateway(gateways, static_cast<unsigned int>(nexthop->rtnh_ifindex), RTA_DATA(attribute));
+                        }
                     }
                 }
             }
+
+            return true;
+        }
+
+        // Only an interrupted dump is retried; any other failure would fail again.
+        static std::vector<IPv4AddressRecord> dumpIPv4Addresses()
+        {
+            return retryInterrupted(requestDump);
+        }
+
+        // The kernel walks the tables in /proc/net/ipv6_route order, so the first route of an interface is the same one.
+        static IPv6Gateways dumpIPv6DefaultGateways()
+        {
+            return retryInterrupted(requestRouteDump);
         }
 
         // Link names come from the AF_PACKET entries of the same getifaddrs() snapshot, so they

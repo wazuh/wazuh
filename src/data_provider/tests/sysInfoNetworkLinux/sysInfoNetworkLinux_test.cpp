@@ -601,6 +601,33 @@ TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_WrapperWithSharedMapDoesNotReadTa
     EXPECT_EQ(UNKNOWN_VALUE, NetworkLinuxInterface(&fake.entry, ifName, nullptr, std::make_shared<const IPv6Gateways>()).gatewayV6());
 }
 
+TEST_F(SysInfoNetworkLinuxTest, Test_LoadGatewaysV6_UsesTheNetlinkDump)
+{
+    const IPv6Gateways dumped { { "wztest0", "fe80::1" } };
+
+    EXPECT_EQ(dumped, NetworkLinuxInterface::loadGatewaysV6([&dumped]
+    {
+        return dumped;
+    }));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_LoadGatewaysV6_FallsBackToTheProcTableWhenTheDumpFails)
+{
+    const auto procGateways { NetworkLinuxInterface::parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route")) };
+
+    EXPECT_EQ(procGateways, NetworkLinuxInterface::loadGatewaysV6([]() -> IPv6Gateways
+    {
+        throw std::runtime_error { "Cannot open netlink socket" };
+    }));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_LoadGatewaysV6_NetlinkDumpMatchesTheProcTable)
+{
+    const auto procGateways { NetworkLinuxInterface::parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route")) };
+
+    EXPECT_EQ(procGateways, NetworkLinuxAddressResolver::dumpIPv6DefaultGateways());
+}
+
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperLinkWithoutSystemData)
 {
     FakeAddressEntry fake { "wztest0" };

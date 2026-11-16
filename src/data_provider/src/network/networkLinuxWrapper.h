@@ -160,9 +160,6 @@ namespace GatewayFileFields
     };
 }
 
-// Interface name -> IPv6 default gateway, read once per scan.
-using IPv6Gateways = std::map<std::string, std::string>;
-
 namespace GatewayV6FileFields
 {
     enum
@@ -403,7 +400,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string gatewayV6() const override
         {
-            // Without the scan's shared map, read the whole table for this call.
+            // Without the listing's shared map, read the whole table for this call.
             const auto gateways { m_gatewaysV6 ? m_gatewaysV6 : std::make_shared<const IPv6Gateways>(parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"))) };
             const auto it { gateways->find(this->name()) };
 
@@ -479,6 +476,20 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             }
 
             return retVal;
+        }
+
+        // Any dump failure falls back to /proc so the reported gateways never depend on netlink being available.
+        template<typename Dump>
+        static IPv6Gateways loadGatewaysV6(Dump dump)
+        {
+            try
+            {
+                return dump();
+            }
+            catch (...)
+            {
+                return parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"));
+            }
         }
 
         // Value of an ifcfg entry without surrounding whitespace and one pair of matching quotes

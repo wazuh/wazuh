@@ -421,7 +421,7 @@ nlohmann::json SysInfo::getNetworks() const
         // Without the dump, IPv4 entries keep being grouped by their label.
     }
 
-    const auto gatewaysV6 { std::make_shared<const IPv6Gateways>(NetworkLinuxInterface::parseGatewaysV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"))) };
+    const auto gatewaysV6 { std::make_shared<const IPv6Gateways>(NetworkLinuxInterface::loadGatewaysV6(NetworkLinuxAddressResolver::dumpIPv6DefaultGateways)) };
 
     for (const auto& interface : NetworkLinuxAddressResolver::groupByLink(interfacesAddress.get(), networkInterfaces, addressLinks))
     {
