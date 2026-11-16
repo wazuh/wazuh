@@ -273,16 +273,19 @@ src/http_server/
        1.5.7: 3 663 393 bytes with no size, 640 209 for 20 KiB, 2 614 817 for 1 MiB and 3 663 393
        again from 10 MiB up; the two buffers are 131 072 and 131 591 bytes, bounded to
        `max(size, 4096)` when the size is known. **A compressor never takes the budget below
-       `max(maxBodySize + 4 KiB, maxBytes / 2)` free**: the first term is the minimum `start()` enforces,
-       enough to admit one maximum request; the second is an agent's default byte share, what admitting
-       and decoding requests need (`BodyDecoder` reserves its window and output from the same budget, and
-       a refusal there is a `413` the agent reads as "too large"). `InFlightBudget::tryReserveUncountedKeeping(bytes, keep)`
+       `max(maxBodySize + 4 KiB, maxBytes / 2, agentByteShare)` free**: the first term is the minimum
+       `start()` enforces, enough to admit one maximum request; the other two are an agent's byte share
+       (half the budget by default, `HttpServerConfig::agentByteShare` when the facade resolves a larger
+       `remoted.max_inflight_bytes_per_agent`), what admitting and decoding one agent's requests need
+       (`BodyDecoder` reserves its window and output from the same budget, and a refusal there is a
+       `413` the agent reads as "too large"). `InFlightBudget::tryReserveUncountedKeeping(bytes, keep)`
        checks that floor and reserves in one atomic step, and a response that does not fit goes out
        plain. The floor exists because the reservation comes out of the budget that admits every request:
        without it, about 68 simultaneous downloads with no size hint (256 MiB / 3 926 056 bytes each)
        would exhaust the default 256 MiB and every other route would answer `503`; with it, compressed
-       downloads hold at most half of it, and a slow reader that keeps its transfer open cannot push
-       ingestion out of the other half. There is no option for it. Like the
+       downloads hold at most half of it (less with a larger agent share), and a slow reader that keeps
+       its transfer open cannot take more. The requests admitted meanwhile share what the downloads
+       leave, not the whole budget. There is no option for it. Like the
        decoder's, the reservation is uncounted, so it does not move `budget.inflight.requests` or
        `budget.rejected.total`.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
@@ -3080,7 +3083,7 @@ without the offer, the flag off serves plain and still rejects `zstd` requests, 
 is charged while streaming and released after, an empty config is a valid empty frame, compressed
 downloads never take more than half of the budget while others are active, an aborted transfer
 leaves a truncated frame), and in the existing files: `inFlightBudget_test.cpp` (`tryReserveUncountedKeeping` and
-its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor, the half-budget limit and repeated `Accept-Encoding` lines;
+its floor), `httpServer_test.cpp` (`HttpServerConfigTest.ContentEncoding*` and `CompressionWiringTest`, including the budget at its minimum, just above the floor, the half-budget limit, an agent share above half and repeated `Accept-Encoding` lines;
 `testTlsServer.hpp` takes an `extraHeaders` parameter to send `Accept-Encoding`).
 
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
