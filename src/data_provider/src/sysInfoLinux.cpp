@@ -421,13 +421,15 @@ nlohmann::json SysInfo::getNetworks() const
         // Without the dump, IPv4 entries keep being grouped by their label.
     }
 
+    const auto gatewaysV6 { std::make_shared<const IPv6Gateways>(NetworkLinuxInterface::loadGatewaysV6(NetworkLinuxAddressResolver::dumpIPv6DefaultGateways)) };
+
     for (const auto& interface : NetworkLinuxAddressResolver::groupByLink(interfacesAddress.get(), networkInterfaces, addressLinks))
     {
         nlohmann::json ifaddr {};
 
         for (auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first, addressFlags)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first, addressFlags, gatewaysV6)) };
 
             if (networkInterfacePtr)
             {
