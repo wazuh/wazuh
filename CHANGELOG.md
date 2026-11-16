@@ -111,6 +111,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Linux packages and browser extensions inventory mounting every automounted home directory on each scan. ([#41427](https://github.com/wazuh/wazuh/pull/41427))
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41439](https://github.com/wazuh/wazuh/pull/41439))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41439](https://github.com/wazuh/wazuh/pull/41439))
+- Fixed high CPU usage of `wazuh-modulesd` and slow network inventory on Linux hosts with a large IPv6 routing table. ([#41527](https://github.com/wazuh/wazuh/pull/41527))
 
 ## [v4.14.10]
 
