@@ -3378,7 +3378,7 @@ namespace
         {
             HttpServerConfig config;
             config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-            config.port = static_cast<std::uint16_t>(34000 + (::getpid() % 4000) + m_portOffset++);
+            config.port = remoted::test::findFreePort();
             config.certificatePath = m_cert->certPath;
             config.privateKeyPath = m_cert->keyPath;
             config.contentEncodingEnabled = true;
@@ -3451,7 +3451,6 @@ namespace
         }
 
         const std::string m_payload = patternPayload(70000);
-        int m_portOffset {0};
         std::vector<std::unique_ptr<IHttpServer>> m_servers;
         std::optional<remoted::test::TestCertificate> m_cert;
         std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
