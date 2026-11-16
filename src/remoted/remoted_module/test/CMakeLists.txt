@@ -67,10 +67,7 @@ target_include_directories(
           ${SRC_FOLDER}/external/rapidjson/include
           # control/*.hpp include "json.hpp" (nlohmann); remoted_module gets that dir PRIVATE so
           # the utest translation units need it added here too.
-          ${SRC_FOLDER}/external/nlohmann
-          # adminServer_test.cpp's client is cpp-httplib; remoted_module itself does not use it, so the
-          # tests add it on their own.
-          ${SRC_FOLDER}/external/cpp-httplib)
+          ${SRC_FOLDER}/external/nlohmann)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
 # The suite normally finishes in well under a minute; the TIMEOUT is a backstop so a parked
