@@ -41,9 +41,11 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <array>
@@ -3351,6 +3353,35 @@ namespace
                remoted::common::ZstdEncoder::outputBufferSize(sizeHint);
     }
 
+    // A port the OS says is free, asked for right before the server binds it. A fixed port in the
+    // ephemeral range can be held by a client socket, even in TIME_WAIT, and fail the bind.
+    std::uint16_t findFreePort()
+    {
+        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (probe < 0)
+        {
+            return 0;
+        }
+
+        sockaddr_in address {};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0; // let the kernel pick
+
+        std::uint16_t port = 0;
+        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
+        {
+            socklen_t length = sizeof(address);
+            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&address), &length) == 0)
+            {
+                port = ntohs(address.sin_port);
+            }
+        }
+
+        ::close(probe);
+        return port;
+    }
+
     class CompressionWiringTest : public ::testing::Test
     {
     protected:
@@ -3378,7 +3409,7 @@ namespace
         {
             HttpServerConfig config;
             config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-            config.port = static_cast<std::uint16_t>(34000 + (::getpid() % 4000) + m_portOffset++);
+            config.port = findFreePort();
             config.certificatePath = m_cert->certPath;
             config.privateKeyPath = m_cert->keyPath;
             config.contentEncodingEnabled = true;
@@ -3451,7 +3482,6 @@ namespace
         }
 
         const std::string m_payload = patternPayload(70000);
-        int m_portOffset {0};
         std::vector<std::unique_ptr<IHttpServer>> m_servers;
         std::optional<remoted::test::TestCertificate> m_cert;
         std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
