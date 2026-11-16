@@ -1117,10 +1117,12 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
 - **Compressed downloads:** a zstd-compressed `POST /download` response reserves the compressor's
   memory from this same budget for the whole transfer (about 0.65 MiB for a 20 KiB file and about
   3.7 MiB from 10 MiB up, with the compressor's two buffers included). The compressor is used only if,
-  after reserving, at least half of the budget (an agent's default byte share) is still free, and never
-  less than one maximum request (`https.max_body_size` plus 4 KiB); otherwise the response is sent
-  uncompressed. With the default 256 MiB, compressed downloads hold at most 128 MiB between them. There
-  is no option for this floor.
+  after reserving, an agent's byte share is still free: half of the budget, or
+  [`remoted.max_inflight_bytes_per_agent`](#remotedmax_inflight_bytes_per_agent) when it is larger, and
+  never less than one maximum request (`https.max_body_size` plus 4 KiB). Otherwise the response is
+  sent uncompressed. With the defaults, compressed downloads hold at most 128 MiB between them, and the
+  requests admitted while they run share the other 128 MiB, so size this budget for both during a mass
+  configuration refresh. There is no separate option for this floor.
 
 #### remoted.max_parallel_connections
 
@@ -1232,6 +1234,9 @@ requests on the authenticated routes.
   since the agent cannot send it in smaller parts. A body that fits the share but not what the
   agent's other open requests leave of it is answered `503` and counted as
   `remoted.auth.reject.agent_busy`; it fits once one of them is answered.
+- **Note:** Compressed `POST /download` responses always leave at least this share of
+  `remoted.max_inflight_bytes` free (see [Compressed downloads](#remotedmax_inflight_bytes)), so a share
+  above half of the budget leaves less room for compression.
 
 #### remoted.http_stream_chunk_size
 

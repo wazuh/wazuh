@@ -1614,11 +1614,12 @@ namespace remoted::http
                 const auto streamChunkSize = m_config.streamChunkSize;
                 auto streams = m_streams;
                 const auto contentEncodingEnabled = m_config.contentEncodingEnabled;
-                // A compressor never takes the half of the budget that admitting and decoding requests
-                // rely on (one agent's default byte share), nor the room one maximum request needs to
-                // be admitted (the minimum start() enforces).
-                const auto compressionFloor =
-                    std::max<std::size_t>(m_config.maxBodySize + PER_REQUEST_OVERHEAD, budget->maxBytes() / 2);
+                // A compressor never takes the room admitting and decoding requests rely on: one
+                // agent's byte share (half the budget by default, or the configured share when it is
+                // larger), and at least what one maximum request needs to be admitted (the minimum
+                // start() enforces).
+                const auto compressionFloor = std::max<std::size_t>(
+                    {m_config.maxBodySize + PER_REQUEST_OVERHEAD, budget->maxBytes() / 2, m_config.agentByteShare});
                 CompressingResponder::ReserveFn compressionReserve = [budget, compressionFloor](std::size_t bytes)
                 {
                     return budget->tryReserveUncountedKeeping(bytes, compressionFloor);

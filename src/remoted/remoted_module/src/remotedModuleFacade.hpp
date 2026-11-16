@@ -532,6 +532,7 @@ private:
                            config.maxInFlightBytes);
             }
         }
+        config.agentByteShare = agentByteShare;
         m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
             authConfig,
             m_keystore,

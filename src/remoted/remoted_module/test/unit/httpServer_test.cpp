@@ -3604,6 +3604,26 @@ TEST_F(CompressionWiringTest, CompressionNeverTakesMoreThanHalfTheBudget)
     expectPlain(post(twoLess, OFFER_ZSTD));
 }
 
+TEST_F(CompressionWiringTest, AnAgentShareLargerThanHalfTheBudgetStaysFree)
+{
+    const auto admission = std::size_t {2} + 4096;
+    const auto reservation = compressorReservation(m_payload.size());
+
+    auto exact = baseConfig();
+    exact.maxBodySize = 4096;
+    exact.maxInFlightBytes = 4 * (reservation + admission);
+    exact.agentByteShare = exact.maxInFlightBytes - (reservation + admission);
+    ASSERT_GT(exact.agentByteShare, exact.maxInFlightBytes / 2);
+    startStreaming(exact);
+    expectCompressed(post(exact, OFFER_ZSTD));
+
+    auto oneMore = exact;
+    oneMore.port = findFreePort();
+    oneMore.agentByteShare = exact.agentByteShare + 1;
+    startStreaming(oneMore);
+    expectPlain(post(oneMore, OFFER_ZSTD));
+}
+
 // ---------------------------------------------------------------------------
 // Global endpoint prefix (issue #38491)
 // ---------------------------------------------------------------------------

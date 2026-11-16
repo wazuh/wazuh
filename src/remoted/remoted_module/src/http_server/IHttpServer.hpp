@@ -305,6 +305,9 @@ namespace remoted::http
         /// Whether a streamed response may be zstd-compressed for a client that offers it
         /// (remoted.http_content_encoding_enabled).
         bool contentEncodingEnabled {true};
+        /// The decoded bytes one agent may hold at once (remoted.max_inflight_bytes_per_agent as the
+        /// module resolves it). Response compressors leave at least this much of the budget free.
+        std::size_t agentByteShare {0};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
         std::size_t maxParallelConnections {256};
         /// Max connections from one address still in the TLS handshake; one more is closed at once
