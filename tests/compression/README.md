@@ -62,3 +62,29 @@ invalid settings, destination collisions, and write failures.
 temporary manager directory. libfaketime advances its clock across midnight;
 both gzip and zstd must compress all twelve alert/archive rotation fixtures
 and produce exact decompressed content. It does not modify the host clock.
+
+## Focused monitord unit tests
+
+In a separate checkout with a completed manager build and `libcmocka-dev`
+installed, rebuild the C objects with test instrumentation, then run the existing
+monitord unit suites independently:
+
+```sh
+(cd src && make TARGET=server DEBUG=1 TEST=1 -B libwazuh.a monitord/*.o os_maild/*.o -j4)
+cmake -S tests/compression/monitord-unit -B tests/compression/monitord-unit/build
+cmake --build tests/compression/monitord-unit/build -j4
+ctest --test-dir tests/compression/monitord-unit/build --output-on-failure
+```
+
+This uses the production `src/unit_tests/monitord/CMakeLists.txt` targets with
+AddressSanitizer and UndefinedBehaviorSanitizer. It covers the default method,
+zstd configuration reporting, numbered alert/archive rotations, unchanged
+firewall gzip compression, and disabled compression, alongside existing tests.
+
+The `4.X - Log compression and agent build regressions` workflow also builds
+the Linux manager and Linux/Windows/macOS agents. Windows is a MinGW cross-build;
+it does not execute Windows runtime tests. Build warnings are retained in
+separate artifacts and are not treated as evidence of warning-free compilation.
+Changed configuration/manager sources are additionally compiled with `-Werror`.
+The Linux manager job also runs the four focused monitord unit suites with
+sanitizers enabled.

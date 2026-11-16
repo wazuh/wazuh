@@ -44,6 +44,7 @@ extern monitor_time_control mond_time_control;
 int setup_monitord(void **state) {
     test_mode = 1;
 
+    mond.global.compression_method = W_LOG_COMPRESSION_GZIP;
     mond.global.agents_disconnection_alert_time = 0;
     mond.global.agents_disconnection_time = 0;
 
@@ -72,6 +73,7 @@ int setup_monitord(void **state) {
 int teardown_monitord(void **state) {
     test_mode = 0;
 
+    mond.global.compression_method = W_LOG_COMPRESSION_GZIP;
     mond.global.agents_disconnection_alert_time = 0;
     mond.global.agents_disconnection_time = 0;
 
@@ -400,6 +402,10 @@ void test_getMonitorGlobalOptions_success(void **state) {
     mond.global.agents_disconnection_alert_time = 100;
 
     root = getMonitorGlobalOptions();
+    assert_non_null(root);
+    object = cJSON_GetObjectItem(root->child, "compression_method");
+    assert_non_null(object);
+    assert_string_equal(object->valuestring, "gzip");
 
     if (root) {
         object = cJSON_GetObjectItem(root->child, "agents_disconnection_time");
@@ -408,6 +414,16 @@ void test_getMonitorGlobalOptions_success(void **state) {
         assert_int_equal(object->valueint, mond.global.agents_disconnection_alert_time);
     }
 
+    cJSON_Delete(root);
+}
+
+void test_getMonitorGlobalOptions_zstd(void **state) {
+    mond.global.compression_method = W_LOG_COMPRESSION_ZSTD;
+    cJSON *root = getMonitorGlobalOptions();
+    assert_non_null(root);
+    cJSON *object = cJSON_GetObjectItem(root->child, "compression_method");
+    assert_non_null(object);
+    assert_string_equal(object->valuestring, "zstd");
     cJSON_Delete(root);
 }
 
@@ -475,6 +491,7 @@ void test_MonitordConfig_success(void **state) {
     result = MonitordConfig(cfg, &mond, no_agents, day_wait);
 
     assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(mond.global.compression_method, W_LOG_COMPRESSION_GZIP);
     assert_int_equal(mond.global.agents_disconnection_time, 900);
     assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
@@ -542,6 +559,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_getMonitorInternalOptions_success, setup_monitord, teardown_monitord),
         /* Tests getMonitorGlobalOptions */
         cmocka_unit_test_setup_teardown(test_getMonitorGlobalOptions_success, setup_monitord, teardown_monitord),
+        cmocka_unit_test_setup_teardown(test_getMonitorGlobalOptions_zstd, setup_monitord, teardown_monitord),
         /* Tests getReportsOptions */
         cmocka_unit_test_setup_teardown(test_getReportsOptions_success, setup_monitord, teardown_monitord),
         /* Tests MonitordConfig */

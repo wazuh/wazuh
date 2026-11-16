@@ -1,0 +1,15 @@
+# Run the existing monitord CMake targets without configuring unrelated suites.
+# Requires manager objects built with DEBUG=1 TEST=1 and libcmocka development files.
+cmake_minimum_required(VERSION 3.12)
+project(MonitordValidation C)
+set(CMAKE_C_STANDARD 11)
+get_filename_component(SRC_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/../../../src" ABSOLUTE)
+include_directories(${SRC_FOLDER} ${SRC_FOLDER}/headers ${SRC_FOLDER}/external/openssl/include ${SRC_FOLDER}/external/cJSON ${SRC_FOLDER}/external/msgpack/include ${SRC_FOLDER}/external/bzip2 ${SRC_FOLDER}/external/audit-userspace/lib ${SRC_FOLDER}/shared_modules ${SRC_FOLDER}/shared_modules/common)
+add_definitions(-DWAZUH_UNIT_TESTING)
+add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
+link_libraries(-fsanitize=address -fsanitize=undefined)
+set(WAZUHLIB ${SRC_FOLDER}/libwazuh.a)
+set(WAZUHEXT ${SRC_FOLDER}/libwazuhext.so)
+set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lcmocka -fprofile-arcs -ftest-coverage)
+enable_testing()
+add_subdirectory(${SRC_FOLDER}/unit_tests/monitord monitord)
