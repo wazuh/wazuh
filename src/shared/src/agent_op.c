@@ -60,7 +60,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          const char *token_id,
                                          const char *reenroll_kid,
                                          const char *reenroll_bearer,
-                                         const char *source);
+                                         const char *source,
+                                         int64_t deadline_ms);
 
 
 /* Read the agent name for the current agent
@@ -381,7 +382,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          const char *token_id,
                                          const char *reenroll_kid,
                                          const char *reenroll_bearer,
-                                         const char *source) {
+                                         const char *source,
+                                         int64_t deadline_ms) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -423,6 +425,13 @@ static cJSON* w_create_agent_add_payload(const char *name,
     // it is the address to register (often "any"), not the peer's.
     if (source) {
         cJSON_AddStringToObject(arguments, "source", source);
+    }
+
+    // Issue #41339: the instant after which remoted can no longer deliver the answer. The master
+    // refuses a re-enrollment that arrives past it without rotating anything. Omitted when 0, which
+    // authd reads as "no deadline" -- the behaviour that predates this.
+    if (deadline_ms > 0) {
+        cJSON_AddNumberToObject(arguments, "deadline_ms", (double)deadline_ms);
     }
 
     cJSON* j_force = w_force_options_to_json(force_options);
@@ -686,6 +695,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *reenroll_kid,
                                   const char *reenroll_bearer,
                                   const char *source,
+                                  int64_t deadline_ms,
                                   int *master_error_code) {
     int result;
     char response[OS_MAXSTR + 1];
@@ -693,7 +703,7 @@ int w_request_agent_add_clustered(char *err_response,
     char new_key[KEYSIZE+1] = { '\0' };
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = { '\0' };
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source);
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source, deadline_ms);
 
     // A caller that takes no re-enrollment secret back is a worker's port-1515 listener, whose protocol
     // cannot deliver one: mark the request so that the master issues (and stores) none.
@@ -754,7 +764,8 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL);
+    // No deadline: a local request has no remoted budget behind it (issue #41339).
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL, 0);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 

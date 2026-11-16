@@ -123,6 +123,190 @@ TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
     EXPECT_EQ(result.reenrollSecret, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 }
 
+namespace
+{
+    /// Captures the one request a FakeUdsServer receives and answers it successfully.
+    struct WireCapture
+    {
+        std::string captured;
+        std::mutex mu;
+
+        auto handler()
+        {
+            return [this](const std::string& request)
+            {
+                std::lock_guard<std::mutex> lock(mu);
+                captured = request;
+                return std::string(R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"k"}})");
+            };
+        }
+
+        nlohmann::json wire()
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            return nlohmann::json::parse(captured);
+        }
+    };
+
+    std::int64_t nowMs()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    }
+} // namespace
+
+TEST(AuthdClientTest, DeadlineTravelsAsArgumentsDeadlineMs)
+{
+    // Issue #41339: a request whose arrival instant is known carries an absolute deadline; one
+    // whose arrival is unknown carries none, which authd reads as "no deadline" -- the behaviour
+    // that predates this, so every caller that does not set arrivalMs is unaffected.
+    const std::string path = makeUniqueSocketPath("authd_client_deadline");
+    WireCapture capture;
+    FakeUdsServer server(path, capture.handler());
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    const auto arrival = nowMs();
+    request.arrivalMs = arrival;
+    client.addAgent(request, waiter.callback());
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    const auto wire = capture.wire();
+    ASSERT_TRUE(wire["arguments"].contains("deadline_ms"));
+    EXPECT_GT(wire["arguments"]["deadline_ms"].get<std::int64_t>(), arrival);
+}
+
+TEST(AuthdClientTest, WithoutArrivalThereIsNoDeadline)
+{
+    const std::string path = makeUniqueSocketPath("authd_client_no_deadline");
+    WireCapture capture;
+    FakeUdsServer server(path, capture.handler());
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path);
+    ResultWaiter waiter;
+    client.addAgent(makeRequest(), waiter.callback()); // arrivalMs left unset
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    EXPECT_FALSE(capture.wire()["arguments"].contains("deadline_ms"));
+}
+
+TEST(AuthdClientTest, DeadlineIsComputedAtDequeueNotAtEnqueue)
+{
+    // R9c, and the single most important property of this change: the deadline is measured from the
+    // DEQUEUE, not from the request's arrival. The budgets it is made of (connect + response) only
+    // start counting once a worker picks the request up, so a deadline derived from arrivalMs would
+    // be earlier than the instant this client actually gives up -- and authd would then discard
+    // re-enrollments remoted is still waiting on.
+    //
+    // The whole point is to separate the two instants, so the queue has to really hold: one worker,
+    // and the first request is answered slowly while the second waits behind it.
+    constexpr std::int64_t kHoldMs = 400;
+    constexpr std::int64_t kAuthdBudgetMs =
+        AuthdClient::kDefaultConnectTimeoutMs + AuthdClient::kMasterDefaultResponseTimeoutMs; // 2 s + 5 s
+
+    const std::string path = makeUniqueSocketPath("authd_client_deadline_dequeue");
+    std::vector<std::string> captured;
+    std::mutex mu;
+    std::atomic<int> seen {0};
+    FakeUdsServer server(path,
+                         [&](const std::string& request)
+                         {
+                             if (seen.fetch_add(1) == 0)
+                             {
+                                 // Hold the only worker so the next request genuinely queues.
+                                 std::this_thread::sleep_for(std::chrono::milliseconds(kHoldMs));
+                             }
+                             {
+                                 std::lock_guard<std::mutex> lock(mu);
+                                 captured.push_back(request);
+                             }
+                             return std::string(
+                                 R"({"error":0,"data":{"id":"001","name":"agent1","ip":"any","key":"k"}})");
+                         });
+    server.setCloseAfterReply(true);
+
+    AuthdClient client(path, false, 0, 0, 0, 1); // exactly one worker
+
+    const auto arrival = nowMs();
+    ResultWaiter first;
+    ResultWaiter second;
+    auto held = makeRequest();
+    held.arrivalMs = arrival;
+    auto queued = makeRequest();
+    queued.arrivalMs = arrival; // SAME arrival: only the dequeue instant differs
+    client.addAgent(held, first.callback());
+    client.addAgent(queued, second.callback());
+
+    ASSERT_EQ(first.wait(std::chrono::seconds(10)).errorCode, 0);
+    ASSERT_EQ(second.wait(std::chrono::seconds(10)).errorCode, 0);
+
+    std::lock_guard<std::mutex> lock(mu);
+    ASSERT_EQ(captured.size(), 2U);
+    const auto secondDeadline = nlohmann::json::parse(captured[1])["arguments"]["deadline_ms"].get<std::int64_t>();
+
+    // Measured from the dequeue, the second request's deadline lands BEYOND arrival + the full authd
+    // budget, because it waited kHoldMs in the queue first. An implementation that used arrivalMs
+    // would land exactly at arrival + kAuthdBudgetMs and fail here -- which is the mutation this
+    // assertion exists to catch. Well under the HTTP cap (arrival + 30 s), so the min() does not
+    // interfere.
+    EXPECT_GT(secondDeadline, arrival + kAuthdBudgetMs + (kHoldMs / 2));
+}
+
+TEST(AuthdClientTest, DeadlineIsCappedByTheHttpArrivalBudget)
+{
+    // remoted only WARNS at start-up when authd's budget exceeds http_request_timeout, so this cap
+    // is the only hard bound: with a tiny HTTP budget it, not the authd budget, decides.
+    const std::string path = makeUniqueSocketPath("authd_client_deadline_capped");
+    WireCapture capture;
+    FakeUdsServer server(path, capture.handler());
+    server.setCloseAfterReply(true);
+
+    constexpr std::uint32_t kHttpBudgetMs = 50;
+    AuthdClient client(path, false, 0, 0, 0, 0, kHttpBudgetMs);
+    ResultWaiter waiter;
+    auto request = makeRequest();
+    const auto arrival = nowMs();
+    request.arrivalMs = arrival;
+    client.addAgent(request, waiter.callback());
+    ASSERT_EQ(waiter.wait().errorCode, 0);
+
+    EXPECT_EQ(capture.wire()["arguments"]["deadline_ms"].get<std::int64_t>(), arrival + kHttpBudgetMs);
+}
+
+TEST(AuthdClientTest, AWorkerNodeGetsALaterDeadlineThanAMaster)
+{
+    // The response budget is worker-aware (15 s vs 5 s), and the deadline is made of it.
+    const std::string masterPath = makeUniqueSocketPath("authd_client_deadline_master");
+    const std::string workerPath = makeUniqueSocketPath("authd_client_deadline_worker");
+    WireCapture masterCapture;
+    WireCapture workerCapture;
+    FakeUdsServer masterServer(masterPath, masterCapture.handler());
+    FakeUdsServer workerServer(workerPath, workerCapture.handler());
+    masterServer.setCloseAfterReply(true);
+    workerServer.setCloseAfterReply(true);
+
+    const auto send = [](const std::string& path, bool isWorker, WireCapture& capture)
+    {
+        AuthdClient client(path, isWorker);
+        ResultWaiter waiter;
+        auto request = makeRequest();
+        request.arrivalMs = nowMs();
+        client.addAgent(request, waiter.callback());
+        EXPECT_EQ(waiter.wait().errorCode, 0);
+        return capture.wire()["arguments"]["deadline_ms"].get<std::int64_t>();
+    };
+
+    const auto masterDeadline = send(masterPath, false, masterCapture);
+    const auto workerDeadline = send(workerPath, true, workerCapture);
+
+    // 15 s - 5 s = 10 s apart, give or take the time between the two dequeues.
+    EXPECT_GT(workerDeadline - masterDeadline, 9000);
+}
+
 TEST(AuthdClientTest, ReenrollCredentialTravelsAsArgumentsReenroll)
 {
     // Re-enrollment (issue #38993): the agent id the bearer named and the bearer itself go to authd

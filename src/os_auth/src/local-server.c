@@ -304,7 +304,8 @@ static cJSON* local_get(const char *id);
 
 // Re-enrollment (#38993, master only): verifies `bearer` against the re-enrollment secret of the agent
 // `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
-static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups,
+                             __attribute__((unused)) int64_t deadline_ms);
 
 // Generates an agent info json response
 // reenroll_secret may be NULL: the field is then absent (local_get(), and an add that issues no secret,
@@ -326,6 +327,10 @@ static cJSON* local_token_purge(cJSON *arguments, int *ierror);
 static int is_token_id(const char *text);
 // Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
 static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out);
+// Optional deadline (issue #41339). Fail-safe by contract: absent, wrong type, negative or out of
+// range all mean "no deadline" -- it RETURNS 0 and never signals an error, because a deadline this
+// manager cannot read must not cost an agent its enrollment (RNF-1).
+static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -600,6 +605,10 @@ char* local_dispatch(const char *input) {
             // re-enrollment secret, so the worker drops it: issuing one here would only store a secret
             // nobody holds. A direct port-1515 enrollment stores none either.
             int legacy = 0;
+            /* Issue #41339: the instant after which remoted can no longer deliver the answer.
+             * Read on BOTH nodes -- the worker needs it to check and to extend it before
+             * forwarding. 0 means "no deadline"; the reader never fails (see its contract). */
+            const int64_t deadline_ms = get_optional_deadline_ms(arguments, "deadline_ms");
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
                 get_optional_string_arg(arguments, "key", &key) < 0 ||
@@ -707,11 +716,11 @@ char* local_dispatch(const char *input) {
                     }
                     ip = registered_ip;
                 }
-                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source);
+                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source, deadline_ms);
             } else if (reenroll_kid) {
                 // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
                 // and the secret already proved the caller IS that agent.
-                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip, groups);
+                response = local_reenroll(reenroll_kid, reenroll_bearer, name, ip, groups, deadline_ms);
             } else {
                 if (token_id) {
                     // Reserve the use BEFORE the agent exists: adding first and finding the token
@@ -1188,7 +1197,10 @@ fail:
 
 // Re-enrollment (#38993), master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
 // re-enrollment secret, both rotated in place -- no removal, no purge, its documents survive.
-static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups) {
+/* deadline_ms: E1 only CARRIES it; E2 is what enforces it (issue #41339). Taken here already so the
+ * stage that adds the check does not have to touch this signature or its call site again. */
+static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups,
+                             __attribute__((unused)) int64_t deadline_ms) {
     int index;
     int other;
     int ierror;
@@ -1358,7 +1370,8 @@ fail:
 
 // Forward an "add" request to the master node over the cluster (worker nodes only)
 cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id,
-                           const char *reenroll_kid, const char *reenroll_bearer, const char *source) {
+                           const char *reenroll_kid, const char *reenroll_bearer, const char *source,
+                           int64_t deadline_ms) {
     char *new_id = NULL;
     char *new_key = NULL;
     char *new_secret = NULL;
@@ -1374,7 +1387,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
                                             &new_id, &new_key, &new_secret, NULL, NULL, token_id, reenroll_kid, reenroll_bearer,
-                                            source, &master_error_code);
+                                            source, deadline_ms, &master_error_code);
 
     if (result == 0) {
         // The master's re-enrollment secret travels through untouched (#38993); a master that predates
@@ -1505,6 +1518,27 @@ static int get_optional_long_arg(cJSON *arguments, const char *key, long *out) {
     *out = (long)item->valuedouble;
 
     return 1;
+}
+
+/* Optional deadline (issue #41339). Fail-safe by contract: absent, wrong type, negative or out of
+ * range all mean "no deadline" -- it RETURNS 0 and never signals an error, because a deadline this
+ * manager cannot read must not cost an agent its enrollment (RNF-1). */
+static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(arguments, key);
+
+    /* Every failure mode degrades to "no deadline", on purpose: remoted stamps this field, and a
+     * bug there (or a peer that forges one) must leave the enrollment exactly as it was before the
+     * field existed, never refuse it. Only a plainly usable value is honoured. */
+    if (item == NULL || !cJSON_IsNumber(item)) {
+        return 0;
+    }
+
+    /* A double holds an epoch in milliseconds exactly: 2^53 ms is year 287396. */
+    if (!(item->valuedouble > 0) || item->valuedouble > 9007199254740992.0) {
+        return 0;
+    }
+
+    return (int64_t)item->valuedouble;
 }
 
 // Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
