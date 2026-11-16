@@ -138,7 +138,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 | [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18     | Dave Gamble                     | MIT License                                                                  |
 | [concurrentqueue](https://github.com/cameron314/concurrentqueue)        | 1.0.4      | Cameron Desrochers              | BSD 2-Clause or Boost Software License 1.0                                   |
 | [cpp-httplib](https://github.com/yhirose/cpp-httplib)                   | 0.51.0     | yhirose                         | MIT License                                                                  |
-| [cPython](https://github.com/python/cpython)                            | 3.12.14    | Guido van Rossum                | Python Software Foundation License version 2                                 |
+| [cPython](https://github.com/python/cpython)                            | 3.12.16    | Guido van Rossum                | Python Software Foundation License version 2                                 |
 | [cURL](https://github.com/curl/curl)                                    | 8.20.0     | Daniel Stenberg                 | curl License                                                                 |
 | [dbus](https://gitlab.freedesktop.org/dbus/dbus)                        | 1.14.10    | freedesktop.org                 | GNU Public License version 2                                                 |
 | [expected-lite](https://github.com/martinmoene/expected-lite)           | 0.10.0     | Martin Moene                    | Boost Software License 1.0                                                   |

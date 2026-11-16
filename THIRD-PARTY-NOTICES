@@ -14,7 +14,7 @@ Contents
   4. cJSON 1.7.18 (MIT)
   5. concurrentqueue 1.0.4 (BSD-2-Clause OR BSL-1.0)
   6. cpp-httplib 0.51.0 (MIT)
-  7. cPython 3.12.14 (PSF-2.0)
+  7. cPython 3.12.16 (PSF-2.0)
   8. aiohappyeyeballs 2.6.1 (PSF-2.0)
   9. aiohttp 3.14.4 (Apache-2.0 AND MIT)
  10. aiosignal 1.4.0 (Apache 2.0)
@@ -554,7 +554,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-cPython 3.12.14
+cPython 3.12.16
 ==============================================================================
 License:     PSF-2.0
 Homepage:    https://github.com/python/cpython
