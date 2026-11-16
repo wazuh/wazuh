@@ -4764,6 +4764,22 @@ void test_save_controlmsg_startup_long_agent_version(void **state)
     assert_int_equal(cJSON_GetArraySize(agent_data), 1);
 }
 
+void test_save_controlmsg_startup_multibyte_agent_version(void **state)
+{
+    char version[OS_SIZE_32 + 2];
+
+    // The bound falls between the two bytes of the last character
+    memset(version, 'A', OS_SIZE_32 - 1);
+    snprintf(version + OS_SIZE_32 - 1, 3, "\xC3\xA9");
+    expect_agent_data_add(2);
+
+    startup_with_version(version);
+
+    version[OS_SIZE_32 - 1] = '\0';
+    cJSON *agent_data = __real_OSHash_Get(agent_data_hash, "001");
+    assert_string_equal(cJSON_GetObjectItem(agent_data, "version")->valuestring, version);
+}
+
 void test_save_controlmsg_get_agent_version_fail(void **state)
 {
     char r_msg[OS_SIZE_128] = {0};
@@ -5452,6 +5468,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_replaces_agent_data, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_agent_data_already_added, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_long_agent_version, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_multibyte_agent_version, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_get_agent_version_fail, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_could_not_add_pending_data, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_unable_to_save_last_keepalive, setup_test_mode, teardown_test_mode),
