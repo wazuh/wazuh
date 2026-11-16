@@ -137,6 +137,13 @@ void wm_module_free(wmodule * config);
  */
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
+#ifndef WIN32
+/* Same as wm_exec(), but the command runs from work_dir. A NULL work_dir keeps the current
+ * directory. If the command cannot change to work_dir, it is not run and -1 is returned.
+ */
+int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const char * add_path, const char * work_dir);
+#endif
+
 #ifdef WIN32
 // Add process to pool
 void wm_append_handle(HANDLE hProcess);

@@ -330,6 +330,88 @@ static void* reader(void *args);   // Reading thread's start point
 #define WM_EXEC_REAP_STEP_MIN_MS 1
 #define WM_EXEC_REAP_STEP_MAX_MS 100
 
+extern char ** environ;
+
+/**
+ * @brief Send a signal to the process group of a command.
+ *
+ * A child that has not called setsid() yet has no group of its own, so it gets the signal
+ * directly. It has not been reaped, so its pid cannot belong to another process.
+ *
+ * @param pid Process ID of the command.
+ * @param sig Signal to send.
+ */
+static void wm_exec_signal(pid_t pid, int sig) {
+    if (kill(-pid, sig) < 0 && errno == ESRCH) {
+        kill(pid, sig);
+    }
+}
+
+/**
+ * @brief Build a copy of the environment with add_path prepended to PATH.
+ *
+ * The child of a multithreaded process must not allocate memory nor call setenv() before
+ * exec, so the parent builds the environment and the child only switches to it.
+ *
+ * @param add_path Directory to prepend to PATH.
+ * @return Environment to free with wm_exec_free_environ(), or NULL to keep the current one.
+ */
+static char ** wm_exec_path_environ(const char * add_path) {
+    const char * env_path = getenv("PATH");
+    char new_path[OS_SIZE_6144];
+    int written;
+
+    if (env_path == NULL) {
+        written = snprintf(new_path, sizeof(new_path), "%s", add_path);
+    } else if (strlen(env_path) >= sizeof(new_path)) {
+        merror("at wm_exec(): PATH environment variable too large.");
+        return NULL;
+    } else {
+        written = snprintf(new_path, sizeof(new_path), "%s:%s", add_path, env_path);
+    }
+
+    if (written < 0) {
+        merror("at wm_exec(): New environment variable error: %d (%s).", errno, strerror(errno));
+        return NULL;
+    } else if ((size_t)written >= sizeof(new_path)) {
+        merror("at wm_exec(): New environment variable too large.");
+        return NULL;
+    }
+
+    size_t count = 0;
+
+    while (environ != NULL && environ[count] != NULL) {
+        count++;
+    }
+
+    // The new PATH goes first, which is where wm_exec_free_environ() expects it
+    char ** new_environ = NULL;
+    size_t n = 0;
+    os_calloc(count + 2, sizeof(char *), new_environ);
+    os_calloc(strlen(new_path) + sizeof("PATH="), sizeof(char), new_environ[n]);
+    snprintf(new_environ[n++], strlen(new_path) + sizeof("PATH="), "PATH=%s", new_path);
+
+    for (size_t i = 0; i < count; i++) {
+        if (strncmp(environ[i], "PATH=", 5) != 0) {
+            new_environ[n++] = environ[i];
+        }
+    }
+
+    mdebug1("New 'PATH' environment variable set: '%s'", new_path);
+    return new_environ;
+}
+
+/**
+ * @brief Free an environment built by wm_exec_path_environ(). The other entries belong to environ.
+ * @param new_environ Environment to free.
+ */
+static void wm_exec_free_environ(char ** new_environ) {
+    if (new_environ != NULL) {
+        os_free(new_environ[0]);
+        os_free(new_environ);
+    }
+}
+
 /**
  * @brief Wait for the reader thread to stop reading. The caller holds tinfo->mutex.
  * @param tinfo Data shared with the reader thread.
@@ -364,7 +446,7 @@ static int wm_exec_wait_reader(ThreadInfo * tinfo, const struct timespec * deadl
 static void wm_exec_stop_reading_command(pid_t pid, ThreadInfo * tinfo) {
     struct timespec deadline;
 
-    kill(-pid, SIGTERM);
+    wm_exec_signal(pid, SIGTERM);
 
     gettime(&deadline);
     deadline.tv_sec += wm_kill_timeout;
@@ -374,7 +456,7 @@ static void wm_exec_stop_reading_command(pid_t pid, ThreadInfo * tinfo) {
     }
 
     mdebug1("Process group %d did not stop %d seconds after SIGTERM. Killing it.", pid, wm_kill_timeout);
-    kill(-pid, SIGKILL);
+    wm_exec_signal(pid, SIGKILL);
 
     gettime(&deadline);
     deadline.tv_sec += 1;
@@ -396,7 +478,7 @@ static void wm_exec_stop_reading_command(pid_t pid, ThreadInfo * tinfo) {
  * @return pid once reaped, or -1 if waitpid() failed.
  */
 static pid_t wm_exec_stop_command(pid_t pid, int * status) {
-    kill(-pid, SIGTERM);
+    wm_exec_signal(pid, SIGTERM);
 
     for (int waited = 0; waited < wm_kill_timeout; waited++) {
         const pid_t reaped = waitpid(pid, status, WNOHANG);
@@ -415,7 +497,7 @@ static pid_t wm_exec_stop_command(pid_t pid, int * status) {
     }
 
     mdebug1("Process group %d did not stop %d seconds after SIGTERM. Killing it.", pid, wm_kill_timeout);
-    kill(-pid, SIGKILL);
+    wm_exec_signal(pid, SIGKILL);
 
     return waitpid(pid, status, 0);
 }
@@ -468,7 +550,15 @@ STATIC int wm_exec_exit_code(int status) {
 
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
+    return wm_exec_in_dir(command, output, exitcode, secs, add_path, NULL);
+}
+
+// Execute command from work_dir with timeout of secs
+
+int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const char * add_path, const char * work_dir)
+{
     char ** argv;
+    char ** new_environ = NULL;
     pid_t pid;
     int pipe_fd[2];
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, false, false };
@@ -504,6 +594,15 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 #endif
     }
 
+    // The child must not allocate memory nor take locks before exec: another thread may have
+    // held one at fork(). Everything it needs is prepared here.
+
+    argv = w_strtok(command);
+
+    if (add_path != NULL) {
+        new_environ = wm_exec_path_environ(add_path);
+    }
+
     // Fork
 
     switch (pid = fork()) {
@@ -518,52 +617,25 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             close(pipe_fd[1]);
         }
 
+        free_strarray(argv);
+        wm_exec_free_environ(new_environ);
         return -1;
 
     case 0:
 
-        // Child
+        // Child: async-signal-safe calls only until exec
 
-        // Add environment variable if exists
+        // Lead a new process group first, so that the timeout can signal the command
+        setsid();
 
-        if (add_path != NULL) {
-
-            char * new_path = NULL;
-            os_calloc(OS_SIZE_6144, sizeof(char), new_path);
-            char *env_path = getenv("PATH");
-
-            if (!env_path) {
-                snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
-            } else if (strlen(env_path) >= OS_SIZE_6144) {
-                merror("at wm_exec(): PATH environment variable too large.");
-            } else {
-                const int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
-
-                if (bytes_written >= OS_SIZE_6144) {
-                    merror("at wm_exec(): New environment variable too large.");
-                }
-                else if (bytes_written < 0) {
-                    merror("at wm_exec(): New environment variable error: %d (%s).", errno, strerror(errno));
-                }
-            }
-
-            if (setenv("PATH", new_path, 1) < 0) {
-                merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
-            }
-
-            char * new_env = getenv("PATH");
-            if (new_env != NULL) {
-                mdebug1("New 'PATH' environment variable set: '%s'", new_env);
-            }
-            os_free(new_path);
+        if (work_dir != NULL && chdir(work_dir) < 0) {
+            _exit(EXECVE_ERROR);
         }
-
-        argv = w_strtok(command);
 
         int fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
-            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+            _exit(EXECVE_ERROR);
         }
 
         dup2(fd, STDIN_FILENO);
@@ -580,8 +652,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         close(fd);
 
-        setsid();
         if (nice(wm_task_nice)) {}
+
+        if (new_environ != NULL) {
+            environ = new_environ;
+        }
+
         execvp(argv[0], argv);
         _exit(EXECVE_ERROR);
 
@@ -590,6 +666,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     default:
 
         // Parent
+
+        free_strarray(argv);
+        wm_exec_free_environ(new_environ);
 
         wm_append_sid(pid);
 
