@@ -26,16 +26,16 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
 
-    # The backup holds only a regular file per config name (preinstall copied with cp -R and
-    # removed any planted symlink or hard link before the payload was laid). Move it over the
-    # package default with a plain mv: -h is not used because it does not exist before macOS 12.5
-    # (Apple file_cmds-353) and the agent supports older releases, and by this point the destination
-    # is the package's regular file, not a symlink. Anything that is not a regular file is dropped.
+    # The backup holds, per config name, a copy of the regular file or the symlink or hard link
+    # itself (preinstall renamed a link aside before the payload was laid). Rename it over the
+    # package default with a plain mv, which puts a link back as a link without touching its target:
+    # -h is not used because it does not exist before macOS 12.5 (Apple file_cmds-353) and the agent
+    # supports older releases, and by this point the destination is the package's regular file.
     restore_failed=""
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ ! -e ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
             continue
-        elif [ -f ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
+        elif [ -f ${DIR}/config_files/${conf} ] || [ -L ${DIR}/config_files/${conf} ]; then
             if ! mv -f ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
                 echo "WARNING: could not restore ${DIR}/etc/${conf}; a copy is kept for recovery." >&2
                 restore_failed="yes"
