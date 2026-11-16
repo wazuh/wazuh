@@ -37,7 +37,7 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
             continue
         elif [ -f ${DIR}/config_files/${conf} ] || [ -L ${DIR}/config_files/${conf} ]; then
             if ! mv -f ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
-                echo "WARNING: could not restore ${DIR}/etc/${conf}; a copy is kept for recovery." >&2
+                echo "WARNING: could not restore ${DIR}/etc/${conf}; the backup is kept for recovery." >&2
                 restore_failed="yes"
             fi
         else
