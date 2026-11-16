@@ -1234,6 +1234,56 @@ TEST_F(SchemaValidatorTest, CApiValidateInvalidMessageWithNullErrorPointer)
                                            nullptr));
 }
 
+TEST_F(SchemaValidatorTest, ValidateArrayOfObjects)
+{
+    SchemaValidatorEngine validator;
+    ASSERT_TRUE(validator.loadSchemaFromString(m_testSchemaString));
+    const auto result = validator.validate(std::string(
+            R"({"address":[{"street":"First","city":"London"},null,{"city":"Paris"}]})"));
+    EXPECT_TRUE(result.isValid);
+    EXPECT_TRUE(result.errors.empty());
+}
+
+TEST_F(SchemaValidatorTest, ValidateArrayOfObjectsBadLeaf)
+{
+    SchemaValidatorEngine validator;
+    ASSERT_TRUE(validator.loadSchemaFromString(m_testSchemaString));
+    const auto result = validator.validate(std::string(
+            R"({"address":[{"city":"London"},{"city":42}]})"));
+    EXPECT_FALSE(result.isValid);
+    ASSERT_EQ(result.errors.size(), 1u);
+    EXPECT_NE(result.errors[0].find("address[1].city: Expected string"), std::string::npos);
+}
+
+TEST_F(SchemaValidatorTest, ValidateArrayOfObjectsNonObject)
+{
+    SchemaValidatorEngine validator;
+    ASSERT_TRUE(validator.loadSchemaFromString(m_testSchemaString));
+    const auto result = validator.validate(std::string(
+            R"({"address":[{"city":"London"},42]})"));
+    EXPECT_FALSE(result.isValid);
+    ASSERT_EQ(result.errors.size(), 1u);
+    EXPECT_NE(result.errors[0].find("address[1]: Expected object"), std::string::npos);
+}
+
+TEST_F(SchemaValidatorTest, ValidateEmptyArrayOfObjects)
+{
+    SchemaValidatorEngine validator;
+    ASSERT_TRUE(validator.loadSchemaFromString(m_testSchemaString));
+    const auto result = validator.validate(std::string(R"({"address":[]})"));
+    EXPECT_TRUE(result.isValid);
+    EXPECT_TRUE(result.errors.empty());
+}
+
+TEST_F(SchemaValidatorTest, ValidateNullObject)
+{
+    SchemaValidatorEngine validator;
+    ASSERT_TRUE(validator.loadSchemaFromString(m_testSchemaString));
+    const auto result = validator.validate(std::string(R"({"address":null})"));
+    EXPECT_TRUE(result.isValid);
+    EXPECT_TRUE(result.errors.empty());
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

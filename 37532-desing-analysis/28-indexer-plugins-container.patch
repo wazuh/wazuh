@@ -1,0 +1,1680 @@
+diff --git a/plugins/setup/src/main/resources/templates/states/fim-files.json b/plugins/setup/src/main/resources/templates/states/fim-files.json
+index dffa00be37..9c7dd63ed8 100644
+--- a/plugins/setup/src/main/resources/templates/states/fim-files.json
++++ b/plugins/setup/src/main/resources/templates/states/fim-files.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "file.attributes",
+           "file.device",
+           "file.gid",
+@@ -59,6 +74,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "file": {
+           "properties": {
+             "attributes": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-processes.json b/plugins/setup/src/main/resources/templates/states/inventory-processes.json
+index 3b159780ee..64fefbc658 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-processes.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-processes.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "message",
+           "process.args",
+           "process.command_line",
+@@ -51,6 +66,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "message": {
+           "ignore_above": 4096,
+           "type": "keyword"
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-ports.json b/plugins/setup/src/main/resources/templates/states/inventory-ports.json
+index adbb1b7e72..6c25419a4b 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-ports.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-ports.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "file.inode",
+           "interface.state",
+           "message",
+@@ -51,6 +66,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "destination": {
+           "properties": {
+             "ip": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-users.json b/plugins/setup/src/main/resources/templates/states/inventory-users.json
+index 32e466ced0..ed32a7bd93 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-users.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-users.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "login.tty",
+           "login.type",
+           "message",
+@@ -60,6 +75,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "host": {
+           "properties": {
+             "ip": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-groups.json b/plugins/setup/src/main/resources/templates/states/inventory-groups.json
+index 49471ce9aa..5178550b30 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-groups.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-groups.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "group.description",
+           "group.name",
+           "group.users",
+@@ -51,6 +66,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "group": {
+           "properties": {
+             "description": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-packages.json b/plugins/setup/src/main/resources/templates/states/inventory-packages.json
+index ee7582eab1..ea4eb06d81 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-packages.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-packages.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "message",
+           "package.architecture",
+           "package.category",
+@@ -58,6 +73,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "message": {
+           "ignore_above": 4096,
+           "type": "keyword"
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-system.json b/plugins/setup/src/main/resources/templates/states/inventory-system.json
+index bae60852d9..00aebbfa8b 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-system.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-system.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "host.architecture",
+           "host.hostname",
+           "host.os.build",
+@@ -61,6 +76,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "host": {
+           "properties": {
+             "architecture": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-interfaces.json b/plugins/setup/src/main/resources/templates/states/inventory-interfaces.json
+index a4fb627de0..f3a8124aa6 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-interfaces.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-interfaces.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "host.mac",
+           "interface.alias",
+           "interface.name",
+@@ -52,6 +67,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "host": {
+           "properties": {
+             "mac": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-networks.json b/plugins/setup/src/main/resources/templates/states/inventory-networks.json
+index e90261e59b..ac5142f909 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-networks.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-networks.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "interface.name",
+           "message",
+           "network.type",
+@@ -49,6 +64,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "interface": {
+           "properties": {
+             "name": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-protocols.json b/plugins/setup/src/main/resources/templates/states/inventory-protocols.json
+index 3e0fd64aed..cbbc26d15d 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-protocols.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-protocols.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "interface.name",
+           "message",
+           "network.type",
+@@ -49,6 +64,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "interface": {
+           "properties": {
+             "name": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-services.json b/plugins/setup/src/main/resources/templates/states/inventory-services.json
+index 3032156bbf..cd0f110c40 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-services.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-services.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "error.log.file.path",
+           "file.path",
+           "log.file.path",
+@@ -73,6 +88,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "error": {
+           "properties": {
+             "log": {
+diff --git a/plugins/setup/src/main/resources/templates/states/inventory-hardware.json b/plugins/setup/src/main/resources/templates/states/inventory-hardware.json
+index 85a240c56a..7e0fe09edf 100644
+--- a/plugins/setup/src/main/resources/templates/states/inventory-hardware.json
++++ b/plugins/setup/src/main/resources/templates/states/inventory-hardware.json
+@@ -13,6 +13,21 @@
+         "number_of_shards": "1",
+         "query.default_field": [
+           "checksum.hash.sha1",
++          "container.id",
++          "container.image.digest",
++          "container.image.name",
++          "container.kubernetes.namespace",
++          "container.kubernetes.node.name",
++          "container.kubernetes.owner_refs.kind",
++          "container.kubernetes.owner_refs.name",
++          "container.kubernetes.owner_refs.uid",
++          "container.kubernetes.pod.name",
++          "container.kubernetes.pod.uid",
++          "container.name",
++          "container.network.name",
++          "container.oci_mounts.destination",
++          "container.oci_mounts.source",
++          "container.runtime",
+           "host.cpu.name",
+           "host.serial_number",
+           "message",
+@@ -49,6 +64,113 @@
+             }
+           }
+         },
++        "container": {
++          "properties": {
++            "id": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "image": {
++              "properties": {
++                "digest": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "kubernetes": {
++              "properties": {
++                "annotations": {
++                  "type": "flat_object"
++                },
++                "namespace": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "node": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "owner_refs": {
++                  "properties": {
++                    "kind": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                },
++                "pod": {
++                  "properties": {
++                    "name": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    },
++                    "uid": {
++                      "ignore_above": 4096,
++                      "type": "keyword"
++                    }
++                  }
++                }
++              }
++            },
++            "labels": {
++              "type": "flat_object"
++            },
++            "name": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            },
++            "network": {
++              "properties": {
++                "ip": {
++                  "type": "ip"
++                },
++                "name": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "oci_mounts": {
++              "properties": {
++                "destination": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                },
++                "ro": {
++                  "type": "boolean"
++                },
++                "source": {
++                  "ignore_above": 4096,
++                  "type": "keyword"
++                }
++              }
++            },
++            "restart_count": {
++              "type": "integer"
++            },
++            "runtime": {
++              "ignore_above": 4096,
++              "type": "keyword"
++            }
++          }
++        },
+         "host": {
+           "properties": {
+             "cpu": {
