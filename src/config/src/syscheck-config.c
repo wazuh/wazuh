@@ -98,6 +98,10 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
      * guards against one pathological container rather than bounding a normal
      * one; the node ceiling above is what bounds the agent. */
     syscheck->container_file_entry_limit      = 30000;
+    /* This schedules a full per-container walk, so the default matches the host's
+     * <frequency>. The drain's five-minute sweep only visits stored rows and is
+     * cheap enough to run much more often. */
+    syscheck->container_frequency             = 43200;
     syscheck->directories                     = OSList_Create();
 
     if (syscheck->directories == NULL) {

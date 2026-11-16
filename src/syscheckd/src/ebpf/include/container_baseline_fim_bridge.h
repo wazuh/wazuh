@@ -76,12 +76,32 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
  * included it would take the symbol with C++ linkage and fail to link. */
 void fim_container_baseline_rate_limit(void);
 
-/* The two row ceilings, read from the daemon's live configuration.
+/* The daemon's database lifetime barrier (syscheck.fim_scan_mutex), which the
+ * shutdown teardown trylocks to decide whether it may close the database.
+ * Container work that writes to file_entry holds it for the same reason a host
+ * scan does, so the teardown finds it busy instead of closing the database
+ * underneath. The mutex is NOT recursive: one entry point owns one guard, and
+ * it is always taken before container_state_mutex, the order the sync thread
+ * already uses when recovery reaches the container rows. Shutdown is checked
+ * only AFTER acquisition, because the teardown may have won the mutex while
+ * this thread was waiting for it.
+ *
+ * Shims for the same reason the rest here are: the C++ driver cannot include
+ * syscheck.h. Without a registered host API they do nothing and report no
+ * shutdown, which is what the unit tests' stub relies on. */
+void fim_container_scan_lock(void);
+void fim_container_scan_unlock(void);
+int fim_container_shutdown_process_on(void);
+
+/* The periodic container walk's interval and the two row ceilings, read from
+ * the daemon's live configuration.
  *
  * Shims for the same reason the logging ones are: the C++ driver cannot include
  * syscheck.h, and this library no longer reads the daemon's configuration
- * directly -- it is handed it. Both return 0, meaning unlimited, before the
- * host API is registered. */
+ * directly -- it is handed it. All three return 0 before the host API is
+ * registered: unlimited for the ceilings, and no periodic walk for the
+ * interval. */
+int fim_container_baseline_frequency(void);       /* seconds, 0 = never walk */
 int fim_container_baseline_row_limit(void);       /* per container */
 int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table */
 

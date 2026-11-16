@@ -60,6 +60,17 @@ namespace
 
     std::recursive_mutex container_state_mutex;
 
+    // The daemon's non-recursive database lifetime barrier. Entry points own
+    // exactly one guard; never acquire it while holding container_state_mutex.
+    class ScanGuard
+    {
+    public:
+        ScanGuard() { fim_container_scan_lock(); }
+        ~ScanGuard() { fim_container_scan_unlock(); }
+        ScanGuard(const ScanGuard&) = delete;
+        ScanGuard& operator=(const ScanGuard&) = delete;
+    };
+
     /// Plain pass-through for a message that needs no formatting. Preferred over
     /// the templates below by overload resolution, so a literal message skips
     /// snprintf entirely — no 512-byte truncation, and no -Wformat-security
@@ -1353,12 +1364,37 @@ namespace
                      "then its context.",
                      request.container_id.c_str());
 
-            // Idempotent: if the startup baseline's sweep already took this
-            // container, the transaction covers no rows and emits nothing, the
-            // budget release finds no entry, and the context DELETE matches none.
-            // Serialize with whole-node walks so their shared row statuses cannot be swept here.
-            std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
-            SweepOneContainer(request.container_id, CB_FIM_ORIGIN_EVENT);
+            // Its own try/catch, because this branch returns before the one that
+            // wraps the walk modes below, and this function's contract is that
+            // nothing may throw out of the consumer thread -- see the doc comment
+            // above. A transaction that cannot be opened must cost this container
+            // its cleanup, not the agent its syscheckd process.
+            try
+            {
+                ScanGuard scan;
+                if (fim_container_shutdown_process_on()) return;
+
+                // Idempotent: if the startup baseline's sweep already took this
+                // container, the transaction covers no rows and emits nothing, the
+                // budget release finds no entry, and the context DELETE matches none.
+                // Serialize with whole-node walks so their shared row statuses cannot be swept here.
+                std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+                SweepOneContainer(request.container_id, CB_FIM_ORIGIN_EVENT);
+            }
+            catch (const std::exception& err)
+            {
+                LogError("Container FIM reconcile: could not age out the rows of removed container '%s': %s. "
+                         "They are left for the next whole-node reconciliation.",
+                         request.container_id.c_str(),
+                         err.what());
+            }
+            catch (...)
+            {
+                LogError("Container FIM reconcile: could not age out the rows of removed container '%s'. "
+                         "They are left for the next whole-node reconciliation.",
+                         request.container_id.c_str());
+            }
+
             return;
         }
 
@@ -1384,47 +1420,49 @@ namespace
             admissionReply = fetchContainerAdmission();
         }
 
-        std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
-
         cb_monitored_path_t* paths      = nullptr;
         size_t               path_count = 0;
 
-        if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
-
-        if (!paths || path_count == 0U) return;
-
-        if (request.mode == ReconcileMode::deletePaths)
-        {
-            DeleteUnlinkedPaths(request, paths, path_count);
-            fim_free_container_monitored_paths(paths);
-            return;
-        }
-
-        // The admission snapshot is taken once, by the startup walk. A container
-        // created after it is in neither of its sets, which the storage path can
-        // only read as "may not report" -- so every row below would be stored
-        // sync=0 and stay that way for the life of the process, since nothing
-        // else retakes the listing. That is silence under the DEFAULT config,
-        // where no cap is configured at all.
-        //
-        // Ask again for exactly that container, and only for it: once refreshed
-        // it is known whether or not it was admitted, so a container the cap
-        // genuinely refuses does not re-ask on its next batch.
-        if (admissionReply)
-        {
-            if (applyContainerAdmission(*admissionReply) < 0)
-            {
-                // Withheld for now rather than reported regardless: the next event
-                // for this container asks again, and the cap is not something to
-                // override because one listing failed.
-                LogDebug("Container FIM reconcile: could not refresh admission for the new container '%s'; "
-                         "its rows stay withheld until a listing succeeds.",
-                         request.container_id.c_str());
-            }
-        }
-
         try
         {
+            ScanGuard scan;
+            if (fim_container_shutdown_process_on()) return;
+            std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+
+            if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
+
+            if (!paths || path_count == 0U) return;
+
+            if (request.mode == ReconcileMode::deletePaths)
+            {
+                DeleteUnlinkedPaths(request, paths, path_count);
+                fim_free_container_monitored_paths(paths);
+                return;
+            }
+
+            // The admission snapshot is taken once, by the startup walk. A container
+            // created after it is in neither of its sets, which the storage path can
+            // only read as "may not report" -- so every row below would be stored
+            // sync=0 and stay that way for the life of the process, since nothing
+            // else retakes the listing. That is silence under the DEFAULT config,
+            // where no cap is configured at all.
+            //
+            // Ask again for exactly that container, and only for it: once refreshed
+            // it is known whether or not it was admitted, so a container the cap
+            // genuinely refuses does not re-ask on its next batch.
+            if (admissionReply)
+            {
+                if (applyContainerAdmission(*admissionReply) < 0)
+                {
+                    // Withheld for now rather than reported regardless: the next event
+                    // for this container asks again, and the cap is not something to
+                    // override because one listing failed.
+                    LogDebug("Container FIM reconcile: could not refresh admission for the new container '%s'; "
+                             "its rows stay withheld until a listing succeeds.",
+                             request.container_id.c_str());
+                }
+            }
+
             if (request.mode == ReconcileMode::rewalkContainer)
             {
                 // A walk sees whole directories, so it can tell a deleted file from
@@ -1721,6 +1759,9 @@ extern "C" void fim_container_sweep_absent(void)
 {
     try
     {
+        ScanGuard scan;
+        if (fim_container_shutdown_process_on()) return;
+
         // may_detect_deletions is irrelevant here -- it governs how a WALK
         // treats absent rows, and this performs no walk. CB_FIM_ORIGIN_SCAN
         // because this is the scheduled floor rather than a reaction to an
@@ -1766,10 +1807,17 @@ extern "C" void fim_run_container_baseline(void)
         return;
     }
 
-    // Nothing below may throw into main(): this runs on syscheckd's main
-    // thread, which has no handler of its own.
+    // This function has several callers on different threads, so exceptions must
+    // be contained here rather than escaping into any of those callers.
     try
     {
+        ScanGuard scan;
+        if (fim_container_shutdown_process_on())
+        {
+            fim_free_container_monitored_paths(paths);
+            return;
+        }
+
         // Listed, and admission refreshed, BEFORE the walk: the walk's rows are
         // offered upward only for admitted containers. Only the fetch runs
         // outside the transaction lock; the walk and the sweep below share the
@@ -1899,19 +1947,29 @@ extern "C" void fim_container_events_start(void)
         if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch))
         {
             // A WARNING, not a debug line, and only reachable once we know the
-            // operator asked for container FIM. Without the drain there is no
-            // change detection at all: fim_run_container_baseline() is called
-            // once from main() and the only thing that re-runs it is the
-            // drain's own rebaselineAll, so container FIM degrades to a
-            // startup snapshot that never updates.
+            // operator asked for container FIM. Without the engine there is no
+            // event-driven file change detection, so surviving containers rely
+            // on start_daemon()'s periodic walk. With that walk disabled, their
+            // file state remains the startup snapshot.
             //
             // This being a debug line is how the missing rt_file.bpf.o install
             // rule survived to 1bdfb0990e unnoticed, and the object still has
             // no supply in the packaging pipeline (see 14 §14.6), so the
             // degradation has to be visible in ossec.log.
-            LogWarn("Container FIM: the eBPF event engine could not start, so container file "
-                    "changes will NOT be detected after the initial baseline. Container "
-                    "directories are configured, so this is a degradation, not a no-op.");
+            const int frequency = fim_container_baseline_frequency();
+
+            if (frequency > 0)
+            {
+                LogWarn("Container FIM: the eBPF event engine could not start, so event-driven file "
+                        "change detection is unavailable. File changes are only picked up by the "
+                        "periodic container walk every %d seconds.", frequency);
+            }
+            else
+            {
+                LogWarn("Container FIM: the eBPF event engine could not start and periodic container "
+                        "walks are disabled, so container file changes will NOT be detected after "
+                        "the initial baseline.");
+            }
             return;
         }
 
