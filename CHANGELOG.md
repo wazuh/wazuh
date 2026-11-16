@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41201](https://github.com/wazuh/wazuh/pull/41201))
 - Fixed `wazuh-remoted` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41297](https://github.com/wazuh/wazuh/pull/41297))
 - Fixed `wazuh-analysisd` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41298](https://github.com/wazuh/wazuh/pull/41298))
 - Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41261](https://github.com/wazuh/wazuh/pull/41261))
@@ -31,6 +32,12 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-logcollector` keeping the leading tab and indentation of the continuation lines of a multi-line `postgresql_log` message. ([#41307](https://github.com/wazuh/wazuh/pull/41307))
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
+
+### Other
+
+#### Changed
+
+- Updated the embedded Python dependencies `anyio`, `certifi`, `multidict`, `pyasn1`, `PyJWT`, `setuptools`, `urllib3` and `Werkzeug`.
 
 ## [v4.14.11]
 
