@@ -407,10 +407,9 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 `<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME` (`CERTS_DIR` and `CERTS_CONFIG` override the source directory and the YAML). `/etc/wazuh-manager/certs` is created as `0750 root:wazuh-manager`, like the installer does. The e2e indexer's certificates come from the same CA, so it is also the indexer CA, and the Server API gets the listener pair. Then the script:
 
 1. replaces the installation's CA: `/etc/wazuh-manager/ca/root-ca.pem` becomes the e2e CA's certificate (`root:root 644` in a `root:root 700` directory) and the installation's `ca/root-ca.key` is deleted, so this node can no longer issue pairs; `root-ca.key` of `e2e/certs/` is never copied;
-2. when `/etc/wazuh-manager/export/` exists, issues a new dashboard client pair (`CN=wazuh-dashboard`, `clientAuth`) from the e2e CA into `export/dashboard-client.pem` / `dashboard-client-key.pem`, in place of the one the installation issued from its own CA;
-3. verifies the deployed files (`openssl verify`, an expiry check of `remoted.pem`);
-4. runs `bin/wazuh-manager-resolve-credentials --install` (which republishes the new CA in `export/ca.pem`) and `--check`;
-5. prints the `<remote><https>` certificate settings of `/etc/wazuh-manager/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and `/etc/wazuh-manager/certs/root-ca.pem`.
+2. verifies the deployed files (`openssl verify`, an expiry check of `remoted.pem`);
+3. runs `bin/wazuh-manager-resolve-credentials --install` (which republishes the new CA in `export/ca.pem`) and `--check`;
+4. prints the `<remote><https>` certificate settings of `/etc/wazuh-manager/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and `/etc/wazuh-manager/certs/root-ca.pem`.
 
 Which files a manager needs and how the start checks them: [Provision certificates](../../docs/dev/run-sources.md#provision-certificates) and [Credentials](../../docs/ref/getting-started/credentials.md).
 
