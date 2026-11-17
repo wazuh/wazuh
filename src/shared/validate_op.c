@@ -672,11 +672,16 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     struct in6_addr net6;
     char aux_ip[IPSIZE + 1] = {0};
     char *save_ptr = NULL;
+    char *ip = NULL;
 
     memset(&net6, 0, sizeof(net6));
     strncpy(aux_ip, ip_address, IPSIZE);
 
-    if (OS_INVALID == get_ipv6_numeric(strtok_r(aux_ip, "/", &save_ptr), &net6)) {
+    ip = strtok_r(aux_ip, "/", &save_ptr);
+
+    if (ip == NULL || OS_INVALID == get_ipv6_numeric(ip, &net6)) {
+        /* Callers hold size + 1 bytes and may shrink a longer string into them without a terminator */
+        ip_address[size] = '\0';
         return OS_INVALID;
     }
 
@@ -695,6 +700,7 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     if (cidr_str) {
         cidr = atoi(cidr_str);
         if (cidr < 0 || cidr > DEFAULT_IPV6_PREFIX) {
+            ip_address[size] = '\0';
             return OS_INVALID;
         }
     }
