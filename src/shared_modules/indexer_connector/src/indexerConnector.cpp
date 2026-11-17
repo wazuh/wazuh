@@ -43,6 +43,8 @@ constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
+// A 409 or 429 that persists this long is reported by the dispatcher instead of being retried silently.
+constexpr auto SILENT_RETRY_TIME {std::chrono::minutes(1)};
 
 constexpr auto RECURSIVE_MAX_DEPTH {20};
 
@@ -1429,8 +1431,23 @@ IndexerConnector::IndexerConnector(
                 const auto onError = [this, &data, bulkSize](
                                          const std::string& error, const long statusCode, const std::string& errorBody)
                 {
-                    // Handle 4xx errors with detailed logging
-                    if (statusCode >= 400 && statusCode < 500)
+                    const auto retry = [this](const std::string& message)
+                    {
+                        const auto now = std::chrono::steady_clock::now();
+                        if (!m_retryingSince)
+                        {
+                            m_retryingSince = now;
+                        }
+                        if (now - *m_retryingSince < SILENT_RETRY_TIME)
+                        {
+                            throw PostponedElementException(message);
+                        }
+                        throw std::runtime_error(message);
+                    };
+
+                    // Handle 4xx errors with detailed logging, except the expected retries handled below.
+                    if (statusCode >= 400 && statusCode < 500 && statusCode != HTTP_CONTENT_LENGTH &&
+                        statusCode != HTTP_VERSION_CONFLICT && statusCode != HTTP_TOO_MANY_REQUESTS)
                     {
                         std::string type, reason;
                         extractErrorInfo(errorBody, type, reason);
@@ -1482,19 +1499,19 @@ IndexerConnector::IndexerConnector(
                         {
                             logDebug2(IC_NAME, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
                             this->m_dispatcher->bulkSize(bulkSize / 2);
-                            throw std::runtime_error("Bulk size is too large, reducing the elements to be sent to the "
-                                                     "indexer.");
+                            throw PostponedElementException("Bulk size is too large, reducing the elements to be sent "
+                                                            "to the indexer.");
                         }
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
-                        throw PostponedElementException("Document version conflict, retrying in 1 second.");
+                        retry("Document version conflict, retrying in 1 second.");
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
                         logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
-                        throw PostponedElementException("Too many requests, retrying in 1 second.");
+                        retry("Too many requests, retrying in 1 second.");
                     }
                     else
                     {
@@ -1520,6 +1537,7 @@ IndexerConnector::IndexerConnector(
             // local mirror, so they neither wait for its initialization nor for an available server.
             if (requests.empty())
             {
+                m_retryingSince.reset();
                 return;
             }
 
@@ -1543,6 +1561,8 @@ IndexerConnector::IndexerConnector(
                                           : serverUrl + "/_bulk?refresh=wait_for";
                 processData(payload, url);
             }
+            // A retried batch resends the requests that already succeeded, so the streak ends with the whole batch.
+            m_retryingSince.reset();
         },
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
