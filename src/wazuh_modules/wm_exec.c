@@ -332,6 +332,9 @@ static void* reader(void *args);   // Reading thread's start point
 
 extern char ** environ;
 
+// Signals wazuh-modulesd handles to shut down: a child must not run that handler before exec
+static const int wm_exec_handled_signals[] = { SIGTERM, SIGINT, SIGHUP };
+
 /**
  * @brief Send a signal to the process group of a command.
  *
@@ -571,6 +574,12 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
         *exitcode = 0;
     }
 
+    // The child cannot log, so check the directory here to report why the command did not run
+    if (work_dir != NULL && access(work_dir, X_OK) < 0) {
+        merror("Unable to change working directory to '%s': %s (%d)", work_dir, strerror(errno), errno);
+        return -1;
+    }
+
     // Create pipe for child's stdout
 
     if (output) {
@@ -603,9 +612,27 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
         new_environ = wm_exec_path_environ(add_path);
     }
 
+    // Block the termination signals across fork(), so the child never runs the parent's handlers
+
+    sigset_t blocked_signals;
+    sigset_t previous_signals;
+    sigemptyset(&blocked_signals);
+
+    for (size_t i = 0; i < sizeof(wm_exec_handled_signals) / sizeof(wm_exec_handled_signals[0]); i++) {
+        sigaddset(&blocked_signals, wm_exec_handled_signals[i]);
+    }
+
+    pthread_sigmask(SIG_BLOCK, &blocked_signals, &previous_signals);
+
     // Fork
 
-    switch (pid = fork()) {
+    pid = fork();
+
+    if (pid != 0) {
+        pthread_sigmask(SIG_SETMASK, &previous_signals, NULL);
+    }
+
+    switch (pid) {
     case -1:
 
         // Error
@@ -623,9 +650,24 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
 
     case 0:
 
-        // Child: async-signal-safe calls only until exec
+        // Child: no memory allocation, logging nor locks until exec
 
-        // Lead a new process group first, so that the timeout can signal the command
+        // A termination signal must end the child, not run the parent's handler. Ignored
+        // signals stay ignored, as exec would keep them.
+        for (size_t i = 0; i < sizeof(wm_exec_handled_signals) / sizeof(wm_exec_handled_signals[0]); i++) {
+            struct sigaction action;
+
+            if (sigaction(wm_exec_handled_signals[i], NULL, &action) == 0 && action.sa_handler != SIG_IGN && action.sa_handler != SIG_DFL) {
+                memset(&action, 0, sizeof(action));
+                action.sa_handler = SIG_DFL;
+                sigemptyset(&action.sa_mask);
+                sigaction(wm_exec_handled_signals[i], &action, NULL);
+            }
+        }
+
+        pthread_sigmask(SIG_SETMASK, &previous_signals, NULL);
+
+        // Lead a new process group, so that the timeout can signal the command
         setsid();
 
         if (work_dir != NULL && chdir(work_dir) < 0) {
@@ -685,11 +727,9 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
                 w_mutex_unlock(&tinfo.mutex);
 
                 // The write end was already closed above. Nobody will read the command's
-                // output, so do not leave it running nor unreaped. The child may not have
-                // made its own process group yet, so signal it directly as well.
+                // output, so do not leave it running nor unreaped.
                 close(pipe_fd[0]);
-                kill(-pid, SIGKILL);
-                kill(pid, SIGKILL);
+                wm_exec_signal(pid, SIGKILL);
                 waitpid(pid, &status, 0);
                 wm_remove_sid(pid);
 
