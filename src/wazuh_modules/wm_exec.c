@@ -330,6 +330,97 @@ static void* reader(void *args);   // Reading thread's start point
 #define WM_EXEC_REAP_STEP_MIN_MS 1
 #define WM_EXEC_REAP_STEP_MAX_MS 100
 
+extern char ** environ;
+
+// sigaction() rejects numbers that are not signals on the system
+#ifndef NSIG
+#define NSIG 65
+#endif
+
+/**
+ * @brief Check that a directory can be entered.
+ * @param dir Directory to check.
+ * @return 0 if it can, or -1 with errno set.
+ */
+static int wm_exec_check_dir(const char * dir) {
+    struct stat dir_stat;
+
+    if (stat(dir, &dir_stat) < 0) {
+        return -1;
+    }
+
+    if (!S_ISDIR(dir_stat.st_mode)) {
+        errno = ENOTDIR;
+        return -1;
+    }
+
+    return access(dir, X_OK);
+}
+
+/**
+ * @brief Build a copy of the environment with add_path prepended to PATH.
+ *
+ * The child of a multithreaded process must not allocate memory nor call setenv() before
+ * exec, so the parent builds the environment and the child only switches to it.
+ *
+ * @param add_path Directory to prepend to PATH.
+ * @return Environment to free with wm_exec_free_environ(), or NULL to keep the current one.
+ */
+static char ** wm_exec_path_environ(const char * add_path) {
+    const char * env_path = getenv("PATH");
+    char new_path[OS_SIZE_6144];
+    int written;
+
+    if (env_path == NULL) {
+        written = snprintf(new_path, sizeof(new_path), "%s", add_path);
+    } else if (strlen(env_path) >= sizeof(new_path)) {
+        merror("Unable to add '%s' to PATH: PATH environment variable too large.", add_path);
+        return NULL;
+    } else {
+        written = snprintf(new_path, sizeof(new_path), "%s:%s", add_path, env_path);
+    }
+
+    if (written < 0) {
+        merror("Unable to add '%s' to PATH: %s (%d).", add_path, strerror(errno), errno);
+        return NULL;
+    } else if ((size_t)written >= sizeof(new_path)) {
+        merror("Unable to add '%s' to PATH: new PATH environment variable too large.", add_path);
+        return NULL;
+    }
+
+    size_t count = 0;
+
+    while (environ != NULL && environ[count] != NULL) {
+        count++;
+    }
+
+    // The new PATH goes first, which is where wm_exec_free_environ() expects it
+    char ** new_environ = NULL;
+    size_t n = 0;
+    os_calloc(count + 2, sizeof(char *), new_environ);
+    os_calloc(strlen(new_path) + sizeof("PATH="), sizeof(char), new_environ[n]);
+    snprintf(new_environ[n++], strlen(new_path) + sizeof("PATH="), "PATH=%s", new_path);
+
+    for (size_t i = 0; i < count; i++) {
+        if (strncmp(environ[i], "PATH=", 5) != 0) {
+            new_environ[n++] = environ[i];
+        }
+    }
+
+    return new_environ;
+}
+
+/**
+ * @brief Free an environment built by wm_exec_path_environ(). The other entries belong to environ.
+ * @param new_environ Environment to free.
+ */
+static void wm_exec_free_environ(char ** new_environ) {
+    if (new_environ != NULL) {
+        os_free(new_environ[0]);
+        os_free(new_environ);
+    }
+}
+
 /**
  * @brief Wait for the reader thread to stop reading. The caller holds tinfo->mutex.
  * @param tinfo Data shared with the reader thread.
@@ -468,7 +559,15 @@ STATIC int wm_exec_exit_code(int status) {
 
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
+    return wm_exec_in_dir(command, output, exitcode, secs, add_path, NULL);
+}
+
+// Execute command from work_dir with timeout of secs
+
+int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const char * add_path, const char * work_dir)
+{
     char ** argv;
+    char ** new_environ = NULL;
     pid_t pid;
     int pipe_fd[2];
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, false, false };
@@ -479,6 +578,18 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
     if (exitcode) {
         *exitcode = 0;
+    }
+
+    // The child cannot log, so check the directory here to report why the command did not run
+    if (work_dir != NULL && wm_exec_check_dir(work_dir) < 0) {
+        merror("Unable to change working directory to '%s': %s (%d)", work_dir, strerror(errno), errno);
+
+        // Same exit code as a command the child cannot run, which callers check
+        if (exitcode) {
+            *exitcode = EXECVE_ERROR;
+        }
+
+        return -1;
     }
 
     // Create pipe for child's stdout
@@ -504,9 +615,49 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 #endif
     }
 
+    // The child must not log nor take locks before exec: another thread may have held one at
+    // fork(). Everything it needs is prepared here.
+
+    argv = w_strtok(command);
+
+    if (argv[0] == NULL) {
+        mdebug1("Invalid command: '%s'", command);
+
+        if (exitcode) {
+            *exitcode = EXECVE_ERROR;
+        }
+
+        if (output) {
+            close(pipe_fd[0]);
+            close(pipe_fd[1]);
+        }
+
+        free_strarray(argv);
+        return -1;
+    }
+
+    if (add_path != NULL) {
+        new_environ = wm_exec_path_environ(add_path);
+    }
+
+    // Block signals across fork(), so the child never runs the daemon's handlers
+
+    sigset_t blocked_signals;
+    sigset_t previous_signals;
+    sigset_t no_signals;
+    sigfillset(&blocked_signals);
+    sigemptyset(&no_signals);
+    pthread_sigmask(SIG_BLOCK, &blocked_signals, &previous_signals);
+
     // Fork
 
-    switch (pid = fork()) {
+    pid = fork();
+
+    if (pid != 0) {
+        pthread_sigmask(SIG_SETMASK, &previous_signals, NULL);
+    }
+
+    switch (pid) {
     case -1:
 
         // Error
@@ -518,52 +669,41 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             close(pipe_fd[1]);
         }
 
+        free_strarray(argv);
+        wm_exec_free_environ(new_environ);
         return -1;
 
     case 0:
 
-        // Child
+        // Child: no logging nor locks until exec
 
-        // Add environment variable if exists
+        // Reset handled signals to their default action, as exec would, so that a signal ends
+        // the child instead of running the daemon's handler. Ignored signals stay ignored.
+        for (int sig = 1; sig < NSIG; sig++) {
+            struct sigaction action;
 
-        if (add_path != NULL) {
-
-            char * new_path = NULL;
-            os_calloc(OS_SIZE_6144, sizeof(char), new_path);
-            char *env_path = getenv("PATH");
-
-            if (!env_path) {
-                snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
-            } else if (strlen(env_path) >= OS_SIZE_6144) {
-                merror("at wm_exec(): PATH environment variable too large.");
-            } else {
-                const int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
-
-                if (bytes_written >= OS_SIZE_6144) {
-                    merror("at wm_exec(): New environment variable too large.");
-                }
-                else if (bytes_written < 0) {
-                    merror("at wm_exec(): New environment variable error: %d (%s).", errno, strerror(errno));
-                }
+            if (sigaction(sig, NULL, &action) == 0 && action.sa_handler != SIG_IGN && action.sa_handler != SIG_DFL) {
+                memset(&action, 0, sizeof(action));
+                action.sa_handler = SIG_DFL;
+                sigemptyset(&action.sa_mask);
+                sigaction(sig, &action, NULL);
             }
-
-            if (setenv("PATH", new_path, 1) < 0) {
-                merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
-            }
-
-            char * new_env = getenv("PATH");
-            if (new_env != NULL) {
-                mdebug1("New 'PATH' environment variable set: '%s'", new_env);
-            }
-            os_free(new_path);
         }
 
-        argv = w_strtok(command);
+        // The command starts with no signal blocked, whatever the calling thread blocks
+        pthread_sigmask(SIG_SETMASK, &no_signals, NULL);
+
+        // The parent also does this, so the group exists whichever side runs first
+        setpgid(0, 0);
+
+        if (work_dir != NULL && chdir(work_dir) < 0) {
+            _exit(EXECVE_ERROR);
+        }
 
         int fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
-            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+            _exit(EXECVE_ERROR);
         }
 
         dup2(fd, STDIN_FILENO);
@@ -580,8 +720,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         close(fd);
 
-        setsid();
         if (nice(wm_task_nice)) {}
+
+        if (new_environ != NULL) {
+            environ = new_environ;
+        }
+
         execvp(argv[0], argv);
         _exit(EXECVE_ERROR);
 
@@ -590,6 +734,16 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     default:
 
         // Parent
+
+        // The command leads its own process group before anything can signal it
+        setpgid(pid, pid);
+
+        if (new_environ != NULL) {
+            mdebug1("New 'PATH' environment variable set: '%s'", new_environ[0] + strlen("PATH="));
+        }
+
+        free_strarray(argv);
+        wm_exec_free_environ(new_environ);
 
         wm_append_sid(pid);
 
@@ -606,11 +760,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 w_mutex_unlock(&tinfo.mutex);
 
                 // The write end was already closed above. Nobody will read the command's
-                // output, so do not leave it running nor unreaped. The child may not have
-                // made its own process group yet, so signal it directly as well.
+                // output, so do not leave it running nor unreaped.
                 close(pipe_fd[0]);
                 kill(-pid, SIGKILL);
-                kill(pid, SIGKILL);
                 waitpid(pid, &status, 0);
                 wm_remove_sid(pid);
 
@@ -674,7 +826,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             default:
                 if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                     retval = -1;
                 }
 
@@ -719,7 +871,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
                 } else { // Command finished
                     if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                        mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                        mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                         retval = -1;
                     } else {
                         retval = 0;
@@ -746,7 +898,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
                 default:
                     if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                        mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                        mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                         retval = -1;
                     }
 
@@ -763,7 +915,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             default:
                 if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                     retval = -1;
                 } else {
                     retval = 0;
