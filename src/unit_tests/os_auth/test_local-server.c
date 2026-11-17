@@ -1877,6 +1877,20 @@ static cJSON *agent_row(int id, const char *reenroll_secret) {
     return rows;
 }
 
+/* The shape of an agent whose credentials this manager replaced and which has not been heard from
+ * since: the row the per-agent warning is gated on. */
+static cJSON *stale_agent_row(int id, const char *name, const char *reenroll_secret) {
+    cJSON *rows = cJSON_CreateArray();
+    cJSON *row = cJSON_CreateObject();
+    cJSON_AddNumberToObject(row, "id", id);
+    cJSON_AddStringToObject(row, "name", name);
+    cJSON_AddStringToObject(row, "reenroll_secret", reenroll_secret);
+    cJSON_AddNumberToObject(row, "last_keepalive", 1000);
+    cJSON_AddNumberToObject(row, "reenroll_rotated_at", 2000);
+    cJSON_AddItemToArray(rows, row);
+    return rows;
+}
+
 static cJSON *reenroll(const char *kid, const char *name) {
     char request[1024];
     snprintf(request, sizeof(request),
@@ -1947,6 +1961,38 @@ static void test_reenroll_invalid_bearer_9027(void **state) {
     will_return(__wrap_wdb_get_agent_info, agent_row(7, REENROLL_SECRET));
     expect_verify("007", REENROLL_SECRET, W_REENROLL_INVALID);
     cJSON *response = reenroll("007", "some-agent");
+    assert_int_equal(response_error(response), 9027);
+    cJSON_Delete(response);
+}
+
+/* A refused re-enrollment for an agent the row shows as locked out is worth naming: nothing else
+ * tells an operator WHICH agent is stuck. The name comes from the row, not from the request. */
+static void test_reenroll_refused_for_a_stale_agent_warns_with_its_name(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_value(__wrap_wdb_get_agent_info, id, 11);
+    will_return(__wrap_wdb_get_agent_info, stale_agent_row(11, "stuck-agent", REENROLL_SECRET));
+    expect_verify("011", REENROLL_SECRET, W_REENROLL_INVALID);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Agent 'stuck-agent' (id '011') cannot re-enroll: this manager replaced its credentials and "
+                  "the agent never received them. Delete the agent and enroll it again.");
+
+    cJSON *response = reenroll("011", "whatever-the-caller-says");
+    assert_int_equal(response_error(response), 9027);
+    cJSON_Delete(response);
+}
+
+/* The same refusal for an agent the row does NOT show as locked out stays at debug: anyone who can
+ * reach /enroll can provoke it, so it must not be able to put lines in an operator's log. */
+static void test_reenroll_refused_for_a_healthy_agent_stays_quiet(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    expect_value(__wrap_wdb_get_agent_info, id, 12);
+    will_return(__wrap_wdb_get_agent_info, agent_row(12, REENROLL_SECRET));
+    expect_verify("012", REENROLL_SECRET, W_REENROLL_INVALID);
+
+    cJSON *response = reenroll("012", "healthy");
     assert_int_equal(response_error(response), 9027);
     cJSON_Delete(response);
 }
@@ -2670,6 +2716,8 @@ int main(void) {
         cmocka_unit_test(test_reenroll_unknown_agent_9026),
         cmocka_unit_test(test_reenroll_without_secret_9026),
         cmocka_unit_test(test_reenroll_invalid_bearer_9027),
+        cmocka_unit_test(test_reenroll_refused_for_a_stale_agent_warns_with_its_name),
+        cmocka_unit_test(test_reenroll_refused_for_a_healthy_agent_stays_quiet),
         cmocka_unit_test(test_reenroll_stale_9028),
         cmocka_unit_test(test_reenroll_rotates_key_and_secret_keeping_the_id),
         cmocka_unit_test(test_an_accepted_enrollment_is_journaled_with_its_credential),

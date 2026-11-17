@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS agent (
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq', 'syncreq_status', 'syncreq_keepalive')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
     disconnection_time INTEGER DEFAULT 0,
-    status_code INTEGER DEFAULT 0
+    status_code INTEGER DEFAULT 0,
+    reenroll_rotated_at INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);

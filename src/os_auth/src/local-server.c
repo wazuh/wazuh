@@ -1234,17 +1234,45 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
         return local_create_error_response(ERRORS[EREENROLLUNKNOWN].code, ERRORS[EREENROLLUNKNOWN].message);
     }
 
+    /* Taken from the row before it is freed, and from the row rather than from the request: `name`
+     * is whatever the caller sent, and the log line below must name the agent this manager knows.
+     * `rotated_at` past `last_keepalive` means the manager replaced this agent's credentials and has
+     * not heard from it since -- the shape of an agent that never received its new pair. */
+    const cJSON *j_row_name = cJSON_GetObjectItem(agent_info->child, "name");
+    const cJSON *j_keepalive = cJSON_GetObjectItem(agent_info->child, "last_keepalive");
+    const cJSON *j_rotated = cJSON_GetObjectItem(agent_info->child, "reenroll_rotated_at");
+    char row_name[128] = {0};
+    if (cJSON_IsString(j_row_name)) {
+        strncpy(row_name, j_row_name->valuestring, sizeof(row_name) - 1);
+    }
+    const double rotated_at = cJSON_IsNumber(j_rotated) ? j_rotated->valuedouble : 0;
+    const double last_keepalive = cJSON_IsNumber(j_keepalive) ? j_keepalive->valuedouble : 0;
+    const bool credentials_are_stale = rotated_at > 0 && last_keepalive < rotated_at;
+
     verdict = w_reenroll_verify(bearer, kid, j_secret->valuestring, (long)time(NULL), config.jwt_max_age, config.jwt_clock_skew);
     OPENSSL_cleanse(j_secret->valuestring, strlen(j_secret->valuestring));
     cJSON_Delete(agent_info);
 
     if (verdict != W_REENROLL_OK) {
-        /* Debug, not warn: remoted forwards these bearers unverified, so anyone who can reach /enroll can make
-         * this line fire at will. remoted's remoted.enroll.reenroll.* counters are the operator's view. */
         w_reenroll_abandon(kid);
-        mdebug1("Re-enrollment of agent '%s' refused: %s.", kid,
-                verdict == W_REENROLL_STALE ? "credential outside the accepted time window" : "invalid credential");
         ierror = verdict == W_REENROLL_STALE ? EREENROLLSTALE : EREENROLLINVALID;
+
+        /* Ordinarily debug, not warn: remoted forwards these bearers unverified, so anyone who can
+         * reach /enroll can make this line fire at will, and remoted's counters are the operator's
+         * view. The exception is an agent the row already shows as locked out -- credentials
+         * replaced, not seen since -- which a caller cannot arrange for a healthy agent. That one is
+         * worth a warning, because nothing else tells an operator WHICH agent is stuck, and it is
+         * throttled because an agent in that state retries for as long as it is left alone. */
+        if (ierror == EREENROLLINVALID && credentials_are_stale) {
+            w_auth_log_client_rejection(false,
+                                        "Agent '%s' (id '%s') cannot re-enroll: this manager replaced its "
+                                        "credentials and the agent never received them. Delete the agent and "
+                                        "enroll it again.",
+                                        row_name, kid);
+        } else {
+            mdebug1("Re-enrollment of agent '%s' refused: %s.", kid,
+                    verdict == W_REENROLL_STALE ? "credential outside the accepted time window" : "invalid credential");
+        }
         return local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     }
 
