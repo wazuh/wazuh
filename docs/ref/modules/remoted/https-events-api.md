@@ -342,7 +342,8 @@ See [Download endpoint](#download-endpoint-post-download) for the headers and in
   reservation is refused, or would leave less than an agent's byte share free (half of the budget,
   or `remoted.max_inflight_bytes_per_agent` when it is larger, and never less than
   `https.max_body_size` plus 4 KiB), or the compressor cannot be prepared, the response is sent
-  uncompressed, exactly as if `zstd` had not been offered.
+  uncompressed, exactly as if `zstd` had not been offered. The manager counts these downloads as
+  `remoted.download.uncompressed` and the compressed ones as `remoted.download.compressed`.
 - With `remoted.http_content_encoding_enabled` disabled the response is always uncompressed. The same
   option rejects `Content-Encoding: zstd` request bodies with `415`, and an agent that receives that
   `415` stops compressing requests until it restarts.

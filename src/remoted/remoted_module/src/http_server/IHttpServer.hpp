@@ -144,6 +144,9 @@ namespace remoted::http
         bool compressible {true};
         /// Exact total body size in bytes, when known.
         std::optional<std::uint64_t> sizeHint {};
+        /// Told whether the body goes out compressed, only when the client offered a coding the
+        /// server applies and the body is compressible.
+        std::function<void(bool compressed)> onCompression {};
     };
 
     /**

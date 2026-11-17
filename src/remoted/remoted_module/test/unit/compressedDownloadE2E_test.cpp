@@ -21,6 +21,7 @@
 #include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
+#include <wazuh_metrics/manager.hpp>
 
 #include <openssl/evp.h>
 #include <zstd.h>
@@ -327,7 +328,7 @@ namespace
                 "/download",
                 download::makeHandler(
                     download::ResourcePaths {m_root + "/shared", m_root + "/multigroups", m_root + "/upgrade"},
-                    {},
+                    m_metrics,
                     std::make_shared<const FixedGroupSource>(allowGroup)),
                 ResponseMode::Streamable);
             try
@@ -385,6 +386,11 @@ namespace
             return m_initialAvailable;
         }
 
+        const download::DownloadMetrics& metrics() const
+        {
+            return m_metrics;
+        }
+
         std::string configPath() const
         {
             return m_root + "/shared/web-servers/merged.mg";
@@ -427,6 +433,8 @@ namespace
         }
         std::optional<remoted::test::TestCertificate> m_cert;
         std::string m_root;
+        wazuh::metrics::Manager m_metricsManager;
+        download::DownloadMetrics m_metrics {download::makeDownloadMetrics(m_metricsManager)};
         HttpServerConfig m_config;
         std::unique_ptr<IHttpServer> m_server;
         std::unique_ptr<AuthGateway> m_gateway;
@@ -460,6 +468,8 @@ TEST(CompressedDownloadE2E, DecodedBodyHashEqualsTheFile)
     ASSERT_TRUE(std::holds_alternative<std::string>(decoded));
     EXPECT_EQ(std::get<std::string>(decoded), file);
     EXPECT_EQ(sha256Hex(std::get<std::string>(decoded)), sha256Hex(file));
+    EXPECT_EQ(server.metrics().compressed->get(), 1U);
+    EXPECT_EQ(server.metrics().uncompressed->get(), 0U);
 }
 
 TEST(CompressedDownloadE2E, WithoutAnOfferTheResponseIsPlain)
@@ -477,6 +487,9 @@ TEST(CompressedDownloadE2E, WithoutAnOfferTheResponseIsPlain)
         EXPECT_TRUE(response.complete);
         EXPECT_EQ(response.body, file) << "offer: [" << headers << "]";
     }
+    // Not offered: neither outcome is counted.
+    EXPECT_EQ(server.metrics().compressed->get(), 0U);
+    EXPECT_EQ(server.metrics().uncompressed->get(), 0U);
 }
 
 TEST(CompressedDownloadE2E, WpkIsNeverCompressedEvenIfOffered)
@@ -492,6 +505,9 @@ TEST(CompressedDownloadE2E, WpkIsNeverCompressedEvenIfOffered)
     EXPECT_FALSE(headerPresent(response.head, "content-encoding:")) << response.head;
     EXPECT_TRUE(response.complete);
     EXPECT_EQ(response.body, wpk);
+    // A WPK is not a degraded config download.
+    EXPECT_EQ(server.metrics().compressed->get(), 0U);
+    EXPECT_EQ(server.metrics().uncompressed->get(), 0U);
 }
 
 TEST(CompressedDownloadE2E, ErrorBodiesAreIdenticalWithAndWithoutTheOffer)
@@ -624,6 +640,8 @@ TEST(CompressedDownloadE2E, ARequestStillFitsWhileCompressedDownloadsAreActive)
     EXPECT_TRUE(headerPresent(heads[0], "content-encoding: zstd\r\n")) << heads[0];
     EXPECT_TRUE(headerPresent(heads[1], "content-encoding: zstd\r\n")) << heads[1];
     EXPECT_FALSE(headerPresent(heads[2], "content-encoding:")) << heads[2];
+    EXPECT_EQ(server.metrics().compressed->get(), 2U);
+    EXPECT_EQ(server.metrics().uncompressed->get(), 1U);
 
     const auto fitting = remoted::test::sendSignedRequest(
         server.port(), remoted::test::testAgentKey(), "/download", std::string(kMaxBody, 'x'));

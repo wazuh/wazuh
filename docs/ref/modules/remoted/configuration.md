@@ -1182,7 +1182,8 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
   after reserving, an agent's byte share is still free: half of the budget, or
   [`remoted.max_inflight_bytes_per_agent`](#remotedmax_inflight_bytes_per_agent) when it is larger, and
   never less than one maximum request (`https.max_body_size` plus 4 KiB). Otherwise the response is
-  sent uncompressed. With the defaults, compressed downloads hold at most 128 MiB between them, and the
+  sent uncompressed and counted as
+  [`remoted.download.uncompressed`](metrics.md#downloads--remoteddownload). With the defaults, compressed downloads hold at most 128 MiB between them, and the
   requests admitted while they run share the other 128 MiB, so size this budget for both during a mass
   configuration refresh. There is no separate option for this floor.
 

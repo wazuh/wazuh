@@ -94,6 +94,17 @@ namespace remoted::http
             fallback("compressor setup failed");
         }
 
+        if (response.onCompression)
+        {
+            try
+            {
+                response.onCompression(compressed.has_value());
+            }
+            catch (...)
+            {
+            }
+        }
+
         // Outside the try: an exception from the delivery must not lead to a second stream().
         m_inner->stream(compressed ? std::move(*compressed) : std::move(response));
     }
