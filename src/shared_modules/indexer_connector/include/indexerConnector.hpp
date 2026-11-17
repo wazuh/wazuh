@@ -148,8 +148,8 @@ public:
         const uint32_t& timeout = DEFAULT_INTERVAL);
 
     /**
-     * @brief Class constructor that initializes the publisher in a simplified state that doesn't index the data and
-     * only keeps the local DB synced.
+     * @brief Class constructor that initializes the publisher in a simplified state that neither indexes the data nor
+     * keeps it in the local DB, which it removes if a previous run left one.
      *
      * @param config Indexer configuration, including database_path and servers.
      * @param useSeekDelete If true, the connector will index the seek method to delete operation.

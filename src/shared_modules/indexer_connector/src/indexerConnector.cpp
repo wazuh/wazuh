@@ -1170,9 +1170,6 @@ void IndexerConnector::preInitialization(
     {
         throw std::runtime_error("Index name must be lowercase: " + m_indexName);
     }
-
-    m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
 }
 
 IndexerConnector::IndexerConnector(
@@ -1186,6 +1183,9 @@ IndexerConnector::IndexerConnector(
     : m_useSeekDelete(useSeekDelete)
 {
     preInitialization(logFunction, config);
+
+    m_db = std::make_unique<Utils::RocksDBWrapper>(
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -1694,69 +1694,23 @@ IndexerConnector::IndexerConnector(
 {
     preInitialization(logFunction, config);
 
+    // Only the sync with the indexer reads the mirror, and one kept from an earlier run would be stale by the time
+    // the indexer is enabled again.
+    const auto mirrorPath = std::string(DATABASE_BASE_PATH) + "db/" + m_indexName;
+    std::error_code error;
+    if (const auto removed = std::filesystem::remove_all(mirrorPath, error); error)
+    {
+        logWarn(IC_NAME, "Could not remove the local mirror '%s': %s", mirrorPath.c_str(), error.message().c_str());
+    }
+    else if (removed > 0)
+    {
+        logInfo(IC_NAME, "Local mirror '%s' removed: the indexer is disabled.", mirrorPath.c_str());
+    }
+
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [this](std::queue<std::string>& dataQueue)
+        [](std::queue<std::string>&)
         {
-            while (!dataQueue.empty())
-            {
-                auto data = dataQueue.front();
-                dataQueue.pop();
-                auto parsedData = nlohmann::json::parse(data);
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
-
-                // We only sync the local DB when the indexer is disabled
-                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
-                {
-                    if (m_useSeekDelete)
-                    {
-                        // Same match as the index-enabled constructor's DELETED branch: the exact id plus every
-                        // versioned key under "<id>_", never a sibling that merely shares the byte prefix. With no
-                        // bulk request to build, deleting a key that is not there is a harmless no-op.
-                        if (id.empty())
-                        {
-                            logWarn(IC_NAME, "Ignoring DELETED event with an empty id: %s", data.c_str());
-                        }
-                        else
-                        {
-                            m_db->delete_(id);
-
-                            // Named local: seek() only borrows the key as a string_view, read lazily on the
-                            // loop's begin() - a temporary here would already be gone by then.
-                            const auto idPrefix = id + "_";
-                            for (const auto& [key, _] : m_db->seek(idPrefix))
-                            {
-                                m_db->delete_(key);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        m_db->delete_(id);
-                    }
-                }
-                // We made the same operation for DELETED_BY_QUERY as for DELETED
-                else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
-                {
-                    // Named local: seek() only borrows the key as a string_view, read lazily on the loop's
-                    // begin() - a temporary here would already be gone by then.
-                    const auto idPrefix = id + "_";
-                    for (const auto& [key, _] : m_db->seek(idPrefix))
-                    {
-                        m_db->delete_(key);
-                    }
-                }
-                else
-                {
-                    // If the data does not contain the required fields, log a warning and continue.
-                    if (!parsedData.contains("data"))
-                    {
-                        logWarn(IC_NAME, "Event required field (data) is missing required fields: %s", data.c_str());
-                        continue;
-                    }
-                    const auto dataString = parsedData.at("data").dump();
-                    m_db->put(id, dataString);
-                }
-            }
+            // The dispatcher drops the events once the handler returns.
         },
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,

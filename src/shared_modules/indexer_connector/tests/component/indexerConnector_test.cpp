@@ -462,8 +462,8 @@ TEST_F(IndexerConnectorTest, Publish)
 }
 
 /**
- * @brief Test the indexer connector when the simplified object is created. We expect that no data is indexed but the
- * local DB is synced.
+ * @brief Test the indexer connector when the simplified object is created. We expect that no data is indexed and that
+ * no local DB is kept: the one a previous run left is removed and a later sync has nothing to push.
  *
  */
 TEST_F(IndexerConnectorTest, NoPublish)
@@ -488,6 +488,10 @@ TEST_F(IndexerConnectorTest, NoPublish)
                                    }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
+    const auto mirrorPath {std::filesystem::path("queue/indexer/db") / INDEXER_NAME};
+    std::filesystem::create_directories(mirrorPath);
+    std::ofstream(mirrorPath / "000001.sst") << "stale";
+
     // Create connector and make sure the connection isn't established.
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
@@ -503,8 +507,9 @@ TEST_F(IndexerConnectorTest, NoPublish)
                                                                           const std::string&,
                                                                           va_list)>>(nullptr))}; // Simplified object.
     EXPECT_ANY_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+    EXPECT_FALSE(std::filesystem::exists(mirrorPath)) << "The local DB of a previous run was kept";
 
-    // Publish content. The local DB should be updated but no data should be indexed.
+    // Publish content. Neither the local DB nor the index should be updated.
     nlohmann::json publishData;
     publishData["id"] = agentId + "_" + INDEX_ID_A;
     publishData["operation"] = "INSERT";
@@ -513,9 +518,10 @@ TEST_F(IndexerConnectorTest, NoPublish)
     EXPECT_ANY_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
     ASSERT_FALSE(callbackCalled);
 
-    // Now we create the normal object and check the data is synced without pushing it again
+    // Now we create the normal object and check that the sync has nothing to push
 
     indexerConnector.reset();
+    EXPECT_FALSE(std::filesystem::exists(mirrorPath)) << "The local DB was created with the indexer disabled";
     indexerConnector =
         std::make_shared<IndexerConnector>(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT);
     ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
@@ -538,8 +544,8 @@ TEST_F(IndexerConnectorTest, NoPublish)
             return R"({"_scroll_id":"abcdef","hits": {"total" : {"value": 0}, "hits": []}})";
         });
     indexerConnector->sync(agentId);
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
-    ASSERT_TRUE(callbackCalled);
+    EXPECT_ANY_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(callbackCalled);
     ASSERT_TRUE(searchCallbackCalled);
     ASSERT_TRUE(deleteScrollCallbackCalled);
 }
