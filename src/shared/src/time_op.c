@@ -82,6 +82,18 @@ void gettime(struct timespec * ts) {
 
 #endif
 
+int64_t w_get_epoch_ms(void) {
+    struct timeval tv;
+
+    /* Wall clock on purpose, NOT the monotonic one above: this value is compared against an instant
+     * another process -- and on a cluster another node -- stamped, so it has to share an epoch with
+     * them. It can therefore jump with an NTP step, which is why the deadline it
+     * serves is fail-safe: an implausible comparison degrades to "no deadline", never to "expired". */
+    gettimeofday(&tv, NULL);
+
+    return (int64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
 time_t w_get_monotonic_time(void) {
 #ifdef WIN32
     return (time_t)(GetTickCount64() / 1000);
