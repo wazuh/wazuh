@@ -254,8 +254,20 @@ if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
 fi
 
-# A configuration file that could not be kept must not look like a clean upgrade.
-if [ -n "${restore_failed}" ]; then
-    echo "ERROR: the upgrade could not keep all the agent configuration; see the warnings above." >&2
+# A configuration file that could not be kept must not look like a clean upgrade, and neither must
+# one the agent cannot read: a config kept as a link is not re-owned, so the file it points to may
+# be out of reach of the account the agent runs as, and the agent does not start. The read check is
+# skipped when sudo cannot run as that account at all, so it never fails an upgrade on its own.
+config_unreadable=""
+if [ -n "${upgrade}" ] && sudo -u ${USER} /usr/bin/true 2> /dev/null; then
+    for conf in ossec.conf client.keys; do
+        if ! sudo -u ${USER} /bin/test -r ${DIR}/etc/${conf}; then
+            echo "WARNING: the ${USER} account cannot read ${DIR}/etc/${conf}; the agent will not start until it can. For a linked file, check the owner, group and mode of the file it points to." >&2
+            config_unreadable="yes"
+        fi
+    done
+fi
+if [ -n "${restore_failed}" ] || [ -n "${config_unreadable}" ]; then
+    echo "ERROR: the agent configuration is not all in place after the upgrade; see the warnings above." >&2
     exit 1
 fi
