@@ -14,8 +14,8 @@ Filebeat is its own package, so removing the 4.x manager does not remove it. Rem
 | `output.elasticsearch.username` | `username` in the `indexer` family of the keystore (default `wazuh-manager`) | Keystore |
 | `output.elasticsearch.password` | `password` in the `indexer` family of the keystore, filled from `WAZUH_INDEXER_MANAGER_PASSWORD` | Keystore |
 | `output.elasticsearch.ssl.certificate_authorities` | `<indexer><ssl><certificate_authorities><ca>` | `wazuh-manager.conf` |
-| `output.elasticsearch.ssl.certificate` | `<indexer><ssl><certificate>` | `wazuh-manager.conf` |
-| `output.elasticsearch.ssl.key` | `<indexer><ssl><key>` | `wazuh-manager.conf` |
+| `output.elasticsearch.ssl.certificate` | `<indexer><ssl><certificate>`, only for an indexer that requires client certificates | `wazuh-manager.conf` |
+| `output.elasticsearch.ssl.key` | `<indexer><ssl><key>`, with `certificate` | `wazuh-manager.conf` |
 
 Every other `filebeat.yml` setting is gone:
 
@@ -27,7 +27,7 @@ Every other `filebeat.yml` setting is gone:
 
 ## Migration steps
 
-The 5.x installation already configures the connector: the installer writes an `<indexer>` section pointing at `https://127.0.0.1:9200` with `certs/indexer-ca.pem` and the client pair `certs/indexer-connector.pem`, imports those files from a 5.x indexer on the same host, and stores in the keystore the indexer password supplied as `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env` or published by that indexer (see [Indexer trust](../../ref/getting-started/credentials.md#indexer-trust)). The steps below carry over what differs in your 4.x deployment.
+The 5.x installation already configures the connector: the installer writes an `<indexer>` section pointing at `https://127.0.0.1:9200` with `certs/indexer-ca.pem` and no client certificate, imports that file from a 5.x indexer on the same host, and stores in the keystore the indexer password supplied as `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env` or published by that indexer (see [Indexer trust](../../ref/getting-started/credentials.md#indexer-trust)). The steps below carry over what differs in your 4.x deployment.
 
 ### 1. Record your current Filebeat settings
 
@@ -35,37 +35,31 @@ From `/etc/filebeat/filebeat.yml`, note:
 
 - Indexer host(s) and port
 - Username and password
-- Paths to the CA, certificate, and key files
+- Path to the CA file, and to the certificate and key files if the indexer requires client certificates
 
 ### 2. Deploy the certificates
 
-The connector verifies the indexer against `/etc/wazuh-manager/certs/indexer-ca.pem` and presents
-`/etc/wazuh-manager/certs/indexer-connector.pem` with its key. `/etc/wazuh-manager/certs/root-ca.pem` is the
-manager's own CA bundle, the one agents pin: it is not the connector's, so **do not overwrite it** with the
-indexer's CA.
+The connector verifies the indexer against `/etc/wazuh-manager/certs/indexer-ca.pem` and authenticates with the
+indexer password (step 3). `/etc/wazuh-manager/certs/root-ca.pem` is the manager's own CA bundle, the one agents
+pin: it is not the connector's, so **do not overwrite it** with the indexer's CA.
 
-- **The indexer runs on this host as 5.x**: nothing to do; the manager imported its CA and client pair.
-- **Otherwise**, stage the indexer's CA as `indexer-ca.pem`, and a client pair it issued for this manager as the
-  connector's files. The pair must carry `extendedKeyUsage` `clientAuth`, or the manager refuses it before
-  starting. The pair Filebeat used, as `wazuh-certs-tool` issues it, carries no `extendedKeyUsage`: issue a new
-  one with the same CA as shown in
-  [Certificates and credentials](manager-4x-to-5x.md#certificates-and-credentials). Run as root:
+- **The indexer runs on this host as 5.x**: nothing to do; the manager imported its CA.
+- **Otherwise**, stage the indexer's CA as `indexer-ca.pem`. Run as root:
 
 ```bash
-CERTS=/etc/wazuh-manager/certs
-
 tar -xf wazuh-certificates.tar -C /tmp ./root-ca.pem
-install -m 0640 -o root -g wazuh-manager /tmp/root-ca.pem           $CERTS/indexer-ca.pem
-install -m 0640 -o root -g wazuh-manager indexer-connector.pem      $CERTS/indexer-connector.pem
-install -m 0640 -o root -g wazuh-manager indexer-connector-key.pem  $CERTS/indexer-connector-key.pem
+install -m 0640 -o root -g wazuh-manager /tmp/root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
 rm -f /tmp/root-ca.pem
 ```
 
-The files are `root:wazuh-manager` `0640`, the ownership and mode the installation gives the connector's files, so
-the daemons read them after dropping privileges. Staged without an import marker, they are checked before every
-start and never replaced: a client pair not issued by `indexer-ca.pem`, without `clientAuth`, or not matching its key
-stops the start with an `INVALID` line naming the file, while an expired or not-yet-valid one only logs a `WARNING`
-(the indexer connection fails until it is renewed).
+The file is `root:wazuh-manager` `0640`, the ownership and mode the installation gives the connector's files, so
+the daemons read it after dropping privileges. Staged without an import marker, it is checked before every start
+and never replaced: a file that holds anything but CA certificates stops the start with an `INVALID` line naming
+it, while an expired or not-yet-valid CA only logs a `WARNING` (the indexer connection fails until it is renewed).
+
+The certificate and key Filebeat used are not needed. Only an indexer that requires client certificates needs a
+client pair, named in `<certificate>` and `<key>`; it must carry `extendedKeyUsage` `clientAuth`, which a
+`wazuh-certs-tool` node certificate lacks (see [Configured file names](../../ref/getting-started/credentials.md#configured-file-names)).
 
 ### 3. Store the credentials in the keystore
 
@@ -80,7 +74,7 @@ A value already in the keystore is kept on every later start, whatever `local.en
 
 ### 4. Configure the `<indexer>` block
 
-Edit the `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` with your hosts and certificate paths:
+Edit the `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` with your hosts and CA path:
 
 ```xml
 <indexer>
@@ -91,8 +85,6 @@ Edit the `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` with you
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -124,7 +116,7 @@ sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-Confirm that the indexer accepts the manager's certificate and credentials, and read the connector's verdict on each node in the manager log, as [Verifying Connectivity](../../ref/modules/indexer_connector/configuration.md#verifying-connectivity) describes.
+Confirm that the indexer accepts the manager's credentials, and read the connector's verdict on each node in the manager log, as [Verifying Connectivity](../../ref/modules/indexer_connector/configuration.md#verifying-connectivity) describes.
 
 ### 6. Remove Filebeat
 

@@ -137,8 +137,8 @@ instead, on every boot:
 * stages the node's own leaf as **both** `remoted.pem` and `apid.pem` (with their keys): the minted
   pairs no longer chain, and the resolver never reissues a pair outside an install;
 * stages the indexer trust the manager consumes but never generates — `indexer-ca.pem` (the lab
-  CA), the `indexer-connector` pair (`admin.pem`) — and writes `local.env` with
-  `WAZUH_INDEXER_MANAGER_PASSWORD` (see [Indexer](#indexer)).
+  CA), the `indexer-connector` pair (`admin.pem`), which it names in `<indexer><ssl>` — and writes
+  `local.env` with `WAZUH_INDEXER_MANAGER_PASSWORD` (see [Indexer](#indexer)).
 
 A start the resolver still refuses exits 1 with no daemon running; the entrypoint says so, and
 the reason (`MISSING|INVALID|UNSAFE <path>: …`) is in the manager log it tails (`docker logs
@@ -349,11 +349,12 @@ The configuration directory is selected by `OPENSEARCH_PATH_CONF`, not by `-Epat
 was removed and stops the node from starting.
 
 The managers reach it over `https://wazuh-indexer:9200` with `admin.pem`. A single-host install
-imports the indexer's CA, client pair and password from `/etc/wazuh-indexer/export/`; here the two
-are separate containers, so the manager entrypoint stages them under the names the generated
-`<indexer><ssl>` block already uses: the lab CA as `certs/indexer-ca.pem` and `admin.pem` /
-`admin-key.pem` as `certs/indexer-connector.pem` / `-key.pem`. The pair must carry `clientAuth`,
-or every start is refused.
+imports the indexer's CA and password from `/etc/wazuh-indexer/export/`; here the two are separate
+containers, so the manager entrypoint stages the lab CA as `certs/indexer-ca.pem`, the name the
+generated `<indexer><ssl>` block already uses, and `admin.pem` / `admin-key.pem` as
+`certs/indexer-connector.pem` / `-key.pem`, which it adds to that block as `<certificate>` and
+`<key>` (the generated block names no client pair). The pair must carry `clientAuth`, or every
+start is refused.
 
 The resolver also requires `WAZUH_INDEXER_MANAGER_PASSWORD` before any start. The entrypoint
 writes it to `/etc/wazuh-manager/local.env` (root, `0600`) on a node that has none, from

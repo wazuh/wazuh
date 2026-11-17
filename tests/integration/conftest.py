@@ -179,12 +179,14 @@ def load_wazuh_basic_configuration():
     # workflow provisions them with wazuh-certs-tool), and authd reuses that pair. Its certificate paths
     # are also relative ('etc/certs/...'), which resolve against the installation home, while the
     # certificates live in the fixed manager configuration directory. The strict loader checks the files
-    # at service start, so a stale path would abort the whole restart. Fix both here until the template is
-    # updated in qa-integration-framework.
+    # at service start, so a stale path would abort the whole restart. It also names an indexer client
+    # pair, which no installation configures or stages, and the credential resolver refuses to start
+    # without a configured pair. Fix all three here until the template is updated in
+    # qa-integration-framework.
     minimal_configuration = [re.sub(r'(?<![\w/])etc/certs/', MANAGER_CERTS_DIR + '/',
                                     line.replace('etc/certs/authd.pem', 'etc/certs/remoted.pem')
                                         .replace('etc/certs/authd-key.pem', 'etc/certs/remoted-key.pem'))
-                             for line in minimal_configuration]
+                             for line in minimal_configuration if 'indexer-connector' not in line]
 
     # Make a backup from current configuration
     backup_ossec_configuration = configuration.get_wazuh_conf()

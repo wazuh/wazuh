@@ -12,8 +12,6 @@ set -euo pipefail
 #
 #   root-ca.pem             -> root-ca.pem                 root:wazuh-manager  640
 #   root-ca.pem             -> indexer-ca.pem              root:wazuh-manager  640
-#   <node>.pem              -> indexer-connector.pem       root:wazuh-manager  640
-#   <node>-key.pem          -> indexer-connector-key.pem   root:wazuh-manager  640
 #   <node>-remoted.pem      -> remoted.pem                 root:wazuh-manager  640
 #   <node>-remoted-key.pem  -> remoted-key.pem             root:wazuh-manager  640
 #   <node>-remoted.pem      -> apid.pem                    root:wazuh-manager  640
@@ -23,8 +21,8 @@ set -euo pipefail
 # profile of remoted.pem, and the e2e reaches the API on localhost, which its SAN carries.
 #
 # The e2e indexer's certificates come from the same CA, so it is also the indexer
-# CA, and the manager node's certificate (issued with clientAuth) is the indexer
-# client pair.
+# CA. No indexer client pair is deployed: the manager authenticates to the indexer
+# with the keystore's user and password, and its configuration names no pair.
 #
 # Every daemon opens its pair after dropping privileges, through the group: the
 # files stay root-owned so the service user can read them but never rewrite them.
@@ -35,9 +33,7 @@ set -euo pipefail
 # come from the e2e CA, so that CA is replaced by the e2e CA's certificate alone
 # (root:root 644 in a root:root 700 ca/): the credential resolver checks at every
 # start that the Server API pair chains to it, and with no key beside it nothing
-# can be issued on this node. root-ca.key is never copied; it only signs, here, the dashboard
-# client pair published in export/ (CN=wazuh-dashboard, clientAuth), which replaces the one the
-# installation issued from its own CA. Then
+# can be issued on this node. root-ca.key is never copied. Then
 # wazuh-manager-resolve-credentials --install publishes the new CA in
 # export/ca.pem, and --check confirms the start will find nothing to refuse.
 #
@@ -129,8 +125,6 @@ echo "==> Manager node: ${MANAGER_NODE_NAME}"
 CERT_TABLE=(
     "root-ca.pem|root-ca.pem"
     "root-ca.pem|indexer-ca.pem"
-    "${MANAGER_NODE_NAME}.pem|indexer-connector.pem"
-    "${MANAGER_NODE_NAME}-key.pem|indexer-connector-key.pem"
     "${MANAGER_NODE_NAME}-remoted.pem|remoted.pem"
     "${MANAGER_NODE_NAME}-remoted-key.pem|remoted-key.pem"
     "${MANAGER_NODE_NAME}-remoted.pem|apid.pem"
@@ -159,31 +153,8 @@ install -d -m 700 -o root -g root "${CONF_DIR}/ca"
 rm -f "${CONF_DIR}/ca/root-ca.key" "${CONF_DIR}/ca/.wazuh-manager-bootstrap-ca"
 install -m 644 -o root -g root "${CERTS_DIR}/root-ca.pem" "${CONF_DIR}/ca/root-ca.pem"
 
-# The installation also issued export/dashboard-client.pem from the CA just replaced; with no key
-# in ca/ the resolver cannot reissue it and warns at every start that it no longer chains to the
-# manager's CA. Issue it from the e2e CA instead, the way an operator with their own PKI provides
-# it (CN=wazuh-dashboard, clientAuth only, a key of its own), and drop the resolver's marker so the
-# pair counts as the operator's and is never replaced.
-EXPORT_DIR="${CONF_DIR}/export"
-if [ -d "${EXPORT_DIR}" ] && [ -s "${CERTS_DIR}/root-ca.key" ]; then
-    echo "==> Issuing the dashboard client pair from the e2e CA into ${EXPORT_DIR}..."
-    dc_tmp="$(mktemp -d)"
-    printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n' > "${dc_tmp}/ext.cnf"
-    openssl req -new -newkey rsa:2048 -nodes -subj "/CN=wazuh-dashboard" \
-        -keyout "${dc_tmp}/key.pem" -out "${dc_tmp}/req.csr" 2>/dev/null
-    openssl x509 -req -in "${dc_tmp}/req.csr" -CA "${CERTS_DIR}/root-ca.pem" -CAkey "${CERTS_DIR}/root-ca.key" \
-        -CAcreateserial -CAserial "${dc_tmp}/ca.srl" -days 3650 -sha256 -extfile "${dc_tmp}/ext.cnf" \
-        -out "${dc_tmp}/cert.pem" 2>/dev/null
-    rm -f "${EXPORT_DIR}/.dashboard-client.issued"
-    install -m 600 -o root -g root "${dc_tmp}/key.pem" "${EXPORT_DIR}/dashboard-client-key.pem"
-    install -m 644 -o root -g root "${dc_tmp}/cert.pem" "${EXPORT_DIR}/dashboard-client.pem"
-    rm -rf "${dc_tmp}"
-    openssl verify -CAfile "${CONF_DIR}/ca/root-ca.pem" -purpose sslclient "${EXPORT_DIR}/dashboard-client.pem" | sed 's/^/    /'
-fi
-
 echo "==> Verifying the deployed certificates..."
 openssl verify -CAfile "${CONF_DIR}/ca/root-ca.pem" "${DEST_DIR}/remoted.pem" "${DEST_DIR}/apid.pem" | sed 's/^/    /'
-openssl verify -CAfile "${DEST_DIR}/indexer-ca.pem" -purpose sslclient "${DEST_DIR}/indexer-connector.pem" | sed 's/^/    /'
 if ! openssl x509 -in "${DEST_DIR}/remoted.pem" -noout -checkend 0 >/dev/null; then
     echo "ERROR: ${DEST_DIR}/remoted.pem has expired." >&2
     exit 1

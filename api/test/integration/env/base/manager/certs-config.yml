@@ -4,8 +4,7 @@
 # with name, ip and dns). Keep comments on their own lines: the tool's parser does
 # not strip trailing comments.
 nodes:
-  # Wazuh indexer node: <name>.pem / <name>-key.pem are installed as
-  # indexer-connector.pem / indexer-connector-key.pem.
+  # Wazuh indexer node: nothing issued for it is installed in the image.
   indexer:
     - name: wazuh-indexer
       ip: 127.0.0.1
