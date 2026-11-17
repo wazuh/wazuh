@@ -67,16 +67,17 @@ if [ -d "${DIR}" ]; then
     # Copy only a regular file with a single hard link. A symlink or a hard link may be how an
     # operator keeps the file elsewhere, or one the wazuh account planted (macOS has no
     # protected_hardlinks): rename it into the backup as it is, so postinstall renames it back and
-    # the link survives the upgrade without its target ever being read or written.
+    # the link survives the upgrade without its target ever being read or written. Anything else at
+    # that name (a directory, a FIFO) is renamed aside the same way; postinstall does not restore it
+    # and fails the upgrade. A rename that fails leaves a marker so postinstall fails the upgrade too.
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ -f ${DIR}/etc/${conf} ] && [ ! -L ${DIR}/etc/${conf} ] && [ -n "$(find ${DIR}/etc/${conf} -prune -links 1 2>/dev/null)" ]; then
             cp -R ${DIR}/etc/${conf} ${DIR}/config_files/
-        elif [ -L ${DIR}/etc/${conf} ] || [ -f ${DIR}/etc/${conf} ]; then
-            mv -f ${DIR}/etc/${conf} ${DIR}/config_files/${conf}
-        elif [ -e ${DIR}/etc/${conf} ]; then
-            # Neither a file nor a link (a directory, a FIFO): remove it so the package lays a default.
-            echo "WARNING: ${DIR}/etc/${conf} is not a regular file or a link; removing it, the package default will be used." >&2
-            rm -rf ${DIR}/etc/${conf}
+        elif [ -e ${DIR}/etc/${conf} ] || [ -L ${DIR}/etc/${conf} ]; then
+            if ! mv -f ${DIR}/etc/${conf} ${DIR}/config_files/${conf}; then
+                echo "WARNING: could not back up ${DIR}/etc/${conf}; the package default will be used." >&2
+                touch ${DIR}/config_files/backup_failed
+            fi
         fi
     done
     # etc/shared: a planted symlink is removed so the default is used; a real directory is backed up

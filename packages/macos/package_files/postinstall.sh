@@ -31,7 +31,11 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     # package default with a plain mv, which puts a link back as a link without touching its target:
     # -h is not used because it does not exist before macOS 12.5 (Apple file_cmds-353) and the agent
     # supports older releases, and by this point the destination is the package's regular file.
+    # Anything else that was at a config name (a directory, a FIFO) is not restored. That, a failed
+    # restore, or a backup preinstall could not take (its marker) makes this script exit non-zero at
+    # the end, so the installer does not report a successful upgrade.
     restore_failed=""
+    [ -e ${DIR}/config_files/backup_failed ] && restore_failed="yes"
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ ! -e ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
             continue
@@ -41,8 +45,8 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
                 restore_failed="yes"
             fi
         else
-            echo "WARNING: ${DIR}/config_files/${conf} is not a regular file; not restored, the package-installed ${DIR}/etc/${conf} is left in place." >&2
-            rm -rf ${DIR}/config_files/${conf}
+            echo "WARNING: ${DIR}/etc/${conf} was not a regular file or a link; not restored, the package default is in place and the entry is kept for recovery." >&2
+            restore_failed="yes"
         fi
     done
 
@@ -248,4 +252,10 @@ fi
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     echo "Restarting Wazuh..."
     launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
+fi
+
+# A configuration file that could not be kept must not look like a clean upgrade.
+if [ -n "${restore_failed}" ]; then
+    echo "ERROR: the upgrade could not keep all the agent configuration; see the warnings above." >&2
+    exit 1
 fi
