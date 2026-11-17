@@ -598,7 +598,7 @@ def test_future_events_yes_every_tenant(test_configuration, test_metadata, set_w
                                         msgraph_bookmarks, daemons_handler, wait_for_msgraph_start, proxy_setup):
     '''
     description: Check that `only_future_events` set to yes applies to every tenant with a saved bookmark, not only
-                 to the first tenant scanned after the module starts.
+                 to the first tenant scanned after the module starts, and also to a tenant that gets no access token.
     wazuh_min_version: 4.14.12
 
     tier: 0
@@ -633,12 +633,14 @@ def test_future_events_yes_every_tenant(test_configuration, test_metadata, set_w
             brief: Setups the API proxy application.
 
     assertions:
-        - Verify that each tenant moves its saved bookmark to the current time on its first scan.
+        - Verify that each tenant moves its saved bookmark to the current time on its first scan, with or without an
+          access token.
         - Verify that no tenant requests the logs since its saved bookmark.
 
     input_description: A configuration template is contained in an external YAML file
-                       (config_API_two_tenants.yaml), with two tenants. That template is combined with the test case
-                       defined in the module, which includes the bookmark each tenant has before the module starts.
+                       (config_API_two_tenants.yaml), with two tenants. That template is combined with the test cases
+                       defined in the module, which include the bookmark each tenant has before the module starts. In
+                       one of them, the API proxy refuses the access token request of the second tenant.
 
     expected_output:
         - r".*wazuh-modulesd:ms-graph.*Bookmark updated to '.*' for tenant 'tenant_a' .* to run first scan"
