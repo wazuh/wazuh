@@ -96,6 +96,42 @@ TEST_F(ReflectiveJsonTest, EscapedStringValue)
     EXPECT_NE(result.find(R"("key":"He said \"Hello\"")"), std::string::npos);
 }
 
+TEST_F(ReflectiveJsonTest, EscapedMapKeys)
+{
+    std::unordered_map<std::string, int> map {
+        {R"(x":1,"ubuntu":0,"y)", 1}, {"back\\slash", 2}, {"ctrl\n\t\x01", 3}, {"ubuntu", 4}};
+
+    std::string result = jsonFieldToString(map);
+
+    nlohmann::json parsedJson;
+    ASSERT_NO_THROW(parsedJson = nlohmann::json::parse(result)) << "Invalid JSON output: " << result;
+    EXPECT_EQ(parsedJson, nlohmann::json(map)) << result;
+}
+
+TEST_F(ReflectiveJsonTest, EscapedMapKeysInStruct)
+{
+    TestData<std::map<std::string, int64_t, std::less<>>> obj;
+    obj.fieldOne = "one";
+    obj.fieldTwo = 2;
+    obj.fieldThree = {{R"(x":1,"ubuntu":0,"y)", 1}, {"back\\slash", 2}, {"ctrl\n\t\x01", 3}, {"ubuntu", 4}};
+
+    nlohmann::json expectedMap = nlohmann::json::object();
+    for (const auto& [key, value] : obj.fieldThree)
+    {
+        expectedMap[key] = value;
+    }
+
+    std::string json;
+    serializeToJSON(obj, json);
+
+    for (const auto& result : {json, serializeToJSON(obj)})
+    {
+        nlohmann::json parsedJson;
+        ASSERT_NO_THROW(parsedJson = nlohmann::json::parse(result)) << "Invalid JSON output: " << result;
+        EXPECT_EQ(parsedJson.at("fieldThree"), expectedMap) << result;
+    }
+}
+
 TEST_F(ReflectiveJsonTest, BasicStructSerialization)
 {
     TestData<double> obj;
