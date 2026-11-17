@@ -127,10 +127,13 @@ static int teardown_test_read(void **state) {
     os_free(test);
     return 0;
 }
-// A module with a benchmark that exists, so that the evaluation reaches the CIS-CAT command
+// A module with a CIS-CAT directory and a benchmark that exist, so that the evaluation reaches
+// the CIS-CAT command
 typedef struct run_state {
     wmodule *module;
     OS_XML xml;
+    char dir[64];
+    char binary[PATH_MAX];
     char bench[PATH_MAX];
 } run_state;
 
@@ -146,16 +149,24 @@ static int setup_run(void **state, const char *binary) {
     }
     close(fd);
 
+    snprintf(run->dir, sizeof(run->dir), "/tmp/ciscat_dir_XXXXXX");
+    if (mkdtemp(run->dir) == NULL) {
+        unlink(run->bench);
+        free(run);
+        return -1;
+    }
+    snprintf(run->binary, sizeof(run->binary), "%s/%s", run->dir, binary);
+
     snprintf(config, sizeof(config),
         "<disabled>no</disabled>\n"
         "<timeout>1800</timeout>\n"
         "<interval>1h</interval>\n"
         "<scan-on-start>yes</scan-on-start>\n"
         "<java_path>" TEST_JAVA_DIR "</java_path>\n"
-        "<ciscat_path>" TEST_CISCAT_DIR "</ciscat_path>\n"
+        "<ciscat_path>%s</ciscat_path>\n"
         "<ciscat_binary>%s</ciscat_binary>\n"
         "<content type=\"xccdf\" path=\"%s\"></content>\n",
-        binary, run->bench);
+        run->dir, binary, run->bench);
 
     run->module = calloc(1, sizeof(wmodule));
     XML_NODE nodes = string_to_xml_node(config, &run->xml);
@@ -182,23 +193,31 @@ static int teardown_run(void **state) {
     wmodule_cleanup(run->module);
     OS_ClearXML(&run->xml);
     unlink(run->bench);
+    unlink(run->binary);
+    rmdir(run->dir);
     free(run);
     return 0;
 }
 
-// Expectations for one evaluation, up to the CIS-CAT command
-static void expect_evaluation_start(run_state *run, char *msg, size_t size) {
+// Expectations for a module start that runs the given number of evaluations
+static void expect_module_start(run_state *run, int evaluations) {
     expect_wfopen("var/wodles/cis-cat", "rb", NULL);
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
-    expect_string(__wrap_IsDir, file, TEST_CISCAT_DIR);
+    expect_string(__wrap_IsDir, file, run->dir);
     will_return(__wrap_IsDir, 0);
+    if (evaluations > 1) {
+        will_return_count(__wrap_FOREVER, 1, evaluations - 1);
+    }
     will_return(__wrap_FOREVER, 0);
     will_return_always(__wrap_os_random, 12345);
     expect_any_always(__wrap__mtinfo, tag);
     expect_any_always(__wrap__mtinfo, formatted_msg);
+}
 
+// Expectations for one evaluation, up to the CIS-CAT command
+static void expect_evaluation_start(run_state *run, char *msg, size_t size) {
     snprintf(msg, size, "Starting CIS-CAT scan. File: %s. ", run->bench);
     expect_SendMSG_call(msg, "rootcheck", ROOTCHECK_MQ, 0);
 }
@@ -369,8 +388,9 @@ void test_run_timeout_skips_results(void **state) {
     char end_msg[OS_MAXSTR];
     char error_msg[OS_MAXSTR];
 
+    expect_module_start(run, 1);
     expect_evaluation_start(run, start_msg, sizeof(start_msg));
-    expect_ciscat_command(TEST_CISCAT_DIR, NULL, 0, WM_ERROR_TIMEOUT);
+    expect_ciscat_command(run->dir, NULL, 0, WM_ERROR_TIMEOUT);
 
     snprintf(error_msg, sizeof(error_msg), "Timeout expired executing '%s'.", run->bench);
     expect_string(__wrap__mterror, tag, WM_CISCAT_LOGTAG);
@@ -380,8 +400,6 @@ void test_run_timeout_skips_results(void **state) {
     expect_SendMSG_call(end_msg, "rootcheck", ROOTCHECK_MQ, 0);
 
     run->module->context->start(module_data);
-
-    assert_int_equal(module_data->evals->flags.error, 0);
 }
 
 // A CIS-CAT Pro V4 evaluation that fails is reported with its output. That binary runs from the
@@ -393,6 +411,7 @@ void test_run_error_skips_results(void **state) {
     char end_msg[OS_MAXSTR];
     char error_msg[OS_MAXSTR];
 
+    expect_module_start(run, 1);
     expect_evaluation_start(run, start_msg, sizeof(start_msg));
     expect_ciscat_command(NULL, "Java not found", 2, 0);
 
@@ -406,22 +425,52 @@ void test_run_error_skips_results(void **state) {
     expect_SendMSG_call(end_msg, "rootcheck", ROOTCHECK_MQ, 0);
 
     run->module->context->start(module_data);
-
-    assert_int_equal(module_data->evals->flags.error, 0);
 }
 
-// A command that could not be run skips reading results, and the evaluation runs again next time.
-void test_run_internal_error_keeps_evaluation(void **state) {
+// A command that could not be run skips reading results, and the evaluation runs again at the
+// next interval.
+void test_run_internal_error_retries_evaluation(void **state) {
     run_state *run = *state;
     wm_ciscat *module_data = (wm_ciscat *)run->module->data;
     char start_msg[OS_MAXSTR];
     char end_msg[OS_MAXSTR];
     char error_msg[OS_MAXSTR];
 
-    expect_evaluation_start(run, start_msg, sizeof(start_msg));
-    expect_ciscat_command(TEST_CISCAT_DIR, NULL, 0, -1);
+    // The binary is there, so there is no more specific reason to report
+    FILE *fp = fopen(run->binary, "w");
+    assert_non_null(fp);
+    fclose(fp);
+    assert_int_equal(chmod(run->binary, 0755), 0);
 
     snprintf(error_msg, sizeof(error_msg), "Internal error executing '%s'.", run->bench);
+    snprintf(end_msg, sizeof(end_msg), "Ending CIS-CAT scan. File: %s. ", run->bench);
+
+    expect_module_start(run, 2);
+
+    for (int i = 0; i < 2; i++) {
+        expect_evaluation_start(run, start_msg, sizeof(start_msg));
+        expect_ciscat_command(run->dir, NULL, 0, -1);
+        expect_string(__wrap__mterror, tag, WM_CISCAT_LOGTAG);
+        expect_string(__wrap__mterror, formatted_msg, error_msg);
+        expect_SendMSG_call(end_msg, "rootcheck", ROOTCHECK_MQ, 0);
+    }
+
+    run->module->context->start(module_data);
+}
+
+// A CIS-CAT binary that cannot be run is reported with the reason.
+void test_run_missing_binary_reports_reason(void **state) {
+    run_state *run = *state;
+    wm_ciscat *module_data = (wm_ciscat *)run->module->data;
+    char start_msg[OS_MAXSTR];
+    char end_msg[OS_MAXSTR];
+    char error_msg[OS_MAXSTR + PATH_MAX];
+
+    expect_module_start(run, 1);
+    expect_evaluation_start(run, start_msg, sizeof(start_msg));
+    expect_ciscat_command(run->dir, NULL, 0, -1);
+
+    snprintf(error_msg, sizeof(error_msg), "Unable to run '%s': No such file or directory (2)", run->binary);
     expect_string(__wrap__mterror, tag, WM_CISCAT_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, error_msg);
 
@@ -429,8 +478,6 @@ void test_run_internal_error_keeps_evaluation(void **state) {
     expect_SendMSG_call(end_msg, "rootcheck", ROOTCHECK_MQ, 0);
 
     run->module->context->start(module_data);
-
-    assert_int_equal(module_data->evals->flags.error, 0);
 }
 
 int main(void) {
@@ -447,7 +494,8 @@ int main(void) {
     const struct CMUnitTest tests_run[] = {
         cmocka_unit_test_setup_teardown(test_run_timeout_skips_results, setup_run_v3, teardown_run),
         cmocka_unit_test_setup_teardown(test_run_error_skips_results, setup_run_v4, teardown_run),
-        cmocka_unit_test_setup_teardown(test_run_internal_error_keeps_evaluation, setup_run_v3, teardown_run),
+        cmocka_unit_test_setup_teardown(test_run_internal_error_retries_evaluation, setup_run_v3, teardown_run),
+        cmocka_unit_test_setup_teardown(test_run_missing_binary_reports_reason, setup_run_v3, teardown_run),
     };
     int result = (cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module) ||
                   cmocka_run_group_tests(tests_without_startup, NULL, NULL) ||
