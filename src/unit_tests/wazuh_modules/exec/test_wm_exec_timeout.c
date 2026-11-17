@@ -8,7 +8,7 @@
  *
  * Test corresponding to how wm_exec() stops a command that outlives its timeout. These tests
  * run real commands: only kill() is wrapped, to record the signals sent before delivering them,
- * and setsid(), to make a child block before it leads its own process group.
+ * and setpgid(), to make a child block or get a signal before exec.
  */
 
 #include <stdarg.h>
@@ -44,19 +44,29 @@ int __wrap_kill(pid_t pid, int sig) {
     return __real_kill(pid, sig);
 }
 
-pid_t __real_setsid(void);
+int __real_setpgid(pid_t pid, pid_t pgid);
 
 // Locked by the test across fork(), so a child that locks it blocks forever, as one does when it
 // inherits a lock that another thread was holding.
 static pthread_mutex_t inherited_lock = PTHREAD_MUTEX_INITIALIZER;
-static bool block_before_setsid;
+static bool block_before_exec;
 
-pid_t __wrap_setsid(void) {
-    if (block_before_setsid) {
-        pthread_mutex_lock(&inherited_lock);
+// Signal that the child raises on itself before exec, or 0
+static int raise_before_exec;
+
+int __wrap_setpgid(pid_t pid, pid_t pgid) {
+    // Only the child calls it on itself
+    if (pid == 0) {
+        if (raise_before_exec != 0) {
+            raise(raise_before_exec);
+        }
+
+        if (block_before_exec) {
+            pthread_mutex_lock(&inherited_lock);
+        }
     }
 
-    return __real_setsid();
+    return __real_setpgid(pid, pgid);
 }
 
 static int setup(void **state) {
@@ -73,13 +83,13 @@ static int teardown(void **state) {
 }
 
 static int setup_blocked_child(void **state) {
-    block_before_setsid = true;
+    block_before_exec = true;
     pthread_mutex_lock(&inherited_lock);
     return setup(state);
 }
 
 static int teardown_blocked_child(void **state) {
-    block_before_setsid = false;
+    block_before_exec = false;
     pthread_mutex_unlock(&inherited_lock);
     return teardown(state);
 }
@@ -106,6 +116,25 @@ static int setup_blocked_child_with_handler(void **state) {
 static int teardown_blocked_child_with_handler(void **state) {
     sigaction(SIGTERM, &previous_sigterm, NULL);
     return teardown_blocked_child(state);
+}
+
+static struct sigaction previous_sigalrm;
+
+// wazuh-execd also handles SIGQUIT and SIGALRM
+static int setup_child_raising_sigalrm(void **state) {
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = exit_handler;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGALRM, &action, &previous_sigalrm);
+    raise_before_exec = SIGALRM;
+    return setup(state);
+}
+
+static int teardown_child_raising_sigalrm(void **state) {
+    raise_before_exec = 0;
+    sigaction(SIGALRM, &previous_sigalrm, NULL);
+    return teardown(state);
 }
 
 static time_t elapsed_since(time_t start) {
@@ -136,13 +165,11 @@ static void assert_group_terminated_then_killed(void) {
     assert_int_equal(kills[1].sig, SIGKILL);
 }
 
-// A child without a process group of its own must get the signal itself, after the group did not exist.
-static void assert_child_terminated_directly(void) {
-    assert_int_equal(kills_count, 2);
+// The group, child included, ended with the SIGTERM.
+static void assert_group_terminated(void) {
+    assert_int_equal(kills_count, 1);
     assert_true(kills[0].pid < 0);
     assert_int_equal(kills[0].sig, SIGTERM);
-    assert_int_equal(kills[1].pid, -kills[0].pid);
-    assert_int_equal(kills[1].sig, SIGTERM);
 }
 
 // A command that ignores SIGTERM while holding its output pipe must be killed, not waited for.
@@ -308,9 +335,9 @@ static void test_wm_exec_does_not_signal_command_finishing_in_time(void **state)
     os_free(output);
 }
 
-// A child that blocks before setsid() is not in a process group of its own, and still holds the
+// A child that blocks before exec is already in the command's process group, and still holds the
 // write end of the output pipe. The timeout must stop it and wm_exec() must return.
-static void test_wm_exec_stops_child_blocked_before_setsid(void **state) {
+static void test_wm_exec_stops_child_blocked_before_exec(void **state) {
     (void)state;
     char command[] = "echo never";
     char *output = NULL;
@@ -322,13 +349,13 @@ static void test_wm_exec_stops_child_blocked_before_setsid(void **state) {
     assert_int_equal(ret, WM_ERROR_TIMEOUT);
     assert_true(elapsed_since(start) < 10);
     assert_int_equal(status, 128 + SIGTERM);
-    assert_child_terminated_directly();
+    assert_group_terminated();
 
     os_free(output);
 }
 
 // Same, for a command run without capturing its output.
-static void test_wm_exec_stops_child_blocked_before_setsid_without_output(void **state) {
+static void test_wm_exec_stops_child_blocked_before_exec_without_output(void **state) {
     (void)state;
     char command[] = "echo never";
     int status = 0;
@@ -339,7 +366,7 @@ static void test_wm_exec_stops_child_blocked_before_setsid_without_output(void *
     assert_int_equal(ret, WM_ERROR_TIMEOUT);
     assert_true(elapsed_since(start) < 10);
     assert_int_equal(status, 128 + SIGTERM);
-    assert_child_terminated_directly();
+    assert_group_terminated();
 }
 
 // The parent's SIGTERM handler is not the child's: the timeout's SIGTERM ends the child.
@@ -353,7 +380,23 @@ static void test_wm_exec_child_does_not_run_parent_sigterm_handler(void **state)
 
     assert_int_equal(ret, WM_ERROR_TIMEOUT);
     assert_int_equal(status, 128 + SIGTERM);
-    assert_child_terminated_directly();
+    assert_group_terminated();
+
+    os_free(output);
+}
+
+// Any signal the parent handles, not only SIGTERM, ends a child that gets it before exec.
+static void test_wm_exec_child_does_not_run_parent_sigalrm_handler(void **state) {
+    (void)state;
+    char command[] = "echo never";
+    char *output = NULL;
+    int status = 0;
+
+    const int ret = wm_exec(command, &output, &status, 5, NULL);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(status, 128 + SIGALRM);
+    assert_int_equal(kills_count, 0);
 
     os_free(output);
 }
@@ -391,20 +434,62 @@ static void test_wm_exec_in_dir_does_not_run_command_elsewhere(void **state) {
     assert_int_equal(kills_count, 0);
 }
 
-// The same, when only the child finds out: a file passes the check but chdir() fails.
+// The same, for a work_dir that is a file.
 static void test_wm_exec_in_dir_does_not_run_command_from_a_file(void **state) {
     (void)state;
     char command[] = "echo ran";
     char *output = NULL;
     int status = -1;
 
-    expect_any(__wrap__mdebug1, formatted_msg); // Invalid command
+    expect_string(__wrap__merror, formatted_msg, "Unable to change working directory to '/bin/sh': Not a directory (20)");
 
     const int ret = wm_exec_in_dir(command, &output, &status, 5, NULL, "/bin/sh");
 
     assert_int_equal(ret, -1);
     assert_null(output);
-    assert_int_equal(status, EXECVE_ERROR);
+    assert_int_equal(status, 0);
+    assert_int_equal(kills_count, 0);
+}
+
+// A command with no program is rejected without running anything.
+static void test_wm_exec_rejects_empty_command(void **state) {
+    (void)state;
+    char command[] = "";
+    char *output = NULL;
+    int status = -1;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid command: ''");
+
+    const int ret = wm_exec(command, &output, &status, 5, NULL);
+
+    assert_int_equal(ret, -1);
+    assert_null(output);
+    assert_int_equal(status, 0);
+}
+
+// A command run from a thread that blocks SIGTERM does not inherit that: the timeout's SIGTERM
+// stops it, with no need for SIGKILL.
+static void test_wm_exec_command_does_not_inherit_blocked_signals(void **state) {
+    (void)state;
+    char command[] = "sleep 30";
+    char *output = NULL;
+    int status = 0;
+    sigset_t blocked;
+    sigset_t previous;
+
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &blocked, &previous);
+
+    const int ret = wm_exec(command, &output, &status, 1, NULL);
+
+    pthread_sigmask(SIG_SETMASK, &previous, NULL);
+
+    assert_int_equal(ret, WM_ERROR_TIMEOUT);
+    assert_int_equal(status, 128 + SIGTERM);
+    assert_group_terminated();
+
+    os_free(output);
 }
 
 // add_path goes before PATH for the command only: the caller's environment does not change.
@@ -474,7 +559,7 @@ static void test_wm_exec_add_path_keeps_environment_if_too_large(void **state) {
     large_path[sizeof(large_path) - 1] = '\0';
     assert_int_equal(setenv("PATH", large_path, 1), 0);
 
-    expect_string(__wrap__merror, formatted_msg, "at wm_exec(): PATH environment variable too large.");
+    expect_string(__wrap__merror, formatted_msg, "Unable to add '/opt/unused' to PATH: PATH environment variable too large.");
 
     const int ret = wm_exec(command, &output, &status, 5, "/opt/unused");
 
@@ -501,12 +586,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_exec_kills_command_that_closed_its_output, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_kills_command_ignoring_sigterm_after_pipe_closed, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_does_not_signal_command_finishing_in_time, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_wm_exec_stops_child_blocked_before_setsid, setup_blocked_child, teardown_blocked_child),
-        cmocka_unit_test_setup_teardown(test_wm_exec_stops_child_blocked_before_setsid_without_output, setup_blocked_child, teardown_blocked_child),
+        cmocka_unit_test_setup_teardown(test_wm_exec_stops_child_blocked_before_exec, setup_blocked_child, teardown_blocked_child),
+        cmocka_unit_test_setup_teardown(test_wm_exec_stops_child_blocked_before_exec_without_output, setup_blocked_child, teardown_blocked_child),
         cmocka_unit_test_setup_teardown(test_wm_exec_in_dir_runs_command_there, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_child_does_not_run_parent_sigterm_handler, setup_blocked_child_with_handler, teardown_blocked_child_with_handler),
+        cmocka_unit_test_setup_teardown(test_wm_exec_child_does_not_run_parent_sigalrm_handler, setup_child_raising_sigalrm, teardown_child_raising_sigalrm),
         cmocka_unit_test_setup_teardown(test_wm_exec_in_dir_does_not_run_command_elsewhere, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_in_dir_does_not_run_command_from_a_file, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_rejects_empty_command, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_command_does_not_inherit_blocked_signals, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_add_path_only_for_command, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_add_path_keeps_environment_if_too_large, setup, teardown),
     };

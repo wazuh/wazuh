@@ -43,9 +43,9 @@ if(${TARGET} STREQUAL "winagent")
 else()
     list(APPEND tests_flags "${WM_EXEC_BASE_FLAGS} -Wl,--wrap,fork -Wl,--wrap,kill -Wl,--wrap,exit -Wl,--wrap,sleep")
 
-    # Runs real commands to check how a timed-out one is stopped: only kill() and setsid() are wrapped.
+    # Runs real commands to check how a timed-out one is stopped: only kill() and setpgid() are wrapped.
     list(APPEND tests_names "test_wm_exec_timeout")
-    list(APPEND tests_flags "-Wl,--wrap,kill -Wl,--wrap,setsid ${DEBUG_OP_WRAPPERS}")
+    list(APPEND tests_flags "-Wl,--wrap,kill -Wl,--wrap,setpgid ${DEBUG_OP_WRAPPERS}")
 endif()
 
 # Compiling tests
