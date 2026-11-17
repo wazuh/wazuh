@@ -14,7 +14,7 @@ from connexion.lifecycle import ConnexionRequest
 from api.error_handler import _cleanup_detail_field, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
     expect_failed_error_handler, recursion_error_handler, ERROR_CONTENT_TYPE
-from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, general_request_stats
+from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, RATE_LIMIT_CODE_KEY, general_request_stats
 from api.api_exception import ExpectFailedException
 from wazuh.core.exception import WazuhInternalError
 
@@ -147,12 +147,12 @@ async def test_http_error_handler_valid_token(status_code, reason, mock_request)
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
-@pytest.mark.parametrize('error, title', [
-    (WazuhInternalError(6003), 'Internal Server Error'),
-    (KeyError('run_as'), 'Internal Server Error'),
-    (ProblemException(status=500, title='Wazuh Internal Error', detail='detail'), 'Wazuh Internal Error'),
+@pytest.mark.parametrize('error, title, wazuh_code', [
+    (WazuhInternalError(6003), 'Internal Server Error', None),
+    (KeyError('run_as'), 'Internal Server Error', None),
+    (ProblemException(status=500, title='Wazuh Internal Error', detail='detail'), 'Wazuh Internal Error', None),
 ])
-async def test_http_error_handler_token_check_fails(error, title, status_code, reason, mock_request):
+async def test_http_error_handler_token_check_fails(error, title, wazuh_code, status_code, reason, mock_request):
     """Test that a failure of `decode_token` other than a rejection is answered with a JSON 500."""
     mock_request.headers = {'Authorization': 'Bearer token'}
     with patch('api.error_handler.decode_token', new=AsyncMock(side_effect=error)):
@@ -160,39 +160,62 @@ async def test_http_error_handler_token_check_fails(error, title, status_code, r
 
     assert response.status_code == 500
     assert response.content_type == ERROR_CONTENT_TYPE
-    assert json.loads(response.body)['title'] == title
+    body = json.loads(response.body)
+    assert body['title'] == title
+    assert body.get('error') == wazuh_code
+    # A declared route does not charge a request whose token could not be checked either
+    assert general_request_stats == {}
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('status_code, reason, max_request, charged', [
-    (405, 'Method Not Allowed', 300, True),
-    (405, 'Method Not Allowed', 0, True),
-    (404, 'Not Found', 0, True),
-    # CheckAuthenticatedRateLimitMiddleware has already charged it
-    (404, 'Not Found', 300, False),
-])
-@pytest.mark.parametrize('authorization', [None, 'Bearer token'], ids=['no-token', 'valid-token'])
-async def test_http_error_handler_charges_the_unauthenticated_bucket(authorization, status_code, reason,
-                                                                    max_request, charged, mock_request):
-    """Test that a 404 or 405 no rate-limit middleware charged is charged here, before the token is checked."""
-    mock_request.headers = {'Authorization': authorization} if authorization else {}
-    api_conf = {'access': {'max_request_per_minute': max_request, 'max_unauthenticated_request_per_minute': 2}}
-    answers = []
+@pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
+@pytest.mark.parametrize('max_unauthenticated', [2, 0])
+async def test_http_error_handler_charges_the_unauthenticated_bucket(max_unauthenticated, status_code, reason,
+                                                                    mock_request):
+    """Test that a 404 or 405 without a valid token is charged to the unauthenticated bucket, as a declared route
+    that fails authentication is."""
+    mock_request.headers = {}
+    mock_request.scope = {'extensions': {}}
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': max_unauthenticated}}
 
-    with patch('api.error_handler.configuration.api_conf', new=api_conf), \
-         patch('api.error_handler.decode_token', new=AsyncMock(return_value={})) as decode_mock:
-        for _ in range(3):
-            response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
-            answers.append(response.status_code)
+    with patch('api.middlewares.configuration.api_conf', new=api_conf):
+        answers = [(await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason)))
+                   for _ in range(3)]
 
-    answer = status_code if authorization else 401
-    if charged:
-        assert answers == [answer, answer, 429]
-        assert json.loads(response.body)['error'] == 6005
-        # The refused request never reaches the token check
-        assert decode_mock.await_count == (2 if authorization else 0)
+    if max_unauthenticated:
+        assert [a.status_code for a in answers] == [401, 401, 429]
+        assert json.loads(answers[-1].body)['error'] == 6005
+        # Recorded for `access_log`, which warns about the unauthenticated limit
+        assert mock_request.scope['extensions'][RATE_LIMIT_CODE_KEY] == 6005
     else:
-        assert answers == [answer] * 3
+        assert [a.status_code for a in answers] == [401] * 3
+    assert 'authenticated' not in general_request_stats.get('ip', {})
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
+@pytest.mark.parametrize('max_unauthenticated', [10, 0])
+async def test_http_error_handler_charges_the_authenticated_bucket(max_unauthenticated, status_code, reason,
+                                                                  mock_request):
+    """Test that a 404 or 405 with a valid token is charged to the authenticated bucket after the token check, as a
+    declared route is, also when the unauthenticated limit is off."""
+    mock_request.headers = {'Authorization': 'Bearer token'}
+    mock_request.scope = {'extensions': {}}
+    api_conf = {'access': {'max_request_per_minute': 2, 'max_unauthenticated_request_per_minute': max_unauthenticated}}
+
+    with patch('api.middlewares.configuration.api_conf', new=api_conf), \
+            patch('api.error_handler.decode_token', new=AsyncMock(return_value={})) as decode_mock:
+        answers = [(await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason)))
+                   for _ in range(4)]
+
+    assert [a.status_code for a in answers] == [status_code, status_code, 429, 429]
+    assert all(json.loads(a.body)['error'] == 6001 for a in answers[2:])
+    assert mock_request.scope['extensions'][RATE_LIMIT_CODE_KEY] == 6001
+    assert 'unauthenticated' not in general_request_stats['ip']
+    # A 405 is refused before the token check once the bucket is exhausted, as CheckRateLimitsMiddleware refuses a
+    # 404 and a routed request; that middleware is registered only with the unauthenticated limit on
+    assert decode_mock.await_count == (2 if status_code == 405 and max_unauthenticated else 4)
 
 
 @pytest.mark.asyncio
@@ -214,7 +237,7 @@ async def test_http_error_handler_authenticated_bucket_exhausted(status_code, re
     api_conf = {'access': {'max_request_per_minute': max_request,
                            'max_unauthenticated_request_per_minute': max_unauthenticated}}
 
-    with patch('api.error_handler.configuration.api_conf', new=api_conf):
+    with patch('api.middlewares.configuration.api_conf', new=api_conf):
         response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
 
     if refused:
@@ -234,7 +257,7 @@ async def test_http_error_handler_authenticated_bucket_below_the_limit(mock_requ
     general_request_stats['ip'] = {'authenticated': {'count': 2, 'window_start': 10.0}}
     api_conf = {'access': {'max_request_per_minute': 3, 'max_unauthenticated_request_per_minute': 10}}
 
-    with patch('api.error_handler.configuration.api_conf', new=api_conf):
+    with patch('api.middlewares.configuration.api_conf', new=api_conf):
         response = await http_error_handler(mock_request, HTTPException(status_code=405, detail='x'))
 
     assert response.status_code == 401
@@ -246,7 +269,7 @@ async def test_http_error_handler_unlimited_unauthenticated_bucket(mock_request)
     mock_request.headers = {}
     api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': 0}}
 
-    with patch('api.error_handler.configuration.api_conf', new=api_conf):
+    with patch('api.middlewares.configuration.api_conf', new=api_conf):
         answers = [(await http_error_handler(mock_request, HTTPException(status_code=405, detail='x'))).status_code
                    for _ in range(25)]
 
