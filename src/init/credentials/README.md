@@ -99,7 +99,7 @@ the lock held for more than 60 s, an internal error); the start is where the ver
 | Path | Responsibility |
 |------|----------------|
 | `wazuh-manager-resolve-credentials.py` | the program. Sections, in order: constants · `Paths` (every location, injectable for tests) · `Report` · safe file-system layer (`open_top`, `open_dir`, `read_file`, `write_file`, `ensure_dir`) · `.env` grammar and lookup · Wazuh subprocesses · passwords · Server API passwords · indexer password · configured TLS files · own CA · server pairs and SANs · indexer trust · whole-tree checks · lock · modes · `--clear` · `main` |
-| `tests/conftest.py` | the sandbox: a private `root:root` tree with stub `wazuh-manager-conf` (role probe and `dump` with the schema's defaults), `wazuh-manager-keystore` and `rbac_control.py`, an indexer export, an `api.yaml`, a key pool |
+| `tests/conftest.py` | the sandbox: a private `root:root` tree with stub `wazuh-manager-conf` (role probe and `dump` of the generated configuration, with no indexer client pair unless a test calls `configure_client_pair()`), `wazuh-manager-keystore` and `rbac_control.py`, an indexer export, an `api.yaml`, a key pool |
 | `tests/test_*.py` | the suite (below) |
 
 Installed by `InstallServer()` in `src/init/inst-functions.sh` (line 1 rewritten for a non-default home), shipped

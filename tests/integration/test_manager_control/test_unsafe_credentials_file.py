@@ -769,6 +769,12 @@ def test_refuses_when_the_check_cannot_run(json_output, breaker):
 def _stage_indexer_trust(leaf_days, key_mismatch=False):
     """Replace the indexer CA in certs/ with a throwaway CA, and stage and configure a client pair it issued, valid
     between `leaf_days` (days from now), owned and moded as the installer leaves them."""
+    # The generated configuration names no client pair, and the resolver checks only one it names: the pair is
+    # configured below. Checked before anything is replaced, so a configuration this cannot edit fails here.
+    conf = CONF_DIR / 'wazuh-manager.conf'
+    text = conf.read_text()
+    anchor = '</certificate_authorities>'
+    assert text.count(anchor) == 1, f"'{anchor}' is not in the installed configuration exactly once"
     now = datetime.datetime.now(datetime.timezone.utc)
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'test-indexer-ca')])
@@ -803,11 +809,6 @@ def _stage_indexer_trust(leaf_days, key_mismatch=False):
     for marker in INDEXER_IMPORT_MARKERS:
         if marker.exists():
             marker.unlink()
-    # The generated configuration names no client pair, and the resolver checks only one it names.
-    conf = CONF_DIR / 'wazuh-manager.conf'
-    text = conf.read_text()
-    anchor = '</certificate_authorities>'
-    assert text.count(anchor) == 1, f"'{anchor}' is not in the installed configuration exactly once"
     conf.write_text(text.replace(anchor, f'{anchor}<certificate>{INDEXER_TRUST[1]}</certificate>'
                                          f'<key>{INDEXER_TRUST[2]}</key>'))
 

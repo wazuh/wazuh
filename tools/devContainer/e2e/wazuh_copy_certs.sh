@@ -12,8 +12,6 @@ set -euo pipefail
 #
 #   root-ca.pem             -> root-ca.pem                 root:wazuh-manager  640
 #   root-ca.pem             -> indexer-ca.pem              root:wazuh-manager  640
-#   <node>.pem              -> indexer-connector.pem       root:wazuh-manager  640
-#   <node>-key.pem          -> indexer-connector-key.pem   root:wazuh-manager  640
 #   <node>-remoted.pem      -> remoted.pem                 root:wazuh-manager  640
 #   <node>-remoted-key.pem  -> remoted-key.pem             root:wazuh-manager  640
 #   <node>-remoted.pem      -> apid.pem                    root:wazuh-manager  640
@@ -23,8 +21,8 @@ set -euo pipefail
 # profile of remoted.pem, and the e2e reaches the API on localhost, which its SAN carries.
 #
 # The e2e indexer's certificates come from the same CA, so it is also the indexer
-# CA, and the manager node's certificate (issued with clientAuth) is the indexer
-# client pair.
+# CA. No indexer client pair is deployed: the manager authenticates to the indexer
+# with the keystore's user and password, and its configuration names no pair.
 #
 # Every daemon opens its pair after dropping privileges, through the group: the
 # files stay root-owned so the service user can read them but never rewrite them.
@@ -127,8 +125,6 @@ echo "==> Manager node: ${MANAGER_NODE_NAME}"
 CERT_TABLE=(
     "root-ca.pem|root-ca.pem"
     "root-ca.pem|indexer-ca.pem"
-    "${MANAGER_NODE_NAME}.pem|indexer-connector.pem"
-    "${MANAGER_NODE_NAME}-key.pem|indexer-connector-key.pem"
     "${MANAGER_NODE_NAME}-remoted.pem|remoted.pem"
     "${MANAGER_NODE_NAME}-remoted-key.pem|remoted-key.pem"
     "${MANAGER_NODE_NAME}-remoted.pem|apid.pem"
@@ -159,7 +155,6 @@ install -m 644 -o root -g root "${CERTS_DIR}/root-ca.pem" "${CONF_DIR}/ca/root-c
 
 echo "==> Verifying the deployed certificates..."
 openssl verify -CAfile "${CONF_DIR}/ca/root-ca.pem" "${DEST_DIR}/remoted.pem" "${DEST_DIR}/apid.pem" | sed 's/^/    /'
-openssl verify -CAfile "${DEST_DIR}/indexer-ca.pem" -purpose sslclient "${DEST_DIR}/indexer-connector.pem" | sed 's/^/    /'
 if ! openssl x509 -in "${DEST_DIR}/remoted.pem" -noout -checkend 0 >/dev/null; then
     echo "ERROR: ${DEST_DIR}/remoted.pem has expired." >&2
     exit 1

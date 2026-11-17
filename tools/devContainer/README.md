@@ -293,7 +293,7 @@ Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that 
 Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs-tool-5.0.0-beta5.sh`). The script header records the origin URL, its sha256 and the numbered list of local changes; every changed hunk is marked `# DEVCONTAINER:`, so `diff <(curl -sSL <origin URL>) wazuh-certs-tool.sh` is a readable patch. Driven by `wazuh-certs-tool.yml` (`nodes.indexer|manager|dashboard[] {name, ip, dns}`, the same shape as the assistant's `config.yml`), it issues:
 - `root-ca.pem` / `root-ca.key` — or reuses the pair passed after `-A` — and `admin.pem` / `admin-key.pem`
 - `<name>.pem` / `<name>-key.pem` per indexer, manager and dashboard node, with the assistant's unchanged DNs (the indexer package pins `CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US`)
-- per manager node, `<name>.pem` is signed with `extendedKeyUsage clientAuth` added (it becomes the manager's indexer client pair), and additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>` when the name is a DNS label, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
+- per manager node, `<name>.pem` is signed with `extendedKeyUsage clientAuth` added (usable as an indexer client pair, which the e2e does not configure), and additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>` when the name is a DNS label, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
 
 ```bash
 bash scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o /path/to/out                  # new CA
@@ -397,8 +397,6 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 |---|---|---|---|
 | `root-ca.pem` | `root-ca.pem` | `root:wazuh-manager` | 640 |
 | `root-ca.pem` | `indexer-ca.pem` | `root:wazuh-manager` | 640 |
-| `<node>.pem` | `indexer-connector.pem` | `root:wazuh-manager` | 640 |
-| `<node>-key.pem` | `indexer-connector-key.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted.pem` | `remoted.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted-key.pem` | `remoted-key.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted.pem` | `apid.pem` | `root:wazuh-manager` | 640 |

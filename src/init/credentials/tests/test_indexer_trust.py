@@ -23,6 +23,12 @@ TRUST = ("indexer-ca.pem", "indexer-connector.pem", "indexer-connector-key.pem")
 MARKERS = (".indexer-ca.imported", ".indexer-connector.imported")
 
 
+@pytest.fixture(autouse=True)
+def client_pair(sandbox):
+    """Every test here runs with the client pair configured; the generated configuration names none."""
+    sandbox.configure_client_pair()
+
+
 def run(resolver, sandbox, *argv):
     out, err = io.StringIO(), io.StringIO()
     code = resolver.main(list(argv), paths=sandbox.paths, environ=dict(IDX), out=out, err=err)

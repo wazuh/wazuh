@@ -1003,7 +1003,7 @@ def default_tls_names(paths: Paths) -> TlsNames:
     return TlsNames((ServerPair(*DEFAULT_PAIRS["remoted"], "remote.https.certificate", conf_file, "bundle", "remoted",
                                 True),
                      ServerPair(*DEFAULT_PAIRS["apid"], "https.cert", api_file, "ca", "apid", True)),
-                    BUNDLE, conf_file, IndexerNames((INDEXER_CA,), True, CONNECTOR, CONNECTOR_KEY, conf_file))
+                    BUNDLE, conf_file, IndexerNames((INDEXER_CA,), True, None, None, conf_file))
 
 
 def read_manager_conf(paths: Paths, report: Report) -> dict:
@@ -1153,8 +1153,7 @@ def indexer_names(paths: Paths, document: dict, conf_file: str, report: Report) 
         name = certs_name(paths, "indexer.ssl.certificate_authorities", value, paths.home, conf_file, report)
         if name is not None and name not in cas:
             cas.append(name)
-    values = {part: _conf_value(document, f"indexer.ssl.{part}", str, os.path.join(certs, default))
-              for part, default in (("certificate", CONNECTOR), ("key", CONNECTOR_KEY))}
+    values = {part: _conf_value(document, f"indexer.ssl.{part}", str, "") for part in ("certificate", "key")}
     cert = key = None
     if bool(values["certificate"]) != bool(values["key"]):
         empty, other = ("key", "certificate") if values["certificate"] else ("certificate", "key")

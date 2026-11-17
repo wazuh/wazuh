@@ -7,6 +7,7 @@ bundle from wazuh-manager.conf, the Server API's pair from api.yaml. Both files 
 so a configured name is followed only directly inside <CONF>/certs."""
 
 import io
+import json
 import os
 import shutil
 
@@ -167,6 +168,8 @@ def test_name_outside_certs_is_refused_unread(resolver, sandbox, monkeypatch, ca
     for planted in (sandbox.path("outside.pem"), os.path.join(sandbox.conf, "outside.pem")):
         shutil.copyfile(certs(sandbox, "apid.pem"), planted)
     if source == "conf":
+        if case == "indexer pair":
+            sandbox.configure_client_pair()                  # the certificate is judged only beside a key
         sandbox.control(conf_dump={key: value})
     else:
         sandbox.api_yaml(f"https:\n  {key.split('.')[1]}: {value}\n")
@@ -350,6 +353,7 @@ def indexer_conf(sandbox, cas=None, pair=None):
 def test_indexer_ca_under_configured_name(resolver, sandbox):
     """The CA list names the operator's own file: it is checked, the pair is still imported, and indexer-ca.pem is
     never written."""
+    sandbox.configure_client_pair()
     stage(sandbox, "my-indexer-ca.pem", export_files(sandbox)["ca"])
     sandbox.control(conf_dump=indexer_conf(sandbox, cas=["my-indexer-ca.pem"]))
     code, out, err = run(resolver, sandbox, "--install")
@@ -427,6 +431,7 @@ def test_extra_indexer_ca_absent_or_invalid(resolver, sandbox):
 def test_empty_indexer_ca_list(resolver, sandbox, eku, accepted):
     """No CA listed: the connector trusts the system store, so no CA file is wanted and the pair gets the leaf checks
     only."""
+    sandbox.configure_client_pair()
     sandbox.make_indexer_trust(eku=eku)
     sandbox.control(conf_dump=indexer_conf(sandbox, cas=[]))
     code, out, err = run(resolver, sandbox, "--install")
@@ -459,8 +464,19 @@ def test_unconfigured_pair_is_not_imported_when_the_indexer_publishes_one(resolv
     assert not os.path.exists(certs(sandbox, ".indexer-connector.imported"))
 
 
+def test_dump_without_the_pair_options_names_no_pair(resolver, sandbox):
+    """A dump that carries neither option is read as the schema's default, no client pair: the indexer's published
+    pair is not imported and nothing is reported missing."""
+    sandbox.control(dump_raw=json.dumps({"cluster": {"node_type": "master"}}))
+    code, out, err = run(resolver, sandbox, "--install")
+    assert (code, err) == (0, "") and f"{certs(sandbox, 'indexer-ca.pem')}: imported" in out
+    assert run(resolver, sandbox, "--prestart")[0::2] == (0, "")
+    assert not os.path.exists(certs(sandbox, "indexer-connector.pem"))
+
+
 def test_files_left_by_an_earlier_install_do_not_refuse_the_start(resolver, sandbox):
-    assert run(resolver, sandbox, "--install")[0] == 0        # default stub: the pair is configured and imported
+    sandbox.configure_client_pair()
+    assert run(resolver, sandbox, "--install")[0] == 0        # an earlier configuration: the pair is imported
     export = os.path.join(sandbox.conf, "export")
     for name, mode in (("dashboard-client.pem", 0o644), ("dashboard-client-key.pem", 0o600),
                        (".dashboard-client.issued", 0o600)):
