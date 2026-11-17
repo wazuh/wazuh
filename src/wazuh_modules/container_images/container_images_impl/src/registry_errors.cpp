@@ -11,28 +11,17 @@
 #include "registry_errors.hpp"
 
 #include "oci_metadata.hpp"
+#include "stringHelper.h"
 
 #include <algorithm>
 #include <array>
+#include <string_view>
 
 namespace
 {
     constexpr std::size_t MAX_ERROR_TYPE_LENGTH {64};
     constexpr std::size_t MAX_ERROR_CODE_LENGTH {40};
     constexpr std::size_t MAX_TOKEN_RUN {64};
-
-    std::string lowerCase(std::string text)
-    {
-        std::transform(text.begin(),
-                       text.end(),
-                       text.begin(),
-                       [](const unsigned char character)
-        {
-            return static_cast<char>(character >= 'A' && character <= 'Z' ? character + ('a' - 'A') : character);
-        });
-
-        return text;
-    }
 
     /// @brief True when @p character could belong to an unbroken token, key or signature.
     ///
@@ -42,6 +31,27 @@ namespace
     {
         return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
                (character >= '0' && character <= '9') || character == '+' || character == '=';
+    }
+
+    /// @brief True when the run [start, end) of @p text is the hex of a `sha256:` digest.
+    ///
+    /// A registry names the digest of a blob or manifest in its reasons, and a digest is an
+    /// identifier and not a credential. Only a run of exactly 64 lowercase hex characters
+    /// right after the prefix passes, so anything longer or of another shape still counts
+    /// as a token.
+    bool isDigestRun(const std::string& text, const std::size_t start, const std::size_t end)
+    {
+        constexpr std::size_t SHA256_HEX_LENGTH {64};
+        constexpr std::string_view PREFIX {"sha256:"};
+
+        return end - start == SHA256_HEX_LENGTH && start >= PREFIX.size() &&
+               text.compare(start - PREFIX.size(), PREFIX.size(), PREFIX) == 0 &&
+               std::all_of(text.begin() + start,
+                           text.begin() + end,
+                           [](const char character)
+        {
+            return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f');
+        });
     }
 
     /// @brief True when a text is quoting a request or a credential rather than describing a failure.
@@ -60,7 +70,7 @@ namespace
                                                          "x-amz-",
                                                          "canonical request"};
 
-        const auto lowered {lowerCase(text)};
+        const auto lowered {Utils::toLowerCase(text)};
 
         if (std::any_of(MARKERS.begin(),
                         MARKERS.end(),
@@ -77,13 +87,24 @@ namespace
             return true;
         }
 
-        std::size_t run {0};
+        std::size_t position {0};
 
-        for (const auto character : text)
+        while (position < text.size())
         {
-            run = isTokenCharacter(character) ? run + 1 : 0;
+            if (!isTokenCharacter(text[position]))
+            {
+                ++position;
+                continue;
+            }
 
-            if (run >= MAX_TOKEN_RUN)
+            const auto start {position};
+
+            while (position < text.size() && isTokenCharacter(text[position]))
+            {
+                ++position;
+            }
+
+            if (position - start >= MAX_TOKEN_RUN && !isDigestRun(text, start, position))
             {
                 return true;
             }
@@ -111,7 +132,7 @@ namespace
 
     bool contains(const std::string& text, const char* fragment)
     {
-        return lowerCase(text).find(fragment) != std::string::npos;
+        return Utils::toLowerCase(text).find(fragment) != std::string::npos;
     }
 } // namespace
 
@@ -175,7 +196,7 @@ namespace containerimages
             return false;
         }
 
-        auto message {lowerCase(oci::stringField(errors.front(), "message"))};
+        auto message {Utils::toLowerCase(oci::stringField(errors.front(), "message"))};
 
         // An IAM denial names the principal and the resource, and a repository or a user may
         // be called anything, "token-service" or "expiry-job" included. What is matched is
@@ -273,7 +294,6 @@ namespace containerimages
                  contains(message, "signature expired") || contains(message, "not yet current") ||
                  contains(message, "is now earlier than") || contains(message, "request is not yet valid"))
         {
-            failure.clockSkew = true;
             failure.reason = "AWS refused the signature because the agent clock differs too much from AWS time, "
                              "so the system time has to be corrected" + suffix;
         }

@@ -64,7 +64,8 @@ namespace containerimages::aws
                                     const std::string& accessKeyId,
                                     const Secret& secretAccessKey);
 
-    /// @brief Lower-case hexadecimal SHA-256 of @p data. Empty on failure.
+    /// @brief Lower-case hexadecimal SHA-256 of @p data. Throws std::runtime_error when the
+    /// hash cannot be computed, so a failure is never mistaken for a digest.
     std::string sha256Hex(const std::string& data);
 
     /// @brief Format a time as `yyyymmddThhmmssZ`, in UTC.

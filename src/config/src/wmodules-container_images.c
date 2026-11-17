@@ -290,6 +290,14 @@ static void parse_registry(const OS_XML *xml, xml_node *registry_node, wm_contai
         *c = (char) tolower((unsigned char) *c);
     }
 
+    // Amazon ECR Public takes no credential, so no entry for it is ever used, whatever it holds.
+    // Reported here, where the operator is editing it, before any check that would ask for more.
+    if (!strcmp(host, "public.ecr.aws")) {
+        mwarn("The '%s' entry for '%s' at module '%s' is not needed: Amazon ECR Public takes no credential, ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+        OS_ClearNode(children);
+        return;
+    }
+
     // A region belongs to an Amazon host. Anywhere else it is a tag that means nothing, and the
     // entry is kept as it was before the tag existed, rather than skipped for carrying it.
     if (region && !aws_tags && !is_amazon_host(host)) {
@@ -338,6 +346,21 @@ static void parse_registry(const OS_XML *xml, xml_node *registry_node, wm_contai
         return;
     }
 
+    // Tested before the user and passkey checks, so the first warning names what an Amazon
+    // host needs rather than the user and passkey it must not use. Only a private ECR host can
+    // take the AWS elements; any other Amazon host is not a registry the module reads.
+    if (is_ecr_private_host(host)) {
+        mwarn("The '%s' entry for '%s' at module '%s' needs '%s' and '%s' for an Amazon ECR registry, ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_ACCESS_KEY_ID_KEY, XML_CI_SECRET_ACCESS_KEY_KEY);
+        OS_ClearNode(children);
+        return;
+    }
+
+    if (is_amazon_host(host)) {
+        mwarn("The '%s' entry for '%s' at module '%s' names an Amazon host that is not a private ECR registry such as '<account>.dkr.ecr.<region>.amazonaws.com', ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+        OS_ClearNode(children);
+        return;
+    }
+
     // Both keys are needed to authenticate, so an entry with one can never work and is
     // reported here, where the operator is editing it, rather than at scan time as a
     // credential missing from the store.
@@ -349,12 +372,6 @@ static void parse_registry(const OS_XML *xml, xml_node *registry_node, wm_contai
 
     if (!passkey_key || !strlen(passkey_key)) {
         mwarn("The '%s' entry for '%s' at module '%s' names no '%s', ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_PASSKEY_KEY);
-        OS_ClearNode(children);
-        return;
-    }
-
-    if (is_amazon_host(host)) {
-        mwarn("The '%s' entry for '%s' at module '%s' needs '%s' and '%s' for an Amazon ECR registry, ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_ACCESS_KEY_ID_KEY, XML_CI_SECRET_ACCESS_KEY_KEY);
         OS_ClearNode(children);
         return;
     }

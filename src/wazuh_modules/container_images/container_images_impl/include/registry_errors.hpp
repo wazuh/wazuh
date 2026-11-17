@@ -51,9 +51,8 @@ namespace containerimages
     /// @brief A failed AWS API call, reduced to what is safe to log.
     struct AwsApiFailure
     {
-        std::string reason;     ///< A fixed sentence chosen by this module, plus the sanitised error type.
-        long retryStatus {0};   ///< HTTP status to evaluate the retry policy with.
-        bool clockSkew {false}; ///< True when the failure says the agent clock is off.
+        std::string reason;   ///< A fixed sentence chosen by this module, plus the sanitised error type.
+        long retryStatus {0}; ///< HTTP status to evaluate the retry policy with.
     };
 
     /// @brief Map an AWS JSON error response, `{"__type","message"}`, to a failure.

@@ -495,7 +495,9 @@ namespace containerimages
         m_ecrTokenKey = RegistryTokenCache::makeKey(m_reference.registry,
                                                     configured->userKey,
                                                     configured->passkeyKey,
-                                                    region);
+                                                    region,
+                                                    accessKeyId->value(),
+                                                    secretAccessKey->value());
 
         if (m_context.tokenCache != nullptr)
         {
@@ -767,16 +769,10 @@ namespace containerimages
 
         if (answered && response.status == 401)
         {
-            // The credential is what the registry refused, and there is nothing to fall back
-            // on: readAnonymously says no for a registry with no anonymous path, and this error
-            // stands.
+            // The credential is what the registry refused. A private ECR registry has no
+            // anonymous path to fall back on, so this error stands.
             error = "the registry rejected the credential" + reasonSuffix(response.body);
             m_credentialRefused = true;
-
-            if (readAnonymously(url, response.header("www-authenticate"), false, response, error))
-            {
-                return true;
-            }
 
             rememberEcrRefusal(m_reference.refusalScope(), error);
             return false;

@@ -12,6 +12,8 @@
 #define _REGISTRY_TOKEN_CACHE_HPP
 
 #include "credential_provider.hpp"
+#include "hashHelper.h"
+#include "wazuhCommon.hpp"
 
 #include <chrono>
 #include <functional>
@@ -48,14 +50,29 @@ namespace containerimages
             {
             }
 
-            /// @brief The key for a token: the registry, the credential's key names and the
-            /// region it was issued for. Key names, never values.
+            /// @brief The key for a token: the registry, the credential's key names, the region
+            /// it was issued for and a fingerprint of the credential's values.
+            ///
+            /// The fingerprint makes a replaced or rotated credential a different key, so a token
+            /// issued to the old one is not served to the new one. It is a SHA-256 digest, held in
+            /// memory only and never logged, and neither value can be recovered from the key.
             static std::string makeKey(const std::string& host,
                                        const std::string& accessKeyIdKey,
                                        const std::string& secretAccessKeyKey,
-                                       const std::string& region)
+                                       const std::string& region,
+                                       const std::string& accessKeyId,
+                                       const std::string& secretAccessKey)
             {
-                return host + '\n' + accessKeyIdKey + '\n' + secretAccessKeyKey + '\n' + region;
+                // Hashed piece by piece from the caller's copies, so no further copy of either
+                // value is made that would have to be scrubbed.
+                Utils::HashData hash {Utils::HashType::Sha256};
+                hash.update(accessKeyId.data(), accessKeyId.size());
+                hash.update("\n", 1);
+                hash.update(secretAccessKey.data(), secretAccessKey.size());
+                const auto digest {hash.hash()};
+
+                return host + '\n' + accessKeyIdKey + '\n' + secretAccessKeyKey + '\n' + region + '\n' +
+                       wazuh::hex_encode(digest.data(), digest.size());
             }
 
             /// @brief A copy of the token for @p key, when one is stored and still valid.

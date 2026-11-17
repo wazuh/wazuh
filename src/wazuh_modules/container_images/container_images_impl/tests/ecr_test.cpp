@@ -119,20 +119,34 @@ TEST_F(RegistryTokenCacheTest, ClearDropsEverything)
 
 TEST_F(RegistryTokenCacheTest, TheKeyDistinguishesHostCredentialAndRegion)
 {
-    const auto base {RegistryTokenCache::makeKey("h", "id", "secret", "us-east-1")};
+    const auto base {RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "id", "secret")};
 
-    EXPECT_NE(base, RegistryTokenCache::makeKey("other", "id", "secret", "us-east-1"));
-    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "id2", "secret", "us-east-1"));
-    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "id", "secret2", "us-east-1"));
-    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "id", "secret", "eu-west-1"));
-    EXPECT_EQ(base, RegistryTokenCache::makeKey("h", "id", "secret", "us-east-1"));
+    EXPECT_NE(base, RegistryTokenCache::makeKey("other", "idk", "secretk", "us-east-1", "id", "secret"));
+    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "idk2", "secretk", "us-east-1", "id", "secret"));
+    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "idk", "secretk2", "us-east-1", "id", "secret"));
+    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "idk", "secretk", "eu-west-1", "id", "secret"));
+    EXPECT_EQ(base, RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "id", "secret"));
+}
+
+TEST_F(RegistryTokenCacheTest, TheKeyFollowsTheCredentialValues)
+{
+    const auto base {RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "id", "secret")};
+
+    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "id2", "secret"));
+    EXPECT_NE(base, RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "id", "secret2"));
+
+    // The values are joined unambiguously: moving a character between them is another credential.
+    EXPECT_NE(RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "ab", "c"),
+              RegistryTokenCache::makeKey("h", "idk", "secretk", "us-east-1", "a", "bc"));
 }
 
 TEST_F(RegistryTokenCacheTest, TheKeyHoldsNoCredentialValue)
 {
-    // Built from key names only, which is what the configuration carries.
-    EXPECT_EQ(RegistryTokenCache::makeKey("h", "ecr_key_id", "ecr_secret", "us-east-1").find(EXAMPLE_SECRET),
-              std::string::npos);
+    // The values are fingerprinted, never carried: neither can be read from the key.
+    const auto key {RegistryTokenCache::makeKey("h", "ecr_key_id", "ecr_secret", "us-east-1", "AKIDEXAMPLE", EXAMPLE_SECRET)};
+
+    EXPECT_EQ(key.find(EXAMPLE_SECRET), std::string::npos);
+    EXPECT_EQ(key.find("AKIDEXAMPLE"), std::string::npos);
 }
 
 class EcrTokenRequestTest : public ::testing::Test
@@ -729,6 +743,26 @@ TEST_F(RegistryErrorsTest, TextIsCleanedAndCapped)
 
     // A run of token characters that long is a token, not a word, and is withheld.
     EXPECT_TRUE(sanitizeServerText(std::string(1000, 'a')).empty());
+}
+
+TEST_F(RegistryErrorsTest, ASha256DigestIsAnIdentifierAndNotAToken)
+{
+    const std::string hex(64, 'a');
+    const std::string digest {"sha256:" + hex};
+
+    EXPECT_EQ(sanitizeServerText("manifest unknown: " + digest), "manifest unknown: " + digest);
+    EXPECT_EQ(registryErrorReason(R"({"errors":[{"code":"MANIFEST_UNKNOWN","message":"manifest )" + digest +
+                                  R"( not found"}]})"),
+              "MANIFEST_UNKNOWN: manifest " + digest + " not found");
+
+    // Anything else of that length is still withheld.
+    EXPECT_TRUE(sanitizeServerText(hex).empty()) << "the same run without the prefix";
+    EXPECT_TRUE(sanitizeServerText("sha256:" + hex + "a").empty()) << "longer than a digest";
+    EXPECT_TRUE(sanitizeServerText("sha256:" + std::string(64, 'A')).empty()) << "not lowercase hex";
+    EXPECT_TRUE(sanitizeServerText("sha256:" + std::string(64, 'g')).empty()) << "not hex";
+    EXPECT_TRUE(sanitizeServerText("sha512:" + hex).empty()) << "another algorithm";
+    EXPECT_TRUE(sanitizeServerText("token " + std::string(64, 'a') + " sha256:" + hex).empty())
+            << "a token before the digest";
 }
 
 TEST_F(RegistryErrorsTest, ACodeThatIsNotAnIdentifierIsDropped)

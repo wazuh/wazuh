@@ -2287,7 +2287,12 @@ class EcrReaderTest : public RegistryReaderTest
 
         std::string cacheKey(const std::string& region = "us-east-1") const
         {
-            return RegistryTokenCache::makeKey(ECR_HOST, "ecr_key_id", "ecr_secret", region);
+            return RegistryTokenCache::makeKey(ECR_HOST,
+                                               "ecr_key_id",
+                                               "ecr_secret",
+                                               region,
+                                               "AKIDEXAMPLE",
+                                               "example-secret-access-key");
         }
 
         bool logged(const std::string& fragment) const
@@ -2464,6 +2469,31 @@ TEST_F(EcrReaderTest, TheTokenIsSharedAcrossTheReferencesOfARegistry)
         EXPECT_NE(std::find(call.headers.begin(), call.headers.end(), "Authorization: Basic ecr-token-1"),
                   call.headers.end());
     }
+}
+
+TEST_F(EcrReaderTest, AReplacedCredentialUnderTheSameKeyNamesGetsANewToken)
+{
+    auto* second {new ScriptedTransport()};
+    auto* third {new ScriptedTransport()};
+    scriptResolution(*m_transport);
+    scriptResolution(*second);
+    scriptResolution(*third);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+    ASSERT_EQ(m_source.calls.size(), 1u);
+
+    // The same key names now hold other values: the token issued to the old ones is not served.
+    m_credentials.values["container_images/ecr_key_id"] = "AKIDROTATED";
+    m_credentials.values["container_images/ecr_secret"] = "rotated-secret-access-key";
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, second)->discover().status, ReadStatus::Success);
+    ASSERT_EQ(m_source.calls.size(), 2u) << "a replaced credential must not be served the old token";
+    EXPECT_EQ(m_source.calls[1].accessKeyId, "AKIDROTATED");
+    EXPECT_EQ(m_source.calls[1].secretAccessKey, "rotated-secret-access-key");
+
+    // The values unchanged: the token held for them is reused.
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, third)->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_source.calls.size(), 2u);
 }
 
 TEST_F(EcrReaderTest, TheTokenIsRenewedBeforeItExpires)

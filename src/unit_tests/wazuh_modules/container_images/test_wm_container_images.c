@@ -803,6 +803,86 @@ void test_read_basic_tags_on_an_amazon_host_are_skipped(void **state) {
     assert_int_equal(data->registries_count, 0);
 }
 
+void test_read_a_credential_entry_for_ecr_public_is_skipped(void **state) {
+    /* Amazon ECR Public takes no credential: any entry for it is reported, not kept, whatever it
+     * holds, so the operator is never asked for an element it cannot use. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>public.ecr.aws</host>\n"
+        "    <user_keystore_key>u</user_keystore_key>\n"
+        "    <passkey_keystore_key>p</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>PUBLIC.ECR.AWS</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>public.ecr.aws</host>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>public.ecr.aws</host>\n"
+        "    <region>us-east-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+
+    for (int i = 0; i < 4; i++) {
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg,
+                      "The 'registry' entry for 'public.ecr.aws' at module 'container_images' is not needed: Amazon ECR Public takes no credential, ignoring it.");
+    }
+
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_an_amazon_host_names_the_aws_elements_first(void **state) {
+    /* Whatever the entry carries, the first warning for an Amazon host names the AWS elements, so
+     * adding the user key the earlier warning asked for does not lead to a second one. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <user_keystore_key>u</user_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <passkey_keystore_key>p</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>bucket.s3.amazonaws.com</host>\n"
+        "    <user_keystore_key>u</user_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+
+    for (int i = 0; i < 3; i++) {
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg,
+                      "The 'registry' entry for '" ECR_HOST "' at module 'container_images' needs 'access_key_id_keystore_key' and 'secret_access_key_keystore_key' for an Amazon ECR registry, ignoring it.");
+    }
+
+    /* Another Amazon host is not a registry the module reads, so it is never asked for the AWS
+     * elements it could not use either. */
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "The 'registry' entry for 'bucket.s3.amazonaws.com' at module 'container_images' names an Amazon host that is not a private ECR registry such as '<account>.dkr.ecr.<region>.amazonaws.com', ignoring it.");
+
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
 void test_read_ecr_and_ghcr_registries_side_by_side(void **state) {
     const char *string =
         "<registry_auth>\n"
@@ -1092,6 +1172,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_ecr_tags_mixed_with_basic_tags_are_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_ecr_tags_on_a_host_that_is_not_amazon_are_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_basic_tags_on_an_amazon_host_are_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_a_credential_entry_for_ecr_public_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_an_amazon_host_names_the_aws_elements_first, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_ecr_and_ghcr_registries_side_by_side, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_ghcr_registry_with_a_stray_region_is_kept, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_ecr_host_is_read_in_lower_case, setup_test_read, teardown_test_read),

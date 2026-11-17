@@ -186,16 +186,7 @@ namespace containerimages
 
         const auto result {perform(url, headers, &credentials, nullptr, response, error)};
 
-        // Written through a volatile pointer. A std::fill into a buffer that is freed on
-        // the next line is a dead store, and a compiler is entitled to remove it; this is
-        // the same reason Secret::scrub does it this way, and this is the one place
-        // outside Secret that handles an assembled credential.
-        volatile char* data {const_cast<volatile char*>(credentials.data())};
-
-        for (std::size_t index = 0; index < credentials.size(); ++index)
-        {
-            data[index] = '\0';
-        }
+        scrubString(credentials);
 
         return result;
     }

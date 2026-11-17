@@ -10,6 +10,10 @@
 
 #include "aws_sigv4.hpp"
 
+#include "hashHelper.h"
+#include "stringHelper.h"
+#include "wazuhCommon.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <map>
@@ -22,21 +26,6 @@ namespace
     constexpr auto TERMINATOR {"aws4_request"};
     constexpr std::size_t DATE_LENGTH {8}; // yyyymmdd
     constexpr std::size_t SHA256_BYTES {32};
-
-    std::string toHex(const unsigned char* data, const std::size_t size)
-    {
-        constexpr auto DIGITS {"0123456789abcdef"};
-        std::string hex;
-        hex.reserve(size * 2);
-
-        for (std::size_t index = 0; index < size; ++index)
-        {
-            hex.push_back(DIGITS[data[index] >> 4]);
-            hex.push_back(DIGITS[data[index] & 0x0F]);
-        }
-
-        return hex;
-    }
 
     /// @brief RFC 3986 percent-encoding, leaving only the unreserved characters as they are.
     std::string uriEncode(const std::string& text)
@@ -163,19 +152,6 @@ namespace
         return result;
     }
 
-    std::string lowerCase(std::string text)
-    {
-        std::transform(text.begin(),
-                       text.end(),
-                       text.begin(),
-                       [](const unsigned char character)
-        {
-            return static_cast<char>(character >= 'A' && character <= 'Z' ? character + ('a' - 'A') : character);
-        });
-
-        return text;
-    }
-
     /// @brief Trim a header value and collapse every run of blanks inside it to one space.
     std::string normalizeHeaderValue(const std::string& value)
     {
@@ -209,7 +185,7 @@ namespace
 
         for (const auto& header : request.headers)
         {
-            auto& value {headers[lowerCase(header.first)]};
+            auto& value {headers[Utils::toLowerCase(header.first)]};
 
             if (!value.empty())
             {
@@ -270,22 +246,11 @@ namespace containerimages::aws
 {
     std::string sha256Hex(const std::string& data)
     {
-        unsigned char digest[SHA256_BYTES] {};
-        std::size_t length {0};
+        Utils::HashData hash {Utils::HashType::Sha256};
+        hash.update(data.data(), data.size());
+        const auto digest {hash.hash()};
 
-        if (EVP_Q_digest(nullptr,
-                         "SHA256",
-                         nullptr,
-                         data.data(),
-                         data.size(),
-                         digest,
-                         &length) != 1 ||
-                length != SHA256_BYTES)
-        {
-            return {};
-        }
-
-        return toHex(digest, length);
+        return wazuh::hex_encode(digest.data(), digest.size());
     }
 
     std::string signedHeaderNames(const SigningRequest& request)
@@ -358,14 +323,8 @@ namespace containerimages::aws
             return {};
         }
 
-        // A failed hash would otherwise be signed over as an empty string.
+        // A failed hash throws (sha256Hex), so nothing is ever signed over an empty digest.
         const auto canonical {canonicalRequest(request)};
-
-        if (sha256Hex(request.payload).empty() || sha256Hex(canonical).empty())
-        {
-            return {};
-        }
-
         const auto toSign {stringToSign(request, canonical)};
         const auto signature {hmac(key, toSign)};
 
@@ -376,7 +335,7 @@ namespace containerimages::aws
 
         return std::string {ALGORITHM} + " Credential=" + accessKeyId + "/" + credentialScope(request) +
                ", SignedHeaders=" + signedHeaderNames(request) + ", Signature=" +
-               toHex(reinterpret_cast<const unsigned char*>(signature.value().data()), signature.value().size());
+               wazuh::hex_encode(signature.value().data(), signature.value().size());
     }
 
     std::string formatAmzDate(const std::chrono::system_clock::time_point time)

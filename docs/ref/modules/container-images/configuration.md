@@ -204,7 +204,7 @@ No credential value is written to the log at any level, and the configuration du
 
 #### Amazon ECR
 
-A public ECR repository (`public.ecr.aws`) is read with no credential and needs no entry. Any entry configured for `public.ecr.aws` is ignored.
+A public ECR repository (`public.ecr.aws`) is read with no credential and needs no entry. Any entry for `public.ecr.aws` is reported and skipped, whatever it holds.
 
 A private ECR repository is read with an AWS access key. The module uses the key pair to sign a request to AWS that returns a registry token, and then sends that token to the registry. It does not need the AWS command line tools. The configuration names the keys, as for any other registry:
 
@@ -247,7 +247,7 @@ wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-eas
 
 **Certificate bundle.** `<ca_bundle>`, or the bundle detected on the host, verifies two hosts: the registry and `api.ecr.<region>.amazonaws.com`, where the token is requested. A bundle holding only a private authority for an internal registry fails the signed request with `SSL certificate problem`, so it has to contain the Amazon roots as well.
 
-**Token reuse.** The registry token is requested once and reused for every reference of the same registry and the same credential, until ten minutes before it expires, when it is requested again. A failed request is never remembered, so a corrected credential works at the next scan. The reuse is keyed by the key names and not by the values, so after the secret is replaced in the store under the same key names the old token keeps being used until it expires or the registry refuses it. Restarting the agent starts from an empty cache.
+**Token reuse.** The registry token is requested once and reused for every reference of the same registry, the same credential and the same region, until ten minutes before it expires, when it is requested again. The credential is identified by its key names and by a fingerprint of the stored access key id and secret, so the reuse follows the stored values: a credential that is replaced or rotated gets a new token at the next scan, even under the same key names. The fingerprint is a SHA-256 digest held in memory only, and neither it nor the values are logged. A failed request is never remembered, so a corrected credential works at the next scan. Restarting the agent starts from an empty cache.
 
 **Token renewal.** A token the registry says it refuses is dropped and replaced once, and the request is repeated. That is a `401`, or a `400` or `403` whose body names the token as invalid or expired, which is how a private registry was measured to answer a token it did not issue. When a layer is refused there is no body to read, so the manifest is requested again to find out. A `400` or `403` that does not name the token, a missing permission for instance, or a refusal by the content host after a redirect, is not a reason to ask AWS again: the reference fails with the reason and the shared token stays, so any number of references denied by a missing permission cost one signed request. A token refused after `<region>` overrode the host's region is not renewed either: see [Region](#amazon-ecr).
 
@@ -459,7 +459,8 @@ The same holds inside `<registry_auth>`: an entry naming no host, an entry whose
 1. `access_key_id_keystore_key` and `secret_access_key_keystore_key` must both be present and non-empty, as `user_keystore_key` and `passkey_keystore_key` must both be for any other registry.
 2. `region`, when present, must look like an AWS region (`us-east-1`): two letters, one or more lower-case words, one or two digits.
 3. The host must be a private ECR registry, `<12 digit account>.dkr.ecr.<region>.amazonaws.com` or its `.amazonaws.com.cn` form, the shape the module reads. Any other host under `amazonaws.com`, an S3 or a FIPS one for instance, is reported and skipped.
-4. The AWS elements and `user_keystore_key` or `passkey_keystore_key` cannot be used in the same entry, and an Amazon host cannot use the user and passkey elements.
+4. The AWS elements and `user_keystore_key` or `passkey_keystore_key` cannot be used in the same entry, and an Amazon host cannot use the user and passkey elements. An Amazon host is checked for the AWS elements first, so the first warning names them.
+5. `public.ecr.aws` takes no credential, so any entry for it is reported and skipped, whatever it holds. An entry for another Amazon host that is not a private ECR registry is reported and skipped as well.
 
 A reference entry is skipped rather than rejected because rejecting it invalidates the whole module configuration, which stops `wazuh-modulesd` from starting; since the control script tests every daemon's configuration before starting any of them, a single empty entry would otherwise leave the agent with no daemon running.
 
