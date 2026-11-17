@@ -590,11 +590,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
             mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
             break;
         default:
-            mterror(WM_CISCAT_LOGTAG, "Internal error executing '%s'. Skipping it.", eval->path);
-            eval->flags.error = 1;
-            os_free(output);
-            os_free(command);
-            return;
+            ciscat->flags.error = 1;
+            mterror(WM_CISCAT_LOGTAG, "Internal error executing '%s'.", eval->path);
+            break;
     }
 
     os_free(output);
