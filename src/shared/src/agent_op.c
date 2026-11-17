@@ -427,7 +427,7 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON_AddStringToObject(arguments, "source", source);
     }
 
-    // Issue #41339: the instant after which remoted can no longer deliver the answer. The master
+    // The instant after which remoted can no longer deliver the answer. The master
     // refuses a re-enrollment that arrives past it without rotating anything. Omitted when 0, which
     // authd reads as "no deadline" -- the behaviour that predates this.
     if (deadline_ms > 0) {
@@ -764,7 +764,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    // No deadline: a local request has no remoted budget behind it (issue #41339).
+    // No deadline: a local request has no remoted budget behind it.
     cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL, 0);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);

@@ -53,7 +53,7 @@ namespace remoted::enrollment
         /// When this request arrived at the HTTP handler, in milliseconds since the Unix epoch
         /// (wall clock: the master compares it against its own). The worker turns it into the
         /// request's deadline at DEQUEUE time -- the instant after which this client will have
-        /// stopped waiting, so authd must not rotate anything for it (issue #41339). Absent means
+        /// stopped waiting, so authd must not rotate anything for it. Absent means
         /// "no deadline", which is the behaviour that predates it.
         std::optional<std::int64_t> arrivalMs;
     };

@@ -977,7 +977,7 @@ private:
         registerTokenKeySourceDiagnostics(enrollTokenKeySource);
 
         // http_request_timeout bounds the WHOLE HTTP request, so it is the ceiling the AuthdClient's
-        // dequeue-time deadline is capped by (issue #41339). Widened first and narrowed once at the
+        // dequeue-time deadline is capped by. Widened first and narrowed once at the
         // end, like its three siblings in this file.
         const auto resolvedHttpRequestTimeoutMs =
             static_cast<std::uint32_t>(static_cast<long long>(config.requestTimeoutSec) * 1000);

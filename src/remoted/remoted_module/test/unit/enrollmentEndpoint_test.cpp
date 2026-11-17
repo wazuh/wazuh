@@ -719,14 +719,14 @@ TEST(EnrollmentEndpointTest, RequestNeverIncludesForceIdOrKey)
     EXPECT_FALSE(j["arguments"].contains("key"));
     // And no enrollment token was used, so no token_id either (issue #38993). Nor a re-enrollment.
     // Not byte-identical to the pre-token request any more: every /enroll now also carries
-    // `deadline_ms` (issue #41339), asserted end to end in DeadlineReachesAuthdFromTheHandler.
+    // `deadline_ms`, asserted end to end in DeadlineReachesAuthdFromTheHandler.
     EXPECT_FALSE(j["arguments"].contains("token_id"));
     EXPECT_FALSE(j["arguments"].contains("reenroll"));
 }
 
 TEST(EnrollmentEndpointTest, DeadlineReachesAuthdFromTheHandler)
 {
-    // Issue #41339: the HANDLER stamps the arrival instant and the AuthdClient worker turns it into
+    // The HANDLER stamps the arrival instant and the AuthdClient worker turns it into
     // an absolute deadline at dequeue time. This is the only test that covers that whole hop: the
     // AuthdClient-level cases build an AuthdAddRequest by hand, so they would still pass if the
     // handler never filled arrivalMs and the wire carried no deadline at all.
