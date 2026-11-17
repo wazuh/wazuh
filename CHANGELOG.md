@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41265](https://github.com/wazuh/wazuh/pull/41265))
 - Fixed the typo "Succsessful" in the description of the Amazon Security Lake rule for successful Route 53 DNS requests (99080). ([#41519](https://github.com/wazuh/wazuh/pull/41519))
 - Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#41406](https://github.com/wazuh/wazuh/pull/41406))
-- Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states after a `409` or `429` answer from the indexer, and their stop, as `dispatch handler error` warnings. ([#41044](https://github.com/wazuh/wazuh/issues/41044))
+- Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states after a `409` or `429` answer from the indexer, and their stop, as `dispatch handler error` warnings. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
 
 #### Changed
 
