@@ -29,6 +29,7 @@ public:
 
     virtual uint64_t getQueueSize() const = 0;
     virtual uint64_t getDroppedEvents() const = 0;
+    virtual uint64_t getRequeuedEvents() const = 0;
 
     virtual PointInTime
     createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards) = 0;

@@ -17,6 +17,7 @@ public:
                 (override));
     MOCK_METHOD(uint64_t, getQueueSize, (), (override));
     MOCK_METHOD(uint64_t, getDroppedEvents, (), (override));
+    MOCK_METHOD(uint64_t, getRequeuedEvents, (), (override));
     MOCK_METHOD((std::optional<std::pair<std::string, bool>>),
                 getPolicyHashAndEnabled,
                 (std::string_view space, const std::optional<std::string_view>& consumerIdToValidate),

@@ -398,7 +398,7 @@ protected:
 };
 
 /**************************
- * getQueueSize / getDroppedEvents
+ * getQueueSize / getDroppedEvents / getRequeuedEvents
  **************************/
 TEST_F(WIndexerConnectorMockTest, GetQueueSizeForwardsToBackend)
 {
@@ -426,6 +426,20 @@ TEST_F(WIndexerConnectorMockTest, GetDroppedEventsReturnsZeroAfterShutdown)
     auto connector = makeConnector();
     connector->shutdown();
     EXPECT_EQ(connector->getDroppedEvents(), 0U);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetRequeuedEventsForwardsToBackend)
+{
+    EXPECT_CALL(*mock, getRequeuedEvents()).WillOnce(Return(uint64_t {5}));
+    auto connector = makeConnector();
+    EXPECT_EQ(connector->getRequeuedEvents(), 5U);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetRequeuedEventsReturnsZeroAfterShutdown)
+{
+    auto connector = makeConnector();
+    connector->shutdown();
+    EXPECT_EQ(connector->getRequeuedEvents(), 0U);
 }
 
 /**************************

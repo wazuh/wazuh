@@ -565,7 +565,7 @@ wazuh_modules.inventory_sync_server_indexer_async_logger_queue_size=8
 
 - **Default value:** `8`
 - **Allowed values:** 1 to 65536
-- **Note:** Forwarded as `logger_queue_size`.
+- **Note:** Forwarded as `logger_queue_size`. Bounds the bulk responses waiting to have their item errors logged; items rejected with a `429` or a `cluster_block_exception` are requeued and retried independently of it.
 
 #### wazuh_modules.inventory_sync_server_indexer_async_logger_threads
 
