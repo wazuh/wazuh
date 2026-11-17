@@ -149,10 +149,11 @@ public:
 
     /**
      * @brief Class constructor that initializes the publisher in a simplified state that neither indexes the data nor
-     * keeps it in the local DB, which it removes if a previous run left one.
+     * keeps it in the local DB, which it removes if a previous run left one. The caller has to publish the data again
+     * once the indexer is enabled.
      *
      * @param config Indexer configuration, including database_path and servers.
-     * @param useSeekDelete If true, the connector will index the seek method to delete operation.
+     * @param useSeekDelete Unused: no operation is applied in this state.
      * @param logFunction Callback function to be called when trying to log a message.
      */
     explicit IndexerConnector(

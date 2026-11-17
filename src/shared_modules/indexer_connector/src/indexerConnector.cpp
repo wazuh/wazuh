@@ -60,6 +60,7 @@ constexpr auto DOUBLE_FACTOR {2};
 // Single thread because the events needs to be processed in order.
 constexpr auto DATABASE_WORKERS = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
+constexpr auto MIRROR_BASE_PATH = "queue/indexer/db/";
 
 // Sync configuration
 constexpr auto SYNC_WORKERS = 1;
@@ -1184,8 +1185,7 @@ IndexerConnector::IndexerConnector(
 {
     preInitialization(logFunction, config);
 
-    m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
+    m_db = std::make_unique<Utils::RocksDBWrapper>(MIRROR_BASE_PATH + m_indexName, true, true, true);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -1696,7 +1696,7 @@ IndexerConnector::IndexerConnector(
 
     // Only the sync with the indexer reads the mirror, and one kept from an earlier run would be stale by the time
     // the indexer is enabled again.
-    const auto mirrorPath = std::string(DATABASE_BASE_PATH) + "db/" + m_indexName;
+    const auto mirrorPath = MIRROR_BASE_PATH + m_indexName;
     std::error_code error;
     if (const auto removed = std::filesystem::remove_all(mirrorPath, error); error)
     {
