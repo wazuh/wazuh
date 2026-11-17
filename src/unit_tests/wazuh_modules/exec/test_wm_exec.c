@@ -93,7 +93,8 @@ static void expect_suspended_create(void) {
 
 static void expect_job_breakaway(BOOL result) {
     expect_value(wrap_SetInformationJobObject, hJob, (HANDLE)0x10);
-    expect_value(wrap_SetInformationJobObject, JobObjectInformationClass, JobObjectBasicLimitInformation);
+    expect_value(wrap_SetInformationJobObject, JobObjectInformationClass, JobObjectExtendedLimitInformation);
+    expect_value(wrap_SetInformationJobObject, cbJobObjectInformationLength, sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
     expect_value(wrap_SetInformationJobObject, LimitFlags, JOB_OBJECT_LIMIT_BREAKAWAY_OK);
     will_return(wrap_SetInformationJobObject, result);
 

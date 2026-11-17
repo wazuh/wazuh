@@ -104,11 +104,13 @@ BOOL wrap_TerminateJobObject(HANDLE hJob, __UNUSED_PARAM(UINT uExitCode)) {
 BOOL wrap_SetInformationJobObject(HANDLE hJob,
                                   JOBOBJECTINFOCLASS JobObjectInformationClass,
                                   LPVOID lpJobObjectInformation,
-                                  __UNUSED_PARAM(DWORD cbJobObjectInformationLength)) {
+                                  DWORD cbJobObjectInformationLength) {
+    // Both basic and extended limit information start with the basic limit flags
     DWORD LimitFlags = ((JOBOBJECT_BASIC_LIMIT_INFORMATION *)lpJobObjectInformation)->LimitFlags;
 
     check_expected(hJob);
     check_expected(JobObjectInformationClass);
+    check_expected(cbJobObjectInformationLength);
     check_expected(LimitFlags);
     return mock();
 }

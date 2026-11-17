@@ -276,12 +276,12 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         winerror = GetLastError();
         mdebug1("at wm_exec(): CreateJobObject(%d): %s", winerror, win_strerror(winerror));
     } else {
-        JOBOBJECT_BASIC_LIMIT_INFORMATION limits = { 0 };
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = { 0 };
 
-        // Lets a descendant that asks for it leave the job; without it the process runs outside any job
-        limits.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
+        // Lets a descendant that asks for it leave the job; only the extended limit information accepts this flag
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
 
-        if (!SetInformationJobObject(hJob, JobObjectBasicLimitInformation, &limits, sizeof(limits))) {
+        if (!SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
             winerror = GetLastError();
             mdebug1("at wm_exec(): SetInformationJobObject(%d): %s", winerror, win_strerror(winerror));
             CloseHandle(hJob);
