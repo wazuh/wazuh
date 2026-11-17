@@ -12,6 +12,7 @@
 #define PROCESSTHREADSAPI_WRAPPERS_H
 
 #include <windows.h>
+#include <stdbool.h>
 
 #undef OpenProcessToken
 #define OpenProcessToken    wrap_OpenProcessToken
@@ -26,6 +27,7 @@
 #define CreateJobObjectW    wrap_CreateJobObjectW
 #define AssignProcessToJobObject wrap_AssignProcessToJobObject
 #define TerminateJobObject  wrap_TerminateJobObject
+#define SetInformationJobObject wrap_SetInformationJobObject
 #define CancelSynchronousIo wrap_CancelSynchronousIo
 
 WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority);
@@ -56,7 +58,36 @@ BOOL wrap_AssignProcessToJobObject(HANDLE hJob, HANDLE hProcess);
 
 BOOL wrap_TerminateJobObject(HANDLE hJob, UINT uExitCode);
 
+BOOL wrap_SetInformationJobObject(HANDLE hJob,
+                                  JOBOBJECTINFOCLASS JobObjectInformationClass,
+                                  LPVOID lpJobObjectInformation,
+                                  DWORD cbJobObjectInformationLength);
+
 BOOL wrap_CancelSynchronousIo(HANDLE hThread);
+
+/**
+ * @brief Not redirected by a macro here: wm_exec.c opts in, other users of this header keep the real call.
+ */
+FARPROC wrap_GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
+
+/**
+ * @brief Not redirected by a macro here: wm_exec.c opts in, other users of this header keep the real call.
+ *        Mocked data per call: the bytes to copy, their count and the return value.
+ */
+BOOL wrap_ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
+                   LPOVERLAPPED lpOverlapped);
+
+/**
+ * @brief Makes wrap_CreateThread run the thread routine to completion before returning, instead of not
+ *        running it. Reset by the test that sets it.
+ */
+void wrap_CreateThread_run_routine(bool run);
+
+/**
+ * @brief Runs, to completion, the routine given to the last wrap_CreateThread call. Used to let a thread that
+ *        the code under test left running finish and release what it owns.
+ */
+void wrap_CreateThread_run_last(void);
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of SetThreadPriority

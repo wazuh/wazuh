@@ -78,6 +78,92 @@ static int teardown_modules(void ** state) {
     return 0;
 }
 
+#ifdef WIN32
+static void expect_job_breakaway(BOOL result) {
+    expect_value(wrap_SetInformationJobObject, hJob, (HANDLE)0x10);
+    expect_value(wrap_SetInformationJobObject, JobObjectInformationClass, JobObjectBasicLimitInformation);
+    expect_value(wrap_SetInformationJobObject, LimitFlags, JOB_OBJECT_LIMIT_BREAKAWAY_OK);
+    will_return(wrap_SetInformationJobObject, result);
+
+    if (!result) {
+        expect_any(__wrap__mdebug1, formatted_msg);
+    }
+}
+
+#define READ_PIPE ((HANDLE)0xA1)
+#define WRITE_PIPE ((HANDLE)0xA2)
+#define READER_THREAD ((HANDLE)0x20)
+
+// Everything up to the reader thread creation, for a command run with its output collected
+static void expect_spawn_with_output(void) {
+    will_return(wrap_CreatePipe, TRUE);
+    will_return(wrap_CreatePipe, READ_PIPE);
+    will_return(wrap_CreatePipe, WRITE_PIPE);
+    expect_value(wrap_SetHandleInformation, hObject, WRITE_PIPE);
+    expect_value(wrap_SetHandleInformation, dwMask, HANDLE_FLAG_INHERIT);
+    expect_value(wrap_SetHandleInformation, dwFlags, 1);
+    will_return(wrap_SetHandleInformation, TRUE);
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, TRUE);
+    expect_value(wrap_CloseHandle, hObject, WRITE_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(TRUE);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
+    will_return(wrap_CreateThread, READER_THREAD);
+}
+
+static void expect_wait(DWORD result) {
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_any(wrap_WaitForSingleObject, value);
+    will_return(wrap_WaitForSingleObject, result);
+}
+
+static void expect_read(const char * data, DWORD length, BOOL result) {
+    will_return(wrap_ReadFile, data);
+    will_return(wrap_ReadFile, length);
+    will_return(wrap_ReadFile, result);
+}
+
+// Handles closed once the command is done: the job, the process and its main thread
+static void expect_final_close(void) {
+    expect_value(wrap_CloseHandle, hObject, READER_THREAD);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+}
+
+static void expect_cancel_resolved(FARPROC fn) {
+    expect_string(wrap_GetProcAddress, lpProcName, "CancelSynchronousIo");
+    will_return(wrap_GetProcAddress, fn);
+}
+
+static void expect_abandoned_warning(void) {
+    expect_string(__wrap__mwarn, formatted_msg, "at wm_exec(): Could not collect the output of command 'cmd /c dir'.");
+}
+
+// The reader that was left running exits now: it is the last owner and frees the state and the pipe
+static void finish_abandoned_reader(void) {
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    wrap_CreateThread_run_last();
+}
+
+static int teardown_reader_thread(void ** state) {
+    wrap_CreateThread_run_routine(false);
+    return 0;
+}
+#endif
+
 static void test_wm_exec_accented_command(void ** state) {
 #ifdef WIN32
     size_t size = mbstowcs(NULL, COMMAND, 0);
@@ -89,6 +175,7 @@ static void test_wm_exec_accented_command(void ** state) {
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
     will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(TRUE);
     expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_AssignProcessToJobObject, TRUE);
     expect_function_call(wrap_ResumeThread);
@@ -121,6 +208,7 @@ static void test_wm_exec_not_accented_command(void ** state) {
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
     will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(TRUE);
     expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_AssignProcessToJobObject, TRUE);
     expect_function_call(wrap_ResumeThread);
@@ -229,6 +317,7 @@ static void test_wm_exec_timeout_terminates_job(void ** state) {
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
     will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(TRUE);
     expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_AssignProcessToJobObject, TRUE);
     expect_function_call(wrap_ResumeThread);
@@ -258,6 +347,7 @@ static void test_wm_exec_job_assignment_fails_terminates_process(void ** state) 
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
     will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(TRUE);
     expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_AssignProcessToJobObject, FALSE);
     expect_any(__wrap__mdebug1, formatted_msg);
@@ -312,6 +402,7 @@ static void test_wm_exec_resumethread_fails(void ** state) {
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
     will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(TRUE);
     expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_AssignProcessToJobObject, TRUE);
     expect_function_call(wrap_ResumeThread);
@@ -331,6 +422,189 @@ static void test_wm_exec_resumethread_fails(void ** state) {
     printf("not implemented yet!\n");
 #endif
 }
+
+#ifdef WIN32
+static void test_wm_exec_job_breakaway_fails_continues(void ** state) {
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_job_breakaway(FALSE);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
+    expect_wait(0);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+
+    assert_int_equal(0, wm_exec(COMMAND2, NULL, NULL, 0, NULL));
+}
+
+// The reader ends by itself: the output is returned, with a zero-length write in the middle of it
+static void test_wm_exec_output_reader_joins(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = NULL;
+
+    wrap_CreateThread_run_routine(true);
+    expect_spawn_with_output();
+    expect_read("hel", 3, TRUE);
+    expect_read("", 0, TRUE);
+    expect_read("lo", 2, TRUE);
+    expect_read("", 0, FALSE);
+    expect_wait(0);
+    expect_wait(0);
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_final_close();
+
+    assert_int_equal(0, wm_exec(command, &output, NULL, 0, NULL));
+    assert_string_equal(output, "hello");
+
+    os_free(output);
+}
+
+// The command timed out: its output so far is returned once the reader is cancelled
+static void test_wm_exec_output_timeout_reader_cancelled(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = NULL;
+
+    wrap_CreateThread_run_routine(true);
+    expect_spawn_with_output();
+    expect_read("partial", 7, TRUE);
+    expect_read("", 0, FALSE);
+    expect_wait(WAIT_TIMEOUT);
+    expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_TerminateJobObject, TRUE);
+    expect_wait(WAIT_TIMEOUT);
+    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
+    expect_function_call(wrap_CancelSynchronousIo);
+    will_return(wrap_CancelSynchronousIo, TRUE);
+    expect_wait(WAIT_OBJECT_0);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wm_exec(): Stopped reading the command output before its end.");
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_final_close();
+
+    assert_int_equal(WM_ERROR_TIMEOUT, wm_exec(command, &output, NULL, 1, NULL));
+    assert_string_equal(output, "partial");
+
+    os_free(output);
+}
+
+// The reader never stops after a command that ended on its own: not a timeout, and no output
+static void test_wm_exec_output_reader_never_stops(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = (char *)0x1;
+
+    expect_spawn_with_output();
+    expect_wait(0);
+    expect_wait(WAIT_TIMEOUT);
+    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
+
+    for (int i = 0; i < 10; i++) {
+        expect_function_call(wrap_CancelSynchronousIo);
+        will_return(wrap_CancelSynchronousIo, TRUE);
+        expect_wait(WAIT_TIMEOUT);
+    }
+
+    expect_abandoned_warning();
+    expect_final_close();
+
+    assert_int_equal(-1, wm_exec(command, &output, NULL, 0, NULL));
+    assert_null(output);
+
+    finish_abandoned_reader();
+}
+
+// A timeout that did fire stays a timeout when the reader cannot be stopped
+static void test_wm_exec_output_timeout_reader_never_stops(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = (char *)0x1;
+
+    expect_spawn_with_output();
+    expect_wait(WAIT_TIMEOUT);
+    expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_TerminateJobObject, TRUE);
+    expect_wait(WAIT_TIMEOUT);
+    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
+
+    for (int i = 0; i < 10; i++) {
+        expect_function_call(wrap_CancelSynchronousIo);
+        will_return(wrap_CancelSynchronousIo, TRUE);
+        expect_wait(WAIT_TIMEOUT);
+    }
+
+    expect_abandoned_warning();
+    expect_final_close();
+
+    assert_int_equal(WM_ERROR_TIMEOUT, wm_exec(command, &output, NULL, 1, NULL));
+    assert_null(output);
+
+    finish_abandoned_reader();
+}
+
+static void test_wm_exec_output_wait_failed_abandons_reader(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = (char *)0x1;
+
+    expect_spawn_with_output();
+    expect_wait(0);
+    expect_wait(WAIT_FAILED);
+    expect_any(__wrap__merror, formatted_msg);
+    expect_abandoned_warning();
+    expect_final_close();
+
+    assert_int_equal(-1, wm_exec(command, &output, NULL, 0, NULL));
+    assert_null(output);
+
+    finish_abandoned_reader();
+}
+
+static void test_wm_exec_output_wait_failed_during_cancel(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = (char *)0x1;
+
+    expect_spawn_with_output();
+    expect_wait(0);
+    expect_wait(WAIT_TIMEOUT);
+    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
+    expect_function_call(wrap_CancelSynchronousIo);
+    will_return(wrap_CancelSynchronousIo, TRUE);
+    expect_wait(WAIT_FAILED);
+    expect_any(__wrap__merror, formatted_msg);
+    expect_abandoned_warning();
+    expect_final_close();
+
+    assert_int_equal(-1, wm_exec(command, &output, NULL, 0, NULL));
+    assert_null(output);
+
+    finish_abandoned_reader();
+}
+
+static void test_wm_exec_output_cancel_unavailable(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = (char *)0x1;
+
+    expect_spawn_with_output();
+    expect_wait(0);
+    expect_wait(WAIT_TIMEOUT);
+    expect_cancel_resolved(NULL);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_abandoned_warning();
+    expect_final_close();
+
+    assert_int_equal(-1, wm_exec(command, &output, NULL, 0, NULL));
+    assert_null(output);
+
+    finish_abandoned_reader();
+}
+#endif
 
 #ifndef TEST_WINAGENT
 static void test_wm_append_sid_null_list(void ** state) {
@@ -730,6 +1004,16 @@ int main(void) {
         cmocka_unit_test(test_wm_exec_job_assignment_fails_terminates_process),
         cmocka_unit_test(test_wm_exec_job_creation_fails),
         cmocka_unit_test(test_wm_exec_resumethread_fails),
+#ifdef WIN32
+        cmocka_unit_test(test_wm_exec_job_breakaway_fails_continues),
+        cmocka_unit_test_teardown(test_wm_exec_output_reader_joins, teardown_reader_thread),
+        cmocka_unit_test_teardown(test_wm_exec_output_timeout_reader_cancelled, teardown_reader_thread),
+        cmocka_unit_test(test_wm_exec_output_reader_never_stops),
+        cmocka_unit_test(test_wm_exec_output_timeout_reader_never_stops),
+        cmocka_unit_test(test_wm_exec_output_wait_failed_abandons_reader),
+        cmocka_unit_test(test_wm_exec_output_wait_failed_during_cancel),
+        cmocka_unit_test(test_wm_exec_output_cancel_unavailable),
+#endif
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_wm_append_sid_null_list, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_wm_append_sid_fail, setup_modules, teardown_modules),

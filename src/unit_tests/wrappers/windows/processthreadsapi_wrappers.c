@@ -9,6 +9,7 @@
 
 #include "processthreadsapi_wrappers.h"
 #include <stddef.h>
+#include <string.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
@@ -27,12 +28,31 @@ HANDLE wrap_GetCurrentProcess(VOID) {
     return mock_type(HANDLE);
 }
 
+static bool create_thread_runs_routine = false;
+static LPTHREAD_START_ROUTINE last_thread_routine = NULL;
+static PVOID last_thread_param = NULL;
+
+void wrap_CreateThread_run_last(void) {
+    last_thread_routine(last_thread_param);
+}
+
+void wrap_CreateThread_run_routine(bool run) {
+    create_thread_runs_routine = run;
+}
+
 HANDLE wrap_CreateThread(__UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpThreadAttributes),
                          __UNUSED_PARAM(SIZE_T dwStackSize),
-                         __UNUSED_PARAM(LPTHREAD_START_ROUTINE lpStartAddress),
-                         __UNUSED_PARAM(PVOID lpParameter),
+                         LPTHREAD_START_ROUTINE lpStartAddress,
+                         PVOID lpParameter,
                          __UNUSED_PARAM(DWORD dwCreationFlags),
                          __UNUSED_PARAM(LPDWORD lpThreadId)) {
+    last_thread_routine = lpStartAddress;
+    last_thread_param = lpParameter;
+
+    if (create_thread_runs_routine) {
+        lpStartAddress(lpParameter);
+    }
+
     return mock_type(HANDLE);
 }
 
@@ -69,6 +89,36 @@ BOOL wrap_AssignProcessToJobObject(HANDLE hJob, __UNUSED_PARAM(HANDLE hProcess))
 BOOL wrap_TerminateJobObject(HANDLE hJob, __UNUSED_PARAM(UINT uExitCode)) {
     check_expected(hJob);
     return mock();
+}
+
+BOOL wrap_SetInformationJobObject(HANDLE hJob,
+                                  JOBOBJECTINFOCLASS JobObjectInformationClass,
+                                  LPVOID lpJobObjectInformation,
+                                  __UNUSED_PARAM(DWORD cbJobObjectInformationLength)) {
+    DWORD LimitFlags = ((JOBOBJECT_BASIC_LIMIT_INFORMATION *)lpJobObjectInformation)->LimitFlags;
+
+    check_expected(hJob);
+    check_expected(JobObjectInformationClass);
+    check_expected(LimitFlags);
+    return mock();
+}
+
+FARPROC wrap_GetProcAddress(__UNUSED_PARAM(HMODULE hModule), LPCSTR lpProcName) {
+    check_expected(lpProcName);
+    return mock_type(FARPROC);
+}
+
+BOOL wrap_ReadFile(__UNUSED_PARAM(HANDLE hFile),
+                   LPVOID lpBuffer,
+                   __UNUSED_PARAM(DWORD nNumberOfBytesToRead),
+                   LPDWORD lpNumberOfBytesRead,
+                   __UNUSED_PARAM(LPOVERLAPPED lpOverlapped)) {
+    const char * data = mock_type(const char *);
+    DWORD length = mock_type(DWORD);
+
+    memcpy(lpBuffer, data, length);
+    *lpNumberOfBytesRead = length;
+    return mock_type(BOOL);
 }
 
 BOOL wrap_CancelSynchronousIo(__UNUSED_PARAM(HANDLE hThread)) {
