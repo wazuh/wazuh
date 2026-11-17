@@ -680,6 +680,8 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     ip = strtok_r(aux_ip, "/", &save_ptr);
 
     if (ip == NULL || OS_INVALID == get_ipv6_numeric(ip, &net6)) {
+        /* Callers shrink longer strings to size + 1 bytes without a terminator */
+        ip_address[size - 1] = '\0';
         return OS_INVALID;
     }
 
@@ -698,6 +700,7 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     if (cidr_str) {
         cidr = atoi(cidr_str);
         if (cidr < 0 || cidr > DEFAULT_IPV6_PREFIX) {
+            ip_address[size - 1] = '\0';
             return OS_INVALID;
         }
     }
