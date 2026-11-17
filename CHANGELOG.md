@@ -40,6 +40,12 @@ All notable changes to this project will be documented in this file.
 - Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`) to releases that no longer rely on the `pkg_resources` module removed in `setuptools` 82. ([#41054](https://github.com/wazuh/wazuh/pull/41054))
 - Updated the embedded Python dependencies `anyio`, `certifi`, `multidict`, `pyasn1`, `PyJWT`, `setuptools`, `urllib3` and `Werkzeug`.
 
+### Other
+
+#### Changed
+
+- Updated embedded Python from 3.10.21 to 3.12.16, as the 3.10 series has reached end of life. Updated the dependencies without Python 3.12 support for the oldest supported systems (`google-crc32c`, `grpcio-status` and `yarl`, which now requires `propcache`), and replaced the calls removed or deprecated in Python 3.12 in the framework and API. ([#41535](https://github.com/wazuh/wazuh/pull/41535))
+
 ## [v4.10.5]
 
 ### Manager
