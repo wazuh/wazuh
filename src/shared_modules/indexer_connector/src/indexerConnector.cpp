@@ -1220,7 +1220,7 @@ IndexerConnector::IndexerConnector(
             if (m_stopping.load())
             {
                 logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
-                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
+                throw PostponedElementException("IndexerConnector is stopping, event processing will be skipped.");
             }
 
             // Accumulator for data to be sent to the indexer via bulk requests.
@@ -1489,12 +1489,12 @@ IndexerConnector::IndexerConnector(
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
-                        throw std::runtime_error("Document version conflict, retrying in 1 second.");
+                        throw PostponedElementException("Document version conflict, retrying in 1 second.");
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
                         logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
-                        throw std::runtime_error("Too many requests, retrying in 1 second.");
+                        throw PostponedElementException("Too many requests, retrying in 1 second.");
                     }
                     else
                     {
@@ -1532,7 +1532,7 @@ IndexerConnector::IndexerConnector(
             if (m_stopping.load())
             {
                 logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
-                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
+                throw PostponedElementException("IndexerConnector is stopping, event processing will be skipped.");
             }
 
             const auto serverUrl = selector->getNext();

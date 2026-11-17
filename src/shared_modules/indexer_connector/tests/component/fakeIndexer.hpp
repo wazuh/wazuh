@@ -37,6 +37,7 @@ private:
     std::function<void(const std::string&)> m_initIndexCallback = {};
     std::function<void(const std::string&)> m_publishCallback = {};
     std::function<std::string(const std::string&)> m_publishResponseCallback = {};
+    std::function<int(const std::string&)> m_publishStatusCallback = {};
     std::function<std::string(const std::string&)> m_deleteByQueryResponseCallback = {};
     std::atomic<bool> m_indexMissing = false;
     std::function<std::string(const std::string&)> m_searchCallback = {};
@@ -115,6 +116,17 @@ public:
     void setPublishResponseCallback(std::function<std::string(const std::string&)> callback)
     {
         m_publishResponseCallback = std::move(callback);
+    }
+
+    /**
+     * @brief Sets the publish status callback, used to answer `_bulk` with a custom HTTP status code (e.g. to simulate
+     * a version conflict). Without it, `_bulk` answers 200.
+     *
+     * @param callback New callback.
+     */
+    void setPublishStatusCallback(std::function<int(const std::string&)> callback)
+    {
+        m_publishStatusCallback = std::move(callback);
     }
 
     /**
@@ -274,7 +286,7 @@ public:
                               {
                                   m_publishCallback(req.body);
                               }
-                              res.status = 200;
+                              res.status = m_publishStatusCallback ? m_publishStatusCallback(req.body) : 200;
                               if (m_publishResponseCallback)
                               {
                                   res.set_content(m_publishResponseCallback(req.body), "application/json");
