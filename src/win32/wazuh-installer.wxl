@@ -83,4 +83,7 @@
     <!-- CustomCheckDialog, wazuh-installer.wxs -->
     <String Id="CustomCheckDialog_Title">Nokia NEDR Agent Setup</String>
     <String Id="CustomCheckDialogDescription">Enabling this option allows Nokia NEDR Agent to generate debug information in the event of an agent failure.&#x0A;This information could be useful to detect and fix the problem that caused it.</String>
+
+    <!-- Launch condition, wazuh-installer.wxs -->
+    <String Id="PendingRestartConflict">Pending restart conflict: a file operation waiting for a system restart affects the Nokia NEDR Agent ([WAZUH_PENDING_CONFLICT]). Please reboot once and run the Nokia NEDR Agent installer again.</String>
 </WixLocalization>

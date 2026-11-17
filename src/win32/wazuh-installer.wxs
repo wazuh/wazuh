@@ -8,7 +8,7 @@
         <Property Id="REBOOT" Value="ReallySuppress" />
 
         <!-- Block only pending restart operations on the install folder; uninstall and repair are still allowed. -->
-        <Condition Message="Pending restart conflict: a file operation waiting for a system restart affects the Wazuh agent ([WAZUH_PENDING_CONFLICT]). Please reboot once and run the Wazuh agent installer again."><![CDATA[Installed OR NOT WAZUH_PENDING_CONFLICT]]></Condition>
+        <Condition Message="!(loc.PendingRestartConflict)"><![CDATA[Installed OR NOT WAZUH_PENDING_CONFLICT]]></Condition>
 
         <!-- Default configuration values -->
         <Property Id="WAZUH_MANAGER" Secure="yes"/>
