@@ -28,7 +28,7 @@
 
 /* Branding shown in the main window */
 #define BRAND_NAME      "Nokia NEDR Agent"
-#define BRAND_VERSION   "R26.11"
+#define BRAND_VERSION   "R26.12"
 #define BRAND_URL       "https://www.nokia.com/"
 #define BRAND_URL_WIDTH 150     /* status-bar pane that shows BRAND_URL, in pixels */
 
