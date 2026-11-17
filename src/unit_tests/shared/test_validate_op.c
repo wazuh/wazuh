@@ -709,6 +709,79 @@ void OS_IsValidIP_valid_ipv6_converNetmask_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
+void test_OS_ExpandIPv6_valid(void **state)
+{
+    char ip[IPSIZE + 1] = "fe80::1";
+
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0xFE);
+
+    assert_int_equal(OS_ExpandIPv6(ip, IPSIZE), OS_SUCCESS);
+    assert_string_equal(ip, "FEFE:FEFE:FEFE:FEFE:FEFE:FEFE:FEFE:FEFE");
+}
+
+void test_OS_ExpandIPv6_valid_cidr(void **state)
+{
+    char ip[IPSIZE + 1] = "fe80::1/64";
+
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0xFE);
+
+    assert_int_equal(OS_ExpandIPv6(ip, IPSIZE), OS_SUCCESS);
+    assert_string_equal(ip, "FEFE:FEFE:FEFE:FEFE:FEFE:FEFE:FEFE:FEFE/64");
+}
+
+void test_OS_ExpandIPv6_only_separators(void **state)
+{
+    char *ip = NULL;
+
+    os_malloc(IPSIZE + 1, ip);
+    memset(ip, '/', IPSIZE + 1);
+
+    assert_int_equal(OS_ExpandIPv6(ip, IPSIZE), OS_INVALID);
+    assert_int_equal(strlen(ip), IPSIZE);
+
+    os_free(ip);
+}
+
+void test_OS_ExpandIPv6_invalid_unterminated(void **state)
+{
+    char *ip = NULL;
+
+    os_malloc(IPSIZE + 1, ip);
+    memset(ip, 'a', IPSIZE + 1);
+    memcpy(ip, "zzzz:", 5);
+
+    will_return(__wrap_get_ipv6_numeric, OS_INVALID);
+
+    assert_int_equal(OS_ExpandIPv6(ip, IPSIZE), OS_INVALID);
+    assert_int_equal(strlen(ip), IPSIZE);
+    assert_int_equal(strncmp(ip, "zzzz:aaaa", 9), 0);
+
+    os_free(ip);
+}
+
+void test_OS_ExpandIPv6_invalid_keeps_full_length(void **state)
+{
+    char ip[IPSIZE + 1] = "fe80:0000:0000:0000:0000:0000:0000:0001%dummy0";
+
+    will_return(__wrap_get_ipv6_numeric, OS_INVALID);
+
+    assert_int_equal(OS_ExpandIPv6(ip, IPSIZE), OS_INVALID);
+    assert_string_equal(ip, "fe80:0000:0000:0000:0000:0000:0000:0001%dummy0");
+}
+
+void test_OS_ExpandIPv6_invalid_cidr(void **state)
+{
+    char ip[IPSIZE + 1] = "fe80::1/200";
+
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0xFE);
+
+    assert_int_equal(OS_ExpandIPv6(ip, IPSIZE), OS_INVALID);
+    assert_string_equal(ip, "fe80::1/200");
+}
+
 void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
@@ -1556,6 +1629,13 @@ int main(void) {
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_numeric_fail),
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_converNetmask_fail),
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_sub_string_0),
+        // Tests OS_ExpandIPv6
+        cmocka_unit_test(test_OS_ExpandIPv6_valid),
+        cmocka_unit_test(test_OS_ExpandIPv6_valid_cidr),
+        cmocka_unit_test(test_OS_ExpandIPv6_only_separators),
+        cmocka_unit_test(test_OS_ExpandIPv6_invalid_unterminated),
+        cmocka_unit_test(test_OS_ExpandIPv6_invalid_keeps_full_length),
+        cmocka_unit_test(test_OS_ExpandIPv6_invalid_cidr),
         // Test OS_IPFound
         cmocka_unit_test(OS_IPFound_not_valid_ip),
         cmocka_unit_test(OS_IPFound_valid_ipv4),
