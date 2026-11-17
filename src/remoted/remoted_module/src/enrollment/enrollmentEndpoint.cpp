@@ -387,6 +387,9 @@ namespace remoted::enrollment
             return "any";
         }
 
+        /// authd discarded the request: its deadline had passed before authd got to apply it.
+        constexpr int kAuthdEnrollmentDeadlineExpired {9032};
+
         int httpStatusForAuthdError(int code)
         {
             switch (code)
@@ -426,6 +429,11 @@ namespace remoted::enrollment
                            // (issue #39078, H03), so it handed out none. Nothing is wrong with the
                            // request: this manager cannot record the transition right now, and the
                            // agent should come back -- the same shape as the two above.
+                case kAuthdEnrollmentDeadlineExpired:
+                    // authd discarded the request because this node had already stopped
+                    // waiting for the answer. The credential the agent holds is untouched and
+                    // still valid, so this is not an authentication failure: the outcome is
+                    // simply unknown to the agent, and retrying is the right response.
                     return 503;
                 case 9022: // enrollment token unknown or revoked (issue #38993)
                 case 9023: // enrollment token expired
@@ -529,6 +537,13 @@ namespace remoted::enrollment
             if (result.errorCode > 0)
             {
                 incAuthdError(metrics);
+                // Counted here and not in countReenrollOutcome() because a discarded request can be
+                // either shape, and an operator reading this counter is asking one question: how
+                // often this manager is too slow to answer the agents it serves.
+                if (result.errorCode == kAuthdEnrollmentDeadlineExpired)
+                {
+                    incEnrollDiscardedLate(metrics);
+                }
                 if (const auto throttle = authdErrorThrottle().record())
                 {
                     LOGFN_DEBUG1(logFn(),

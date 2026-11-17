@@ -841,6 +841,10 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            // handed out (issue #39078, H03): a "come back", like
                                            // the two above, not a fault of the request.
                                            AuthdErrorCase {9031, 503},
+                                           // Discarded because this node had stopped waiting: the
+                                           // agent's credential is untouched, so 503 and retry --
+                                           // not a 4xx verdict on the credential.
+                                           AuthdErrorCase {9032, 503},
                                            AuthdErrorCase {9022, 403},   // enrollment token unknown/revoked (#38993)
                                            AuthdErrorCase {9023, 403},   // enrollment token expired
                                            AuthdErrorCase {9024, 403},   // enrollment token exhausted
