@@ -99,4 +99,10 @@ BOOL wrap_CreateProcessW(LPCWSTR               lpApplicationName,
                          LPCWSTR               lpCurrentDirectory,
                          LPSTARTUPINFOW        lpStartupInfo,
                          LPPROCESS_INFORMATION lpProcessInformation);
+
+/**
+ * @brief Makes the next wrap_CreateProcessW call fail the test unless dwCreationFlags includes all of flags.
+ *        It applies to that one call; calls without it check nothing.
+ */
+void wrap_CreateProcessW_expect_flags(DWORD flags);
 #endif

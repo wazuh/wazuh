@@ -83,6 +83,14 @@ static int teardown_modules(void ** state) {
 }
 
 #ifdef WIN32
+struct ThreadInfo;
+void wm_reader_request_stop(struct ThreadInfo * rinfo);
+
+// The process must start suspended so it joins its job before it can spawn children
+static void expect_suspended_create(void) {
+    wrap_CreateProcessW_expect_flags(CREATE_SUSPENDED);
+}
+
 static void expect_job_breakaway(BOOL result) {
     expect_value(wrap_SetInformationJobObject, hJob, (HANDLE)0x10);
     expect_value(wrap_SetInformationJobObject, JobObjectInformationClass, JobObjectBasicLimitInformation);
@@ -93,6 +101,9 @@ static void expect_job_breakaway(BOOL result) {
         expect_any(__wrap__mdebug1, formatted_msg);
     }
 }
+
+// Mirrors WM_EXEC_POLL_MS in wm_exec.c
+#define WM_EXEC_POLL_MS_TEST 20
 
 #define READ_PIPE ((HANDLE)0xA1)
 #define WRITE_PIPE ((HANDLE)0xA2)
@@ -108,6 +119,7 @@ static void expect_spawn_with_output(void) {
     expect_value(wrap_SetHandleInformation, dwFlags, 1);
     will_return(wrap_SetHandleInformation, TRUE);
     expect_any(__wrap__mdebug2, formatted_msg);
+    expect_suspended_create();
     expect_any(wrap_CreateProcessW, lpCommandLine);
     will_return(wrap_CreateProcessW, TRUE);
     expect_value(wrap_CloseHandle, hObject, WRITE_PIPE);
@@ -151,26 +163,20 @@ static void expect_end_of_data(void) {
     expect_peek(0, FALSE);
 }
 
-// A command that still holds the pipe open without writing: the reader polls once
-static void expect_idle_poll(void) {
+// An empty poll of a pipe that is still open: the reader waits for more output
+static void expect_idle_poll(DWORD sleep_ms) {
     expect_peek(0, TRUE);
-    expect_any(wrap_Sleep, dwMilliseconds);
+    expect_value(wrap_Sleep, dwMilliseconds, sleep_ms);
 }
 
-// Mirrors ThreadInfo up to stop in wm_exec.c: keep the field order and types in sync
-typedef struct {
-    CHAR * output;
-    size_t length;
-    size_t capacity;
-    HANDLE pipe;
-    volatile LONG stop;
-} reader_state_t;
+// A command that still holds the pipe open without writing: the first poll only yields
+static void expect_first_idle_poll(void) {
+    expect_idle_poll(0);
+}
 
 // Stands for wm_exec() asking the reader to stop while it sleeps
 static void request_reader_stop(void) {
-    reader_state_t * state = (reader_state_t *)wrap_CreateThread_last_param();
-
-    InterlockedExchange(&state->stop, 1);
+    wm_reader_request_stop((struct ThreadInfo *)wrap_CreateThread_last_param());
 }
 
 // Handles closed once the command is done: the job, the process and its main thread
@@ -217,6 +223,7 @@ static void test_wm_exec_accented_command(void ** state) {
     mbstowcs(wcommand, COMMAND, size);
 
     expect_any(__wrap__mdebug2, formatted_msg);
+    expect_suspended_create();
     expect_string(wrap_CreateProcessW, lpCommandLine, wcommand);
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
@@ -359,6 +366,7 @@ static void test_wm_exec_sethandleinformation_fails(void ** state) {
 static void test_wm_exec_timeout_terminates_job(void ** state) {
 #ifdef WIN32
     expect_any(__wrap__mdebug2, formatted_msg);
+    expect_suspended_create();
     expect_any(wrap_CreateProcessW, lpCommandLine);
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
@@ -470,20 +478,19 @@ static void test_wm_exec_resumethread_fails(void ** state) {
 }
 
 #ifdef WIN32
-static void test_wm_exec_job_breakaway_fails_continues(void ** state) {
+static void test_wm_exec_job_breakaway_fails_drops_job(void ** state) {
     expect_any(__wrap__mdebug2, formatted_msg);
     expect_any(wrap_CreateProcessW, lpCommandLine);
     will_return(wrap_CreateProcessW, TRUE);
     expect_function_call(wrap_CreateJobObjectW);
     will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
     expect_job_breakaway(FALSE);
-    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
-    will_return(wrap_AssignProcessToJobObject, TRUE);
+    // The job is dropped at once: the process is not assigned to it
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
+    will_return(wrap_CloseHandle, TRUE);
     expect_function_call(wrap_ResumeThread);
     will_return(wrap_ResumeThread, 1);
     expect_wait(0);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
-    will_return(wrap_CloseHandle, TRUE);
     expect_any(wrap_CloseHandle, hObject);
     will_return(wrap_CloseHandle, TRUE);
     expect_any(wrap_CloseHandle, hObject);
@@ -510,6 +517,36 @@ static void test_wm_exec_output_reader_joins(void ** state) {
 
     assert_int_equal(0, wm_exec(command, &output, NULL, 0, NULL));
     assert_string_equal(output, "hello");
+
+    os_free(output);
+}
+
+// Empty polls yield before the first real sleep, and a read starts the count over
+static void test_wm_exec_output_backoff(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = NULL;
+
+    wrap_CreateThread_run_routine(true);
+    expect_spawn_with_output();
+    expect_data("ab", 2);
+
+    for (int i = 0; i < 8; i++) {
+        expect_idle_poll(0);
+    }
+
+    expect_idle_poll(WM_EXEC_POLL_MS_TEST);
+    expect_idle_poll(WM_EXEC_POLL_MS_TEST);
+    expect_data("cd", 2);
+    expect_first_idle_poll();
+    expect_end_of_data();
+    expect_wait(0);
+    expect_wait(0);
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_final_close();
+
+    assert_int_equal(0, wm_exec(command, &output, NULL, 0, NULL));
+    assert_string_equal(output, "abcd");
 
     os_free(output);
 }
@@ -559,7 +596,7 @@ static void test_wm_exec_output_timeout_reader_stopped(void ** state) {
     wrap_Sleep_set_callback(request_reader_stop);
     expect_spawn_with_output();
     expect_data("partial", 7);
-    expect_idle_poll();
+    expect_first_idle_poll();
     expect_wait(WAIT_TIMEOUT);
     expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_TerminateJobObject, TRUE);
@@ -585,7 +622,7 @@ static void test_wm_exec_output_exited_pipe_held_by_descendant(void ** state) {
     wrap_Sleep_set_callback(request_reader_stop);
     expect_spawn_with_output();
     expect_data("done", 4);
-    expect_idle_poll();
+    expect_first_idle_poll();
     expect_wait(0);
     expect_wait(WAIT_TIMEOUT);
     expect_wait(WAIT_OBJECT_0);
@@ -1112,8 +1149,9 @@ int main(void) {
         cmocka_unit_test(test_wm_exec_job_creation_fails),
         cmocka_unit_test(test_wm_exec_resumethread_fails),
 #ifdef WIN32
-        cmocka_unit_test(test_wm_exec_job_breakaway_fails_continues),
+        cmocka_unit_test(test_wm_exec_job_breakaway_fails_drops_job),
         cmocka_unit_test_setup_teardown(test_wm_exec_output_reader_joins, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_backoff, setup_reader_thread, teardown_reader_thread),
         cmocka_unit_test_setup_teardown(test_wm_exec_output_grows_buffer, setup_reader_thread, teardown_reader_thread),
         cmocka_unit_test_setup_teardown(test_wm_exec_output_timeout_reader_stopped, setup_reader_thread, teardown_reader_thread),
         cmocka_unit_test_setup_teardown(test_wm_exec_output_exited_pipe_held_by_descendant, setup_reader_thread, teardown_reader_thread),

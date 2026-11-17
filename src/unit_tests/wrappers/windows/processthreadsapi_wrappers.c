@@ -119,16 +119,30 @@ void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret) {
     will_return(wrap_SetThreadPriority, ret);
 }
 
+static DWORD required_creation_flags = 0;
+
+void wrap_CreateProcessW_expect_flags(DWORD flags) {
+    required_creation_flags = flags;
+}
+
 BOOL wrap_CreateProcessW(__UNUSED_PARAM(LPCWSTR               lpApplicationName),
                          LPWSTR                lpCommandLine,
                          __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpProcessAttributes),
                          __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpThreadAttributes),
                          __UNUSED_PARAM(BOOL                  bInheritHandles),
-                         __UNUSED_PARAM(DWORD                 dwCreationFlags),
+                         DWORD                 dwCreationFlags,
                          __UNUSED_PARAM(LPVOID                lpEnvironment),
                          __UNUSED_PARAM(LPCWSTR               lpCurrentDirectory),
                          __UNUSED_PARAM(LPSTARTUPINFOW        lpStartupInfo),
                          __UNUSED_PARAM(LPPROCESS_INFORMATION lpProcessInformation)) {
     check_expected(lpCommandLine);
+
+    if (required_creation_flags) {
+        DWORD required = required_creation_flags;
+
+        required_creation_flags = 0;
+        assert_int_equal(dwCreationFlags & required, required);
+    }
+
     return mock();
 }

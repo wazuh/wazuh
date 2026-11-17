@@ -89,6 +89,12 @@ void wm_children_pool_init() {
 // How often the reader looks for new output and for a stop request
 #define WM_EXEC_POLL_MS 20
 
+// Consecutive empty polls that only yield the CPU before the reader starts sleeping
+#define WM_EXEC_SPIN_POLLS 8
+
+// Pipe buffer size requested from the system: a quota hint, not memory committed up front
+#define WM_EXEC_PIPE_SIZE (1024 * 1024)
+
 // Size of the buffer used to read and drop output that cannot be kept
 #define WM_EXEC_DISCARD_SIZE 4096
 
@@ -107,6 +113,11 @@ static void wm_reader_release(ThreadInfo * rinfo) {
     }
 }
 
+// Tells the reader to exit at its next poll, even if the pipe is still held open
+STATIC void wm_reader_request_stop(ThreadInfo * rinfo) {
+    InterlockedExchange(&rinfo->stop, 1);
+}
+
 static void wm_log_reader_wait_failure(void) {
     int winerror = GetLastError();
 
@@ -122,8 +133,7 @@ static bool wm_stop_reader(HANDLE hThread, ThreadInfo * rinfo) {
         return true;
     }
 
-    // The reader polls this flag, so it exits even if the pipe is still held open
-    InterlockedExchange(&rinfo->stop, 1);
+    wm_reader_request_stop(rinfo);
 
     if (result == WAIT_FAILED) {
         wm_log_reader_wait_failure();
@@ -205,7 +215,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
         // Create stdout pipe and make it inheritable
 
-        if (!CreatePipe(&hPipe, &sinfo.hStdOutput, NULL, 0)) {
+        if (!CreatePipe(&hPipe, &sinfo.hStdOutput, NULL, WM_EXEC_PIPE_SIZE)) {
             winerror = GetLastError();
             merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
@@ -268,15 +278,15 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     } else {
         JOBOBJECT_BASIC_LIMIT_INFORMATION limits = { 0 };
 
-        // Lets a descendant that asks for it leave the job; the job works without it
+        // Lets a descendant that asks for it leave the job; without it the process runs outside any job
         limits.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
 
         if (!SetInformationJobObject(hJob, JobObjectBasicLimitInformation, &limits, sizeof(limits))) {
             winerror = GetLastError();
             mdebug1("at wm_exec(): SetInformationJobObject(%d): %s", winerror, win_strerror(winerror));
-        }
-
-        if (!AssignProcessToJobObject(hJob, pinfo.hProcess)) {
+            CloseHandle(hJob);
+            hJob = NULL;
+        } else if (!AssignProcessToJobObject(hJob, pinfo.hProcess)) {
             winerror = GetLastError();
             mdebug1("at wm_exec(): AssignProcessToJobObject(%d): %s", winerror, win_strerror(winerror));
             CloseHandle(hJob);
@@ -428,6 +438,18 @@ static size_t wm_reader_reserve(ThreadInfo * tinfo, size_t avail) {
     return room;
 }
 
+// Waits for more output: yields for a few empty polls in a row, then sleeps
+// so a quiet command costs little while a busy one is read without delay
+
+static void wm_reader_idle(unsigned * empty_polls) {
+    if (*empty_polls < WM_EXEC_SPIN_POLLS) {
+        (*empty_polls)++;
+        Sleep(0);
+    } else {
+        Sleep(WM_EXEC_POLL_MS);
+    }
+}
+
 // Reading thread's start point
 
 DWORD WINAPI Reader(LPVOID args) {
@@ -435,6 +457,7 @@ DWORD WINAPI Reader(LPVOID args) {
     CHAR discard[WM_EXEC_DISCARD_SIZE];
     DWORD avail;
     DWORD nbytes;
+    unsigned empty_polls = 0;
 
     // Reads only when the pipe has data, so it never blocks and sees stop. A failed peek means the data ended.
     // No logging: wm_exec() reports the outcome.
@@ -444,7 +467,7 @@ DWORD WINAPI Reader(LPVOID args) {
         size_t room = sizeof(discard);
 
         if (avail == 0) {
-            Sleep(WM_EXEC_POLL_MS);
+            wm_reader_idle(&empty_polls);
             continue;
         }
 
@@ -463,9 +486,11 @@ DWORD WINAPI Reader(LPVOID args) {
         }
 
         if (nbytes == 0) {
-            Sleep(WM_EXEC_POLL_MS);
+            wm_reader_idle(&empty_polls);
             continue;
         }
+
+        empty_polls = 0;
 
         if (dest != discard) {
             tinfo->length += nbytes;
