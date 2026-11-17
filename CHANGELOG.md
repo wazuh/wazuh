@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.13]
 
+### Ruleset
+
+#### Fixed
+
+- Fixed the CIS Oracle Linux 10 SCA check 38531 (bootloader password is set) failing on every host, including those with a GRUB2 password, because of a stray quote at the end of its rule. ([#41539](https://github.com/wazuh/wazuh/pull/41539))
+
 ## [v4.14.12]
 
 ### Manager
