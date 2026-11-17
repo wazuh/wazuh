@@ -410,23 +410,27 @@ void test_run_error_skips_results(void **state) {
     assert_int_equal(module_data->evals->flags.error, 0);
 }
 
-// A command that could not be run disables its evaluation, and the module thread goes on.
-void test_run_internal_error_disables_evaluation(void **state) {
+// A command that could not be run skips reading results, and the evaluation runs again next time.
+void test_run_internal_error_keeps_evaluation(void **state) {
     run_state *run = *state;
     wm_ciscat *module_data = (wm_ciscat *)run->module->data;
     char start_msg[OS_MAXSTR];
+    char end_msg[OS_MAXSTR];
     char error_msg[OS_MAXSTR];
 
     expect_evaluation_start(run, start_msg, sizeof(start_msg));
     expect_ciscat_command(TEST_CISCAT_DIR, NULL, 0, -1);
 
-    snprintf(error_msg, sizeof(error_msg), "Internal error executing '%s'. Skipping it.", run->bench);
+    snprintf(error_msg, sizeof(error_msg), "Internal error executing '%s'.", run->bench);
     expect_string(__wrap__mterror, tag, WM_CISCAT_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, error_msg);
 
+    snprintf(end_msg, sizeof(end_msg), "Ending CIS-CAT scan. File: %s. ", run->bench);
+    expect_SendMSG_call(end_msg, "rootcheck", ROOTCHECK_MQ, 0);
+
     run->module->context->start(module_data);
 
-    assert_int_equal(module_data->evals->flags.error, 1);
+    assert_int_equal(module_data->evals->flags.error, 0);
 }
 
 int main(void) {
@@ -443,7 +447,7 @@ int main(void) {
     const struct CMUnitTest tests_run[] = {
         cmocka_unit_test_setup_teardown(test_run_timeout_skips_results, setup_run_v3, teardown_run),
         cmocka_unit_test_setup_teardown(test_run_error_skips_results, setup_run_v4, teardown_run),
-        cmocka_unit_test_setup_teardown(test_run_internal_error_disables_evaluation, setup_run_v3, teardown_run),
+        cmocka_unit_test_setup_teardown(test_run_internal_error_keeps_evaluation, setup_run_v3, teardown_run),
     };
     int result = (cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module) ||
                   cmocka_run_group_tests(tests_without_startup, NULL, NULL) ||
