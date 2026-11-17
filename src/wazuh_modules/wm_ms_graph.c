@@ -73,7 +73,6 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     } else {
         mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
 
-        bool initial = true;
         int i;
         wm_ms_graph_auth *it;
 
@@ -102,8 +101,9 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
 
                 if (it->access_token && time(NULL) < it->token_expiration_time) {
                     mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", it->tenant_id);
-                    wm_ms_graph_scan_relationships(ms_graph, it, initial);
-                    initial = false;
+                    // Per tenant: each one takes only_future_events on its own first scan
+                    wm_ms_graph_scan_relationships(ms_graph, it, !it->initial_scan_done);
+                    it->initial_scan_done = true;
                 }
             }
         }
@@ -441,8 +441,10 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                                     snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
                                     next_page = true;
                                 } else {
-                                    mtwarn(WM_MS_GRAPH_LOGTAG, "Ignoring next page URL out of '%s'.", auth_config->query_fqdn);
-                                    fail = true;
+                                    // Not a failure: a later scan would get the same URL and only send these events again
+                                    mtwarn(WM_MS_GRAPH_LOGTAG, "Ignoring next page URL out of '%s'. Skipping the remaining pages for tenant '%s' resource '%s' and relationship '%s'.",
+                                        auth_config->query_fqdn, auth_config->tenant_id, ms_graph->resources[resource_num].name,
+                                        ms_graph->resources[resource_num].relationships[relationship_num]);
                                 }
                             }
 

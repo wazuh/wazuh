@@ -69,6 +69,7 @@ typedef struct wm_ms_graph_auth {
 	char* query_fqdn;
 	char* access_token;
 	time_t token_expiration_time;
+	bool initial_scan_done; // The tenant had its first scan since the module started
 } wm_ms_graph_auth;
 
 typedef struct wm_ms_graph_resource {
