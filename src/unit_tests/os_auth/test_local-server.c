@@ -2358,6 +2358,47 @@ static void test_reenroll_past_deadline_does_not_rotate(void **state) {
     cJSON_Delete(response);
 }
 
+/* The discard must be reported by the node that decided it. local_reenroll() answers with a
+ * response object instead of going through the dispatcher's fail path, so without its own line the
+ * master would refuse the rotation and say nothing: only the worker that forwarded it would log
+ * anything, and on a single-node manager nothing at all. INFO, because the request is not at
+ * fault -- a caller cannot forge a deadline that has passed. */
+static void test_reenroll_past_deadline_reports_the_discard(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    expect_value(__wrap_wdb_get_agent_info, id, 42);
+    will_return(__wrap_wdb_get_agent_info, agent_row(42, REENROLL_SECRET));
+    expect_verify("042", REENROLL_SECRET, W_REENROLL_OK);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Re-enrollment of agent '042' discarded: the deadline the request carried had "
+                  "already passed, so nothing was rotated.");
+
+    cJSON *response = reenroll_with_deadline("042", "late-agent", PAST_DEADLINE_MS);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+}
+
+/* The same for a first enrollment, which is decided in another function and would otherwise be
+ * just as silent. No token here on purpose: minting one logs a line of its own. */
+static void test_add_past_deadline_reports_the_discard(void **state) {
+    (void)state;
+    /* No EXPECT_LOG_DEBUG1(): nothing on this path logs at debug1, and this suite's
+     * expect_any_always() is reported as an unchecked expectation when it never fires. */
+    EXPECT_LOG_DEBUG2();
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Enrollment of 'late-first-quiet' discarded: the deadline the request carried had "
+                  "already passed, so no agent was registered.");
+
+    char request[256];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"late-first-quiet\",\"ip\":\"any\","
+             "\"deadline_ms\":%lld}}", (long long)PAST_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9032);
+    assert_true(OS_IsAllowedName(&keys, "late-first-quiet") < 0);
+    cJSON_Delete(response);
+}
+
 /* Still in time: rotates exactly as it did before deadlines existed. */
 static void test_reenroll_within_deadline_rotates(void **state) {
     (void)state;
@@ -2727,6 +2768,8 @@ int main(void) {
         cmocka_unit_test(test_a_refused_enrollment_removes_no_agent),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
         cmocka_unit_test(test_reenroll_past_deadline_does_not_rotate),
+        cmocka_unit_test(test_reenroll_past_deadline_reports_the_discard),
+        cmocka_unit_test(test_add_past_deadline_reports_the_discard),
         cmocka_unit_test(test_reenroll_within_deadline_rotates),
         cmocka_unit_test(test_reenroll_without_deadline_rotates),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
