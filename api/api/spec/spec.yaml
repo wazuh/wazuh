@@ -8410,7 +8410,11 @@ paths:
       tags:
         - Security
       summary: "Get current user info"
-      description: "Get the information of the current user"
+      description: "Get the information of the current user. It needs a valid token and no RBAC action. Every
+        role of the token is listed by `id` and `name`. The rest of the role (its `rules` and `policies`) is returned
+        only to a caller that holds `security:read` over that `role:id`, and each rule or policy is returned in full
+        only with `security:read` over its `rule:id` or `policy:id`; otherwise it is listed by `id` alone. The
+        effective permissions of the caller are returned by `GET /security/users/me/policies`"
       operationId: api.controllers.security_controller.get_user_me
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8436,10 +8440,12 @@ paths:
                         roles:
                           - id: 1
                             name: administrator
-                            rule:
-                              FIND:
-                                r'^auth[a-zA-Z]+$':
-                                  - full_admin
+                            rules:
+                              - id: 1
+                                name: wui_elastic_admin
+                                rule:
+                                  FIND:
+                                    username: elastic
                             policies:
                               - id: 1
                                 name: agents_all_resourceless

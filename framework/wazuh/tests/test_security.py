@@ -703,3 +703,85 @@ def test_remove_rules_unlinked_needs_no_role(db_setup, rbac_context):
     result = security.remove_rules(rule_ids=[str(rule_id)]).to_dict()
 
     assert [item['id'] for item in result['affected_items']] == [rule_id]
+
+
+def _user_me(security, role_ids, username='normal'):
+    return security.get_user_me(token={'sub': username, 'rbac_roles': role_ids}).to_dict()['affected_items'][0]
+
+
+def _stored_role(security, role_id):
+    with security.RolesManager() as rm:
+        return rm.get_role_id(role_id=role_id)
+
+
+@pytest.mark.parametrize('run_as', [False, True])
+def test_get_user_me_without_security_read(db_setup, rbac_context, run_as):
+    """A caller holding no 'security:read' gets its role ids and names, and no role, rule or policy object.
+
+    A run_as token goes through the same function with the roles its authorization context resolved to.
+    """
+    security, _, _ = db_setup
+    rbac_context({'rbac_mode': 'white', 'agent:read': {'agent:id:*': 'allow'}})
+
+    user = _user_me(security, [103, 104, 105], username='administrator' if run_as else 'normal')
+
+    assert user['username'] == ('administrator' if run_as else 'normal')
+    assert 'allow_run_as' in user and 'id' in user
+    assert user['roles'] == [{'id': role_id, 'name': _stored_role(security, role_id)['name']}
+                             for role_id in (103, 104, 105)]
+
+
+@pytest.mark.parametrize('context', [
+    {'rbac_mode': 'black'},
+    {'rbac_mode': 'white',
+     'security:read': {'role:id:*': 'allow', 'rule:id:*': 'allow', 'policy:id:*': 'allow'}},
+])
+def test_get_user_me_with_security_read(db_setup, rbac_context, context):
+    """A caller holding 'security:read' over its roles, rules and policies gets every object, as before."""
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    roles = _user_me(security, [103, 104, 105])['roles']
+
+    assert [role['id'] for role in roles] == [103, 104, 105]
+    for role in roles:
+        stored = _stored_role(security, role['id'])
+        assert 'users' not in role
+        assert [rule['id'] for rule in role['rules']] == stored['rules']
+        assert [policy['id'] for policy in role['policies']] == stored['policies']
+        assert stored['rules'] and stored['policies']
+        assert all('rule' in rule and 'name' in rule and 'roles' not in rule for rule in role['rules'])
+        assert all('policy' in policy and 'name' in policy and 'roles' not in policy for policy in role['policies'])
+
+
+def test_get_user_me_filters_each_object(db_setup, rbac_context):
+    """Each role, rule and policy is held to its own 'security:read', as the gated readers hold it by id."""
+    security, _, _ = db_setup
+    stored = _stored_role(security, 103)
+    readable_policy = stored['policies'][0]
+    rbac_context({'rbac_mode': 'white',
+                  'security:read': {'role:id:103': 'allow', f'policy:id:{readable_policy}': 'allow'}})
+
+    roles = _user_me(security, [103, 104])['roles']
+
+    assert roles[1] == {'id': 104, 'name': _stored_role(security, 104)['name']}
+    # The readable role names the ids it links, as GET /security/roles does, and expands the readable ones.
+    assert roles[0]['rules'] == [{'id': rule_id} for rule_id in stored['rules']]
+    assert [policy['id'] for policy in roles[0]['policies']] == stored['policies']
+    assert 'policy' in roles[0]['policies'][0]
+    assert all(policy == {'id': policy['id']} for policy in roles[0]['policies'][1:])
+    assert len(stored['policies']) > 1
+
+
+def test_get_user_me_black_mode_honours_a_deny(db_setup, rbac_context):
+    """In black mode every object is returned but the ones under an explicit deny."""
+    security, _, _ = db_setup
+    stored = _stored_role(security, 103)
+    rbac_context({'rbac_mode': 'black',
+                  'security:read': {'role:id:104': 'deny', f'rule:id:{stored["rules"][0]}': 'deny'}})
+
+    roles = _user_me(security, [103, 104])['roles']
+
+    assert roles[1] == {'id': 104, 'name': _stored_role(security, 104)['name']}
+    assert roles[0]['rules'][0] == {'id': stored['rules'][0]}
+    assert all('policy' in policy for policy in roles[0]['policies'])
