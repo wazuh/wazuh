@@ -243,6 +243,8 @@ async def test_ac_connection_made():
         while not abs_cli.connected:
             await asyncio.sleep(0.01)
 
+    # Another test may have left the client connected, which would end the wait below before the hello is sent
+    abstract_client.connected = False
     msg = abstract_client.msg_build(b'return', 1, b'ok')
 
     with patch.object(abstract_client, 'send_request', return_value=msg) as g_mock:

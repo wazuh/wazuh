@@ -16,6 +16,8 @@ from connexion import ProblemException
 from api.controllers.util import JSON_CONTENT_TYPE
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        # Keep the real module, if already imported, so mock.patch targets it after the restore
+        authentication_module = sys.modules.get('api.authentication')
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
         from api.models import event_ingest_model
@@ -24,7 +26,10 @@ with patch('wazuh.core.common.wazuh_uid'):
         from api.util import deserialize_model
         from wazuh import WazuhError
 
-        del sys.modules['api.authentication']
+        if authentication_module is None:
+            del sys.modules['api.authentication']
+        else:
+            sys.modules['api.authentication'] = authentication_module
 
 models_path = dirname(dirname(abspath(__file__)))
 

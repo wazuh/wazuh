@@ -28,13 +28,13 @@ google-auth==2.38.0
 google-cloud-core==2.4.3
 google-cloud-pubsub==2.21.5
 google-cloud-storage==2.19.0
-google-crc32c==1.1.2
+google-crc32c==1.9.0
 google-resumable-media==2.7.2
 googleapis-common-protos==1.63.2
 greenlet==3.0.3
 grpc-google-iam-v1==0.13.1
 grpcio==1.76.0
-grpcio-status==1.33.2
+grpcio-status==1.71.2
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.26.0
@@ -59,6 +59,7 @@ packaging==25.0
 pathable==0.4.3
 pathlib==1.0.1
 pip==26.2.1
+propcache==0.4.1
 proto-plus==1.26.0
 protobuf==5.29.6
 psutil==6.1.1
@@ -96,4 +97,4 @@ websocket-client==0.57.0
 Werkzeug==3.1.9
 wheel==0.46.2
 xmltodict==0.12.0
-yarl==1.7.0
+yarl==1.25.1
