@@ -189,6 +189,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#41385](https://github.com/wazuh/wazuh/issues/41385) | Fixed the CIS Oracle Linux 10 SCA check 38531 (bootloader password is set) failing on every host, including those with a GRUB2 password, because of a stray quote at the end of its rule. |
 | [#41520](https://github.com/wazuh/wazuh/pull/41520) | Hardened the WPK package extraction of the agent upgrade module. |
 | [#41295](https://github.com/wazuh/wazuh/pull/41295) | Hardened the FIM database search for the entries stored under a removed path. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed `wazuh-modulesd` waiting indefinitely on a command that ignored its timeout; the command's process group is now stopped after `wazuh_modules.kill_timeout`. |
