@@ -785,9 +785,10 @@ class NetworkLinuxAddressResolver final
                     }
                 }
 
-                const auto linkName { linkNames.end() == it ? std::string {} : it->second };
+                static const std::string NO_LINK_NAME;
+                const auto& linkName { linkNames.end() == it ? NO_LINK_NAME : it->second };
                 // Without IFA_LABEL, getifaddrs() names the address after its link.
-                const auto label { record.label.empty() ? linkName : record.label };
+                const auto& label { record.label.empty() ? linkName : record.label };
 
                 if (!label.empty())
                 {
