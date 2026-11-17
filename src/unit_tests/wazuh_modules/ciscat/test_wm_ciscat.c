@@ -458,19 +458,20 @@ void test_run_internal_error_retries_evaluation(void **state) {
     run->module->context->start(module_data);
 }
 
-// A CIS-CAT binary that cannot be run is reported with the reason.
-void test_run_missing_binary_reports_reason(void **state) {
+// A CIS-CAT binary that cannot be run is reported with the reason, and the evaluation is not
+// run again at the next interval.
+void test_run_missing_binary_disables_evaluation(void **state) {
     run_state *run = *state;
     wm_ciscat *module_data = (wm_ciscat *)run->module->data;
     char start_msg[OS_MAXSTR];
     char end_msg[OS_MAXSTR];
-    char error_msg[OS_MAXSTR + PATH_MAX];
+    char error_msg[OS_MAXSTR + 2 * PATH_MAX];
 
-    expect_module_start(run, 1);
+    expect_module_start(run, 2);
     expect_evaluation_start(run, start_msg, sizeof(start_msg));
     expect_ciscat_command(run->dir, NULL, 0, -1);
 
-    snprintf(error_msg, sizeof(error_msg), "Unable to run '%s': No such file or directory (2)", run->binary);
+    snprintf(error_msg, sizeof(error_msg), "Unable to run '%s': No such file or directory (2). Disabling content '%s'.", run->binary, run->bench);
     expect_string(__wrap__mterror, tag, WM_CISCAT_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, error_msg);
 
@@ -495,7 +496,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_run_timeout_skips_results, setup_run_v3, teardown_run),
         cmocka_unit_test_setup_teardown(test_run_error_skips_results, setup_run_v4, teardown_run),
         cmocka_unit_test_setup_teardown(test_run_internal_error_retries_evaluation, setup_run_v3, teardown_run),
-        cmocka_unit_test_setup_teardown(test_run_missing_binary_reports_reason, setup_run_v3, teardown_run),
+        cmocka_unit_test_setup_teardown(test_run_missing_binary_disables_evaluation, setup_run_v3, teardown_run),
     };
     int result = (cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module) ||
                   cmocka_run_group_tests(tests_without_startup, NULL, NULL) ||

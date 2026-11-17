@@ -592,12 +592,15 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
         default:
             ciscat->flags.error = 1;
 
-            // Tell why the command could not be run in the most likely case
+            // Tell why the command could not be run in the most likely case. Other errors, such as
+            // a failed fork(), may not happen again, so the evaluation runs at the next interval.
             char binary_path[PATH_MAX];
             snprintf(binary_path, sizeof(binary_path), "%s/%s", path, ciscat_binary);
 
             if (access(binary_path, X_OK) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to run '%s': %s (%d)", binary_path, strerror(errno), errno);
+                // Retrying would fail the same way until the setup is fixed
+                eval->flags.error = 1;
+                mterror(WM_CISCAT_LOGTAG, "Unable to run '%s': %s (%d). Disabling content '%s'.", binary_path, strerror(errno), errno, eval->path);
             } else {
                 mterror(WM_CISCAT_LOGTAG, "Internal error executing '%s'.", eval->path);
             }
