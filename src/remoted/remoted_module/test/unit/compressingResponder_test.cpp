@@ -463,3 +463,75 @@ TEST(CompressingResponder, TwoStreamCallsAreBothProcessed)
     EXPECT_EQ(decode(drain(*inner->streamed[0].source)), "first");
     EXPECT_EQ(decode(drain(*inner->streamed[1].source)), "second");
 }
+
+TEST(CompressingResponder, TheOutcomeIsReportedOnlyWhenCompressionIsAttempted)
+{
+    InFlightBudget budget(BUDGET_BYTES);
+    const CompressingResponder::ReserveFn grant = [&](std::size_t bytes)
+    {
+        return budget.tryReserveUncounted(bytes);
+    };
+    const CompressingResponder::ReserveFn refuse = [](std::size_t) -> std::optional<InFlightBudget::Reservation>
+    {
+        return std::nullopt;
+    };
+    const CompressingResponder::SourceFactory throwing =
+        [](std::shared_ptr<IByteSource>,
+           InFlightBudget::Reservation,
+           std::optional<std::uint64_t>) -> std::shared_ptr<IByteSource>
+    {
+        throw std::runtime_error("factory failure");
+    };
+
+    // Streams one response through a fresh responder and returns the outcomes it reported.
+    const auto outcomes = [](const CompressingResponder::ReserveFn& reserve,
+                             const CompressingResponder::SourceFactory& factory,
+                             StreamResponse response)
+    {
+        std::vector<bool> reported;
+        response.onCompression = [&](bool compressed)
+        {
+            reported.push_back(compressed);
+        };
+        auto inner = std::make_shared<RecordingInner>();
+        CompressingResponder(inner, reserve, factory).stream(std::move(response));
+        EXPECT_EQ(inner->streamed.size(), 1U);
+        return reported;
+    };
+    const auto payload = []()
+    {
+        return std::make_shared<ScriptedByteSource>("payload");
+    };
+
+    EXPECT_EQ(outcomes(grant, {}, plainResponse(payload())), std::vector<bool> {true});
+    EXPECT_EQ(outcomes(refuse, {}, plainResponse(payload())), std::vector<bool> {false});
+    EXPECT_EQ(outcomes(grant, throwing, plainResponse(payload())), std::vector<bool> {false});
+
+    auto notCompressible = plainResponse(payload());
+    notCompressible.compressible = false;
+    EXPECT_TRUE(outcomes(grant, {}, notCompressible).empty());
+
+    EXPECT_TRUE(outcomes(grant, {}, plainResponse(nullptr)).empty());
+
+    auto alreadyEncoded = plainResponse(payload());
+    alreadyEncoded.headers.emplace_back("Content-Encoding", "gzip");
+    EXPECT_TRUE(outcomes(grant, {}, alreadyEncoded).empty());
+}
+
+TEST(CompressingResponder, AnOutcomeCallbackThatThrowsDoesNotEscape)
+{
+    InFlightBudget budget(BUDGET_BYTES);
+    auto inner = std::make_shared<RecordingInner>();
+    CompressingResponder responder(inner, [&](std::size_t bytes) { return budget.tryReserveUncounted(bytes); });
+
+    const std::string payload = "payload";
+    auto response = plainResponse(std::make_shared<ScriptedByteSource>(payload), payload.size());
+    response.onCompression = [](bool)
+    {
+        throw std::runtime_error("metrics failure");
+    };
+    EXPECT_NO_THROW(responder.stream(std::move(response)));
+
+    ASSERT_EQ(inner->streamed.size(), 1U);
+    EXPECT_EQ(decode(drain(*inner->streamed[0].source)), payload);
+}
