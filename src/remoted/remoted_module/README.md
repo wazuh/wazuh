@@ -1666,7 +1666,7 @@ distinguishable from a slow one (a fast "could not connect" instead of waiting o
 timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
 side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
 
-Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"source":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`.
+Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"source":...,"deadline_ms":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`.
 `source` is the connection's peer address (`HttpRequest::remoteIp`), sent whatever `ip` resolved to:
 authd only logs it (`Agent key generated for agent 'N' (requested by <source>)`), and a worker
 forwards it to the master. The last two are optional and never sent together (issue #38993): `token_id` is the verified
@@ -1678,6 +1678,19 @@ verbatim and **unverified**, for authd on the master to verify against that agen
 9028 otherwise). Neither is present on the password and Open paths. authd's reply `data` carries `id`, `name`, `ip`, `key`
 and — for every `add` — `reenroll_secret` (64 hex chars, generated next to the key and stored in
 `global.db`); `AuthdResult::reenrollSecret` is empty when an older authd sent none.
+**`deadline_ms` is the instant this module stops being able to deliver authd's answer**, absolute,
+in milliseconds since the Unix epoch, so that authd can discard work nobody can receive instead of
+applying it blind — the failure that leaves a re-enrolling agent locked out of its own id. It is
+computed in `deadlineFor()` **at dequeue**, not when the request arrived, because that is when the
+two budgets that actually cut the wait start:
+`min(now + connectTimeoutMs + responseTimeoutMs, arrivalMs + httpRequestTimeoutMs)`. The queue
+therefore carries the structured `AuthdAddRequest` (with its `arrivalMs`) rather than a serialized
+payload: the bytes are built in the worker, after the wait. The field is omitted when the deadline
+is `0`, and authd treats an absent, malformed or out-of-range value as "no deadline" — the fail-safe
+direction is the behaviour that existed before it. A worker's authd adds
+`remoted.enroll_deadline_tolerance` to it before forwarding to the master, and the master's refusal
+is `9032` → `503` + `remoted.enroll.discarded_late`.
+
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
 authd-generated key, never a caller-supplied one; `force` stays a manager-config decision, exactly as
 authd's local path already falls back to `config.force_options` from `wazuh-manager.conf` when it's absent.
@@ -1692,9 +1705,19 @@ seconds on a flaky cluster link: `w_request_agent_add_clustered` → `w_send_clu
 up to `CLUSTER_SEND_MESSAGE_ATTEMPTS = 10` times with a 1 s sleep between failures
 (`shared/src/agent_op.c`). If `AuthdClient`'s response timeout were shorter than that, a worker-node
 enrollment authd is legitimately still retrying would be cut off early as a spurious `503`. It reads
-the same `isWorkerNode` flag already plumbed into `ControlConfig` and uses a longer default (~15 s,
-covering the worst-case retry budget) on workers versus a short default (~5 s, matching
-`WazuhDBClient`/`TaskClient`, since there's no cluster hop on the master).
+the same `isWorkerNode` flag already plumbed into `ControlConfig` and uses a longer default (~15 s)
+on workers versus a short default (~5 s, matching `WazuhDBClient`/`TaskClient`, since there's no
+cluster hop on the master).
+
+**That 15 s does not cover the worst case, and no response timeout could.** Each attempt of that
+loop connects with `WAZUH_IPC_TIMEOUT` — **600 s** (`shared/os_net/os_net.h`) — as its socket
+timeout (`external_socket_connect()`, `shared/src/agent_op.c`), so ten attempts plus their sleeps
+bound the loop at roughly **6009 s**, not ~10 s: a cluster link that hangs rather than fails fast
+keeps a worker's authd inside the forward long after this module answered the agent `503`. That is
+why the `add` carries `deadline_ms` instead of relying on the two sides' timeouts agreeing — the
+master discards what can no longer be delivered. The retry loop itself does not re-check the
+deadline between attempts; doing so means changing `w_send_clustered_message`, which three other
+callers share (tracked in issue #41445).
 
 **Fixed: this retry no longer serializes behind authd's local-socket dispatch.** `run_local_server`
 (`os_auth/src/local-server.c`) used to be a plain accept→recv→dispatch→send→close loop with no
@@ -1945,8 +1968,11 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
   90xx authd business rejection, the token `403`s of 9022/9023/9024 included; 9026/9027/9028 are
   `rejected_auth`'s),
   `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
-  shutdown), and `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
-  rate-limit gate the handler charges after authentication, and in none of the other outcome counters).
+  shutdown), `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
+  rate-limit gate the handler charges after authentication, and in none of the other outcome counters),
+  and `remoted.enroll.discarded_late` (authd's 9032: the request's `deadline_ms` had passed, so it
+  created and rotated nothing — both enrollment shapes land in this one counter, and the request is
+  also in `authd_error`; it measures this manager being too slow to answer the agents it serves).
 - **The enrollment-token subset** (issue #38993), by what happened to the TOKEN —
   `remoted.enroll.token.accepted` (a `200` obtained with a token), `.rejected_unknown`,
   `.rejected_expired`, `.rejected_revoked` (decided by remoted's replica, `countTokenRejection()`, and

@@ -1324,9 +1324,10 @@ paths:
           description: |
             `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
             to the master failed (9016), `authd` could not record the identity transition (9031 --
-            nothing handed out), the request never reached `authd` (code -1), or it reached
-            `authd` but no well-formed answer came back in time (code -2) -- `authd` may have
-            processed it anyway.
+            nothing handed out), `authd` discarded the request because this manager had already run
+            out of time to answer it (9032 -- nothing created or rotated), the request never reached
+            `authd` (code -1), or it reached `authd` but no well-formed answer came back in time
+            (code -2) -- `authd` may have processed it anyway.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
@@ -1335,6 +1336,13 @@ paths:
                   summary: The request never reached authd. Safe to retry.
                   value:
                     error: { code: -1, message: "Enrollment service temporarily unavailable" }
+                deadlineExpired:
+                  summary: >-
+                    The manager ran out of time to answer and discarded the request instead of
+                    applying it. Nothing was created or rotated and the agent's credential is
+                    untouched, so the retry is expected to succeed.
+                  value:
+                    error: { code: 9032, message: "Enrollment deadline expired" }
                 outcomeUnknown:
                   summary: authd may have processed the request before the answer was lost.
                   value:
