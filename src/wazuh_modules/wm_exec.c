@@ -31,11 +31,13 @@
 #if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
 #include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
 
 // Local to this file: other users of these headers keep the real calls
-#define GetProcAddress wrap_GetProcAddress
 #define ReadFile wrap_ReadFile
+#define PeekNamedPipe wrap_PeekNamedPipe
 #endif
 
 static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
@@ -82,26 +84,20 @@ void wm_children_pool_init() {
 
 // Reader shutdown timings
 #define WM_READER_JOIN_MS 1000
-#define WM_READER_STOP_TRIES 10
-#define WM_READER_STOP_MS 100
+#define WM_READER_STOP_MS 1000
 
-#define WM_EXEC_READ_CHUNK 65536
+// How often the reader looks for new output and for a stop request
+#define WM_EXEC_POLL_MS 20
+
+// Size of the buffer used to read and drop output that cannot be kept
+#define WM_EXEC_DISCARD_SIZE 4096
 
 // Reader outcomes: the output kept so far is still returned
 #define WM_READER_OK 0
 #define WM_READER_LIMIT 1
 #define WM_READER_NOMEM 2
 
-// CancelSynchronousIo() needs Vista or later, so it is resolved at run time and the agent still loads on XP and 2003
-typedef BOOL (WINAPI * wm_cancel_io_t)(HANDLE);
-
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
-
-static wm_cancel_io_t wm_get_cancel_io(void) {
-    HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
-
-    return kernel32 ? (wm_cancel_io_t)(void (*)(void)) GetProcAddress(kernel32, "CancelSynchronousIo") : NULL;
-}
 
 static void wm_reader_release(ThreadInfo * rinfo) {
     if (InterlockedDecrement(&rinfo->refs) == 0) {
@@ -111,52 +107,44 @@ static void wm_reader_release(ThreadInfo * rinfo) {
     }
 }
 
-// Returns false if the reader could not be stopped: it is then left to release the state when it exits.
+static void wm_log_reader_wait_failure(void) {
+    int winerror = GetLastError();
+
+    merror("at wm_exec(): WaitForSingleObject(reader)(%d): %s", winerror, win_strerror(winerror));
+}
+
+// Returns false if the reader did not exit: it is then left to release the state when it does.
 
 static bool wm_stop_reader(HANDLE hThread, ThreadInfo * rinfo) {
-    wm_cancel_io_t cancel_io;
     DWORD result = WaitForSingleObject(hThread, WM_READER_JOIN_MS);
-    int winerror;
 
     if (result == WAIT_OBJECT_0) {
         return true;
     }
 
-    if (result == WAIT_FAILED) {
-        winerror = GetLastError();
-        merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
-        InterlockedExchange(&rinfo->stop, 1);
-        return false;
-    }
-
-    // Set before cancelling so a reader not yet blocked exits instead of starting another read
-
+    // The reader polls this flag, so it exits even if the pipe is still held open
     InterlockedExchange(&rinfo->stop, 1);
-    cancel_io = wm_get_cancel_io();
 
-    if (cancel_io == NULL) {
-        mdebug1("at wm_exec(): CancelSynchronousIo() is not available.");
+    if (result == WAIT_FAILED) {
+        wm_log_reader_wait_failure();
         return false;
     }
 
-    for (int i = 0; i < WM_READER_STOP_TRIES; i++) {
-        cancel_io(hThread);
-        result = WaitForSingleObject(hThread, WM_READER_STOP_MS);
+    result = WaitForSingleObject(hThread, WM_READER_STOP_MS);
 
-        if (result == WAIT_OBJECT_0) {
-            // Still open after the command ended or was terminated: the output may be incomplete
-            mdebug1("at wm_exec(): Stopped reading the command output before its end.");
-            return true;
-        }
+    switch (result) {
+    case WAIT_OBJECT_0:
+        // The pipe was still open after the command ended or was terminated: the output may be incomplete
+        mdebug1("at wm_exec(): Stopped reading the command output before its end.");
+        return true;
 
-        if (result == WAIT_FAILED) {
-            winerror = GetLastError();
-            merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
-            return false;
-        }
+    case WAIT_TIMEOUT:
+        return false;
+
+    default:
+        wm_log_reader_wait_failure();
+        return false;
     }
-
-    return false;
 }
 
 // Falls back to the child alone when it is not in a job
@@ -370,13 +358,12 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
             }
         } else {
             // The reader frees the state when it exits; nothing it may still use is touched here
-            mwarn("at wm_exec(): Could not collect the output of command '%s'.", command);
-
+            mwarn("at wm_exec(): Could not collect the command output.");
             if (retval >= 0) {
                 *output = NULL;
             }
 
-            // Only a timeout that actually fired is reported as one
+            // A timeout that fired is still reported as one
             if (retval == 0) {
                 retval = -1;
             }
@@ -398,64 +385,94 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     return retval;
 }
 
+// Makes room in the output buffer for up to avail more bytes, within the size limit.
+// Returns how many bytes can be read into the buffer, or 0 with the outcome set if none can.
+
+static size_t wm_reader_reserve(ThreadInfo * tinfo, size_t avail) {
+    size_t room = WM_STRING_MAX - tinfo->length;
+    size_t nextsize;
+
+    if (room == 0) {
+        tinfo->failure = WM_READER_LIMIT;
+        return 0;
+    }
+
+    if (avail < room) {
+        room = avail;
+    }
+
+    nextsize = tinfo->length + room;
+
+    if (nextsize + 1 > tinfo->capacity) {
+        size_t newcap = tinfo->capacity ? tinfo->capacity : WM_BUFFER_MAX * 4;
+
+        while (newcap < nextsize + 1) {
+            newcap *= 2;
+        }
+
+        if (newcap > WM_STRING_MAX + 1) {
+            newcap = WM_STRING_MAX + 1;
+        }
+
+        char * newbuf = (char *)realloc(tinfo->output, newcap);
+
+        if (newbuf == NULL) {
+            tinfo->failure = WM_READER_NOMEM;
+            return 0;
+        }
+
+        tinfo->output = newbuf;
+        tinfo->capacity = newcap;
+    }
+
+    return room;
+}
+
 // Reading thread's start point
 
 DWORD WINAPI Reader(LPVOID args) {
     ThreadInfo * tinfo = (ThreadInfo *)args;
-    CHAR * chunk = (CHAR *)malloc(WM_EXEC_READ_CHUNK);
+    CHAR discard[WM_EXEC_DISCARD_SIZE];
+    DWORD avail;
     DWORD nbytes;
 
-    // No logging here: a log write could be the I/O that wm_exec() cancels to stop the reader
+    // Reads only when the pipe has data, so it never blocks and sees stop. A failed peek means the data ended.
+    // No logging: wm_exec() reports the outcome.
 
-    if (chunk == NULL) {
-        tinfo->failure = WM_READER_NOMEM;
-        wm_reader_release(tinfo);
-        return 0;
-    }
+    while (!tinfo->stop && PeekNamedPipe(tinfo->pipe, NULL, 0, NULL, &avail, NULL)) {
+        CHAR * dest = discard;
+        size_t room = sizeof(discard);
 
-    // A failed read (broken pipe or cancelled I/O) is the end of the data
-
-    while (!tinfo->stop && ReadFile(tinfo->pipe, chunk, WM_EXEC_READ_CHUNK, &nbytes, NULL)) {
-        size_t nextsize = tinfo->length + nbytes;
-
-        // A zero-length write is not EOF; after a failure keep draining so the child does not block on a full pipe
-        if (nbytes == 0 || tinfo->failure != WM_READER_OK) {
+        if (avail == 0) {
+            Sleep(WM_EXEC_POLL_MS);
             continue;
         }
 
-        if (nextsize > WM_STRING_MAX) {
-            tinfo->failure = WM_READER_LIMIT;
+        // Once the output cannot be kept, keep draining so the command does not block on a full pipe
+        if (tinfo->failure == WM_READER_OK) {
+            size_t space = wm_reader_reserve(tinfo, avail);
+
+            if (space > 0) {
+                dest = tinfo->output + tinfo->length;
+                room = space;
+            }
+        }
+
+        if (!ReadFile(tinfo->pipe, dest, avail < room ? avail : (DWORD)room, &nbytes, NULL)) {
+            break;
+        }
+
+        if (nbytes == 0) {
+            Sleep(WM_EXEC_POLL_MS);
             continue;
         }
 
-        if (nextsize + 1 > tinfo->capacity) {
-            size_t newcap = tinfo->capacity ? tinfo->capacity : WM_BUFFER_MAX * 4;
-
-            while (newcap < nextsize + 1) {
-                newcap *= 2;
-            }
-
-            if (newcap > WM_STRING_MAX + 1) {
-                newcap = WM_STRING_MAX + 1;
-            }
-
-            char * newbuf = (char *)realloc(tinfo->output, newcap);
-
-            if (newbuf == NULL) {
-                tinfo->failure = WM_READER_NOMEM;
-                continue;
-            }
-
-            tinfo->output = newbuf;
-            tinfo->capacity = newcap;
+        if (dest != discard) {
+            tinfo->length += nbytes;
+            tinfo->output[tinfo->length] = '\0';
         }
-
-        memcpy(tinfo->output + tinfo->length, chunk, nbytes);
-        tinfo->length = nextsize;
-        tinfo->output[tinfo->length] = '\0';
     }
 
-    free(chunk);
     wm_reader_release(tinfo);
 
     return 0;

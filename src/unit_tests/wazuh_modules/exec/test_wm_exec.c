@@ -18,6 +18,10 @@
 
 #include "../../wrappers/wazuh/shared/list_op_wrappers.h"
 #include "../../wrappers/posix/signal_wrappers.h"
+#ifdef WIN32
+#include "../../wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../wrappers/windows/synchapi_wrappers.h"
+#endif
 
 #define COMMAND u8"Powershell -c \"@{ winCounter = (Get-Counter '\\mémoire\\mégaoctets disponibles').CounterSamples[0] } | ConvertTo-Json -compress\""
 #define COMMAND2 u8"Powershell -c \"@{ winCounter = (Get-Counter '\\processeur(_total)\\% temps processeur').CounterSamples[0] } | ConvertTo-Json -compress\""
@@ -124,10 +128,49 @@ static void expect_wait(DWORD result) {
     will_return(wrap_WaitForSingleObject, result);
 }
 
-static void expect_read(const char * data, DWORD length, BOOL result) {
+// Bytes the next ReadFile() returns; NULL data fills them with 'A'
+static void expect_read(const char * data, DWORD length) {
     will_return(wrap_ReadFile, data);
     will_return(wrap_ReadFile, length);
-    will_return(wrap_ReadFile, result);
+    will_return(wrap_ReadFile, TRUE);
+}
+
+static void expect_peek(DWORD avail, BOOL result) {
+    will_return(wrap_PeekNamedPipe, avail);
+    will_return(wrap_PeekNamedPipe, result);
+}
+
+// Output the command left in the pipe: a peek that reports it, then the read that takes it
+static void expect_data(const char * data, DWORD length) {
+    expect_peek(length, TRUE);
+    expect_read(data, length);
+}
+
+// The pipe was closed by every writer: the reader sees the end of the data
+static void expect_end_of_data(void) {
+    expect_peek(0, FALSE);
+}
+
+// A command that still holds the pipe open without writing: the reader polls once
+static void expect_idle_poll(void) {
+    expect_peek(0, TRUE);
+    expect_any(wrap_Sleep, dwMilliseconds);
+}
+
+// Mirrors ThreadInfo up to stop in wm_exec.c: keep the field order and types in sync
+typedef struct {
+    CHAR * output;
+    size_t length;
+    size_t capacity;
+    HANDLE pipe;
+    volatile LONG stop;
+} reader_state_t;
+
+// Stands for wm_exec() asking the reader to stop while it sleeps
+static void request_reader_stop(void) {
+    reader_state_t * state = (reader_state_t *)wrap_CreateThread_last_param();
+
+    InterlockedExchange(&state->stop, 1);
 }
 
 // Handles closed once the command is done: the job, the process and its main thread
@@ -142,24 +185,27 @@ static void expect_final_close(void) {
     will_return(wrap_CloseHandle, TRUE);
 }
 
-static void expect_cancel_resolved(FARPROC fn) {
-    expect_string(wrap_GetProcAddress, lpProcName, "CancelSynchronousIo");
-    will_return(wrap_GetProcAddress, fn);
-}
-
 static void expect_abandoned_warning(void) {
-    expect_string(__wrap__mwarn, formatted_msg, "at wm_exec(): Could not collect the output of command 'cmd /c dir'.");
+    expect_string(__wrap__mwarn, formatted_msg, "at wm_exec(): Could not collect the command output.");
 }
 
-// The reader that was left running exits now: it is the last owner and frees the state and the pipe
+// The reader that was left running exits now, after wm_exec() told it to stop: it must not touch the pipe,
+// and as the last owner it frees the state and the pipe
 static void finish_abandoned_reader(void) {
     expect_value(wrap_CloseHandle, hObject, READ_PIPE);
     will_return(wrap_CloseHandle, TRUE);
     wrap_CreateThread_run_last();
 }
 
+static int setup_reader_thread(void ** state) {
+    wrap_CreateThread_reset();
+    wrap_Sleep_set_callback(NULL);
+    return 0;
+}
+
 static int teardown_reader_thread(void ** state) {
-    wrap_CreateThread_run_routine(false);
+    wrap_CreateThread_reset();
+    wrap_Sleep_set_callback(NULL);
     return 0;
 }
 #endif
@@ -446,17 +492,16 @@ static void test_wm_exec_job_breakaway_fails_continues(void ** state) {
     assert_int_equal(0, wm_exec(COMMAND2, NULL, NULL, 0, NULL));
 }
 
-// The reader ends by itself: the output is returned, with a zero-length write in the middle of it
+// The reader ends by itself: the output is returned
 static void test_wm_exec_output_reader_joins(void ** state) {
     char command[] = "cmd /c dir";
     char * output = NULL;
 
     wrap_CreateThread_run_routine(true);
     expect_spawn_with_output();
-    expect_read("hel", 3, TRUE);
-    expect_read("", 0, TRUE);
-    expect_read("lo", 2, TRUE);
-    expect_read("", 0, FALSE);
+    expect_data("hel", 3);
+    expect_data("lo", 2);
+    expect_end_of_data();
     expect_wait(0);
     expect_wait(0);
     expect_value(wrap_CloseHandle, hObject, READ_PIPE);
@@ -469,22 +514,56 @@ static void test_wm_exec_output_reader_joins(void ** state) {
     os_free(output);
 }
 
-// The command timed out: its output so far is returned once the reader is cancelled
-static void test_wm_exec_output_timeout_reader_cancelled(void ** state) {
+// Output of several reads that outgrows the initial buffer is kept whole
+static void test_wm_exec_output_grows_buffer(void ** state) {
+    const DWORD sizes[] = { 5000, 13000, 20000 };
+    const DWORD total = 38000;
+    char command[] = "cmd /c dir";
+    char * output = NULL;
+    char * pattern = (char *)calloc(total + 1, 1);
+    DWORD offset = 0;
+
+    for (DWORD i = 0; i < total; i++) {
+        pattern[i] = 'a' + (i % 26);
+    }
+
+    wrap_CreateThread_run_routine(true);
+    expect_spawn_with_output();
+
+    for (size_t i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
+        expect_data(pattern + offset, sizes[i]);
+        offset += sizes[i];
+    }
+
+    expect_end_of_data();
+    expect_wait(0);
+    expect_wait(0);
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_final_close();
+
+    assert_int_equal(0, wm_exec(command, &output, NULL, 0, NULL));
+    assert_int_equal(strlen(output), total);
+    assert_string_equal(output, pattern);
+
+    os_free(output);
+    free(pattern);
+}
+
+// The command timed out while the pipe was quiet: the reader is told to stop and the output so far is returned
+static void test_wm_exec_output_timeout_reader_stopped(void ** state) {
     char command[] = "cmd /c dir";
     char * output = NULL;
 
     wrap_CreateThread_run_routine(true);
+    wrap_Sleep_set_callback(request_reader_stop);
     expect_spawn_with_output();
-    expect_read("partial", 7, TRUE);
-    expect_read("", 0, FALSE);
+    expect_data("partial", 7);
+    expect_idle_poll();
     expect_wait(WAIT_TIMEOUT);
     expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_TerminateJobObject, TRUE);
     expect_wait(WAIT_TIMEOUT);
-    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
-    expect_function_call(wrap_CancelSynchronousIo);
-    will_return(wrap_CancelSynchronousIo, TRUE);
     expect_wait(WAIT_OBJECT_0);
     expect_string(__wrap__mdebug1, formatted_msg, "at wm_exec(): Stopped reading the command output before its end.");
     expect_value(wrap_CloseHandle, hObject, READ_PIPE);
@@ -497,22 +576,76 @@ static void test_wm_exec_output_timeout_reader_cancelled(void ** state) {
     os_free(output);
 }
 
-// The reader never stops after a command that ended on its own: not a timeout, and no output
-static void test_wm_exec_output_reader_never_stops(void ** state) {
+// The command exited but a descendant still holds the pipe open: success, with the output read so far
+static void test_wm_exec_output_exited_pipe_held_by_descendant(void ** state) {
+    char command[] = "cmd /c dir";
+    char * output = NULL;
+
+    wrap_CreateThread_run_routine(true);
+    wrap_Sleep_set_callback(request_reader_stop);
+    expect_spawn_with_output();
+    expect_data("done", 4);
+    expect_idle_poll();
+    expect_wait(0);
+    expect_wait(WAIT_TIMEOUT);
+    expect_wait(WAIT_OBJECT_0);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wm_exec(): Stopped reading the command output before its end.");
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_final_close();
+
+    assert_int_equal(0, wm_exec(command, &output, NULL, 0, NULL));
+    assert_string_equal(output, "done");
+
+    os_free(output);
+}
+
+// Output beyond the limit is dropped and drained, and what fits is kept
+static void test_wm_exec_output_reaches_limit(void ** state) {
+    char command[] = "cmd /c dir";
+    char last_bytes[100];
+    char * output = NULL;
+
+    memset(last_bytes, 'B', sizeof(last_bytes));
+    wrap_CreateThread_run_routine(true);
+    expect_spawn_with_output();
+    expect_data(NULL, WM_STRING_MAX - 100);
+    expect_peek(1000, TRUE);
+    expect_read(last_bytes, 100);
+    // Over the limit: read into the drain buffer in pieces that fit it
+    expect_data(NULL, 1000);
+    expect_peek(10000, TRUE);
+    expect_read(NULL, 4096);
+    expect_peek(5904, TRUE);
+    expect_read(NULL, 4096);
+    expect_peek(1808, TRUE);
+    expect_read(NULL, 1808);
+    expect_end_of_data();
+    expect_wait(0);
+    expect_wait(0);
+    expect_string(__wrap__mwarn, formatted_msg, "String limit reached.");
+    expect_value(wrap_CloseHandle, hObject, READ_PIPE);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_final_close();
+
+    assert_int_equal(0, wm_exec(command, &output, NULL, 0, NULL));
+    assert_int_equal(strlen(output), WM_STRING_MAX);
+    assert_int_equal(output[WM_STRING_MAX - 101], 'A');
+    assert_int_equal(output[WM_STRING_MAX - 100], 'B');
+    assert_int_equal(output[WM_STRING_MAX - 1], 'B');
+
+    os_free(output);
+}
+
+// The reader is still running when the reader wait times out twice: -1 and no output
+static void test_wm_exec_output_reader_never_exits(void ** state) {
     char command[] = "cmd /c dir";
     char * output = (char *)0x1;
 
     expect_spawn_with_output();
     expect_wait(0);
     expect_wait(WAIT_TIMEOUT);
-    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
-
-    for (int i = 0; i < 10; i++) {
-        expect_function_call(wrap_CancelSynchronousIo);
-        will_return(wrap_CancelSynchronousIo, TRUE);
-        expect_wait(WAIT_TIMEOUT);
-    }
-
+    expect_wait(WAIT_TIMEOUT);
     expect_abandoned_warning();
     expect_final_close();
 
@@ -522,8 +655,8 @@ static void test_wm_exec_output_reader_never_stops(void ** state) {
     finish_abandoned_reader();
 }
 
-// A timeout that did fire stays a timeout when the reader cannot be stopped
-static void test_wm_exec_output_timeout_reader_never_stops(void ** state) {
+// A timeout that did fire is still reported as one when the reader cannot be collected
+static void test_wm_exec_output_timeout_reader_never_exits(void ** state) {
     char command[] = "cmd /c dir";
     char * output = (char *)0x1;
 
@@ -532,14 +665,7 @@ static void test_wm_exec_output_timeout_reader_never_stops(void ** state) {
     expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
     will_return(wrap_TerminateJobObject, TRUE);
     expect_wait(WAIT_TIMEOUT);
-    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
-
-    for (int i = 0; i < 10; i++) {
-        expect_function_call(wrap_CancelSynchronousIo);
-        will_return(wrap_CancelSynchronousIo, TRUE);
-        expect_wait(WAIT_TIMEOUT);
-    }
-
+    expect_wait(WAIT_TIMEOUT);
     expect_abandoned_warning();
     expect_final_close();
 
@@ -549,7 +675,8 @@ static void test_wm_exec_output_timeout_reader_never_stops(void ** state) {
     finish_abandoned_reader();
 }
 
-static void test_wm_exec_output_wait_failed_abandons_reader(void ** state) {
+// The wait for the reader fails: its own error message, -1 and no output
+static void test_wm_exec_output_reader_wait_failed(void ** state) {
     char command[] = "cmd /c dir";
     char * output = (char *)0x1;
 
@@ -566,36 +693,16 @@ static void test_wm_exec_output_wait_failed_abandons_reader(void ** state) {
     finish_abandoned_reader();
 }
 
-static void test_wm_exec_output_wait_failed_during_cancel(void ** state) {
+// The wait for the reader fails after it was told to stop
+static void test_wm_exec_output_reader_wait_failed_after_stop(void ** state) {
     char command[] = "cmd /c dir";
     char * output = (char *)0x1;
 
     expect_spawn_with_output();
     expect_wait(0);
     expect_wait(WAIT_TIMEOUT);
-    expect_cancel_resolved((FARPROC)(void (*)(void))wrap_CancelSynchronousIo);
-    expect_function_call(wrap_CancelSynchronousIo);
-    will_return(wrap_CancelSynchronousIo, TRUE);
     expect_wait(WAIT_FAILED);
     expect_any(__wrap__merror, formatted_msg);
-    expect_abandoned_warning();
-    expect_final_close();
-
-    assert_int_equal(-1, wm_exec(command, &output, NULL, 0, NULL));
-    assert_null(output);
-
-    finish_abandoned_reader();
-}
-
-static void test_wm_exec_output_cancel_unavailable(void ** state) {
-    char command[] = "cmd /c dir";
-    char * output = (char *)0x1;
-
-    expect_spawn_with_output();
-    expect_wait(0);
-    expect_wait(WAIT_TIMEOUT);
-    expect_cancel_resolved(NULL);
-    expect_any(__wrap__mdebug1, formatted_msg);
     expect_abandoned_warning();
     expect_final_close();
 
@@ -1006,13 +1113,15 @@ int main(void) {
         cmocka_unit_test(test_wm_exec_resumethread_fails),
 #ifdef WIN32
         cmocka_unit_test(test_wm_exec_job_breakaway_fails_continues),
-        cmocka_unit_test_teardown(test_wm_exec_output_reader_joins, teardown_reader_thread),
-        cmocka_unit_test_teardown(test_wm_exec_output_timeout_reader_cancelled, teardown_reader_thread),
-        cmocka_unit_test(test_wm_exec_output_reader_never_stops),
-        cmocka_unit_test(test_wm_exec_output_timeout_reader_never_stops),
-        cmocka_unit_test(test_wm_exec_output_wait_failed_abandons_reader),
-        cmocka_unit_test(test_wm_exec_output_wait_failed_during_cancel),
-        cmocka_unit_test(test_wm_exec_output_cancel_unavailable),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_reader_joins, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_grows_buffer, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_timeout_reader_stopped, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_exited_pipe_held_by_descendant, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_reaches_limit, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_reader_never_exits, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_timeout_reader_never_exits, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_reader_wait_failed, setup_reader_thread, teardown_reader_thread),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_reader_wait_failed_after_stop, setup_reader_thread, teardown_reader_thread),
 #endif
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_wm_append_sid_null_list, NULL, NULL),

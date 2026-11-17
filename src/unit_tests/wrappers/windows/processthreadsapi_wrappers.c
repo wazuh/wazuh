@@ -36,6 +36,16 @@ void wrap_CreateThread_run_last(void) {
     last_thread_routine(last_thread_param);
 }
 
+PVOID wrap_CreateThread_last_param(void) {
+    return last_thread_param;
+}
+
+void wrap_CreateThread_reset(void) {
+    create_thread_runs_routine = false;
+    last_thread_routine = NULL;
+    last_thread_param = NULL;
+}
+
 void wrap_CreateThread_run_routine(bool run) {
     create_thread_runs_routine = run;
 }
@@ -100,29 +110,6 @@ BOOL wrap_SetInformationJobObject(HANDLE hJob,
     check_expected(hJob);
     check_expected(JobObjectInformationClass);
     check_expected(LimitFlags);
-    return mock();
-}
-
-FARPROC wrap_GetProcAddress(__UNUSED_PARAM(HMODULE hModule), LPCSTR lpProcName) {
-    check_expected(lpProcName);
-    return mock_type(FARPROC);
-}
-
-BOOL wrap_ReadFile(__UNUSED_PARAM(HANDLE hFile),
-                   LPVOID lpBuffer,
-                   __UNUSED_PARAM(DWORD nNumberOfBytesToRead),
-                   LPDWORD lpNumberOfBytesRead,
-                   __UNUSED_PARAM(LPOVERLAPPED lpOverlapped)) {
-    const char * data = mock_type(const char *);
-    DWORD length = mock_type(DWORD);
-
-    memcpy(lpBuffer, data, length);
-    *lpNumberOfBytesRead = length;
-    return mock_type(BOOL);
-}
-
-BOOL wrap_CancelSynchronousIo(__UNUSED_PARAM(HANDLE hThread)) {
-    function_called();
     return mock();
 }
 

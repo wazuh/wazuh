@@ -21,6 +21,12 @@
 
 VOID wrap_Sleep(DWORD dwMilliseconds);
 
+/**
+ * @brief Runs a callback at the end of every wrap_Sleep call, to simulate what happens while the caller
+ *        sleeps. NULL removes it.
+ */
+void wrap_Sleep_set_callback(void (*callback)(void));
+
 HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
                         WINBOOL bManualReset,
                         WINBOOL bInitialState,
