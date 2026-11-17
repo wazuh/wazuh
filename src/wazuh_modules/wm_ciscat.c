@@ -570,7 +570,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
 
     if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY)) {
         work_dir = path;
-        mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
+        mtdebug2(WM_CISCAT_LOGTAG, "Working directory: %s", path);
     }
 
     mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
@@ -591,7 +591,16 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
             break;
         default:
             ciscat->flags.error = 1;
-            mterror(WM_CISCAT_LOGTAG, "Internal error executing '%s'.", eval->path);
+
+            // Tell why the command could not be run in the most likely case
+            char binary_path[PATH_MAX];
+            snprintf(binary_path, sizeof(binary_path), "%s/%s", path, ciscat_binary);
+
+            if (access(binary_path, X_OK) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to run '%s': %s (%d)", binary_path, strerror(errno), errno);
+            } else {
+                mterror(WM_CISCAT_LOGTAG, "Internal error executing '%s'.", eval->path);
+            }
             break;
     }
 
