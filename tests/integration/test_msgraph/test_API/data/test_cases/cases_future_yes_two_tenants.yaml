@@ -1,0 +1,22 @@
+- name: Test_Only_Future_Events_Two_Tenants
+  description: Check that `only_future_events` applies to every tenant with a saved bookmark, not only to the first one scanned
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE: 'yes'
+    INTERVAL: '10s'
+    CURL_SIZE: '10M'
+    TENANT_ID1: 'tenant_a'
+    TENANT_ID2: 'tenant_b'
+    RESOURCE_NAME: 'resource_name'
+    RESOURCE_RELATIONSHIP: 'resource_relationship'
+  metadata:
+    tenants:
+      - 'tenant_a'
+      - 'tenant_b'
+    resource: 'resource_name'
+    relationship: 'resource_relationship'
+    # Both tenants have a bookmark saved before the module starts: 2023-01-01T00:00:00Z
+    saved_bookmark: '2023-01-01T00:00:00Z'
+    bookmarks:
+      ms-graph-tenant_a-resource_name-resource_relationship: 1672531200
+      ms-graph-tenant_b-resource_name-resource_relationship: 1672531200

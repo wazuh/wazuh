@@ -43,6 +43,7 @@ tags:
     - ms-graph_configuration
 '''
 import pytest
+import re
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -114,6 +115,21 @@ t8_cases_path = Path(TEST_CASES_PATH, 'cases_429_retry.yaml')
 t8_configuration_parameters, t8_configuration_metadata, t8_case_ids = get_test_cases_data(t8_cases_path)
 t8_configurations = load_configuration_template(configs_path, t8_configuration_parameters,
                                                 t8_configuration_metadata)
+
+# ---------------------------------------------- TEST_FUTURE_EVENTS_EVERY_TENANT ---------------------------------------
+# Test configurations
+t9_configs_path = Path(CONFIGS_PATH, 'config_API_two_tenants.yaml')
+t9_cases_path = Path(TEST_CASES_PATH, 'cases_future_yes_two_tenants.yaml')
+t9_configuration_parameters, t9_configuration_metadata, t9_case_ids = get_test_cases_data(t9_cases_path)
+t9_configurations = load_configuration_template(t9_configs_path, t9_configuration_parameters,
+                                                t9_configuration_metadata)
+
+# ---------------------------------------------- TEST_NEXT_PAGE_OUT_OF_HOST --------------------------------------------
+# Test configurations
+t10_cases_path = Path(TEST_CASES_PATH, 'cases_next_page_out_of_host.yaml')
+t10_configuration_parameters, t10_configuration_metadata, t10_case_ids = get_test_cases_data(t10_cases_path)
+t10_configurations = load_configuration_template(configs_path, t10_configuration_parameters,
+                                                 t10_configuration_metadata)
 
 # Test configurations.
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
@@ -574,3 +590,158 @@ def test_429_retry(test_configuration, test_metadata, set_wazuh_configuration, c
     wazuh_log_monitor.start(
         callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Received HTTP 429 for relationship 'signIns'\. Retrying after 10s"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, HTTP 429 retry message not found in log'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t9_configurations, t9_configuration_metadata), ids=t9_case_ids)
+def test_future_events_yes_every_tenant(test_configuration, test_metadata, set_wazuh_configuration,
+                                        configure_local_internal_options, truncate_monitored_files,
+                                        msgraph_bookmarks, daemons_handler, wait_for_msgraph_start, proxy_setup):
+    '''
+    description: Check that `only_future_events` set to yes applies to every tenant with a saved bookmark, not only
+                 to the first tenant scanned after the module starts.
+    wazuh_min_version: 4.14.12
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - msgraph_bookmarks:
+            type: fixture
+            brief: Saves a bookmark for each tenant before the module starts.
+        - daemons_handler:
+            type: fixture
+            brief: Manages daemons to reset Wazuh.
+        - wait_for_msgraph_start:
+            type: fixture
+            brief: Checks integration start message does not appear.
+        - proxy_setup:
+            type: fixture
+            brief: Setups the API proxy application.
+
+    assertions:
+        - Verify that each tenant moves its saved bookmark to the current time on its first scan.
+        - Verify that no tenant requests the logs since its saved bookmark.
+
+    input_description: A configuration template is contained in an external YAML file
+                       (config_API_two_tenants.yaml), with two tenants. That template is combined with the test case
+                       defined in the module, which includes the bookmark each tenant has before the module starts.
+
+    expected_output:
+        - r".*wazuh-modulesd:ms-graph.*Bookmark updated to '.*' for tenant 'tenant_a' .* to run first scan"
+        - r".*wazuh-modulesd:ms-graph.*Bookmark updated to '.*' for tenant 'tenant_b' .* to run first scan"
+    '''
+    resource = test_metadata['resource']
+    relationship = test_metadata['relationship']
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    for tenant in test_metadata['tenants']:
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(
+            rf".*wazuh-modulesd:ms-graph.*Bookmark updated to '.*' for tenant '{tenant}' resource '{resource}' "
+            rf"and relationship '{relationship}', waiting '\d+' seconds to run first scan"))
+        assert (wazuh_log_monitor.callback_result != None), f'Error, first scan of tenant `{tenant}` not found in log'
+
+    # Only what is already in the log: the first scan of every tenant is done
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(
+        r".*wazuh-modulesd:ms-graph.*Microsoft Graph API Log URL: '.*createdDateTime\+ge\+"
+        rf"{re.escape(test_metadata['saved_bookmark'])}"), timeout=0)
+    assert (wazuh_log_monitor.callback_result == None), f'Error, logs requested since the saved bookmark'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t10_configurations, t10_configuration_metadata), ids=t10_case_ids)
+def test_next_page_out_of_host(test_configuration, test_metadata, set_wazuh_configuration,
+                               configure_local_internal_options, truncate_monitored_files, msgraph_bookmarks,
+                               daemons_handler, wait_for_msgraph_start, proxy_setup):
+    '''
+    description: Check 'ms-graph' behavior when the API returns a next page URL out of the configured host.
+    wazuh_min_version: 4.14.12
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - msgraph_bookmarks:
+            type: fixture
+            brief: Removes the bookmark of the relationship before the module starts.
+        - daemons_handler:
+            type: fixture
+            brief: Manages daemons to reset Wazuh.
+        - wait_for_msgraph_start:
+            type: fixture
+            brief: Checks integration start message does not appear.
+        - proxy_setup:
+            type: fixture
+            brief: Setups the API proxy application.
+
+    assertions:
+        - Verify that the next page URL out of the host is ignored and never requested.
+        - Verify that the bookmark is updated anyway, so each scan requests a later window than the previous one.
+        - Verify that the warning names the tenant, resource and relationship whose remaining pages are skipped.
+
+    input_description: A configuration template is contained in an external YAML file
+                       (config_API.yaml). That template is combined with the test case defined in the module.
+                       The API proxy returns a next page URL out of 'graph.microsoft.com' for that relationship.
+
+    expected_output:
+        - r".*wazuh-modulesd:ms-graph.*WARNING: Ignoring next page URL out of 'graph.microsoft.com'"
+        - r".*wazuh-modulesd:ms-graph.*Bookmark updated to '.*' for tenant 'tenant_id' .* to run next scan"
+    '''
+    tenant = test_metadata['tenant']
+    resource = test_metadata['resource']
+    relationship = test_metadata['relationship']
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(
+        r".*wazuh-modulesd:ms-graph.*WARNING: Ignoring next page URL out of 'graph\.microsoft\.com'\."))
+    assert (wazuh_log_monitor.callback_result != None), f'Error, next page URL out of the host not found in log'
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(
+        rf".*wazuh-modulesd:ms-graph.*Bookmark updated to '.*' for tenant '{tenant}' resource '{resource}' "
+        rf"and relationship '{relationship}', waiting '\d+' seconds to run next scan"))
+    assert (wazuh_log_monitor.callback_result != None), f'Error, bookmark not updated after the next page URL out of the host'
+
+    # Each scan requests the logs since the bookmark the previous one saved, not the same window again
+    url_regex = (rf".*wazuh-modulesd:ms-graph.*Microsoft Graph API Log URL: '[^']*/{resource}/{relationship}\?"
+                 r"[^']*createdDateTime\+ge\+([^+']+)\+")
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(url_regex), accumulations=2, timeout=60)
+    assert (wazuh_log_monitor.matches >= 2), f'Error, less than two requests of `{relationship}` found in log'
+    with open(WAZUH_LOG_PATH, errors='ignore') as log_file:
+        start_times = [match.group(1) for match in map(lambda line: re.match(url_regex, line), log_file) if match]
+    assert all(previous < current for previous, current in zip(start_times, start_times[1:])), \
+        f'Error, the same window was requested again: {start_times}'
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(
+        r".*wazuh-modulesd:ms-graph.*Microsoft Graph API Log URL: 'https://evil\.tld"), timeout=0)
+    assert (wazuh_log_monitor.callback_result == None), f'Error, next page URL out of the host requested'
+
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(
+        r".*wazuh-modulesd:ms-graph.*WARNING: Ignoring next page URL out of 'graph\.microsoft\.com'\. Skipping the "
+        rf"remaining pages for tenant '{tenant}' resource '{resource}' and relationship '{relationship}'\."))
+    assert (wazuh_log_monitor.callback_result != None), f'Error, warning without the skipped pages not found in log'
