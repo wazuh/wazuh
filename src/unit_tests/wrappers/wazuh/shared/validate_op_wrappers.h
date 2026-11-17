@@ -22,6 +22,10 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 
 int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val);
 
+/* Optional: runs inside the wrapped call, for a test that needs something to happen at the point the
+ * code under test validates an address. */
+extern void (*OS_IsValidIP_hook)(void);
+
 int __wrap_OS_IsValidIP(const char* ip_address, os_ip* final_ip);
 
 int __wrap_OS_GetIPv4FromIPv6(char* ip_address, size_t size);

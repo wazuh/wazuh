@@ -21,6 +21,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -36,6 +37,7 @@ extern int handle_ssl_read(struct client *client);
 extern void enqueue_pending_key(int ret, uint32_t index_client);
 extern int authd_test_tls_material(const char *home_path);
 extern void authd_apply_debug_option(int cli_debug_level, int test_config);
+extern void process_message(struct client *client);
 
 /* Same minimal reimplementation of keys_init() as test_auth_add.c: it's a
  * file-local helper in auth.c with no header, so every test file that needs a
@@ -61,6 +63,8 @@ void keys_init(keystore *keys, key_mode_t key_mode, int save_removed) {
 
 extern struct keynode *queue_insert;
 extern struct keynode * volatile *insert_tail;
+extern struct keynode *queue_remove;
+extern struct keynode * volatile *remove_tail;
 
 #define TEST_SLOT 1
 
@@ -494,6 +498,279 @@ static void test_debug_option_skipped_with_cli_debug(void ** state) {
     authd_apply_debug_option(1, 0);
 }
 
+/* ---- process_message(): the port-1515 request, from the parsed line to the answer in the buffer ---- */
+
+#define DUP_NAME "dup-agent"
+
+/* A worker hands the request to the master; nothing else of the cluster is reachable from here. */
+static int forwarded_to_master = 0;
+
+int __wrap_w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char *groups,
+                                         const char *key_hash, char **id, char **key, char **reenroll_secret,
+                                         authd_force_options_t *force_options, const char *agent_id,
+                                         const char *token_id, const char *reenroll_kid, const char *reenroll_bearer,
+                                         const char *source, int *master_error_code) {
+    (void)err_response; (void)name; (void)ip; (void)groups; (void)key_hash; (void)reenroll_secret; (void)force_options;
+    (void)agent_id; (void)token_id; (void)reenroll_kid; (void)reenroll_bearer; (void)source; (void)master_error_code;
+    forwarded_to_master++;
+    os_strdup("042", *id);
+    os_strdup("a-key-from-the-master", *key);
+    return 0;
+}
+
+/* What the keystore lock looked like from inside each wazuh-db read, and what else happens meanwhile. The
+ * lock's state is kept and asserted by the case after process_message() returns: an assertion in here
+ * would fire with the lock held by the code under test and hang the cases after it. */
+static int rows_read = 0;
+static int rows_read_under_lock = 0;
+static bool holder_changes_on_every_read = false;
+static bool holder_changes_on_first_read = false;
+
+static void add_keystore_agent(const char *name) {
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    assert_true(OS_AddNewAgent(&keys, NULL, name, "any", NULL, 0) >= 0);
+}
+
+static void while_the_row_is_read(int id) {
+    (void)id;
+    rows_read++;
+
+    if (pthread_mutex_trylock(&mutex_keys) == 0) {
+        pthread_mutex_unlock(&mutex_keys);
+    } else {
+        rows_read_under_lock++;
+        return; // the keystore must not be touched from here while the caller holds it
+    }
+
+    if (holder_changes_on_every_read || (holder_changes_on_first_read && rows_read == 1)) {
+        /* Another request took the name over: its holder is deleted and a new agent holds it. */
+        int index = OS_IsAllowedName(&keys, DUP_NAME);
+        char holder_id[16];
+
+        snprintf(holder_id, sizeof(holder_id), "%s", keys.keyentries[index]->id);
+        OS_DeleteKey(&keys, holder_id, 1);
+        add_keystore_agent(DUP_NAME);
+    }
+}
+
+static cJSON *replaceable_row(void) {
+    cJSON *rows = cJSON_CreateArray();
+    cJSON *row = cJSON_CreateObject();
+    cJSON_AddStringToObject(row, "connection_status", "never_connected");
+    cJSON_AddNumberToObject(row, "disconnection_time", 0);
+    cJSON_AddNumberToObject(row, "date_add", 1632255744);
+    cJSON_AddItemToArray(rows, row);
+    return rows;
+}
+
+static void expect_row(int id, cJSON *row) {
+    expect_value(__wrap_wdb_get_agent_info, id, id);
+    will_return(__wrap_wdb_get_agent_info, row);
+}
+
+static struct client *enrollment_client = NULL;
+
+static int setup_process_message(void ** state) {
+    (void)state;
+    config.worker_node = FALSE;
+    config.flags.use_password = 0;
+    config.force_options.enabled = true;
+    config.force_options.key_mismatch = false;
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+    w_auth_client_rejection_log_reset();
+
+    keys_init(&keys, W_RAW_KEY, 0);
+    add_keystore_agent(DUP_NAME); // 001
+    queue_remove = NULL;
+    remove_tail = &queue_remove;
+
+    rows_read = 0;
+    rows_read_under_lock = 0;
+    holder_changes_on_every_read = false;
+    holder_changes_on_first_read = false;
+    forwarded_to_master = 0;
+    wdb_get_agent_info_hook = while_the_row_is_read;
+    /* A case that failed inside process_message() left the lock taken, by this same thread; the ones
+     * after it must not hang on it. Taken here or already held, it is this thread's to release. */
+    (void)pthread_mutex_trylock(&mutex_keys);
+    assert_int_equal(pthread_mutex_unlock(&mutex_keys), 0);
+
+    enrollment_client = make_client(TRUE, 0, 0, 0);
+    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), enrollment_client->read_buffer);
+    os_calloc(MAX_SSL_MSG_SIZE + 1, sizeof(char), enrollment_client->write_buffer);
+    snprintf(enrollment_client->read_buffer, OS_SIZE_4096, "OSSEC A:'%s'\n", DUP_NAME);
+
+    return 0;
+}
+
+static int teardown_process_message(void ** state) {
+    (void)state;
+    struct keynode *cur, *next;
+
+    wdb_get_agent_info_hook = NULL;
+
+    for (cur = queue_remove; cur; cur = next) {
+        next = cur->next;
+        os_free(cur->id);
+        os_free(cur->name);
+        os_free(cur->ip);
+        os_free(cur);
+    }
+    queue_remove = NULL;
+    remove_tail = &queue_remove;
+
+    os_free(enrollment_client->read_buffer);
+    os_free(enrollment_client->write_buffer);
+    os_free(enrollment_client->agentname);
+    os_free(enrollment_client->centralized_group);
+    os_free(enrollment_client->new_id);
+    os_free(enrollment_client);
+
+    OS_FreeKeys(&keys);
+    config.worker_node = FALSE;
+    return 0;
+}
+
+/* The wording of the log lines is not what these cases pin, but every severity a path emits has to be
+ * declared, and one that is declared and never emitted fails the case. */
+#define EXPECT_LOG_INFO()   expect_any_always(__wrap__minfo, formatted_msg)
+#define EXPECT_LOG_DEBUG1() expect_any_always(__wrap__mdebug1, formatted_msg)
+#define EXPECT_LOG_DEBUG2() expect_any_always(__wrap__mdebug2, formatted_msg)
+
+static void assert_keystore_lock_is_free(void) {
+    assert_int_equal(pthread_mutex_trylock(&mutex_keys), 0);
+    pthread_mutex_unlock(&mutex_keys);
+}
+
+static int agents_named(const char *name) {
+    int count = 0;
+    for (unsigned int i = 0; i < keys.keysize; i++) {
+        if (keys.keyentries[i]->name && strcmp(keys.keyentries[i]->name, name) == 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static void test_process_message_reads_duplicate_name_without_the_keystore_lock(void ** state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    expect_row(1, replaceable_row());
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    process_message(enrollment_client);
+
+    /* The row was read once, with the lock every enrollment and the writer take released. */
+    assert_int_equal(rows_read, 1);
+    assert_int_equal(rows_read_under_lock, 0);
+    assert_keystore_lock_is_free();
+
+    /* And the replacement went through: 001 is queued for removal, the new agent holds the name. */
+    assert_true(enrollment_client->enrollment_ok);
+    assert_int_equal(strncmp(enrollment_client->write_buffer, "OSSEC K:'002 "DUP_NAME" any ", strlen("OSSEC K:'002 "DUP_NAME" any ")), 0);
+    assert_non_null(queue_remove);
+    assert_string_equal(queue_remove->id, "001");
+    assert_null(queue_remove->next);
+    assert_int_equal(agents_named(DUP_NAME), 1);
+}
+
+static void test_process_message_unreadable_row_is_refused(void ** state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    expect_row(1, NULL);
+
+    process_message(enrollment_client);
+
+    /* One read, one refusal: a refused validation is not validated again. */
+    assert_int_equal(rows_read, 1);
+    assert_int_equal(rows_read_under_lock, 0);
+    assert_keystore_lock_is_free();
+    assert_false(enrollment_client->enrollment_ok);
+    assert_string_equal(enrollment_client->write_buffer, "ERROR: Duplicate agent name: "DUP_NAME". Unable to add agent");
+    assert_null(queue_remove);
+    assert_int_equal(keys.keysize, 1);
+    assert_string_equal(keys.keyentries[0]->id, "001");
+}
+
+static void test_process_message_changing_holder_is_refused_after_the_retries(void ** state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    holder_changes_on_every_read = true;
+    expect_row(1, replaceable_row());
+    expect_row(2, replaceable_row());
+    expect_row(3, replaceable_row());
+    expect_row(4, replaceable_row());
+
+    process_message(enrollment_client);
+
+    /* The first read and AUTH_HOLDER_RETRIES more, and then it ends: refused, nothing added, and nothing
+     * removed by this request. */
+    assert_int_equal(rows_read, 1 + AUTH_HOLDER_RETRIES);
+    assert_int_equal(rows_read_under_lock, 0);
+    assert_keystore_lock_is_free();
+    assert_false(enrollment_client->enrollment_ok);
+    assert_string_equal(enrollment_client->write_buffer, "ERROR: Duplicate agent name: "DUP_NAME". Unable to add agent");
+    assert_null(queue_remove);
+    assert_int_equal(keys.keysize, 1);
+    assert_int_equal(agents_named(DUP_NAME), 1);
+}
+
+static void test_process_message_holder_replaced_once_enrolls(void ** state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    holder_changes_on_first_read = true;
+    expect_row(1, replaceable_row());
+    expect_row(2, replaceable_row());
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    process_message(enrollment_client);
+
+    /* 001's row says nothing about 002, which holds the name by the time it arrives: 002's row is read
+     * and 002 is the agent replaced. */
+    assert_int_equal(rows_read, 2);
+    assert_int_equal(rows_read_under_lock, 0);
+    assert_keystore_lock_is_free();
+    assert_true(enrollment_client->enrollment_ok);
+    assert_non_null(queue_remove);
+    assert_string_equal(queue_remove->id, "002");
+    assert_null(queue_remove->next);
+    assert_int_equal(keys.keysize, 1);
+    assert_int_equal(agents_named(DUP_NAME), 1);
+}
+
+static void test_process_message_on_a_worker_does_not_judge_duplicates(void ** state) {
+    (void)state;
+    EXPECT_LOG_DEBUG1();
+    EXPECT_LOG_DEBUG2();
+    config.worker_node = TRUE;
+
+    process_message(enrollment_client);
+
+    /* The master decides: this node neither reads the holder's row nor touches its keystore. */
+    assert_int_equal(forwarded_to_master, 1);
+    assert_int_equal(rows_read, 0);
+    assert_keystore_lock_is_free();
+    assert_true(enrollment_client->enrollment_ok);
+    assert_null(queue_remove);
+    assert_int_equal(keys.keysize, 1);
+    assert_string_equal(keys.keyentries[0]->id, "001");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_handle_ssl_read_partial_record_waits_without_error, teardown_read_client),
@@ -515,6 +792,11 @@ int main(void) {
         cmocka_unit_test(test_debug_option_read_on_test_run),
         cmocka_unit_test(test_debug_option_skipped_with_cli_debug),
         cmocka_unit_test(test_debug_option_read_and_applied_on_start),
+        cmocka_unit_test_setup_teardown(test_process_message_reads_duplicate_name_without_the_keystore_lock, setup_process_message, teardown_process_message),
+        cmocka_unit_test_setup_teardown(test_process_message_unreadable_row_is_refused, setup_process_message, teardown_process_message),
+        cmocka_unit_test_setup_teardown(test_process_message_changing_holder_is_refused_after_the_retries, setup_process_message, teardown_process_message),
+        cmocka_unit_test_setup_teardown(test_process_message_holder_replaced_once_enrolls, setup_process_message, teardown_process_message),
+        cmocka_unit_test_setup_teardown(test_process_message_on_a_worker_does_not_judge_duplicates, setup_process_message, teardown_process_message),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
