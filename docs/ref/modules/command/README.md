@@ -154,11 +154,11 @@ If the event does not fit in a single queue message (64 KB), the module sends th
 | `trace.id` | Identifier of the run, the same in all of its parts. |
 | `event.sequence` | Number of the part, starting at `1`. |
 | `process.io.total_bytes_captured` | Size of the whole output of the run, in bytes. It is the same in every part. |
-| `process.io.total_bytes_skipped` | Bytes dropped from this part. Present only when a single line does not fit in a message on its own: that line is cut, and the rest of it is dropped. |
+| `process.io.total_bytes_skipped` | Bytes dropped from this part: the rest of a line that does not fit in a message on its own, or the rest of the output with `wazuh_command.split_output=0`. Present only when bytes are dropped. |
 
 The parts of a run share `trace.id`. The run is complete when the `process.io.text` sizes plus the `process.io.total_bytes_skipped` values of its parts add up to `process.io.total_bytes_captured`. An output that fits in one message is sent as a single event without these fields.
 
-Invalid UTF-8 bytes in the output are replaced with U+FFFD before the event is built.
+Invalid UTF-8 bytes in the output and in the other event fields (such as the tag or the command path) are replaced with U+FFFD before the event is built.
 
 ## Troubleshooting
 

@@ -65,6 +65,7 @@ static struct {
     size_t captured;
     char *text;
     size_t text_len;
+    size_t stop_after; // Request a shutdown once this part is sent.
 } g_parts;
 
 static size_t wm_command_max_json_payload_len(void) {
@@ -121,7 +122,9 @@ static int check_wm_sendmsg_message_is_valid_command_json(const LargestIntegralT
         const cJSON *tag_item = cJSON_GetArrayItem((cJSON *)tags, 0);
         assert_non_null(tag_item);
         assert_true(cJSON_IsString(tag_item));
-        assert_string_equal(tag_item->valuestring, g_payload_expectation.tag);
+        char *expected_tag = w_utf8_filter(g_payload_expectation.tag, true);
+        assert_string_equal(tag_item->valuestring, expected_tag);
+        os_free(expected_tag);
     }
 
     const cJSON *process = wm_command_json_get_object(root, "process");
@@ -202,6 +205,9 @@ static int check_wm_sendmsg_message_is_valid_command_json(const LargestIntegralT
         os_realloc(g_parts.text, g_parts.text_len + strlen(io_text) + 1, g_parts.text);
         memcpy(g_parts.text + g_parts.text_len, io_text, strlen(io_text) + 1);
         g_parts.text_len += strlen(io_text);
+        if (g_parts.events == g_parts.stop_after) {
+            wm_shutdown_requested = 1;
+        }
         break;
     }
 
@@ -235,6 +241,7 @@ static int teardown_test_payload(void **state) {
     wm_command_t *command = (wm_command_t *)*state;
     os_free(g_parts.text);
     memset(&g_parts, 0, sizeof(g_parts));
+    wm_shutdown_requested = 0;
     if (command) {
         sched_scan_free(&(command->scan_config));
         free(command->tag);
@@ -728,6 +735,44 @@ static void test_command_payload_long_line_truncated(void **state) {
     assert_int_equal(g_parts.text_len + g_parts.skipped, len);
     assert_true(strncmp(g_parts.text, first, strlen(first)) == 0);
     assert_string_equal(g_parts.text + g_parts.text_len - strlen(last), last);
+    free(output);
+}
+
+static void test_command_payload_invalid_utf8_tag_split(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    const size_t long_len = wm_command_max_json_payload_len() * 2;
+    char *output = calloc(long_len + 32, 1);
+    assert_non_null(output);
+
+    strcpy(output, "first line\n");
+    memset(output + strlen(output), 'B', long_len);
+    strcat(output, "\nlast line\n");
+
+    // The cut line fills its part up to the limit, so each invalid tag byte (3 bytes as U+FFFD) must already be counted.
+    os_free(command->tag);
+    os_strdup("tag \xe9\xe9\xe9\xe9", command->tag);
+
+    wm_command_run_split(command, output, 1, 1);
+
+    assert_int_equal(g_parts.events, 3);
+    assert_int_equal(g_parts.text_len + g_parts.skipped, strlen(output));
+    free(output);
+}
+
+static void test_command_payload_split_stops_on_shutdown(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    const size_t lines = (wm_command_max_json_payload_len() * 3) / 40;
+    char *output = calloc(lines * 40 + 1, 1);
+    assert_non_null(output);
+
+    for (size_t i = 0; i < lines; i++) {
+        snprintf(output + i * 40, 41, "%5zu root     /usr/bin/proc \"%8zu\"\n", i % 100000, i % 100000000);
+    }
+
+    g_parts.stop_after = 1;
+    wm_command_run_split(command, output, 1, 0);
+
+    assert_int_equal(g_parts.events, 1);
     free(output);
 }
 
@@ -1347,6 +1392,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_command_payload_long_output_split, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_long_line_truncated, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_invalid_utf8_split, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(test_command_payload_invalid_utf8_tag_split, setup_test_payload, teardown_test_payload),
+        cmocka_unit_test_setup_teardown(test_command_payload_split_stops_on_shutdown, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_long_output_truncated, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_metadata_only_fallback, setup_test_payload, teardown_test_payload)
     };

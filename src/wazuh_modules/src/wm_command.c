@@ -138,6 +138,13 @@ static char *wm_command_build_event_payload(const char *event_start,
     json_payload = cJSON_PrintUnformatted(json_event);
     cJSON_Delete(json_event);
 
+    // SendMSG() would replace invalid UTF-8 in the tag or process fields after the size checks.
+    if (json_payload && !w_utf8_valid(json_payload)) {
+        char *filtered = w_utf8_filter(json_payload, true);
+        os_free(json_payload);
+        json_payload = filtered;
+    }
+
     return json_payload;
 }
 
@@ -582,7 +589,7 @@ void * wm_command_main(wm_command_t * command) {
                         os_free(part_text);
                         total_skipped += skipped;
                         start = next;
-                    } while (start < text_len);
+                    } while (start < text_len && !wm_shutdown_requested);
 
                     if (total_skipped) {
                         mtwarn(WM_COMMAND_LOGTAG, "Command '%s': %zu bytes of output did not fit in the event and were dropped.",

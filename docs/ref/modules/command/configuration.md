@@ -317,10 +317,10 @@ Command output is forwarded to the manager as events. The manager can analyze th
 (Other `process.*` fields omitted for brevity.)
 
 **Processing:**
-- Each execution generates one event; multi-line output stays in a single `process.io.text` value
+- Each execution generates one event; multi-line output stays in a single `process.io.text` value. Output that does not fit in a single message (64 KB) is sent in several events split on line boundaries (see `wazuh_command.split_output`)
 - Events carry the configured `tag` in the `tags` array
 - Manager rules can parse and alert on the event
-- If the output does not fit in a single message, it is truncated; if it still does not fit, a metadata-only event is sent (empty `process.io.text`)
+- If the command details alone fill the message, an event without output is sent (empty `process.io.text`)
 - With `ignore_output` set to `yes`, no event is sent
 
 ---
