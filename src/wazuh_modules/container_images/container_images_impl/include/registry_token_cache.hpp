@@ -12,8 +12,6 @@
 #define _REGISTRY_TOKEN_CACHE_HPP
 
 #include "credential_provider.hpp"
-#include "hashHelper.h"
-#include "wazuhCommon.hpp"
 
 #include <chrono>
 #include <functional>
@@ -61,19 +59,7 @@ namespace containerimages
                                        const std::string& secretAccessKeyKey,
                                        const std::string& region,
                                        const std::string& accessKeyId,
-                                       const std::string& secretAccessKey)
-            {
-                // Hashed piece by piece from the caller's copies, so no further copy of either
-                // value is made that would have to be scrubbed.
-                Utils::HashData hash {Utils::HashType::Sha256};
-                hash.update(accessKeyId.data(), accessKeyId.size());
-                hash.update("\n", 1);
-                hash.update(secretAccessKey.data(), secretAccessKey.size());
-                const auto digest {hash.hash()};
-
-                return host + '\n' + accessKeyIdKey + '\n' + secretAccessKeyKey + '\n' + region + '\n' +
-                       wazuh::hex_encode(digest.data(), digest.size());
-            }
+                                       const std::string& secretAccessKey);
 
             /// @brief A copy of the token for @p key, when one is stored and still valid.
             std::optional<Secret> lookup(const std::string& key)
@@ -96,9 +82,21 @@ namespace containerimages
                 return Secret {entry->second.token.value()};
             }
 
+            /// @brief Hold @p token for @p key until @p expiresAt.
+            ///
+            /// Entries that would no longer be served are dropped first. A key is looked up
+            /// again only while its credential stays the same, so the entry of a replaced or
+            /// rotated credential would otherwise stay in memory until the agent restarts.
             void store(const std::string& key, Secret token, const std::chrono::system_clock::time_point expiresAt)
             {
                 std::lock_guard<std::mutex> lock {m_mutex};
+
+                const auto now {m_clock()};
+
+                for (auto entry {m_entries.begin()}; entry != m_entries.end();)
+                {
+                    entry = now + m_margin >= entry->second.expiresAt ? m_entries.erase(entry) : std::next(entry);
+                }
 
                 m_entries[key] = Entry {std::move(token), expiresAt};
             }

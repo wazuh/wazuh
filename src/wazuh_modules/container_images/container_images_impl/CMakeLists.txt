@@ -63,6 +63,7 @@ add_library(
   src/registry_image_reader.cpp
   src/registry_profile.cpp
   src/registry_reference.cpp
+  src/registry_token_cache.cpp
   src/registry_transport.cpp
   src/retry_policy.cpp)
 

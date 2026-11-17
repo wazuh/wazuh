@@ -59,7 +59,8 @@ namespace containerimages::aws
     /// @brief The value of the `Authorization` header.
     ///
     /// The result carries the access key id in clear and a signature derived from the
-    /// secret, so it is never logged. Empty when a cryptographic primitive fails.
+    /// secret, so it is never logged. Empty when deriving the signing key or the HMAC fails;
+    /// a failed SHA-256 throws (sha256Hex).
     std::string authorizationHeader(const SigningRequest& request,
                                     const std::string& accessKeyId,
                                     const Secret& secretAccessKey);

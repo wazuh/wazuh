@@ -96,6 +96,21 @@ TEST_F(RegistryTokenCacheTest, ATokenWithNoLifeLeftIsNeverServed)
     EXPECT_FALSE(m_cache.lookup("k").has_value());
 }
 
+TEST_F(RegistryTokenCacheTest, StoringDropsTheEntriesThatWouldNoLongerBeServed)
+{
+    // The key of a rotated credential is never looked up again, so only a later store can
+    // drop its entry once it would no longer be served.
+    m_cache.store("old", Secret {"token-old"}, m_now + 12h);
+    m_cache.store("live", Secret {"token-live"}, m_now + 24h);
+
+    m_now += 12h - 9min; // "old" is inside the renewal margin, "live" is not
+    m_cache.store("new", Secret {"token-new"}, m_now + 12h);
+
+    EXPECT_EQ(m_cache.size(), 2u) << "only the entry inside the margin should have been dropped";
+    EXPECT_TRUE(m_cache.lookup("live").has_value());
+    EXPECT_TRUE(m_cache.lookup("new").has_value());
+}
+
 TEST_F(RegistryTokenCacheTest, InvalidatingDropsOnlyThatKey)
 {
     m_cache.store("a", Secret {"token-a"}, m_now + 12h);
