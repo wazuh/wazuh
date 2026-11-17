@@ -76,6 +76,35 @@ cluster through a load balancer is described in [What the cluster replicates, an
 
 ---
 
+## Settings a worker takes from the master
+
+`wazuh-manager.conf` is not synchronized: each node is configured on its own. One setting is the
+exception, because it must be the same on every node.
+
+| Setting | Why it must match | How a worker gets it |
+|---|---|---|
+| `vulnerability-detection.enabled` | A node that stores the agents' inventory without scanning it, next to nodes that scan, leaves vulnerability findings that depend on which node the load balancer picked for each agent | After connecting, the worker asks the master (`vd_enabled` request) and stores the answer in `queue/vd/master_enabled` |
+
+What an operator sees:
+
+- A worker whose own file says otherwise applies the master's value. `wazuh-manager-modulesd` logs a
+  warning at every start while they differ, and the worker's own setting is ignored until then.
+- If the worker's vulnerability scanner is running with the other value when the worker connects,
+  `cluster.log` records a warning and the worker reloads itself once. If the scanner still does
+  not follow after that reload, an error is logged and the node is not reloaded again.
+- The value in effect is the one `GET /vulnerability-detector/status` reports on that node
+  (`enabled`); reading the worker's `wazuh-manager.conf`, directly or through the API, shows its
+  local value.
+- To switch vulnerability detection for the cluster, change it on the master and reload every node
+  (`PUT /cluster/reload`).
+- A worker that cannot reach the master keeps the last value it received; one that never reached it
+  uses its own. While that lasts the node can differ from the rest of the cluster.
+
+See the [`enabled` option](../vulnerability-scanner/configuration.md#enabled) for what the
+vulnerability scanner does when it is disabled and when it is enabled again.
+
+---
+
 ## How it works
 
 The Wazuh server cluster is managed by the `wazuh-manager-clusterd` daemon, which runs on **every**
