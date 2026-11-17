@@ -150,10 +150,13 @@ async def test_http_error_handler_valid_token(status_code, reason, mock_request)
 @pytest.mark.parametrize('error, title, wazuh_code', [
     (WazuhInternalError(6003), 'Internal Server Error', None),
     (KeyError('run_as'), 'Internal Server Error', None),
-    (ProblemException(status=500, title='Wazuh Internal Error', detail='detail'), 'Wazuh Internal Error', None),
+    # What `raise_if_exc` makes of an error a DAPI call returns, e.g. 1017 while a core daemon is down
+    (ProblemException(status=500, title='Wazuh Internal Error', detail='detail', ext={'code': 1017}),
+     'Wazuh Internal Error', 1017),
 ])
 async def test_http_error_handler_token_check_fails(error, title, wazuh_code, status_code, reason, mock_request):
-    """Test that a failure of `decode_token` other than a rejection is answered with a JSON 500."""
+    """Test that a failure of `decode_token` other than a rejection is answered with the JSON 500 a declared route
+    answers: the Wazuh error of a failed DAPI call, connexion's generic one for anything else."""
     mock_request.headers = {'Authorization': 'Bearer token'}
     with patch('api.error_handler.decode_token', new=AsyncMock(side_effect=error)):
         response = await http_error_handler(mock_request, HTTPException(status_code=status_code, detail=reason))
