@@ -42,6 +42,7 @@ typedef struct ThreadInfo {
 #ifdef WIN32
     CHAR * output;
     HANDLE pipe;
+    volatile LONG stop;
 #else
     pthread_mutex_t mutex;
     pthread_cond_t finished;
@@ -71,16 +72,53 @@ void wm_children_pool_init() {
 
 // Windows version -------------------------------------------------------------
 
+// Reader shutdown timings
+#define WM_READER_JOIN_MS 1000
+#define WM_READER_STOP_TRIES 10
+#define WM_READER_STOP_MS 100
+
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
+
+// Returns false if the reader is still running after all cancel attempts.
+
+static bool wm_stop_reader(HANDLE hThread, ThreadInfo * rinfo) {
+    if (WaitForSingleObject(hThread, WM_READER_JOIN_MS) == WAIT_OBJECT_0) {
+        return true;
+    }
+
+    // Set before cancelling so a reader not yet blocked exits instead of starting another read
+
+    InterlockedExchange(&rinfo->stop, 1);
+
+    for (int i = 0; i < WM_READER_STOP_TRIES; i++) {
+        CancelSynchronousIo(hThread);
+
+        if (WaitForSingleObject(hThread, WM_READER_STOP_MS) == WAIT_OBJECT_0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Falls back to the child alone when it is not in a job
+
+static void wm_terminate_process(HANDLE hJob, HANDLE hProcess) {
+    if (hJob == NULL || !TerminateJobObject(hJob, 1)) {
+        TerminateProcess(hProcess, 1);
+    }
+}
 
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs, const char * add_path) {
     HANDLE hThread = NULL;
+    HANDLE hJob = NULL;
+    HANDLE hPipe = NULL;
+    ThreadInfo * rinfo = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
-    ThreadInfo tinfo = { 0 };
     int retval = 0;
     int winerror = 0;
 
@@ -121,7 +159,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
         // Create stdout pipe and make it inheritable
 
-        if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
+        if (!CreatePipe(&hPipe, &sinfo.hStdOutput, NULL, 0)) {
             winerror = GetLastError();
             merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
@@ -132,7 +170,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
             winerror = GetLastError();
             merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
-            CloseHandle(tinfo.pipe);
+            CloseHandle(hPipe);
             CloseHandle(sinfo.hStdOutput);
             return -1;
         }
@@ -146,6 +184,9 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       wm_task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
                       IDLE_PRIORITY_CLASS;
 
+    // Start suspended so the process joins its job before it can spawn children
+    dwCreationFlags |= CREATE_SUSPENDED;
+
     size_t size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, NULL, 0);
     wchar_t *wcommand;
     os_calloc(size, sizeof(wchar_t), wcommand);
@@ -158,7 +199,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         mwarn("Cannot run '%s': %s (%d)", command, win_strerror(winerror), winerror);
         os_free(wcommand);
         if (output) {
-            CloseHandle(tinfo.pipe);
+            CloseHandle(hPipe);
             CloseHandle(sinfo.hStdOutput);
         }
         return -1;
@@ -166,12 +207,50 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
     os_free(wcommand);
 
+    // Job creation is best effort: on failure only the direct child is terminated on timeout
+    hJob = CreateJobObjectW(NULL, NULL);
+
+    if (hJob == NULL) {
+        winerror = GetLastError();
+        mdebug1("at wm_exec(): CreateJobObject(%d): %s", winerror, win_strerror(winerror));
+    } else if (!AssignProcessToJobObject(hJob, pinfo.hProcess)) {
+        winerror = GetLastError();
+        mdebug1("at wm_exec(): AssignProcessToJobObject(%d): %s", winerror, win_strerror(winerror));
+        CloseHandle(hJob);
+        hJob = NULL;
+    }
+
     if (output) {
         CloseHandle(sinfo.hStdOutput);
+    }
+
+    if (ResumeThread(pinfo.hThread) == (DWORD)-1) {
+        winerror = GetLastError();
+        merror("at wm_exec(): ResumeThread(%d): %s", winerror, win_strerror(winerror));
+        wm_terminate_process(hJob, pinfo.hProcess);
+
+        if (hJob != NULL) {
+            CloseHandle(hJob);
+        }
+
+        if (output) {
+            CloseHandle(hPipe);
+        }
+
+        CloseHandle(pinfo.hProcess);
+        CloseHandle(pinfo.hThread);
+        return -1;
+    }
+
+    if (output) {
+        // The reader may outlive this function, so it owns its data
+
+        os_calloc(1, sizeof(ThreadInfo), rinfo);
+        rinfo->pipe = hPipe;
 
         // Create reading thread
 
-        hThread = w_create_thread(NULL, 0, Reader, &tinfo, 0, NULL);
+        hThread = w_create_thread(NULL, 0, Reader, rinfo, 0, NULL);
     }
 
     switch (WaitForSingleObject(pinfo.hProcess, secs ? (unsigned)(secs * 1000) : INFINITE)) {
@@ -185,36 +264,50 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         break;
 
     case WAIT_TIMEOUT:
-        TerminateProcess(pinfo.hProcess, 1);
+        wm_terminate_process(hJob, pinfo.hProcess);
         retval = WM_ERROR_TIMEOUT;
         break;
 
     default:
         winerror = GetLastError();
         merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
-        TerminateProcess(pinfo.hProcess, 1);
+        wm_terminate_process(hJob, pinfo.hProcess);
         retval = -1;
     }
 
     if (output) {
         // Output
 
-        if (WaitForSingleObject(hThread, 1000) == WAIT_TIMEOUT) {
-            TerminateThread(hThread, 1);
-            WaitForSingleObject(hThread, INFINITE);
-        }
+        if (wm_stop_reader(hThread, rinfo)) {
+            if (retval >= 0) {
+                *output = rinfo->output ? rinfo->output : strdup("");
+            } else {
+                free(rinfo->output);
+            }
 
-        if (retval >= 0) {
-            *output = tinfo.output ? tinfo.output : strdup("");
+            CloseHandle(hPipe);
+            os_free(rinfo);
         } else {
-            free(tinfo.output);
+            // Reader still running: leak rinfo and hPipe rather than free what it still uses
+            mwarn("at wm_exec(): The output reader did not stop. Discarding the command output.");
+
+            if (retval >= 0) {
+                *output = NULL;
+            }
+
+            if (retval == 0) {
+                retval = WM_ERROR_TIMEOUT;
+            }
         }
 
         CloseHandle(hThread);
-        CloseHandle(tinfo.pipe);
     }
 
     // Cleanup
+
+    if (hJob != NULL) {
+        CloseHandle(hJob);
+    }
 
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
@@ -226,22 +319,46 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
 DWORD WINAPI Reader(LPVOID args) {
     ThreadInfo * tinfo = (ThreadInfo *)args;
-    CHAR buffer[WM_BUFFER_MAX + 1];
-    DWORD length = 0;
+    CHAR buffer[WM_BUFFER_MAX];
+    size_t length = 0;
+    size_t capacity = 0;
     DWORD nbytes;
 
-    while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL), nbytes > 0) {
-        int nextsize = length + nbytes;
+    // A failed read (broken pipe or cancelled I/O) is the end of the data
 
-        if (nextsize <= WM_STRING_MAX) {
-            tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
-            memcpy(tinfo->output + length, buffer, nbytes);
-            length = nextsize;
-            tinfo->output[length] = '\0';
-        } else {
+    while (!tinfo->stop && ReadFile(tinfo->pipe, buffer, sizeof(buffer), &nbytes, NULL) && nbytes > 0) {
+        size_t nextsize = length + nbytes;
+
+        if (nextsize > WM_STRING_MAX) {
             mwarn("String limit reached.");
             break;
         }
+
+        if (nextsize + 1 > capacity) {
+            size_t newcap = capacity ? capacity : WM_BUFFER_MAX * 4;
+
+            while (newcap < nextsize + 1) {
+                newcap *= 2;
+            }
+
+            if (newcap > WM_STRING_MAX + 1) {
+                newcap = WM_STRING_MAX + 1;
+            }
+
+            char * newbuf = (char *)realloc(tinfo->output, newcap);
+
+            if (newbuf == NULL) {
+                merror("at wm_exec(): Cannot allocate memory for the command output.");
+                break;
+            }
+
+            tinfo->output = newbuf;
+            capacity = newcap;
+        }
+
+        memcpy(tinfo->output + length, buffer, nbytes);
+        length = nextsize;
+        tinfo->output[length] = '\0';
     }
 
     return 0;

@@ -22,6 +22,11 @@
 #define CreateProcessW      wrap_CreateProcessW
 #undef TerminateProcess
 #define TerminateProcess    wrap_TerminateProcess
+#define ResumeThread        wrap_ResumeThread
+#define CreateJobObjectW    wrap_CreateJobObjectW
+#define AssignProcessToJobObject wrap_AssignProcessToJobObject
+#define TerminateJobObject  wrap_TerminateJobObject
+#define CancelSynchronousIo wrap_CancelSynchronousIo
 
 WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority);
 
@@ -42,6 +47,16 @@ BOOL wrap_OpenProcessToken(HANDLE ProcessHandle,
 
 BOOL wrap_TerminateProcess(__UNUSED_PARAM(HANDLE hProcess),
                            __UNUSED_PARAM(UINT uExitCode));
+
+DWORD wrap_ResumeThread(HANDLE hThread);
+
+HANDLE wrap_CreateJobObjectW(LPSECURITY_ATTRIBUTES lpJobAttributes, LPCWSTR lpName);
+
+BOOL wrap_AssignProcessToJobObject(HANDLE hJob, HANDLE hProcess);
+
+BOOL wrap_TerminateJobObject(HANDLE hJob, UINT uExitCode);
+
+BOOL wrap_CancelSynchronousIo(HANDLE hThread);
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of SetThreadPriority

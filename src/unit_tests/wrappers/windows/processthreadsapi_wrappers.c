@@ -50,6 +50,32 @@ BOOL wrap_TerminateProcess(__UNUSED_PARAM(HANDLE hProcess),
     return mock();
 }
 
+DWORD wrap_ResumeThread(__UNUSED_PARAM(HANDLE hThread)) {
+    function_called();
+    return mock();
+}
+
+HANDLE wrap_CreateJobObjectW(__UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpJobAttributes),
+                             __UNUSED_PARAM(LPCWSTR lpName)) {
+    function_called();
+    return mock_type(HANDLE);
+}
+
+BOOL wrap_AssignProcessToJobObject(HANDLE hJob, __UNUSED_PARAM(HANDLE hProcess)) {
+    check_expected(hJob);
+    return mock();
+}
+
+BOOL wrap_TerminateJobObject(HANDLE hJob, __UNUSED_PARAM(UINT uExitCode)) {
+    check_expected(hJob);
+    return mock();
+}
+
+BOOL wrap_CancelSynchronousIo(__UNUSED_PARAM(HANDLE hThread)) {
+    function_called();
+    return mock();
+}
+
 void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret) {
     expect_value(wrap_SetThreadPriority, hThread, handle);
     expect_value(wrap_SetThreadPriority, nPriority, priority);

@@ -87,9 +87,17 @@ static void test_wm_exec_accented_command(void ** state) {
     expect_any(__wrap__mdebug2, formatted_msg);
     expect_string(wrap_CreateProcessW, lpCommandLine, wcommand);
     will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_any(wrap_WaitForSingleObject, value);
     will_return(wrap_WaitForSingleObject, 0);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, FALSE);
     expect_any(wrap_CloseHandle, hObject);
     will_return(wrap_CloseHandle, FALSE);
     expect_any(wrap_CloseHandle, hObject);
@@ -111,9 +119,17 @@ static void test_wm_exec_not_accented_command(void ** state) {
     expect_any(__wrap__mdebug2, formatted_msg);
     expect_string(wrap_CreateProcessW, lpCommandLine, wcommand);
     will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_any(wrap_WaitForSingleObject, value);
     will_return(wrap_WaitForSingleObject, 0);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, FALSE);
     expect_any(wrap_CloseHandle, hObject);
     will_return(wrap_CloseHandle, FALSE);
     expect_any(wrap_CloseHandle, hObject);
@@ -201,6 +217,116 @@ static void test_wm_exec_sethandleinformation_fails(void ** state) {
     // Verify error is returned
     assert_int_equal(result, -1);
     assert_null(output);
+#else
+    printf("not implemented yet!\n");
+#endif
+}
+
+static void test_wm_exec_timeout_terminates_job(void ** state) {
+#ifdef WIN32
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_any(wrap_WaitForSingleObject, value);
+    will_return(wrap_WaitForSingleObject, WAIT_TIMEOUT);
+    expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_TerminateJobObject, TRUE);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+
+    assert_int_equal(WM_ERROR_TIMEOUT, wm_exec(COMMAND2, NULL, NULL, 1, NULL));
+#else
+    printf("not implemented yet!\n");
+#endif
+}
+
+static void test_wm_exec_job_assignment_fails_terminates_process(void ** state) {
+#ifdef WIN32
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, FALSE);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_any(wrap_WaitForSingleObject, value);
+    will_return(wrap_WaitForSingleObject, WAIT_TIMEOUT);
+    expect_function_call(wrap_TerminateProcess);
+    will_return(wrap_TerminateProcess, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+
+    assert_int_equal(WM_ERROR_TIMEOUT, wm_exec(COMMAND2, NULL, NULL, 1, NULL));
+#else
+    printf("not implemented yet!\n");
+#endif
+}
+
+static void test_wm_exec_job_creation_fails(void ** state) {
+#ifdef WIN32
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, NULL);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, 1);
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_any(wrap_WaitForSingleObject, value);
+    will_return(wrap_WaitForSingleObject, 0);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+
+    assert_int_equal(0, wm_exec(COMMAND2, NULL, NULL, 0, NULL));
+#else
+    printf("not implemented yet!\n");
+#endif
+}
+
+static void test_wm_exec_resumethread_fails(void ** state) {
+#ifdef WIN32
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_any(wrap_CreateProcessW, lpCommandLine);
+    will_return(wrap_CreateProcessW, TRUE);
+    expect_function_call(wrap_CreateJobObjectW);
+    will_return(wrap_CreateJobObjectW, (HANDLE)0x10);
+    expect_value(wrap_AssignProcessToJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_AssignProcessToJobObject, TRUE);
+    expect_function_call(wrap_ResumeThread);
+    will_return(wrap_ResumeThread, (DWORD)-1);
+    expect_any(__wrap__merror, formatted_msg);
+    expect_value(wrap_TerminateJobObject, hJob, (HANDLE)0x10);
+    will_return(wrap_TerminateJobObject, TRUE);
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x10);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+    expect_any(wrap_CloseHandle, hObject);
+    will_return(wrap_CloseHandle, TRUE);
+
+    assert_int_equal(-1, wm_exec(COMMAND2, NULL, NULL, 1, NULL));
 #else
     printf("not implemented yet!\n");
 #endif
@@ -600,6 +726,10 @@ int main(void) {
         cmocka_unit_test(test_wm_exec_not_accented_command),
         cmocka_unit_test(test_wm_exec_createprocess_fails_with_output),
         cmocka_unit_test(test_wm_exec_sethandleinformation_fails),
+        cmocka_unit_test(test_wm_exec_timeout_terminates_job),
+        cmocka_unit_test(test_wm_exec_job_assignment_fails_terminates_process),
+        cmocka_unit_test(test_wm_exec_job_creation_fails),
+        cmocka_unit_test(test_wm_exec_resumethread_fails),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_wm_append_sid_null_list, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_wm_append_sid_fail, setup_modules, teardown_modules),
