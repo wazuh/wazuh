@@ -983,6 +983,14 @@ components:
           default: 0
           minimum: 0
           maximum: 5
+        reenroll_rotated_at:
+          description: >
+            Date when the manager last replaced this agent's credentials. Omitted when it never has.
+            An agent whose lastKeepAlive is older than this value has not been heard from since its
+            credentials were replaced, which means it never received them and cannot re-enroll: delete
+            the agent and enroll it again.
+          type: string
+          format: date-time
 
     AgentAddBody:
       type: object

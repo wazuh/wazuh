@@ -325,6 +325,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             # As this is a timestamp, we remove it when its value is 0
             if item.get("disconnection_time") == 0:
                 del item["disconnection_time"]
+            # 0 means this agent's credentials have never been replaced, which is the normal case:
+            # reporting it would put a meaningless epoch on nearly every agent.
+            if item.get("reenroll_rotated_at") == 0:
+                del item["reenroll_rotated_at"]
             aux_dict = dict()
             for key, value in item.items():
                 if key in selected_fields:
@@ -760,6 +764,7 @@ class Agent:
         "registerIP": "register_ip",
         "disconnection_time": "disconnection_time",
         "status_code": "status_code",
+        "reenroll_rotated_at": "reenroll_rotated_at",
     }
 
     def __init__(
@@ -806,6 +811,7 @@ class Agent:
         self.group = None
         self.registerIP = ip
         self.disconnection_time = None
+        self.reenroll_rotated_at = None
         self.status_code = None
 
         # If the method has only been called with an ID parameter, no new agent should be added.
@@ -832,6 +838,7 @@ class Agent:
             "group": self.group,
             "disconnection_time": self.disconnection_time,
             "status_code": self.status_code,
+            "reenroll_rotated_at": self.reenroll_rotated_at,
         }
 
         return dictionary
@@ -1576,7 +1583,7 @@ def format_fields(field_name: str, value: str) -> str:
         return str(value).zfill(3)
     elif field_name == "group":
         return value.split(",")
-    elif field_name in ["dateAdd", "lastKeepAlive", "disconnection_time"]:
+    elif field_name in ["dateAdd", "lastKeepAlive", "disconnection_time", "reenroll_rotated_at"]:
         return get_date_from_timestamp(value) if not isinstance(value, str) else value
     else:
         return value
