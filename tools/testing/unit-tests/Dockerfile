@@ -8,6 +8,8 @@ RUN dpkg --add-architecture i386 && \
     mkdir -p /opt/clang-format && \
     curl -fsSL https://packages.wazuh.com/utils/clang-format/clang-format.tar.gz | tar -xz -C /opt/clang-format && \
     ln -s /opt/clang-format/bin/clang-format /usr/local/bin/clang-format && \
+    curl -fsSL https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-22.1.1/clang/tools/clang-format/git-clang-format -o /usr/local/bin/git-clang-format && \
+    chmod +x /usr/local/bin/git-clang-format && \
     clang-format --version && \
     rm -rf /var/lib/apt/lists/* && \
     git clone -b ${CMOCKA_BRANCH} https://git.cryptomilk.org/projects/cmocka.git /root/cmocka && \

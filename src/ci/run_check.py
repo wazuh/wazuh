@@ -107,7 +107,8 @@ def runASAN(moduleName, testToolConfig):
 
 def runClangFormat(moduleName, fix=False):
     """
-    Execute clang-format on the module's C and C++ files.
+    Execute clang-format on the lines of the module's C and C++ files that differ from HEAD. In a pull request
+    run the checkout is the merge commit, so HEAD^1 is the base branch and the check covers the whole pull request.
 
     Args:
         - moduleName: Library to be analyzed.
@@ -120,10 +121,11 @@ def runClangFormat(moduleName, fix=False):
         - ValueError: Raises an exception when one or more files do not follow the coding style.
     """
     utils.printHeader(moduleName=moduleName, headerKey="clangformat")
-    files = subprocess.run(["git", "ls-files", "--"] + ["{}/*.{}".format(moduleName, ext) for ext in ("c", "h", "cpp", "hpp")],
-                           stdout=subprocess.PIPE, check=True, text=True).stdout.split()
-    mode = ["-i"] if fix else ["--dry-run", "--Werror"]
-    if subprocess.run(["clang-format"] + mode + files).returncode != 0:
+    base = "HEAD^1" if os.environ.get("GITHUB_BASE_REF") else "HEAD"
+    gitClangFormat = ["git", "clang-format", "--extensions", "c,h,cpp,hpp"]
+    if fix:
+        subprocess.run(gitClangFormat + ["--force", base, "--", moduleName], cwd=utils.rootPath())
+    if subprocess.run(gitClangFormat + ["--diff", base, "--", moduleName], cwd=utils.rootPath()).returncode != 0:
         utils.printFail(msg="[ClangFormat: FAILED]")
         raise ValueError("Code is not compliant with the expected guidelines. Run python3 build.py --sformat {}".format(moduleName))
     utils.printGreen(msg="[ClangFormat: PASSED]")

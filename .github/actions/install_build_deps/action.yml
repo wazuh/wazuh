@@ -18,6 +18,8 @@ runs:
       run: |
         mkdir -p "$RUNNER_TEMP/clang-format"
         curl -fsSL https://packages.wazuh.com/utils/clang-format/clang-format.tar.gz | tar -xz -C "$RUNNER_TEMP/clang-format"
+        curl -fsSL https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-22.1.1/clang/tools/clang-format/git-clang-format -o "$RUNNER_TEMP/clang-format/bin/git-clang-format"
+        chmod +x "$RUNNER_TEMP/clang-format/bin/git-clang-format"
         echo "$RUNNER_TEMP/clang-format/bin" >> "$GITHUB_PATH"
     - name: Install mingw
       shell: bash

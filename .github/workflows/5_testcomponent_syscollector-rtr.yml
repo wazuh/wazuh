@@ -37,6 +37,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v3
         with:
+          fetch-depth: 2
           submodules: recursive
       - name: "Install dependencies"
         uses: ./.github/actions/install_build_deps

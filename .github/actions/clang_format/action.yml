@@ -22,6 +22,10 @@ inputs:
   id:
     required: true
     description: "Module identifier, used to name the artifact"
+  pathspec:
+    required: false
+    description: "Git pathspecs, one per line. Checks only the lines the pull request changes in them (needs fetch-depth 2) instead of the *.cpp and *.hpp files under path"
+    default: ""
 
 runs:
   using: "composite"
@@ -100,13 +104,25 @@ runs:
 
       - name: Check Coding style
         shell: bash
+        env:
+          PATHSPEC: ${{ inputs.pathspec }}
         run: |
           set -euo pipefail
 
           readonly ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
-          mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
-
-          "${CLANG_FORMAT_BIN}" --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
+          if [ -n "${PATHSPEC}" ]; then
+            mapfile -t SPECS < <(sed '/^\s*$/d' <<< "${PATHSPEC}")
+            curl -fsSL https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-22.1.1/clang/tools/clang-format/git-clang-format -o "${RUNNER_TEMP}/git-clang-format"
+            # The checkout is the merge commit, so HEAD^1 is the base branch. Exit 1 with a diff means unformatted
+            # lines (the diff is kept as the error file), any other failure is an error of the check itself.
+            rc=0
+            python3 "${RUNNER_TEMP}/git-clang-format" --binary "${CLANG_FORMAT_BIN}" --extensions c,h,cpp,hpp --diff HEAD^1 -- "${SPECS[@]}" > "${ERRORS_FILE}" || rc=$?
+            if [ "${rc}" -gt 1 ] || { [ "${rc}" -eq 1 ] && [ ! -s "${ERRORS_FILE}" ]; }; then exit "${rc}"; fi
+            [ "${rc}" -eq 1 ] || : > "${ERRORS_FILE}"
+          else
+            mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
+            "${CLANG_FORMAT_BIN}" --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
+          fi
 
           if [ -s "${ERRORS_FILE}" ]; then
             echo "---------------------------------"
