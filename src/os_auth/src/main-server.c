@@ -809,6 +809,37 @@ static void sweep_idle_clients(void) {
     }
 }
 
+/* Validates and adds an agent on the node that owns the keystore.
+ *
+ * A request whose name or IP already belongs to another agent needs that agent's row from wazuh-db, and
+ * the row is read with mutex_keys RELEASED: it is the lock the writer and every enrollment take, and
+ * wazuh-db can take as long as it likes to answer. So the keystore is validated under the lock, the lock
+ * is dropped for the read, and the validation starts over with the row in hand -- the holder is looked up
+ * again each time, since it may have changed meanwhile. Validating, removing the replaced agents and
+ * adding the new one still happen in a single hold of the lock. */
+static bool enroll_on_master(struct client *client, const char *key_hash, char *response, char **new_key) {
+    w_auth_holders_t holders;
+    bool enrolled = false;
+    w_err_t validation;
+
+    memset(&holders, 0, sizeof(holders));
+
+    do {
+        w_mutex_lock(&mutex_keys);
+        validation = w_auth_validate_data(response, client->ip, client->agentname, client->centralized_group, key_hash, &holders);
+        if (OS_SUCCESS == validation) {
+            enrolled = OS_SUCCESS == w_auth_add_agent(response, client->ip, client->agentname, &client->new_id, new_key);
+        }
+        w_mutex_unlock(&mutex_keys);
+
+        if (OS_NOTFOUND == validation) {
+            w_auth_holders_read(&holders);
+        }
+    } while (OS_NOTFOUND == validation);
+
+    return enrolled;
+}
+
 static void process_message(struct client *client) {
     char response[2048] = {0};
     client->enrollment_ok = FALSE;
@@ -899,13 +930,7 @@ static void process_message(struct client *client) {
             }
         }
         else {
-            w_mutex_lock(&mutex_keys);
-            if (OS_SUCCESS == w_auth_validate_data(response, client->ip, client->agentname, client->centralized_group, key_hash)) {
-                if (OS_SUCCESS == w_auth_add_agent(response, client->ip, client->agentname, &client->new_id, &new_key)) {
-                    client->enrollment_ok = TRUE;
-                }
-            }
-            w_mutex_unlock(&mutex_keys);
+            client->enrollment_ok = enroll_on_master(client, key_hash, response, &new_key);
         }
     }
 

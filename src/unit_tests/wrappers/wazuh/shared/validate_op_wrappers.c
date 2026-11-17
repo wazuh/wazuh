@@ -73,9 +73,15 @@ int __wrap_getDefine_Int_default(const char *high_name,
     return mock();
 }
 
+void (*OS_IsValidIP_hook)(void) = NULL;
+
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);
     check_expected(final_ip);
+
+    if (OS_IsValidIP_hook) {
+        OS_IsValidIP_hook();
+    }
 
     int ret = mock();
     if(ret < 0){
