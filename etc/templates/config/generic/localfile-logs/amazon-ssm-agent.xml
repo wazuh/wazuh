@@ -1,0 +1,7 @@
+  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>/var/log/amazon/ssm/amazon-ssm-agent.log</location>
+    <multiline_regex match="start" replace="wspace">^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}</multiline_regex>
+    <ignore type="pcre2">^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\S* \w+ (?:\[[^\]]+\] )+Sending reply \{</ignore>
+    <restrict type="pcre2">^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}</restrict>
+  </localfile>
