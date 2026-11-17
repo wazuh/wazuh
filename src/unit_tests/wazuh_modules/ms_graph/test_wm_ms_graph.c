@@ -1424,7 +1424,12 @@ void test_main_relationships(void **state) {
     wm_ms_graph_main(module_data);
 }
 
-static void expect_first_scan_from_now(const char* tenant_msg, const char* state_tag, const wm_ms_graph_state_t* saved, const char* bookmark_msg) {
+// Checks the time of the bookmark that wm_state_io writes
+static int check_bookmark_time(const LargestIntegralType value, const LargestIntegralType check_value_data) {
+    return ((const wm_ms_graph_state_t *)(uintptr_t)value)->next_time == (time_t)check_value_data;
+}
+
+static void expect_first_scan_from_now(const char* tenant_msg, const char* state_tag, const wm_ms_graph_state_t* saved, time_t bookmark, const char* bookmark_msg) {
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, tenant_msg);
 
@@ -1445,7 +1450,7 @@ static void expect_first_scan_from_now(const char* tenant_msg, const char* state
 
     expect_string(__wrap_wm_state_io, tag, state_tag);
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
-    expect_any(__wrap_wm_state_io, state);
+    expect_check(__wrap_wm_state_io, state, check_bookmark_time, (LargestIntegralType)bookmark);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
@@ -1486,6 +1491,8 @@ void test_main_only_future_events_every_tenant(void **state) {
     current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
+    // The first scan saves the bookmark at the current time minus time_delay, with or without a token
+    const time_t first_bookmark = 1 - 10;
 
     init_two_tenants_config(module_data);
     for (int i = 0; i < 2; i++) {
@@ -1520,9 +1527,9 @@ void test_main_only_future_events_every_tenant(void **state) {
     expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
 
     // Both tenants, not only the first one scanned, start from now
-    expect_first_scan_from_now("Scanning tenant 'tenant_a'", "ms-graph-tenant_a-security-alerts_v2", &saved_bookmark,
+    expect_first_scan_from_now("Scanning tenant 'tenant_a'", "ms-graph-tenant_a-security-alerts_v2", &saved_bookmark, first_bookmark,
         "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_a' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
-    expect_first_scan_from_now("Scanning tenant 'tenant_b'", "ms-graph-tenant_b-security-alerts_v2", &saved_bookmark,
+    expect_first_scan_from_now("Scanning tenant 'tenant_b'", "ms-graph-tenant_b-security-alerts_v2", &saved_bookmark, first_bookmark,
         "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_b' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
     will_return(__wrap_FOREVER, 0);
@@ -1533,12 +1540,13 @@ void test_main_only_future_events_every_tenant(void **state) {
     assert_true(module_data->auth_config[1]->initial_scan_done);
 }
 
-static void expect_token_request(curl_response* response) {
+// cmocka keeps the pointer of an expected string, so url_msg must outlive the test: pass a literal
+static void expect_token_request(const char* url_msg, curl_response* response) {
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Obtaining access token.");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'");
+    expect_string(__wrap__mtdebug1, formatted_msg, url_msg);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1557,10 +1565,73 @@ static void expect_sched_no_wait(wm_ms_graph* module_data) {
     will_return(__wrap_sched_scan_get_time_until_next_scan, 0);
 }
 
+// The first scan bookmark of a tenant that gets no access token, saved without any request
+static void expect_first_bookmark_without_token(const char* tenant_msg, const char* state_tag, time_t bookmark, const char* bookmark_msg) {
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, tenant_msg);
+
+    expect_string(__wrap_wm_state_io, tag, state_tag);
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_check(__wrap_wm_state_io, state, check_bookmark_time, (LargestIntegralType)bookmark);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_isDebug, 1);
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, bookmark_msg);
+}
+
+// A scan after the first one: it requests the logs since the saved bookmark, and gets no response
+static void expect_scan_since_bookmark(const char* tenant_msg, const char* state_tag, const wm_ms_graph_state_t* saved) {
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, tenant_msg);
+
+    expect_string(__wrap_wm_state_io, tag, state_tag);
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 0);
+    will_return(__wrap_wm_state_io, (void *)saved);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, 20);
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, NULL);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to get relationship 'alerts_v2' from resource 'security' on API version 'v1.0'.");
+}
+
 void test_main_only_future_events_tenant_without_token(void **state) {
     current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
+    // The first scan saves the bookmark at the current time minus time_delay, with or without a token
+    const time_t first_bookmark = 1 - 10;
     curl_response* token_response;
 
     init_two_tenants_config(module_data);
@@ -1595,58 +1666,25 @@ void test_main_only_future_events_tenant_without_token(void **state) {
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
 
-    // First scan: tenant_a gets no token, so it is not scanned
+    // First scan: tenant_a gets no token, but its bookmark is saved from now anyway
     expect_sched_no_wait(module_data);
-    expect_token_request(NULL);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'", NULL);
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
 
-    expect_first_scan_from_now("Scanning tenant 'tenant_b'", "ms-graph-tenant_b-security-alerts_v2", &saved_bookmark,
-        "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_b' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
-
-    // Second scan: tenant_a is scanned for the first time, so it also starts from now
-    expect_sched_no_wait(module_data);
-    expect_token_request(token_response);
-
-    expect_first_scan_from_now("Scanning tenant 'tenant_a'", "ms-graph-tenant_a-security-alerts_v2", &saved_bookmark,
+    expect_first_bookmark_without_token("No access token for tenant 'tenant_a'. Saving the bookmarks of its first scan.",
+        "ms-graph-tenant_a-security-alerts_v2", first_bookmark,
         "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_a' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
-    // tenant_b already had its first scan: it collects since its bookmark
-    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Scanning tenant 'tenant_b'");
+    expect_first_scan_from_now("Scanning tenant 'tenant_b'", "ms-graph-tenant_b-security-alerts_v2", &saved_bookmark, first_bookmark,
+        "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_b' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-tenant_b-security-alerts_v2");
-    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
-    expect_any(__wrap_wm_state_io, state);
-    expect_any(__wrap_wm_state_io, size);
-    will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&saved_bookmark);
+    // Second scan: both tenants collect since the bookmark of the first scan, tenant_a included
+    expect_sched_no_wait(module_data);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'", token_response);
 
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
-    will_return(__wrap_strftime, 20);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
-
-    expect_any(__wrap_wurl_http_request, method);
-    expect_any(__wrap_wurl_http_request, header);
-    expect_any(__wrap_wurl_http_request, url);
-    expect_any(__wrap_wurl_http_request, payload);
-    expect_any(__wrap_wurl_http_request, max_size);
-    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, ssl_verify);
-    will_return(__wrap_wurl_http_request, NULL);
-
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to get relationship 'alerts_v2' from resource 'security' on API version 'v1.0'.");
+    expect_scan_since_bookmark("Scanning tenant 'tenant_a'", "ms-graph-tenant_a-security-alerts_v2", &saved_bookmark);
+    expect_scan_since_bookmark("Scanning tenant 'tenant_b'", "ms-graph-tenant_b-security-alerts_v2", &saved_bookmark);
 
     will_return(__wrap_FOREVER, 0);
 
@@ -1654,6 +1692,175 @@ void test_main_only_future_events_tenant_without_token(void **state) {
 
     assert_true(module_data->auth_config[0]->initial_scan_done);
     assert_true(module_data->auth_config[1]->initial_scan_done);
+}
+
+void test_main_only_future_events_token_fails_several_scans(void **state) {
+    current_time = 1;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
+    const time_t first_bookmark = 1 - 10;
+    curl_response* token_response;
+
+    init_two_tenants_config(module_data);
+
+    os_calloc(1, sizeof(curl_response), token_response);
+    token_response->status_code = 200;
+    token_response->max_size_reached = false;
+    os_strdup("{\"access_token\":\"token_value\",\"expires_in\":3600}", token_response->body);
+    os_strdup("test", token_response->header);
+
+    will_return_count(__wrap_FOREVER, 1, 3);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
+    expect_string(__wrap_wm_state_io, tag, "ms-graph");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &module_data->state);
+    expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+    will_return(__wrap_wm_state_io, -1);
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 1);
+
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
+
+    // First scan: no tenant gets a token, both save their bookmarks
+    expect_sched_no_wait(module_data);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+    expect_first_bookmark_without_token("No access token for tenant 'tenant_a'. Saving the bookmarks of its first scan.",
+        "ms-graph-tenant_a-security-alerts_v2", first_bookmark,
+        "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_a' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_b/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+    expect_first_bookmark_without_token("No access token for tenant 'tenant_b'. Saving the bookmarks of its first scan.",
+        "ms-graph-tenant_b-security-alerts_v2", first_bookmark,
+        "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'tenant_b' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+
+    // Second scan: still no token, and the bookmarks are not moved again
+    expect_sched_no_wait(module_data);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_b/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+
+    // Third scan: tenant_a gets a token and collects since the bookmark of the first scan
+    expect_sched_no_wait(module_data);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'", token_response);
+    expect_scan_since_bookmark("Scanning tenant 'tenant_a'", "ms-graph-tenant_a-security-alerts_v2", &saved_bookmark);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_b/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+
+    will_return(__wrap_FOREVER, 0);
+
+    wm_ms_graph_main(module_data);
+
+    assert_true(module_data->auth_config[0]->initial_scan_done);
+    assert_true(module_data->auth_config[1]->initial_scan_done);
+}
+
+void test_main_tenant_without_token_only_future_events_no(void **state) {
+    current_time = 1;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+
+    init_two_tenants_config(module_data);
+    module_data->only_future_events = false;
+
+    will_return(__wrap_FOREVER, 1);
+
+    expect_string(__wrap_wm_state_io, tag, "ms-graph");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &module_data->state);
+    expect_value(__wrap_wm_state_io, size, sizeof(module_data->state));
+    will_return(__wrap_wm_state_io, -1);
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 1);
+
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
+
+    // No tenant gets a token. Without only_future_events, no bookmark is saved until there is one
+    expect_sched_no_wait(module_data);
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_a/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+    expect_token_request("Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/tenant_b/oauth2/v2.0/token'", NULL);
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
+
+    will_return(__wrap_FOREVER, 0);
+
+    wm_ms_graph_main(module_data);
+
+    assert_false(module_data->auth_config[0]->initial_scan_done);
+    assert_false(module_data->auth_config[1]->initial_scan_done);
+}
+
+void test_wm_ms_graph_save_first_bookmarks(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    // Saved at the current time minus time_delay
+    const time_t first_bookmark = 100 - 10;
+
+    current_time = 100;
+    os_calloc(2, sizeof(wm_ms_graph_auth*), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    module_data->time_delay = 10;
+    module_data->scan_config.interval = 60;
+
+    os_calloc(2, sizeof(wm_ms_graph_resource), module_data->resources);
+    module_data->num_resources = 2;
+    os_strdup("security", module_data->resources[0].name);
+    os_calloc(2, sizeof(char*), module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    os_strdup("cases/eDiscoveryCases", module_data->resources[0].relationships[1]);
+    module_data->resources[0].num_relationships = 2;
+    os_strdup("deviceManagement", module_data->resources[1].name);
+    os_calloc(2, sizeof(char*), module_data->resources[1].relationships);
+    os_strdup("managedDevices", module_data->resources[1].relationships[0]);
+    os_strdup("auditEvents", module_data->resources[1].relationships[1]);
+    module_data->resources[1].num_relationships = 2;
+
+    // The bookmark of alerts_v2 cannot be saved
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_check(__wrap_wm_state_io, state, check_bookmark_time, (LargestIntegralType)first_bookmark);
+    expect_value(__wrap_wm_state_io, size, sizeof(wm_ms_graph_state_t));
+    will_return(__wrap_wm_state_io, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state for resource 'security' and relationship 'alerts_v2'. State file: '" WM_STATE_DIR "/ms-graph-example_tenant-security-alerts_v2'.");
+
+    // '/' in the relationship name becomes '-' in the state file name
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-cases-eDiscoveryCases");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_check(__wrap_wm_state_io, state, check_bookmark_time, (LargestIntegralType)first_bookmark);
+    expect_value(__wrap_wm_state_io, size, sizeof(wm_ms_graph_state_t));
+    will_return(__wrap_wm_state_io, 1);
+
+    // managedDevices is inventory, with no bookmark: only auditEvents is saved from deviceManagement
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-deviceManagement-auditEvents");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_check(__wrap_wm_state_io, state, check_bookmark_time, (LargestIntegralType)first_bookmark);
+    expect_value(__wrap_wm_state_io, size, sizeof(wm_ms_graph_state_t));
+    will_return(__wrap_wm_state_io, 1);
+
+    will_return_count(__wrap_isDebug, 0, 2);
+
+    wm_ms_graph_save_first_bookmarks(module_data, module_data->auth_config[0]);
 }
 
 void test_disabled(void **state) {
@@ -5008,6 +5215,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_main_relationships, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_main_only_future_events_every_tenant, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_main_only_future_events_tenant_without_token, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_main_only_future_events_token_fails_several_scans, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_main_tenant_without_token_only_future_events_no, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_save_first_bookmarks, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_disabled, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_no_relationships, setup_conf, teardown_conf),

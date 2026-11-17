@@ -27,6 +27,10 @@ static bool wm_ms_graph_setup(wm_ms_graph* ms_graph);
 static bool wm_ms_graph_check();
 static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size);
 static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* auth_config, const bool initial_scan);
+static bool wm_ms_graph_is_inventory(const char* resource, const char* relationship);
+static void wm_ms_graph_state_name(char* state_name, size_t size, const wm_ms_graph_auth* auth_config, const char* resource, const char* relationship);
+static void wm_ms_graph_save_first_bookmark(const wm_ms_graph* ms_graph, const wm_ms_graph_auth* auth_config, const char* resource, const char* relationship, const char* state_name, time_t scan_time);
+static void wm_ms_graph_save_first_bookmarks(const wm_ms_graph* ms_graph, const wm_ms_graph_auth* auth_config);
 static cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* app_id, const char* query_fqdn, char** headers, wm_ms_graph_auth* auth_config);
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
@@ -103,6 +107,11 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                     mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", it->tenant_id);
                     // Per tenant: each one takes only_future_events on its own first scan
                     wm_ms_graph_scan_relationships(ms_graph, it, !it->initial_scan_done);
+                    it->initial_scan_done = true;
+                } else if (!it->initial_scan_done && ms_graph->only_future_events) {
+                    // only_future_events collects from the module start, not from the first access token
+                    mtdebug1(WM_MS_GRAPH_LOGTAG, "No access token for tenant '%s'. Saving the bookmarks of its first scan.", it->tenant_id);
+                    wm_ms_graph_save_first_bookmarks(ms_graph, it);
                     it->initial_scan_done = true;
                 }
             }
@@ -237,6 +246,58 @@ static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char
     return response;
 }
 
+bool wm_ms_graph_is_inventory(const char* resource, const char* relationship) {
+    // Every deviceManagement relationship but auditEvents is inventory, which has no bookmark
+    return !strcmp(resource, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT) && strcmp(relationship, WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS);
+}
+
+void wm_ms_graph_state_name(char* state_name, size_t size, const wm_ms_graph_auth* auth_config, const char* resource, const char* relationship) {
+    snprintf(state_name, size - 1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name, auth_config->tenant_id, resource, relationship);
+    // Replace '/' with '-' so relationship names like "cases/eDiscoveryCases"
+    // don't create invalid subdirectory paths in the state file location.
+    for (char *p = state_name; *p; p++) {
+        if (*p == '/') {
+            *p = '-';
+        }
+    }
+}
+
+void wm_ms_graph_save_first_bookmark(const wm_ms_graph* ms_graph, const wm_ms_graph_auth* auth_config, const char* resource, const char* relationship, const char* state_name, time_t scan_time) {
+    wm_ms_graph_state_t state = { .next_time = scan_time };
+    char time_str[WM_MS_GRAPH_TIMESTAMP_SIZE_80] = { '\0' };
+    struct tm tm_aux = { .tm_sec = 0 };
+
+    if (wm_state_io(state_name, WM_IO_WRITE, &state, sizeof(state)) < 0) {
+        mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state for resource '%s' and relationship '%s'. State file: '" WM_STATE_DIR "/%s'.",
+            resource, relationship, state_name);
+    } else if (isDebug()) {
+        gmtime_r(&scan_time, &tm_aux);
+        strftime(time_str, sizeof(time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+        mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
+            time_str, auth_config->tenant_id, resource, relationship, ms_graph->scan_config.interval);
+    }
+}
+
+void wm_ms_graph_save_first_bookmarks(const wm_ms_graph* ms_graph, const wm_ms_graph_auth* auth_config) {
+    char state_name[OS_SIZE_1024] = { '\0' };
+
+    // The first scan of the relationships with a bookmark makes no request, so it needs no access token
+    for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
+        const char* resource = ms_graph->resources[resource_num].name;
+
+        for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
+            const char* relationship = ms_graph->resources[resource_num].relationships[relationship_num];
+
+            if (wm_ms_graph_is_inventory(resource, relationship)) {
+                continue;
+            }
+
+            wm_ms_graph_state_name(state_name, sizeof(state_name), auth_config, resource, relationship);
+            wm_ms_graph_save_first_bookmark(ms_graph, auth_config, resource, relationship, state_name, time(0) - ms_graph->time_delay);
+        }
+    }
+}
+
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* auth_config, const bool initial_scan) {
     char url[OS_SIZE_8192] = { '\0' };
     char auth_header[OS_SIZE_8192] = { '\0' };
@@ -272,15 +333,11 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
         for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
 
-            inventory = false;
+            inventory = wm_ms_graph_is_inventory(ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
             activityFilter = false;
             if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT)) {
-                // If not auditEvents, treat as inventory
-                if (strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS)) {
-                    inventory = true;
-                } else {
-                    activityFilter = true;
-                }
+                // auditEvents, the only one that is not inventory, filters by activity date
+                activityFilter = !inventory;
             } else if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_IDENTITY_PROTECTION)) {
                 if (!strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_RISK_DETECTIONS) ||
                     !strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_SERVICE_PRINCIPAL_RISK_DETECTIONS)) {
@@ -289,15 +346,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
             }
 
             if (!inventory) {
-                snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
-                    auth_config->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
-                // Replace '/' with '-' so relationship names like "cases/eDiscoveryCases"
-                // don't create invalid subdirectory paths in the state file location.
-                for (char *p = relationship_state_name; *p; p++) {
-                    if (*p == '/') {
-                        *p = '-';
-                    }
-                }
+                wm_ms_graph_state_name(relationship_state_name, sizeof(relationship_state_name), auth_config,
+                    ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
 
                 memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
 
@@ -310,17 +360,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
                 if ((initial_scan && (!relationship_state_struc.next_time || ms_graph->only_future_events)) ||
                     (!initial_scan && !relationship_state_struc.next_time)) {
-                    relationship_state_struc.next_time = scan_time;
-                    if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
-                        mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state for resource '%s' and relationship '%s'. State file: '" WM_STATE_DIR "/%s'.",
-                            ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num],
-                            relationship_state_name);
-                    } else if (isDebug()) {
-                        gmtime_r(&scan_time, &tm_aux);
-                        strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
-                        mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
-                            start_time_str, auth_config->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
-                    }
+                    wm_ms_graph_save_first_bookmark(ms_graph, auth_config, ms_graph->resources[resource_num].name,
+                        ms_graph->resources[resource_num].relationships[relationship_num], relationship_state_name, scan_time);
                     continue;
                 }
 
