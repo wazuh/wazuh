@@ -614,7 +614,7 @@ namespace remoted::enrollment
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
             // Milliseconds, deliberately a second read: `now` above is in SECONDS (the bearer's
             // clock rules work in seconds) and the deadline needs finer resolution than that.
-            // Wall clock, because authd on the master compares it against its own (issue #41339).
+            // Wall clock, because authd on the master compares it against its own.
             const auto arrivalMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                                        std::chrono::system_clock::now().time_since_epoch())
                                        .count();
@@ -735,7 +735,7 @@ namespace remoted::enrollment
             // final word on its state (9022/9023/9024 -> 403 above). Absent otherwise, so the wire
             // request of the password and Open paths carries no token_id.
             addRequest.tokenId = granted ? granted->tokenId : std::nullopt;
-            // The worker turns this into the request's deadline when it dequeues it (issue #41339).
+            // The worker turns this into the request's deadline when it dequeues it.
             addRequest.arrivalMs = arrivalMs;
             // The re-enrollment credential, when the bearer named an agent: verbatim, for authd on the
             // master to verify and, when it verifies, to rotate that agent's key and secret in place

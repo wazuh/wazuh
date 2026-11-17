@@ -158,7 +158,7 @@ namespace
 
 TEST(AuthdClientTest, DeadlineTravelsAsArgumentsDeadlineMs)
 {
-    // Issue #41339: a request whose arrival instant is known carries an absolute deadline; one
+    // A request whose arrival instant is known carries an absolute deadline; one
     // whose arrival is unknown carries none, which authd reads as "no deadline" -- the behaviour
     // that predates this, so every caller that does not set arrivalMs is unaffected.
     const std::string path = makeUniqueSocketPath("authd_client_deadline");

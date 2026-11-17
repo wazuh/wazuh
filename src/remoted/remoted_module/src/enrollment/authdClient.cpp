@@ -125,7 +125,7 @@ namespace remoted::enrollment
             {
                 arguments["source"] = *request.source;
             }
-            // Issue #41339: authd on the master refuses a re-enrollment that arrives past it,
+            // authd on the master refuses a re-enrollment that arrives past it,
             // without rotating anything. Omitted when unknown, which authd reads as "no deadline".
             if (deadlineMs > 0)
             {
@@ -206,7 +206,7 @@ namespace remoted::enrollment
         /// The request travels UNSERIALIZED from here on: the payload is built by the worker that
         /// dequeues it, not by the caller's thread, because the deadline it carries has to be
         /// measured from the dequeue -- authd's connect/response budgets only start counting then
-        /// (issue #41339). Queue wait therefore does not eat into the deadline.
+        /// Queue wait therefore does not eat into the deadline.
         void enqueue(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
         {
             std::function<void(AuthdResult)> reject;
@@ -344,7 +344,7 @@ namespace remoted::enrollment
 
         /// The instant after which THIS client can no longer deliver an answer, as an absolute
         /// wall-clock epoch in milliseconds -- what authd on the master compares against its own
-        /// clock to refuse a re-enrollment nobody is waiting for any more (issue #41339).
+        /// clock to refuse a re-enrollment nobody is waiting for any more.
         ///
         /// Computed here, on the worker, and deliberately NOT when the request was enqueued: the
         /// connect and response budgets below only start counting once a worker picks the request
