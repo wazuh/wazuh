@@ -139,8 +139,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
 #ifndef WIN32
 /* Same as wm_exec(), but the command runs from work_dir. A NULL work_dir keeps the current
- * directory. If work_dir cannot be entered, the command is not run and -1 is returned, as for a
- * command that cannot be executed. Only a work_dir that is not accessible is logged as an error.
+ * directory. If work_dir cannot be entered, the command is not run and -1 is returned with
+ * EXECVE_ERROR as exit code, as for a command that cannot be executed. Only a work_dir that is
+ * not accessible is logged as an error.
  */
 int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const char * add_path, const char * work_dir);
 #endif

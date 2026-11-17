@@ -583,6 +583,12 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
     // The child cannot log, so check the directory here to report why the command did not run
     if (work_dir != NULL && wm_exec_check_dir(work_dir) < 0) {
         merror("Unable to change working directory to '%s': %s (%d)", work_dir, strerror(errno), errno);
+
+        // Same exit code as a command the child cannot run, which callers check
+        if (exitcode) {
+            *exitcode = EXECVE_ERROR;
+        }
+
         return -1;
     }
 
@@ -609,13 +615,17 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
 #endif
     }
 
-    // The child must not allocate memory nor take locks before exec: another thread may have
-    // held one at fork(). Everything it needs is prepared here.
+    // The child must not log nor take locks before exec: another thread may have held one at
+    // fork(). Everything it needs is prepared here.
 
     argv = w_strtok(command);
 
     if (argv[0] == NULL) {
         mdebug1("Invalid command: '%s'", command);
+
+        if (exitcode) {
+            *exitcode = EXECVE_ERROR;
+        }
 
         if (output) {
             close(pipe_fd[0]);
@@ -665,7 +675,7 @@ int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const 
 
     case 0:
 
-        // Child: no memory allocation, logging nor locks until exec
+        // Child: no logging nor locks until exec
 
         // Reset handled signals to their default action, as exec would, so that a signal ends
         // the child instead of running the daemon's handler. Ignored signals stay ignored.

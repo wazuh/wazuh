@@ -418,6 +418,7 @@ static void test_wm_exec_in_dir_runs_command_there(void **state) {
 }
 
 // A command that cannot change to its directory is not run from another one, and the reason is logged.
+// The exit code is the one of a command that cannot be run.
 static void test_wm_exec_in_dir_does_not_run_command_elsewhere(void **state) {
     (void)state;
     char command[] = "echo ran";
@@ -430,7 +431,7 @@ static void test_wm_exec_in_dir_does_not_run_command_elsewhere(void **state) {
 
     assert_int_equal(ret, -1);
     assert_null(output);
-    assert_int_equal(status, 0);
+    assert_int_equal(status, EXECVE_ERROR);
     assert_int_equal(kills_count, 0);
 }
 
@@ -447,11 +448,12 @@ static void test_wm_exec_in_dir_does_not_run_command_from_a_file(void **state) {
 
     assert_int_equal(ret, -1);
     assert_null(output);
-    assert_int_equal(status, 0);
+    assert_int_equal(status, EXECVE_ERROR);
     assert_int_equal(kills_count, 0);
 }
 
-// A command with no program is rejected without running anything.
+// A command with no program is rejected without running anything, with the exit code of a command
+// that cannot be run.
 static void test_wm_exec_rejects_empty_command(void **state) {
     (void)state;
     char command[] = "";
@@ -464,7 +466,7 @@ static void test_wm_exec_rejects_empty_command(void **state) {
 
     assert_int_equal(ret, -1);
     assert_null(output);
-    assert_int_equal(status, 0);
+    assert_int_equal(status, EXECVE_ERROR);
 }
 
 // A command run from a thread that blocks SIGTERM does not inherit that: the timeout's SIGTERM
