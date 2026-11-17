@@ -1431,7 +1431,7 @@ IndexerConnector::IndexerConnector(
                 const auto onError = [this, &data, bulkSize](
                                          const std::string& error, const long statusCode, const std::string& errorBody)
                 {
-                    const auto retry = [this](const std::string& message)
+                    const auto retry = [this, &errorBody](const std::string& message)
                     {
                         const auto now = std::chrono::steady_clock::now();
                         if (!m_retryingSince)
@@ -1442,7 +1442,21 @@ IndexerConnector::IndexerConnector(
                         {
                             throw PostponedElementException(message);
                         }
-                        throw std::runtime_error(message);
+
+                        // The reason the indexer gives (e.g. a circuit breaker) is what the operator needs to act on.
+                        std::string type, reason;
+                        if (nlohmann::json::accept(errorBody))
+                        {
+                            extractErrorInfo(errorBody, type, reason);
+                        }
+                        if (type.empty())
+                        {
+                            throw std::runtime_error(message);
+                        }
+                        sanitizeLogText(type);
+                        sanitizeLogText(reason);
+                        throw std::runtime_error(message + " Indexer error type: '" + type + "', reason: '" + reason +
+                                                 "'.");
                     };
 
                     // Handle 4xx errors with detailed logging, except the expected retries handled below.

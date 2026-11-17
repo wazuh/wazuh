@@ -1631,6 +1631,16 @@ TEST_F(IndexerConnectorTest, PublishWarnsWhenTheIndexerKeepsRejecting)
             ++accepted;
             return 200;
         });
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [&accept](const std::string&) -> std::string
+        {
+            if (!accept)
+            {
+                return R"({"error":{"type":"circuit_breaking_exception","reason":"[parent] Data too large"},)"
+                       R"("status":429})";
+            }
+            return R"({"took":0,"errors":false,"items":[]})";
+        });
 
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
@@ -1655,6 +1665,9 @@ TEST_F(IndexerConnectorTest, PublishWarnsWhenTheIndexerKeepsRejecting)
         []() { return countCapturedLogs(Log::LOGLEVEL_WARNING, "dispatch handler error, Too many requests") > 0; },
         MAX_REJECTING_TIME_MS));
     EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::minutes(1));
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "Too many requests, retrying in 1 second. Indexer error type: "
+                               "'circuit_breaking_exception', reason: '[parent] Data too large'."));
 
     accept = true;
     ASSERT_NO_THROW(waitUntil([&accepted]() { return accepted.load() > 0; }, 2 * MAX_INDEXER_PUBLISH_TIME_MS));
