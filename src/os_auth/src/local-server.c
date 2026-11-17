@@ -1406,6 +1406,21 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     cJSON *response = NULL;
 
     mdebug2("add_clustered(%s)", name);
+
+    /* A re-enrollment whose deadline has already gone by is refused here, without spending a
+     * cluster round trip on an answer nobody can receive. Only a re-enrollment: on a worker every
+     * enrollment comes through this function, first ones included, and those must not be dropped --
+     * their caller retries and the retry has to be able to register the agent. */
+    if (reenroll_kid != NULL && deadline_has_passed(deadline_ms)) {
+        return local_create_error_response(ERRORS[EREENROLLLATE].code, ERRORS[EREENROLLLATE].message);
+    }
+
+    /* Only if there is a deadline: adding the tolerance to a 0 would turn "no deadline" into an
+     * instant five seconds after 1970, and the master would then refuse every enrollment that
+     * reaches it without one -- among them the ones the Server API creates. */
+    if (deadline_ms > 0) {
+        deadline_ms += (int64_t)config.enroll_deadline_tolerance * 1000;
+    }
     // Debug: anyone who can reach the worker's enrollment endpoints fires it at will, and what matters is
     // logged anyway: the master logs the agent it adds, and this node the master's refusal, below.
     mdebug1("Dispatching enrollment request to master node");

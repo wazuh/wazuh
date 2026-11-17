@@ -54,10 +54,12 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     will_return(__wrap_getDefine_Int_default, 20000); // wazuh_modules.manager_task_max_pending_deletes
     will_return(__wrap_getDefine_Int_default, 60);    // remoted.jwt_max_age (the re-enrollment bearer's window, #38993)
     will_return(__wrap_getDefine_Int_default, 30);    // remoted.jwt_clock_skew
+    will_return(__wrap_getDefine_Int_default, 5);     // remoted.enroll_deadline_tolerance
 
     assert_int_equal(authd_read_config(WAZUHCONF), 0);
 
     assert_int_equal(config.port, 1516);
+    assert_int_equal(config.enroll_deadline_tolerance, 5);
     assert_int_equal(config.flags.use_password, 1);
     assert_int_equal(config.flags.disabled, 0);
     assert_int_equal(config.flags.remote_enrollment, 1); // reader default
