@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.13]
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-db` not escaping map keys in its HTTP responses, which let the operating system platform reported by an agent alter or break the counts of `GET /agents/summary`. ([#41545](https://github.com/wazuh/wazuh/pull/41545))
+
 ### Ruleset
 
 #### Fixed
