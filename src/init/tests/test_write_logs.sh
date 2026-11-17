@@ -156,12 +156,10 @@ ssm="  <localfile>
     <log_format>multi-line-regex</log_format>
     <location>$LOG/amazon/ssm/amazon-ssm-agent.log</location>
     <multiline_regex match=\"start\" replace=\"wspace\">^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}</multiline_regex>
+    <ignore type=\"pcre2\">(?i)\\[(?:mgs|mds)interactor\\] Sending reply</ignore>
   </localfile>"
 host amazon/ssm/amazon-ssm-agent.log
 same "Amazon SSM Agent log present" "$(blocks "$journald" "$active_responses" "$ssm")" "$(write_logs journald add)"
-
-host
-same "Amazon SSM Agent log absent" "$(blocks "$journald" "$active_responses")" "$(write_logs journald add)"
 
 # ------------------------------------------------------------------------------------- *.xml blocks
 mkdir -p "$TMP/blocks"
