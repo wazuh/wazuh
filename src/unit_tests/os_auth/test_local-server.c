@@ -1826,6 +1826,20 @@ static cJSON *reenroll(const char *kid, const char *name) {
     return dispatch(request);
 }
 
+/* Instants well clear of any real clock reading, so these cases never race it. */
+#define PAST_DEADLINE_MS   1760000000000LL  /* October 2025 */
+#define FUTURE_DEADLINE_MS 4000000000000LL  /* year 2096 */
+
+/* reenroll() cannot carry the field, and giving it a parameter would touch its 16 call sites. */
+static cJSON *reenroll_with_deadline(const char *kid, const char *name, int64_t deadline_ms) {
+    char request[1024];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"%s\",\"ip\":\"any\",\"deadline_ms\":%lld,"
+             "\"reenroll\":{\"kid\":\"%s\",\"bearer\":\"" REENROLL_BEARER "\"}}}",
+             name, (long long)deadline_ms, kid);
+    return dispatch(request);
+}
+
 static void expect_verify(const char *kid, const char *secret, int verdict) {
     expect_string(__wrap_w_reenroll_verify, bearer, REENROLL_BEARER);
     expect_string(__wrap_w_reenroll_verify, agent_id, kid);
@@ -2209,6 +2223,87 @@ static void test_reenroll_twice_with_the_same_bearer_rotates_once(void **state) 
     cJSON_Delete(second);
 }
 
+/* A deadline already in the past when the master gets to apply the request: refused under the
+ * keystore lock, and nothing is rotated. The clock is the real one -- the deadline is simply an
+ * instant that has gone by. */
+static void test_reenroll_past_deadline_does_not_rotate(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("late-agent", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+
+    cJSON *response = reenroll_with_deadline(id, "late-agent", PAST_DEADLINE_MS);
+    assert_int_equal(response_error(response), 9032);
+
+    /* OS_DeleteKey/add_rotate/identity_journal_append are NOT wrapped in this suite: they would run
+     * for real, so the only honest assertion is the state they would have changed. */
+    int index = OS_IsAllowedID(&keys, id);
+    assert_true(index >= 0);
+    assert_string_equal(keys.keyentries[index]->raw_key, old_key);
+    assert_string_equal(keys.keyentries[index]->name, "late-agent");
+    /* add_agent() queued this agent's creation, so a node exists; what must NOT exist is a second
+     * one carrying a rotated key. */
+    struct keynode *node = find_node(queue_insert, id);
+    assert_non_null(node);
+    assert_string_equal(node->raw_key, old_key);
+    assert_null(find_node(node->next, id));
+
+    cJSON_Delete(response);
+}
+
+/* Still in time: rotates exactly as it did before deadlines existed. */
+static void test_reenroll_within_deadline_rotates(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("in-time", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = reenroll_with_deadline(id, "in-time", FUTURE_DEADLINE_MS);
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "key"), old_key);
+
+    cJSON_Delete(response);
+}
+
+/* No deadline at all: the path every pre-deadline caller takes -- an older remoted, port 1515, the
+ * local socket, the Server API's own `add` -- and it must behave exactly as before. */
+static void test_reenroll_without_deadline_rotates(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    char id[16];
+    char old_key[128];
+    add_agent("no-deadline", id, sizeof(id), old_key, sizeof(old_key));
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
+    expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = reenroll(id, "no-deadline");
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "key"), old_key);
+
+    cJSON_Delete(response);
+}
+
 static void test_reenroll_reservation_is_released_when_the_request_is_rejected(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -2448,6 +2543,9 @@ int main(void) {
         cmocka_unit_test(test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent),
         cmocka_unit_test(test_a_refused_enrollment_removes_no_agent),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
+        cmocka_unit_test(test_reenroll_past_deadline_does_not_rotate),
+        cmocka_unit_test(test_reenroll_within_deadline_rotates),
+        cmocka_unit_test(test_reenroll_without_deadline_rotates),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
         cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),
         cmocka_unit_test(test_reenroll_duplicate_name_of_another_agent_9008),

@@ -18,6 +18,7 @@
 #include "enrollment_token_store.h"
 #include "enrollment_token_mint.h"
 #include "reenroll_verify.h"
+#include "time_op.h"
 #include "wazuhdb_queries_op.h"
 #include <time.h>
 
@@ -63,7 +64,8 @@ typedef enum auth_local_err {
     EREENROLLSTALE,
     ETOKENSTOREFAILED,
     EREENROLLINPROGRESS,
-    EIDENTITYUNRECORDED
+    EIDENTITYUNRECORDED,
+    EREENROLLLATE
 } auth_local_err;
 
 
@@ -135,7 +137,11 @@ static const struct {
     // is not wrong and the caller is not at fault: this manager cannot record it right now --
     // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
     // retries. Performing it anyway is what left agents holding credentials nothing else knew.
-    { 9031, "Identity transition could not be recorded" }
+    { 9031, "Identity transition could not be recorded" },
+    /* The caller's deadline had already passed when this manager got to apply the request.
+     * Nothing was mutated: the agent keeps the credentials it holds and may try again. A
+     * transient outcome, not a verdict on the credential -- remoted maps it accordingly. */
+    { 9032, "Enrollment deadline expired" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -305,7 +311,7 @@ static cJSON* local_get(const char *id);
 // Re-enrollment (#38993, master only): verifies `bearer` against the re-enrollment secret of the agent
 // `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups,
-                             __attribute__((unused)) int64_t deadline_ms);
+                             int64_t deadline_ms);
 
 // Generates an agent info json response
 // reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
@@ -327,7 +333,7 @@ static cJSON* local_token_purge(cJSON *arguments, int *ierror);
 static int is_token_id(const char *text);
 // Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
 static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out);
-// Optional deadline (issue #41339). Fail-safe by contract: absent, wrong type, negative or out of
+// Optional deadline. Fail-safe by contract: absent, wrong type, negative or out of
 // range all mean "no deadline" -- it RETURNS 0 and never signals an error, because a deadline this
 // manager cannot read must not cost an agent its enrollment (RNF-1).
 static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key);
@@ -605,7 +611,7 @@ char* local_dispatch(const char *input) {
             // re-enrollment secret, so the worker drops it: issuing one here would only store a secret
             // nobody holds. A direct port-1515 enrollment stores none either.
             int legacy = 0;
-            /* Issue #41339: the instant after which remoted can no longer deliver the answer.
+            /* The instant after which remoted can no longer deliver the answer.
              * Read on BOTH nodes -- the worker needs it to check and to extend it before
              * forwarding. 0 means "no deadline"; the reader never fails (see its contract). */
             const int64_t deadline_ms = get_optional_deadline_ms(arguments, "deadline_ms");
@@ -1152,10 +1158,27 @@ fail:
 
 // Re-enrollment (#38993), master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
 // re-enrollment secret, both rotated in place -- no removal, no purge, its documents survive.
-/* deadline_ms: E1 only CARRIES it; E2 is what enforces it (issue #41339). Taken here already so the
- * stage that adds the check does not have to touch this signature or its call site again. */
+/* Whether the caller that sent this request has already stopped waiting for the answer.
+ * remoted stamps the instant it will give up; past it, applying the request produces a
+ * rotation nobody can receive and an agent locked out of its own re-enrollment.
+ *
+ * `deadline_ms <= 0` means "no deadline" and is checked FIRST on purpose: every path that does not
+ * carry one -- an older remoted, port 1515, the local socket, the Server API's own `add` -- must
+ * behave exactly as it did before this existed (RNF-1), and the unit tests rely on that short
+ * circuit to avoid stubbing the clock. */
+/* Whether the caller that sent this request has already stopped waiting for the answer. remoted
+ * stamps the instant it will give up; past it, applying the request rotates credentials nobody can
+ * receive and locks the agent out of its own re-enrollment.
+ *
+ * `deadline_ms <= 0` means "no deadline" and is tested first on purpose: every path that carries
+ * none -- an older remoted, port 1515, the local socket, the Server API's own `add` -- must behave
+ * exactly as it did before deadlines existed. */
+static bool deadline_has_passed(int64_t deadline_ms) {
+    return deadline_ms > 0 && w_get_epoch_ms() > deadline_ms;
+}
+
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups,
-                             __attribute__((unused)) int64_t deadline_ms) {
+                             int64_t deadline_ms) {
     int index;
     int other;
     int ierror;
@@ -1211,6 +1234,16 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     }
 
     w_mutex_lock(&mutex_keys);
+
+    /* Checked here rather than when the request arrives: everything above can take arbitrarily
+     * long -- the wazuh-db read, and the wait for this very lock, which is longest precisely when
+     * this node is the busy one whose answers get lost. Still before the journal append and
+     * OS_DeleteKey below, so a refusal mutates nothing and exits through `fail:`, which releases
+     * both the lock and the reservation. */
+    if (deadline_has_passed(deadline_ms)) {
+        ierror = EREENROLLLATE;
+        goto fail;
+    }
 
     /* Belt and braces for the case the reservation alone does not cover: another rotation that was
      * ALREADY accepted when this request started may have completed while this one was verifying, which
@@ -1475,9 +1508,9 @@ static int get_optional_long_arg(cJSON *arguments, const char *key, long *out) {
     return 1;
 }
 
-/* Optional deadline (issue #41339). Fail-safe by contract: absent, wrong type, negative or out of
- * range all mean "no deadline" -- it RETURNS 0 and never signals an error, because a deadline this
- * manager cannot read must not cost an agent its enrollment (RNF-1). */
+/* Fail-safe by contract: absent, wrong type, negative or out of range all mean "no deadline" -- it
+ * RETURNS 0 and never signals an error, because a deadline this manager cannot read must not cost
+ * an agent its enrollment (RNF-1). */
 static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key) {
     cJSON *item = cJSON_GetObjectItem(arguments, key);
 
