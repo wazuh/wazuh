@@ -4,7 +4,7 @@
 
 The **base** module is a static library (`base`, see [CMakeLists.txt](CMakeLists.txt)) with the common utilities of the Wazuh Engine: JSON, graphs, expressions, logging, process helpers, the manager configuration loader and small string/IP/time utilities. Every other engine module links against it.
 
-This README covers in depth only two pieces that carry operational contracts: the **manager log sink** (the writer behind `logs/wazuh-manager.log` and `logs/wazuh-manager.json` in manager mode) and the **process helpers** (daemonization, PID file, user/group lookup and privilege drop, manager home). The rest is listed in the directory structure below; read the headers for their API.
+This README covers in depth three pieces: the **manager log sink** (the writer behind `logs/wazuh-manager.log` and `logs/wazuh-manager.json` in manager mode), the **process helpers** (daemonization, PID file, user/group lookup and privilege drop, manager home) and the **JSON path writer** (a scoped writer for building wide JSON objects member by member). The rest is listed in the directory structure below; read the headers for their API.
 
 ## Directory Structure
 
@@ -14,6 +14,7 @@ base/
 ├── README.md
 ├── include/base/
 │   ├── json.hpp                # base::json::Json, the JSON document type used across the engine
+│   ├── jsonPathWriter.hpp      # json::PathWriter, indexed member lookup for wide objects (see "JSON Path Writer")
 │   ├── graph.hpp               # Graph type
 │   ├── expression.hpp          # Expression and formula types
 │   ├── eventParser.hpp         # Event parser
@@ -27,6 +28,7 @@ base/
 │   ├── timer.hpp, syncStatus.hpp, statusSnapshot.hpp, ymlFormat.hpp, baseTypes.hpp
 │   └── utils/                  # stringUtils, ipUtils, timeUtils, communityId, singletonLocator, ...
 ├── src/                        # Implementations (managerLogSink.cpp, process.cpp, logging.cpp, ...)
+│   └── jsonNameCompare.hpp     # Internal header: member-name comparison shared by the path writer, the merge and the bulk erase (not installed)
 ├── test/include/               # base::test INTERFACE include directory (test helpers)
 ├── test/src/unit/              # GoogleTest unit tests
 └── benchmark/                  # base_benchmark (eventParser, json)
@@ -65,6 +67,54 @@ Header: [include/base/process.hpp](include/base/process.hpp). Implementation: [s
 | `setManagerMode` / `getWazuhHome` | Manager mode is process-wide and irreversible. Outside it, `getWazuhHome()` returns the current working directory. |
 
 Injection: `ProcessSysCalls` groups 13 system calls (`fork`, `setsid`, `umask`, `open`, `dup2`, `close`, `fchmod`, `write`, `setgroups`, `setgid`, `setuid`, `seteuid`, `sysconf`); an empty member is the real call. Outside the seam is `_exit` (checked by `GoDaemonFunctionalTest.ParentsSkipExitHandlers`); `umask` is injectable, but a test that leaves it empty gets the real `umask(027)` applied to itself. `UserLookup` and `GroupLookup` are injectable as well.
+
+## JSON Path Writer
+
+Header: [include/base/jsonPathWriter.hpp](include/base/jsonPathWriter.hpp). Implementation: [src/jsonPathWriter.cpp](src/jsonPathWriter.cpp). Namespace `json`.
+
+A `Json` setter looks a member up by scanning the members of the object on every call, so building an object of N members one call at a time costs O(N^2) name comparisons. `json::PathWriter` is a scoped writer over a `json::Json` that keeps an ordered index (name to position) for each object with more than `indexThreshold` members (`DEFAULT_INDEX_THRESHOLD` = 128), which makes the same N writes or lookups O(N log N) whatever the member names are.
+
+Use it in code that writes or looks up many members of the same object in one go (for example, turning one input into one document). For a handful of fixed fields use `Json` directly.
+
+**Guarantee.** Every operation gives exactly the result of the `Json` method of the same name: same document, same return value and same exception.
+
+| Kind | Operations (same name and arguments as in `Json`) |
+|---|---|
+| Writes | `set`, `setString`, `setStringAsMembers`, `setNullAsMembers`, `setObject`, `setArray`, `appendString`, `appendJson` |
+| Reads | `exists`, `isObject`, `isArray`, `size`, `getJson` |
+| Diagnostics | `indexedObjects()`: number of index entries currently held (diagnostics and tests) |
+
+**Rules of use** (from the header):
+
+1. While the writer is alive, the document is modified only through it, and no member is erased or reordered. Reading the document directly stays valid, but only reads made through the writer use the index.
+2. The `Json` outlives the writer and is neither moved nor assigned while the writer is alive.
+3. A writer is not shared between threads.
+4. The result of an operation is the result of the `Json` method of the same name; if in doubt, `Json` is the reference.
+5. A value written through the writer is never the target document itself.
+
+Objects at or below the threshold are scanned exactly like `Json` does, and constructing a writer allocates nothing: the index of an object is built the first time that object is looked up above the threshold (reads included). That first lookup costs more than the single scan `Json` would do, so keep one writer for the whole construction of a document instead of creating one per operation; index entries live until the writer is destroyed. The writer is neither copyable nor movable.
+
+```cpp
+json::Json doc;
+{
+    json::PathWriter writer(doc);               // allocates nothing
+    for (const auto& [name, value] : fields)
+    {
+        writer.setString(value, "/" + name);    // name already escaped as a JSON pointer token; O(log N) on wide objects
+    }
+    const bool hasUser = writer.exists("/user"); // read through the writer, not through doc
+}                                                // scope end: doc is free to use directly again
+```
+
+## JSON Merge and Bulk Erase
+
+Header: [include/base/json.hpp](include/base/json.hpp). Implementation: [src/json.cpp](src/json.cpp). Namespace `json`.
+
+**`Json::merge` between objects.** Each member of the source is resolved in the destination with one lookup, which scans the destination. Once the scans of one merge have visited more than `Json::MERGE_INDEX_SCAN_FACTOR` times the number of members of the destination, the rest of its lookups go through a local ordered index of the destination members: building the index costs a small fraction of the scanning already done, so a merge is not noticeably slower than plain scanning and the cost of merging wide objects grows almost linearly with the number of members. A recursive merge descends into the member it found. Merging arrays is a different path: each source element is compared with every destination element.
+
+**Destination path in URI-fragment form.** A destination path written as `#/...` is resolved once, at the start of the call. Member names met while descending are never read again as part of a fragment.
+
+**`Json::eraseMembersEqualTo(path, value)`.** Erases, in a single pass, the members of the object at `path` whose value equals `value`; the members that stay keep their order. With a repeated member name, the leading run of equal occurrences of that name is erased and the first occurrence that differs keeps the later ones. Names are compared with their whole length. It returns the number of members erased, and 0 with the document untouched when the path does not exist or is not an object. The builder helper `delete_fields_with_value` uses it.
 
 ## Time Utilities
 
@@ -109,6 +159,7 @@ Where each contract is exercised:
 | User/group lookup and privilege drop | `LookupUid.*`, `LookupGid.*`, `DropToUser.*`, `DropToGroup.*`, `DropErrors.*` |
 | Manager home | `ManagerHome.*` (incl. the exits `ManagerHomeEnvNotDirectoryExits`, `ExeNotDirectoryExits`), `ManagerHomeAbsolute.*` |
 | Log sink | `ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*` |
+| JSON path writer | Differential tests against `Json` in [jsonPathWriter_test.cpp](test/src/unit/jsonPathWriter_test.cpp) (`base_utest`); benchmarks `BM_PathWriter*` in [jsonSet_bench.cpp](benchmark/src/jsonSet_bench.cpp) (`base_benchmark`) |
 
 `ctest` discovers the cases with `gtest_discover_tests`; names are `<Suite>.<Test>`, without a binary prefix.
 

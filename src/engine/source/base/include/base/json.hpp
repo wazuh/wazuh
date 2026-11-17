@@ -86,6 +86,8 @@ enum class RetGet
 constexpr bool RECURSIVE {true};
 constexpr bool NOT_RECURSIVE {false};
 
+class PathWriter;
+
 /**
  * @brief JSON document wrapper around RapidJSON.
  *
@@ -95,6 +97,8 @@ constexpr bool NOT_RECURSIVE {false};
  */
 class Json
 {
+    friend class PathWriter;
+
 public:
     enum class Type
     {
@@ -303,6 +307,16 @@ public:
      * structure from untrusted text without rapidjson (XML element depth, paths from event keys) use it too.
      */
     static constexpr std::size_t MAX_DEPTH = 256;
+
+    /**
+     * merge() between objects scans the destination for each member of the source. Once the scans of one merge have
+     * visited more than MERGE_INDEX_SCAN_FACTOR times the number of members of the destination, the rest of its
+     * lookups go through a local index of the destination members instead. Building the index costs a small fraction
+     * of the scanning already done by then, so a merge is never noticeably slower than plain scanning and the cost of
+     * merging wide objects grows almost linearly. It is public so that tests and benchmarks size their inputs from
+     * it; it is not configuration.
+     */
+    static constexpr std::size_t MERGE_INDEX_SCAN_FACTOR = 512;
 
     /// Text of the depth-cap failure, as it appears in exceptions and parser traces ("... (256)" when formatted).
     static constexpr std::string_view DEPTH_ERROR_MSG = "nesting depth exceeds the limit";
@@ -1308,6 +1322,24 @@ public:
      * @throws std::runtime_error if the current document root is not an object.
      */
     void eraseRootKeysByPrefix(std::string_view prefix);
+
+    /**
+     * @brief Erase the members of an object whose value equals the given one, in a single pass.
+     *
+     * Member values are compared like equals(pointerPath, value) does. The members that are kept stay in their order.
+     * When a member name is repeated inside the object, an occurrence is erased only if its value is equal and no
+     * earlier member with the same name holds a different value: the leading run of equal occurrences of each name
+     * is erased and the first occurrence that differs keeps the later ones. Names are compared with their whole
+     * length.
+     *
+     * @param path The path of the object to modify.
+     * @param value The value to compare each member with.
+     * @return The number of members erased; 0, leaving the document untouched, if the path does not exist or is not
+     * an object.
+     *
+     * @throws std::runtime_error if the given path is invalid.
+     */
+    size_t eraseMembersEqualTo(std::string_view path, const Json& value);
 
     /**
      * @brief In-place transformation of JSON keys and/or string values at a node selected by a RapidJSON Pointer.

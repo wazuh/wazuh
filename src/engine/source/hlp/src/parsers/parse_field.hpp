@@ -7,6 +7,11 @@
 #include <string_view>
 #include <tuple>
 
+namespace json
+{
+class PathWriter;
+} // namespace json
+
 namespace hlp
 {
 
@@ -87,6 +92,21 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape);
  * than json::Json::MAX_DEPTH tokens.
  */
 bool updateDoc(json::Json& doc,
+               std::string_view key,
+               std::string_view value,
+               bool is_escaped,
+               std::string_view escape,
+               bool is_quoted);
+
+/**
+ * @brief Same as updateDoc(json::Json&, ...), writing through @p doc.
+ *
+ * Same contract, result and document as the json::Json overload. Meant for callers that write many keys into one
+ * document: they keep one json::PathWriter for the whole document and pass it to every call.
+ *
+ * @param doc The writer over the JSON document to update.
+ */
+bool updateDoc(json::PathWriter& doc,
                std::string_view key,
                std::string_view value,
                bool is_escaped,

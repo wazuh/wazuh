@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 
+#include <base/jsonPathWriter.hpp>
 #include <fmt/format.h>
 #include <pugixml.hpp>
 
@@ -14,8 +15,8 @@ namespace
 using namespace hlp;
 using namespace hlp::parser;
 
-using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
-bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
+using xmlModule = std::function<bool(pugi::xml_node&, json::PathWriter&, std::string&)>;
+bool xmlWinModule(pugi::xml_node& node, json::PathWriter& docJson, std::string path)
 {
     auto nodeName = std::string_view {node.name()};
     if (nodeName == "Data")
@@ -64,12 +65,13 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
 /**
  * @brief Converts the element children of @p docXml into @p docJson, recursing into their children.
  *
+ * @param docJson Writer over the document being built; one writer for the whole document.
  * @param depth Nesting level of the elements it walks: 1 for the children of the document. Every element counts,
  * the Event skipped by the windows module included.
  * @return false, leaving @p docJson partially converted, if an element is nested deeper than json::Json::MAX_DEPTH.
  */
 bool xmlToJson(
-    pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod, const std::string& path, std::size_t depth)
+    pugi::xml_node& docXml, json::PathWriter& docJson, const xmlModule& mod, const std::string& path, std::size_t depth)
 {
     // TODO: add array support
     // Iterate over the xml generating the corresponding json
@@ -114,7 +116,11 @@ bool xmlToJson(
                 }
                 else if (docJson.isArray(localPath))
                 {
+                    // The element is appended first so that the array grows geometrically: a path write to a missing
+                    // /<index> would size the array to exactly index + 1. The writes below fill or replace the element.
+                    static const json::Json emptyElement {"{}"};
                     size_t index = docJson.size(localPath);
+                    docJson.appendJson(emptyElement, localPath);
                     localPath += "/" + std::to_string(index);
                 }
             }
@@ -164,6 +170,7 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
     return [targetField, moduleFn](std::string_view parsed, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         json::Json jParsed;
+        json::PathWriter writer(jParsed);
         pugi::xml_document xmlDoc;
         auto bufferInput = std::string(parsed);
         auto parseResult = xmlDoc.load_buffer(bufferInput.data(), bufferInput.size());
@@ -176,7 +183,7 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
             }
             return base::Error {};
         }
-        if (!xmlToJson(xmlDoc, jParsed, moduleFn, "", 1))
+        if (!xmlToJson(xmlDoc, writer, moduleFn, "", 1))
         {
             if (enableTrace)
             {
