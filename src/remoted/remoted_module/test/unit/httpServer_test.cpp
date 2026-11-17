@@ -2396,7 +2396,7 @@ TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     config.maxBodySize = 1U * MiB;
@@ -2451,7 +2451,7 @@ TEST(HttpServerTest, DiagnosticsCountARealConnection)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = cert.certPath();
     config.privateKeyPath = cert.keyPath();
     config.maxBodySize = 1U * MiB;
@@ -2568,7 +2568,7 @@ TEST(HandshakeGuardTest, StalledHandshakesAreClosedAndTheirSlotsServeAnHonestCli
     auto server = makeHttpServer();
     addHealthRoute(*server);
 
-    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(36000 + (::getpid() % 5000)));
+    auto config = handshakeGuardConfig(cert, remoted::test::findFreePort());
     config.readTimeoutSec = 1;
     config.maxParallelConnections = 4;
     config.maxHandshakesPerSource = 0; // the deadline alone is under test here
@@ -2621,7 +2621,7 @@ TEST(HandshakeGuardTest, PerSourceCapClosesTheExcessAtOnce)
     auto server = makeHttpServer();
     addHealthRoute(*server);
 
-    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(37000 + (::getpid() % 5000)));
+    auto config = handshakeGuardConfig(cert, remoted::test::findFreePort());
     config.readTimeoutSec = 60; // far beyond the test: nothing here may be closed by the deadline
     config.maxParallelConnections = 16;
     config.maxHandshakesPerSource = 2;
@@ -2677,7 +2677,7 @@ TEST(HandshakeGuardTest, FailedHandshakesDoNotUnderflowTheConnectionLevel)
         },
         /*countAgainstBudget=*/false);
 
-    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(38000 + (::getpid() % 5000)));
+    auto config = handshakeGuardConfig(cert, remoted::test::findFreePort());
     ASSERT_NO_THROW(server->start(config));
 
     for (int i = 0; i < 3; ++i)
@@ -2719,7 +2719,7 @@ TEST(HandshakeGuardTest, ConnectionStormLeavesNoHandshakeCounted)
     auto server = makeHttpServer();
     addHealthRoute(*server);
 
-    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(30500 + (::getpid() % 2000)));
+    auto config = handshakeGuardConfig(cert, remoted::test::findFreePort());
     config.ioThreads = 4;
     config.concurrentAccepts = 16;
     config.maxParallelConnections = 1024;
@@ -2986,7 +2986,7 @@ TEST(HttpServerStreamingTest, StreamsAMultiChunkBodyByteExactly)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     server->start(config);
@@ -3043,7 +3043,7 @@ TEST(HttpServerStreamingTest, ChunkSizeFollowsTheConfiguredValue)
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(22000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     config.streamChunkSize = kChunk;
@@ -3102,7 +3102,7 @@ TEST(HttpServerStreamingTest, AbortedTransferSendsNoTerminatorAndReleasesTheSour
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(23000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     server->start(config);
@@ -3211,7 +3211,7 @@ TEST(HttpServerStreamingTest, HealthyTransferOutlastingTheRequestTimeoutIsNotCut
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(25000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     config.streamChunkSize = kChunk;
@@ -3271,7 +3271,7 @@ TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTi
 
     HttpServerConfig config;
     config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
-    config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     config.streamChunkSize = kChunk;
@@ -3370,7 +3370,7 @@ namespace
         // Starts a fresh server with the given raw prefix and the two canonical routes.
         void startServer(const std::string& rawPrefix)
         {
-            m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + m_portOffset++);
+            m_port = remoted::test::findFreePort();
             m_server = makeHttpServer();
             m_server->addRoute(
                 Method::Get,
@@ -3421,7 +3421,6 @@ namespace
         }
 
         std::uint16_t m_port {0};
-        int m_portOffset {0};
         std::shared_ptr<IHttpServer> m_server;
         std::optional<remoted::test::TestCertificate> m_cert;
         std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
@@ -3511,7 +3510,7 @@ TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)
 
 TEST_F(GlobalPrefixTransportTest, StartWithInvalidPrefixThrowsAndStaysStopped)
 {
-    m_port = static_cast<std::uint16_t>(29000 + (::getpid() % 4000) + 500);
+    m_port = remoted::test::findFreePort();
     m_server = makeHttpServer();
     m_server->addRoute(Method::Get,
                        "/",

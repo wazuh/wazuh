@@ -298,6 +298,16 @@ def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
 
 
+def test_user_me_roles(response, expected_roles):
+    """Check that the roles of GET /security/users/me are exactly the expected ones, with no other key.
+
+    A role the caller cannot read is listed by id and name only: any rule, policy or other role field
+    would be an object the gated endpoints refuse.
+    """
+    roles = response.json()["data"]["affected_items"][0]["roles"]
+    assert roles == expected_roles, f'Expected roles {expected_roles}, got {roles}'
+
+
 def check_agentd_started(response, agents_list, restarted=True):
     """Wait until all the agents have their agentd process started correctly. This will avoid race conditions caused by
     agents reconnections before restarting.

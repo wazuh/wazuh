@@ -332,7 +332,7 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
         });
 
     HttpServerConfig config;
-    config.port = static_cast<std::uint16_t>(20000 + (::getpid() % 10000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = cert.certPath;
     config.privateKeyPath = cert.keyPath;
     server->start(config);
@@ -433,7 +433,7 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightStream)
         remoted::http::ResponseMode::Streamable);
 
     HttpServerConfig config;
-    config.port = static_cast<std::uint16_t>(24000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     server->start(config);
@@ -488,7 +488,7 @@ TEST(ShutdownRace, StopSequenceSurvivesConnectionsAcceptedButNeverWritten)
         auto server = makeHttpServer();
 
         HttpServerConfig config;
-        config.port = static_cast<std::uint16_t>(26000 + ((::getpid() + iteration) % 5000));
+        config.port = remoted::test::findFreePort();
         config.certificatePath = certOpt->certPath;
         config.privateKeyPath = certOpt->keyPath;
         server->start(config);

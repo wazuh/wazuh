@@ -15,8 +15,8 @@ from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, inva
     invalid_run_as_context_tokens, is_valid_rbac_policy, is_valid_security_rule, load_spec, sanitize_rbac_policy, \
     update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
-from wazuh.rbac.decorators import expose_resources, require_every_role_update, require_role_action, \
-    require_role_update
+from wazuh.rbac.decorators import expose_resources, permitted_security_ids, require_every_role_update, \
+    require_role_action, require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
@@ -88,6 +88,10 @@ def validate_password(password: str):
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
     """Get the information of the current user.
 
+    Every role of the token is listed by id and name. The role object, and the rule and policy objects
+    it links, are added only where the caller holds 'security:read' over that `role:id`, `rule:id` or
+    `policy:id`, as `get_roles`, `get_rules` and `get_policies` require.
+
     Parameters
     ----------
     token : dict
@@ -103,20 +107,38 @@ def get_user_me(token: dict) -> AffectedItemsWazuhResult:
     with AuthenticationManager() as auth:
         user_info = auth.get_user(token['sub'])
         user_info['roles'] = list()
-    roles = token['rbac_roles']
-    for role in roles:
+    # The endpoint needs no action, so each object is held to what the gated readers ask for by id.
+    role_ids = [int(role_id) for role_id in token['rbac_roles']]
+    readable_roles = permitted_security_ids('role:id', role_ids)
+    for role_id in role_ids:
         with RolesManager() as rm:
-            role = rm.get_role_id(role_id=role)
-            role.pop('users')
-            for index_r, rule_id in enumerate(role['rules']):
-                with RulesManager() as rum:
-                    role['rules'][index_r] = rum.get_rule(rule_id=int(rule_id))
-                    role['rules'][index_r].pop('roles')
-            for index_p, policy_id in enumerate(role['policies']):
-                with PoliciesManager() as pm:
-                    role['policies'][index_p] = pm.get_policy_id(policy_id=int(policy_id))
-                    role['policies'][index_p].pop('roles')
-            user_info['roles'].append(role)
+            role = rm.get_role_id(role_id=role_id)
+        if role == SecurityError.ROLE_NOT_EXIST:
+            continue
+        if role_id not in readable_roles:
+            user_info['roles'].append({'id': role['id'], 'name': role['name']})
+            continue
+
+        role.pop('users')
+        # A readable role lists the ids of its rules and policies (GET /security/roles); only the readable
+        # ones are expanded.
+        readable_rules = permitted_security_ids('rule:id', role['rules'])
+        readable_policies = permitted_security_ids('policy:id', role['policies'])
+        for index_r, rule_id in enumerate(role['rules']):
+            if int(rule_id) not in readable_rules:
+                role['rules'][index_r] = {'id': int(rule_id)}
+                continue
+            with RulesManager() as rum:
+                role['rules'][index_r] = rum.get_rule(rule_id=int(rule_id))
+                role['rules'][index_r].pop('roles')
+        for index_p, policy_id in enumerate(role['policies']):
+            if int(policy_id) not in readable_policies:
+                role['policies'][index_p] = {'id': int(policy_id)}
+                continue
+            with PoliciesManager() as pm:
+                role['policies'][index_p] = pm.get_policy_id(policy_id=int(policy_id))
+                role['policies'][index_p].pop('roles')
+        user_info['roles'].append(role)
 
     affected_items.append(user_info) if user_info else result.add_failed_item(id_=common.current_user.get(),
                                                                               error=WazuhError(5001))

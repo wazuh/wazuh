@@ -706,6 +706,37 @@ def permitted_agent_ids(action: str = 'agent:read') -> set:
     return set(_match_permissions(required, rbac.get()['rbac_mode'])['agent:id'])
 
 
+def permitted_security_ids(resource: str, ids, action: str = 'security:read') -> set:
+    """IDs, among the given ones, the caller holds `action` over, resolved as `@expose_resources` resolves them.
+
+    For a function that needs no action itself but reports security objects (the caller's own roles, with their
+    rules and policies), so it can leave out the ones the caller would be refused by id on the gated endpoint.
+    Grants, denies and the RBAC mode are applied exactly as for an explicit `{resource}:<id>` list.
+
+    Parameters
+    ----------
+    resource : str
+        Resource type: 'role:id', 'rule:id', 'policy:id' or 'user:id'.
+    ids : iterable of int
+        IDs to check.
+    action : str
+        Action over the resources.
+
+    Returns
+    -------
+    set
+        The permitted IDs, as integers.
+    """
+    required = {str(id_) for id_ in ids}
+    if not required:
+        return set()
+
+    permissions = {action: [f'{resource}:{id_}' for id_ in sorted(required)]}
+    allowed = _match_permissions(req_permissions=permissions, rbac_mode=rbac.get()['rbac_mode'])[resource]
+
+    return {int(id_) for id_ in required & allowed}
+
+
 def can_read_secrets() -> bool:
     """Check whether the current user may read the sensitive configuration values of THIS node in clear.
 
