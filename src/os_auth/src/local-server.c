@@ -157,7 +157,8 @@ STATIC cJSON* local_add_ex(const char *id,
                            const char *key_hash,
                            authd_force_options_t *force_options,
                            const char *source,
-                           bool issue_secret);
+                           bool issue_secret,
+                           int64_t deadline_ms);
 
 /* Log a request the dispatcher refused, at the level of whose fault it is. ERROR only for this daemon
  * failing (internal error, key generation, the master unreachable, a store or journal write); WARNING for
@@ -337,6 +338,8 @@ static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out);
 // range all mean "no deadline" -- it RETURNS 0 and never signals an error, because a deadline this
 // manager cannot read must not cost an agent its enrollment (RNF-1).
 static int64_t get_optional_deadline_ms(cJSON *arguments, const char *key);
+// Whether the caller that sent a request has already stopped waiting for its answer.
+static bool deadline_has_passed(int64_t deadline_ms);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -749,7 +752,7 @@ char* local_dispatch(const char *input) {
                     }
                 }
                 response = local_add_ex(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options,
-                                        source, !legacy);
+                                        source, !legacy, deadline_ms);
                 if (token_id) {
                     cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
                     // Every path closes the reservation: committed when the agent was created, given
@@ -915,7 +918,8 @@ cJSON* local_add(const char *id,
                  const char *key_hash,
                  authd_force_options_t *force_options,
                  const char *source) {
-    return local_add_ex(id, name, ip, groups, key, key_hash, force_options, source, true);
+    /* No deadline: port 1515 has no caller budget behind it. */
+    return local_add_ex(id, name, ip, groups, key, key_hash, force_options, source, true, 0);
 }
 
 STATIC cJSON* local_add_ex(const char *id,
@@ -926,7 +930,8 @@ STATIC cJSON* local_add_ex(const char *id,
                            const char *key_hash,
                            authd_force_options_t *force_options,
                            const char *source,
-                           bool issue_secret) {
+                           bool issue_secret,
+                           int64_t deadline_ms) {
     int index;
     cJSON *response = NULL;
     int ierror;
@@ -1006,6 +1011,16 @@ again:
     }
 
     w_mutex_lock(&mutex_keys);
+
+    /* Same reason as the rotation path: the duplicate and force checks above can wait on wazuh-db,
+     * and then on this lock. A first enrollment applied past its caller's deadline registers an
+     * agent the caller never learns about, whose retry is then refused as a duplicate and whose
+     * single-use token is spent. Refusing here mutates nothing, and the caller gives the token use
+     * back because the response carries an error. */
+    if (deadline_has_passed(deadline_ms)) {
+        ierror = EREENROLLLATE;
+        goto fail;
+    }
 
     /* The same question again, from memory only, now that the keystore is locked: a deletion of
      * this very id could have been admitted between the check above and this lock, and add_remove()

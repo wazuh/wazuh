@@ -645,6 +645,10 @@ static int teardown_token_env(void **state) {
 // minfo; a 9025 refusal mwarn (plus mint_prepare's mwarn for an IP address); every `goto fail`
 // in local_dispatch() merror; the store logs mdebug2 on a consumed/released use and mdebug1 on
 // a refused one or an unknown id; local_add() logs mdebug2 and minfo.
+/* Deadlines well clear of any real clock reading, so these cases never race it. */
+#define PAST_DEADLINE_MS   1760000000000LL  /* October 2025 */
+#define FUTURE_DEADLINE_MS 4000000000000LL  /* year 2096 */
+
 #define EXPECT_LOG_DEBUG1() expect_any_always(__wrap__mdebug1, formatted_msg)
 #define EXPECT_LOG_DEBUG2() expect_any_always(__wrap__mdebug2, formatted_msg)
 #define EXPECT_LOG_INFO()   expect_any_always(__wrap__minfo, formatted_msg)
@@ -1361,6 +1365,61 @@ static void test_token_revoke_storage_failure_is_not_a_missing_token(void **stat
     cJSON_Delete(response);
 }
 
+/* A first enrollment applied past its caller's deadline registers an agent the caller never learns
+ * about: its retry is then refused as a duplicate and a single-use token has been spent for nothing.
+ * Refused instead, with the token use given back so the retry can still enrol. */
+static void test_add_past_deadline_registers_nothing_and_keeps_the_token_use(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":1}");
+    char token[ETOKEN_ID_CHARS + 1];
+    strncpy(token, data_string(minted, "id"), sizeof(token) - 1);
+    token[sizeof(token) - 1] = '\0';
+    cJSON_Delete(minted);
+    assert_int_equal(uses_on_disk(token), 0);
+
+    const int keys_before = keys.keysize;
+    char request[512];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"late-first\",\"ip\":\"any\","
+             "\"token_id\":\"%s\",\"deadline_ms\":%lld}}", token, (long long)PAST_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9032);
+    cJSON_Delete(response);
+
+    /* Nothing registered, and the use is still available for the retry. */
+    assert_int_equal(keys.keysize, keys_before);
+    assert_true(OS_IsAllowedName(&keys, "late-first") < 0);
+    assert_int_equal(uses_on_disk(token), 0);
+}
+
+/* The same enrollment in time: registers, and spends the use. */
+static void test_add_within_deadline_registers_and_spends_the_use(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    cJSON *minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":1}");
+    char token[ETOKEN_ID_CHARS + 1];
+    strncpy(token, data_string(minted, "id"), sizeof(token) - 1);
+    token[sizeof(token) - 1] = '\0';
+    cJSON_Delete(minted);
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    char request[512];
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"in-time-first\",\"ip\":\"any\","
+             "\"token_id\":\"%s\",\"deadline_ms\":%lld}}", token, (long long)FUTURE_DEADLINE_MS);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    assert_true(OS_IsAllowedName(&keys, "in-time-first") >= 0);
+    assert_int_equal(uses_on_disk(token), 1);
+}
+
 static void test_add_with_token_closes_the_reservation(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1825,10 +1884,6 @@ static cJSON *reenroll(const char *kid, const char *name) {
              name, kid);
     return dispatch(request);
 }
-
-/* Instants well clear of any real clock reading, so these cases never race it. */
-#define PAST_DEADLINE_MS   1760000000000LL  /* October 2025 */
-#define FUTURE_DEADLINE_MS 4000000000000LL  /* year 2096 */
 
 /* reenroll() cannot carry the field, and giving it a parameter would touch its 16 call sites. */
 static cJSON *reenroll_with_deadline(const char *kid, const char *name, int64_t deadline_ms) {
@@ -3087,6 +3142,8 @@ int main(void) {
         cmocka_unit_test(test_token_purge_on_worker_9015),
         cmocka_unit_test(test_add_with_token_consumes_and_releases),
         cmocka_unit_test(test_token_revoke_storage_failure_is_not_a_missing_token),
+        cmocka_unit_test(test_add_past_deadline_registers_nothing_and_keeps_the_token_use),
+        cmocka_unit_test(test_add_within_deadline_registers_and_spends_the_use),
         cmocka_unit_test(test_add_with_token_closes_the_reservation),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
