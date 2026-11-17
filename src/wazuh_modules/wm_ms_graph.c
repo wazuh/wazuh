@@ -544,7 +544,8 @@ cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* a
                                 snprintf(url, OS_SIZE_8192 -1, "%s", next_url->valuestring);
                                 next_page = true;
                             } else {
-                                mtwarn(WM_MS_GRAPH_LOGTAG, "Ignoring next page URL out of '%s'.", query_fqdn);
+                                mtwarn(WM_MS_GRAPH_LOGTAG, "Ignoring next page URL out of '%s'. Skipping the remaining managed devices of tenant '%s' and app '%s'.",
+                                    query_fqdn, auth_config->tenant_id, app_id->valuestring);
                             }
                         }
 

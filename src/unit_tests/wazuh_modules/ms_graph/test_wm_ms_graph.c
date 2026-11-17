@@ -1453,11 +1453,9 @@ static void expect_first_scan_from_now(const char* tenant_msg, const char* state
     expect_string(__wrap__mtdebug1, formatted_msg, bookmark_msg);
 }
 
-void test_main_only_future_events_every_tenant(void **state) {
-    current_time = 1;
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+// Tenants 'tenant_a' and 'tenant_b' without a token, security/alerts_v2 and only_future_events
+static void init_two_tenants_config(wm_ms_graph* module_data) {
     const char* tenants[] = { "tenant_a", "tenant_b" };
-    wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
 
     os_calloc(3, sizeof(wm_ms_graph_auth*), module_data->auth_config);
     module_data->enabled = true;
@@ -1475,8 +1473,6 @@ void test_main_only_future_events_every_tenant(void **state) {
         os_strdup("example_secret", module_data->auth_config[i]->secret_value);
         os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[i]->login_fqdn);
         os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[i]->query_fqdn);
-        os_strdup("token", module_data->auth_config[i]->access_token);
-        module_data->auth_config[i]->token_expiration_time = 276447231;
     }
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
@@ -1484,6 +1480,18 @@ void test_main_only_future_events_every_tenant(void **state) {
     os_malloc(sizeof(char*), module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
+}
+
+void test_main_only_future_events_every_tenant(void **state) {
+    current_time = 1;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
+
+    init_two_tenants_config(module_data);
+    for (int i = 0; i < 2; i++) {
+        os_strdup("token", module_data->auth_config[i]->access_token);
+        module_data->auth_config[i]->token_expiration_time = 276447231;
+    }
 
     will_return(__wrap_FOREVER, 1);
 
@@ -1552,36 +1560,13 @@ static void expect_sched_no_wait(wm_ms_graph* module_data) {
 void test_main_only_future_events_tenant_without_token(void **state) {
     current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
-    const char* tenants[] = { "tenant_a", "tenant_b" };
     wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
     curl_response* token_response;
 
-    os_calloc(3, sizeof(wm_ms_graph_auth*), module_data->auth_config);
-    module_data->enabled = true;
-    module_data->only_future_events = true;
-    module_data->curl_max_size = 1024L;
-    module_data->page_size = 100;
-    module_data->time_delay = 10;
-    module_data->run_on_start = true;
-    module_data->scan_config.interval = 60;
-    os_strdup("v1.0", module_data->version);
-    for (int i = 0; i < 2; i++) {
-        os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[i]);
-        os_strdup("example_client", module_data->auth_config[i]->client_id);
-        os_strdup(tenants[i], module_data->auth_config[i]->tenant_id);
-        os_strdup("example_secret", module_data->auth_config[i]->secret_value);
-        os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[i]->login_fqdn);
-        os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[i]->query_fqdn);
-    }
+    init_two_tenants_config(module_data);
     // tenant_a has no token yet; tenant_b has a valid one
     os_strdup("token", module_data->auth_config[1]->access_token);
     module_data->auth_config[1]->token_expiration_time = 276447231;
-    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
-    os_strdup("security", module_data->resources[0].name);
-    module_data->num_resources = 1;
-    os_malloc(sizeof(char*), module_data->resources[0].relationships);
-    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
-    module_data->resources[0].num_relationships = 1;
 
     os_calloc(1, sizeof(curl_response), token_response);
     token_response->status_code = 200;
@@ -4583,6 +4568,55 @@ static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void **state) {
     os_free(headers[0]);
 }
 
+static void test_wm_ms_graph_scan_apps_devices_next_page_out_of_host(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(2, sizeof(wm_ms_graph_auth*), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->curl_max_size = 1024L;
+    module_data->page_size = 10;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    module_data->auth_config[0]->token_expiration_time = time(NULL) + 100;
+
+    curl_response* response;
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"@odata.nextLink\":\"https://evil.tld/v1.0/next_page\",\"value\":[{\"id\":\"device1\"}]}", response->body);
+    os_strdup("test", response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+
+    // Only the first page is requested
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtwarn, formatted_msg, "Ignoring next page URL out of 'graph.microsoft.com'. Skipping the remaining managed devices of tenant 'example_tenant' and app '12345'.");
+
+    char *headers[] = { NULL, NULL };
+    os_strdup("Authorization: Bearer token", headers[0]);
+    cJSON *app_id = cJSON_CreateString("12345");
+
+    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+
+    // The devices of the first page are kept
+    assert_non_null(result);
+    assert_int_equal(cJSON_GetArraySize(result), 1);
+    cJSON_Delete(result);
+    cJSON_Delete(app_id);
+    os_free(headers[0]);
+}
+
 static void test_wm_ms_graph_http_get_with_retry_success_first_attempt(void **state) {
     char *headers[] = { NULL, NULL };
     os_strdup("Authorization: Bearer token", headers[0]);
@@ -5010,6 +5044,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_401_invalidates_token, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_reached_curl_size, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_next_page_out_of_host, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_success_first_attempt, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_then_success, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_exhausted, setup_conf, teardown_conf),
