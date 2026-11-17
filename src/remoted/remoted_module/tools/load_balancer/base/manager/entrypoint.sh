@@ -96,14 +96,16 @@ fi
 sed -i "s|<host>https://127.0.0.1:9200</host>|<host>${INDEXER_HOST}</host>|" "$CONF"
 
 # The indexer trust is CONSUMED, never generated: every start is refused until
-# certs/indexer-ca.pem, the indexer-connector pair and WAZUH_INDEXER_MANAGER_PASSWORD resolve
-# ("Unresolved credentials"). A single-host install imports all three from
-# /etc/wazuh-indexer/export/; the lab's indexer is another container, so they are staged here
-# under the names the generated <indexer><ssl> block already uses -- the operator-staged path
-# of docs/ref/getting-started/installation.md (no import marker: validated, never replaced).
+# certs/indexer-ca.pem and WAZUH_INDEXER_MANAGER_PASSWORD resolve ("Unresolved credentials").
+# A single-host install imports both from /etc/wazuh-indexer/export/; the lab's indexer is
+# another container, so the CA is staged here under the name the generated <indexer><ssl>
+# block already uses -- the operator-staged path of docs/ref/getting-started/installation.md
+# (no import marker: validated, never replaced).
 #
 # The indexer authenticates the manager by client certificate, with admin.pem -- its DN is
 # the one opensearch.yml pins as plugins.security.authcz.admin_dn -- and the CA is the lab's.
+# The generated block names no client pair, so the staged one is added to it, once: this runs
+# on every boot.
 if [[ -d /lab-certs-indexer ]]; then
     install -o root -g wazuh-manager -m 640 /lab-certs-indexer/root-ca.pem \
         "$CONF_DIR/certs/indexer-ca.pem"
@@ -111,17 +113,20 @@ if [[ -d /lab-certs-indexer ]]; then
         "$CONF_DIR/certs/indexer-connector.pem"
     install -o root -g wazuh-manager -m 640 /lab-certs-indexer/admin-key.pem \
         "$CONF_DIR/certs/indexer-connector-key.pem"
+    if ! grep -q '<certificate>[^<]*indexer-connector\.pem</certificate>' "$CONF"; then
+        sed -i "/<indexer>/,/<\/indexer>/s|^\( *\)</certificate_authorities>|&\n\1<certificate>$CONF_DIR/certs/indexer-connector.pem</certificate>\n\1<key>$CONF_DIR/certs/indexer-connector-key.pem</key>|" "$CONF"
+    fi
 else
-    echo "[entrypoint] !! no /lab-certs-indexer: certs/indexer-ca.pem and the indexer-connector pair" \
-         "are missing, so the start will be refused" >&2
+    echo "[entrypoint] !! no /lab-certs-indexer: certs/indexer-ca.pem is missing," \
+         "so the start will be refused" >&2
 fi
 
 # The password of the indexer's wazuh-manager user, through local.env (root, 0600, one link):
 # the resolver stores it in the keystore at the first start that finds none there, and never
-# replaces it afterwards. The lab indexer authenticates the manager by its client certificate,
-# so the default only has to satisfy the password rule (12-64 characters, upper and lower case,
-# a digit and a symbol); set LAB_INDEXER_MANAGER_PASSWORD to the indexer's real one when it has
-# a wazuh-manager user. A local.env already present (staged by a scenario) is left alone.
+# replaces it afterwards. The lab indexer authenticates the manager by the client certificate
+# configured above, so the default only has to satisfy the password rule (12-64 characters,
+# upper and lower case, a digit and a symbol); set LAB_INDEXER_MANAGER_PASSWORD to the
+# indexer's real one when it has a wazuh-manager user. A local.env already present (staged by a scenario) is left alone.
 if [[ ! -e "$CONF_DIR/local.env" ]]; then
     install -m 600 -o root -g root /dev/null "$CONF_DIR/local.env"
     printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" "${LAB_INDEXER_MANAGER_PASSWORD:-Lab.Indexer.Passw0rd}" \
