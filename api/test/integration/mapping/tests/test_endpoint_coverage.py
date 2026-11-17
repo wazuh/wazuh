@@ -85,17 +85,44 @@ def test_unmatched_and_misplaced_stages(operations):
     assert 'test_x_endpoints.tavern.yaml:12: 405 asserted on the declared operation GET /agents' in errors
 
 
-def test_401_is_accepted_where_the_api_hides_the_route(operations):
-    """Without a valid token an undeclared path or method answers 401, which covers no bucket."""
-    stages = [coverage.Stage('test_x_endpoints.tavern.yaml', 3, 'GET', '/nope', (401,)),
-              coverage.Stage('test_x_endpoints.tavern.yaml', 9, 'DELETE', '/agents', (401,)),
-              coverage.Stage('test_x_endpoints.tavern.yaml', 12, 'GET', '/nope', (403,)),
-              coverage.Stage('test_x_endpoints.tavern.yaml', 15, 'DELETE', '/agents', (200,))]
+def test_401_is_accepted_where_the_test_probes_an_undeclared_route(operations):
+    """Without a valid token an undeclared path or method answers 401, which covers no bucket. It is accepted only
+    in a test marked `undeclared_route`, so a misspelled path still fails."""
+    stages = [coverage.Stage('test_x_endpoints.tavern.yaml', 3, 'GET', '/nope', (401,), undeclared_route=True),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 9, 'DELETE', '/agents', (401,), undeclared_route=True),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 12, 'GET', '/nope', (403,), undeclared_route=True),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 15, 'DELETE', '/agents', (200,), undeclared_route=True),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 18, 'GET', '/agent/summary/os', (401,)),
+              coverage.Stage('test_x_endpoints.tavern.yaml', 21, 'DELETE', '/agents', (401,))]
     errors = coverage.evaluate(operations, stages, [])
     assert not any(':3:' in e or ':9:' in e for e in errors)
     assert 'test_x_endpoints.tavern.yaml:12: GET /nope matches no spec path' in errors
     assert any(e.startswith('test_x_endpoints.tavern.yaml:15: DELETE is not declared for /agents') for e in errors)
+    assert 'test_x_endpoints.tavern.yaml:18: GET /agent/summary/os matches no spec path' in errors
+    assert any(e.startswith('test_x_endpoints.tavern.yaml:21: DELETE is not declared for /agents') for e in errors)
     assert not any('method_not_allowed' in op.covered for op in operations if op.path == '/agents')
+
+
+def test_load_stages_reads_the_undeclared_route_mark(tmp_path):
+    """The mark applies to every stage of the test that carries it, and only to that test."""
+    (tmp_path / 'test_x_endpoints.tavern.yaml').write_text(
+        'test_name: marked\n'
+        'marks:\n'
+        '  - undeclared_route\n'
+        '  - parametrize:\n'
+        '      key: path\n'
+        '      vals: [/nope, /agents/001/nope]\n'
+        'stages:\n'
+        '  - request: {url: "{path}"}\n'
+        '    response: {status_code: 401}\n'
+        '---\n'
+        'test_name: unmarked\n'
+        'stages:\n'
+        '  - request: {url: /nope}\n'
+        '    response: {status_code: 401}\n')
+    stages = coverage.load_stages(str(tmp_path))
+    assert [(s.url_path, s.undeclared_route) for s in stages] == [
+        ('/nope', True), ('/agents/001/nope', True), ('/nope', False)]
 
 
 @pytest.mark.parametrize('exception, message', [

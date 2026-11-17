@@ -418,6 +418,7 @@ stages:
 test_name: 404 on routes the spec does not declare
 
 marks:
+  - undeclared_route
   - parametrize:
       key: path
       vals:
@@ -479,6 +480,7 @@ stages:
 test_name: A declared route written with a trailing slash is not redirected
 
 marks:
+  - undeclared_route
   - parametrize:
       key: [method, path]
       vals:
@@ -519,6 +521,7 @@ stages:
 test_name: An Expect header does not tell an undeclared route from a declared one
 
 marks:
+  - undeclared_route
   - parametrize:
       key: path
       vals:
