@@ -84,6 +84,30 @@ static int teardown_blocked_child(void **state) {
     return teardown(state);
 }
 
+#define HANDLER_EXIT_CODE 42
+
+// Stands for the shutdown handler of wazuh-modulesd: a child that runs it exits with this code
+static void exit_handler(int signum) {
+    (void)signum;
+    _exit(HANDLER_EXIT_CODE);
+}
+
+static struct sigaction previous_sigterm;
+
+static int setup_blocked_child_with_handler(void **state) {
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = exit_handler;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGTERM, &action, &previous_sigterm);
+    return setup_blocked_child(state);
+}
+
+static int teardown_blocked_child_with_handler(void **state) {
+    sigaction(SIGTERM, &previous_sigterm, NULL);
+    return teardown_blocked_child(state);
+}
+
 static time_t elapsed_since(time_t start) {
     return time(NULL) - start;
 }
@@ -318,6 +342,22 @@ static void test_wm_exec_stops_child_blocked_before_setsid_without_output(void *
     assert_child_terminated_directly();
 }
 
+// The parent's SIGTERM handler is not the child's: the timeout's SIGTERM ends the child.
+static void test_wm_exec_child_does_not_run_parent_sigterm_handler(void **state) {
+    (void)state;
+    char command[] = "echo never";
+    char *output = NULL;
+    int status = 0;
+
+    const int ret = wm_exec(command, &output, &status, 1, NULL);
+
+    assert_int_equal(ret, WM_ERROR_TIMEOUT);
+    assert_int_equal(status, 128 + SIGTERM);
+    assert_child_terminated_directly();
+
+    os_free(output);
+}
+
 // The command runs from the directory it is given.
 static void test_wm_exec_in_dir_runs_command_there(void **state) {
     (void)state;
@@ -334,8 +374,25 @@ static void test_wm_exec_in_dir_runs_command_there(void **state) {
     os_free(output);
 }
 
-// A command that cannot change to its directory is not run from another one.
+// A command that cannot change to its directory is not run from another one, and the reason is logged.
 static void test_wm_exec_in_dir_does_not_run_command_elsewhere(void **state) {
+    (void)state;
+    char command[] = "echo ran";
+    char *output = NULL;
+    int status = -1;
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to change working directory to '/nonexistent/wm_exec_dir': No such file or directory (2)");
+
+    const int ret = wm_exec_in_dir(command, &output, &status, 5, NULL, "/nonexistent/wm_exec_dir");
+
+    assert_int_equal(ret, -1);
+    assert_null(output);
+    assert_int_equal(status, 0);
+    assert_int_equal(kills_count, 0);
+}
+
+// The same, when only the child finds out: a file passes the check but chdir() fails.
+static void test_wm_exec_in_dir_does_not_run_command_from_a_file(void **state) {
     (void)state;
     char command[] = "echo ran";
     char *output = NULL;
@@ -343,7 +400,7 @@ static void test_wm_exec_in_dir_does_not_run_command_elsewhere(void **state) {
 
     expect_any(__wrap__mdebug1, formatted_msg); // Invalid command
 
-    const int ret = wm_exec_in_dir(command, &output, &status, 5, NULL, "/nonexistent/wm_exec_dir");
+    const int ret = wm_exec_in_dir(command, &output, &status, 5, NULL, "/bin/sh");
 
     assert_int_equal(ret, -1);
     assert_null(output);
@@ -447,7 +504,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_exec_stops_child_blocked_before_setsid, setup_blocked_child, teardown_blocked_child),
         cmocka_unit_test_setup_teardown(test_wm_exec_stops_child_blocked_before_setsid_without_output, setup_blocked_child, teardown_blocked_child),
         cmocka_unit_test_setup_teardown(test_wm_exec_in_dir_runs_command_there, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_child_does_not_run_parent_sigterm_handler, setup_blocked_child_with_handler, teardown_blocked_child_with_handler),
         cmocka_unit_test_setup_teardown(test_wm_exec_in_dir_does_not_run_command_elsewhere, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_in_dir_does_not_run_command_from_a_file, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_add_path_only_for_command, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_add_path_keeps_environment_if_too_large, setup, teardown),
     };
