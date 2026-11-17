@@ -98,8 +98,13 @@ TEST_F(ReflectiveJsonTest, EscapedStringValue)
 
 TEST_F(ReflectiveJsonTest, EscapedMapKeys)
 {
-    std::unordered_map<std::string, int> map {
-        {R"(x":1,"ubuntu":0,"y)", 1}, {"back\\slash", 2}, {"ctrl\n\t\x01", 3}, {"ubuntu", 4}};
+    std::unordered_map<std::string, int> map {{R"(x":1,"ubuntu":0,"y)", 1},
+                                              {"back\\slash", 2},
+                                              {"ctrl\n\t\x01", 3},
+                                              {"ubuntu", 4},
+                                              {std::string("nul\0key", 7), 5},
+                                              {"caf\xc3\xa9 \xe2\x82\xac", 6},
+                                              {"", 7}};
 
     std::string result = jsonFieldToString(map);
 
