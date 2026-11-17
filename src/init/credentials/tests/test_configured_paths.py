@@ -449,6 +449,35 @@ def test_no_indexer_client_pair(resolver, sandbox):
     assert run(resolver, sandbox, "--prestart")[0::2] == (0, "")
 
 
+def test_unconfigured_pair_is_not_imported_when_the_indexer_publishes_one(resolver, sandbox):
+    sandbox.control(conf_dump=indexer_conf(sandbox, pair=("", "")))
+    code, out, err = run(resolver, sandbox, "--install")
+    assert (code, err) == (0, "") and f"{certs(sandbox, 'indexer-ca.pem')}: imported" in out
+    for mode in ("--check", "--upgrade", "--prestart"):
+        assert run(resolver, sandbox, mode)[0::2] == (0, ""), mode
+    assert not os.path.exists(certs(sandbox, "indexer-connector.pem"))
+    assert not os.path.exists(certs(sandbox, ".indexer-connector.imported"))
+
+
+def test_files_left_by_an_earlier_install_do_not_refuse_the_start(resolver, sandbox):
+    assert run(resolver, sandbox, "--install")[0] == 0        # default stub: the pair is configured and imported
+    export = os.path.join(sandbox.conf, "export")
+    for name, mode in (("dashboard-client.pem", 0o644), ("dashboard-client-key.pem", 0o600),
+                       (".dashboard-client.issued", 0o600)):
+        sandbox.write(os.path.join(export, name), b"left by an earlier release\n", mode=mode)
+    sandbox.control(conf_dump=indexer_conf(sandbox, pair=("", "")))
+
+    def kept():
+        return {k: v for k, v in sandbox.tree_state().items() if k.startswith(("conf/export", "conf/certs"))}
+
+    before = kept()
+    for mode in ("--check", "--upgrade", "--prestart"):
+        assert run(resolver, sandbox, mode)[0::2] == (0, ""), mode
+    assert kept() == before
+    assert run(resolver, sandbox, "--clear")[0] == 0
+    assert not os.listdir(export)
+
+
 @pytest.mark.parametrize("pair,empty,other", [(("my-client.pem", ""), "key", "certificate"),
                                               (("", "my-client-key.pem"), "certificate", "key")])
 def test_indexer_certificate_and_key_together(resolver, sandbox, pair, empty, other):
