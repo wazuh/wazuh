@@ -233,11 +233,11 @@
     },
     {
       "name": "cpython",
-      "version": "3.12.14",
-      "revision": "v3.12.14",
+      "version": "3.12.16",
+      "revision": "v3.12.16",
       "source": "upstream",
       "url": "https://github.com/python/cpython/archive/refs/tags/v{version}.tar.gz",
-      "upstream_sha256": "5b8f5847fc28eea401f7415dc367b8365485ee97f068cd1a0cee124a096bb171",
+      "upstream_sha256": "e0fac3812252d674de7d82d206d2205297f6da97702a3db5715d1f91f1217264",
       "format": "tar.gz",
       "strip": 1,
       "patches": [],
@@ -259,7 +259,7 @@
         "zlib"
       ],
       "cpe": "cpe:2.3:a:python:python:*:*:*:*:*:*:*:*",
-      "purl": "pkg:github/python/cpython@v3.12.14",
+      "purl": "pkg:github/python/cpython@v3.12.16",
       "license": "PSF-2.0",
       "author": "Guido van Rossum",
       "homepage": "https://github.com/python/cpython",
