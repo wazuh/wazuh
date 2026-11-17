@@ -299,6 +299,52 @@ static void test_wdb_fim_insert_entry2_path_null(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_wdb_fim_insert_entry2_path_not_string(void **state) {
+    int ret;
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+    wdb_t * wdb = *state;
+
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateNumber(123));
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no valid path argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_index_fallback_not_string(void **state) {
+    int ret;
+    cJSON* data = cJSON_Parse(KEY_V3_ENTRY);
+    wdb_t * wdb = *state;
+
+    cJSON_DeleteItemFromObject(data, "path");
+    cJSON_ReplaceItemInObject(data, "index", cJSON_CreateNumber(123));
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no valid path argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_insert_entry2_registry_index_not_string_v3(void **state) {
+    int ret;
+    cJSON* data = cJSON_Parse(KEY_V3_ENTRY);
+    wdb_t * wdb = *state;
+
+    cJSON_ReplaceItemInObject(data, "index", cJSON_CreateNumber(123));
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) version 3.0 fim/save request with no valid index argument.");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
 static void test_wdb_fim_insert_entry2_timestamp_null(void **state) {
     int ret;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
@@ -774,6 +820,9 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_wdb_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_data_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_path_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_path_not_string),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_index_fallback_not_string),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_index_not_string_v3),
         cmocka_unit_test(test_wdb_fim_insert_entry2_timestamp_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_attributes_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_fail_cache),
