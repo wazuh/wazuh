@@ -27,7 +27,6 @@
 #include <algorithm>
 #include <atomic>
 #include <exception>
-#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -46,7 +45,8 @@ namespace remoted::test
     class UdsHttpTestServer
     {
     public:
-        /// @param socketPath Where to listen; a stale file there is removed first.
+        /// @param socketPath Where to listen. The server owns the file: start() replaces a stale socket there and
+        /// refuses a path that is not a socket, and teardown unlinks only the socket it bound.
         /// @param name Names the fake in the error a failed start() throws.
         UdsHttpTestServer(std::string socketPath, std::string name)
             : m_socketPath(std::move(socketPath))
@@ -72,8 +72,9 @@ namespace remoted::test
                 worker.thread.join();
             }
 
+            // Also unlinks the socket, and only the one this server bound. Nothing here may throw: this destructor
+            // runs too when a fake's constructor throws after its server was built.
             m_server->stop();
-            std::filesystem::remove(m_socketPath);
         }
 
         UdsHttpTestServer(const UdsHttpTestServer&) = delete;
@@ -107,8 +108,6 @@ namespace remoted::test
         /// @throws std::runtime_error naming the fake and the socket when the server cannot start.
         void start()
         {
-            std::filesystem::remove(m_socketPath);
-
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = m_socketPath;
             // Route lambdas only hand the request to a worker, so one I/O thread never waits on a handler.
