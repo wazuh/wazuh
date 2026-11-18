@@ -509,7 +509,7 @@ class Handler(asyncio.Protocol):
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 # A divided frame is only decrypted once the whole message is joined, so it cannot prove the key.
-                # No sender builds a frame larger than request_chunk, which MAX_CHUNK_SIZE bounds.
+                # A non-divided frame is at most request_chunk plus Fernet overhead (~6.7 MiB), below MAX_CHUNK_SIZE.
                 if self.my_fernet is not None and not self.peer_authenticated:
                     if self.in_msg.flag_divided:
                         raise exception.WazuhClusterError(
