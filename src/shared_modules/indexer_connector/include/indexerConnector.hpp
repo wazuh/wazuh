@@ -282,7 +282,9 @@ public:
      * @param keepAlive Time to keep the PIT alive (e.g., "5m").
      * @param expandWildcards If true, expands wildcard patterns to match indices.
      * @return A PointInTime object containing the PIT ID and creation time.
-     * @throws IndexerConnectorException if the PIT creation fails.
+     * @throws IndexerConnectorException if the PIT creation fails; statusCode() holds the indexer's HTTP
+     *         status, 0 or negative if there was none. The indexer is asked to refuse a PIT some shards
+     *         cannot take part in (allow_partial_pit_creation=false), so it answers 503 instead.
      */
     PointInTime createPointInTime(const std::vector<std::string>& indices,
                                   std::string_view keepAlive,
@@ -307,7 +309,9 @@ public:
      * @param source Optional source filtering configuration.
      * @param slice Optional slice object for parallel PIT consumption (e.g. {"id": 0, "max": 4}).
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
+     *         status. The indexer is asked to refuse an answer it cannot give over every shard
+     *         (allow_partial_search_results=false). A 429 is retried within the retry budget first.
      */
     nlohmann::json search(const PointInTime& pit,
                           std::size_t size,
@@ -587,7 +591,9 @@ public:
      * @param keepAlive Time to keep the PIT alive (e.g., "5m" for 5 minutes, "1h" for 1 hour).
      * @param expandWildcards If true, expands wildcard patterns to match indices.
      * @return A PointInTime object containing the PIT ID and creation time.
-     * @throws IndexerConnectorException if the PIT creation fails.
+     * @throws IndexerConnectorException if the PIT creation fails; statusCode() holds the indexer's HTTP
+     *         status, 0 or negative if there was none. The indexer is asked to refuse a PIT some shards
+     *         cannot take part in (allow_partial_pit_creation=false), so it answers 503 instead.
      *
      * Example:
      * auto pit = connector.createPointInTime({"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders"}, "5m", true);
@@ -617,7 +623,9 @@ public:
      * @param searchAfter Optional search_after array for pagination (must be valid JSON array).
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
+     *         status. The indexer is asked to refuse an answer it cannot give over every shard
+     *         (allow_partial_search_results=false).
      *
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
@@ -647,7 +655,8 @@ public:
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
      * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
-     *         status (404 for a missing index), 0 or negative if there was none.
+     *         status (404 for a missing index), 0 or negative if there was none. The indexer is asked to
+     *         refuse an answer it cannot give over every shard (allow_partial_search_results=false).
      *
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};

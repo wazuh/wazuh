@@ -1011,8 +1011,8 @@ public:
         const std::string baseUrl {m_selector->getNext()};
         std::string url;
         // Pre-reserve: base_url + '/' + indices + '/_search/point_in_time?keep_alive=' + keepAlive + potential
-        // '&expand_wildcards=all'
-        url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25);
+        // '&expand_wildcards=all' + '&allow_partial_pit_creation=false'
+        url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25 + 33);
         url = baseUrl;
         url += "/";
         url += indicesStr;
@@ -1024,10 +1024,15 @@ public:
             url += "&expand_wildcards=all";
         }
 
+        // A PIT over the shards that happen to be reachable hides the missing ones from every search
+        // that uses it, so the indexer must refuse to create it instead.
+        url += "&allow_partial_pit_creation=false";
+
         // Variables to capture the response
         std::string pitId;
         uint64_t creationTime = 0;
         bool success = false;
+        long errorStatus = 0;
         std::string errorMessage;
 
         const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](std::string&& response)
@@ -1062,9 +1067,10 @@ public:
             }
         };
 
-        const auto onError =
-            [this, &errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError = [this, &errorMessage, &errorStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            errorStatus = statusCode;
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
                            ", Response: " + responseBody;
             LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
@@ -1077,7 +1083,9 @@ public:
 
         if (!success)
         {
-            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage,
+                                            IndexerConnectorException::Category::Other,
+                                            errorStatus);
         }
 
         // Return the PointInTime object
@@ -1169,9 +1177,9 @@ public:
         // Build the URL
         const std::string baseUrl {m_selector->getNext()};
         std::string url;
-        url.reserve(baseUrl.size() + 10); // base_url + '/_search'
+        url.reserve(baseUrl.size() + 46); // base_url + '/_search?allow_partial_search_results=false'
         url = baseUrl;
-        url += "/_search";
+        url += "/_search?allow_partial_search_results=false";
 
         // Variables to capture the response
         nlohmann::json hitsResult;
@@ -1202,7 +1210,9 @@ public:
         const auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
-                                            error + ". Response: " + responseBody);
+                                                error + ". Response: " + responseBody,
+                                            IndexerConnectorException::Category::Other,
+                                            statusCode);
         };
 
         // Execute the POST request synchronously
@@ -1254,7 +1264,7 @@ public:
         url = m_selector->getNext();
         url += "/";
         url += index;
-        url += "/_search";
+        url += "/_search?allow_partial_search_results=false";
 
         // Variables to capture the response
         bool success = false;
