@@ -1745,6 +1745,7 @@ async def test_worker_add_tasks(ar_task, api_request_queue, get_manager_conf_moc
         def __init__(self):
             self.sync_integrity = "0101"
             self.sync_agent_info = "info"
+            self.follow_master_vulnerability_detection = "follow"
 
     class ActiveResponseTaskMock:
         """Auxiliary class."""
@@ -1763,15 +1764,191 @@ async def test_worker_add_tasks(ar_task, api_request_queue, get_manager_conf_moc
     nested_worker.active_response_task = ActiveResponseTaskMock()
 
     tasks = nested_worker.add_tasks()
-    assert tasks[:4] == ['task', ('0101', ()), ('info', ()), ('True', ())]
-    assert callable(tasks[4][0])
-    assert tasks[4][1] == ()
+    assert tasks[:5] == ['task', ('0101', ()), ('info', ()), ('follow', ()), ('True', ())]
+    assert callable(tasks[5][0])
+    assert tasks[5][1] == ()
     get_manager_conf_mock.assert_called_once_with(section="indexer")
 
     # Indexer tasks are lazily executed through the callable added to tasks.
-    run_active_response_job = tasks[4][0]
+    run_active_response_job = tasks[5][0]
     assert run_active_response_job() == ("True", ())
     manage_indexer_tasks_mock.assert_called_once_with([nested_worker.active_response_task.run])
+
+
+# Vulnerability detection is on or off for the whole cluster and the master decides: after connecting, a worker
+# asks for the master's setting, keeps it where the vulnerability scanner reads it at start, and reloads itself
+# when its scanner is running with the other value.
+
+def get_following_worker_handler(event_loop, tmp_path, master_answer):
+    """Return a connected WorkerHandler whose master answers `vd_enabled` with `master_answer`."""
+    worker_handler = get_worker_handler(event_loop)
+    worker_handler.logger = logging.getLogger('wazuh')
+    worker_handler.connected = True
+    worker_handler.send_request = AsyncMock(return_value=master_answer)
+    return worker_handler, str(tmp_path / 'master_enabled')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('master_answer, local_enabled', [(b'no', True), (b'yes', False)])
+async def test_worker_handler_follow_master_vd_reloads_on_a_difference(master_answer, local_enabled, event_loop,
+                                                                       tmp_path):
+    """The scanner runs with the other value: the master's is stored and this node is reloaded."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, master_answer)
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled', return_value=local_enabled), \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock, \
+            patch.object(logging.getLogger('wazuh'), 'warning') as warning_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    worker_handler.send_request.assert_awaited_once_with(command=b'vd_enabled', data=b'')
+    assert worker.read_text(path) == master_answer.decode()
+    assert worker.read_text(path + '.reloaded') == master_answer.decode()
+    reload_mock.assert_called_once_with()
+    warning_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('master_answer, local_enabled', [(b'yes', True), (b'no', False)])
+async def test_worker_handler_follow_master_vd_agreeing_does_not_reload(master_answer, local_enabled, event_loop,
+                                                                        tmp_path):
+    """The scanner already follows the master: the value is stored, nothing is reloaded, and the record of an
+    earlier reload is dropped."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, master_answer)
+    worker.write_text_atomically(path + '.reloaded', master_answer.decode())
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled', return_value=local_enabled), \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    assert worker.read_text(path) == master_answer.decode()
+    assert not os.path.exists(path + '.reloaded')
+    reload_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_does_not_reload_twice_for_the_same_value(event_loop, tmp_path):
+    """A reload that did not make the scanner follow is not repeated on every reconnection."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+    worker.write_text_atomically(path + '.reloaded', 'no')
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled', return_value=True), \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock, \
+            patch.object(logging.getLogger('wazuh'), 'error') as error_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    reload_mock.assert_not_called()
+    error_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_ignores_an_answer_that_is_not_a_setting(event_loop, tmp_path):
+    """A master that could not read its configuration answers `unknown`: nothing is stored or reloaded."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'unknown')
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled') as status_mock, \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    assert not os.path.exists(path)
+    status_mock.assert_not_called()
+    reload_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_keeps_asking_a_scanner_that_is_not_up_yet(event_loop, tmp_path):
+    """The local scanner does not answer right after a start: it is asked until it does, then compared."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_INTERVAL', 0), \
+            patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_WARN_AFTER', 2), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled',
+                  side_effect=[exception.WazuhInternalError(2026), exception.WazuhInternalError(2026),
+                               exception.WazuhInternalError(2026), True]) as status_mock, \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock, \
+            patch.object(logging.getLogger('wazuh'), 'warning') as warning_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    assert worker.read_text(path) == 'no'
+    assert status_mock.call_count == 4
+    # One warning for the silence, one for the difference found once it answered.
+    assert warning_mock.call_count == 2
+    reload_mock.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_stops_asking_when_the_connection_is_lost(event_loop, tmp_path):
+    """The task belongs to one connection: the next one starts it again."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+
+    def scanner_down():
+        worker_handler.connected = False
+        raise exception.WazuhInternalError(2026)
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_INTERVAL', 0), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled',
+                  side_effect=scanner_down) as status_mock, \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    # The master's value is kept for the scanner's next start either way.
+    assert worker.read_text(path) == 'no'
+    assert status_mock.call_count == 1
+    reload_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_a_refused_reload_is_tried_again(event_loop, tmp_path):
+    """A reload request that failed is not a reload: no record of it stays, so the next connection asks again."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled', return_value=True), \
+            patch('wazuh.core.cluster.worker.manager_reload',
+                  side_effect=exception.WazuhInternalError(1014)) as reload_mock, \
+            patch.object(logging.getLogger('wazuh'), 'error') as error_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    reload_mock.assert_called_once_with()
+    assert not os.path.exists(path + '.reloaded')
+    error_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_never_raises(event_loop, tmp_path):
+    """The tasks of a connection are gathered: an exception here would close the connection to the master."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+    worker_handler.send_request = AsyncMock(side_effect=exception.WazuhClusterError(3020))
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock, \
+            patch.object(logging.getLogger('wazuh'), 'error') as error_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    assert not os.path.exists(path)
+    reload_mock.assert_not_called()
+    error_mock.assert_called_once()
+
+
+@pytest.mark.parametrize('status, expected', [({'enabled': False}, False), ({'enabled': True}, True), ({}, True)])
+def test_local_vulnerability_detection_enabled(status, expected):
+    """The scanner's own answer; one that does not say is enabled, as every reader of that field has it."""
+    with patch('wazuh.core.cluster.worker.VdHTTPClient') as client_mock:
+        client_mock.return_value.get_status.return_value = status
+        assert worker.local_vulnerability_detection_enabled() is expected
+        client_mock.return_value.close.assert_called_once_with()
 
 
 @pytest.mark.asyncio

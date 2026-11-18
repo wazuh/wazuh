@@ -92,6 +92,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#41327](https://github.com/wazuh/wazuh/issues/41327) | Fixed stale vulnerability findings and an alert per existing vulnerability after vulnerability detection had been disabled on a manager node. Worker nodes now apply the master's `vulnerability-detection.enabled`, so the module is enabled or disabled for the whole cluster, and a node that ran with it disabled scans every agent once, without alerts, the first time it starts enabled. |
 | [#31746](https://github.com/wazuh/wazuh/issues/31746) | Fixed Vulnerability Detector version matcher logic for improved detection accuracy. |
 | [#33108](https://github.com/wazuh/wazuh/issues/33108) | Fixed Cloudtrail log ingestion parsing errors. |
 | [#34082](https://github.com/wazuh/wazuh/issues/34082) | Fixed `wazuh-manager-db` error assigning groups by avoiding the keyentries counter as index. |

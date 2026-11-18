@@ -19,12 +19,66 @@ from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import local_path, log_subprocess_execution, safe_join
+from wazuh.core.cluster.utils import local_path, log_subprocess_execution, manager_reload, safe_join
 from wazuh.core.configuration import get_manager_conf
+from wazuh.core.engine_http import VdHTTPClient
 from wazuh.core.exception import WazuhException
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
+
+
+# Where a worker keeps the master's `vulnerability-detection.enabled`. wazuh-manager-modulesd reads it when it starts
+# and applies it instead of the local value (src/config/src/wmodules-vulnerability-detection.c).
+MASTER_VD_ENABLED_PATH = os.path.join(common.WAZUH_PATH, 'queue', 'vd', 'master_enabled')
+# The value this node last reloaded itself for. Stops a node that cannot apply the master's value from reloading
+# on every reconnection.
+MASTER_VD_RELOADED_PATH = MASTER_VD_ENABLED_PATH + '.reloaded'
+# Seconds between two attempts to ask the local vulnerability scanner for its status.
+LOCAL_VD_STATUS_INTERVAL = 5
+# Failed attempts after which the silence of the local scanner is reported once, at warning level.
+LOCAL_VD_STATUS_WARN_AFTER = 12
+
+
+def write_text_atomically(path: str, content: str) -> None:
+    """Replace `path` with `content` so a reader never sees half of it.
+
+    Parameters
+    ----------
+    path : str
+        File to write.
+    content : str
+        Its new content.
+    """
+    tmp_path = f'{path}.tmp'
+    with open(tmp_path, 'w') as f:
+        f.write(content)
+    os.chmod(tmp_path, 0o640)
+    os.replace(tmp_path, path)
+
+
+def read_text(path: str) -> str:
+    """Return the stripped content of `path`, or an empty string when it cannot be read."""
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
+def local_vulnerability_detection_enabled() -> bool:
+    """Ask this node's vulnerability scanner whether it is running enabled.
+
+    Returns
+    -------
+    bool
+        The `enabled` field of the scanner's status; a scanner that does not report it is enabled.
+    """
+    vd_client = VdHTTPClient()
+    try:
+        return bool(vd_client.get_status().get('enabled', True))
+    finally:
+        vd_client.close()
 
 
 class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
@@ -670,6 +724,92 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
+    async def follow_master_vulnerability_detection(self):
+        """Apply the master's `vulnerability-detection.enabled` on this node.
+
+        Vulnerability detection is on or off for the whole cluster and the master decides. A node that stores the
+        agents' inventory without scanning it while another node scans leaves findings that depend on which node the
+        load balancer picked for each agent.
+
+        Asynchronous task that runs once per connection to the master:
+
+        1. Ask the master for its setting and keep it in `queue/vd/master_enabled`, which the vulnerability scanner
+           reads at its next start. The file is also the answer while the master cannot be reached.
+        2. Compare it with what the local scanner is running with. When they differ, reload this node so the scanner
+           starts again with the master's value.
+
+        A node is never reloaded twice in a row for the same value: if the first reload did not make the scanner
+        follow, a second one will not either, and the mismatch is reported as an error instead. A reload request that
+        was refused does not count as one.
+
+        The local scanner is asked until it answers or the connection to the master is lost.
+
+        Nothing here may raise: the tasks of a connection are gathered, and an exception would close it.
+        """
+        logger = self.logger
+
+        try:
+            while not self.connected:
+                await asyncio.sleep(1)
+
+            answer = (await self.send_request(command=b'vd_enabled', data=b'')).decode()
+            if answer not in ('yes', 'no'):
+                logger.debug(f"The master did not report its vulnerability detection setting ('{answer}'); "
+                             "this node keeps its own.")
+                return
+            master_enabled = answer == 'yes'
+
+            write_text_atomically(MASTER_VD_ENABLED_PATH, answer + '\n')
+
+            # Asked until it answers, for as long as this connection lasts: the scanner's socket is not up right
+            # after a start, and giving up would leave this node on the other value until its next reconnection,
+            # which may be days away.
+            local_enabled = None
+            attempts = 0
+            while local_enabled is None:
+                if not self.connected:
+                    return
+                try:
+                    local_enabled = await self.loop.run_in_executor(None, local_vulnerability_detection_enabled)
+                except Exception as e:
+                    attempts += 1
+                    if attempts == LOCAL_VD_STATUS_WARN_AFTER:
+                        logger.warning("The local vulnerability scanner is not answering; it cannot be checked that it "
+                                       "follows the master's setting (vulnerability detection "
+                                       f"{'enabled' if master_enabled else 'disabled'}) yet. Still trying.")
+                    else:
+                        logger.debug(f"Could not ask the local vulnerability scanner for its status: {e}")
+                    await asyncio.sleep(LOCAL_VD_STATUS_INTERVAL)
+
+            if local_enabled == master_enabled:
+                with contextlib.suppress(OSError):
+                    os.remove(MASTER_VD_RELOADED_PATH)
+                return
+
+            states = {True: 'enabled', False: 'disabled'}
+            if read_text(MASTER_VD_RELOADED_PATH) == answer:
+                logger.error(f"Vulnerability detection is {states[master_enabled]} on the master node and still "
+                             f"{states[local_enabled]} on this node after reloading it. Check that "
+                             f"'{MASTER_VD_ENABLED_PATH}' can be read by wazuh-manager-modulesd and restart this node.")
+                return
+
+            logger.warning(f"Vulnerability detection is {states[master_enabled]} on the master node and "
+                           f"{states[local_enabled]} on this node. Reloading this node to apply the master's setting.")
+            # Recorded before the request, not after: a reload stops this daemon, and a node that reloaded without
+            # the record would reload again on every connection if its scanner cannot follow. A request that was
+            # refused is not a reload, so the record is taken back and the next connection tries again.
+            write_text_atomically(MASTER_VD_RELOADED_PATH, answer + '\n')
+            try:
+                await self.loop.run_in_executor(None, manager_reload)
+            except Exception:
+                with contextlib.suppress(OSError):
+                    os.remove(MASTER_VD_RELOADED_PATH)
+                raise
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"Could not apply the master's vulnerability detection setting: {e}")
+
     async def sync_agent_info(self):
         """Obtain information from agents reporting this worker and send it to the master.
 
@@ -1026,6 +1166,7 @@ class Worker(client.AbstractClientManager):
         """
         tasks = super().add_tasks() + [(self.client.sync_integrity, tuple()),
                                       (self.client.sync_agent_info, tuple()),
+                                      (self.client.follow_master_vulnerability_detection, tuple()),
                                       (self.dapi.run, tuple())]
         try:
             _indexer_conf = get_manager_conf(section="indexer")["indexer"].get("hosts")
