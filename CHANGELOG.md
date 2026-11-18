@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
+- Enabled compression (lz4 and zstd) for the vulnerability detection feed database and the indexer connector local databases to reduce their disk usage. ([#41581](https://github.com/wazuh/wazuh/pull/41581))
 
 ### Agent
 
