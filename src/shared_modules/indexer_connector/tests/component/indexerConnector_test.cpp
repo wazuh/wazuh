@@ -25,8 +25,10 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -121,6 +123,50 @@ namespace
 
         std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
         CAPTURED_LOGS.emplace_back(logLevel, formattedStr);
+    }
+
+    /**
+     * @brief Opens a closed database read-only and returns the compression names of its SST files, per column.
+     *
+     * @param path Database path.
+     * @return std::map<std::string, std::set<std::string>> Column name to the compression names of its files.
+     */
+    std::map<std::string, std::set<std::string>> tableCompressions(const std::string& path)
+    {
+        const rocksdb::Options options;
+        std::vector<std::string> names;
+        if (const auto status {rocksdb::DB::ListColumnFamilies(options, path, &names)}; !status.ok())
+        {
+            throw std::runtime_error("Failed to list columns: " + status.ToString());
+        }
+
+        std::vector<rocksdb::ColumnFamilyDescriptor> descriptors;
+        for (const auto& name : names)
+        {
+            descriptors.emplace_back(name, rocksdb::ColumnFamilyOptions());
+        }
+
+        std::vector<rocksdb::ColumnFamilyHandle*> handles;
+        rocksdb::DB* rawDb {nullptr};
+        if (const auto status {rocksdb::DB::OpenForReadOnly(options, path, descriptors, &handles, &rawDb)};
+            !status.ok())
+        {
+            throw std::runtime_error("Failed to open read-only: " + status.ToString());
+        }
+        const std::unique_ptr<rocksdb::DB> db {rawDb};
+
+        std::map<std::string, std::set<std::string>> result;
+        for (auto* handle : handles)
+        {
+            rocksdb::TablePropertiesCollection properties;
+            db->GetPropertiesOfAllTables(handle, &properties);
+            for (const auto& [file, table] : properties)
+            {
+                result[handle->GetName()].insert(table->compression_name);
+            }
+            db->DestroyColumnFamilyHandle(handle);
+        }
+        return result;
     }
 } // namespace
 
@@ -1865,4 +1911,123 @@ TEST_F(IndexerConnectorTest, PublishDeleteByQuerySearchPhaseFailureLogged)
         "failed'"};
     ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
                               MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+// Local database of the connector, as written by a version without compression.
+static const std::string LOCAL_DB_PATH {std::string("queue/indexer/db/") + INDEXER_NAME};
+static const auto OLD_ENTRIES {200};
+
+/**
+ * @brief Creates the connector's local database with no compression, holding "2502_<n>" entries.
+ */
+static void createOldLocalDatabase(const int entries = OLD_ENTRIES, const std::size_t valueSize = 16)
+{
+    Utils::RocksDBWrapper db {LOCAL_DB_PATH};
+    for (int i = 0; i < entries; ++i)
+    {
+        db.put("2502_" + std::to_string(i), nlohmann::json(std::string(valueSize, 'x')).dump());
+    }
+    db.flush();
+}
+
+/**
+ * @brief Checks that every entry written by createOldLocalDatabase() is still in the local database.
+ */
+static void expectOldEntries(const int entries = OLD_ENTRIES)
+{
+    Utils::RocksDBWrapper db {LOCAL_DB_PATH};
+    std::string value;
+    for (int i = 0; i < entries; ++i)
+    {
+        ASSERT_TRUE(db.get("2502_" + std::to_string(i), value)) << i;
+    }
+}
+
+/**
+ * @brief Test that a local database written without compression is used by the sync as before.
+ *
+ */
+TEST_F(IndexerConnectorTest, OldLocalDatabaseStillWorks)
+{
+    createOldLocalDatabase();
+
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})";
+        });
+
+    std::atomic<bool> reindexRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&reindexRequested](const std::string& data)
+        {
+            if (data.find(R"("index")") != std::string::npos && data.find(R"("_id":"2502_7")") != std::string::npos)
+            {
+                reindexRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    indexerConnector.sync("2502");
+
+    EXPECT_NO_THROW(waitUntil([&reindexRequested]() { return reindexRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_TRUE(searchRequested);
+    EXPECT_TRUE(reindexRequested) << "The entry of the old local database was not reindexed";
+}
+
+/**
+ * @brief Test that the files of a local database written without compression are compacted at start-up.
+ *
+ */
+TEST_F(IndexerConnectorTest, LocalDatabaseIsCompactedAtStart)
+{
+    createOldLocalDatabase();
+    ASSERT_EQ(tableCompressions(LOCAL_DB_PATH).at(rocksdb::kDefaultColumnFamilyName),
+              std::set<std::string> {"NoCompression"});
+    clearCapturedLogs();
+
+    {
+        nlohmann::json indexerConfig;
+        indexerConfig["name"] = INDEXER_NAME;
+        indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+        auto indexerConnector {
+            IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+        ASSERT_NO_THROW(
+            waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+        ASSERT_NO_THROW(waitUntil([]()
+                                  { return hasCapturedLog(Log::LOGLEVEL_INFO, "was compacted to apply compression"); },
+                                  MAX_INDEXER_INIT_TIME_MS));
+    }
+
+    EXPECT_EQ(tableCompressions(LOCAL_DB_PATH).at(rocksdb::kDefaultColumnFamilyName), std::set<std::string> {"ZSTD"});
+    expectOldEntries();
+}
+
+/**
+ * @brief Test that destroying the connector while the start-up compaction runs neither hangs nor loses data.
+ *
+ */
+TEST_F(IndexerConnectorTest, DestructorDoesNotHangDuringCompaction)
+{
+    constexpr auto ENTRIES {20000};
+    createOldLocalDatabase(ENTRIES, 1024);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        std::make_unique<IndexerConnector>(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+
+    const auto start {std::chrono::steady_clock::now()};
+    indexerConnector.reset();
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(10));
+
+    expectOldEntries(ENTRIES);
 }

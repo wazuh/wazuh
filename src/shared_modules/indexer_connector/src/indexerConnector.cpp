@@ -1170,7 +1170,29 @@ void IndexerConnector::preInitialization(
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true, Utils::RocksDBCompression::LZ4_ZSTD);
+}
+
+void IndexerConnector::startCompaction()
+{
+    m_compactionThread = std::thread(
+        [this]()
+        {
+            try
+            {
+                if (m_db->compactUncompressedColumns(&m_compactionCanceled) > 0 && !m_compactionCanceled.load())
+                {
+                    logInfo(IC_NAME,
+                            "Local database for index '%s' was compacted to apply compression.",
+                            m_indexName.c_str());
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(
+                    IC_NAME, "Unable to compact the local database for index '%s': %s", m_indexName.c_str(), e.what());
+            }
+        });
 }
 
 IndexerConnector::IndexerConnector(
@@ -1650,6 +1672,8 @@ IndexerConnector::IndexerConnector(
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [this]() { return m_stopping.load(); }));
         });
+
+    startCompaction();
 }
 
 IndexerConnector::IndexerConnector(
@@ -1743,14 +1767,22 @@ IndexerConnector::IndexerConnector(
         {
             // We don't initialize when the indexer is disabled
         });
+
+    startCompaction();
 }
 
 IndexerConnector::~IndexerConnector()
 {
     m_stopping.store(true);
+    m_compactionCanceled.store(true);
     m_cv.notify_all();
 
     m_dispatcher->cancel();
+
+    if (m_compactionThread.joinable())
+    {
+        m_compactionThread.join();
+    }
 
     if (m_initializeThread.joinable())
     {
