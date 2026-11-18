@@ -33,10 +33,15 @@ under; the image content digest is metadata, not identity.
 ### `dbsync_container_image_references`
 
 Primary key `(reference_type, reference_value)`. Columns: the key, `image_config_digest`,
-`manifest_digest`, `image_name`, `tag`, `tags`, `platform_os`, `platform_architecture`,
-`platform_variant`, `platform_os_version`, plus `checksum`, `version`, `sync`.
+`manifest_digest`, `digests`, `image_name`, `tag`, `tags`, `platform_os`, `platform_architecture`,
+`platform_variant`, `platform_os_version`, `os_name`, `os_version`, `os_id`, `os_family`,
+`os_codename`, `os_pretty_name`, plus `checksum`, `version`, `sync`.
 
 `manifest_digest` is metadata only. A reference resolved through an index holds the digest of the selected index entry. A reference that named a manifest directly holds the digest the registry reported for it in `Docker-Content-Digest`, else the digest the reference is pinned to, else the sha256 of the manifest as served.
+
+`digests` is every digest the image is known by, serialized as a JSON array and ordered from the outside in: the indexes the image was reached through (outermost first), then the manifest, then the configuration. A tag that resolves to a multi-platform index holds three or more, and an image reached through a manifest holds two. A saved image in the `docker save` layout names only its configuration file, so it holds one. They are metadata only, like `manifest_digest`, and the reference stays the primary key. The unchanged-image check compares `image_config_digest` and nothing else, and no layer is read for an unchanged image. A registry reference that takes that short cut still reports the digests it resolved this scan, and the stored `digests` list is rewritten only when it differs, so a tag whose index moved while the platform configuration did not is kept current at the cost of one row update.
+
+`platform_*` columns describe the image configuration: the `os` and `architecture` it was built for. The `os_*` columns describe the distribution the image is built on, read from its `os-release` file: `etc/os-release`, else `usr/lib/os-release`, taken from the composed layers so a file a later layer deletes is not read. `os_name` is `NAME`, `os_version` is `VERSION_ID`, `os_id` is `ID`, `os_family` is the first word of `ID_LIKE`, `os_codename` is `VERSION_CODENAME` and `os_pretty_name` is `PRETTY_NAME`. An image with no `os-release` (a scratch or static distroless image) is not an error: its `os_*` columns are empty, and the scan logs once at info level that the image has no operating system.
 
 `image_name` and `tag` hold the same display name: the whole reference the image is known by, so the
 same image is named alike whichever source read it. An archive carries it as `io.containerd.image.name`

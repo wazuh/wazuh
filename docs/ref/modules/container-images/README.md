@@ -20,6 +20,8 @@ Container Images scans configured image sources, stores what it finds in a local
 - **Registry reader**: Reads image references in GitHub Container Registry, pinned by tag, by digest, or by a tag followed by a digest, with credentials taken from the agent credential store.
 - **Streaming layer reader**: Streams layer blobs, gzip-compressed, zstd-compressed or plain, without extracting an image to disk.
 - **Package extraction**: Composes the image layers in manifest order, applies the OverlayFS deletion markers, and parses the `dpkg` and `apk` databases.
+- **Operating system**: Reads the distribution of each image from its `os-release` file, honouring the deletion markers of the layers. An image with none is stored with no operating system.
+- **Image digests**: Keeps the index, manifest and configuration digests an image is known by, next to its reference.
 - **Format detection**: Detects the inputs and package formats that are not implemented yet, logs them, and continues.
 - **C/C++ module split**: Uses the same dynamic-library pattern as other Wazuh modules.
 - **Extensible reader interface**: New source types can be added through the `IImageReader` interface.

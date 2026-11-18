@@ -842,6 +842,103 @@ TEST_F(RegistryManifestDigestTest, AHeaderThatIsNotADigestIsIgnored)
     EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", manifest).manifestDigest, BARE_MANIFEST_SHA256);
 }
 
+TEST_F(RegistryManifestDigestTest, AReferenceResolvedThroughAnIndexKeepsTheIndexTheManifestAndTheConfigDigest)
+{
+    // A multi-platform tag resolves to an index, and the index digest is what the tag names
+    // and what a runtime may report for the image, so it is kept next to the other two.
+    auto manifestIndex {json(200, index())};
+    manifestIndex.headers["docker-content-digest"] = "sha256:1d1d1d1d";
+
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", manifestIndex});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().digests,
+              std::vector<std::string>({"sha256:1d1d1d1d", "sha256:aaaa1111", "sha256:cccc3333"}));
+    EXPECT_EQ(result.records.front().manifestDigest, "sha256:aaaa1111");
+    EXPECT_EQ(result.records.front().configDigest, "sha256:cccc3333");
+}
+
+TEST_F(RegistryManifestDigestTest, ADigestPinnedIndexIsKeptAsTheIndexDigest)
+{
+    const std::string pinned {"sha256:2f3a4b5c6d7e8f9001122334455667788"};
+
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", json(200, index())});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app@" + pinned);
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().digests,
+              std::vector<std::string>({pinned, "sha256:aaaa1111", "sha256:cccc3333"}));
+}
+
+TEST_F(RegistryManifestDigestTest, ASinglePlatformReferenceKeepsTheManifestAndTheConfigDigest)
+{
+    auto manifest {json(200, BARE_MANIFEST)};
+    manifest.headers["docker-content-digest"] = "sha256:5e5e5e5e";
+
+    EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", manifest).digests,
+              std::vector<std::string>({"sha256:5e5e5e5e", "sha256:cccc3333"}));
+}
+
+TEST_F(RegistryManifestDigestTest, TheShortCutComparesTheConfigDigestAndNothingElse)
+{
+    auto manifestIndex {json(200, index())};
+    manifestIndex.headers["docker-content-digest"] = "sha256:1d1d1d1d";
+
+    // The index and the manifest digests are kept too, but they are not what the short cut
+    // compares: a stored value equal to either one does not skip the image.
+    const std::vector<std::pair<std::string, ReadStatus>> cases
+    {
+        {"sha256:cccc3333", ReadStatus::Unchanged},
+        {"sha256:1d1d1d1d", ReadStatus::Success},
+        {"sha256:aaaa1111", ReadStatus::Success},
+    };
+
+    for (std::size_t attempt = 0; attempt < cases.size(); ++attempt)
+    {
+        if (attempt > 0)
+        {
+            m_transport = new ScriptedTransport();
+        }
+
+        m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+        m_transport->answers.push_back({"/manifests/", manifestIndex});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        EXPECT_EQ(reader("ghcr.io/owner/app:1.0", cases[attempt].first)->discover().status, cases[attempt].second)
+                << cases[attempt].first;
+    }
+}
+
+TEST_F(RegistryManifestDigestTest, AnUnchangedImageReportsTheDigestsItIsKnownByNow)
+{
+    // The configuration is the one stored, but the tag now resolves to a new index: the
+    // short cut still holds, and the current digests are handed back with it.
+    auto manifestIndex {json(200, index())};
+    manifestIndex.headers["docker-content-digest"] = "sha256:2e2e2e2e";
+
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", manifestIndex});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    // The reader owns the transport, so it stays alive while the requests are counted.
+    const auto instance = reader("ghcr.io/owner/app:1.0", "sha256:cccc3333");
+    const auto result {instance->discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Unchanged);
+    EXPECT_TRUE(result.records.empty());
+    EXPECT_EQ(result.digests, std::vector<std::string>({"sha256:2e2e2e2e", "sha256:aaaa1111", "sha256:cccc3333"}));
+    EXPECT_EQ(m_transport->countMatching("/blobs/"), 0u) << "no image contents are read again";
+}
+
 // The token exchange is a request like any other: the first one of every scan against a
 // private repository, and as exposed to throttling and resets as a manifest request.
 class RegistryTokenRetryTest : public RegistryReaderTest
@@ -2052,6 +2149,34 @@ TEST_F(RegistryLayerContentTest, AStopThatLandsAsTheLayerEndsFailsTheReference)
 
     EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
     EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, TheOperatingSystemOfAnImageIsRead)
+{
+    const auto layer {imagefixtures::tarMember("usr/lib/os-release",
+                                               "NAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.19.1\n") +
+                      imagefixtures::tarEnd()};
+
+    const auto instance = layerReader({serving(layer)});
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().operatingSystem.name, "Alpine Linux");
+    EXPECT_EQ(result.records.front().operatingSystem.id, "alpine");
+    EXPECT_EQ(result.records.front().operatingSystem.version, "3.19.1");
+}
+
+TEST_F(RegistryLayerContentTest, AnImageWithNoOsReleaseIsStoredWithNoOperatingSystem)
+{
+    const auto instance = layerReader({serving(layerWithOnePackage())});
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_TRUE(result.records.front().operatingSystem.empty());
+    EXPECT_EQ(result.records.front().packages.size(), 1u);
+    EXPECT_EQ(warningsMentioning("operating system"), 0u) << "no os-release is not a warning";
 }
 
 TEST_F(RegistryLayerContentTest, AnUnsupportedCompressionIsReportedAndTheLayerSkipped)

@@ -56,6 +56,7 @@ add_library(
   src/layer_composer.cpp
   src/layer_reader.cpp
   src/oci_metadata.cpp
+  src/os_release_parser.cpp
   src/package_db_parser.cpp
   src/platform_selection.cpp
   src/registry_byte_stream.cpp

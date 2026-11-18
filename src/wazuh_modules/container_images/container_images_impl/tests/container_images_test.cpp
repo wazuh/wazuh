@@ -338,6 +338,125 @@ TEST_F(ContainerImagesTest, ArchiveReaderKeepsOnlyOneImageOfAMultiManifestIndex)
     EXPECT_EQ(references.front().tag, "debian:12");
 }
 
+TEST_F(ContainerImagesTest, ArchiveReaderKeepsTheManifestAndConfigDigestsOfASingleImage)
+{
+    auto fixture = buildSingleImageLayout();
+
+    ArchiveImageReader reader(fixture->path());
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().digests,
+              std::vector<std::string>({"sha256:" + MANIFEST_DIGEST, "sha256:" + CONFIG_DIGEST}));
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderKeepsTheIndexDigestOfAMultiPlatformImage)
+{
+    // The tag in index.json resolves to an index, and the platform manifest is one of its
+    // entries: the index digest is one more digest the image is known by.
+    const std::string INDEX_DIGEST {"indexdigest1111111111111111111111111111111111111111111111111111111"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(INDEX_DIGEST,
+                       R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST +
+                       R"(","platform":{"os":"linux","architecture":"amd64"}}]})");
+    fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + INDEX_DIGEST + R"("}]})");
+
+    ArchiveImageReader reader(fixture->path());
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().digests,
+              std::vector<std::string>({"sha256:" + INDEX_DIGEST, "sha256:" + MANIFEST_DIGEST,
+                                        "sha256:" + CONFIG_DIGEST}));
+    EXPECT_EQ(references.front().manifestDigest, "sha256:" + MANIFEST_DIGEST);
+    EXPECT_EQ(references.front().configDigest, "sha256:" + CONFIG_DIGEST);
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderKeepsEveryNestedIndexDigestOutermostFirst)
+{
+    const std::string OUTER_DIGEST {"outerindex1111111111111111111111111111111111111111111111111111111"};
+    const std::string INNER_DIGEST {"innerindex1111111111111111111111111111111111111111111111111111111"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(INNER_DIGEST,
+                       R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST +
+                       R"(","platform":{"os":"linux","architecture":"amd64"}}]})");
+    fixture->writeBlob(OUTER_DIGEST, R"({"manifests":[{"digest":"sha256:)" + INNER_DIGEST + R"("}]})");
+    fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + OUTER_DIGEST + R"("}]})");
+
+    ArchiveImageReader reader(fixture->path());
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().digests,
+              std::vector<std::string>({"sha256:" + OUTER_DIGEST, "sha256:" + INNER_DIGEST,
+                                        "sha256:" + MANIFEST_DIGEST, "sha256:" + CONFIG_DIGEST}));
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderDoesNotCarryTheIndexDigestOfASiblingImage)
+{
+    // Two indexes in one layout: the image under the second one is known by that index
+    // only, never by the digest of the first.
+    const std::string FIRST_INDEX {"firstindex111111111111111111111111111111111111111111111111111111"};
+    const std::string SECOND_INDEX {"secondindex11111111111111111111111111111111111111111111111111111"};
+    const std::string SECOND_CONFIG {"secondconfig1111111111111111111111111111111111111111111111111111"};
+    const std::string SECOND_MANIFEST {"secondmanifest11111111111111111111111111111111111111111111111111"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(SECOND_CONFIG, R"({"os":"linux","architecture":"arm64"})");
+    fixture->writeBlob(SECOND_MANIFEST, R"({"config":{"digest":"sha256:)" + SECOND_CONFIG + R"("}})");
+    fixture->writeBlob(FIRST_INDEX, R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"("}]})");
+    fixture->writeBlob(SECOND_INDEX, R"({"manifests":[{"digest":"sha256:)" + SECOND_MANIFEST + R"("}]})");
+    fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + SECOND_INDEX + R"("},)" +
+                        R"({"digest":"sha256:)" + FIRST_INDEX + R"("}]})");
+
+    ArchiveImageReader reader(fixture->path());
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().digests,
+              std::vector<std::string>({"sha256:" + SECOND_INDEX, "sha256:" + SECOND_MANIFEST,
+                                        "sha256:" + SECOND_CONFIG}));
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderStillSkipsAnImageWhoseConfigDigestIsKnown)
+{
+    // The short cut compares the configuration digest and nothing else, whichever index
+    // the image was reached through.
+    const std::string INDEX_DIGEST {"indexdigest1111111111111111111111111111111111111111111111111111111"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(INDEX_DIGEST, R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"("}]})");
+    fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + INDEX_DIGEST + R"("}]})");
+
+    EXPECT_EQ(ArchiveImageReader(fixture->path(), "sha256:" + CONFIG_DIGEST).discover().status,
+              ReadStatus::Unchanged);
+    EXPECT_NE(ArchiveImageReader(fixture->path(), "sha256:" + INDEX_DIGEST).discover().status,
+              ReadStatus::Unchanged);
+    EXPECT_NE(ArchiveImageReader(fixture->path(), "sha256:" + MANIFEST_DIGEST).discover().status,
+              ReadStatus::Unchanged);
+}
+
+TEST_F(ContainerImagesTest, ArchiveReaderReportsTheCurrentDigestsOfAnUnchangedImage)
+{
+    // The layout was saved again under a new wrapping index, with the same configuration:
+    // the short cut holds and the new index digest is handed back with it.
+    const std::string INDEX_DIGEST {"indexdigest2222222222222222222222222222222222222222222222222222222"};
+
+    auto fixture = buildSingleImageLayout();
+    fixture->writeBlob(INDEX_DIGEST, R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"("}]})");
+    fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + INDEX_DIGEST + R"("}]})");
+
+    const auto result {ArchiveImageReader(fixture->path(), "sha256:" + CONFIG_DIGEST).discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Unchanged);
+    EXPECT_TRUE(result.records.empty());
+    EXPECT_EQ(result.digests,
+              std::vector<std::string>({"sha256:" + INDEX_DIGEST, "sha256:" + MANIFEST_DIGEST,
+                                        "sha256:" + CONFIG_DIGEST}));
+}
+
 TEST_F(ContainerImagesTest, ArchiveReaderSkipsAttestationManifestEntries)
 {
     // buildx and containerd both write "unknown"/"unknown" as the platform of an
@@ -613,6 +732,175 @@ TEST_F(ContainerImagesDBTest, ReSyncingAStoredRecordDoesNotDropItsTags)
     const auto reloaded {db.loadStored("local", "debian:12")};
     ASSERT_TRUE(reloaded.has_value());
     EXPECT_EQ(reloaded->tags, std::vector<std::string>({"12", "latest"}));
+}
+
+TEST_F(ContainerImagesDBTest, EveryDigestOfAnImageRoundTripsInOrder)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    reference.digests = {"sha256:index", "sha256:manifest", "sha256:config"};
+
+    DeltaTally tally;
+    db.syncReferences({reference}, tally.callback());
+
+    const auto stored {db.loadStored("local", "debian:12")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->digests, std::vector<std::string>({"sha256:index", "sha256:manifest", "sha256:config"}));
+}
+
+TEST_F(ContainerImagesDBTest, TheReferenceStaysThePrimaryKeyWhateverDigestsTheImageHas)
+{
+    // The digests are attributes: a second image with the very same digests under another
+    // reference is another row, and the same reference with other digests is the same row.
+    ContainerImagesDB db(m_dbPath);
+
+    auto first {makeReference("debian:12", {})};
+    first.digests = {"sha256:index", "sha256:manifest", "sha256:config"};
+    auto second {makeReference("debian:latest", {})};
+    second.digests = first.digests;
+
+    DeltaTally created;
+    db.syncReferences({first, second}, created.callback());
+    EXPECT_EQ(created.created, 2);
+
+    first.digests = {"sha256:other-index", "sha256:manifest", "sha256:config"};
+
+    DeltaTally changed;
+    db.syncReferences({first, second}, changed.callback());
+    EXPECT_EQ(changed.created, 0);
+    EXPECT_EQ(changed.modified, 1);
+    EXPECT_EQ(changed.deleted, 0);
+}
+
+TEST_F(ContainerImagesDBTest, AReferenceWithNoDigestsRoundTripsAsEmpty)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    DeltaTally tally;
+    db.syncReferences({makeReference("debian:12", {})}, tally.callback());
+
+    const auto stored {db.loadStored("local", "debian:12")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_TRUE(stored->digests.empty());
+}
+
+TEST_F(ContainerImagesDBTest, TheOperatingSystemOfAnImageRoundTrips)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("ubuntu:24.04", {})};
+    reference.operatingSystem = {"Ubuntu", "24.04", "ubuntu", "debian", "noble", "Ubuntu 24.04.1 LTS"};
+
+    DeltaTally tally;
+    db.syncReferences({reference}, tally.callback());
+
+    const auto stored {db.loadStored("local", "ubuntu:24.04")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->operatingSystem.name, "Ubuntu");
+    EXPECT_EQ(stored->operatingSystem.version, "24.04");
+    EXPECT_EQ(stored->operatingSystem.id, "ubuntu");
+    EXPECT_EQ(stored->operatingSystem.family, "debian");
+    EXPECT_EQ(stored->operatingSystem.codename, "noble");
+    EXPECT_EQ(stored->operatingSystem.prettyName, "Ubuntu 24.04.1 LTS");
+}
+
+TEST_F(ContainerImagesDBTest, AnImageWithNoOperatingSystemIsStoredWithEmptyColumns)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    DeltaTally tally;
+    db.syncReferences({makeReference("scratch-app:1", {})}, tally.callback());
+
+    const auto stored {db.loadStored("local", "scratch-app:1")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_TRUE(stored->operatingSystem.empty());
+
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"os_name", "os_id"})};
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("os_name"), "");
+    EXPECT_EQ(rows.front().at("os_id"), "");
+}
+
+TEST_F(ContainerImagesDBTest, ReSyncingAStoredRecordKeepsItsDigestsAndOperatingSystem)
+{
+    // An unchanged or unreadable reference is handed back to storage as what loadStored
+    // returned. If either field were lost on the way, every rescan would report a change.
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    reference.digests = {"sha256:index", "sha256:manifest", "sha256:config"};
+    reference.operatingSystem = {"Debian GNU/Linux", "12", "debian", "", "bookworm", "Debian GNU/Linux 12 (bookworm)"};
+
+    DeltaTally first;
+    db.syncReferences({reference}, first.callback());
+    ASSERT_EQ(first.created, 1);
+
+    const auto stored {db.loadStored("local", "debian:12")};
+    ASSERT_TRUE(stored.has_value());
+
+    DeltaTally second;
+    db.syncReferences({*stored}, second.callback());
+
+    EXPECT_EQ(second.created, 0);
+    EXPECT_EQ(second.modified, 0);
+    EXPECT_EQ(second.deleted, 0);
+}
+
+TEST_F(ContainerImagesDBTest, AnOsReleaseThatIsNotUtf8DoesNotFailTheStorage)
+{
+    // The file comes from the image. A Latin-1 byte in it must not make the row unstorable,
+    // because the scan would then fail for every reference on every interval.
+    const std::string LAYER_DIGEST {"layerdigest222222222222222222222222222222222222222222222222222222"};
+
+    auto fixture = std::make_unique<OciLayoutFixture>();
+    fixture->writeMarker();
+    fixture->writeBlob(CONFIG_DIGEST, R"({"os":"linux","architecture":"amd64"})");
+    fixture->writeBlob(LAYER_DIGEST,
+                       imagefixtures::gzip(imagefixtures::tarMember("etc/os-release",
+                                                                    "NAME=\"Caf\xE9\"\nID=caf\xE9\n") +
+                                           imagefixtures::tarEnd()));
+    fixture->writeBlob(MANIFEST_DIGEST,
+                       R"({"config":{"digest":"sha256:)" + CONFIG_DIGEST +
+                       R"("},"layers":[{"digest":"sha256:)" + LAYER_DIGEST + R"("}]})");
+    fixture->writeIndex(R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"("}]})");
+
+    const auto references {ArchiveImageReader(fixture->path()).discover().records};
+    ASSERT_EQ(references.size(), 1U);
+
+    ContainerImagesDB db(m_dbPath);
+    DeltaTally tally;
+
+    EXPECT_NO_THROW(db.syncReferences(references, tally.callback()));
+    EXPECT_EQ(tally.created, 1);
+
+    const auto stored {db.loadStored(references.front().source.sourceType, references.front().source.location)};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->operatingSystem.name, "Caf\xEF\xBF\xBD");
+}
+
+TEST_F(ContainerImagesDBTest, ADistributionChangeIsReportedAsAModification)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("app:1", {})};
+    reference.operatingSystem.id = "debian";
+
+    DeltaTally first;
+    db.syncReferences({reference}, first.callback());
+    ASSERT_EQ(first.created, 1);
+
+    reference.operatingSystem.id = "ubuntu";
+
+    DeltaTally second;
+    db.syncReferences({reference}, second.callback());
+
+    EXPECT_EQ(second.modified, 1);
 }
 
 TEST_F(ContainerImagesDBTest, ARowStoredUnderABareTagIsRenamedInPlace)
@@ -975,6 +1263,105 @@ TEST_F(ContainerImagesDBTest, AnUnchangedReferenceKeepsItsStoredInventory)
     EXPECT_EQ(digestSeenByTheReader, "sha256:config-aaaa");
     EXPECT_EQ(storedReferences(m_dbPath), 1U);
     EXPECT_EQ(storedPackages(m_dbPath), 5U);
+}
+
+TEST_F(ContainerImagesDBTest, AnUnchangedReferenceHasItsStoredDigestsRefreshed)
+{
+    // The configuration digest is the same, so no layer is read, but the index above the image
+    // changed. The stored list follows it, as one modification of the reference row.
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/images/a"}};
+
+    bool firstScan {true};
+    std::vector<std::string> digestsOfTheSecondScan {"sha256:new-index", "sha256:manifest", "sha256:config-aaaa"};
+
+    const auto factory = [&](const ConfiguredReference & reference,
+                             const std::string&,
+                             const ReaderContext&) -> std::unique_ptr<IImageReader>
+    {
+        if (firstScan)
+        {
+            auto record {recordAt(reference.location, 5)};
+            record.digests = {"sha256:old-index", "sha256:manifest", "sha256:config-aaaa"};
+            return std::make_unique<OutcomeReader>(ImageReadResult::success({record}));
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::unchanged(digestsOfTheSecondScan));
+    };
+
+    ContainerImagesImpl impl(config, factory, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    impl.scanOnce();
+    firstScan = false;
+    impl.scanOnce();
+
+    EXPECT_EQ(storedPackages(m_dbPath), 5U) << "the packages are not extracted again";
+
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"digests"})};
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("digests"), R"(["sha256:new-index","sha256:manifest","sha256:config-aaaa"])");
+
+    const auto versions {storedRows(m_dbPath, REFERENCES_TABLE, {"version"})};
+    EXPECT_EQ(versions.front().at("version"), "2") << "one modification of the reference row";
+}
+
+TEST_F(ContainerImagesDBTest, AnUnchangedReferenceWithTheSameOrNoDigestsIsNotRewritten)
+{
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/images/a"}};
+
+    const std::vector<std::string> digests {"sha256:index", "sha256:manifest", "sha256:config-aaaa"};
+    std::vector<std::string> reported {digests};
+    bool firstScan {true};
+
+    const auto factory = [&](const ConfiguredReference & reference,
+                             const std::string&,
+                             const ReaderContext&) -> std::unique_ptr<IImageReader>
+    {
+        if (firstScan)
+        {
+            auto record {recordAt(reference.location, 5)};
+            record.digests = digests;
+            return std::make_unique<OutcomeReader>(ImageReadResult::success({record}));
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::unchanged(reported));
+    };
+
+    int refreshes {0};
+    LoggingHelper::setLogCallback([&refreshes](const modules_log_level_t, const char* message)
+    {
+        if (std::string {message}.find("digests were refreshed") != std::string::npos)
+        {
+            ++refreshes;
+        }
+    });
+
+    ContainerImagesImpl impl(config, factory, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    impl.scanOnce();
+    firstScan = false;
+
+    // The same list: the stored row is handed back as it is, with no refresh.
+    impl.scanOnce();
+    EXPECT_EQ(refreshes, 0) << "an unchanged digest list is not written again";
+
+    // A reader that has no digests to report leaves the stored list alone.
+    reported.clear();
+    impl.scanOnce();
+    EXPECT_EQ(refreshes, 0);
+
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"digests", "version"})};
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("digests"), R"(["sha256:index","sha256:manifest","sha256:config-aaaa"])");
+    EXPECT_EQ(rows.front().at("version"), "1");
+
+    // A different list is the one case that writes, once.
+    reported = {"sha256:other", "sha256:manifest", "sha256:config-aaaa"};
+    impl.scanOnce();
+    EXPECT_EQ(refreshes, 1);
+
+    LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
 }
 
 TEST_F(ContainerImagesDBTest, AStopMidScanStoresNothing)
@@ -1413,9 +1800,10 @@ TEST_F(ContainerImagesDBTest, CreatedTablesCarryTheDocumentedColumns)
     // asserts the created tables, not the string the module holds.
     const auto storedReferences {storedRows(m_dbPath, REFERENCES_TABLE,
     {
-        "reference_type", "reference_value", "image_config_digest", "manifest_digest", "image_name",
-        "tag", "tags", "platform_os", "platform_architecture", "platform_variant",
-        "platform_os_version", "checksum", "version", "sync"
+        "reference_type", "reference_value", "image_config_digest", "manifest_digest", "digests",
+        "image_name", "tag", "tags", "platform_os", "platform_architecture", "platform_variant",
+        "platform_os_version", "os_name", "os_version", "os_id", "os_family", "os_codename",
+        "os_pretty_name", "checksum", "version", "sync"
     })};
 
     ASSERT_EQ(storedReferences.size(), 1U);

@@ -33,6 +33,11 @@
 
 namespace
 {
+    void logInfo(const std::string& message)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, message);
+    }
+
     void logWarn(const std::string& message)
     {
         LoggingHelper::getInstance().log(LOG_WARNING, message);
@@ -1132,6 +1137,12 @@ namespace containerimages
         }
 
         record.packages = composer.packages();
+        record.operatingSystem = composer.operatingSystem();
+
+        if (record.operatingSystem.empty())
+        {
+            logInfo("Reference '" + m_location + "' has no operating system: its layers carry no os-release file.");
+        }
 
         return true;
     }
@@ -1295,6 +1306,13 @@ namespace containerimages
                 return ImageReadResult::failed();
             }
 
+            // What the tag resolved to first is an index when it listed manifests, and then it
+            // is one more digest the image is known by.
+            const auto currentManifestDigest {selected.digest.empty() ? manifestDigest : selected.digest};
+            const auto digests {oci::collectDigests(selected.digest.empty() ? std::vector<std::string> {}
+                                                    : std::vector<std::string> {manifestDigest},
+                                                    currentManifestDigest, configDigest)};
+
             if (!m_knownConfigDigest.empty() && configDigest == m_knownConfigDigest)
             {
                 // The configuration digest identifies the image contents, so an image
@@ -1302,7 +1320,7 @@ namespace containerimages
                 // small metadata requests have been made and no layer has been touched.
                 logDebug("Reference '" + m_location + "' still reports " + configDigest +
                          ", so no image contents were retrieved.");
-                return ImageReadResult::unchanged();
+                return ImageReadResult::unchanged(digests);
             }
 
             ImageReferenceRecord record;
@@ -1317,7 +1335,8 @@ namespace containerimages
             record.configDigest = configDigest;
             // The entry of an index names its manifest. A reference that pointed straight at
             // one has no entry, and the manifest it fetched is the one.
-            record.manifestDigest = selected.digest.empty() ? manifestDigest : selected.digest;
+            record.manifestDigest = currentManifestDigest;
+            record.digests = digests;
 
             // The configuration blob is the authority on the platform, which is why it is
             // read even for a reference that named its platform in an index entry.

@@ -14,6 +14,7 @@
 #include "image_inventory_types.hpp"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace containerimages
@@ -31,6 +32,9 @@ namespace containerimages
     {
         ReadStatus status {ReadStatus::Success};
         std::vector<ImageReferenceRecord> records {};
+        /// For an unchanged source: the digests the image is known by now, when the reader
+        /// has them. The index above an image can change while its configuration does not.
+        std::vector<std::string> digests {};
 
         /// @brief A successful read of @p records.
         static ImageReadResult success(std::vector<ImageReferenceRecord> records)
@@ -45,9 +49,11 @@ namespace containerimages
         }
 
         /// @brief The source still holds the image the caller already has stored.
-        static ImageReadResult unchanged()
+        /// @param digests The digests the image is known by now, so the caller can refresh
+        ///                its stored list without reading the image again.
+        static ImageReadResult unchanged(std::vector<std::string> digests = {})
         {
-            return {ReadStatus::Unchanged, {}};
+            return {ReadStatus::Unchanged, {}, std::move(digests)};
         }
     };
 

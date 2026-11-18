@@ -174,6 +174,15 @@ namespace containerimages
 
                 if (stored)
                 {
+                    // The configuration is the same, but the index above it may not be. Only a
+                    // list that differs is written back, so an unchanged image costs nothing.
+                    if (!result.digests.empty() && result.digests != stored->digests)
+                    {
+                        stored->digests = std::move(result.digests);
+                        logDebug("Reference '" + configured.location +
+                                 "' still holds the stored image, its digests were refreshed.");
+                    }
+
                     references.push_back(std::move(*stored));
                 }
 

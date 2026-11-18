@@ -45,6 +45,15 @@ DPKG_STATUS_PATH = 'var/lib/dpkg/status'
 APK_DB_PATH = 'lib/apk/db/installed'
 RPM_SQLITE_DB_PATH = 'var/lib/rpm/rpmdb.sqlite'
 RPM_NDB_DB_PATH = 'usr/lib/sysimage/rpm/Packages.db'
+# Where most images keep their os-release, with /etc/os-release linked to it.
+OS_RELEASE_PATH = 'usr/lib/os-release'
+DEBIAN_OS_RELEASE = (
+    'PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"\n'
+    'NAME="Debian GNU/Linux"\n'
+    'VERSION_ID="12"\n'
+    'VERSION_CODENAME=bookworm\n'
+    'ID=debian\n'
+)
 # The Berkeley DB format rpm used before 4.16, which the module recognizes but does not read.
 RPM_BDB_PATH = 'var/lib/rpm/Packages'
 
@@ -431,6 +440,29 @@ def prepare_rpm_ndb_image(request: pytest.FixtureRequest, test_configuration: di
     layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-ndb')
     database = rpm_ndb_db([('aaa_base', '84.87', '150300.10.20.1', None)])
     write_oci_layout(layout_path, [{RPM_NDB_DB_PATH: database}], ref_name='opensuse/leap:15.5')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_os_release_image(request: pytest.FixtureRequest, test_metadata: dict, test_configuration: dict):
+    """Lay down an OCI layout with a dpkg layer, and an os-release file when the case asks for one.
+
+    A case without ``os_release`` is an image that ships none, such as a static distroless
+    image, which has to be stored with no operating system rather than refused.
+    """
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-os-release')
+    files = {DPKG_STATUS_PATH: dpkg_status([('curl', '7.88.1-10')])}
+
+    if test_metadata.get('os_release') == 'debian':
+        files[OS_RELEASE_PATH] = DEBIAN_OS_RELEASE
+
+    write_oci_layout(layout_path, [files], ref_name='debian:12')
 
     reset_module_database()
     point_configuration_at(test_configuration, layout_path)

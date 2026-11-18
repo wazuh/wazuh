@@ -42,6 +42,15 @@ namespace
     const std::string RPM_NDB_PATH {"var/lib/rpm/Packages.db"};
     const std::string RPM_NDB_USR_PATH {"usr/lib/sysimage/rpm/Packages.db"};
     const std::string RPM_BDB_PATH {"var/lib/rpm/Packages"};
+    constexpr char TYPE_HARDLINK {'1'};
+    constexpr char TYPE_SYMLINK {'2'};
+    const std::string OS_RELEASE_PATH {"etc/os-release"};
+    const std::string OS_RELEASE_USR_PATH {"usr/lib/os-release"};
+
+    std::string osRelease(const std::string& id, const std::string& version = "1")
+    {
+        return "NAME=\"" + id + " Linux\"\nID=" + id + "\nVERSION_ID=\"" + version + "\"\n";
+    }
 
     /// @brief Unique name for a temporary directory, so concurrent runs never collide.
     std::string uniqueName()
@@ -788,6 +797,204 @@ TEST_F(PackageExtractionTest, ComposerRetractsAnUnsupportedFormatWarningOnceItsP
     EXPECT_TRUE(composer.unsupportedFormats().empty());
 }
 
+TEST_F(PackageExtractionTest, ComposerKeepsTheOsReleaseApartFromTheDatabases)
+{
+    const auto snapshot {snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) +
+                                    tarMember(OS_RELEASE_USR_PATH, osRelease("debian", "12")) +
+                                    tarEnd())};
+
+    EXPECT_TRUE(snapshot.databases.empty());
+    EXPECT_EQ(snapshot.osReleases.size(), 2U);
+}
+
+TEST_F(PackageExtractionTest, ComposerReadsTheOperatingSystemOfTheEtcFile)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) + tarEnd()));
+
+    const auto os {composer.operatingSystem()};
+
+    EXPECT_EQ(os.id, "debian");
+    EXPECT_EQ(os.version, "12");
+    EXPECT_EQ(os.name, "debian Linux");
+}
+
+TEST_F(PackageExtractionTest, ComposerFallsBackToTheUsrLibOsRelease)
+{
+    // Most images keep the file under /usr/lib and link /etc/os-release to it, and a link
+    // is not a regular file, so the real one is the only one the layer carries.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine", "3.19")) + tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
+}
+
+TEST_F(PackageExtractionTest, ComposerPrefersTheEtcOsReleaseOverTheFallback)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine")) +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "debian");
+}
+
+TEST_F(PackageExtractionTest, ComposerTakesTheOsReleaseFromTheLastLayerThatProvidesIt)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) + tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().version, "12");
+}
+
+TEST_F(PackageExtractionTest, ComposerFallsBackWhenALaterLayerDeletesTheEtcOsRelease)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine")) +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian")) +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh.os-release", "") + tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
+}
+
+TEST_F(PackageExtractionTest, ComposerReportsNoOperatingSystemWhenEveryOsReleaseIsDeleted)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian")) +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("debian")) +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh.os-release", "") + tarMember("usr/lib/.wh.os-release", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheOsReleaseOfADeletedParentDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(".wh.etc", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheOsReleaseHiddenByAnOpaqueDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh..wh..opq", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerKeepsTheOsReleaseTheDeletingLayerProvidesAgain)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember("etc/.wh.os-release", "") +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().version, "12");
+}
+
+TEST_F(PackageExtractionTest, ComposerDoesNotFollowASymlinkedOsRelease)
+{
+    // /etc/os-release linked to the /usr/lib file: the link has no content of its own, and
+    // the file it names is read at its own path.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("alpine", "3.19")) +
+                              tarEnd()));
+
+    const auto os {composer.operatingSystem()};
+
+    EXPECT_EQ(os.id, "alpine");
+    EXPECT_EQ(os.version, "3.19");
+}
+
+TEST_F(PackageExtractionTest, ComposerReportsNoOperatingSystemForALoneSymlink)
+{
+    const auto snapshot {snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) + tarEnd())};
+
+    EXPECT_TRUE(snapshot.osReleases.empty());
+    EXPECT_EQ(snapshot.osReleasesReplaced, std::set<std::string>({OS_RELEASE_PATH}));
+
+    LayerComposer composer;
+    composer.apply(snapshot);
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheEarlierOsReleaseWhenALaterLayerReplacesItWithASymlink)
+{
+    // A package moved the file: the later layer links /etc/os-release to the new /usr/lib
+    // one. A tar replacement carries no deletion marker, and the old file must not win.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("debian", "12")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().version, "12");
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheEarlierOsReleaseWhenALaterLayerReplacesItWithAHardlink)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_HARDLINK) + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerDropsTheEarlierOsReleaseWhenALaterLayerReplacesItWithAnOversizedFile)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) + tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, std::string(128 * 1024, 'a')) + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerFallsBackToTheUsrLibFileWhenALaterLayerLinksTheEtcOne)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_USR_PATH, osRelease("alpine", "3.18")) +
+                              tarMember(OS_RELEASE_PATH, osRelease("debian", "11")) +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "", TYPE_SYMLINK) + tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
+}
+
+TEST_F(PackageExtractionTest, ComposerReportsNoOperatingSystemForAnImageWithNoOsRelease)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember("bin/app", "a static binary") + tarEnd()));
+
+    EXPECT_TRUE(composer.operatingSystem().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerTriesTheFallbackWhenTheEtcFileStatesNothing)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(OS_RELEASE_PATH, "# empty\n") +
+                              tarMember(OS_RELEASE_USR_PATH, osRelease("alpine")) +
+                              tarEnd()));
+
+    EXPECT_EQ(composer.operatingSystem().id, "alpine");
+}
+
+TEST_F(PackageExtractionTest, ComposerDoesNotReadAnOversizedOsRelease)
+{
+    // The size comes from the image: a file far past what an os-release can be is skipped.
+    const auto snapshot {snapshotOf(tarMember(OS_RELEASE_PATH, std::string(128 * 1024, 'a')) + tarEnd())};
+
+    EXPECT_TRUE(snapshot.osReleases.empty());
+}
+
 // ---------------------------------------------------------------------------
 // Package database parsers.
 // ---------------------------------------------------------------------------
@@ -1261,6 +1468,123 @@ TEST_F(PackageExtractionTest, ImageWithNoSupportedDatabaseIsInventoriedWithZeroP
     // The reference is still inventoried, so the scan reports the image it found.
     ASSERT_EQ(references.size(), 1U);
     EXPECT_TRUE(references.front().packages.empty());
+}
+
+TEST_F(PackageExtractionTest, TheOperatingSystemOfAnImageIsRead)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) +
+                     tarMember(OS_RELEASE_USR_PATH, osRelease("debian", "12")) +
+                     tarEnd());
+
+    const std::vector<std::string> locations {builder.writeOciLayout(), builder.writeDockerArchive(), builder.writeOciArchive()};
+
+    for (const auto& location : locations)
+    {
+        ArchiveImageReader reader {location};
+        const auto references {reader.discover().records};
+
+        ASSERT_EQ(references.size(), 1U) << location;
+        EXPECT_EQ(references.front().operatingSystem.id, "debian") << location;
+        EXPECT_EQ(references.front().operatingSystem.version, "12") << location;
+        EXPECT_EQ(references.front().operatingSystem.name, "debian Linux") << location;
+    }
+}
+
+TEST_F(PackageExtractionTest, AnImageWithNoOsReleaseIsStoredWithNoOperatingSystem)
+{
+    // A scratch or static distroless image: not an error, the reference is still reported.
+    ImageBuilder builder;
+    builder.addLayer(tarMember("bin/app", "a static binary") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto result {reader.discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1U);
+    EXPECT_TRUE(result.records.front().operatingSystem.empty());
+}
+
+TEST_F(PackageExtractionTest, AnImageWithNoOsReleaseIsReportedOnceAtInfoLevel)
+{
+    std::vector<std::string> infos;
+    LoggingHelper::setLogCallback([&infos](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_INFO)
+        {
+            infos.push_back(message);
+        }
+    });
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember("bin/app", "a static binary") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    reader.discover();
+
+    ASSERT_EQ(infos.size(), 1U);
+    EXPECT_NE(infos.front().find("no operating system"), std::string::npos);
+
+    LoggingHelper::setLogCallback({});
+}
+
+TEST_F(PackageExtractionTest, AnOsReleaseDeletedByALaterLayerIsNotReported)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(OS_RELEASE_PATH, osRelease("debian", "12")) + tarEnd());
+    builder.addLayer(tarMember("etc/.wh.os-release", "") + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().operatingSystem.empty());
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveKeepsTheDigestsItsMetadataStates)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    // The `docker save` layout names the configuration file and nothing else, so the
+    // configuration digest is the only one it can offer.
+    {
+        ArchiveImageReader reader {builder.writeDockerArchive()};
+        const auto references {reader.discover().records};
+
+        ASSERT_EQ(references.size(), 1U);
+        EXPECT_EQ(references.front().digests, std::vector<std::string>({"sha256:" + ImageBuilder::CONFIG_DIGEST}));
+    }
+
+    // An OCI layout names the manifest as well.
+    const std::vector<std::string> ociLocations {builder.writeOciArchive(), builder.writeOciLayout()};
+
+    for (const auto& location : ociLocations)
+    {
+        ArchiveImageReader reader {location};
+        const auto references {reader.discover().records};
+
+        ASSERT_EQ(references.size(), 1U) << location;
+        EXPECT_EQ(references.front().digests,
+                  std::vector<std::string>({"sha256:" + ImageBuilder::MANIFEST_DIGEST,
+                                            "sha256:" + ImageBuilder::CONFIG_DIGEST})) << location;
+    }
+}
+
+TEST_F(PackageExtractionTest, AnUnchangedSavedArchiveReportsTheDigestsItsMetadataStates)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto known {"sha256:" + ImageBuilder::CONFIG_DIGEST};
+
+    const auto docker {ArchiveImageReader(builder.writeDockerArchive(), known).discover()};
+    EXPECT_EQ(docker.status, ReadStatus::Unchanged);
+    EXPECT_EQ(docker.digests, std::vector<std::string>({known}));
+
+    const auto oci {ArchiveImageReader(builder.writeOciArchive(), known).discover()};
+    EXPECT_EQ(oci.status, ReadStatus::Unchanged);
+    EXPECT_EQ(oci.digests, std::vector<std::string>({"sha256:" + ImageBuilder::MANIFEST_DIGEST, known}));
 }
 
 TEST_F(PackageExtractionTest, RpmImageIsInventoried)

@@ -25,7 +25,7 @@ fixed number of seconds and hoping a scan finished. These tests avoid that entir
   `daemons_handler` restarts the agent per case; and the image fixture the case asks for
   (`prepare_local_image`, `prepare_saved_archive`, `prepare_layered_image`,
   `prepare_whiteout_image`, `prepare_unsupported_image`, `prepare_rpm_sqlite_image`,
-  `prepare_rpm_ndb_image`) builds a fresh input, points the configured `<archive>` reference at
+  `prepare_rpm_ndb_image`, `prepare_os_release_image`) builds a fresh input, points the configured `<archive>` reference at
   it, and removes it afterwards. No state leaks between cases.
 
 ## Layout
@@ -80,6 +80,7 @@ expected message (e.g. a wording change in the module that the pattern must be u
 | I6 | Unsupported package format | an image whose only database is an RPM Berkeley DB one | **PASS** when the reference is stored, no package row exists, and the format is reported with a warning. |
 | I7 | RPM sqlite database | an image whose only database is `var/lib/rpm/rpmdb.sqlite` | **PASS** when the reference is stored and the rpm packages are stored, with the epoch preserved on the version that carries one. |
 | I8 | RPM ndb database | an image whose only database is `usr/lib/sysimage/rpm/Packages.db` | **PASS** when the reference is stored and the rpm packages are stored. |
+| I9 | Image operating system | an image with `usr/lib/os-release`, and one with none | **PASS** when the first stores `os_id`, `os_name`, `os_version` and `os_codename` from the file, and the second is stored with empty `os_*` columns and reported once as having no operating system. |
 
 Expected **failures** (i.e. what a regression would look like):
 

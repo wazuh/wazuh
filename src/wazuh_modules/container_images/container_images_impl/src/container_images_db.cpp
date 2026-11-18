@@ -33,6 +33,7 @@ namespace
         reference_value TEXT,
         image_config_digest TEXT,
         manifest_digest TEXT,
+        digests TEXT,
         image_name TEXT,
         tag TEXT,
         tags TEXT,
@@ -40,6 +41,12 @@ namespace
         platform_architecture TEXT,
         platform_variant TEXT,
         platform_os_version TEXT,
+        os_name TEXT,
+        os_version TEXT,
+        os_id TEXT,
+        os_family TEXT,
+        os_codename TEXT,
+        os_pretty_name TEXT,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
         sync INTEGER NOT NULL DEFAULT 0,
@@ -103,6 +110,31 @@ namespace
         return value != row.end() && value->is_string() ? value->get<std::string>() : std::string {};
     }
 
+    /// @brief A column holding a JSON array of strings, as a list. Empty when absent or malformed.
+    std::vector<std::string> stringListOf(const nlohmann::json& row, const char* field)
+    {
+        // Copy-initialized on purpose. Brace-initializing a json from a json selects its
+        // initializer-list constructor, and a two-element array whose first element is a
+        // string is then read as a key and a value: ["1.4","latest"] became the object
+        // {"1.4":"latest"}, is_array() was false, and every stored tag was silently lost.
+        const auto list = nlohmann::json::parse(stringOf(row, field), nullptr, false);
+
+        std::vector<std::string> values;
+
+        if (list.is_array())
+        {
+            for (const auto& value : list)
+            {
+                if (value.is_string())
+                {
+                    values.push_back(value.get<std::string>());
+                }
+            }
+        }
+
+        return values;
+    }
+
     nlohmann::json referenceRow(const containerimages::ImageReferenceRecord& reference)
     {
         nlohmann::json row;
@@ -110,6 +142,8 @@ namespace
         row["reference_value"] = reference.source.location;
         row["image_config_digest"] = reference.configDigest;
         row["manifest_digest"] = reference.manifestDigest;
+        // Every digest the image is known by, serialized as a JSON array like the tags.
+        row["digests"] = nlohmann::json(reference.digests).dump();
         row["image_name"] = reference.tag; // display name; refined when real readers land
         row["tag"] = reference.tag;
         // Every tag the image answers to, serialized as a JSON array. One reference can be
@@ -119,6 +153,13 @@ namespace
         row["platform_architecture"] = reference.architecture;
         row["platform_variant"] = reference.variant;
         row["platform_os_version"] = reference.osVersion;
+        // The distribution of the image, from its os-release. Empty for an image with none.
+        row["os_name"] = reference.operatingSystem.name;
+        row["os_version"] = reference.operatingSystem.version;
+        row["os_id"] = reference.operatingSystem.id;
+        row["os_family"] = reference.operatingSystem.family;
+        row["os_codename"] = reference.operatingSystem.codename;
+        row["os_pretty_name"] = reference.operatingSystem.prettyName;
         row["checksum"] = rowChecksum(row);
         return row;
     }
@@ -295,29 +336,24 @@ namespace containerimages
             record.variant = stringOf(row, "platform_variant");
             record.osVersion = stringOf(row, "platform_os_version");
 
-            // Copy-initialized on purpose. Brace-initializing a json from a json selects its
-            // initializer-list constructor, and a two-element array whose first element is a
-            // string is then read as a key and a value: ["1.4","latest"] became the object
-            // {"1.4":"latest"}, is_array() was false, and every stored tag was silently lost.
-            const auto tags = nlohmann::json::parse(stringOf(row, "tags"), nullptr, false);
+            record.tags = stringListOf(row, "tags");
+            record.digests = stringListOf(row, "digests");
 
-            if (tags.is_array())
-            {
-                for (const auto& tag : tags)
-                {
-                    if (tag.is_string())
-                    {
-                        record.tags.push_back(tag.get<std::string>());
-                    }
-                }
-            }
+            record.operatingSystem.name = stringOf(row, "os_name");
+            record.operatingSystem.version = stringOf(row, "os_version");
+            record.operatingSystem.id = stringOf(row, "os_id");
+            record.operatingSystem.family = stringOf(row, "os_family");
+            record.operatingSystem.codename = stringOf(row, "os_codename");
+            record.operatingSystem.prettyName = stringOf(row, "os_pretty_name");
         };
 
         auto referenceQuery = SelectQuery::builder()
                               .table(REFERENCES_TABLE)
                               .columnList({"reference_type", "reference_value", "image_config_digest",
-                                           "manifest_digest", "image_name", "tag", "tags", "platform_os",
-                                           "platform_architecture", "platform_variant", "platform_os_version"})
+                                           "manifest_digest", "digests", "image_name", "tag", "tags",
+                                           "platform_os", "platform_architecture", "platform_variant",
+                                           "platform_os_version", "os_name", "os_version", "os_id",
+                                           "os_family", "os_codename", "os_pretty_name"})
                               .rowFilter(filter)
                               .build();
         m_dbSync->selectRows(referenceQuery.query(), referenceCallback);

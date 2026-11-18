@@ -51,6 +51,7 @@ add_executable(container_images_unit_test container_images_test.cpp
                                           ecr_test.cpp
                                           package_extraction_test.cpp
                                           credential_store_test.cpp
+                                          os_release_test.cpp
                                           platform_test.cpp
                                           registry_reader_test.cpp
                                           registry_test.cpp

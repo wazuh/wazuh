@@ -29,6 +29,11 @@ namespace containerimages
     struct LayerSnapshot
     {
         std::map<std::string, std::string> databases; ///< Tracked database path to its content in this layer.
+        std::map<std::string, std::string> osReleases; ///< `os-release` path to its content in this layer.
+        /// `os-release` paths this layer provides as any kind of entry. A symlink, a hardlink
+        /// or a file too large to read is no content, but it still replaces what the earlier
+        /// layers held at that path.
+        std::set<std::string> osReleasesReplaced;
         std::set<std::string> whiteouts;              ///< Paths this layer deletes.
         std::set<std::string> opaqueDirectories;      ///< Directories whose earlier content this layer hides.
         /// Path of a recognized-but-unimplemented database to its format, seen in this
@@ -45,7 +50,7 @@ namespace containerimages
     LayerSnapshot readLayerSnapshot(IByteStream& layer);
 
     /// @brief Composes the layers of one image into the final state of its package
-    /// databases.
+    /// databases and of its `os-release` file.
     ///
     /// Layers are applied in manifest order, so a database present in several layers is
     /// read from the last one that provides it, and one deleted in a later layer is not
@@ -67,8 +72,16 @@ namespace containerimages
             /// @brief Parse every composed database into package records.
             std::vector<ImagePackageRecord> packages() const;
 
+            /// @brief The operating system the composed image states in its `os-release`.
+            ///
+            /// `etc/os-release` is preferred and `usr/lib/os-release` is the fallback, as
+            /// os-release(5) says, after the whiteouts of every layer were applied. Empty
+            /// when the image carries neither, which is an image with no operating system.
+            ImageOperatingSystem operatingSystem() const;
+
         private:
             std::map<std::string, std::string> m_databases;
+            std::map<std::string, std::string> m_osReleases; ///< Path to content, tracked like m_databases.
             std::map<std::string, std::string> m_unsupportedFormats; ///< Path to format, tracked like m_databases.
     };
 } // namespace containerimages

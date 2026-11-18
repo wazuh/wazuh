@@ -11,6 +11,7 @@
 #include "layer_composer.hpp"
 #include "ci_logging_helper.hpp"
 #include "layer_reader.hpp"
+#include "os_release_parser.hpp"
 #include "package_db_parser.hpp"
 
 #include <algorithm>
@@ -24,6 +25,10 @@ namespace
     // megabytes; past this the file is not inventoried rather than read into memory,
     // because the size comes from the image being scanned.
     constexpr std::uint64_t MAX_DATABASE_SIZE {64 * 1024 * 1024};
+
+    // Ceiling for an os-release file, which is a few hundred bytes. The size comes from the
+    // image being scanned, so a file past this is not read.
+    constexpr std::uint64_t MAX_OS_RELEASE_SIZE {64 * 1024};
 
     void logDebug(const std::string& message)
     {
@@ -44,6 +49,22 @@ namespace
         }
 
         return path == directory || (path.size() > directory.size() && path.rfind(directory + "/", 0) == 0);
+    }
+
+    /// @brief True if @p path is one of the locations of the `os-release` file.
+    bool isOsReleasePath(const std::string& path)
+    {
+        const auto& paths {containerimages::osReleasePaths()};
+        return std::find(paths.begin(), paths.end(), path) != paths.end();
+    }
+
+    /// @brief Remove from @p files every path that is @p directory or lies under it.
+    void eraseUnder(std::map<std::string, std::string>& files, const std::string& directory)
+    {
+        for (auto file = files.begin(); file != files.end();)
+        {
+            file = isUnderDirectory(file->first, directory) ? files.erase(file) : std::next(file);
+        }
     }
 
     /// @brief The parser that owns a tracked path, or nullptr when the path is not tracked.
@@ -109,6 +130,27 @@ namespace containerimages
                 return true;
             }
 
+            if (isOsReleasePath(entry.path))
+            {
+                snapshot.osReleasesReplaced.insert(entry.path);
+
+                // Only a regular file has content to read. A link is not followed: the file it
+                // names is read at its own path when the layer carries it.
+                if (!entry.isRegularFile)
+                {
+                    return true;
+                }
+
+                if (entry.size > MAX_OS_RELEASE_SIZE)
+                {
+                    logWarn("File '" + entry.path + "' is larger than the supported size, skipping it.");
+                    return true;
+                }
+
+                snapshot.osReleases[entry.path] = readContent(content, entry.size);
+                return true;
+            }
+
             // A path a parser owns is never reported as unsupported. The two rpm formats
             // this module reads sit in the same directory as the one it does not, so the
             // registered paths are consulted first.
@@ -157,6 +199,8 @@ namespace containerimages
             {
                 format = isUnderDirectory(format->first, directory) ? m_unsupportedFormats.erase(format) : std::next(format);
             }
+
+            eraseUnder(m_osReleases, directory);
         }
 
         // A deletion marker removes the path it names and, when that path is a directory,
@@ -172,12 +216,27 @@ namespace containerimages
             {
                 format = isUnderDirectory(format->first, whiteout) ? m_unsupportedFormats.erase(format) : std::next(format);
             }
+
+            eraseUnder(m_osReleases, whiteout);
+        }
+
+        // An os-release this layer replaces by a link, or by a file it cannot read, leaves
+        // nothing of the earlier one: keeping it would report the distribution the layer
+        // replaced.
+        for (const auto& path : snapshot.osReleasesReplaced)
+        {
+            m_osReleases.erase(path);
         }
 
         // What this layer provides wins over the earlier layers.
         for (const auto& [path, content] : snapshot.databases)
         {
             m_databases[path] = content;
+        }
+
+        for (const auto& [path, content] : snapshot.osReleases)
+        {
+            m_osReleases[path] = content;
         }
 
         for (const auto& [path, format] : snapshot.unsupportedFormats)
@@ -201,6 +260,30 @@ namespace containerimages
         }
 
         return formats;
+    }
+
+    ImageOperatingSystem LayerComposer::operatingSystem() const
+    {
+        for (const auto& path : osReleasePaths())
+        {
+            const auto file {m_osReleases.find(path)};
+
+            if (file == m_osReleases.end())
+            {
+                continue;
+            }
+
+            auto os {parseOsRelease(file->second)};
+
+            // A file that states nothing recognizable does not stop the fallback location
+            // from being tried.
+            if (!os.empty())
+            {
+                return os;
+            }
+        }
+
+        return {};
     }
 
     std::vector<ImagePackageRecord> LayerComposer::packages() const

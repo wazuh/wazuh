@@ -80,6 +80,31 @@ namespace containerimages::oci
                isSafeDigestEncoded(digest.substr(separator + 1));
     }
 
+    std::vector<std::string> collectDigests(const std::vector<std::string>& indexDigests,
+                                            const std::string& manifestDigest,
+                                            const std::string& configDigest)
+    {
+        std::vector<std::string> digests;
+
+        const auto add = [&digests](const std::string & digest)
+        {
+            if (!digest.empty() && std::find(digests.begin(), digests.end(), digest) == digests.end())
+            {
+                digests.push_back(digest);
+            }
+        };
+
+        for (const auto& digest : indexDigests)
+        {
+            add(digest);
+        }
+
+        add(manifestDigest);
+        add(configDigest);
+
+        return digests;
+    }
+
     void applyConfigMetadata(const nlohmann::json& config, ImageReferenceRecord& record)
     {
         record.os = stringField(config, "os");

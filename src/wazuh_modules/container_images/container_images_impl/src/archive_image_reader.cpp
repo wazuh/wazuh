@@ -69,6 +69,11 @@ namespace
     // between the first pass and the second.
     constexpr std::size_t MAX_METADATA_FILES {256};
 
+    void logInfo(const std::string& message)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, message);
+    }
+
     void logDebug(const std::string& message)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, message);
@@ -116,6 +121,7 @@ namespace
     {
         std::string manifestDigest;
         std::string configDigest;
+        std::vector<std::string> indexDigests; ///< Indexes the manifest was reached through, outermost first.
         std::string tag;
         std::vector<std::string> tags;
         nlohmann::json config {nlohmann::json::object()};
@@ -243,6 +249,7 @@ namespace
     }
 
     using containerimages::oci::applyConfigMetadata;
+    using containerimages::oci::collectDigests;
     using containerimages::oci::isAttestationManifest;
 
     /// @brief Collect the descriptors an OCI manifest, or an index of manifests, points to.
@@ -256,6 +263,7 @@ namespace
     void collectOciDescriptors(const MetadataFetch& metadata,
                                const nlohmann::json& entry,
                                const int depth,
+                               const std::vector<std::string>& parentIndexDigests,
                                std::set<std::string>& visited,
                                int& nodesVisited,
                                std::vector<ImageDescriptor>& descriptors)
@@ -300,9 +308,12 @@ namespace
 
         if (!nested.empty())
         {
+            auto indexDigests {parentIndexDigests};
+            indexDigests.push_back(digest);
+
             for (const auto& child : nested)
             {
-                collectOciDescriptors(metadata, child, depth + 1, visited, nodesVisited, descriptors);
+                collectOciDescriptors(metadata, child, depth + 1, indexDigests, visited, nodesVisited, descriptors);
             }
 
             return;
@@ -327,6 +338,7 @@ namespace
         ImageDescriptor descriptor;
         descriptor.manifestDigest = digest;
         descriptor.configDigest = configDigest;
+        descriptor.indexDigests = parentIndexDigests;
         descriptor.config = parseJson(metadata(configKey));
 
         const auto annotations {entry.is_object() ? entry.find("annotations") : entry.end()};
@@ -384,7 +396,7 @@ namespace
         {
             try
             {
-                collectOciDescriptors(metadata, entry, 0, visited, nodesVisited, descriptors);
+                collectOciDescriptors(metadata, entry, 0, {}, visited, nodesVisited, descriptors);
             }
             catch (const std::exception& ex)
             {
@@ -465,6 +477,12 @@ namespace
         return descriptors;
     }
 
+    /// @brief Every digest the image of a descriptor is known by.
+    std::vector<std::string> digestsOf(const ImageDescriptor& descriptor)
+    {
+        return collectDigests(descriptor.indexDigests, descriptor.manifestDigest, descriptor.configDigest);
+    }
+
     /// @brief Every layer key the descriptors refer to, without duplicates.
     std::set<std::string> layerKeysOf(const std::vector<ImageDescriptor>& descriptors)
     {
@@ -525,6 +543,7 @@ namespace
             record.source = {sourceType, location};
             record.manifestDigest = descriptor.manifestDigest;
             record.configDigest = descriptor.configDigest;
+            record.digests = digestsOf(descriptor);
             record.tag = descriptor.tag;
             record.tags = descriptor.tags;
             applyConfigMetadata(descriptor.config, record);
@@ -537,6 +556,12 @@ namespace
             }
 
             record.packages = composer.packages();
+            record.operatingSystem = composer.operatingSystem();
+
+            if (record.operatingSystem.empty())
+            {
+                logInfo("Image at '" + location + "' has no operating system: its layers carry no os-release file.");
+            }
 
             if (record.packages.empty())
             {
@@ -721,7 +746,7 @@ namespace containerimages
         {
             logDebug("Reference '" + m_location + "' still reports " + m_knownConfigDigest +
                      ", so its layers were not read again.");
-            return ImageReadResult::unchanged();
+            return ImageReadResult::unchanged(digestsOf(descriptors.front()));
         }
 
         // Every layer is read once, even when two manifests of a multi-platform image
@@ -865,7 +890,7 @@ namespace containerimages
         {
             logDebug("Reference '" + m_location + "' still reports " + m_knownConfigDigest +
                      ", so its layers were not read again.");
-            return ImageReadResult::unchanged();
+            return ImageReadResult::unchanged(digestsOf(descriptors.front()));
         }
 
         const auto wanted {layerKeysOf(descriptors)};

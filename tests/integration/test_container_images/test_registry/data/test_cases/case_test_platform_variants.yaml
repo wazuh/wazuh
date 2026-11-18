@@ -11,6 +11,7 @@
     platforms: [amd64, arm64]
     expected_packages: 1
     expected_architecture: amd64
+    expected_digest_count: 3
 
 - name: An index offering no matching platform variant is reported from the index alone
   description: Two foreign platforms in an index, so the reference is declined without reading any blob

@@ -53,6 +53,10 @@ CB_REFERENCE_NOT_IMPLEMENTED = fr"{PREFIX}WARNING: NOT IMPLEMENTED: the '<{{0}}>
 # zero packages.
 CB_UNSUPPORTED_PACKAGE_FORMAT = fr"{PREFIX}WARNING: NOT IMPLEMENTED: image at '.*' uses the package format\(s\) .*, which are recognized but not supported yet\. Reporting zero packages\."
 
+# An image that ships no os-release is stored with no operating system. Logged at info level once
+# per read of the image.
+CB_NO_OPERATING_SYSTEM = fr"{PREFIX}INFO: (Image at|Reference) '.*' has no operating system: its layers carry no os-release file\."
+
 
 # Remote references (GHCR).
 # "No credential is configured for ghcr.io, requesting an anonymous token."

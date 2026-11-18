@@ -93,6 +93,11 @@ t8_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_rpm_ndb.yaml')
 t8_params, t8_metadata, t8_ids = configuration.get_test_cases_data(t8_cases_path)
 t8_configurations = configuration.load_configuration_template(config_path, t8_params, t8_metadata)
 
+# T9: the operating system of an image is read from its os-release, and an image with none is stored.
+t9_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_os_release.yaml')
+t9_params, t9_metadata, t9_ids = configuration.get_test_cases_data(t9_cases_path)
+t9_configurations = configuration.load_configuration_template(config_path, t9_params, t9_metadata)
+
 
 def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60) -> None:
     """Block until the next 'Scan ended.' line. This is the race-free scan barrier."""
@@ -362,3 +367,43 @@ def test_container_images_rpm_ndb_database(test_configuration, test_metadata, pr
     packages = _stored_packages()
     assert packages.get('aaa_base') == '84.87-150300.10.20.1', \
         f'aaa_base is missing or has the wrong version: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t9_configurations, t9_metadata), ids=t9_ids)
+def test_container_images_operating_system(test_configuration, test_metadata, prepare_os_release_image,
+                                           set_wazuh_configuration, configure_local_internal_options,
+                                           truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that the distribution an image states in its os-release is stored with its
+                 reference, and that an image with no os-release is stored with no operating
+                 system instead of being refused.
+
+    test_phases:
+        - setup: write an OCI layout, with or without an os-release file, configure it, restart daemons.
+        - test: wait for "Scan ended.", then read the operating system columns of the reference.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference and its packages are stored in both cases.
+        - The operating system columns hold the values of the os-release, or are empty when there is none.
+        - An image with no os-release is reported once at info level.
+
+    expected_result: PASS when the operating system is stored as the case expects.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    references = query_table(REFERENCES_TABLE)
+    assert len(references) == 1, f'Expected one stored reference, found {references}.'
+    assert _stored_packages().get('curl') == '7.88.1-10', 'The packages of the image were not stored.'
+
+    reference = references[0]
+    assert reference['os_id'] == test_metadata['expected_os_id'], f'Unexpected os_id in {reference}.'
+    assert reference['os_name'] == test_metadata['expected_os_name'], f'Unexpected os_name in {reference}.'
+    assert reference['os_version'] == test_metadata['expected_os_version'], f'Unexpected os_version in {reference}.'
+    assert reference['os_codename'] == test_metadata['expected_os_codename'], f'Unexpected os_codename in {reference}.'
+
+    if test_metadata['os_release'] == 'none':
+        warning_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+        warning_monitor.start(callback=callbacks.generate_callback(patterns.CB_NO_OPERATING_SYSTEM), timeout=30)
+        assert warning_monitor.callback_result, 'An image with no os-release was not reported.'

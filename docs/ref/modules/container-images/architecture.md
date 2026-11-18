@@ -200,8 +200,8 @@ During `scanOnce()`, the module processes each configured reference:
 1. Read back what is stored for the reference, and create a reader for it, or report the reference type as unimplemented.
 2. Identify the input and read its image metadata.
 3. Stop there when the image still reports the configuration digest already stored: its contents cannot have changed, so its layers are not read and the stored inventory is kept.
-4. Otherwise stream the layers of each image and compose its package databases.
-5. Parse the databases into package records.
+4. Otherwise stream the layers of each image and compose its package databases and its `os-release` file.
+5. Parse the databases into package records, and the `os-release` file into the image's operating system.
 6. Store the references and their packages, reporting what changed since the previous scan.
 7. Log the reference count and the package count.
 
@@ -260,10 +260,12 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 | `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. A remote reference is named `registry/repository[:tag][@digest]`, with the tag kept when a digest follows it. |
 | `configDigest` | Image configuration blob digest. |
 | `manifestDigest` | Manifest digest. |
+| `digests` | Every digest the image is known by, from the outside in: the indexes it was reached through (outermost first), the manifest, then the configuration. |
 | `os` | Operating system from the image configuration. |
 | `architecture` | Architecture from the image configuration. |
 | `variant` | Architecture variant, when present. |
 | `osVersion` | Operating system version, when present. |
+| `operatingSystem` | Distribution read from the image's `os-release` (`name`, `version`, `id`, `family`, `codename`, `prettyName`). Every field is empty for an image that has none. |
 | `tags` | Every tag the image is known by, when the source lists more than one. A remote reference with a tag lists `registry/repository:tag`. |
 | `packages` | The packages found in the image layers. |
 
