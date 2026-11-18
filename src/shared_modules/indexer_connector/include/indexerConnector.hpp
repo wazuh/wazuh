@@ -53,6 +53,8 @@ class EXPORTED IndexerConnector final
     std::mutex m_mutex;
     std::atomic<bool> m_stopping {false};
     std::unique_ptr<Utils::RocksDBWrapper> m_db;
+    std::atomic<bool> m_compactionCanceled {false};
+    std::thread m_compactionThread;
     std::unique_ptr<ThreadSyncQueue> m_syncQueue;
     std::string m_indexName;
     std::mutex m_syncMutex;
@@ -112,6 +114,11 @@ class EXPORTED IndexerConnector final
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
         const nlohmann::json& config);
+
+    /**
+     * @brief Starts a background thread that compacts the local database files written without compression.
+     */
+    void startCompaction();
 
     /*
      * @brief Send bulk reactive, this method is used to send a bulk request to the indexer.
