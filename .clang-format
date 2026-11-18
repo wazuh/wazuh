@@ -24,7 +24,7 @@ BreakInheritanceList: BeforeComma
 FixNamespaceComments: true
 IncludeBlocks: Preserve
 IndentCaseLabels: true
-SortIncludes: CaseSensitive
+SortIncludes: Never
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false
