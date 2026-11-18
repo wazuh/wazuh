@@ -110,7 +110,7 @@ case "$1" in
         fi
         # The generated file must validate against the embedded schema (file existence is not
         # checked: the certificates it references are generated later).
-        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${WAZUH_TMP_DIR}/wazuh-manager.conf; then
+        if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${WAZUH_TMP_DIR}/wazuh-manager.conf > /dev/null; then
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf
             echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
             exit 1

@@ -51,7 +51,9 @@ element is rejected as a duplicate.
     `/etc/wazuh-manager/certs` — the rule the credential check applies at start, so a 4.x
     `/etc/filebeat/certs/...` path is refused here with
     `(1244): Invalid configuration at '/indexer/ssl/certificate_authorities/0': /etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs, [...]`;
-    whether those files exist is left to the start, which may import them from a co-located indexer). Silent on success; on failure it prints every problem it finds in one run, one line each,
+    whether those files exist is left to the start, which may import them from a co-located indexer). On success it prints one line on standard output naming the file it checked,
+    `/etc/wazuh-manager/wazuh-manager.conf: configuration is valid.` (with `(referenced files not checked)` before
+    the period under `--skip-file-checks`), and exits `0`; on failure it prints every problem it finds in one run, one line each,
     with the JSON pointer of the offending option:
     `(1244): Invalid configuration at '/remote/legacy/port': does not satisfy 'maximum' [...]`
     (`'/'` for syntax problems, which name the line instead). The lines come in the order of the file:

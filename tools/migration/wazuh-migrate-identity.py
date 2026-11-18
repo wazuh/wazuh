@@ -126,8 +126,13 @@ SELF_MONITORING = ("localfile", "syscheck", "rootcheck", "wodle:syscollector", "
 GROUP_FILE_OWNER = ("wazuh-manager", "wazuh-manager", 0o660)
 
 # What a 4.x installation ships in shared/default besides agent.conf: the rootcheck lists and audit
-# policies (rootkit_files.txt, system_audit_rcl.txt, win_audit_rcl.txt, cis_*_rcl.txt...).
-STOCK_DEFAULT_FILES = re.compile(r"^(rootkit_\w+\.txt|system_audit_\w+\.txt|win_\w+_rcl\.txt|cis_\w+_rcl\.txt)$")
+# policies (rootkit_files.txt, system_audit_rcl.txt, win_audit_rcl.txt, cis_*_rcl.txt...). Names may
+# hold a hyphen: cis_mysql5-6_community_rcl.txt and cis_mysql5-6_enterprise_rcl.txt are stock too.
+STOCK_DEFAULT_FILES = re.compile(
+    r"^(rootkit_[\w-]+\.txt|system_audit_[\w-]+\.txt|win_[\w-]+_rcl\.txt|cis_[\w-]+_rcl\.txt)$")
+# The two lists a 4.x agent's default <rootkit_files> and <rootkit_trojans> settings read from its
+# etc/shared/. The 5.0 default group lacks them, so 4.x agents lose these checks until upgraded.
+ROOTCHECK_LISTS = ("rootkit_files.txt", "rootkit_trojans.txt")
 
 # The two credentials no endpoint can express, so they stay file copies. Both are opt-in.
 #   key: bundle name -> (source relative path, target root, target relative path, owner, group, mode)
@@ -508,7 +513,9 @@ def read_default_group(shared_dir):
     if not os.path.isdir(folder) or os.path.islink(folder):
         return None
     group = read_group_folder(folder)
-    # The rootcheck files every 4.x installation ships in default: not operator content.
+    # The rootcheck files every 4.x installation ships in default: not operator content, so not
+    # reported as left behind. They are still recorded: 4.x agents read them until they are upgraded.
+    group["stock_files"] = [entry for entry in group["extra_files"] if STOCK_DEFAULT_FILES.match(entry)]
     group["extra_files"] = [entry for entry in group["extra_files"]
                             if not STOCK_DEFAULT_FILES.match(entry)]
     group["customized"] = is_customized(group["agent_conf"])
@@ -539,8 +546,8 @@ def review_lines(manifest):
                                      % (name, setting, REMOVED_AGENT_SETTINGS[setting]))
         if group.get("extra_files"):
             lines.append("group '%s': %s not migrated. 5.0 pushes every file in a group folder to its"
-                         " agents, and a 4.x CDB list or rootcheck file has no use there. Copy any you"
-                         " still need into the group on the 5.0 manager."
+                         " agents, and once every agent runs 5.0 a 4.x CDB list or rootcheck file has"
+                         " no use there. Copy any you still need into the group on the 5.0 manager."
                          % (name, ", ".join(group["extra_files"])))
         if group.get("sca_policies"):
             lines.append("group '%s': SCA %s %s carried: the group's agent.conf loads %s, and 5.0"
@@ -549,6 +556,19 @@ def review_lines(manifest):
                             ", ".join(group["sca_policies"]),
                             "it" if len(group["sca_policies"]) == 1 else "them",
                             "it" if len(group["sca_policies"]) == 1 else "them"))
+    lists = [entry for entry in (default or {}).get("stock_files") or [] if entry in ROOTCHECK_LISTS]
+    if lists:
+        others = len(default["stock_files"]) - len(lists)
+        lines.append("group 'default': 4.x agents read %s%s from it, which the 5.0 default group lacks:"
+                     " until they are upgraded they run no rootkit checks. To keep them, copy %s from"
+                     " %s on the 4.x manager to %s on the 5.0 manager (owner wazuh-manager, mode 0660),"
+                     " and remove them once every agent runs 5.0."
+                     % (", ".join(lists),
+                        " and %d stock audit policy file(s)" % others if others else "",
+                        "these files" if others or len(lists) > 1 else "it",
+                        os.path.join(manifest.get("source_dir") or DEFAULT_SOURCE_DIR,
+                                     "etc", "shared", DEFAULT_GROUP) + "/",
+                        os.path.join(DEFAULT_TARGET_CONF_DIR, "shared", DEFAULT_GROUP) + "/"))
     if default and default.get("customized"):
         lines.append("group 'default': its 4.x agent.conf is customized and is appended to the 5.0"
                      " default group's agent.conf at import, so every agent keeps it.")
