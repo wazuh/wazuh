@@ -191,6 +191,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#40673](https://github.com/wazuh/wazuh/issues/40673) | Fixed SCA checks that failed compliant hosts or passed non-compliant ones: the mail transfer agent local-only check inverted in 10 RHEL-family policies, the bootloader `audit=1` and `audit_backlog_limit` checks reading `/etc/default/grub` in the Debian 12, Debian 13 and Ubuntu 22.04 policies, and the sudo authentication timeout check failing compliant values in the Debian 12 and 13 policies. |
 | [#41385](https://github.com/wazuh/wazuh/issues/41385) | Fixed the CIS Oracle Linux 10 SCA check 38531 (bootloader password is set) failing on every host, including those with a GRUB2 password, because of a stray quote at the end of its rule. |
 | [#41520](https://github.com/wazuh/wazuh/pull/41520) | Hardened the WPK package extraction of the agent upgrade module. |
 | [#41295](https://github.com/wazuh/wazuh/pull/41295) | Hardened the FIM database search for the entries stored under a removed path. |
