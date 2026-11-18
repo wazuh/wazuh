@@ -91,12 +91,17 @@ What an operator sees:
   warning at every start while they differ, and the worker's own setting is ignored until then.
 - If the worker's vulnerability scanner is running with the other value when the worker connects,
   `cluster.log` records a warning and the worker reloads itself once. If the scanner still does
-  not follow after that reload, an error is logged and the node is not reloaded again.
+  not follow after that reload, an error is logged and the node is not reloaded again. A reload
+  request that was refused is tried again on the next connection.
 - The value in effect is the one `GET /vulnerability-detector/status` reports on that node
   (`enabled`); reading the worker's `wazuh-manager.conf`, directly or through the API, shows its
   local value.
 - To switch vulnerability detection for the cluster, change it on the master and reload every node
-  (`PUT /cluster/reload`).
+  (`PUT /cluster/reload`). Each worker restarts twice: the reload starts it with the value it had
+  stored, and once it reconnects and learns the new one it reloads itself. Every daemon but
+  `wazuh-manager-remoted` restarts each time.
+- The worker asks its local scanner until it answers, for as long as the connection to the master
+  lasts, so a scanner that is slow to start is still checked.
 - A worker that cannot reach the master keeps the last value it received; one that never reached it
   uses its own. While that lasts the node can differ from the rest of the cluster.
 

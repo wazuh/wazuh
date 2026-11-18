@@ -1863,25 +1863,67 @@ async def test_worker_handler_follow_master_vd_ignores_an_answer_that_is_not_a_s
 
 
 @pytest.mark.asyncio
-async def test_worker_handler_follow_master_vd_without_a_local_scanner_stores_and_waits(event_loop, tmp_path):
-    """The local scanner does not answer: the master's value is kept for its next start, and nothing is reloaded
-    on a guess."""
+async def test_worker_handler_follow_master_vd_keeps_asking_a_scanner_that_is_not_up_yet(event_loop, tmp_path):
+    """The local scanner does not answer right after a start: it is asked until it does, then compared."""
     worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
 
     with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
             patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
-            patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_ATTEMPTS', 2), \
             patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_INTERVAL', 0), \
+            patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_WARN_AFTER', 2), \
             patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled',
-                  side_effect=exception.WazuhInternalError(2026)) as status_mock, \
+                  side_effect=[exception.WazuhInternalError(2026), exception.WazuhInternalError(2026),
+                               exception.WazuhInternalError(2026), True]) as status_mock, \
             patch('wazuh.core.cluster.worker.manager_reload') as reload_mock, \
             patch.object(logging.getLogger('wazuh'), 'warning') as warning_mock:
         await worker_handler.follow_master_vulnerability_detection()
 
     assert worker.read_text(path) == 'no'
-    assert status_mock.call_count == 2
+    assert status_mock.call_count == 4
+    # One warning for the silence, one for the difference found once it answered.
+    assert warning_mock.call_count == 2
+    reload_mock.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_stops_asking_when_the_connection_is_lost(event_loop, tmp_path):
+    """The task belongs to one connection: the next one starts it again."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+
+    def scanner_down():
+        worker_handler.connected = False
+        raise exception.WazuhInternalError(2026)
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.LOCAL_VD_STATUS_INTERVAL', 0), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled',
+                  side_effect=scanner_down) as status_mock, \
+            patch('wazuh.core.cluster.worker.manager_reload') as reload_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    # The master's value is kept for the scanner's next start either way.
+    assert worker.read_text(path) == 'no'
+    assert status_mock.call_count == 1
     reload_mock.assert_not_called()
-    warning_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_worker_handler_follow_master_vd_a_refused_reload_is_tried_again(event_loop, tmp_path):
+    """A reload request that failed is not a reload: no record of it stays, so the next connection asks again."""
+    worker_handler, path = get_following_worker_handler(event_loop, tmp_path, b'no')
+
+    with patch('wazuh.core.cluster.worker.MASTER_VD_ENABLED_PATH', path), \
+            patch('wazuh.core.cluster.worker.MASTER_VD_RELOADED_PATH', path + '.reloaded'), \
+            patch('wazuh.core.cluster.worker.local_vulnerability_detection_enabled', return_value=True), \
+            patch('wazuh.core.cluster.worker.manager_reload',
+                  side_effect=exception.WazuhInternalError(1014)) as reload_mock, \
+            patch.object(logging.getLogger('wazuh'), 'error') as error_mock:
+        await worker_handler.follow_master_vulnerability_detection()
+
+    reload_mock.assert_called_once_with()
+    assert not os.path.exists(path + '.reloaded')
+    error_mock.assert_called_once()
 
 
 @pytest.mark.asyncio

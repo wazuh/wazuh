@@ -34,9 +34,10 @@ MASTER_VD_ENABLED_PATH = os.path.join(common.WAZUH_PATH, 'queue', 'vd', 'master_
 # The value this node last reloaded itself for. Stops a node that cannot apply the master's value from reloading
 # on every reconnection.
 MASTER_VD_RELOADED_PATH = MASTER_VD_ENABLED_PATH + '.reloaded'
-# How long the local vulnerability scanner is given to answer after a (re)connection, in attempts and seconds.
-LOCAL_VD_STATUS_ATTEMPTS = 12
+# Seconds between two attempts to ask the local vulnerability scanner for its status.
 LOCAL_VD_STATUS_INTERVAL = 5
+# Failed attempts after which the silence of the local scanner is reported once, at warning level.
+LOCAL_VD_STATUS_WARN_AFTER = 12
 
 
 def write_text_atomically(path: str, content: str) -> None:
@@ -738,7 +739,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
            starts again with the master's value.
 
         A node is never reloaded twice in a row for the same value: if the first reload did not make the scanner
-        follow, a second one will not either, and the mismatch is reported as an error instead.
+        follow, a second one will not either, and the mismatch is reported as an error instead. A reload request that
+        was refused does not count as one.
+
+        The local scanner is asked until it answers or the connection to the master is lost.
 
         Nothing here may raise: the tasks of a connection are gathered, and an exception would close it.
         """
@@ -757,21 +761,25 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             write_text_atomically(MASTER_VD_ENABLED_PATH, answer + '\n')
 
+            # Asked until it answers, for as long as this connection lasts: the scanner's socket is not up right
+            # after a start, and giving up would leave this node on the other value until its next reconnection,
+            # which may be days away.
             local_enabled = None
-            for attempt in range(LOCAL_VD_STATUS_ATTEMPTS):
+            attempts = 0
+            while local_enabled is None:
+                if not self.connected:
+                    return
                 try:
                     local_enabled = await self.loop.run_in_executor(None, local_vulnerability_detection_enabled)
-                    break
                 except Exception as e:
-                    # The scanner's socket is not up yet right after a start.
-                    logger.debug(f"Could not ask the local vulnerability scanner for its status: {e}")
+                    attempts += 1
+                    if attempts == LOCAL_VD_STATUS_WARN_AFTER:
+                        logger.warning("The local vulnerability scanner is not answering; it cannot be checked that it "
+                                       "follows the master's setting (vulnerability detection "
+                                       f"{'enabled' if master_enabled else 'disabled'}) yet. Still trying.")
+                    else:
+                        logger.debug(f"Could not ask the local vulnerability scanner for its status: {e}")
                     await asyncio.sleep(LOCAL_VD_STATUS_INTERVAL)
-
-            if local_enabled is None:
-                logger.warning("The local vulnerability scanner did not answer; could not check that it follows the "
-                               f"master's setting (vulnerability detection {'enabled' if master_enabled else 'disabled'})."
-                               " It will be checked again on the next connection to the master.")
-                return
 
             if local_enabled == master_enabled:
                 with contextlib.suppress(OSError):
@@ -787,8 +795,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             logger.warning(f"Vulnerability detection is {states[master_enabled]} on the master node and "
                            f"{states[local_enabled]} on this node. Reloading this node to apply the master's setting.")
+            # Recorded before the request, not after: a reload stops this daemon, and a node that reloaded without
+            # the record would reload again on every connection if its scanner cannot follow. A request that was
+            # refused is not a reload, so the record is taken back and the next connection tries again.
             write_text_atomically(MASTER_VD_RELOADED_PATH, answer + '\n')
-            await self.loop.run_in_executor(None, manager_reload)
+            try:
+                await self.loop.run_in_executor(None, manager_reload)
+            except Exception:
+                with contextlib.suppress(OSError):
+                    os.remove(MASTER_VD_RELOADED_PATH)
+                raise
         except asyncio.CancelledError:
             raise
         except Exception as e:
