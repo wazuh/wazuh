@@ -28,10 +28,12 @@ int __wrap_audit_restart() {
 }
 
 int __wrap_audit_stop() {
+    function_called();
     return mock();
 }
 
 int __wrap_audit_start() {
+    function_called();
     return mock();
 }
 

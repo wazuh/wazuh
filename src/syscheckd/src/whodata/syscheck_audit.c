@@ -78,10 +78,11 @@ int get_audit_version_code(unsigned *out_code) {
     return 0;
 }
 
+// Returns the Auditd PID, 0 if it is not running, or -1 if the process list could not be read.
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
     proc_t *proc_info;
-    int auditd_pid = -1;
+    int auditd_pid = 0;
 
     if (!proc) {
         return -1;
@@ -183,7 +184,7 @@ static int audit_wait_for_listener(void) {
 // "service auditd stop" can return before Auditd exits (e.g. the RHEL legacy action only signals it).
 static int audit_wait_for_auditd_exit(void) {
     for (int i = 0; i < AUDIT_WAIT_STEPS; i++) {
-        if (check_auditd_enabled() <= 0) {
+        if (check_auditd_enabled() == 0) {
             return 0;
         }
 
@@ -193,32 +194,32 @@ static int audit_wait_for_auditd_exit(void) {
     return -1;
 }
 
-// The recovery stopped Auditd, so it must not leave the host without it.
-static int audit_start_after_recovery(void) {
-    if (audit_start() == 0 || audit_restart() == 0) {
-        return 0;
-    }
-
-    merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
-    return -1;
-}
-
 // Unlinking before restarting loses a race: the old Auditd's plugin supervisor re-binds the freed path and leaves a new stale socket on exit.
 static int audit_recover_stale_socket(const char *abs_path_socket) {
     if (audit_stop() != 0 || audit_wait_for_auditd_exit() != 0) {
         mwarn(FIM_WARN_AUDIT_STOP_FAILED, AUDIT_SOCKET);
-        // A failed stop may still have stopped it
-        audit_start_after_recovery();
+
+        // Auditd may still be running or about to exit: only a restart ends with it running either way
+        if (audit_restart() != 0) {
+            merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
+        }
+
         return -1;
     }
 
-    if (unlink(abs_path_socket) < 0 && errno != ENOENT) {
+    int unlink_failed = unlink(abs_path_socket) < 0 && errno != ENOENT;
+
+    if (unlink_failed) {
         merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
-        audit_start_after_recovery();
+    }
+
+    // Auditd was stopped above, so it must be started again whatever happened to the socket
+    if (audit_start() != 0) {
+        merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
         return -1;
     }
 
-    if (audit_start_after_recovery() != 0) {
+    if (unlink_failed) {
         return -1;
     }
 
@@ -249,6 +250,7 @@ int set_auditd_config(void) {
         if (get_audit_version_code(&vcode) != 0) {
             mdebug2("Could not get audit version code. Using default configuration.");
             audisp_config = AUDISP_CONFIGURATION_2;
+            check_stale_socket = 1;
         } else {
             mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
 

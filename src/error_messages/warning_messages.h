@@ -27,9 +27,6 @@
 #define FIM_WARN_REALTIME_OPENFAIL              "(6907): '%s' does not exist. Monitoring discarded."
 #define FIM_WARN_REALTIME_DISABLED              "(6908): Ignoring flag for real time monitoring on directory: '%s'."
 #define FIM_WARN_AUDIT_SOCKET_NOEXIST           "(6909): Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled."
-#define FIM_WARN_AUDIT_SOCKET_STALE             "(6986): Audit socket (%s) has no listener. You need to remove it and restart Auditd. Who-data will be disabled."
-#define FIM_WARN_AUDIT_STOP_FAILED              "(6987): Could not stop Auditd to remove the stale Audit socket (%s). Who-data will be disabled."
-#define FIM_WARN_AUDIT_SOCKET_NOLISTENER        "(6988): Audit socket (%s) still has no listener after restarting Auditd. Who-data will be disabled."
 #define FIM_WARN_AUDIT_CONFIGURATION_MODIFIED   "(6910): Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled."
 #define FIM_WARN_AUDIT_RULES_MODIFIED           "(6911): Detected Audit rules manipulation: Audit rules removed."
 #define FIM_WARN_AUDIT_CONNECTION_CLOSED        "(6912): Audit: connection closed."
@@ -88,6 +85,9 @@
 #define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
 #define FIM_WARN_EBPF_DIRS_MAP_FULL             "(6984): eBPF monitored directories map is full. Some whodata events will be lost."
 #define FIM_WARN_DIFF_PENDING_FULL              "(6985): Too many report_changes scratch folders could not be removed. '%s' will be removed at the next restart."
+#define FIM_WARN_AUDIT_SOCKET_STALE             "(6986): Audit socket (%s) has no listener. You need to remove it and restart Auditd. Who-data will be disabled."
+#define FIM_WARN_AUDIT_STOP_FAILED              "(6987): Could not stop Auditd to remove the stale Audit socket (%s). Who-data will be disabled."
+#define FIM_WARN_AUDIT_SOCKET_NOLISTENER        "(6988): Audit socket (%s) still has no listener after restarting Auditd. Who-data will be disabled."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
