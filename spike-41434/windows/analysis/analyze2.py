@@ -69,6 +69,13 @@ for r in rows:
     op = [(i, e) for i, e in enumerate(evs) if e["prov"] == "TCPIP" and e["id"] in open_ids
           and port_of(e["p"].get("SocketAddress") or e["p"].get("LocalAddress")) == tport]
     cl = [e for e in evs if e["prov"] == "TCPIP" and e["id"] == close_id and port_of(e["p"].get("LocalAddress")) == tport]
+    if not op and not tcp:
+        # Server 2012 R2: no TCPIP 1396/1397; UDP bind comes from Winsock-AFD 1030, close from AFD 1001 on the same Endpoint
+        op = [(i, e) for i, e in enumerate(evs) if e["prov"] == "Winsock-AFD" and e["id"] == 1030
+              and port_of(e["p"].get("Address")) == tport]
+        if op:
+            ep = op[0][1]["p"].get("Endpoint")
+            cl = [e for e in evs[op[0][0]:] if e["prov"] == "Winsock-AFD" and e["id"] == 1001 and e["p"].get("Endpoint") == ep]
     if not op:
         print(f"  {r['kind']:20} port={tport} MISSING open event; close={len(cl)}")
         continue
@@ -79,7 +86,7 @@ for r in rows:
     if not pid:
         print(f"    (header pid of the open event: {e['hdr']})")
     if not pid:
-        pid, via = e["hdr"], "header"
+        pid, via = e["hdr"], "header" if e["prov"] == "TCPIP" else "afd-header"
     m = [s for s in starts if s[1] == pid and s[0] < i]
     user = m[-1][2] if m else None
     good = pid == tpid and bool(cl) and user is not None

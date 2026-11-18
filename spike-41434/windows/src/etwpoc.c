@@ -7,6 +7,9 @@
  *   full  = system logger (classic process + classic network) + TCPIP filtered
  *   full2 = system logger (classic process only) + TCPIP filtered + Kernel-Network filtered
  *   full3 = full2 + Kernel-Process event 1 (full image path); the recommended set
+ *   full3afd = full3 + Winsock-AFD filtered to 1030/1001 (UDP bind/close on Server 2012 R2)
+ *   planb = regular private session (no system-logger slot): Kernel-Process 1/2 + Kernel-Network + TCPIP, user from the token
+ *   hog   = hold <maxprint> empty system-logger sessions for <seconds>, to exhaust the slots
  *   list  = list running ETW sessions and system-logger slots in use
  * Prints every event's TDH-decoded properties and, at the end, counts, latency and loss. */
 #define INITGUID
@@ -34,11 +37,12 @@ static const GUID UDPIP_CLASS = {0xbf3a50c5, 0xa9c9, 0x4988, {0xa0, 0x05, 0x2d, 
 
 static const GUID AFD = {0xe53c6823, 0x7bb8, 0x44bb, {0x90, 0xdc, 0x3f, 0x86, 0x09, 0x0d, 0x48, 0xa6}};
 static const GUID TCPIPP = {0x2f07e2ee, 0x15db, 0x40f1, {0x90, 0xef, 0x9d, 0x7b, 0xa2, 0x82, 0x18, 0x8a}};
-static int g_mode_afd, g_mode_ports, g_mode_full, g_mode_full2, g_mode_full3, g_watchdog;
+static int g_mode_afd, g_mode_ports, g_mode_full, g_mode_full2, g_mode_full3, g_mode_afdf, g_mode_planb, g_watchdog;
 static ULONG g_flush_ms;
 typedef struct { BOOLEAN FilterIn; UCHAR Reserved; USHORT Count; USHORT Events[6]; } POC_KN_FILTER;
 typedef struct { BOOLEAN FilterIn; UCHAR Reserved; USHORT Count; USHORT Events[7]; } POC_EVENT_ID_FILTER;
 typedef struct { BOOLEAN FilterIn; UCHAR Reserved; USHORT Count; USHORT Events[1]; } POC_ONE_FILTER;
+typedef struct { BOOLEAN FilterIn; UCHAR Reserved; USHORT Count; USHORT Events[2]; } POC_TWO_FILTER;
 #define SESSION_NAME L"WazuhEtwPoc41434"
 
 static LARGE_INTEGER g_freq;
@@ -252,6 +256,45 @@ static ULONG start_session(TRACEHANDLE* session, EVENT_TRACE_PROPERTIES* props, 
             rc = EnableTraceEx2(*session, &KP, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_VERBOSE, 0x10, 0, 0, &pp);
             if (rc) fwprintf(stderr, L"enable Kernel-Process (filtered) failed %lu\n", rc);
         }
+        if (g_mode_afdf)
+        {
+            POC_TWO_FILTER af = {TRUE, 0, 2, {1030, 1001}}; /* AfdBindWithAddress, AfdClose: UDP bind on 2012 R2 */
+            EVENT_FILTER_DESCRIPTOR afd = {(ULONGLONG)(ULONG_PTR)&af, sizeof(af), 0x80000200};
+            ENABLE_TRACE_PARAMETERS ap = {0};
+            ap.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
+            ap.EnableFilterDesc = &afd;
+            ap.FilterDescCount = 1;
+            rc = EnableTraceEx2(*session, &AFD, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_VERBOSE, 0, 0, 0, &ap);
+            if (rc) fwprintf(stderr, L"enable Winsock-AFD (filtered) failed %lu\n", rc);
+        }
+    }
+    else if (g_mode_planb)
+    {
+        /* no system-logger slot: regular private session, manifest providers only */
+        POC_TWO_FILTER pf = {TRUE, 0, 2, {1, 2}};
+        EVENT_FILTER_DESCRIPTOR pfd = {(ULONGLONG)(ULONG_PTR)&pf, sizeof(pf), 0x80000200};
+        ENABLE_TRACE_PARAMETERS pp = {0};
+        pp.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
+        pp.EnableFilterDesc = &pfd;
+        pp.FilterDescCount = 1;
+        rc = EnableTraceEx2(*session, &KP, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_VERBOSE, 0x10, 0, 0, &pp);
+        if (rc) fwprintf(stderr, L"enable Kernel-Process failed %lu\n", rc);
+        POC_KN_FILTER kf = {TRUE, 0, 6, {12, 13, 15, 28, 29, 31}};
+        EVENT_FILTER_DESCRIPTOR kfd = {(ULONGLONG)(ULONG_PTR)&kf, sizeof(kf), 0x80000200};
+        ENABLE_TRACE_PARAMETERS kp = {0};
+        kp.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
+        kp.EnableFilterDesc = &kfd;
+        kp.FilterDescCount = 1;
+        rc = EnableTraceEx2(*session, &KN, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_VERBOSE, 0x30, 0, 0, &kp);
+        if (rc) fwprintf(stderr, L"enable Kernel-Network failed %lu\n", rc);
+        POC_EVENT_ID_FILTER f = {TRUE, 0, 7, {1008, 1009, 1123, 1124, 1391, 1396, 1397}};
+        EVENT_FILTER_DESCRIPTOR fd = {(ULONGLONG)(ULONG_PTR)&f, sizeof(f), 0x80000200};
+        ENABLE_TRACE_PARAMETERS ep = {0};
+        ep.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
+        ep.EnableFilterDesc = &fd;
+        ep.FilterDescCount = 1;
+        rc = EnableTraceEx2(*session, &TCPIPP, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_VERBOSE, 0, 0, 0, &ep);
+        if (rc) fwprintf(stderr, L"enable TCPIP failed %lu\n", rc);
     }
     else if (g_mode_afd)
     {
@@ -278,7 +321,9 @@ int wmain(int argc, wchar_t** argv)
     g_mode_afd = wcscmp(argv[1], L"afd") == 0;
     g_mode_ports = wcscmp(argv[1], L"ports") == 0;
     g_mode_full2 = wcscmp(argv[1], L"full2") == 0;
-    g_mode_full3 = wcscmp(argv[1], L"full3") == 0;
+    g_mode_afdf = wcscmp(argv[1], L"full3afd") == 0;
+    g_mode_planb = wcscmp(argv[1], L"planb") == 0;
+    g_mode_full3 = wcscmp(argv[1], L"full3") == 0 || g_mode_afdf;
     g_mode_full2 = wcscmp(argv[1], L"full2") == 0 || g_mode_full3;
     g_mode_full = wcscmp(argv[1], L"full") == 0 || g_mode_full2;
     if (argc > 8) g_flush_ms = (ULONG)_wtoi(argv[8]);
@@ -291,6 +336,45 @@ int wmain(int argc, wchar_t** argv)
     int secs = argc > 2 ? _wtoi(argv[2]) : 0;
     if (argc > 3) g_maxprint = _wtoi(argv[3]);
     QueryPerformanceFrequency(&g_freq);
+    if (wcscmp(argv[1], L"hog") == 0)
+    {
+        /* etwpoc hog <seconds> <count>: hold <count> empty system-logger sessions to exhaust the slots */
+        int n = argc > 3 ? _wtoi(argv[3]) : 8, held = 0;
+        ULONG sz = sizeof(EVENT_TRACE_PROPERTIES) + 512;
+        for (int i = 0; i < n; i++)
+        {
+            wchar_t name[64];
+            swprintf(name, 64, L"WazuhHog41434_%d", i);
+            EVENT_TRACE_PROPERTIES* hp = calloc(1, sz);
+            hp->Wnode.BufferSize = sz;
+            hp->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+            ControlTraceW(0, name, hp, EVENT_TRACE_CONTROL_STOP);
+            memset(hp, 0, sz);
+            hp->Wnode.BufferSize = sz;
+            hp->Wnode.Flags = WNODE_FLAG_TRACED_GUID;
+            hp->Wnode.ClientContext = 1;
+            hp->LogFileMode = EVENT_TRACE_REAL_TIME_MODE | EVENT_TRACE_SYSTEM_LOGGER_MODE;
+            hp->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+            TRACEHANDLE h = 0;
+            ULONG r = StartTraceW(&h, name, hp);
+            wprintf(L"HOG %ls rc=%lu\n", name, r);
+            if (r == ERROR_SUCCESS) held++;
+        }
+        wprintf(L"HOG held=%d\n", held);
+        fflush(stdout);
+        Sleep((DWORD)secs * 1000);
+        for (int i = 0; i < n; i++)
+        {
+            wchar_t name[64];
+            swprintf(name, 64, L"WazuhHog41434_%d", i);
+            EVENT_TRACE_PROPERTIES* hp = calloc(1, sz);
+            hp->Wnode.BufferSize = sz;
+            hp->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+            ControlTraceW(0, name, hp, EVENT_TRACE_CONTROL_STOP);
+        }
+        wprintf(L"HOG released\n");
+        return 0;
+    }
     if (wcscmp(argv[1], L"list") == 0)
     {
         EVENT_TRACE_PROPERTIES* arr[64];

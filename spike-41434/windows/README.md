@@ -7,7 +7,7 @@ Proof-of-concept code used to evaluate real-time event sources for process lifec
 | Path | Content |
 |---|---|
 | `src/etwpoc.c` | ETW real-time consumer. Starts a private session, enables the providers of the selected mode, decodes every event with TDH and prints its fields, then reports latency, lost events, CPU and memory |
-| `src/invpoc.c` | Change notifications for other inventories: SCM (`NotifyServiceStatusChange`), System log 7036/7040/7045, `RegNotifyChangeKeyValue` on the `Uninstall` keys (HKLM and every loaded HKU) and on each user's AppX repository key, Security log 4720/4726/4732/4733, `NotifyIpInterfaceChange` and `NotifyUnicastIpAddressChange` |
+| `src/invpoc.c` | Change notifications for other inventories: SCM (`NotifyServiceStatusChange`), System log 7036/7040/7045, `RegNotifyChangeKeyValue` on the `Uninstall` keys (HKLM and every loaded HKU), on each user's AppX repository key and on the CBS package store, `Microsoft-Windows-WindowsUpdateClient/Operational`, Security log 4720/4726/4732/4733, `NotifyIpInterfaceChange` and `NotifyUnicastIpAddressChange`. An optional second argument is a folder watched with `ReadDirectoryChangesW` (browser profile) |
 | `src/quick.c` | Short-lived test process (under 10 ms, exit code 7) |
 | `ebpf/` | eBPF for Windows programs (`SEC("process")` with ntosebpfext, `SEC("bind")`) |
 | `scripts/` | Test scenarios run inside the VM; each writes a ground-truth file next to the consumer log |
@@ -39,6 +39,9 @@ The eBPF programs build with `clang -target bpf -O2 -ffreestanding` and the head
 | `ports` | `Microsoft-Windows-TCPIP` filtered by event ID, with `EVENT_ENABLE_PROPERTY_SID` |
 | `full2` | System logger (classic process events only) + TCPIP filtered (1008, 1009, 1123, 1124, 1391, 1396, 1397) + Kernel-Network filtered (12, 13, 15, 28, 29, 31) |
 | `full3` | `full2` + Kernel-Process event 1 (full image path). This is the recommended set |
+| `full3afd` | `full3` + `Microsoft-Windows-Winsock-AFD` filtered (1030, 1001), for UDP binds on Server 2012 R2 |
+| `planb` | No system-logger session: a regular session with Kernel-Process (1, 2) + Kernel-Network + TCPIP, user read from the process token |
+| `hog` | `etwpoc hog <seconds> <count>`: holds `<count>` empty system-logger sessions to use up the free slots |
 | `list` | Running ETW sessions and system-logger slots in use |
 
 - `flush_ms` sets the flush interval in milliseconds (`EVENT_TRACE_USE_MS_FLUSH_TIMER`).
@@ -54,13 +57,18 @@ The scenarios expect the binaries in `C:\poc41434` (see `lab/run.ps1 -Copy`) and
 | `scenario_listen.ps1` | `afd`: listening ports with no connection |
 | `scenario_ports.ps1` | `ports`: listen and bind as a user and as SYSTEM, SID property |
 | `scenario_full.ps1` | Process storm in sequence and in parallel, listen with connect/accept, SYSTEM processes and port; any mode, buffer size, slow consumer, flush interval |
-| `scenario_ports2.ps1` + `sys_part.ps1` | `full3`: full image path, ports open for 300 ms (TCP/UDP, IPv4/IPv6) with PID, user and close event, SYSTEM processes and ports |
+| `scenario_ports2.ps1` + `sys_part.ps1` | `full3` (or `-Mode`): full image path, ports open for 300 ms (TCP/UDP, IPv4/IPv6) with PID, user and close event, SYSTEM processes and ports |
 | `scenario_wd.ps1` | Watchdog: stops the session with `logman` while processes run, and counts the ones missed in the gap |
 | `round3.ps1`, `loss_test.ps1` | Decode cost, idle cost, slow consumer with minimal buffers, external stop |
 | `scenario_udp_probe.ps1` | `afd`: which events carry the UDP bind port (Server 2012 R2 has no TCPIP 1396/1397) |
 | `scenario_inv.ps1` | Services: create, start-type change, delete, start and stop; packages through registry writes |
 | `scenario_inv2.ps1` | Real MSI install and uninstall (needs `7z-x64.msi` in `C:\poc41434`), per-user `Uninstall` key, AppX remove and re-register, users and groups, audit policy. `-NetworkTest` also adds and removes an IP address and changes the MTU: run it only on a disposable VM, because adding an address to a DHCP interface disables DHCP |
 | `scenario_audit.ps1` | Default audit policy, and whether the account-management events are logged |
+| `scenario_slots.ps1` | Uses up the system-logger slots, checks how `full3` fails, then runs `ports2` in `planb` mode |
+| `scenario_coexist.ps1` | Installs Sysmon (needs `Sysmon64.exe` in `C:\poc41434`), runs `ports2` next to it, counts Sysmon events 1 and 5, uninstalls Sysmon |
+| `scenario_load.ps1` | Process stream with CPU burners (`-Burners`), consumer decoding without printing, any flush interval |
+| `scenario_wmi.ps1` | `Win32_ProcessStartTrace` / `Win32_ProcessStopTrace` for the same process storm |
+| `scenario_inv3.ps1` | CBS notifications for a Windows feature install and removal (Server only), and a browser-extension folder in an Edge profile |
 | `sysmon_test.ps1` + `sysmon41434.xml` | Sysmon events 1, 3 and 5 for the same workload |
 | `ebpf_test2.ps1` | eBPF for Windows: ntosebpfext install, program load, workload, map dump |
 
@@ -74,6 +82,7 @@ python3 analysis/analyze2.py out/etw_<tag>.txt out/truth_<tag>.csv <label>   # s
 `analyze2.py` resolves the PID of each port in this order:
 1. the event field;
 2. the latest 1391 with the same `Endpoint` before the bind, because `Endpoint` addresses are reused;
-3. the event header.
+3. the event header;
+4. for UDP binds with no 1396 (Server 2012 R2), the Winsock-AFD 1030 with the same port, or the 1001 with the same `Endpoint`, and its header PID.
 
 It then matches that PID with the process start events to get the user, and checks for the close event.

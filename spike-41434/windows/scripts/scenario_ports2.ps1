@@ -1,7 +1,7 @@
-param([string]$Tag = 'p2', [int]$Secs = 75, [int]$FlushMs = 0, [int]$Seq = 100, [int]$Par = 2, [int]$PerPar = 50)
+param([string]$Tag = 'p2', [string]$Mode = 'full3', [int]$Secs = 75, [int]$FlushMs = 0, [int]$Seq = 100, [int]$Par = 2, [int]$PerPar = 50)
 $dir = 'C:\poc41434'; $log = "$dir\etw_$Tag.txt"; $truth = "$dir\truth_$Tag.csv"; $sys = "$dir\sys_$Tag.txt"
 Remove-Item $log, $truth, $sys -ErrorAction SilentlyContinue
-$p = Start-Process -FilePath "$dir\etwpoc.exe" -ArgumentList 'full3', $Secs, 1000000, 64, 64, 0, 0, $FlushMs, 0 -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru -WindowStyle Hidden
+$p = Start-Process -FilePath "$dir\etwpoc.exe" -ArgumentList $Mode, $Secs, 1000000, 64, 64, 0, 0, $FlushMs, 0 -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru -WindowStyle Hidden
 Start-Sleep 4
 "kind,count,detail" | Out-File $truth -Encoding ascii
 function T($k, $c, $d) { "$k,$c,$d" | Out-File $truth -Append -Encoding ascii }

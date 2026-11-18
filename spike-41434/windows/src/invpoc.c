@@ -104,6 +104,30 @@ static DWORD WINAPI reg_thread(LPVOID arg)
     return 0;
 }
 
+/* browser extensions: directory changes under a profile folder (argv[2]) */
+static DWORD WINAPI dir_thread(LPVOID arg)
+{
+    const wchar_t* path = arg;
+    HANDLE d = CreateFileW(path, FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+                           OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    if (d == INVALID_HANDLE_VALUE) { wprintf(L"%llu DIR open_failed %lu %ls\n", now_ft(), GetLastError(), path); fflush(stdout); return 1; }
+    static BYTE buf[65536];
+    DWORD got;
+    while (ReadDirectoryChangesW(d, buf, sizeof(buf), TRUE,
+                                 FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE, &got, NULL, NULL))
+    {
+        ULONGLONG t = now_ft();
+        for (FILE_NOTIFY_INFORMATION* fi = (FILE_NOTIFY_INFORMATION*)buf; got;)
+        {
+            wprintf(L"%llu DIR action=%lu %.*ls\n", t, fi->Action, (int)(fi->FileNameLength / sizeof(wchar_t)), fi->FileName);
+            if (!fi->NextEntryOffset) break;
+            fi = (FILE_NOTIFY_INFORMATION*)((BYTE*)fi + fi->NextEntryOffset);
+        }
+        fflush(stdout);
+    }
+    return 0;
+}
+
 static void watch(HKEY root, const wchar_t* path)
 {
     REGW* r = calloc(1, sizeof(*r));
@@ -143,6 +167,11 @@ int wmain(int argc, wchar_t** argv)
     if (!sub) wprintf(L"EvtSubscribe failed %lu\n", GetLastError());
     watch(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
     watch(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
+    /* hotfixes: CBS package store, as Syscollector reads it */
+    watch(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages");
+    EVT_HANDLE wu = EvtSubscribe(NULL, NULL, L"Microsoft-Windows-WindowsUpdateClient/Operational", L"*", NULL, NULL, on_evt, EvtSubscribeToFutureEvents);
+    if (!wu) wprintf(L"EvtSubscribe WindowsUpdateClient failed %lu\n", GetLastError());
+    if (argc > 2) CreateThread(NULL, 0, dir_thread, argv[2], 0, NULL);
     /* every loaded user hive: per-user Uninstall and AppX repository, as Syscollector reads them */
     wchar_t sid[256];
     for (DWORD i = 0, n = 256; RegEnumKeyExW(HKEY_USERS, i, sid, &n, NULL, NULL, NULL, NULL) == ERROR_SUCCESS; i++, n = 256)
