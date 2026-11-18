@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Container Images
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -90,6 +90,12 @@ namespace containerimages
         if (m_headerList != nullptr)
         {
             curl_slist_free_all(static_cast<curl_slist*>(m_headerList));
+        }
+
+        // The headers carry the registry token, and libcurl's own copy is gone by now.
+        for (auto& header : m_headers)
+        {
+            scrubString(header);
         }
     }
 

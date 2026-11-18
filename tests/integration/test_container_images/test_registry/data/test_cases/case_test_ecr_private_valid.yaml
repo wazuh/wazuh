@@ -1,0 +1,46 @@
+- name: Two private ECR references of one registry share one signed token request
+  description: The access key pair is read from the store, signed for, and the token reused for the second reference
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    SECOND_REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+  metadata:
+    flavor: ecr-private
+    repository: my-backend
+    extra_repositories: [team/other-backend]
+    reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    second_reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+    credential: valid
+    expected_references: 2
+
+- name: A private ECR reference that cannot be resolved does not stop the next one
+  description: The credential is valid, the second repository does not exist, and the first is still inventoried
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    SECOND_REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/does-not-exist:1.0
+  metadata:
+    flavor: ecr-private
+    repository: my-backend
+    reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    second_reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/does-not-exist:1.0
+    credential: valid
+    expected_references: 1
+
+- name: A private ECR token that dies while the first image is read is renewed once
+  description: The first layer answers 400 DENIED, the manifest confirms the token is refused, one new token is requested, and the second reference reuses it
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    SECOND_REFERENCE: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+  metadata:
+    flavor: ecr-private
+    repository: my-backend
+    extra_repositories: [team/other-backend]
+    reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0
+    second_reference: 123456789012.dkr.ecr.us-east-1.amazonaws.com/team/other-backend:1.0
+    credential: valid
+    expire_token_on_first_layer: true
+    expected_references: 2
+    expected_api_requests: 2
+    expected_refused_tokens: 2

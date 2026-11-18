@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Container Images
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -95,6 +95,11 @@ namespace containerimages
             std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&, const ReaderContext&)> m_readerFactory;
             std::shared_ptr<ContainerImagesDB> m_db;
             std::shared_ptr<ICredentialProvider> m_credentials;
+
+            /// @brief Registry tokens, kept for the life of the module so that the references
+            /// of one registry share one. A configuration change builds a new module, and
+            /// with it an empty cache.
+            RegistryTokenCache m_tokenCache;
             std::uint64_t m_scanBytes {0};
             std::map<std::string, std::string> m_refusedCredentialScopes;
             std::set<std::string> m_reportedRefusalHosts;

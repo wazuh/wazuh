@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Container Images
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -149,7 +149,13 @@ namespace containerimages
             }
 
             auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag, &m_refusedCredentialScopes, &m_reportedRefusalHosts};
+            const ReaderContext context {&m_config,
+                                         m_credentials.get(),
+                                         &m_scanBytes,
+                                         &m_stopFlag,
+                                         &m_refusedCredentialScopes,
+                                         &m_reportedRefusalHosts,
+                                         &m_tokenCache};
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)

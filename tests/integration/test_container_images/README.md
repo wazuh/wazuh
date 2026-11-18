@@ -171,6 +171,35 @@ way still restores `/etc/hosts`, because the fixture writes it back on teardown.
 | `case_test_platform_variants` | An index offering two platforms is read from the agent's own; one offering none is reported with no layer fetched. |
 | `case_test_unchanged_reference` | A second scan of an unchanged reference requests **zero** blobs. Asserted as a count, not as a duration. |
 
+### Amazon ECR (`test_container_images_ecr.py`)
+
+The same server answers as the Amazon ECR hosts the module recognises, picked by the case's
+`flavor`, so the module's host checks are not weakened either:
+
+- `ecr-public` answers as `public.ecr.aws`, with an anonymous Bearer token.
+- `ecr-private` answers as `123456789012.dkr.ecr.us-east-1.amazonaws.com` and accepts only a
+  `Basic` token issued by `api.ecr.us-east-1.amazonaws.com`, which the same server also answers
+  as. That endpoint verifies the AWS Signature Version 4 of the module's request with a Python
+  implementation written independently of the module's (`verify_sigv4` in
+  `framework_module/registry.py`), and quotes the request back in its error for a bad signature,
+  to prove the module never copies AWS's text into its log.
+
+These cases need root for the same reasons as the GHCR ones, and they were **not run** while the
+feature was written: they need an installed agent, port 443 and `/etc/hosts`. What was run is
+the Python mock itself (`verify_sigv4` against the Authorization header the C++ signer is
+asserted to produce for the same input, and the mock's answers over TLS on an unprivileged
+port), and the C++ and cmocka unit tests.
+
+| Case | Establishes |
+|---|---|
+| `case_test_ecr_public_reference` | A public ECR reference needs no credential, never calls AWS, the layer arrives through the redirect without the token, and the packages stored for it equal those stored for the same image as a saved archive. |
+| `case_test_ecr_private_valid` | A private reference is read with a token from a signed request whose signature verifies. Two references of one registry cost **one** signed request. A reference that cannot be resolved does not stop the next. A token that dies while the first image is read (the first layer answers `400 DENIED`) is renewed once, after the manifest confirms the token is the cause, and the second reference reuses the new one: two signed requests in all. No credential and nothing derived from one is in the log. |
+| `case_test_ecr_private_invalid` | A wrong secret access key, an unknown access key id and keys absent from the store are each reported with the reference and the reason. The registry is never asked, nothing is stored, and no value AWS quoted reaches the log. |
+
+A real AWS account is a separate, user-run validation: it is the only way to establish the
+answers for an expired credential, an insufficient one and a skewed clock, which are not
+reproduced here.
+
 ### Verifying the registry without root
 
 `issues/38587/scripts/verify_local_registry.py` drives the same `framework_module/registry.py`
