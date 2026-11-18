@@ -278,6 +278,14 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
             continue;
         }
 
+#if defined(CLIENT) && !defined(WIN32)
+        if (statbuf.st_uid != 0) {
+            merror(FILE_NOT_ROOT_OWNED, ca_store[i]);
+            X509_STORE_free(store);
+            continue;
+        }
+#endif
+
         switch (statbuf.st_mode & S_IFMT) {
         case S_IFDIR:
             r = X509_STORE_load_locations(store, NULL, ca_store[i]);
