@@ -1030,6 +1030,110 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyMissingPolicyHashThrows)
     EXPECT_THROW(connector->getPolicy("default"), IndexerConnectorException);
 }
 
+TEST_F(WIndexerConnectorMockTest, GetPolicyMultiPageCompleteSucceeds)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json firstPage = {{"total", {{"value", 3}}},
+                                {"hits",
+                                 {makePolicyHit("wazuh-threatintel-kvdbs", "kv1", nlohmann::json::array({1, "a"})),
+                                  makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    nlohmann::json secondPage = {
+        {"total", {{"value", 3}}},
+        {"hits",
+         {makePolicyHit(
+             "wazuh-threatintel-policies", "policy1", nlohmann::json::array({3, "c"}), std::string("HASHX"))}}};
+
+    std::vector<std::optional<nlohmann::json>> searchAfters;
+    EXPECT_CALL(*mock, search(_, _, _, _, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke(
+            [&](const PointInTime&,
+                std::size_t,
+                const nlohmann::json&,
+                const nlohmann::json&,
+                const std::optional<nlohmann::json>& searchAfter,
+                const std::optional<nlohmann::json>&)
+            {
+                searchAfters.push_back(searchAfter);
+                return searchAfters.size() == 1 ? firstPage : secondPage;
+            }));
+
+    auto connector = makeConnector(/*maxHits=*/2);
+    auto resources = connector->getPolicy("default");
+
+    ASSERT_TRUE(resources.has_value());
+    EXPECT_EQ(resources->kvdbs.size(), 1U);
+    EXPECT_EQ(resources->decoders.size(), 1U);
+    EXPECT_TRUE(resources->policy.isObject());
+    ASSERT_EQ(searchAfters.size(), 2U);
+    EXPECT_FALSE(searchAfters[0].has_value());
+    ASSERT_TRUE(searchAfters[1].has_value());
+    EXPECT_EQ(*searchAfters[1], nlohmann::json::array({2, "b"}));
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyShortPaginationThrows)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    // The first page carries the policy and one decoder and announces 5 documents; the next page comes
+    // back empty. Returning here would hand the content sync a policy whose other assets were never
+    // downloaded.
+    nlohmann::json firstPage = {
+        {"total", {{"value", 5}}},
+        {"hits",
+         {makePolicyHit("wazuh-threatintel-policies", "policy1", nlohmann::json::array({1, "a"}), std::string("HASHX")),
+          makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    nlohmann::json emptyPage = {{"total", {{"value", 5}}}, {"hits", nlohmann::json::array()}};
+    EXPECT_CALL(*mock, search(_, _, _, _, _, _)).WillOnce(Return(firstPage)).WillOnce(Return(emptyPage));
+
+    auto connector = makeConnector(/*maxHits=*/2);
+    try
+    {
+        connector->getPolicy("default");
+        FAIL() << "Expected an IndexerConnectorException";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("Policy download for space 'default' ended after 2 of 5 documents"));
+    }
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyPitSearchFailureMidPaginationThrows)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json firstPage = {{"total", {{"value", 4}}},
+                                {"hits",
+                                 {makePolicyHit("wazuh-threatintel-kvdbs", "kv1", nlohmann::json::array({1, "a"})),
+                                  makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    EXPECT_CALL(*mock, search(_, _, _, _, _, _))
+        .WillOnce(Return(firstPage))
+        .WillOnce(Throw(IndexerConnectorException(
+            "Search request failed with status 500: Server error. Response: "
+            "{\"error\":{\"type\":\"search_phase_execution_exception\",\"reason\":\"Partial shards failure\"}}",
+            IndexerConnectorException::Category::Other,
+            500)));
+
+    auto connector = makeConnector(/*maxHits=*/2);
+    try
+    {
+        connector->getPolicy("default");
+        FAIL() << "Expected an IndexerConnectorException";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("search_phase_execution_exception"));
+        EXPECT_EQ(e.statusCode(), 500);
+    }
+}
+
 /**************************
  * getEngineRemoteConfig
  **************************/

@@ -48,7 +48,7 @@ Before an initial load, the downloader waits until the documents `FEED-GLOBAL`, 
 
 ### PIT pagination
 
-Each download cycle (initial or incremental) opens a single Point-In-Time on the target index with a keep-alive of `5m`. All page requests within the cycle use this PIT, ensuring a consistent snapshot of the index throughout the download. The PIT is always deleted when the cycle finishes, even in error cases (a failed deletion is only logged). Pagination stops at the first page shorter than `pageSize`.
+Each download cycle (initial or incremental) opens a single Point-In-Time on the target index with a keep-alive of `5m`. All page requests within the cycle use this PIT, ensuring a consistent snapshot of the index throughout the download. The PIT is always deleted when the cycle finishes, even in error cases (a failed deletion is only logged). Pagination stops at the first page shorter than `pageSize`. A page the indexer cannot answer over every shard is never taken for that short last page: the connector asks the indexer to refuse such an answer (`allow_partial_search_results=false`), so the request throws (see [Searches and points in time](../../../../../docs/ref/modules/indexer_connector/README.md#searches-and-points-in-time)). The PIT is opened the same way (`allow_partial_pit_creation=false`): if the indexer cannot open it over every shard, `createPointInTime` throws and the attempt fails.
 
 #### Sequential fetch (`numSlices` = 1)
 
@@ -85,7 +85,7 @@ A slice whose page request still fails after the [page request retry](#page-requ
 
 #### Page request retry
 
-A page request (`search`) that throws is repeated from the same `search_after` position on the same PIT, up to 5 times, waiting 5, 10, 20, 40 and 60 seconds (`IndexerPageWalk::RetryPolicy` in [indexerPageWalk.hpp](../../src/components/indexerPageWalk.hpp)). Every retry logs `<who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` at warning level, where `<who>` is `Slice <i> (<i+1>/<n>)` or `Download`. The connector already retries a 429 for a few seconds inside each request; this retry covers the longer episodes (an indexer circuit breaker answering 429 for minutes), which used to discard every slice's progress and restart the initial load from offset 0.
+A page request (`search`) that throws, a refused partial answer included, is repeated from the same `search_after` position on the same PIT, up to 5 times, waiting 5, 10, 20, 40 and 60 seconds (`IndexerPageWalk::RetryPolicy` in [indexerPageWalk.hpp](../../src/components/indexerPageWalk.hpp)). Every retry logs `<who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` at warning level, where `<who>` is `Slice <i> (<i+1>/<n>)` or `Download`. The connector already retries a 429 for a few seconds inside each request; this retry covers the longer episodes (an indexer circuit breaker answering 429 for minutes), which used to discard every slice's progress and restart the initial load from offset 0.
 
 - Repeating the request is safe: a failed request delivered nothing to the consumer, and the position is still valid in the PIT snapshot. The PIT stays alive while the other slices keep using it, and the 135-second window leaves room inside its 5-minute keep-alive when they have finished.
 - Only the request is retried: a consumer callback failure (`fileProcessingCallback returned failure`) is not, since the page may be half applied.

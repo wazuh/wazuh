@@ -626,6 +626,15 @@ std::optional<PolicyResources> WIndexerConnector::getPolicy(std::string_view spa
 
     } while (moreHits);
 
+    // The walk must reach the total its first page announced: a page that comes back empty before
+    // that would otherwise end it early and return a space missing documents, whose policy would then
+    // reference assets that were never downloaded.
+    if (retrievedSoFar < total_hits)
+    {
+        throw IndexerConnectorException(fmt::format(
+            "Policy download for space '{}' ended after {} of {} documents", space, retrievedSoFar, total_hits));
+    }
+
     // Avoid memory reallocations
     {
         std::size_t kvdbCount = 0;

@@ -1044,6 +1044,10 @@ route, and the next cycle keeps running at the regular interval; when the indexe
 `Space '<name>' is back in sync with wazuh-indexer` at `INFO` if its content did not change, or the usual
 `Changes detected` / `Successfully synchronized` lines if it did.
 
+A download the indexer can only answer in part, typically because a node holding some of the content is stopping
+during it, counts as a failed attempt in the same way: the space content is never imported incomplete, and the
+deployed route is kept (see [Synchronization failures](configuration.md#synchronization-failures)).
+
 The content synchronized per space includes:
 
 - **Policy configuration** — List of integration (order by priority of evaluation) and policy-level settings

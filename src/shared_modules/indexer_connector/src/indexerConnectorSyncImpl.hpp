@@ -1650,9 +1650,14 @@ public:
             url += "&expand_wildcards=all";
         }
 
+        // A PIT over the shards that happen to be reachable hides the missing ones from every search
+        // that uses it, so the indexer must refuse to create it instead.
+        url += "&allow_partial_pit_creation=false";
+
         std::string pitId;
         uint64_t creationTime = 0;
         bool success = false;
+        long errorStatus = 0;
         std::string errorMessage;
 
         const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](const std::string& response)
@@ -1687,8 +1692,10 @@ public:
             }
         };
 
-        const auto onError = [this, &errorMessage](const std::string& error, const long statusCode, const std::string&)
+        const auto onError =
+            [this, &errorMessage, &errorStatus](const std::string& error, const long statusCode, const std::string&)
         {
+            errorStatus = statusCode;
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode);
             LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
         };
@@ -1699,7 +1706,9 @@ public:
 
         if (!success)
         {
-            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage,
+                                            IndexerConnectorException::Category::Other,
+                                            errorStatus);
         }
 
         return PointInTime(std::move(pitId), creationTime, keepAlive);
@@ -1808,7 +1817,9 @@ public:
             {
                 LOGFN_WARN(m_logFn, "Search request failed: %s, status code: %ld", error.c_str(), statusCode);
                 throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
-                                                ": " + error);
+                                                    ": " + error,
+                                                IndexerConnectorException::Category::Other,
+                                                statusCode);
             }
         };
 
@@ -1825,7 +1836,7 @@ public:
             needToRetry = false;
             std::string url;
             url += m_selector->getNext();
-            url += "/_search";
+            url += "/_search?allow_partial_search_results=false";
 
             m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                    .data = requestBody.dump(),
