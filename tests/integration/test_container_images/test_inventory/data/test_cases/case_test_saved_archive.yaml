@@ -1,0 +1,8 @@
+- name: saved_archive_is_inventoried
+  description: A saved image archive is read and the packages of its apk database are stored
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/image.tar
+  metadata:
+    package_format: apk

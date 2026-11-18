@@ -1187,6 +1187,22 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
+        if [ -f build/lib/libcontainer_images.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libcontainer_images.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libcontainer_images.dylib ${INSTALLDIR}/lib/libcontainer_images.dylib
+        fi
+    elif [ -f build/lib/libcontainer_images.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libcontainer_images.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontainer_images.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
         if [ -f build/lib/libagent_info.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libagent_info.dylib ${INSTALLDIR}/lib
@@ -1247,6 +1263,8 @@ InstallCommon()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca/db
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/container_images
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/container_images/db
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
   fi
 
@@ -1764,6 +1782,14 @@ InstallAgent()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming
+
+    # Agent credential store. The directory is root-only: the store's permissions are
+    # what protects the credentials it holds, so the enclosing directory matches.
+    if [ -f build/bin/wazuh-agent-keystore ]
+    then
+        ${INSTALL} -d -m 0750 -o root -g 0 ${INSTALLDIR}/queue/credentials
+        ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agent-keystore ${INSTALLDIR}/bin/wazuh-agent-keystore
+    fi
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
 
     # Install the plugins files

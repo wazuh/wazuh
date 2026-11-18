@@ -1,0 +1,12 @@
+- name: A private reference is inventoried with a valid credential from the store
+  description: The credential is read from the agent credential store and exchanged for a token
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: ghcr.io/owner/private:1.0
+  metadata:
+    repository: owner/private
+    reference: ghcr.io/owner/private:1.0
+    private: true
+    credential: valid
+    platforms: [amd64]
+    expected_packages: 1

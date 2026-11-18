@@ -1,0 +1,8 @@
+- name: deleted_database_is_not_reported
+  description: A package database deleted in a later layer contributes no packages
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-whiteout
+  metadata:
+    layers: 2

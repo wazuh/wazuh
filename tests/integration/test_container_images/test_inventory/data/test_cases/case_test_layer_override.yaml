@@ -1,0 +1,8 @@
+- name: later_layer_wins
+  description: A package upgraded in a later layer is stored with the version of the last layer
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-layered
+  metadata:
+    layers: 2

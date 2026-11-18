@@ -1,0 +1,41 @@
+- name: A reference with several platform variants is read from the matching one
+  description: The index offers two platforms and only the agent's own is fetched
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: ghcr.io/owner/public:1.0
+  metadata:
+    repository: owner/public
+    reference: ghcr.io/owner/public:1.0
+    private: false
+    credential: none
+    platforms: [amd64, arm64]
+    expected_packages: 1
+    expected_architecture: amd64
+
+- name: An index offering no matching platform variant is reported from the index alone
+  description: Two foreign platforms in an index, so the reference is declined without reading any blob
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: ghcr.io/owner/foreign:1.0
+  metadata:
+    repository: owner/foreign
+    reference: ghcr.io/owner/foreign:1.0
+    private: false
+    credential: none
+    platforms: [s390x, ppc64le]
+    expected_packages: 0
+    expect_no_blob_at_all: true
+
+- name: A bare manifest for a foreign platform is reported after its configuration is read
+  description: A manifest outside an index names no platform, so the configuration blob is read and then the reference is declined
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: ghcr.io/owner/foreign:1.0
+  metadata:
+    repository: owner/foreign
+    reference: ghcr.io/owner/foreign:1.0
+    private: false
+    credential: none
+    platforms: [s390x]
+    expected_packages: 0
+    expect_no_blob_at_all: false
