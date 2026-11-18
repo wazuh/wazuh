@@ -110,6 +110,14 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
 
+/**
+ * @brief Check whether any configured localfile uses $(host_ip) in its output format
+ *
+ * @retval true At least one localfile uses $(host_ip).
+ * @retval false Otherwise.
+ */
+STATIC bool host_ip_in_formats();
+
 static bool w_file_head_changed(const char * path, const os_file_status_t * data);
 
 /* Global variables */
@@ -491,7 +499,7 @@ void LogCollectorStart()
     w_save_file_status();
 
     // Initialize message queue's log builder
-    mq_log_builder_init();
+    mq_log_builder_init(host_ip_in_formats());
 
     /* Create the output threads */
     w_create_output_threads();
@@ -1874,6 +1882,41 @@ static void set_sockets() {
             }
         }
     }
+}
+
+/**
+ * @brief Check whether any output format of a localfile uses $(host_ip)
+ *
+ * @param out_format Null-terminated array of output formats. It may be NULL.
+ * @retval true At least one format uses $(host_ip).
+ * @retval false Otherwise.
+ */
+static bool out_format_uses_host_ip(outformat ** out_format) {
+    for (int i = 0; out_format && out_format[i]; i++) {
+        if (log_builder_uses_host_ip(out_format[i]->format)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Check whether any configured localfile uses $(host_ip) in its output format
+STATIC bool host_ip_in_formats() {
+    // Command and event channel entries have no file at this point: the list ends at the first entry without format.
+    for (int i = 0; logff && logff[i].logformat; i++) {
+        if (out_format_uses_host_ip(logff[i].out_format)) {
+            return true;
+        }
+    }
+
+    for (int i = 0; globs && globs[i].gpath; i++) {
+        if (globs[i].gfiles && out_format_uses_host_ip(globs[i].gfiles->out_format)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void w_set_file_mutexes(){

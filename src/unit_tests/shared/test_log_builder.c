@@ -40,7 +40,7 @@ void test_log_builder(void **state)
     will_return_always(__wrap_getDefine_Int, 60);
 #endif
 
-    log_builder_t * builder = log_builder_init(false);
+    log_builder_t * builder = log_builder_init(false, false);
 
     char * output = log_builder_build(builder, PATTERN, LOG, LOCATION);
 
@@ -55,7 +55,7 @@ void test_log_builder_update(void **state)
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     will_return_always(__wrap_getDefine_Int, 1);
 #endif
-    log_builder_t * builder = log_builder_init(false);
+    log_builder_t * builder = log_builder_init(false, true);
 #if !defined(TEST_AGENT) && !defined(TEST_WINAGENT)
     /* Nothing set it during init in this build, and log_builder_update_host_ip() only refreshes the
      * IP while the interval is positive: set it here so the refresh path is the one under test. */
@@ -85,7 +85,7 @@ void test_log_builder_not_update(void **state) {
     will_return_always(__wrap_getDefine_Int, 0);
 #endif
 
-    log_builder_t * builder = log_builder_init(false);
+    log_builder_t * builder = log_builder_init(false, true);
 #if !defined(TEST_AGENT) && !defined(TEST_WINAGENT)
     /* g_ip_update_interval is a global shared by every test in this binary and the previous one left
      * it at 1: reset it, this test is the "interval disabled, no refresh" case. */
