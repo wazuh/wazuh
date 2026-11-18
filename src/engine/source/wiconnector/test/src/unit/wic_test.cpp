@@ -887,12 +887,14 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyShortPaginationThrows)
     EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
     EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
 
-    // The first page announces 5 documents, the second comes back empty: the indexer stopped
-    // answering for some shards in the middle of the walk.
-    nlohmann::json firstPage = {{"total", {{"value", 5}}},
-                                {"hits",
-                                 {makePolicyHit("wazuh-threatintel-kvdbs", "kv1", nlohmann::json::array({1, "a"})),
-                                  makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    // The first page carries the policy and one decoder and announces 5 documents; the next page comes
+    // back empty. Returning here would hand the content sync a policy whose other assets were never
+    // downloaded.
+    nlohmann::json firstPage = {
+        {"total", {{"value", 5}}},
+        {"hits",
+         {makePolicyHit("wazuh-threatintel-policies", "policy1", nlohmann::json::array({1, "a"}), std::string("HASHX")),
+          makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
     nlohmann::json emptyPage = {{"total", {{"value", 5}}}, {"hits", nlohmann::json::array()}};
     EXPECT_CALL(*mock, search(_, _, _, _, _, _)).WillOnce(Return(firstPage)).WillOnce(Return(emptyPage));
 
