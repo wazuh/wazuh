@@ -1459,34 +1459,6 @@ IndexerConnector::IndexerConnector(
                                                  "'.");
                     };
 
-                    // Handle 4xx errors with detailed logging, except the expected retries handled below.
-                    if (statusCode >= 400 && statusCode < 500 && statusCode != HTTP_CONTENT_LENGTH &&
-                        statusCode != HTTP_VERSION_CONFLICT && statusCode != HTTP_TOO_MANY_REQUESTS)
-                    {
-                        std::string type, reason;
-                        extractErrorInfo(errorBody, type, reason);
-
-                        // Special case: Shard limit exceeded
-                        if (statusCode == HTTP_BAD_REQUEST && isShardLimitError(errorBody))
-                        {
-                            logWarn(IC_NAME,
-                                    "Document operation failed for index '%s' - type: '%s', reason: '%s' - Consider "
-                                    "increasing cluster.max_shards_per_node setting",
-                                    m_indexName.c_str(),
-                                    type.c_str(),
-                                    reason.c_str());
-                        }
-                        // Generic 4xx logging
-                        else if (!type.empty() && !reason.empty())
-                        {
-                            logWarn(IC_NAME,
-                                    "Document operation failed for index '%s' - type: '%s', reason: '%s'",
-                                    m_indexName.c_str(),
-                                    type.c_str(),
-                                    reason.c_str());
-                        }
-                    }
-
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
                         m_successCount = 0;
@@ -1529,6 +1501,33 @@ IndexerConnector::IndexerConnector(
                     }
                     else
                     {
+                        // Handle 4xx errors with detailed logging
+                        if (statusCode >= 400 && statusCode < 500)
+                        {
+                            std::string type, reason;
+                            extractErrorInfo(errorBody, type, reason);
+
+                            // Special case: Shard limit exceeded
+                            if (statusCode == HTTP_BAD_REQUEST && isShardLimitError(errorBody))
+                            {
+                                logWarn(IC_NAME,
+                                        "Document operation failed for index '%s' - type: '%s', reason: '%s' - "
+                                        "Consider increasing cluster.max_shards_per_node setting",
+                                        m_indexName.c_str(),
+                                        type.c_str(),
+                                        reason.c_str());
+                            }
+                            // Generic 4xx logging
+                            else if (!type.empty() && !reason.empty())
+                            {
+                                logWarn(IC_NAME,
+                                        "Document operation failed for index '%s' - type: '%s', reason: '%s'",
+                                        m_indexName.c_str(),
+                                        type.c_str(),
+                                        reason.c_str());
+                            }
+                        }
+
                         logError(IC_NAME,
                                  "%s, status code: %ld, response body: %s.",
                                  error.c_str(),
