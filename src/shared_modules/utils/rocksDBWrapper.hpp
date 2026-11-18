@@ -18,15 +18,18 @@
 #include "rocksDBOptions.hpp"
 #include "rocksDBSharedBuffers.hpp"
 #include <algorithm>
+#include <atomic>
 #include <filesystem>
 #include <memory>
 #include <rocksdb/db.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
+#include <rocksdb/table_properties.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -69,14 +72,26 @@ namespace Utils
          * @param enableWal Whether to enable WAL or not.
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
+         * @param useSharedBuffers Whether to use the process-wide read cache and write buffer manager.
+         * @param compression Compression of the SST files written from now on. Falls back to NONE, with a warning,
+         *                    when the loaded RocksDB library does not support it.
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
-                                 const bool useSharedBuffers = false)
+                                 const bool useSharedBuffers = false,
+                                 const RocksDBCompression compression = RocksDBCompression::NONE)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
+            , m_compression {RocksDBOptions::isCompressionSupported(compression) ? compression
+                                                                                 : RocksDBCompression::NONE}
         {
+            if (m_compression != compression)
+            {
+                logWarn(LOGGER_DEFAULT_TAG,
+                        "RocksDB was built without lz4 or zstd support. Database '%s' is stored without compression.",
+                        m_path.c_str());
+            }
 
             if (useSharedBuffers)
             {
@@ -91,7 +106,8 @@ namespace Utils
             }
 
             rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
-            rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
+            rocksdb::ColumnFamilyOptions columnFamilyOptions =
+                RocksDBOptions::buildColumnFamilyOptions(m_readCache, m_compression);
 
             T* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
@@ -447,6 +463,89 @@ namespace Utils
         }
 
         /**
+         * @brief Compacts the column families that hold SST files written without compression, so their data is
+         * rewritten with the current compression.
+         *
+         * Does nothing when the database is opened without compression. A column family is skipped, with a warning,
+         * when the free disk space is smaller than its current size.
+         *
+         * @note Do not call while column families are being created or dropped.
+         *
+         * @param canceled Optional flag. Set it to true from another thread to stop.
+         * @return size_t Number of column families compacted.
+         */
+        size_t compactUncompressedColumns(std::atomic<bool>* canceled = nullptr)
+        {
+            size_t compacted = 0;
+            if (m_compression == RocksDBCompression::NONE)
+            {
+                return compacted;
+            }
+
+            for (const auto& column : m_columnsInstances)
+            {
+                if (canceled != nullptr && canceled->load())
+                {
+                    break;
+                }
+
+                rocksdb::TablePropertiesCollection properties;
+                if (const auto status {m_db->GetPropertiesOfAllTables(column.handle(), &properties)}; !status.ok())
+                {
+                    throw std::runtime_error("Failed to read table properties: " + status.ToString());
+                }
+
+                // RocksDB stores this literal in the properties of files written without compression.
+                const auto uncompressed =
+                    std::any_of(properties.begin(),
+                                properties.end(),
+                                [](const auto& table) { return table.second->compression_name == "NoCompression"; });
+                if (!uncompressed)
+                {
+                    continue;
+                }
+
+                rocksdb::ColumnFamilyMetaData metadata;
+                m_db->GetColumnFamilyMetaData(column.handle(), &metadata);
+                std::error_code ec;
+                const auto space {std::filesystem::space(m_path, ec)};
+                if (ec)
+                {
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "Unable to check the free disk space to compact column '%s' of database '%s': %s.",
+                            column->GetName().c_str(),
+                            m_path.c_str(),
+                            ec.message().c_str());
+                    continue;
+                }
+                if (space.available < metadata.size)
+                {
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "Not enough free disk space to compact column '%s' of database '%s'.",
+                            column->GetName().c_str(),
+                            m_path.c_str());
+                    continue;
+                }
+
+                rocksdb::CompactRangeOptions options;
+                // By default a manual compaction leaves the bottommost level as it is.
+                options.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForceOptimized;
+                options.canceled = canceled;
+                const auto status {m_db->CompactRange(options, column.handle(), nullptr, nullptr)};
+                if (status.IsIncomplete())
+                {
+                    break; // Canceled.
+                }
+                if (!status.ok())
+                {
+                    throw std::runtime_error("Failed to compact column: " + status.ToString());
+                }
+                ++compacted;
+            }
+            return compacted;
+        }
+
+        /**
          * @brief Initialize transaction.
          * @return RocksDBTransaction Transaction object.
          */
@@ -477,7 +576,7 @@ namespace Utils
             rocksdb::ColumnFamilyHandle* pColumnFamily;
 
             if (const auto status {m_db->CreateColumnFamily(
-                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &pColumnFamily)};
+                    RocksDBOptions::buildColumnFamilyOptions(m_readCache, m_compression), columnName, &pColumnFamily)};
                 !status.ok())
             {
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
@@ -703,6 +802,7 @@ namespace Utils
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
+        const RocksDBCompression m_compression;                      ///< Effective compression of the SST files.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
 
