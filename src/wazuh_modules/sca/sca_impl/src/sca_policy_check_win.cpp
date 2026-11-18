@@ -6,6 +6,7 @@
 
 #include <windows.h>
 
+#include <array>
 #include <stdexcept>
 #include <system_error>
 
@@ -64,13 +65,21 @@ namespace
         return {std::string(fullKey.substr(0, separator)), std::string(fullKey.substr(separator + 1))};
     }
 
+    // Registry access rights for a read in the given view. Without an explicit view flag, WOW64
+    // redirects the 32-bit agent to WOW6432Node for most of HKLM\SOFTWARE.
+    REGSAM ReadAccess(const RegistryView view)
+    {
+        return KEY_READ | (view == RegistryView::Bits64 ? KEY_WOW64_64KEY : KEY_WOW64_32KEY);
+    }
+
     // Checks if a registry key exists
-    const RegistryRuleEvaluator::IsValidKeyFunc DEFAULT_IS_VALID_KEY = [](const std::string& rootKey) -> bool
+    const RegistryRuleEvaluator::IsValidKeyFunc DEFAULT_IS_VALID_KEY =
+        [](const std::string& rootKey, const RegistryView view) -> bool
     {
         try
         {
             const auto [key, subkey] = SplitRegistryKey(rootKey);
-            return Utils::Registry::KeyExists(key, subkey);
+            return Utils::Registry::KeyExists(key, subkey, ReadAccess(view));
         }
         catch (const std::system_error& e)
         {
@@ -90,12 +99,12 @@ namespace
 
     // Gets subkeys
     const RegistryRuleEvaluator::EnumKeysFunc DEFAULT_ENUM_KEYS =
-        [](const std::string& root) -> std::vector<std::string>
+        [](const std::string& root, const RegistryView view) -> std::vector<std::string>
     {
         try
         {
             const auto [key, path] = SplitRegistryKey(root);
-            return Utils::Registry(key, path).enumerate();
+            return Utils::Registry(key, path, ReadAccess(view)).enumerate();
         }
         catch (...)
         {
@@ -105,12 +114,12 @@ namespace
 
     // Gets values from a key
     const RegistryRuleEvaluator::EnumValuesFunc DEFAULT_ENUM_VALUES =
-        [](const std::string& root) -> std::vector<std::string>
+        [](const std::string& root, const RegistryView view) -> std::vector<std::string>
     {
         try
         {
             const auto [key, path] = SplitRegistryKey(root);
-            return Utils::Registry(key, path).enumerateValueKey();
+            return Utils::Registry(key, path, ReadAccess(view)).enumerateValueKey();
         }
         catch (...)
         {
@@ -119,18 +128,26 @@ namespace
     };
 
     const RegistryRuleEvaluator::GetValueFunc DEFAULT_GET_VALUE =
-        [](const std::string& root, const std::string& value) -> std::optional<std::string>
+        [](const std::string& root, const std::string& value, const RegistryView view) -> std::optional<std::string>
     {
         try
         {
             const auto [key, path] = SplitRegistryKey(root);
-            return Utils::Registry(key, path).getValue(value);
+            return Utils::Registry(key, path, ReadAccess(view)).getValue(value);
         }
         catch (...)
         {
             return std::nullopt;
         }
     };
+
+    // The 64-bit view is the native one on 64-bit Windows, so it is looked up first
+    constexpr std::array<RegistryView, 2> VIEWS_IN_LOOKUP_ORDER {RegistryView::Bits64, RegistryView::Bits32};
+
+    std::string ViewName(const RegistryView view)
+    {
+        return view == RegistryView::Bits64 ? "64-bit" : "32-bit";
+    }
 
     bool CaseInsensitiveEqual(const std::string& a, const std::string& b)
     {
@@ -180,29 +197,66 @@ RegistryRuleEvaluator::RegistryRuleEvaluator(PolicyEvaluationContext ctx,
 
 RuleResult RegistryRuleEvaluator::Evaluate()
 {
-    // A previous evaluation of this rule must not explain this one
-    m_lastUnresolvedReason.clear();
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "") + m_ctx.rule +
+                                     (m_ctx.pattern ? " -> " + *m_ctx.pattern : ""));
 
-    if (m_ctx.pattern)
+    // Look in the 64-bit view first and fall back to the 32-bit one, so a key is found wherever it
+    // lives. Combining is done before negating: a negated rule must fail if either view matches.
+    auto combined = RuleResult::NotFound;
+    auto allInvalid = true;
+    std::string firstReason;
+
+    for (const auto view : VIEWS_IN_LOOKUP_ORDER)
     {
-        return CheckKeyForContents();
+        // A previous evaluation of this rule must not explain this one
+        m_lastUnresolvedReason.clear();
+
+        const auto result = m_ctx.pattern ? CheckKeyForContents(view) : CheckKeyExistence(view);
+
+        if (result == RuleResult::Found)
+        {
+            combined = RuleResult::Found;
+            allInvalid = false;
+            break;
+        }
+
+        if (result != RuleResult::Invalid)
+        {
+            allInvalid = false;
+        }
+        else if (firstReason.empty())
+        {
+            firstReason = m_lastUnresolvedReason;
+        }
     }
 
-    return CheckKeyExistence();
+    if (allInvalid)
+    {
+        m_lastUnresolvedReason = firstReason;
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Registry rule could not be evaluated in any registry view");
+        return RuleResult::Invalid;
+    }
+
+    m_lastUnresolvedReason.clear();
+
+    const RuleResult retVal =
+        m_ctx.isNegated ? (combined == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : combined;
+
+    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Registry rule evaluation ") + (retVal == RuleResult::Found ? "passed" : "failed"));
+    return retVal;
 }
 
-RuleResult RegistryRuleEvaluator::CheckKeyForContents()
+RuleResult RegistryRuleEvaluator::CheckKeyForContents(const RegistryView view)
 {
     const auto pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "") + m_ctx.rule + " -> " + pattern);
 
     // First check that the key exists
     try
     {
-        if (!m_isValidKey(m_ctx.rule))
+        if (!m_isValidKey(m_ctx.rule, view))
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Key '" + m_ctx.rule + "' does not exist");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Key '" + m_ctx.rule + "' does not exist in the " + ViewName(view) + " registry view");
             m_lastUnresolvedReason = "Registry key '" + m_ctx.rule + "' does not exist";
             return RuleResult::Invalid;
         }
@@ -220,12 +274,12 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
     {
         const auto valueName = pattern.substr(0, m_ctx.pattern->find(" -> "));
 
-        const auto obtainedValue = m_getValue(m_ctx.rule, valueName);
+        const auto obtainedValue = m_getValue(m_ctx.rule, valueName, view);
 
         // Check that the value exists
         if (!obtainedValue.has_value())
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + valueName + "' does not exist");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + valueName + "' does not exist in the " + ViewName(view) + " registry view");
             m_lastUnresolvedReason = "Registry value '" + valueName + "' does not exist in key '" + m_ctx.rule + "'";
             return RuleResult::Invalid;
         }
@@ -237,7 +291,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
         // Will check for key or value existence
         const auto isRegex = sca::IsRegexPattern(pattern);
 
-        for (const auto& key : m_enumKeys(m_ctx.rule))
+        for (const auto& key : m_enumKeys(m_ctx.rule, view))
         {
             if (CheckMatch(key, pattern, isRegex) == RuleResult::Found)
             {
@@ -249,7 +303,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
 
         if (result == RuleResult::NotFound)
         {
-            for (const auto& value : m_enumValues(m_ctx.rule))
+            for (const auto& value : m_enumValues(m_ctx.rule, view))
             {
                 // LCOV_EXCL_START
                 if (CheckMatch(value, pattern, isRegex) == RuleResult::Found)
@@ -264,30 +318,21 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
         }
     }
 
-    const RuleResult retVal =
-        m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Registry rule evaluation ") + (retVal == RuleResult::Found ? "passed" : "failed"));
-    return retVal;
+    return result;
 }
 
-RuleResult RegistryRuleEvaluator::CheckKeyExistence()
+RuleResult RegistryRuleEvaluator::CheckKeyExistence(const RegistryView view)
 {
-    auto result = RuleResult::NotFound;
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Processing registry rule: ") + (m_ctx.isNegated ? "NOT " : "" + m_ctx.rule));
-
     try
     {
-        if (!m_isValidKey(m_ctx.rule))
+        if (m_isValidKey(m_ctx.rule, view))
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Key does not exist. Rule ") + (m_ctx.isNegated ? "passed" : "failed"));
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Key exists in the " + ViewName(view) + " registry view");
+            return RuleResult::Found;
         }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Key exists.  Rule ") + (m_ctx.isNegated ? "failed" : "passed"));
-            result = RuleResult::Found;
-        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Key does not exist in the " + ViewName(view) + " registry view");
+        return RuleResult::NotFound;
     }
     catch (const std::exception& e)
     {
@@ -295,6 +340,4 @@ RuleResult RegistryRuleEvaluator::CheckKeyExistence()
         m_lastUnresolvedReason = "Exception checking registry key existence '" + m_ctx.rule + "': " + e.what();
         return RuleResult::Invalid;
     }
-
-    return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
 }
