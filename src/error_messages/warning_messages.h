@@ -28,6 +28,8 @@
 #define FIM_WARN_REALTIME_DISABLED              "(6908): Ignoring flag for real time monitoring on directory: '%s'."
 #define FIM_WARN_AUDIT_SOCKET_NOEXIST           "(6909): Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled."
 #define FIM_WARN_AUDIT_SOCKET_STALE             "(6986): Audit socket (%s) has no listener. You need to remove it and restart Auditd. Who-data will be disabled."
+#define FIM_WARN_AUDIT_STOP_FAILED              "(6987): Could not stop Auditd to remove the stale Audit socket (%s). Who-data will be disabled."
+#define FIM_WARN_AUDIT_SOCKET_NOLISTENER        "(6988): Audit socket (%s) still has no listener after restarting Auditd. Who-data will be disabled."
 #define FIM_WARN_AUDIT_CONFIGURATION_MODIFIED   "(6910): Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled."
 #define FIM_WARN_AUDIT_RULES_MODIFIED           "(6911): Detected Audit rules manipulation: Audit rules removed."
 #define FIM_WARN_AUDIT_CONNECTION_CLOSED        "(6912): Audit: connection closed."

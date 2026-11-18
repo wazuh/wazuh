@@ -155,11 +155,12 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
     }
 }
 
+// Returns 1 if the plugin listens, 0 if the socket is stale, -1 if the check itself failed.
 static int audit_socket_has_listener(void) {
     int sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR);
 
     if (sfd < 0) {
-        return 0;
+        return errno == ECONNREFUSED ? 0 : -1;
     }
 
     close(sfd);
@@ -167,33 +168,65 @@ static int audit_socket_has_listener(void) {
 }
 
 // Auditd's start returns before its plugin listens, so connecting right away can be refused.
-static void audit_wait_for_listener(void) {
-    for (int i = 0; i < AUDIT_LISTENER_WAIT_STEPS; i++) {
-        if (audit_socket_has_listener()) {
-            return;
+static int audit_wait_for_listener(void) {
+    for (int i = 0; i < AUDIT_WAIT_STEPS; i++) {
+        if (audit_socket_has_listener() == 1) {
+            return 0;
         }
 
-        usleep(AUDIT_LISTENER_WAIT_STEP_US);
+        usleep(AUDIT_WAIT_STEP_US);
     }
 
-    mdebug1("Audit socket '%s' still has no listener after restarting Auditd.", AUDIT_SOCKET);
+    return -1;
+}
+
+// "service auditd stop" can return before Auditd exits (e.g. the RHEL legacy action only signals it).
+static int audit_wait_for_auditd_exit(void) {
+    for (int i = 0; i < AUDIT_WAIT_STEPS; i++) {
+        if (check_auditd_enabled() <= 0) {
+            return 0;
+        }
+
+        usleep(AUDIT_WAIT_STEP_US);
+    }
+
+    return -1;
+}
+
+// The recovery stopped Auditd, so it must not leave the host without it.
+static int audit_start_after_recovery(void) {
+    if (audit_start() == 0 || audit_restart() == 0) {
+        return 0;
+    }
+
+    merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
+    return -1;
 }
 
 // Unlinking before restarting loses a race: the old Auditd's plugin supervisor re-binds the freed path and leaves a new stale socket on exit.
 static int audit_recover_stale_socket(const char *abs_path_socket) {
-    audit_stop();
+    if (audit_stop() != 0 || audit_wait_for_auditd_exit() != 0) {
+        mwarn(FIM_WARN_AUDIT_STOP_FAILED, AUDIT_SOCKET);
+        // A failed stop may still have stopped it
+        audit_start_after_recovery();
+        return -1;
+    }
 
     if (unlink(abs_path_socket) < 0 && errno != ENOENT) {
         merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
-        audit_start();
+        audit_start_after_recovery();
         return -1;
     }
 
-    if (audit_start() != 0) {
+    if (audit_start_after_recovery() != 0) {
         return -1;
     }
 
-    audit_wait_for_listener();
+    if (audit_wait_for_listener() != 0) {
+        mwarn(FIM_WARN_AUDIT_SOCKET_NOLISTENER, AUDIT_SOCKET);
+        return -1;
+    }
+
     return 0;
 }
 
@@ -207,6 +240,7 @@ int set_auditd_config(void) {
     os_sha1 file_sha1, configuration_sha1;
     const char *plugin_dir = NULL;
     const char *audisp_config = NULL;
+    int check_stale_socket = 0;
 
     if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
         unsigned vcode;
@@ -234,6 +268,9 @@ int set_auditd_config(void) {
                 // From audit version 4.0.3 format changes are included
                 audisp_config = AUDISP_CONFIGURATION_2;
             }
+
+            // From audit version 4.0.4 the af_unix plugin no longer removes a leftover socket before binding
+            check_stale_socket = vcode >= VERCODE(4, 0, 4);
         }
     } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
         plugin_dir = PLUGINS_OLD_DIR_AUDISP;
@@ -277,9 +314,20 @@ int set_auditd_config(void) {
         goto end;
     }
 
-    // The socket file can outlive Auditd, so also require a listener
     if (IsSocket(AUDIT_SOCKET) == 0) {
-        if (audit_socket_has_listener()) {
+        if (!check_stale_socket) {
+            retval = 0;
+            goto end;
+        }
+
+        // The socket file can outlive Auditd, so also require a listener
+        int listener = audit_socket_has_listener();
+
+        if (listener != 0) {
+            if (listener < 0) {
+                mdebug1("Could not check the Audit socket '%s': %s (%d).", AUDIT_SOCKET, strerror(errno), errno);
+            }
+
             retval = 0;
             goto end;
         }

@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the agent package uninstall leaving the service enabled for a later reinstall. ([#41323](https://github.com/wazuh/wazuh/pull/41323))
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
+- Fixed FIM who-data falling back to real-time for good when audit 4.0.4 or later left a stale socket behind, for example after an auditd crash or a power loss. At startup the agent now checks that the plugin listens on the socket and, when `restart_audit` is enabled, stops Auditd, removes the stale socket and starts Auditd again. ([#41617](https://github.com/wazuh/wazuh/pull/41617))
 - Hardened how rootcheck reads files during the system scan. ([#41414](https://github.com/wazuh/wazuh/pull/41414))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
 - Fixed FIM on Windows skipping the files under any drive-root folder whose name starts with `$Recycle.Bin`, not only the recycle bin itself. ([#41216](https://github.com/wazuh/wazuh/pull/41216))
