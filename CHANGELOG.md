@@ -37,6 +37,9 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-logcollector` silently discarding, in `mysql_log`, the MySQL 5.7+ general log, the MariaDB error log, the MySQL 5.x and MariaDB lines written before 10:00, and the general log lines that share their second with the previous one. ([#41333](https://github.com/wazuh/wazuh/pull/41333))
 - Fixed the CIS-CAT module on Linux and Unix stopping its evaluations until `wazuh-modulesd` was restarted. ([#41531](https://github.com/wazuh/wazuh/pull/41531))
 - Fixed the CPU name being reported empty on arm64 and POWER Linux agents. ([#41569](https://github.com/wazuh/wazuh/pull/41569))
+- Fixed high CPU and memory usage of the Linux network inventory on hosts with a large IPv4 routing table. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
+- Fixed the agent listing every network interface about once a minute to resolve the host IP when no log output format uses `$(host_ip)`. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
+- Fixed 32-bit Linux agents reporting no network inventory when a route's gateway ends in 128 or higher. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
 
 ### Other
 
