@@ -26,6 +26,8 @@ using remoted::test::CapturingClient;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
 using remoted::test::makeVdHttpClient;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
 
 namespace
 {
@@ -174,8 +176,8 @@ TEST(VdClientTest, DisabledVdIsReportedAndCached)
 {
     const auto socketPath = makeUniqueVdSocketPath("disabled");
     FakeVdServer server(socketPath);
-    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
-                            { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+    server.setOffsetHandler([](const HttpRequest&, HttpResponse& res)
+                            { res = HttpResponse::json(200, R"({"offset":0,"enabled":false})"); });
 
     VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
@@ -189,8 +191,8 @@ TEST(VdClientTest, FailedQueryKeepsLastKnownEnablement)
 {
     const auto socketPath = makeUniqueVdSocketPath("disabledstale");
     FakeVdServer server(socketPath);
-    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
-                            { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+    server.setOffsetHandler([](const HttpRequest&, HttpResponse& res)
+                            { res = HttpResponse::json(200, R"({"offset":0,"enabled":false})"); });
 
     VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
     EXPECT_FALSE(client.getFeedState().enabled);
@@ -215,8 +217,8 @@ TEST(VdClientTest, NonBooleanEnabledFieldIsEnabled)
 {
     const auto socketPath = makeUniqueVdSocketPath("enabledbadtype");
     FakeVdServer server(socketPath);
-    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
-                            { res.set_content(R"({"offset":7,"enabled":"no"})", "application/json"); });
+    server.setOffsetHandler([](const HttpRequest&, HttpResponse& res)
+                            { res = HttpResponse::json(200, R"({"offset":7,"enabled":"no"})"); });
 
     VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
@@ -232,10 +234,10 @@ TEST(VdClientTest, ConcurrentCallerDuringInFlightRefreshIsNeverBlocked)
 
     constexpr auto SERVER_DELAY = 300ms;
     server.setOffsetHandler(
-        [SERVER_DELAY](const httplib::Request&, httplib::Response& res)
+        [SERVER_DELAY](const HttpRequest&, HttpResponse& res)
         {
             std::this_thread::sleep_for(SERVER_DELAY);
-            res.set_content(R"({"offset":777})", "application/json");
+            res = HttpResponse::json(200, R"({"offset":777})");
         });
 
     VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
@@ -284,8 +286,7 @@ TEST(VdClientTest, AnOversizedOffsetAnswerIsAFailedQuery)
     // Captured by value: the server keeps the handler, and it outlives this test's locals.
     const std::string body =
         R"({"offset":200,"padding":")" + std::string(VdClient::MAX_RESPONSE_BODY_BYTES, 'x') + R"("})";
-    server.setOffsetHandler([body](const httplib::Request&, httplib::Response& res)
-                            { res.set_content(body, "application/json"); });
+    server.setOffsetHandler([body](const HttpRequest&, HttpResponse& res) { res = HttpResponse::json(200, body); });
     std::this_thread::sleep_for(TEST_CACHE_TTL + 20ms);
 
     EXPECT_EQ(client.getOffset(), 100u) << "an answer over the cap must fail the query and keep the last offset";

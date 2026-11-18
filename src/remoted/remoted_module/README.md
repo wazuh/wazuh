@@ -3136,7 +3136,7 @@ token/re-enrollment helper touches exactly its own cell. authd's side of the sam
 `src/unit_tests/os_auth/test_enrollment_token_store.c`, `src/unit_tests/os_auth/test_reenroll_verify.c`
 and `src/unit_tests/shared/test_enrollment_token.c`.
 
-VD re-scan coverage: `vdClient_test.cpp` (a real `httplib::Server` fake VD backend — cache hit
+VD re-scan coverage: `vdClient_test.cpp` (a fake VD backend served through the shared UDS HTTP server — cache hit
 within TTL, single-flight refresh under a concurrent caller with the lock released during the UDS
 round trip, stale-value fallback and bounded retry gating on a failed query, recovery clearing the
 failure state, a null client refused, an oversized answer and a missing socket as failed queries), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a fake
@@ -3154,8 +3154,8 @@ wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 
 responses survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files
 exercise directly).
 
-Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
-the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying every
+Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + remoted's own UDS client over
+the socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying every
 metric family in the catalog (one representative name per family, plus live — not quiesced —
 values for the public-transport pulls), `GET /status` reporting `enrollment_password` as the
 sole gate on top-level `ready` (present only when Password-mode enrollment is enabled) and

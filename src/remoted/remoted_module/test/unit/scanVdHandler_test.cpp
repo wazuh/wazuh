@@ -49,6 +49,8 @@ using remoted::test::CapturingClient;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
 using remoted::test::makeVdHttpClient;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
 
 namespace
 {
@@ -359,8 +361,7 @@ TEST(ScanVdHandlerTest, VdQueueingTheScanIsA200AndExactlyOnePost)
 {
     Rig rig {"accepted"};
     // VD's contract after the redesign: /scan answers 200 {} at ADMISSION.
-    rig.server.setScanHandler([](const httplib::Request&, httplib::Response& res)
-                              { res.set_content("{}", "application/json"); });
+    rig.server.setScanHandler([](const HttpRequest&, HttpResponse& res) { res = HttpResponse::json(200, "{}"); });
 
     const auto response = callSync(rig.handler, 7, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::Accepted);
@@ -376,12 +377,8 @@ TEST(ScanVdHandlerTest, VdQueueingTheScanIsA200AndExactlyOnePost)
 TEST(ScanVdHandlerTest, AVdCapacityRejectionPassesThroughAsQueueFull)
 {
     Rig rig {"full"};
-    rig.server.setScanHandler(
-        [](const httplib::Request&, httplib::Response& res)
-        {
-            res.status = 503;
-            res.set_content(R"({"error":"scan_queue_full","retryable":true})", "application/json");
-        });
+    rig.server.setScanHandler([](const HttpRequest&, HttpResponse& res)
+                              { res = HttpResponse::json(503, R"({"error":"scan_queue_full","retryable":true})"); });
 
     const auto response = callSync(rig.handler, 7, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
@@ -396,11 +393,8 @@ TEST(ScanVdHandlerTest, AVdIndexerOutageKeepsItsOwnCounterOffTheRelayWindow)
 {
     Rig rig {"idxdown"};
     rig.server.setScanHandler(
-        [](const httplib::Request&, httplib::Response& res)
-        {
-            res.status = 503;
-            res.set_content(R"({"error":"indexer_unavailable","retryable":true})", "application/json");
-        });
+        [](const HttpRequest&, HttpResponse& res)
+        { res = HttpResponse::json(503, R"({"error":"indexer_unavailable","retryable":true})"); });
 
     const auto response = callSync(rig.handler, 7, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
@@ -414,12 +408,8 @@ TEST(ScanVdHandlerTest, AVdIndexerOutageKeepsItsOwnCounterOffTheRelayWindow)
 TEST(ScanVdHandlerTest, AVdReadinessRejectionPassesItsCodeThrough)
 {
     Rig rig {"notready"};
-    rig.server.setScanHandler(
-        [](const httplib::Request&, httplib::Response& res)
-        {
-            res.status = 503;
-            res.set_content(R"({"error":"feed_not_ready","retryable":true})", "application/json");
-        });
+    rig.server.setScanHandler([](const HttpRequest&, HttpResponse& res)
+                              { res = HttpResponse::json(503, R"({"error":"feed_not_ready","retryable":true})"); });
 
     const auto response = callSync(rig.handler, 7, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
@@ -457,10 +447,11 @@ TEST(ScanVdHandlerTest, AnUnexpectedVdStatusMapsToVdError)
 {
     Rig rig {"weird"};
     rig.server.setScanHandler(
-        [](const httplib::Request&, httplib::Response& res)
+        [](const HttpRequest&, HttpResponse& res)
         {
             res.status = 500;
-            res.set_content("not json at all", "text/plain");
+            res.body = "not json at all";
+            res.headers.emplace_back("Content-Type", "text/plain");
         });
 
     const auto response = callSync(rig.handler, 7, 100);
@@ -474,10 +465,10 @@ TEST(ScanVdHandlerTest, TheScanPostCarriesTheAgentIdAsAString)
     Rig rig {"body"};
     std::string capturedBody;
     rig.server.setScanHandler(
-        [&capturedBody](const httplib::Request& req, httplib::Response& res)
+        [&capturedBody](const HttpRequest& req, HttpResponse& res)
         {
             capturedBody = req.body;
-            res.set_content("{}", "application/json");
+            res = HttpResponse::json(200, "{}");
         });
 
     ASSERT_EQ(callSync(rig.handler, 42, 100).outcome, ScanVdOutcome::Accepted);

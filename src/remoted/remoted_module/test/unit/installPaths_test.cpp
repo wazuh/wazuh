@@ -43,6 +43,8 @@ using remoted::scanvd::makeScanVdMetrics;
 using remoted::scanvd::ScanVdHandlerImpl;
 using remoted::scanvd::ScanVdMetrics;
 using remoted::test::FakeVdServer;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
 
 namespace
 {
@@ -160,8 +162,7 @@ TEST_F(InstallPathsTest, ScanVdHandlerDefaultReachesRelativeSocket)
     createSocketsDir();
     FakeVdServer server {paths::kVdSocket};
     server.setOffset(100);
-    server.setScanHandler([](const httplib::Request&, httplib::Response& res)
-                          { res.set_content("{}", "application/json"); });
+    server.setScanHandler([](const HttpRequest&, HttpResponse& res) { res = HttpResponse::json(200, "{}"); });
 
     wazuh::metrics::Manager metricsManager;
     ScanVdMetrics metrics = makeScanVdMetrics(metricsManager);
