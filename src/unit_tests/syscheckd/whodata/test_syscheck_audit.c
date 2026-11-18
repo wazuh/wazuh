@@ -308,7 +308,11 @@ static int test_audit_read_events_teardown(void **state) {
 
 
 static void expect_audit_socket_probe_errno(int sfd, int err) {
-    test_os_connect_unix_errno = err;
+    // The errno is read when the probe runs, so a later successful probe must not reset it
+    if (sfd < 0) {
+        test_os_connect_unix_errno = err;
+    }
+
     expect_string(__wrap_OS_ConnectUnixDomain, path, AUDIT_SOCKET);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
