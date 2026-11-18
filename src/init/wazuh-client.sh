@@ -208,23 +208,20 @@ is_systemd() {
 # Add daemons to agentd cgroup if systemd is used in legacy systems
 add_to_cgroup()
 {
-    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-agent.service/cgroup.procs"
-    # systemd 233+ in hybrid mode assigns units from the cgroup2 hierarchy
-    UNIFIED_PATH="/sys/fs/cgroup/unified/system.slice/wazuh-agent.service/cgroup.procs"
+    # ls lists unified/systemd last: they must be written last, or systemd leaves the scope cgroups behind
+    CGROUP_PATHS=$(ls /sys/fs/cgroup/*/system.slice/wazuh-agent.service/cgroup.procs \
+        /sys/fs/cgroup/system.slice/wazuh-agent.service/cgroup.procs 2>/dev/null)
 
-    # Check if cgroup path exists
-    if [ ! -f "$CGROUP_PATH" ]; then
-        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
+    if [ -z "$CGROUP_PATHS" ]; then
+        echo "Warning: cgroup path does not exist for wazuh-agent.service" >&2
     else
         for daemon in ${DAEMONS}; do
             for pid in $(daemon_pids ${daemon}); do
-                # Try to write to cgroup, capture any errors
-                if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
-                    echo "Warning: Failed to add PID $pid to cgroup (${daemon})" >&2
-                fi
-                if [ -f "$UNIFIED_PATH" ] && ! echo "$pid" >> "$UNIFIED_PATH" 2>/dev/null; then
-                    echo "Warning: Failed to add PID $pid to unified cgroup (${daemon})" >&2
-                fi
+                for path in $CGROUP_PATHS; do
+                    if ! echo "$pid" >> "$path" 2>/dev/null; then
+                        echo "Warning: Failed to add PID $pid to $path (${daemon})" >&2
+                    fi
+                done
             done
         done
     fi

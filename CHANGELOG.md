@@ -28,7 +28,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the agent package uninstall leaving the service enabled for a later reinstall. ([#41323](https://github.com/wazuh/wazuh/pull/41323))
-- Fixed daemons left outside the systemd service after a reload on systemd 233 to 237. ([#41595](https://github.com/wazuh/wazuh/pull/41595))
+- Fixed daemons left outside the systemd service cgroups after a reload on systemd 237 and older. ([#41595](https://github.com/wazuh/wazuh/pull/41595))
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
 - Hardened how rootcheck reads files during the system scan. ([#41414](https://github.com/wazuh/wazuh/pull/41414))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))

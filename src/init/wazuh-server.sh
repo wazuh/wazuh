@@ -263,13 +263,12 @@ is_systemd() {
 add_to_cgroup()
 {
     EXECD_PID=$(head -n 1 ${DIR}/var/run/wazuh-execd-*.pid 2>/dev/null)
-    CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-manager.service/cgroup.procs"
-    # systemd 233+ in hybrid mode assigns units from the cgroup2 hierarchy
-    UNIFIED_PATH="/sys/fs/cgroup/unified/system.slice/wazuh-manager.service/cgroup.procs"
+    # ls lists unified/systemd last: they must be written last, or systemd leaves the scope cgroups behind
+    CGROUP_PATHS=$(ls /sys/fs/cgroup/*/system.slice/wazuh-manager.service/cgroup.procs \
+        /sys/fs/cgroup/system.slice/wazuh-manager.service/cgroup.procs 2>/dev/null)
 
-    # Check if cgroup path exists
-    if [ ! -f "$CGROUP_PATH" ]; then
-        echo "Warning: cgroup path does not exist: $CGROUP_PATH" >&2
+    if [ -z "$CGROUP_PATHS" ]; then
+        echo "Warning: cgroup path does not exist for wazuh-manager.service" >&2
     else
         for pidfile in ${DIR}/var/run/wazuh-*-*.pid; do
             [ -f "$pidfile" ] || continue
@@ -277,13 +276,11 @@ add_to_cgroup()
             [ -z "$pid" ] && continue
             [ "$pid" = "$EXECD_PID" ] && continue
 
-            # Try to write to cgroup, capture any errors
-            if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
-                echo "Warning: Failed to add PID $pid to cgroup ($(basename "$pidfile"))" >&2
-            fi
-            if [ -f "$UNIFIED_PATH" ] && ! echo "$pid" >> "$UNIFIED_PATH" 2>/dev/null; then
-                echo "Warning: Failed to add PID $pid to unified cgroup ($(basename "$pidfile"))" >&2
-            fi
+            for path in $CGROUP_PATHS; do
+                if ! echo "$pid" >> "$path" 2>/dev/null; then
+                    echo "Warning: Failed to add PID $pid to $path ($(basename "$pidfile"))" >&2
+                fi
+            done
         done
     fi
 }
