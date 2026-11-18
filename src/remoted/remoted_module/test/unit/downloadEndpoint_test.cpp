@@ -170,6 +170,9 @@ namespace
             streamed = true;
             status = response.status;
             headers = response.headers;
+            compressible = response.compressible;
+            sizeHint = response.sizeHint;
+            onCompression = response.onCompression;
             // chunkSize 0 means "use the server's configured size" (see StreamResponse); the real
             // transport substitutes HttpServerConfig::streamChunkSize there, so a double that
             // passed the 0 straight through would read nothing at all.
@@ -183,6 +186,9 @@ namespace
         int status {0};
         std::string body;
         std::vector<std::pair<std::string, std::string>> headers;
+        bool compressible {false};
+        std::optional<std::uint64_t> sizeHint;
+        std::function<void(bool)> onCompression;
     };
 
     /// Builds a verified request whose payload views a buffer the caller keeps alive.
@@ -969,6 +975,78 @@ TEST(DownloadHandlerTest, StreamsAStagedWpk)
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
     EXPECT_EQ(responder->body, contents);
+}
+
+TEST(DownloadHandlerTest, AConfigIsCompressibleAndCarriesItsSize)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", std::string(31, 'c'));
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder = runHandler(VALID_CONFIG_BODY, paths);
+
+    ASSERT_TRUE(responder->streamed);
+    EXPECT_TRUE(responder->compressible);
+    EXPECT_EQ(responder->sizeHint, 31U);
+}
+
+TEST(DownloadHandlerTest, AWpkIsNotCompressibleButCarriesItsSize)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", std::string(200000, '\x7f'));
+
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+
+    const auto responder = runHandler(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", paths);
+
+    ASSERT_TRUE(responder->streamed);
+    EXPECT_FALSE(responder->compressible);
+    EXPECT_EQ(responder->sizeHint, 200000U);
+}
+
+TEST(StreamResponseTest, DefaultsToCompressibleWithoutASizeHint)
+{
+    const remoted::http::StreamResponse response {};
+
+    EXPECT_TRUE(response.compressible);
+    EXPECT_FALSE(response.sizeHint);
+    EXPECT_FALSE(response.onCompression);
+}
+
+// The transport reports the outcome only when the agent offered zstd; the handler's callback is what
+// turns it into the compressed / uncompressed counters.
+TEST(DownloadHandlerTest, TheCompressionOutcomeFeedsItsCounters)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", std::string(31, 'c'));
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto handler = makeHandler(paths, metrics, sourceFor("web-servers"));
+    auto responder = std::make_shared<RecordingResponder>();
+    handler(authenticatedRequest(std::make_shared<std::string>(VALID_CONFIG_BODY)), responder);
+
+    ASSERT_TRUE(responder->streamed);
+    ASSERT_TRUE(responder->onCompression);
+    EXPECT_EQ(metrics.compressed->get(), 0U);
+    EXPECT_EQ(metrics.uncompressed->get(), 0U);
+
+    responder->onCompression(true);
+    EXPECT_EQ(metrics.compressed->get(), 1U);
+    EXPECT_EQ(metrics.uncompressed->get(), 0U);
+
+    responder->onCompression(false);
+    EXPECT_EQ(metrics.compressed->get(), 1U);
+    EXPECT_EQ(metrics.uncompressed->get(), 1U);
 }
 
 TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)

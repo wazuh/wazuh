@@ -607,6 +607,12 @@ namespace remoted::endpoints::download
             remoted::http::StreamResponse response;
             response.status = 200;
             response.headers.emplace_back("Content-Type", "application/octet-stream");
+            response.sizeHint = (*source)->size();
+            response.compressible = (downloadRequest.type == ResourceType::Config);
+            response.onCompression = [metrics](bool compressed)
+            {
+                incCompression(metrics, compressed);
+            };
             response.source = std::move(*source);
 
             responder->stream(std::move(response));

@@ -1114,6 +1114,16 @@ Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sh
   value cannot reject everything. This is NOT `legacy.queue_size` (that is an event COUNT, not bytes).
   Live occupancy and the cumulative shed count are visible as `remoted.server.budget.*` in
   [`GET /metrics`](metrics.md#public-transport-backpressure--remotedserverbudget).
+- **Compressed downloads:** a zstd-compressed `POST /download` response reserves the compressor's
+  memory from this same budget for the whole transfer (about 0.65 MiB for a 20 KiB file and about
+  3.7 MiB from 10 MiB up, with the compressor's two buffers included). The compressor is used only if,
+  after reserving, an agent's byte share is still free: half of the budget, or
+  [`remoted.max_inflight_bytes_per_agent`](#remotedmax_inflight_bytes_per_agent) when it is larger, and
+  never less than one maximum request (`https.max_body_size` plus 4 KiB). Otherwise the response is
+  sent uncompressed and counted as
+  [`remoted.download.uncompressed`](metrics.md#downloads--remoteddownload). With the defaults, compressed downloads hold at most 128 MiB between them, and the
+  requests admitted while they run share the other 128 MiB, so size this budget for both during a mass
+  configuration refresh. There is no separate option for this floor.
 
 #### remoted.max_parallel_connections
 
@@ -1225,6 +1235,9 @@ requests on the authenticated routes.
   since the agent cannot send it in smaller parts. A body that fits the share but not what the
   agent's other open requests leave of it is answered `503` and counted as
   `remoted.auth.reject.agent_busy`; it fits once one of them is answered.
+- **Note:** Compressed `POST /download` responses always leave at least this share of
+  `remoted.max_inflight_bytes` free (see [Compressed downloads](#remotedmax_inflight_bytes)), so a share
+  above half of the budget leaves less room for compression.
 
 #### remoted.http_stream_chunk_size
 
@@ -1248,10 +1261,17 @@ Bytes per chunk when streaming a response body (`POST /download`).
 
 #### remoted.http_content_encoding_enabled
 
-Whether the HTTPS listener accepts request bodies compressed with `Content-Encoding: zstd`. When
-disabled, a request carrying that header is rejected with `415 Unsupported Content-Encoding`, the
-same as any unrecognized encoding. Bodies sent without a `Content-Encoding` header are unaffected
-either way.
+Whether the HTTPS listener uses `zstd` content encoding, in both directions. For **request bodies**,
+when disabled, a request carrying `Content-Encoding: zstd` is rejected with
+`415 Unsupported Content-Encoding`, the same as any unrecognized encoding; bodies sent without a
+`Content-Encoding` header are unaffected either way. For **responses**, when disabled, `POST /download`
+is always answered uncompressed, whatever `Accept-Encoding` the agent sends (see
+[Compressed download responses](https-events-api.md#compressed-download-responses)).
+
+> **Turning this off stops request compression on every agent.** An agent that gets a `415` to a
+> compressed request switches request compression off for all its send paths until it restarts, and
+> retries that request uncompressed. The option has no response-only setting, so disabling it to stop
+> response compression also ends that agent's request compression.
 
 Unlike the numeric options above, this is a boolean: it has no "unset" sentinel, so a value absent
 from the configuration file resolves to the default (enabled) on the C side before it reaches the
