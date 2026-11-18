@@ -195,8 +195,11 @@ holds them is stopping: it replies `200`, leaves those shards' documents out and
 - **Nothing is retried here except a `429`.** `IndexerConnectorSync` repeats a search answered `429`
   within its retry budget; every other failure, a refusal included, goes to the caller without a
   retry. The PIT callers repeat the whole read (the engine's content sync, the vulnerability feed's
-  page retry). The callers of the synchronous searches are the vulnerability scanner, the
-  `inventory_sync_server` checksum and the feed downloader's polls.
+  page retry). What each caller of the synchronous searches does with a refusal: the vulnerability scanner fails the scan (a feed-update
+  rescan marks the agent's scan as incomplete; the baseline's probe of the indices a scan reads takes it as "cannot be read" and does
+  not count that pass against the agents); the `inventory_sync_server` checksum answers a generic `503` without `Retry-After`
+  when the indexer answered `5xx`; the feed downloader's polls count the refusal as a failed query and keep waiting, with no
+  limit.
 - **A red cluster gets no request at all.** The health monitor takes a node whose cluster reports
   `red` out of rotation, so the call fails earlier with `No available server`. A refusal is only
   possible between a node leaving and the next health check (`monitoring_interval_seconds`).
