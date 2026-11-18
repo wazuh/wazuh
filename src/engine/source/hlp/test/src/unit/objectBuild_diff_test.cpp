@@ -3,7 +3,9 @@
 // Differential tests of the kv and xml parsers: the production parsers are compared with a literal copy of the
 // implementation they had before they built their documents through json::PathWriter. The copy lives in
 // namespace legacy; the begin/end comments name the file and the lines each block was taken from in the revision
-// before that change. Only the enclosing namespaces differ, and the kv copy calls legacy::updateDoc qualified.
+// before that change. Only the enclosing namespaces differ, and the kv copy calls legacy::updateDoc qualified. The xml
+// copy also writes the children of a repeated sibling under its own array element, as production does: before that,
+// both lost every repeated sibling with children but the last one.
 //
 // The copy pins the output of the parsers. A change that alters their output on purpose is applied to the legacy copy
 // as well, or the cases it affects are retired.
@@ -471,8 +473,6 @@ bool xmlToJson(
             processed = mod(node, docJson, localPath);
         }
 
-        bool isElementOfArray = false; // If the element is an array, the path should be adjusted
-
         if (!processed)
         {
             localPath += "/" + std::string {node.name()};
@@ -480,7 +480,6 @@ bool xmlToJson(
             // Check if the element already exists
             if (docJson.exists(localPath))
             {
-                isElementOfArray = true; // If exists, should be an array
                 if (docJson.isObject(localPath))
                 {
                     json::Json tmp = docJson.getJson(localPath).value();
@@ -509,12 +508,6 @@ bool xmlToJson(
             {
                 docJson.setObject(localPath);
             }
-        }
-
-        // Ajdust path if the element is an array
-        if (isElementOfArray)
-        {
-            localPath = localPath.substr(0, localPath.find_last_of('/'));
         }
 
         // Process children
@@ -1365,12 +1358,6 @@ TEST(ObjectBuildDiff, XmlRepeatedSiblingShapes)
 {
     const std::vector<std::string> shapes {
         "text", "attributes", "empty", "text+attributes", "mixed", "children", "repeated-distinct-repeated"};
-    // shapes whose repeated element has no children: the result is one array holding every sibling
-    const auto isChildless = [](const std::string& shape)
-    {
-        return shape != "children" && shape != "repeated-distinct-repeated";
-    };
-
     Tally tally;
     std::size_t comparisons = 0;
     for (const std::size_t n : {2u, 3u, 17u, 300u})
@@ -1385,11 +1372,8 @@ TEST(ObjectBuildDiff, XmlRepeatedSiblingShapes)
                 ++comparisons;
                 ASSERT_TRUE(out.equal) << label;
                 EXPECT_TRUE(out.productive) << label;
-                if (out.productive && isChildless(shape))
-                {
-                    expectArrayOf(out.event, TARGET + "/r/s", n);
-                }
-                if (out.productive && shape == "repeated-distinct-repeated")
+                // one array holding every sibling, whatever the shape of the repeated element
+                if (out.productive)
                 {
                     expectArrayOf(out.event, TARGET + "/r/s", n);
                 }

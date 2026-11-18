@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "hlp_test.hpp"
 
@@ -599,4 +600,93 @@ TEST(XmlParserDepth, StackProbe)
     std::fflush(stdout);
     EXPECT_TRUE(pass) << (!ctx.error.empty() ? "probe threw: " + ctx.error
                                              : "semantic error: " + semError.value_or("<none>"));
+}
+
+/************************************************************************************/
+// Repeated sibling elements: every sibling is one element of the array, with its text, attributes and children.
+/************************************************************************************/
+namespace
+{
+struct SiblingsCase
+{
+    const char* xml;
+    const char* expected; // content of the target field
+};
+
+void expectParsed(const SiblingsCase& row, const hlp::Options& options)
+{
+    SCOPED_TRACE(fmt::format("{} [{}]", row.xml, options.empty() ? "default" : options[0]));
+    const auto event = parseXmlEvent(row.xml, options);
+    const auto expected = j(fmt::format(R"({{"{}":{}}})", TARGET.substr(1), row.expected));
+    EXPECT_EQ(event, expected) << "  parsed:   " << event.str() << "\n  expected: " << expected.str();
+}
+} // namespace
+
+// Documents without Event or Data elements map the same way in both modules.
+TEST(XmlParserSiblings, ElementsWithoutChildren)
+{
+    const std::vector<SiblingsCase> rows {
+        {R"(<r><a>1</a></r>)", R"({"r":{"a":{"#text":"1"}}})"},
+        {R"(<r><a><x>1</x></a></r>)", R"({"r":{"a":{"x":{"#text":"1"}}}})"},
+        {R"(<r><a>1</a><a>2</a></r>)", R"({"r":{"a":[{"#text":"1"},{"#text":"2"}]}})"},
+        {R"(<r><a k="1"/><a k="2">t</a><a/></r>)", R"({"r":{"a":[{"@k":"1"},{"#text":"t","@k":"2"},{}]}})"},
+        {R"(<r><a>1</a><b/><a>2</a></r>)", R"({"r":{"a":[{"#text":"1"},{"#text":"2"}],"b":{}}})"},
+        {R"(<a>1</a><a>2</a>)", R"({"a":[{"#text":"1"},{"#text":"2"}]})"},
+    };
+    for (const hlp::Options& options : {hlp::Options {}, hlp::Options {"windows"}})
+    {
+        for (const auto& row : rows)
+        {
+            expectParsed(row, options);
+        }
+    }
+}
+
+TEST(XmlParserSiblings, ElementsWithChildren)
+{
+    const std::vector<SiblingsCase> rows {
+        // nested
+        {R"(<r><a><x>1</x></a><a><x>2</x></a></r>)", R"({"r":{"a":[{"x":{"#text":"1"}},{"x":{"#text":"2"}}]}})"},
+        // top level
+        {R"(<a><x>1</x></a><a><x>2</x></a>)", R"({"a":[{"x":{"#text":"1"}},{"x":{"#text":"2"}}]})"},
+        // three siblings, with text and attributes next to the children
+        {R"(<r><a k="1">t<x>1</x></a><a><x>2</x><y/></a><a k="3"><x>3</x></a></r>)",
+         R"({"r":{"a":[{"#text":"t","@k":"1","x":{"#text":"1"}},{"x":{"#text":"2"},"y":{}},{"@k":"3","x":{"#text":"3"}}]}})"},
+        // only some of the siblings have children
+        {R"(<r><a>1</a><a><x>2</x></a><a>3</a></r>)",
+         R"({"r":{"a":[{"#text":"1"},{"x":{"#text":"2"}},{"#text":"3"}]}})"},
+        // the children repeat as well
+        {R"(<r><a><b>1</b><b>2</b></a><a><b>3</b><b>4</b></a></r>)",
+         R"({"r":{"a":[{"b":[{"#text":"1"},{"#text":"2"}]},{"b":[{"#text":"3"},{"#text":"4"}]}]}})"},
+        // a sibling without content after one with attributes and repeated children
+        {R"(<r><a k="1"><b>1</b><b>2</b></a><a/></r>)",
+         R"({"r":{"a":[{"@k":"1","b":[{"#text":"1"},{"#text":"2"}]},{}]}})"},
+        // repeated elements with children inside a repeated element
+        {R"(<r><a><b><c>1</c></b><b><c>2</c></b></a><a><b><c>3</c></b></a></r>)",
+         R"({"r":{"a":[{"b":[{"c":{"#text":"1"}},{"c":{"#text":"2"}}]},{"b":{"c":{"#text":"3"}}}]}})"},
+    };
+    for (const hlp::Options& options : {hlp::Options {}, hlp::Options {"windows"}})
+    {
+        for (const auto& row : rows)
+        {
+            expectParsed(row, options);
+        }
+    }
+}
+
+TEST(XmlParserSiblings, WindowsElementsWithChildren)
+{
+    const std::vector<SiblingsCase> rows {
+        // each repeated container keeps its own named Data
+        {R"(<Event><EventData><Data Name="a">v</Data></EventData><EventData><Data Name="b">w</Data></EventData></Event>)",
+         R"({"EventData":[{"a":"v"},{"b":"w"}]})"},
+        {R"(<Event><UserData><Item><Name>a</Name></Item><Item><Name>b</Name></Item></UserData></Event>)",
+         R"({"UserData":{"Item":[{"Name":{"#text":"a"}},{"Name":{"#text":"b"}}]}})"},
+        {R"(<Event><UserData><Item><Data Name="n">1</Data><Sub>x</Sub></Item><Item><Data Name="n">2</Data></Item></UserData></Event>)",
+         R"({"UserData":{"Item":[{"n":"1","Sub":{"#text":"x"}},{"n":"2"}]}})"},
+    };
+    for (const auto& row : rows)
+    {
+        expectParsed(row, {"windows"});
+    }
 }

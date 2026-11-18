@@ -73,7 +73,6 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
 bool xmlToJson(
     pugi::xml_node& docXml, json::PathWriter& docJson, const xmlModule& mod, const std::string& path, std::size_t depth)
 {
-    // TODO: add array support
     // Iterate over the xml generating the corresponding json
     for (auto node : docXml.children())
     {
@@ -97,8 +96,6 @@ bool xmlToJson(
             processed = mod(node, docJson, localPath);
         }
 
-        bool isElementOfArray = false; // If the element is an array, the path should be adjusted
-
         if (!processed)
         {
             localPath += "/" + std::string {node.name()};
@@ -106,7 +103,6 @@ bool xmlToJson(
             // Check if the element already exists
             if (docJson.exists(localPath))
             {
-                isElementOfArray = true; // If exists, should be an array
                 if (docJson.isObject(localPath))
                 {
                     json::Json tmp = docJson.getJson(localPath).value();
@@ -141,13 +137,7 @@ bool xmlToJson(
             }
         }
 
-        // Ajdust path if the element is an array
-        if (isElementOfArray)
-        {
-            localPath = localPath.substr(0, localPath.find_last_of('/'));
-        }
-
-        // Process children
+        // Process children: localPath is the element itself, for a repeated sibling its own element of the array
         if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, localPath, depth + 1))
         {
             return false;
