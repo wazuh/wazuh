@@ -551,10 +551,9 @@ async def settle_login_attempt(request: Request):
 async def charge_unauthenticated_request(request: Request, max_requests: int, error_code: int) -> int:
     """Charge and check the unauthenticated bucket of the client's key (see `get_client_key`).
 
-    Only ever called from `CheckRateLimitsMiddleware`'s `except Unauthorized` branch — reaching
-    this function is itself proof this specific request just failed authentication. A request
-    that goes on to authenticate successfully never calls this at all (see
-    `charge_authenticated_request` instead), so unauthenticated/failed-auth noise sharing an
+    Called through `charge_request` once a request has failed authentication, or reached a
+    `security: []` operation. A request that authenticates successfully never calls this at all
+    (see `charge_authenticated_request` instead), so unauthenticated/failed-auth noise sharing an
     address can never deny an authenticated caller: there is no pre-auth reservation for a
     successful request to get caught behind.
 
@@ -595,11 +594,8 @@ async def charge_unauthenticated_request(request: Request, max_requests: int, er
 async def charge_authenticated_request(request: Request, max_requests: int, error_code: int) -> int:
     """Charge and check `request.client.host`'s authenticated bucket.
 
-    Only ever called from `CheckAuthenticatedRateLimitMiddleware` once it has confirmed the
-    request actually carries an authenticated identity (`connexion_context['user']`) — a request
-    that reached that middleware without one, including one that never went through
-    `SecurityMiddleware` at all, is charged into the unauthenticated bucket instead, so reaching
-    this function specifically is genuine proof of a successful authentication.
+    Called through `charge_request` only for a request that authenticated successfully, so
+    reaching this function is genuine proof of a successful authentication.
 
     Parameters
     ----------
@@ -672,6 +668,68 @@ async def is_authenticated_bucket_exhausted(request: Request, max_requests: int)
         return bucket['count'] >= max_requests
 
 
+def matched_operation(request: Request) -> Optional[str]:
+    """Return the operation connexion's router matched `request` to, or None if no operation declares its path
+    and method.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    Optional[str]
+        `operation_id` of the matched operation.
+    """
+    return ((request.scope.get('extensions') or {}).get('connexion_routing') or {}).get('operation_id')
+
+
+async def refuse_before_authentication(request: Request) -> int:
+    """Return the error code `CheckRateLimitsMiddleware` refuses `request` with before authentication runs.
+
+    That middleware is registered only while `max_unauthenticated_request_per_minute` is set, so nothing is refused
+    otherwise.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    int
+        `AUTHENTICATED_RATE_LIMIT_CODE` while the client's authenticated bucket is exhausted, else 0.
+    """
+    access = configuration.api_conf['access']
+    if access['max_unauthenticated_request_per_minute'] and \
+            await is_authenticated_bucket_exhausted(request, access['max_request_per_minute']):
+        return AUTHENTICATED_RATE_LIMIT_CODE
+    return 0
+
+
+async def charge_request(request: Request, authenticated: bool) -> int:
+    """Charge `request` to the bucket its authentication outcome selects.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    authenticated : bool
+        Whether the request carries an identity the API accepted.
+
+    Returns
+    -------
+    int
+        0 if the request is allowed, else the error code to refuse it with.
+    """
+    access = configuration.api_conf['access']
+    if authenticated:
+        return await charge_authenticated_request(request, access['max_request_per_minute'],
+                                                  AUTHENTICATED_RATE_LIMIT_CODE)
+    return await charge_unauthenticated_request(request, access['max_unauthenticated_request_per_minute'], 6005)
+
+
 async def cleanup_general_request_stats(now: float = None) -> None:
     """Prune host entries from general_request_stats whose buckets have all expired.
 
@@ -741,16 +799,13 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Reject a request already over its authenticated ceiling before auth runs; otherwise
         charge the unauthenticated bucket only for a request that just failed authentication."""
-        max_requests = configuration.api_conf['access']['max_request_per_minute']
-        if await is_authenticated_bucket_exhausted(request, max_requests):
-            raise rate_limited(request, AUTHENTICATED_RATE_LIMIT_CODE)
+        if error_code := await refuse_before_authentication(request):
+            raise rate_limited(request, error_code)
 
         try:
             return await call_next(request)
         except Unauthorized:
-            max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
-            error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
-            if error_code:
+            if error_code := await charge_request(request, authenticated=False):
                 raise rate_limited(request, error_code)
             raise
 
@@ -758,26 +813,21 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
 class CheckAuthenticatedRateLimitMiddleware(BaseHTTPMiddleware):
     """Rate Limits Middleware (post-security). Registered at BEFORE_VALIDATION, i.e. immediately
     after connexion's SecurityMiddleware. Charges the authenticated bucket only when the request
-    actually carries an authenticated identity; anything else that reaches here - a `security: []`
-    operation, or a request whose path/method matched no operation at all and so never went
-    through SecurityMiddleware in the first place - is charged into the smaller unauthenticated
-    bucket instead, mirroring a genuine auth failure.
+    actually carries an authenticated identity; a `security: []` operation is charged into the
+    smaller unauthenticated bucket instead, mirroring a genuine auth failure. A request whose
+    path matched no operation never went through SecurityMiddleware and is left uncharged:
+    `http_error_handler` charges it once it has checked the token.
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Charge the bucket matching the request's actual auth outcome and enforce its ceiling."""
-        context = (request.scope.get('extensions') or {}).get('connexion_context') or {}
-        if not context.get('user'):
-            max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
-            error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
-        else:
-            max_requests = configuration.api_conf['access']['max_request_per_minute']
-            error_code = await charge_authenticated_request(request, max_requests, AUTHENTICATED_RATE_LIMIT_CODE)
-
-        if error_code:
-            raise rate_limited(request, error_code)
-        else:
+        if matched_operation(request) is None:
             return await call_next(request)
+
+        context = (request.scope.get('extensions') or {}).get('connexion_context') or {}
+        if error_code := await charge_request(request, authenticated=bool(context.get('user'))):
+            raise rate_limited(request, error_code)
+        return await call_next(request)
 
 
 class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
@@ -940,6 +990,10 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         the body it announces that is too large, and 413 is the status every other size ceiling in
         this API answers with.
 
+        A request that matched no operation is not judged: it skipped the security handler and nothing
+        reads its body, so refusing it here would answer an unauthenticated caller 417 or 413 where a
+        declared route answers 401.
+
         Parameters
         ----------
             request : Request
@@ -959,7 +1013,7 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
             If the request declares a body above `max_upload_size`.
         """
 
-        if 'Expect' not in request.headers:
+        if 'Expect' not in request.headers or matched_operation(request) is None:
             response = await call_next(request)
             return response
         else:
@@ -984,6 +1038,23 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         return response
+
+
+class StripTrailingSlashMiddleware:
+    """Route `/path/` as `/path`.
+
+    starlette's router answers a declared path written with a trailing slash with a 307 before
+    security runs, so it would tell an unauthenticated caller which routes exist. connexion does
+    not expose the router's `redirect_slashes`.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] == 'http' and scope['path'] != '/' and scope['path'].endswith('/'):
+            scope = {**scope, 'path': scope['path'].rstrip('/') or '/'}
+        await self.app(scope, receive, send)
 
 
 # Methods a CORS preflight is answered for: every method spec.yaml declares. Without it CORSMiddleware
@@ -1055,6 +1126,9 @@ def setup_middlewares(app: AsyncApp):
     app.add_middleware(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    # Outermost, so that the access log and the error handlers see the same path as every layer
+    # below, which compare it with the login endpoints
+    app.add_middleware(StripTrailingSlashMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
 

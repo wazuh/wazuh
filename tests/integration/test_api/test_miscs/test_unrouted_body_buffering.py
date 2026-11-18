@@ -64,7 +64,7 @@ ROUTED_PATH = "/security/user/authenticate"
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize("path, expected_status", [(UNROUTED_PATH, "404"), (ROUTED_PATH, "401")])
+@pytest.mark.parametrize("path, expected_status", [(UNROUTED_PATH, "401"), (ROUTED_PATH, "401")])
 def test_unrouted_path_ignores_undelivered_declared_body(
     path,
     expected_status,
@@ -95,7 +95,7 @@ def test_unrouted_path_ignores_undelivered_declared_body(
     tier: 0
 
     assertions:
-        - Verify the API answers 404 (unrouted) or 401 (routed) without waiting for the undelivered body.
+        - Verify the API answers 401, routed or not, without waiting for the undelivered body.
         - Verify wazuh-apid is still running afterwards.
 
     tags:

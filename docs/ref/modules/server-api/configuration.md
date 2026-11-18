@@ -204,7 +204,7 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `max_login_attempts` | `50` | Failed logins for one user from one client before that user is blocked from it (`403`, error `6000`). Ten times this many failures across all users block the client for every user |
 | `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
-| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is never authenticated, so it is charged here even when it carries a valid token |
+| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is charged here only when it carries no valid token |
 
 The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
@@ -416,11 +416,9 @@ failed-authentication requests draw from a separate, much smaller allowance cont
 authenticated caller shares the same address with. Setting `max_unauthenticated_request_per_minute`
 to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value does not scale
 with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
-demand, so it stays at `10` regardless of deployment size. A request to a path the API does not
-expose (`404`) is always billed to this smaller allowance, regardless of any credential it
-carries, since it never reaches the authentication step in the first place. A method the API does
-not expose on an existing path (`405`) is refused before any rate limit is charged, so it is billed
-to neither allowance. An authenticated
+demand, so it stays at `10` regardless of deployment size. A request to a path (`404`) or method (`405`) the API
+does not expose is billed like a declared route: to `max_request_per_minute` when it carries a valid
+token, to this smaller allowance otherwise. An authenticated
 caller already over its `max_request_per_minute` ceiling is rejected before authentication runs,
 not after, so exceeding the ceiling does not itself cost the authentication step.
 

@@ -6,12 +6,16 @@ import logging
 
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
+from connexion.security import AbstractSecurityHandler
 
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
-from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
+from api.authentication import decode_token
+from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, charge_request, rate_limited, \
+    refuse_before_authentication
 from api.api_exception import ExpectFailedException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
+from api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh-api')
 
@@ -88,7 +92,12 @@ async def unauthorized_error_handler(request: ConnexionRequest,
 async def http_error_handler(request: ConnexionRequest,
                              exc: exceptions.HTTPException) -> ConnexionResponse:
     """HTTPError Exception Error handler.
-    
+
+    A 404 or 405 is answered with a 401 unless the request carries a valid bearer token, so that an
+    unauthenticated caller cannot tell which routes and methods exist. No rate-limit middleware
+    charges either, so they are charged here, once the token is checked, to the bucket a declared
+    route would charge.
+
     Parameters
     ----------
     request : ConnexionRequest
@@ -102,12 +111,43 @@ async def http_error_handler(request: ConnexionRequest,
         HTTP Response returned to the client.
     """
 
+    status_code = exc.status_code
     problem = {
         'title': exc.detail,
         "detail": f"{exc.status_code}: {exc.detail}",
     }
+    # connexion applies the security requirement only to a request that matched an operation, so
+    # these two never went through authentication. The 401 is built here, not by
+    # `unauthorized_error_handler`, which words it "Invalid credentials" on the login paths.
+    if status_code in {404, 405}:
+        # connexion's router raises a 405 above CheckRateLimitsMiddleware, which a 404 went through
+        if status_code == 405 and (error_code := await refuse_before_authentication(request)):
+            return await problem_error_handler(request, rate_limited(request, error_code))
+        authenticated = True
+        try:
+            auth_type, token = AbstractSecurityHandler.get_auth_header_value(request)
+            if auth_type != 'bearer':
+                raise exceptions.Unauthorized("No authorization token provided")
+            await decode_token(token)
+        except exceptions.Unauthorized as unauthorized:
+            authenticated = False
+            status_code = unauthorized.status_code
+            problem = {"title": "Unauthorized", "detail": unauthorized.detail}
+        except Exception as error:
+            # An exception raised in here is not dispatched again, so it would reach ServerErrorMiddleware
+            # as an empty 500. A declared route answers the same failure with this JSON one.
+            logger.error(f"Could not validate the token of a {status_code} response: {error!r}")
+            try:
+                raise_if_exc(error)
+            except exceptions.ProblemException as problem:
+                error = problem
+            except Exception:
+                error = exceptions.InternalServerError()
+            return await problem_error_handler(request, error)
+        if error_code := await charge_request(request, authenticated):
+            return await problem_error_handler(request, rate_limited(request, error_code))
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
-                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
+                         status_code=status_code, content_type=ERROR_CONTENT_TYPE)
 
 
 async def problem_error_handler(request: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:
