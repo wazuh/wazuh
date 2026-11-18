@@ -1,0 +1,74 @@
+name: CodeChecker scan
+description: Run a paired CodeChecker differential scan inside the Docker container
+
+inputs:
+  scan_ref:
+    description: Base ref (tag or SHA)
+    required: true
+  target_ref:
+    description: Target ref (tag or SHA)
+    required: true
+  scan_target:
+    description: Wazuh make target (server/agent/manager)
+    required: false
+    default: server
+  scan_name:
+    description: Dashboard run name for the base scan
+    required: false
+    default: ''
+  target_name:
+    description: Dashboard run name for the target scan
+    required: false
+    default: ''
+  enable_ctu:
+    description: Enable cross-translation-unit analysis
+    required: false
+    default: 'true'
+  run_infer:
+    description: Run Infer/RacerD static race scan
+    required: false
+    default: 'false'
+  run_tsan:
+    description: Run ThreadSanitizer unit tests + system test
+    required: false
+    default: 'false'
+  results_dir:
+    description: Host path where artifacts are written
+    required: false
+    default: /tmp/codechecker-results
+  image:
+    description: Docker image to use
+    required: false
+    default: ghcr.io/wazuh/codechecker:latest
+
+runs:
+  using: composite
+  steps:
+    - name: Create results directory
+      shell: bash
+      run: mkdir -p "${{ inputs.results_dir }}"
+
+    - name: Run CodeChecker scan
+      shell: bash
+      env:
+        SCAN_REF: ${{ inputs.scan_ref }}
+        TARGET_REF: ${{ inputs.target_ref }}
+        SCAN_TARGET: ${{ inputs.scan_target }}
+        SCAN_NAME: ${{ inputs.scan_name }}
+        TARGET_NAME: ${{ inputs.target_name }}
+        ENABLE_CTU: ${{ inputs.enable_ctu == 'true' && '1' || '0' }}
+        RUN_INFER: ${{ inputs.run_infer == 'true' && '1' || '0' }}
+        RUN_TSAN: ${{ inputs.run_tsan == 'true' && '1' || '0' }}
+      run: |
+        docker run --rm \
+          -v "${{ inputs.results_dir }}:/results" \
+          -e SCAN_REF \
+          -e TARGET_REF \
+          -e SCAN_TARGET \
+          -e SCAN_NAME \
+          -e TARGET_NAME \
+          -e ENABLE_CTU \
+          -e RUN_INFER \
+          -e RUN_TSAN \
+          "${{ inputs.image }}" \
+          bash /cc/run_ci.sh

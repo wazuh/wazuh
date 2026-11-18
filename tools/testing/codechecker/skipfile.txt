@@ -1,0 +1,26 @@
+# CodeChecker skip file — controls which files are included in analysis.
+#
+# Syntax (first matching rule wins):
+#   -<glob>   exclude files matching glob from analysis and results
+#   +<glob>   force-include (takes precedence over a later -)
+#
+# Passed to `CodeChecker analyze --skip skipfile.txt` by run_comparison.sh.
+
+# Keep Wazuh's own sources under src/ (force-include before the broad excludes).
++*/src/*
+
+# Third-party / vendored libraries pulled in by `make deps`.
+-*/external/*
+-*/src/external/*
+-*/deps/*
+
+# Build / generated artefacts.
+-*/build/*
+-*/CMakeFiles/*
+-*/*.pb.cc
+-*/*.pb.h
+
+# Unit-test trees (comment out to analyze tests too).
+-*/tests/*
+-*/test/*
+-*/unit_tests/*
