@@ -25,7 +25,7 @@ on:
       - "src/shared_modules/uds_http_server/include/**"
       - "src/shared_modules/uds_http_server/src/**"
       # Headers from shared_modules/utils and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps, step "Build flatbuffer schemas".
       # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
       # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -33,26 +33,31 @@ on:
       - "!src/shared_modules/utils/benchmark/**"
       - "src/shared_modules/utils/tests/CMakeLists.txt"
       - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      # utils/jwt (the agent token profile headers) is included by nothing this workflow builds;
+      # its consumers are remoted_module, inventory_sync_server and vulnerability_scanner.
+      - "!src/shared_modules/utils/jwt/**"
       - "src/shared_modules/common/**"
+      # Licence texts, not build inputs.
+      - "!src/shared_modules/*/COPYING"
       # Configure path: build_target_cpp configures all of src/ as one tree
-      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
-      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake,
+      # VERSION.json) and src/external/CMakeLists.txt (ext_* targets, wazuhext).
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # This module's parent on the configure path (src/CMakeLists.txt:255).
+      # This module's parent on the configure path (src/CMakeLists.txt, add_subdirectory(wazuh_modules)).
       - "src/wazuh_modules/CMakeLists.txt"
-      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43), linked here as urlrequest. A submodule bump changes only the gitlink
+      # build_external_deps runs make deps/build-external (src/Makefile `deps`, ref list from
+      # tools/get_git_refs.sh, GIT_REFS_LIST) and builds the http-request submodule
+      # (step "Build http-request"), linked here as urlrequest. A submodule bump changes only the gitlink
       # path, which no '/**' pattern matches.
       - "src/Makefile"
       - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions. upload_s3_artifact is left out on purpose: coverage_cpp calls it
-      # with continue-on-error (coverage_cpp/action.yml:112-121), so it only reports, and the agent
+      # with continue-on-error (coverage_cpp/action.yml, "Uploading coverage report"), so it only reports, and the agent
       # package lanes exercise it on PRs.
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
@@ -106,6 +111,7 @@ jobs:
         with:
           valgrind: "false"
           target: "task_manager_utest"
+          allowed_skips: "0"
 
       # The threshold is BELOW the action's 90% default on purpose, and the reason is structural
       # rather than a coverage debt to be paid down quietly.
@@ -162,4 +168,5 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           target: "task_manager_utest"
+          allowed_skips: "0"
           valgrind: "false"

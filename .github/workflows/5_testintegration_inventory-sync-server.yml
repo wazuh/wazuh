@@ -14,6 +14,7 @@ on:
       - "src/wazuh_modules/inventory_sync_server/testtool/**"
       - "src/wazuh_modules/inventory_sync_server/qa/**"
       - "!src/wazuh_modules/inventory_sync_server/qa/README.md"
+      - "!src/wazuh_modules/inventory_sync_server/qa/.gitignore"
       # Linked: vulnerability_scanner (inventory_sync_server/CMakeLists.txt:61), built from src/ and
       # include/ plus the flatbuffers headers it generates from schemas/
       # (vulnerability_scanner/CMakeLists.txt:72-118,126). Not its tests, testtool sources, qa/ or doc/.
@@ -41,16 +42,21 @@ on:
       - "src/shared_modules/metrics/**/CMakeLists.txt"
       - "src/shared_modules/metrics/include/**"
       - "src/shared_modules/metrics/src/**"
-      # keystore: built standalone with everything in it by build_external_deps/action.yml:45-53
+      # keystore: built standalone with everything in it by build_external_deps, step "Build keystore"
       # (wazuh-manager-keystore, testtool) -- not its qa/ suite.
       - "src/shared_modules/keystore/**"
       - "!src/shared_modules/keystore/qa/**"
+      # ...nor its component tests, compiled only into keystore_ctests (keystore/tests/component/
+      # CMakeLists.txt), which this workflow does not build; their CMakeLists.txt stay on the
+      # configure path (keystore/CMakeLists.txt, if(UNIT_TEST)).
+      - "!src/shared_modules/keystore/tests/**"
+      - "src/shared_modules/keystore/tests/**/CMakeLists.txt"
       # shared/include headers the scanner's public headers pull in
       # (vulnerability_scanner/include/vulnerabilityScanner.hpp, src/scanOrchestrator/factory/eventSendReport.hpp).
       - "src/shared/include/defs.h"
       - "src/shared/include/logging_helper.h"
       # Headers from shared_modules/utils and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps, step "Build flatbuffer schemas".
       # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
       # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -59,18 +65,20 @@ on:
       - "src/shared_modules/utils/tests/CMakeLists.txt"
       - "src/shared_modules/utils/benchmark/CMakeLists.txt"
       - "src/shared_modules/common/**"
+      # Licence texts, not build inputs.
+      - "!src/shared_modules/*/COPYING"
       # Configure path: build_target_cpp configures all of src/ as one tree
-      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
-      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake,
+      # VERSION.json) and src/external/CMakeLists.txt (ext_* targets, wazuhext).
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # This module's parent on the configure path (src/CMakeLists.txt:255).
+      # This module's parent on the configure path (src/CMakeLists.txt, add_subdirectory(wazuh_modules)).
       - "src/wazuh_modules/CMakeLists.txt"
-      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
+      # build_external_deps runs make deps/build-external (src/Makefile `deps`, ref list from
+      # tools/get_git_refs.sh, GIT_REFS_LIST) and builds the http-request submodule
+      # (step "Build http-request"). A submodule bump changes only the gitlink path, which no '/**'
       # pattern matches.
       - "src/Makefile"
       - "src/deps.lock.mk"
@@ -131,7 +139,21 @@ jobs:
       # conftest.py starts its own single-node OpenSearch container (security
       # disabled) when none is reachable at INDEXER_URL -- same pattern as the
       # sibling vulnerability-scanner suite.
+      #
+      # A fixture that starts skipping (the test tool, the indexer container, flatc) would leave the
+      # run green with nothing exercised, so every skip fails the job -- except the one case the
+      # suite carries as a permanent @pytest.mark.skip, the "KNOWN LIMITATION" of
+      # qa/test_delete_agent.py. Removing that marker needs no change here. pipefail keeps pytest's
+      # own exit code through the tee.
       - name: Run integration QA
         run: |
+          set -o pipefail
           cd src/wazuh_modules/inventory_sync_server/qa
-          python -m pytest -vv --log-cli-level=INFO
+          python -m pytest -vv --log-cli-level=INFO -rs 2>&1 | tee "${RUNNER_TEMP}/inventory_sync_server_qa.log"
+          known='^SKIPPED \[1\] test_delete_agent\.py:[0-9]+: KNOWN LIMITATION'
+          unexpected=$(grep -E '^SKIPPED \[' "${RUNNER_TEMP}/inventory_sync_server_qa.log" | grep -Ev "${known}" || true)
+          skipped=$(grep -E '^=+ .* in [0-9.]+s' "${RUNNER_TEMP}/inventory_sync_server_qa.log" | tail -n 1 | grep -oE '[0-9]+ skipped' | grep -oE '[0-9]+' || true)
+          if [ -n "${unexpected}" ] || [ "${skipped:-0}" -gt 1 ]; then
+            echo "::error::the inventory sync server QA suite skipped tests other than its known-limitation case (${skipped:-0} skipped)"
+            exit 1
+          fi

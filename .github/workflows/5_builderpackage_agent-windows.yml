@@ -5,22 +5,119 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
+      # ---- Sources of the agent package -------------------------------------------------------------
+      # `src/**` is the base because TARGET=agent/winagent compiles most of the tree
+      # (src/CMakeLists.txt:304-343). Every `!` below is a tree the agent configure never enters, or a
+      # file no step of this workflow builds, installs or runs. Ordered: the last matching pattern wins,
+      # so each re-include follows the negation it narrows. The http-request submodule is the gitlink
+      # src/shared_modules/http-request, which `src/**` matches.
       - "src/**"
-      - "packages/**"
-      - "ruleset/**"
-      - "framework/requirements.txt"
-      - ".github/actions/check_files/**"
-      - ".github/actions/upload_s3_artifact/**"
-      - ".github/actions/download_s3_artifact/**"
+      # Server-only subtrees: add_subdirectory under `if(NOT IS_AGENT)` (src/CMakeLists.txt:346-362) and
+      # the server branch of src/wazuh_modules/CMakeLists.txt:99-104. uds_http_server is registered only
+      # by those server consumers (src/CMakeLists.txt:316-323).
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      - "!src/shared_modules/ca_bundle/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      - "!src/shared_modules/manager_certs/**"
+      - "!src/shared_modules/manager_config/**"
+      - "!src/shared_modules/metrics/**"
+      - "!src/shared_modules/uds_http_server/**"
+      # wm_task_manager.c is wholly `#ifndef CLIENT` (line 25), so the agent never sees task_manager.h.
+      - "!src/wazuh_modules/task_manager/**"
+      # Server-only subtrees whose public headers the agent still compiles against -- keep `include/`:
+      #   os_auth/include/auth.h             <- src/shared/src/agent_op.c:17
+      #   wazuh_db/include/wdb.h             <- src/shared/src/agent_validate_op.c:14, shared/include/wazuhdb_queries_op.h:14
+      #   content_manager.h, inventory_sync_server.h, keystore_server.h, vulnerability_scanner.h
+      #                                      <- the wm_*.c shims of the same name: the agent branch globs every
+      #                                         src/wazuh_modules/src/*.c (src/wazuh_modules/CMakeLists.txt:112-116)
+      - "!src/os_auth/**"
+      - "src/os_auth/include/**"
+      - "!src/wazuh_db/**"
+      - "src/wazuh_db/include/**"
+      - "!src/shared_modules/content_manager/**"
+      - "src/shared_modules/content_manager/include/**"
+      - "!src/wazuh_modules/inventory_sync_server/**"
+      - "src/wazuh_modules/inventory_sync_server/include/**"
+      - "!src/wazuh_modules/keystore_server/**"
+      - "src/wazuh_modules/keystore_server/include/**"
+      - "!src/wazuh_modules/vulnerability_scanner/**"
+      - "src/wazuh_modules/vulnerability_scanner/include/**"
+      # Test trees and developer tooling. The package build passes no TEST flag, so UNIT_TEST is off:
+      # every add_subdirectory(tests) of an agent tree sits under if(UNIT_TEST), the cmocka wrappers are
+      # globbed under it too (src/shared/CMakeLists.txt:111-113) and included only under
+      # WAZUH_UNIT_TESTING. testtool/ and example/ are NOT excluded: several are built unconditionally
+      # (e.g. src/data_provider/CMakeLists.txt:264, src/shared_modules/dbsync/CMakeLists.txt:82-86).
+      # build.py and ci/ drive only the -rtr component lanes.
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/qa/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "!src/ci/**"
+      - "!src/build.py"
+      - "!src/Doxyfile"
+      # Unix-only: the Windows package is `make TARGET=winagent` plus the MSI built in src/win32; no step
+      # runs install.sh or reads src/init (src/Makefile:371-378), and SELinux needs USE_SELINUX=yes
+      # (src/Makefile:350-364).
+      - "!src/init/**"
+      - "!src/selinux/**"
+      # What the winagent rule and wazuh-installer.wxs read outside src/: etc/internal_options.conf,
+      # etc/local_internal_options-win.conf, LICENSE, VERSION.json (src/Makefile:375-378), etc/templates,
+      # etc/wpk_root.pem and ruleset/sca (src/win32/wazuh-installer.wxs). etc/ is also staged for the
+      # integration tests (5_testintegration_windows-integration-tests.yml, "Copy integration tests").
+      - "etc/**"
+      - "!etc/wazuh-manager.conf"
+      - "!etc/wazuh-manager-internal-options.conf"
+      - "!etc/agent.conf"
+      - "ruleset/sca/**"
+      - "LICENSE"
+      - "VERSION.json"
+      # `make deps` resolves the indexer-template ref with it (src/Makefile:729).
+      - "tools/get_git_refs.sh"
+      # ---- Packaging: the "Copy generation script" step ---------------------------------------------
+      - "packages/windows/generate_wazuh_msi.ps1"
+      # ---- Integration suites selected through .github/test_modules_windows.json ----------------------
+      # Out: the manager's suites, test_msgraph (own lane) and the Linux-only agent suites.
+      - "tests/integration/**"
+      - "!tests/integration/test_api/**"
+      - "!tests/integration/test_authd/**"
+      - "!tests/integration/test_manager_control/**"
+      - "!tests/integration/test_remoted/**"
+      - "!tests/integration/test_wazuh_db/**"
+      - "!tests/integration/test_msgraph/**"
+      - "!tests/integration/test_agent_control/**"
+      - "!tests/integration/test_aws/**"
+      - ".github/test_modules_windows.json"
+      - ".github/workflows/.python-version-it"
+      - ".github/actions/5_testintegration_detect-changes/**"
+      # ---- CI plumbing that decides the result -------------------------------------------------------
       - ".github/workflows/5_builderpackage_agent-windows.yml"
       - ".github/workflows/5_testintegration_agent-start.yml"
-      - ".github/test_modules_windows.json"
       - ".github/workflows/5_testintegration_windows-integration-tests.yml"
+      # Run by 5_testintegration_agent-start.yml (run-test/action.yml). Its Linux-only steps also call
+      # .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh and .github/scripts/run_with_retry.sh;
+      # they are skipped for platform=windows, so neither is listed here (5_builderpackage_agent-linux.yml lists both).
+      - ".github/actions/5_testintegration_agent-start/**"
+      - ".github/actions/reinstall_cmake/**"
+      # ...which runs this script (reinstall_cmake/action.yml:26-29).
+      - "tools/devContainer/reinstall-cmake.sh"
+      # check_files: this lane runs check_files.py against windows_agent_base.csv only.
+      - ".github/actions/check_files/**"
+      - "!.github/actions/check_files/manager_base.csv"
+      - "!.github/actions/check_files/*_linux_agent_amd64.csv"
+      - "!.github/actions/check_files/macos_agent_*.csv"
+      - "!.github/actions/check_files/test_check_files.py"
+      # The binaries and the MSI travel build -> S3 -> package/test/integration through these three.
+      - ".github/actions/upload_s3_artifact/**"
+      - ".github/actions/download_s3_artifact/**"
+      - ".github/actions/download_package/**"
       - ".github/actions/5_builderpackage_get-last-stable-version/**"
       - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
       - ".github/actions/5_builderpackage_windows-smoke-upgrade-test/**"
-      - ".github/actions/5_testintegration_detect-changes/**"
-      - "tests/integration/**"
+      # Prose is never built, installed or run by this workflow.
+      - "!**/*.md"
   workflow_dispatch:
     inputs:
       revision:

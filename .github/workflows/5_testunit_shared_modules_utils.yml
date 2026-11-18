@@ -5,30 +5,39 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_shared_modules_utils.yml"
-      # The headers under test, tests/ (incl. input_files, copied at tests/CMakeLists.txt:81) and
-      # flatbuffers/, which build_external_deps compiles (action.yml:55-63).
+      # The headers under test, tests/ (incl. input_files, copied by file(COPY input_files ...) in
+      # tests/CMakeLists.txt) and flatbuffers/, which build_external_deps compiles (its "Build
+      # flatbuffer schemas" step).
       - "src/shared_modules/utils/**"
-      # utils_utest links FileIO (tests/CMakeLists.txt:167), defined in file_helper/CMakeLists.txt:35-40
-      # from file_io/src and exporting file_io/include; linuxInfoHelper.h includes file_io_utils.hpp (:15).
+      # utils_utest links FileIO (target_link_libraries in tests/CMakeLists.txt), defined in
+      # file_helper/CMakeLists.txt (add_library(FileIO ...)) from file_io/src and exporting
+      # file_io/include; linuxInfoHelper.h includes file_io_utils.hpp.
       - "src/shared_modules/file_helper/CMakeLists.txt"
       - "src/shared_modules/file_helper/file_io/include/**"
       - "src/shared_modules/file_helper/file_io/src/**"
-      # Headers outside utils/ that the compiled ones include: commonDefs.h (msgDispatcher.h:18,
-      # threadDispatcher.h:21, ...) and logging_helper.h (asyncFlushController.hpp:22), both on the
-      # test's include path (tests/CMakeLists.txt:140-141).
+      # Headers outside utils/ that the compiled ones include: commonDefs.h (msgDispatcher.h,
+      # threadDispatcher.h, loggerHelper.h, ...) and logging_helper.h (asyncFlushController.hpp), both
+      # on the test's include path (include_directories(.../shared_modules/common) and
+      # (.../shared/include) in tests/CMakeLists.txt).
       - "src/shared_modules/common/commonDefs.h"
       - "src/shared/include/logging_helper.h"
       # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (registers
-      # this module at :246, includes src/cmake/*.cmake at :85-87, reads VERSION.json at :128) and
-      # src/external/CMakeLists.txt, which defines the rocksdb/crypto/zlib/minizip targets linked here.
+      # this module with add_subdirectory(shared_modules/utils), includes src/cmake/*.cmake by
+      # include(WazuhRpath)/include(WazuhJemalloc), reads VERSION.json into VERSION_JSON) and
+      # src/external/CMakeLists.txt, which defines the rocksdb/crypto/zlib/minizip targets linked here
+      # and includes src/cmake/WazuhExternalFlags.cmake.
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
-      # from tools/get_git_refs.sh, src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43, also configured at src/CMakeLists.txt:244). A submodule bump changes only
-      # the gitlink path, which `http-request/**` would never match.
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile, which includes
+      # deps.lock.mk; its ref list comes from tools/get_git_refs.sh, GIT_REFS_LIST in src/Makefile) and
+      # builds the http-request submodule (its "Build http-request" step, also configured by
+      # add_subdirectory(shared_modules/http-request) in src/CMakeLists.txt). A submodule bump changes
+      # only the gitlink path, which `http-request/**` would never match.
+      # Not listed on purpose: the action's standalone shared_modules/keystore build. utils_utest
+      # links none of its output, and a change that breaks it is caught on its own PR by
+      # 5_testcomponent_keystore.yml, which fires on that tree and runs this same action.
       - "src/Makefile"
       - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
@@ -45,13 +54,16 @@ on:
       - "tools/devContainer/reinstall-cmake.sh"
       - ".github/actions/setup-sccache/**"
       # Not compiled into utils_utest: the benchmark is a separate target (benchmark/CMakeLists.txt,
-      # label `utils`, not selected here), no test includes jwt/ or mocks/.
+      # label `utils`, not selected here), and no source of utils_utest includes, even transitively,
+      # a header of jwt/ or mocks/ (tests/mocks/ is another directory and stays in).
       - "!src/shared_modules/utils/benchmark/**"
       - "!src/shared_modules/utils/jwt/**"
       - "!src/shared_modules/utils/mocks/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/utils/COPYING"
       # ...but the benchmark's CMakeLists.txt is on this lane's configure path: utils/CMakeLists.txt
-      # add_subdirectory(benchmark) whenever UNIT_TEST is on (utils/CMakeLists.txt:13-20), so a broken
-      # one fails the configure here and no other lane fires on it.
+      # runs add_subdirectory(benchmark) whenever UNIT_TEST is on and the build is not an agent's, so
+      # a broken one fails the configure here and no other lane fires on it.
       - "src/shared_modules/utils/benchmark/CMakeLists.txt"
   workflow_dispatch:
 
@@ -108,9 +120,9 @@ jobs:
           test: "true"
           asan: "false"
 
-      # Valgrind is deliberately off: test_cpp runs `valgrind ctest` without --trace-children=yes
-      # (test_cpp/action.yml:43), which instruments ctest itself and never the test binary, so the
-      # leg cost time and checked nothing. The ASAN job below is the memory gate.
+      # Valgrind is off: this leg never had a working valgrind run (test_cpp used to wrap only the
+      # ctest driver, so it cost time and checked nothing; its branch now traces the test binaries,
+      # but turning it on needs a trial run). The ASAN job below is the memory gate.
       - name: Shared modules utils - Run tests
         uses: ./.github/actions/test_cpp
         with:

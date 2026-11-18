@@ -3,13 +3,43 @@ name: 5.X - MsGraph on Linux - Integration tests - Tier 0 and 1
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # An agent suite (TARGET=agent, installed in /var/ossec), not a manager one. It keeps its own
+    # lane instead of being a module of test_modules_linux.json because it cannot run against the
+    # agent package that lane installs: the ms-graph module is rebuilt here with its endpoint
+    # scheme patched to http (the sed on wm_ms_graph.h below) so that the m365proxy mock can answer.
+    # The paths follow the sibling wodle modules of that list (github, office365): the module's
+    # source and header, its configuration reader, the modulesd host that runs it, libwazuh, the
+    # build entry points and the suite.
     paths:
         - ".github/workflows/5_testintegration_msgraph-tier-0-1-lin.yml"
         - "src/config/src/wmodules-ms-graph.c"
         - "src/wazuh_modules/src/wm_ms_graph.h"
         - "src/wazuh_modules/src/wm_ms_graph.c"
+        # The module runs inside wazuh-modulesd (the suite starts the agent and waits for it): the
+        # host, its module table and configuration dispatch, and libwazuh, which every daemon links
+        - "src/wazuh_modules/CMakeLists.txt"
+        - "src/wazuh_modules/include/**"
+        - "src/wazuh_modules/src/main.c"
+        - "src/wazuh_modules/src/wmodules.c"
+        - "src/wazuh_modules/src/wmcom.c"
+        - "src/wazuh_modules/src/wm_exec.c"
+        - "src/wazuh_modules/src/wm_sendmsg.c"
+        - "src/config/src/wmodules-config.c"
+        - "src/config/CMakeLists.txt"
+        - "src/config/src/config.c"
+        - "src/config/include/config.h"
+        - "src/shared/**"
+        # Configure and dependency inputs of the `make deps` + `make TARGET=agent` this lane runs:
+        # the root CMake reads VERSION.json, src/Makefile runs get_git_refs.sh on every make
         - "src/Makefile"
         - "src/deps.lock.mk"
+        - "src/CMakeLists.txt"
+        - "src/cmake/**"
+        - "src/external/CMakeLists.txt"
+        - "VERSION.json"
+        - "tools/get_git_refs.sh"
+        # reinstall_cmake/action.yml runs this script
+        - "tools/devContainer/reinstall-cmake.sh"
         - "tests/integration/conftest.py"
         # pytest configuration of every tests/integration suite, read by the run below
         - "tests/integration/pytest.ini"
