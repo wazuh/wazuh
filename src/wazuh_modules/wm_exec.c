@@ -31,7 +31,13 @@
 #if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
 #include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+
+// Local to this file: other users of these headers keep the real calls
+#define ReadFile wrap_ReadFile
+#define PeekNamedPipe wrap_PeekNamedPipe
 #endif
 
 static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
@@ -41,7 +47,12 @@ static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 typedef struct ThreadInfo {
 #ifdef WIN32
     CHAR * output;
-    HANDLE pipe;
+    size_t length;
+    size_t capacity;
+    HANDLE pipe;            // Read end, owned by the state: closed when the last owner releases it
+    volatile LONG stop;
+    volatile LONG refs;     // Owners left: the reader and wm_exec()
+    volatile LONG failure;  // WM_READER_* outcome, written by the reader before it exits
 #else
     pthread_mutex_t mutex;
     pthread_cond_t finished;
@@ -71,16 +82,99 @@ void wm_children_pool_init() {
 
 // Windows version -------------------------------------------------------------
 
+// Reader shutdown timings
+#define WM_READER_JOIN_MS 1000
+#define WM_READER_STOP_MS 1000
+
+// How often the reader looks for new output and for a stop request
+#define WM_EXEC_POLL_MS 20
+
+// Consecutive empty polls that only yield the CPU before the reader starts sleeping
+#define WM_EXEC_SPIN_POLLS 8
+
+// Pipe buffer size requested from the system: a quota hint, not memory committed up front
+#define WM_EXEC_PIPE_SIZE (1024 * 1024)
+
+// Size of the buffer used to read and drop output that cannot be kept
+#define WM_EXEC_DISCARD_SIZE 4096
+
+// Reader outcomes: the output kept so far is still returned
+#define WM_READER_OK 0
+#define WM_READER_LIMIT 1
+#define WM_READER_NOMEM 2
+
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
+
+static void wm_reader_release(ThreadInfo * rinfo) {
+    if (InterlockedDecrement(&rinfo->refs) == 0) {
+        free(rinfo->output);
+        CloseHandle(rinfo->pipe);
+        free(rinfo);
+    }
+}
+
+// Tells the reader to exit at its next poll, even if the pipe is still held open
+STATIC void wm_reader_request_stop(ThreadInfo * rinfo) {
+    InterlockedExchange(&rinfo->stop, 1);
+}
+
+static void wm_log_reader_wait_failure(void) {
+    int winerror = GetLastError();
+
+    merror("at wm_exec(): WaitForSingleObject(reader)(%d): %s", winerror, win_strerror(winerror));
+}
+
+// Returns false if the reader did not exit: it is then left to release the state when it does.
+
+static bool wm_stop_reader(HANDLE hThread, ThreadInfo * rinfo) {
+    DWORD result = WaitForSingleObject(hThread, WM_READER_JOIN_MS);
+
+    if (result == WAIT_OBJECT_0) {
+        return true;
+    }
+
+    wm_reader_request_stop(rinfo);
+
+    if (result == WAIT_FAILED) {
+        wm_log_reader_wait_failure();
+        return false;
+    }
+
+    result = WaitForSingleObject(hThread, WM_READER_STOP_MS);
+
+    switch (result) {
+    case WAIT_OBJECT_0:
+        // The pipe was still open after the command ended or was terminated: the output may be incomplete
+        mdebug1("at wm_exec(): Stopped reading the command output before its end.");
+        return true;
+
+    case WAIT_TIMEOUT:
+        return false;
+
+    default:
+        wm_log_reader_wait_failure();
+        return false;
+    }
+}
+
+// Falls back to the child alone when it is not in a job
+
+static void wm_terminate_process(HANDLE hJob, HANDLE hProcess) {
+    if (hJob == NULL || !TerminateJobObject(hJob, 1)) {
+        TerminateProcess(hProcess, 1);
+    }
+}
 
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs, const char * add_path) {
     HANDLE hThread = NULL;
+    HANDLE hJob = NULL;
+    HANDLE hPipe = NULL;
+    ThreadInfo * rinfo = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
-    ThreadInfo tinfo = { 0 };
     int retval = 0;
     int winerror = 0;
 
@@ -121,7 +215,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
         // Create stdout pipe and make it inheritable
 
-        if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
+        if (!CreatePipe(&hPipe, &sinfo.hStdOutput, NULL, WM_EXEC_PIPE_SIZE)) {
             winerror = GetLastError();
             merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
@@ -132,7 +226,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
             winerror = GetLastError();
             merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
-            CloseHandle(tinfo.pipe);
+            CloseHandle(hPipe);
             CloseHandle(sinfo.hStdOutput);
             return -1;
         }
@@ -146,6 +240,9 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       wm_task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
                       IDLE_PRIORITY_CLASS;
 
+    // Start suspended so the process joins its job before it can spawn children
+    dwCreationFlags |= CREATE_SUSPENDED;
+
     size_t size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, NULL, 0);
     wchar_t *wcommand;
     os_calloc(size, sizeof(wchar_t), wcommand);
@@ -158,7 +255,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         mwarn("Cannot run '%s': %s (%d)", command, win_strerror(winerror), winerror);
         os_free(wcommand);
         if (output) {
-            CloseHandle(tinfo.pipe);
+            CloseHandle(hPipe);
             CloseHandle(sinfo.hStdOutput);
         }
         return -1;
@@ -166,12 +263,65 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
     os_free(wcommand);
 
+    // Close our copy of the write end at once, so no later child can inherit it
+
     if (output) {
         CloseHandle(sinfo.hStdOutput);
+    }
+
+    // Job creation is best effort: on failure only the direct child is terminated on timeout
+    hJob = CreateJobObjectW(NULL, NULL);
+
+    if (hJob == NULL) {
+        winerror = GetLastError();
+        mdebug1("at wm_exec(): CreateJobObject(%d): %s", winerror, win_strerror(winerror));
+    } else {
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = { 0 };
+
+        // Lets a descendant that asks for it leave the job; only the extended limit information accepts this flag
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
+
+        if (!SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
+            winerror = GetLastError();
+            mdebug1("at wm_exec(): SetInformationJobObject(%d): %s", winerror, win_strerror(winerror));
+            CloseHandle(hJob);
+            hJob = NULL;
+        } else if (!AssignProcessToJobObject(hJob, pinfo.hProcess)) {
+            winerror = GetLastError();
+            mdebug1("at wm_exec(): AssignProcessToJobObject(%d): %s", winerror, win_strerror(winerror));
+            CloseHandle(hJob);
+            hJob = NULL;
+        }
+    }
+
+    if (ResumeThread(pinfo.hThread) == (DWORD)-1) {
+        winerror = GetLastError();
+        merror("at wm_exec(): ResumeThread(%d): %s", winerror, win_strerror(winerror));
+        wm_terminate_process(hJob, pinfo.hProcess);
+
+        if (hJob != NULL) {
+            CloseHandle(hJob);
+        }
+
+        if (output) {
+            CloseHandle(hPipe);
+        }
+
+        CloseHandle(pinfo.hProcess);
+        CloseHandle(pinfo.hThread);
+        return -1;
+    }
+
+    if (output) {
+        // The reader may outlive this function, so it owns its data
+
+        os_calloc(1, sizeof(ThreadInfo), rinfo);
+        rinfo->pipe = hPipe;
+        rinfo->refs = 2;
 
         // Create reading thread
 
-        hThread = w_create_thread(NULL, 0, Reader, &tinfo, 0, NULL);
+        hThread = w_create_thread(NULL, 0, Reader, rinfo, 0, NULL);
     }
 
     switch (WaitForSingleObject(pinfo.hProcess, secs ? (unsigned)(secs * 1000) : INFINITE)) {
@@ -185,36 +335,59 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         break;
 
     case WAIT_TIMEOUT:
-        TerminateProcess(pinfo.hProcess, 1);
+        wm_terminate_process(hJob, pinfo.hProcess);
         retval = WM_ERROR_TIMEOUT;
         break;
 
     default:
         winerror = GetLastError();
         merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
-        TerminateProcess(pinfo.hProcess, 1);
+        wm_terminate_process(hJob, pinfo.hProcess);
         retval = -1;
     }
 
     if (output) {
         // Output
 
-        if (WaitForSingleObject(hThread, 1000) == WAIT_TIMEOUT) {
-            TerminateThread(hThread, 1);
-            WaitForSingleObject(hThread, INFINITE);
-        }
+        if (wm_stop_reader(hThread, rinfo)) {
+            if (rinfo->failure == WM_READER_LIMIT) {
+                mwarn("String limit reached.");
+            } else if (rinfo->failure == WM_READER_NOMEM) {
+                merror("at wm_exec(): Cannot allocate memory for the command output.");
+            }
 
-        if (retval >= 0) {
-            *output = tinfo.output ? tinfo.output : strdup("");
+            if (retval >= 0) {
+                if (rinfo->output) {
+                    // Best effort: a failed shrink keeps the original buffer
+                    char * shrunk = (char *)realloc(rinfo->output, rinfo->length + 1);
+                    *output = shrunk ? shrunk : rinfo->output;
+                    rinfo->output = NULL;
+                } else {
+                    *output = strdup("");
+                }
+            }
         } else {
-            free(tinfo.output);
+            // The reader frees the state when it exits; nothing it may still use is touched here
+            mwarn("at wm_exec(): Could not collect the command output.");
+            if (retval >= 0) {
+                *output = NULL;
+            }
+
+            // A timeout that fired is still reported as one
+            if (retval == 0) {
+                retval = -1;
+            }
         }
 
+        wm_reader_release(rinfo);
         CloseHandle(hThread);
-        CloseHandle(tinfo.pipe);
     }
 
     // Cleanup
+
+    if (hJob != NULL) {
+        CloseHandle(hJob);
+    }
 
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
@@ -222,27 +395,110 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     return retval;
 }
 
+// Makes room in the output buffer for up to avail more bytes, within the size limit.
+// Returns how many bytes can be read into the buffer, or 0 with the outcome set if none can.
+
+static size_t wm_reader_reserve(ThreadInfo * tinfo, size_t avail) {
+    size_t room = WM_STRING_MAX - tinfo->length;
+    size_t nextsize;
+
+    if (room == 0) {
+        tinfo->failure = WM_READER_LIMIT;
+        return 0;
+    }
+
+    if (avail < room) {
+        room = avail;
+    }
+
+    nextsize = tinfo->length + room;
+
+    if (nextsize + 1 > tinfo->capacity) {
+        size_t newcap = tinfo->capacity ? tinfo->capacity : WM_BUFFER_MAX * 4;
+
+        while (newcap < nextsize + 1) {
+            newcap *= 2;
+        }
+
+        if (newcap > WM_STRING_MAX + 1) {
+            newcap = WM_STRING_MAX + 1;
+        }
+
+        char * newbuf = (char *)realloc(tinfo->output, newcap);
+
+        if (newbuf == NULL) {
+            tinfo->failure = WM_READER_NOMEM;
+            return 0;
+        }
+
+        tinfo->output = newbuf;
+        tinfo->capacity = newcap;
+    }
+
+    return room;
+}
+
+// Waits for more output: yields for a few empty polls in a row, then sleeps
+// so a quiet command costs little while a busy one is read without delay
+
+static void wm_reader_idle(unsigned * empty_polls) {
+    if (*empty_polls < WM_EXEC_SPIN_POLLS) {
+        (*empty_polls)++;
+        Sleep(0);
+    } else {
+        Sleep(WM_EXEC_POLL_MS);
+    }
+}
+
 // Reading thread's start point
 
 DWORD WINAPI Reader(LPVOID args) {
     ThreadInfo * tinfo = (ThreadInfo *)args;
-    CHAR buffer[WM_BUFFER_MAX + 1];
-    DWORD length = 0;
+    CHAR discard[WM_EXEC_DISCARD_SIZE];
+    DWORD avail;
     DWORD nbytes;
+    unsigned empty_polls = 0;
 
-    while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL), nbytes > 0) {
-        int nextsize = length + nbytes;
+    // Reads only when the pipe has data, so it never blocks and sees stop. A failed peek means the data ended.
+    // No logging: wm_exec() reports the outcome.
 
-        if (nextsize <= WM_STRING_MAX) {
-            tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
-            memcpy(tinfo->output + length, buffer, nbytes);
-            length = nextsize;
-            tinfo->output[length] = '\0';
-        } else {
-            mwarn("String limit reached.");
+    while (!tinfo->stop && PeekNamedPipe(tinfo->pipe, NULL, 0, NULL, &avail, NULL)) {
+        CHAR * dest = discard;
+        size_t room = sizeof(discard);
+
+        if (avail == 0) {
+            wm_reader_idle(&empty_polls);
+            continue;
+        }
+
+        // Once the output cannot be kept, keep draining so the command does not block on a full pipe
+        if (tinfo->failure == WM_READER_OK) {
+            size_t space = wm_reader_reserve(tinfo, avail);
+
+            if (space > 0) {
+                dest = tinfo->output + tinfo->length;
+                room = space;
+            }
+        }
+
+        if (!ReadFile(tinfo->pipe, dest, avail < room ? avail : (DWORD)room, &nbytes, NULL)) {
             break;
         }
+
+        if (nbytes == 0) {
+            wm_reader_idle(&empty_polls);
+            continue;
+        }
+
+        empty_polls = 0;
+
+        if (dest != discard) {
+            tinfo->length += nbytes;
+            tinfo->output[tinfo->length] = '\0';
+        }
     }
+
+    wm_reader_release(tinfo);
 
     return 0;
 }
