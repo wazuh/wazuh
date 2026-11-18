@@ -1085,7 +1085,7 @@ void fim_db_remove_entry(void * data, void * ctx)
 void fim_process_wildcard_removed(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
-    if (fim_generate_delete_event(configuration->path, &evt_data, configuration) == FIMDB_ERR)
+    if (fim_generate_delete_event(configuration->path, &evt_data, configuration) == FIMDB_OK)
     {
         return;
     }
