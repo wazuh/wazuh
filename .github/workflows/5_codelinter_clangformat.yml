@@ -209,8 +209,10 @@ jobs:
 
       # Agent and common code: the lines the pull request changes in every C/C++ source in src/ except the
       # manager-only modules above, the engine and third-party code
+      # Skipped on upward merges (merge-* branches): they bring code from release branches without clang-format
       - name: Agent - Coding style
         id: agent_style
+        if: ${{ !startsWith(github.head_ref, 'merge-') }}
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
@@ -318,7 +320,7 @@ jobs:
             FAILED_STEPS="$FAILED_STEPS Engine"
           fi
 
-          if [ "${{ steps.agent_style.outcome }}" != "success" ]; then
+          if [ "${{ steps.agent_style.outcome }}" == "failure" ]; then
             FAILED_STEPS="$FAILED_STEPS Agent"
           fi
 

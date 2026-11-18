@@ -121,6 +121,10 @@ def runClangFormat(moduleName, fix=False):
         - ValueError: Raises an exception when one or more files do not follow the coding style.
     """
     utils.printHeader(moduleName=moduleName, headerKey="clangformat")
+    # Upward merges (merge-* branches) bring code from release branches without clang-format.
+    if os.environ.get("GITHUB_HEAD_REF", "").startswith("merge-"):
+        utils.printInfo(msg="[ClangFormat: SKIPPED on upward merge]")
+        return
     base = "HEAD^1" if os.environ.get("GITHUB_BASE_REF") else "HEAD"
     gitClangFormat = ["git", "clang-format", "--extensions", "c,h,cpp,hpp"]
     if fix:
