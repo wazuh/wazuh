@@ -299,7 +299,7 @@ XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is
 
 Used by DSV/CSV and KV parsers to split delimited fields while respecting quoting and escaping:
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
-- `unescape()` — removes escape characters from parsed values
+- `unescape()` — removes the escape characters of a value in place and in one pass: every occurrence of the escape drops its first byte and the byte after that one is kept verbatim (`a\\b` gives `a\b`), an escape at the end of the value disappears, and every occurrence is removed, not only the ones that escape a meaningful character. Both callers pass a single-character escape; only the first byte of a longer sequence is dropped
 - `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
   `updateDoc()` has two overloads with the same contract: one takes a `json::Json&` (used by the DSV/CSV parser) and one takes a `json::PathWriter&` (used by the KV parser, which keeps one writer for the whole parse). `json::Json` scans the members of an object on every write, while the writer indexes objects with many members, so the cost of a document with many sibling members grows almost linearly instead of quadratically; see [JSON Path Writer](../base/README.md#json-path-writer).
 

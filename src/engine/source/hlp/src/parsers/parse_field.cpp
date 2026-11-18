@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <base/json.hpp>
 #include <base/jsonPathWriter.hpp>
+#include <cstring>
 #include <iostream>
 #include <string_view>
 namespace hlp
@@ -79,14 +80,49 @@ getField(std::string_view input, const char delimiter, const char quote, const c
 
 void unescape(bool is_escaped, std::string& vs, std::string_view escape)
 {
-    if (is_escaped)
+    // An empty escape matches at every position: it is not a separator, and no caller passes one.
+    if (!is_escaped || escape.empty())
     {
-        for (auto j = vs.find(escape, 0); j != std::string::npos; j = vs.find(escape, j))
+        return;
+    }
+
+    // One pass: every surviving byte is moved at most once. The clean run between two escapes is moved in a
+    // single memmove, and the search keeps using find, so a value with few escapes costs what the scan costs.
+    // The write index never overtakes the read index, so the regions overlap and memmove is required: memcpy
+    // would be undefined behaviour here even though it happens to produce the same bytes with forward copies.
+    std::size_t write = 0;
+    std::size_t read = 0;
+    for (auto found = vs.find(escape, read); found != std::string::npos; found = vs.find(escape, read))
+    {
+        if (found > read)
         {
-            vs.erase(j, 1);
-            j++;
+            if (write != read)
+            {
+                std::memmove(&vs[write], &vs[read], found - read);
+            }
+            write += found - read;
+            read = found;
+        }
+
+        // The escape drops its first byte and the byte after it is kept verbatim; a trailing escape leaves
+        // read at the end of the value, so it is dropped and nothing is kept after it.
+        ++read;
+        if (read < vs.size())
+        {
+            vs[write++] = vs[read++];
         }
     }
+
+    if (read < vs.size())
+    {
+        if (write != read)
+        {
+            std::memmove(&vs[write], &vs[read], vs.size() - read);
+        }
+        write += vs.size() - read;
+    }
+
+    vs.resize(write);
 }
 
 // TODO: evaluate which is the most suitable site for this functionality

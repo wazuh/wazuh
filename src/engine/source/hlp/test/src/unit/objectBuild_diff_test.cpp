@@ -33,9 +33,23 @@
 
 namespace legacy
 {
-using hlp::unescape; // shared with production, untouched by the change
+// BEGIN copy of parse_field.cpp:79-89 of the revision before the unescaping was made linear
 
-// BEGIN copy of parse_field.cpp:90-139
+void unescape(bool is_escaped, std::string& vs, std::string_view escape)
+{
+    if (is_escaped)
+    {
+        for (auto j = vs.find(escape, 0); j != std::string::npos; j = vs.find(escape, j))
+        {
+            vs.erase(j, 1);
+            j++;
+        }
+    }
+}
+
+// END copy
+
+// BEGIN copy of parse_field.cpp, from convertDotToSlash to the end of updateDocImpl
 
 // TODO: evaluate which is the most suitable site for this functionality
 std::string convertDotToSlash(std::string_view key)
