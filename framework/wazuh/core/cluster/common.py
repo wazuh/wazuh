@@ -30,6 +30,7 @@ from wazuh.core.cluster import cluster, utils as cluster_utils
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 
 IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
+MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in bytes (10 MiB)
 
 _ALLOWED_PREFIXES = (
     os.path.join(common.WAZUH_PATH, "queue/cluster"),
@@ -81,7 +82,7 @@ class InBuffer:
         total : int
             Size of the payload buffer in bytes.
         """
-        self.payload = bytearray(total)  # array to store the message's data
+        self.payload = bytearray()  # grows incrementally as data is received
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
@@ -112,7 +113,7 @@ class InBuffer:
 
         # Command is the first 11 B of command without dashes (in case they were added)
         self.cmd = cmd[:-1].split(b' ')[0]
-        self.payload = bytearray(self.total)
+        self.payload = bytearray()  # grows incrementally; no pre-allocation on peer-controlled size
         return header[header_size:]
 
     def receive_data(self, data: bytes) -> bytes:
@@ -127,8 +128,9 @@ class InBuffer:
         -------
             Extended data buffer.
         """
-        len_data = len(data[:self.total - self.received])
-        self.payload[self.received:len_data + self.received] = data[:self.total - self.received]
+        chunk = data[:self.total - self.received]
+        len_data = len(chunk)
+        self.payload.extend(chunk)
         self.received += len_data
         return data[len_data:]
 
@@ -347,6 +349,8 @@ class Handler(asyncio.Protocol):
         self.request_chunk = 5242880
         # Object use to encrypt and decrypt requests.
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        # Whether a message from the peer has been decrypted with the cluster key.
+        self.peer_authenticated = False
         # Logging.Logger object used to write logs.
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # Logging tag.
@@ -462,6 +466,20 @@ class Handler(asyncio.Protocol):
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
+                # A divided frame is only decrypted once the whole message is joined, so it cannot prove the key.
+                # A non-divided frame is at most request_chunk plus Fernet overhead (~6.7 MiB), below MAX_CHUNK_SIZE.
+                if self.my_fernet is not None and not self.peer_authenticated:
+                    if self.in_msg.flag_divided:
+                        raise exception.WazuhClusterError(
+                            3063, extra_message='divided message received before the handshake completed')
+                    if self.in_msg.total > MAX_CHUNK_SIZE:
+                        raise exception.WazuhClusterError(
+                            3063, extra_message=f'message of {self.in_msg.total} bytes received before the handshake '
+                                                f'exceeds the maximum of {MAX_CHUNK_SIZE}')
+                if self.in_msg.flag_divided and self.in_msg.total > MAX_CHUNK_SIZE:
+                    raise exception.WazuhClusterError(
+                        3063, extra_message=f'divided message chunk of {self.in_msg.total} bytes exceeds the maximum '
+                                            f'of {MAX_CHUNK_SIZE}')
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 return True
             elif self.in_msg.received != 0:
@@ -502,6 +520,8 @@ class Handler(asyncio.Protocol):
                             else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
+                # msg_parse refuses divided frames until this is set, so with a key this payload was just decrypted.
+                self.peer_authenticated = True
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
                 self.in_msg = InBuffer()
             else:
@@ -782,35 +802,40 @@ class Handler(asyncio.Protocol):
             Received data.
         """
         self.in_buffer += message
-        for command, counter, payload, flag_divided in self.get_messages():
-            # If the message is a divided one
-            if flag_divided == InBuffer.divide_flag:
-                try:
-                    self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                except KeyError:
-                    self.div_msg_box[counter] = payload
-            else:
-                # If the message is the last part of a division, join it.
-                if counter in self.div_msg_box:
-                    payload = self.div_msg_box[counter] + payload
-                    del self.div_msg_box[counter]
-                    # Decrypt the joined payload
-                    try:
-                        payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
-                                                                            None else bytes(payload)
-                    except cryptography.fernet.InvalidToken:
-                        raise exception.WazuhClusterError(3025)
-
-                # If the message is the response of a previously sent request.
-                if counter in self.box:
-                    if self.box[counter] is None:
-                        # Delete entry for previously expired request, just in case is received too late.
-                        del self.box[counter]
-                    else:
-                        self.box[counter].write(self.process_response(command, payload))
-                # If the message is not related to any previously sent request.
+        try:
+            for command, counter, payload, flag_divided in self.get_messages():
+                # If the message is a divided one
+                if flag_divided == InBuffer.divide_flag:
+                    # Extended in place: concatenating would copy the whole accumulated message on every chunk.
+                    self.div_msg_box.setdefault(counter, bytearray()).extend(payload)
                 else:
-                    self.dispatch(command, counter, payload)
+                    # If the message is the last part of a division, join it.
+                    if counter in self.div_msg_box:
+                        self.div_msg_box[counter].extend(payload)
+                        payload = self.div_msg_box.pop(counter)
+                        # Decrypt the joined payload
+                        try:
+                            payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
+                                                                                None else bytes(payload)
+                        except cryptography.fernet.InvalidToken:
+                            raise exception.WazuhClusterError(3025)
+
+                    # If the message is the response of a previously sent request.
+                    if counter in self.box:
+                        if self.box[counter] is None:
+                            # Delete entry for previously expired request, just in case is received too late.
+                            del self.box[counter]
+                        else:
+                            self.box[counter].write(self.process_response(command, payload))
+                    # If the message is not related to any previously sent request.
+                    else:
+                        self.dispatch(command, counter, payload)
+        except exception.WazuhClusterError as e:
+            if e.code != 3063:
+                raise e
+            self.logger.warning(f"Closing connection: {e}.")
+            if self.transport:
+                self.close()
 
     def dispatch(self, command: bytes, counter: int, payload: bytes) -> None:
         """Process a received message and send a response.

@@ -527,6 +527,12 @@ class WazuhException(Exception):
                'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service."},
+        3063: {'message': 'Cluster protocol handshake failed',
+               'remediation': 'The peer sent a frame the cluster protocol does not allow: a divided message before '
+                              'proving the cluster key, or a frame larger than a single chunk. Check that every node '
+                              'of the cluster runs the same Wazuh version and uses the same cluster key, that only '
+                              'cluster nodes can reach the cluster port, and check the `WAZUH_HOME/logs/cluster.log` '
+                              'file for the rejected connection.'},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
