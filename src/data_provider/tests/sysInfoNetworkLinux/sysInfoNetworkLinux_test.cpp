@@ -385,13 +385,13 @@ TEST_F(SysInfoNetworkLinuxTest, Test_DhcpUsesTheFlagsOfTheAddress)
     };
     const auto flags { std::make_shared<const IPv4AddressFlags>(addressFlags) };
 
-    EXPECT_EQ("enabled", NetworkLinuxInterface(&leased.entry, "wztest0", flags).dhcp());
-    EXPECT_EQ("unknown", NetworkLinuxInterface(&fixed.entry, "wztest0", flags).dhcp());
+    EXPECT_EQ("enabled", NetworkLinuxInterface(&leased.entry, "wztest0", flags, nullptr).dhcp());
+    EXPECT_EQ("unknown", NetworkLinuxInterface(&fixed.entry, "wztest0", flags, nullptr).dhcp());
     // Not in the dump, or no dump at all.
-    EXPECT_EQ("unknown", NetworkLinuxInterface(&other.entry, "wztest0", flags).dhcp());
-    EXPECT_EQ("unknown", NetworkLinuxInterface(&leased.entry, "wztest0").dhcp());
+    EXPECT_EQ("unknown", NetworkLinuxInterface(&other.entry, "wztest0", flags, nullptr).dhcp());
+    EXPECT_EQ("unknown", NetworkLinuxInterface(&leased.entry, "wztest0", nullptr, nullptr).dhcp());
     // The flags belong to the link, not to the label.
-    EXPECT_EQ("unknown", NetworkLinuxInterface(&leased.entry, "wztest1", flags).dhcp());
+    EXPECT_EQ("unknown", NetworkLinuxInterface(&leased.entry, "wztest1", flags, nullptr).dhcp());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_DhcpTellsTheSameAddressApartByPrefix)
@@ -408,8 +408,8 @@ TEST_F(SysInfoNetworkLinuxTest, Test_DhcpTellsTheSameAddressApartByPrefix)
         })
     };
 
-    EXPECT_EQ("unknown", NetworkLinuxInterface(&vip.entry, "wztest0", flags).dhcp());
-    EXPECT_EQ("enabled", NetworkLinuxInterface(&leased.entry, "wztest0", flags).dhcp());
+    EXPECT_EQ("unknown", NetworkLinuxInterface(&vip.entry, "wztest0", flags, nullptr).dhcp());
+    EXPECT_EQ("enabled", NetworkLinuxInterface(&leased.entry, "wztest0", flags, nullptr).dhcp());
 }
 
 namespace
@@ -470,14 +470,14 @@ namespace
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperRejectsNullEntry)
 {
-    EXPECT_THROW(NetworkLinuxInterface(nullptr, "wztest0"), std::runtime_error);
+    EXPECT_THROW(NetworkLinuxInterface(nullptr, "wztest0", nullptr, nullptr), std::runtime_error);
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsIPv4Entry)
 {
     FakeAddressEntry fake { "wztest0:lease" };
     fake.setIPv4("10.77.0.2", "255.255.255.0", "10.77.0.255");
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     // The link name is the one given, not the address label held by the entry.
     EXPECT_EQ("wztest0", wrapper.name());
@@ -494,7 +494,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperDerivesBroadcastFromMask)
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv4("10.77.1.5", "255.255.0.0");
 
-    EXPECT_EQ("10.77.255.255", NetworkLinuxInterface(&fake.entry, "wztest0").broadcast());
+    EXPECT_EQ("10.77.255.255", NetworkLinuxInterface(&fake.entry, "wztest0", nullptr, nullptr).broadcast());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperBroadcastUnknownWithoutMask)
@@ -503,14 +503,14 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperBroadcastUnknownWithoutMask)
     fake.setIPv4("10.77.1.5", "255.255.0.0");
     fake.entry.ifa_netmask = nullptr;
 
-    EXPECT_EQ(" ", NetworkLinuxInterface(&fake.entry, "wztest0").broadcast());
+    EXPECT_EQ(" ", NetworkLinuxInterface(&fake.entry, "wztest0", nullptr, nullptr).broadcast());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsIPv6Entry)
 {
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv6("fd77::2", "ffff:ffff:ffff:ffff::", "fd77::ffff");
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     EXPECT_EQ(AF_INET6, wrapper.family());
     EXPECT_EQ("fd77::2", wrapper.addressV6());
@@ -523,13 +523,13 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperIPv6WithoutBroadcast)
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv6("fd77::2", "ffff:ffff:ffff:ffff::");
 
-    EXPECT_EQ("", NetworkLinuxInterface(&fake.entry, "wztest0").broadcastV6());
+    EXPECT_EQ("", NetworkLinuxInterface(&fake.entry, "wztest0", nullptr, nullptr).broadcastV6());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperEntryWithoutAddresses)
 {
     FakeAddressEntry fake { "wztest0" };
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     EXPECT_EQ(AF_PACKET, wrapper.family());
     EXPECT_EQ("", wrapper.address());
@@ -543,7 +543,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperLinkWithoutSystemData)
 {
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv4("10.77.0.2", "255.255.255.0");
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     // A link the system does not list has no route, counters or sysfs attributes.
     EXPECT_EQ(" ", wrapper.gateway());
@@ -574,7 +574,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsLoopbackAttributes)
 
     FakeAddressEntry fake { "lo" };
     fake.setIPv4("127.0.0.1", "255.0.0.0");
-    const NetworkLinuxInterface wrapper { &fake.entry, "lo" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "lo", nullptr, nullptr };
 
     EXPECT_GT(wrapper.mtu(), 0u);
     EXPECT_EQ("00:00:00:00:00:00", wrapper.MAC());
