@@ -14,8 +14,11 @@
 #define _FAKE_INDEXER_HPP
 
 #include "json.hpp"
+#include <atomic>
 #include <external/cpp-httplib/httplib.h>
 #include <functional>
+#include <map>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -40,6 +43,70 @@ private:
     std::function<void(const std::string&)> m_publishCallback = {};
     std::function<std::string(const std::string&)> m_searchCallback = {};
     std::function<void(const std::string&)> m_deleteScrollCallback = {};
+    /// Opt-in "unique _id" mode of `/_bulk` (off by default: the endpoint keeps answering a clean 200).
+    bool m_uniqueIds {false};
+    /// In unique-id mode, how many of the next `/_bulk` requests are applied and then answered 503.
+    int m_applyThenUnavailable {0};
+    std::map<std::string, std::string> m_documents;
+    int m_bulkRequests {0};
+    mutable std::mutex m_documentsMutex;
+
+    /**
+     * @brief Applies an NDJSON bulk body under the unique-id rule and builds the bulk response.
+     *
+     * Each `create`/`index` action carrying an `_id` stores its document by that id; a `create` whose
+     * `_id` is already stored is answered with a per-item 409 `version_conflict_engine_exception` and
+     * leaves the stored document untouched. `errors` is true iff some item failed. A `delete` action
+     * has no document line and removes the id.
+     *
+     * @param body Bulk request body.
+     * @return The bulk response body.
+     */
+    std::string applyUniqueBulk(const std::string& body)
+    {
+        auto items = nlohmann::json::array();
+        bool errors = false;
+        std::istringstream lines(body);
+        std::string actionLine;
+        while (std::getline(lines, actionLine))
+        {
+            if (actionLine.empty())
+            {
+                continue;
+            }
+            const auto action = nlohmann::json::parse(actionLine);
+            const auto& op = action.begin().key();
+            const auto& meta = action.begin().value();
+            const std::string index = meta.value("_index", "");
+            const std::string id = meta.value("_id", "");
+
+            if (op == "delete")
+            {
+                m_documents.erase(id);
+                items.push_back(nlohmann::json::object(
+                    {{op, nlohmann::json::object({{"_index", index}, {"_id", id}, {"status", 200}})}}));
+                continue;
+            }
+
+            std::string document;
+            std::getline(lines, document);
+            if (op == "create" && !id.empty() && m_documents.count(id) != 0)
+            {
+                errors = true;
+                const auto error =
+                    nlohmann::json::object({{"type", "version_conflict_engine_exception"},
+                                            {"reason", "[" + id + "]: version conflict, document already exists"}});
+                items.push_back(nlohmann::json::object(
+                    {{op,
+                      nlohmann::json::object({{"_index", index}, {"_id", id}, {"status", 409}, {"error", error}})}}));
+                continue;
+            }
+            m_documents[id] = document;
+            items.push_back(nlohmann::json::object(
+                {{op, nlohmann::json::object({{"_index", index}, {"_id", id}, {"status", 201}})}}));
+        }
+        return nlohmann::json::object({{"took", 1}, {"errors", errors}, {"items", items}}).dump();
+    }
 
 public:
     /**
@@ -159,6 +226,52 @@ public:
     }
 
     /**
+     * @brief Turns on the "unique _id" mode of `/_bulk` (see applyUniqueBulk()).
+     *
+     * @param applyThenUnavailable Number of the next `/_bulk` requests that are applied and then
+     * answered with HTTP 503, as if the response had been lost after the indexer processed the bulk.
+     */
+    void enableUniqueIds(int applyThenUnavailable = 0)
+    {
+        std::scoped_lock lock(m_documentsMutex);
+        m_uniqueIds = true;
+        m_applyThenUnavailable = applyThenUnavailable;
+    }
+
+    /**
+     * @brief Number of documents stored in unique-id mode.
+     *
+     * @return The count.
+     */
+    size_t storedDocuments() const
+    {
+        std::scoped_lock lock(m_documentsMutex);
+        return m_documents.size();
+    }
+
+    /**
+     * @brief Documents stored in unique-id mode, by `_id`.
+     *
+     * @return A copy of the `_id` → document line map.
+     */
+    std::map<std::string, std::string> documents() const
+    {
+        std::scoped_lock lock(m_documentsMutex);
+        return m_documents;
+    }
+
+    /**
+     * @brief Number of `/_bulk` requests received in unique-id mode.
+     *
+     * @return The count.
+     */
+    int bulkRequests() const
+    {
+        std::scoped_lock lock(m_documentsMutex);
+        return m_bulkRequests;
+    }
+
+    /**
      * @brief Returns the indexer initialized flag.
      *
      * @return True if initialized, false otherwise.
@@ -253,6 +366,26 @@ public:
                               if (m_publishCallback)
                               {
                                   m_publishCallback(req.body);
+                              }
+                              {
+                                  std::scoped_lock lock(m_documentsMutex);
+                                  if (m_uniqueIds)
+                                  {
+                                      ++m_bulkRequests;
+                                      const auto response = applyUniqueBulk(req.body);
+                                      if (m_applyThenUnavailable > 0)
+                                      {
+                                          --m_applyThenUnavailable;
+                                          res.status = 503;
+                                          res.set_content("Service Unavailable", "text/plain");
+                                      }
+                                      else
+                                      {
+                                          res.status = 200;
+                                          res.set_content(response, "application/json");
+                                      }
+                                      return;
+                                  }
                               }
                               res.status = 200;
                               res.set_content(R"({"took":1,"errors":false,"items":[]})", "application/json");

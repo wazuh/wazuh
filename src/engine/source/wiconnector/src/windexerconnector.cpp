@@ -11,6 +11,7 @@
 #include <json.hpp>
 
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
 
 #include <wiconnector/windexerconnector.hpp>
 
@@ -483,6 +484,16 @@ uint64_t WIndexerConnector::getRequeuedEvents()
     return m_indexerConnectorAsync->getRequeuedEvents();
 }
 
+uint64_t WIndexerConnector::getDeduplicatedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDeduplicatedEvents();
+}
+
 void WIndexerConnector::index(std::string_view index, std::string_view data)
 {
     std::shared_lock lock(m_mutex);
@@ -490,7 +501,8 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     {
         try
         {
-            m_indexerConnectorAsync->indexDataStream(index, data);
+            const auto id = base::utils::generators::generateDocId();
+            m_indexerConnectorAsync->indexDataStream(index, id, data);
         }
         catch (const IndexerConnectorException& e)
         {

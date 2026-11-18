@@ -26,7 +26,7 @@ base/
 │   ├── error.hpp, result.hpp   # Error and result types
 │   ├── name.hpp, dotPath.hpp   # Asset names and dotted paths
 │   ├── timer.hpp, syncStatus.hpp, statusSnapshot.hpp, ymlFormat.hpp, baseTypes.hpp
-│   └── utils/                  # stringUtils, ipUtils, timeUtils, communityId, singletonLocator, ...
+│   └── utils/                  # stringUtils, ipUtils, timeUtils, generator, communityId, singletonLocator, ...
 ├── src/                        # Implementations (managerLogSink.cpp, process.cpp, logging.cpp, ...)
 │   └── jsonNameCompare.hpp     # Internal header: member-name comparison shared by the path writer, the merge and the bulk erase (not installed)
 ├── test/include/               # base::test INTERFACE include directory (test helpers)
@@ -134,6 +134,22 @@ The reception timestamp of an event comes from a process-wide clock whose values
 Consumers: the `api/event` NDJSON parser (`ndJsonParser.hpp`) stamps `receivedAtNs` with `receptionClock().next()`; the `router` `RouterWorker` uses that value, or `receptionClock().next()` when it is 0, and `TesterWorker` calls `receptionClock().next()`; both format it with `epochNanosToISO8601`.
 
 Tests: `TimeUtilsTest.StrictClock*`, `TimeUtilsTest.EpochNanosToISO8601*` and `TimeUtilsTest.ReceptionClockIsSharedAndIncreasing` in [timeUtils_test.cpp](test/src/unit/utils/timeUtils_test.cpp) (run in `base_utest`).
+
+## Generators
+
+Header: [include/base/utils/generator.hpp](include/base/utils/generator.hpp). Implementation: [src/utils/generator.cpp](src/utils/generator.cpp). Namespace `base::utils::generators`.
+
+`generateDocId` draws its random bytes from OpenSSL `RAND_bytes` (through `fillRandom`); a failure is an exception, never a fallback to a weaker source. `generateUUIDv4` and `randomHexString` are unchanged and still use `mt19937`.
+
+| Function | Behaviour |
+|---|---|
+| `fillRandom(out, n)` | Fills `n` bytes with `RAND_bytes`. Throws `std::runtime_error` when `n > INT_MAX` (the source is not called) or when the source fails (message with the OpenSSL error). |
+| `generateDocId` | Document id for an indexer write: 8 bytes big-endian of a per-thread strictly increasing nanosecond clock (`max(systemEpochNanos(), last + 1)`) followed by a 12-byte random prefix drawn once per thread, encoded as unpadded base64url: always `DOC_ID_LENGTH` (27) characters of `[A-Za-z0-9_-]`. Lock-free after the first id of each thread (the first one goes through a `std::call_once` that registers the fork handler): the state is a trivial `thread_local`. Two ids can only collide if two threads draw the same 96-bit prefix and stamp the same nanosecond, or once a thread's clock reaches `INT64_MAX` (year 2262): there it saturates instead of overflowing and the thread repeats its last id. Throws if the prefix cannot be drawn; the next call on that thread retries. |
+| `generateUUIDv4`, `isValidResourceId`, `randomHexString` | Unchanged (`wazuh.event.id`; resource id rules; hex string for temporary names). |
+
+`fork()`: a child-side `pthread_atfork` handler, registered once, marks the per-thread state of the forking thread as uninitialized, so the child draws a new prefix and never repeats the parent's ids. The handler only stores a flag (no OpenSSL, no allocation).
+
+Test seam: `detail::exchangeRandBytesForTesting(fn)` replaces the source read by `fillRandom` (`nullptr` restores `RAND_bytes`) and returns the previous one; `detail::DocIdGenerator` runs the same encoding core over an injected prefix and clock. Tests: `GeneratorTest.*` in [generator_test.cpp](test/src/unit/utils/generator_test.cpp) (run in `base_utest`), including the vectors shared with the id spike.
 
 ## Testing
 
