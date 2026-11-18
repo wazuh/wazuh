@@ -551,6 +551,18 @@ static void wm_handle_sca_disable_and_notify_data_clean()
     }
 }
 
+// Execute SCA policy commands under a neutral locale. Policy rules parse
+// English command output; a localized system locale otherwise turns
+// compliant results into false negatives.
+static int wm_exec_sca_neutral_locale(char *command, char **output, int *exitcode, int secs, const char * add_path) {
+#ifdef WIN32
+    return wm_exec(command, output, exitcode, secs, add_path);
+#else
+    static char * const sca_exec_env[] = { (char *)("LC_ALL=C"), NULL };
+    return wm_exec_env(command, output, exitcode, secs, add_path, sca_exec_env);
+#endif
+}
+
 // Module main function. It won't return
 #ifdef WIN32
 DWORD WINAPI wm_sca_main(void *arg) {
@@ -597,7 +609,7 @@ void * wm_sca_main(wm_sca_t * data) {
 
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
-            sca_set_wm_exec_ptr(wm_exec);
+            sca_set_wm_exec_ptr(wm_exec_sca_neutral_locale);
         }
 
         // Set the push functions for message handling
