@@ -83,10 +83,18 @@ backups_path = Path(WAZUH_PATH, 'backup', 'db')
 interval = 5
 timeout = 15
 
+# Fixtures
+@pytest.fixture()
+def stop_wazuh():
+    """Stop Wazuh after the test so wazuh-db creates no backup while the backups folder is removed."""
+    yield
+    control_service('stop')
+
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
 def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configuration,
-                            truncate_monitored_files, remove_backups):
+                            truncate_monitored_files, remove_backups, stop_wazuh):
     '''
     description: Check that given different wdb backup configuration parameters, the expected behavior is achieved.
                  For this, the test gets a series of parameters for the wazuh_db_backups_conf.yaml file and applies
@@ -113,6 +121,9 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
             type: fixture
             brief: Creates the folder where the backups will be stored in case it doesn't exist. It clears it when the
                    test yields.
+        - stop_wazuh:
+            type: fixture
+            brief: Stop Wazuh when the test yields, before the backups folder is cleared.
     assertions:
         - Verify that manager starts behavior is correct for any given configuration.
         - Verify that the backup file has been created, wait for "max_files+1".
