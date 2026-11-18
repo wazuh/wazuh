@@ -33,6 +33,13 @@ The installer writes this section:
 </indexer>
 ```
 
+### When changes apply
+
+`wazuh-manager-modulesd` (Vulnerability Scanner, Inventory Sync Server, Content Manager) and
+`wazuh-manager-analysisd` (the engine) read `<indexer>` once, when they start: after editing it, run
+`wazuh-manager-control restart` (or `reload`, which restarts both). The Python framework (API, cluster)
+reads the section again whenever `wazuh-manager.conf` changes and needs no restart.
+
 ### hosts
 
 List of Indexer node URLs, one per `<host>` child element.
@@ -115,7 +122,7 @@ printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f i
 printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-The C daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
+The daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
 credentials once per process, so restart the manager after changing them. The Python framework (API,
 cluster) reads them again for every Indexer client it builds and needs no restart.
 
@@ -244,8 +251,8 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 
 | Message | Meaning |
 |---|---|
-| `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | The Indexer answered `401`: wrong user or password in the keystore (logged only at debug level 2) |
-| `Health check failed for '<host>' - Forbidden - Check user permissions` | The Indexer answered `403` (logged only at debug level 2) |
+| `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | The Indexer answered `401`: wrong user or password in the keystore (logged only at debug level 2; when the Indexer names the error, it is `Unauthorized (<type>: <reason>) - …`) |
+| `Health check failed for '<host>' - Forbidden - Check user permissions` | The Indexer answered `403` (logged only at debug level 2; likewise `Forbidden (<type>: <reason>) - …`) |
 | `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`; `<reason>` carries the cause above (for example `Unauthorized - Check indexer credentials`) |
 | `Indexer node '<host>' is available again.` | The node recovered |
 | `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |

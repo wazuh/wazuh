@@ -18,11 +18,8 @@ Three values are deliberately NOT configurable:
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
   and modulesd both run with the installation directory as their working directory and resolve the same
   relative path.
-- **The socket mode** is fixed at `0660`. It was an internal option and that was a trap: the value is a
-  raw permission mode, but internal options are parsed as DECIMAL, so writing the documented `0660`
-  produced decimal 660 -- out of range, killing the daemon -- while a value that did fit, say `440`, was
-  applied as decimal 440, i.e. `0670`, silently granting the group write access on a socket the operator
-  was trying to restrict.
+- **The socket mode** is fixed at `0660`. Internal options are parsed as decimal integers, which cannot
+  express a permission mode: `0660` would be read as decimal 660.
 - **The maximum header count** is fixed at 32, because it is a term of the memory ceiling the in-flight
   byte budget charges for. See `max_inflight_bytes` below.
 
@@ -38,8 +35,16 @@ Internal options provide advanced tuning for the transport, admission control an
 connectors.
 
 An option present in `wazuh-manager-internal-options.conf` but out of its allowed range -- or
-non-numeric -- prevents `wazuh-manager-modulesd` from starting, and is reported by
-`wazuh-manager-modulesd -t`. Values are parsed as decimal; a leading zero does not mean octal.
+non-numeric -- prevents `wazuh-manager-modulesd` from starting: it is read with the module's
+configuration, before the daemon forks, so `wazuh-manager-modulesd -t` reports it with `(2302)` and
+`wazuh-manager-control check` and every start, restart or reload refuse it (error 20). Values are
+parsed as decimal; a leading zero does not mean octal.
+
+These options and the `<indexer>` block are read once, when `wazuh-manager-modulesd` starts: a change
+takes effect at the next restart (or `reload`, which restarts modulesd). The module also reads
+[`vulnerability-detection.enabled`](../vulnerability-scanner/configuration.md#enabled) at start, to
+know whether this node's scanner will serve the vulnerability-detection lane before the scanner
+itself has started.
 
 The shipped `wazuh-manager-internal-options.conf` carries only a comment header: every default below
 is compiled into the module. Add a line only to override one. The file is never overwritten during
@@ -47,7 +52,7 @@ upgrades.
 
 ### Transport
 
-### wazuh_modules.inventory_sync_server_io_threads
+#### wazuh_modules.inventory_sync_server_io_threads
 
 0 sizes the reactor from the host or cgroup.
 
@@ -59,7 +64,7 @@ wazuh_modules.inventory_sync_server_io_threads=0
 - **Allowed values:** 0 to 128
 - **Note:** 0 sizes the reactor from the host or cgroup. Each connection runs on its own strand, so these do parallelise.
 
-### wazuh_modules.inventory_sync_server_concurrent_accepts
+#### wazuh_modules.inventory_sync_server_concurrent_accepts
 
 Accept operations kept in flight.
 
@@ -71,7 +76,7 @@ wazuh_modules.inventory_sync_server_concurrent_accepts=2
 - **Allowed values:** 0 to 64
 - **Note:** Accept operations kept in flight. A failed accept is logged and re-armed, so this is a throughput knob, not a reliability one.
 
-### wazuh_modules.inventory_sync_server_buffer_size
+#### wazuh_modules.inventory_sync_server_buffer_size
 
 Per-connection read buffer, in bytes.
 
@@ -83,7 +88,7 @@ wazuh_modules.inventory_sync_server_buffer_size=8192
 - **Allowed values:** 0 to 1048576
 - **Note:** Per-connection read buffer, in bytes. Counted in the per-request memory charge.
 
-### wazuh_modules.inventory_sync_server_max_body_size
+#### wazuh_modules.inventory_sync_server_max_body_size
 
 Request body cap in bytes; over it the request is answered `413`.
 
@@ -99,7 +104,7 @@ wazuh_modules.inventory_sync_server_max_body_size=0
   cap bodies BELOW what the budget already allows. Remoted caps its own inbound side, so an oversized
   session normally never reaches this socket.
 
-### wazuh_modules.inventory_sync_server_max_url_size
+#### wazuh_modules.inventory_sync_server_max_url_size
 
 Max request-target size in bytes; over it `414`.
 
@@ -111,7 +116,7 @@ wazuh_modules.inventory_sync_server_max_url_size=2048
 - **Allowed values:** 0 to 65536
 - **Note:** Max request-target size in bytes; over it `414`.
 
-### wazuh_modules.inventory_sync_server_max_header_name_size
+#### wazuh_modules.inventory_sync_server_max_header_name_size
 
 Max header name size in bytes; over it `431`.
 
@@ -123,7 +128,7 @@ wazuh_modules.inventory_sync_server_max_header_name_size=256
 - **Allowed values:** 0 to 65536
 - **Note:** Max header name size in bytes; over it `431`. Counted in the per-request memory charge.
 
-### wazuh_modules.inventory_sync_server_max_header_value_size
+#### wazuh_modules.inventory_sync_server_max_header_value_size
 
 Max header value size in bytes; over it `431`.
 
@@ -135,7 +140,7 @@ wazuh_modules.inventory_sync_server_max_header_value_size=8192
 - **Allowed values:** 0 to 1048576
 - **Note:** Max header value size in bytes; over it `431`. Counted in the per-request memory charge.
 
-### wazuh_modules.inventory_sync_server_header_timeout
+#### wazuh_modules.inventory_sync_server_header_timeout
 
 Seconds from accept to a complete request head.
 
@@ -147,7 +152,7 @@ wazuh_modules.inventory_sync_server_header_timeout=10
 - **Allowed values:** 0 to 3600
 - **Note:** Seconds from accept to a complete request head. Bounds a slowloris.
 
-### wazuh_modules.inventory_sync_server_body_timeout
+#### wazuh_modules.inventory_sync_server_body_timeout
 
 Seconds from the head to a complete body.
 
@@ -159,7 +164,7 @@ wazuh_modules.inventory_sync_server_body_timeout=30
 - **Allowed values:** 0 to 3600
 - **Note:** Seconds from the head to a complete body.
 
-### wazuh_modules.inventory_sync_server_response_timeout
+#### wazuh_modules.inventory_sync_server_response_timeout
 
 Seconds from handler dispatch to a delivered response.
 
@@ -171,7 +176,7 @@ wazuh_modules.inventory_sync_server_response_timeout=300
 - **Allowed values:** 0 to 3600
 - **Note:** Seconds from handler dispatch to a delivered response. This is a LEAK BACKSTOP for a handler that lost its responder, not a quality-of-service deadline: remoted sets its own, shorter deadline and gives up first.
 
-### wazuh_modules.inventory_sync_server_write_timeout
+#### wazuh_modules.inventory_sync_server_write_timeout
 
 Seconds allowed to write one response.
 
@@ -183,7 +188,7 @@ wazuh_modules.inventory_sync_server_write_timeout=10
 - **Allowed values:** 0 to 3600
 - **Note:** Seconds allowed to write one response.
 
-### wazuh_modules.inventory_sync_server_drain_timeout
+#### wazuh_modules.inventory_sync_server_drain_timeout
 
 Seconds `stop()` waits for already-dispatched requests to answer before their connections are force-closed.
 
@@ -195,7 +200,7 @@ wazuh_modules.inventory_sync_server_drain_timeout=2
 - **Allowed values:** 0 to 10
 - **Note:** Seconds `stop()` waits for already-dispatched requests to answer before their connections are force-closed. Capped at 10 because modulesd gives the WHOLE daemon 30 s to shut down, and this module's drain is only one part of that.
 
-### wazuh_modules.inventory_sync_server_max_parallel_connections
+#### wazuh_modules.inventory_sync_server_max_parallel_connections
 
 Max simultaneous connections; over it `503` and close.
 
@@ -207,7 +212,7 @@ wazuh_modules.inventory_sync_server_max_parallel_connections=1024
 - **Allowed values:** 0 to 65536
 - **Note:** Max simultaneous connections; over it `503` and close. Every connection and every deferred reply costs a file descriptor out of a limit shared with all of modulesd, so setting this above modulesd's effective descriptor limit (`wazuh_modules.rlimit_nofile`, capped by the hard limit the process starts with) logs a warning and guarantees failures before the cap is reached. Live occupancy is visible as `server.sessions.live` in [`GET /metrics`](metrics.md#transport--server) (the cap itself has no shed counter: a hit shows in the logs and as `live` pinned at the cap).
 
-### wazuh_modules.inventory_sync_server_max_inflight_bytes
+#### wazuh_modules.inventory_sync_server_max_inflight_bytes
 
 Total in-flight request payload bytes; over it `503`.
 
@@ -219,7 +224,7 @@ wazuh_modules.inventory_sync_server_max_inflight_bytes=268435456
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
 - **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything. Live occupancy is visible as `server.budget.*` in [`GET /metrics`](metrics.md#transport--server), and the cumulative shed count as `server.rejected.budget`.
 
-### wazuh_modules.inventory_sync_server_reserved_control_connections
+#### wazuh_modules.inventory_sync_server_reserved_control_connections
 
 Accept headroom the data plane can never consume.
 
@@ -231,7 +236,7 @@ wazuh_modules.inventory_sync_server_reserved_control_connections=64
 - **Allowed values:** 0 to 256 (`0`/absent: the default; clamped to at most a quarter of `max_parallel_connections`)
 - **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions and on-demand scans) and liveness probes always find a slot. Per-class occupancy is visible as `server.sessions.{data,control,liveness}` in [`GET /metrics`](metrics.md#transport--server).
 
-### wazuh_modules.inventory_sync_server_control_max_body_bytes
+#### wazuh_modules.inventory_sync_server_control_max_body_bytes
 
 Declared-length cap of control-class requests; over it `413`.
 
@@ -243,7 +248,7 @@ wazuh_modules.inventory_sync_server_control_max_body_bytes=65536
 - **Allowed values:** 0 to 1048576 (`0`/absent: the default)
 - **Note:** Control-class requests (`POST /_internal/agents/delete` and `POST /_internal/vd/scan`) carry only a small JSON body naming the agent (`{"agent_id":"7"}`), so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
 
-### wazuh_modules.inventory_sync_server_control_max_sessions
+#### wazuh_modules.inventory_sync_server_control_max_sessions
 
 Concurrent control-class sessions; over it `503`.
 
@@ -262,7 +267,7 @@ wazuh_modules.inventory_sync_server_control_max_sessions=256
 These tune the `POST /stateful` ingestion path behind the transport: the sharded ingestion workers,
 the pipeline's own admission queue, and the vulnerability-detection scan lane.
 
-### wazuh_modules.inventory_sync_server_sync_workers
+#### wazuh_modules.inventory_sync_server_sync_workers
 
 Sharded ingestion workers applying accepted sessions.
 
@@ -278,7 +283,7 @@ wazuh_modules.inventory_sync_server_sync_workers=0
   the per-shard `sync.shard.<i>.depth`/`.bytes` gauges show skew, and the
   `sync.session.duration.*` histograms show queue wait.
 
-### wazuh_modules.inventory_sync_server_sync_queue_bytes
+#### wazuh_modules.inventory_sync_server_sync_queue_bytes
 
 Admission cap, in bytes, for sessions accepted by the transport but not yet applied by a worker.
 
@@ -294,7 +299,7 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
   READ, this bounds bytes WAITING for a worker. Sheds count as `sync.pipeline.shed.total` in
   [`GET /metrics`](metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration).
 
-### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
+#### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
 
 `Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready (or the
 scanner is enabled here but still starting up).
@@ -312,7 +317,7 @@ wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
   state and is visible as `vd.retry_after.total` in
   [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
-### wazuh_modules.inventory_sync_server_vd_workers
+#### wazuh_modules.inventory_sync_server_vd_workers
 
 Workers on the vulnerability-detection scan lane.
 
@@ -326,7 +331,7 @@ wazuh_modules.inventory_sync_server_vd_workers=0
   behind each other. Lane occupancy and end-to-end time are `vd.lane.depth` and `vd.lane.time` in
   [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
 
-### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
+#### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
 
 Sessions and on-demand scan requests allowed to wait for a VD worker.
 
@@ -343,7 +348,7 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 
 ---
 
-### wazuh_modules.inventory_sync_server_max_sessions_per_agent
+#### wazuh_modules.inventory_sync_server_max_sessions_per_agent
 
 Sessions one agent may have admitted and not yet answered, across the sync pipeline and the
 vulnerability-detection scan lane.
@@ -367,7 +372,7 @@ wazuh_modules.inventory_sync_server_max_sessions_per_agent=2
 
 ---
 
-### wazuh_modules.inventory_sync_server_session_query_batch_size
+#### wazuh_modules.inventory_sync_server_session_query_batch_size
 
 Indexer search page size of the checksum verification (`ModuleCheck` sessions), which pages the agent's
 documents with `search_after`.
@@ -404,10 +409,10 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** This option no longer reaches the Indexer Connector: the size of the actual `_bulk`
+- **Note:** This option does not reach the Indexer Connector: the size of the actual `_bulk`
   requests is capped separately by
   `inventory_sync_server_indexer_sync_connector_max_bulk_size` below, so raising the group-commit
-  threshold cannot push a single request past the indexer's `http.max_content_length` anymore. The
+  threshold cannot push a single request past the indexer's `http.max_content_length`. The
   group-commit behavior this option drives is visible as `sync.bulk.*` in
   [`GET /metrics`](metrics.md#group-commit--syncbulk); the real request traffic is
   `sync.indexer.bulk.*`.
@@ -432,7 +437,7 @@ wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size=1048576
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
-**No effect.** The value is accepted for compatibility but the module overrides the connector's
+**No effect.** The value is parsed and range-checked, but the module overrides the connector's
 periodic flush to `0` regardless, which means the connector never starts its background flush
 thread: the ingestion workers own every flush (a timer-driven flush that fails discards the buffer
 silently and has no responder to report to, which would let a worker answer `200` for lost data).
@@ -443,9 +448,9 @@ wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
 
 - **Default value:** `20` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal. A
-  value other than the default logs a startup `WARNING` naming the option, so a tuned-but-dead
-  knob is visible instead of silently ignored.
+- **Note:** A value other than the default logs a startup `WARNING` naming the option (`... has no
+  effect and is slated for removal ...`), so a tuned-but-dead knob is visible instead of silently
+  ignored.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
 
@@ -695,7 +700,7 @@ descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_wo
 
 Enable `wazuh_modules.debug=1` and restart: the module logs, at debug level, the value read for every
 option above except `session_query_batch_size` (`0` meaning "the module default"). `getconfig wmodules` on the
-modulesd socket reports the same values, except `reserved_control_connections`,
+modulesd socket (`/var/wazuh-manager/queue/sockets/wmodules.sock`) reports the same values, except `reserved_control_connections`,
 `control_max_body_bytes`, `control_max_sessions`, `max_sessions_per_agent` and
 `session_query_batch_size`. Both report the value as read, not as resolved: `max_inflight_bytes`
 reads `0` when the option is absent (the 256 MiB default) and `-1` when it is explicitly `0`

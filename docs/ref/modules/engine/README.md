@@ -905,8 +905,8 @@ disabled — no output is selected and the event is **not indexed**.
 The engine does not log these drops. Every unclassified event of production traffic, indexed or not, is counted
 in the [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric (policies built in test mode do not
 move it). When the manager has indexer hosts configured, the master node collects the engine metrics of its own node
-and of its connected workers at startup and then every `metrics_frequency` (600 seconds by default and at least;
-`0` disables the collection) and indexes them into `wazuh-metrics-normalization` (a node that cannot be reached in a
+and of its connected workers at startup and then every `intervals.master.metrics_frequency` seconds of the cluster's
+built-in `cluster.json` (600 by default and at least; `0` disables the collection) and indexes them into `wazuh-metrics-normalization` (a node that cannot be reached in a
 cycle is skipped until the next one); the Wazuh dashboard shows this one in the **Unclassified events** panel of
 **Server statistics → Normalization** and **Server statistics → Per-Space Metrics**. Without that publication the
 counter is still available from the engine's metrics, but the dashboard is not updated.

@@ -20,6 +20,39 @@ For module overview and architecture, see [Remoted Module](README.md).
 
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
+### When changes take effect
+
+`wazuh-manager-remoted` reads `<remote>`, `<global>` and its internal options once, when it starts.
+It also reads `<auth>` then, for the policy of `POST /enroll` (whether HTTPS enrollment is open, and
+whether it requires the password or the source IP, and which agent versions it admits): a changed
+`auth.disabled`, `auth.remote_enrollment`, `auth.use_password`, `auth.use_source_ip` or
+`auth.agents.allow_higher_versions` reaches `POST /enroll` only on a restart. The `auth.force` policy
+is applied by authd itself, so it follows a reload.
+`wazuh-manager-control reload` restarts every daemon **except remoted**, so it does not apply a
+changed `remote.*` value: use `wazuh-manager-control restart`. A reload still runs
+`wazuh-manager-remoted -t`, so a value that `-t` refuses fails the reload rather than the next
+restart (what remoted finds only at run time, such as a port it cannot bind, still shows at the restart).
+
+Other daemons, which a reload *does* restart, read parts of `<remote>` too, so after a reload they
+follow the new value while remoted keeps running with the old one until the next restart:
+`wazuh-manager-modulesd` reads [`legacy.enabled`](#legacyenabled) and
+[`https.verification_mode`](#httpsverification_mode) for its upgrade checks, and
+`wazuh-manager-authd` reads `legacy.enabled` (whether port 1515 opens, through
+`auth.legacy_enrollment`) and the HTTPS port and prefix it writes into the enrollment tokens it mints.
+
+### Listener ports must not collide
+
+The configuration check refuses two active listeners on the same port, before any daemon starts. It
+compares `remote.legacy.port` (only while `legacy.enabled` is `yes`), `remote.https.port`, `auth.port`
+(only while authd binds it for legacy enrollment) and `cluster.port`, and names the later of the two
+in that order:
+
+```text
+(1244): Invalid configuration at '/cluster/port': port 1517 is already used by /remote/https/port.
+```
+
+The API port (`55000`, set in `api.yaml`) is not part of this check.
+
 
 ### legacy.enabled
 
@@ -105,19 +138,19 @@ requirements are therefore the operator's to meet:
 
 ### legacy.port
 
-Listening port for agent connections.
+Listening port of the legacy listener, the one 4.x agents connect to.
 
 - **Default value:** `1514`
 - **Allowed values:** Integer from `1` to `65535`
-- **Note:** Standard port for Wazuh agent-manager communication
+- **Note:** Bound only while `legacy.enabled` is `yes`. It must differ from the other active
+  listener ports; see [Listener ports must not collide](#listener-ports-must-not-collide).
 
 ### legacy.protocol
 
 Communication protocol(s) to accept from agents.
 
 - **Default value:** `tcp`
-- **Allowed values:** `tcp`, `udp`, or `tcp,udp`
-- **Note:** TCP is recommended for reliable delivery; UDP may be used for low-latency environments
+- **Allowed values:** `tcp`, `udp`, or both (`tcp,udp`)
 
 ### legacy.queue_size
 
@@ -129,6 +162,10 @@ workers ([`remoted.worker_pool`](#remotedworker_pool)).
 - **Note:** Values greater than `262144` are accepted with the warning `Queue size is very high. The
   application may run out of memory.` A message arriving at a full queue is discarded (see
   [Queue Byte Limits](#queue-byte-limits) for how discards are reported)
+- **Note:** remoted allocates the whole queue when the legacy listener starts, one pointer (8 bytes
+  on a 64-bit host) per slot, before any message arrives: the maximum asks for 1 GiB at once. No
+  check compares the value with the host's memory, so a size remoted cannot allocate passes
+  `wazuh-manager-control check` and stops remoted at start.
 
 ### agents.allow_higher_versions
 
@@ -161,7 +198,7 @@ Bind remoted to a specific local IP address.
 
 - **Default value:** `0.0.0.0` (all IPv4 interfaces) when `ipv6` is `no`; all IPv6 interfaces (`::`)
   when `ipv6` is `yes` (the `0.0.0.0` default only applies in IPv4 mode)
-- **Allowed values:** Valid IPv4 or IPv6 address
+- **Allowed values:** One IPv4 or IPv6 address, without a CIDR prefix, netmask or host name
 - **Note:** Restricts remoted to listen only on the specified interface. The installer writes the
   `0.0.0.0` default explicitly (and leaves the option out when it is told to enable `ipv6` without
   an address); set a specific address (or `127.0.0.1`) to accept agents only through that interface.
@@ -219,7 +256,7 @@ connection from the same agent may take it over.
 
 **XML Section:** `<remote><https>`
 
-Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always starts, and the manager fails closed without a readable certificate/key — it issues them at installation and never reissues them; a deployment on its own PKI overwrites them (see [Certificate provisioning and fail-closed start](https-events-api.md#certificate-provisioning-and-fail-closed-start)).
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) takes the defaults listed below, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always starts, and the manager fails closed without a readable certificate/key — it issues them at installation and never reissues them; a deployment on its own PKI overwrites them (see [Certificate provisioning and fail-closed start](https-events-api.md#certificate-provisioning-and-fail-closed-start)).
 
 ### https.port
 
@@ -227,6 +264,8 @@ HTTPS listening port.
 
 - **Default value:** `1517`
 - **Allowed values:** Integer from `1` to `65535`
+- **Note:** Always bound. It must differ from the other active listener ports; see
+  [Listener ports must not collide](#listener-ports-must-not-collide).
 
 ### https.bind_addr
 
@@ -537,6 +576,29 @@ whole.
 
 ---
 
+## Global Configuration
+
+**XML Section:** `<global>`
+
+### agents_disconnection_time
+
+How long an agent may stay silent before it counts as disconnected. The option is shared with the
+Task Manager's disconnection sweep, which owns its full description:
+[`agents_disconnection_time`](../task_manager/configuration.md#agents_disconnection_time).
+
+- **Default value:** `15m`
+- **Allowed values:** a time value (`s`, `m`, `h`, `d`, `w` suffix; a bare number is seconds), at
+  least 1 second
+- **What remoted does with it** (read once, at start):
+  - It marks `disconnected`, in the node's own database, every agent silent for longer, so agents
+    that went quiet while the manager was down are not reported `active` until the sweep's next run.
+  - It does not send a message to a 4.x agent silent for longer (`(1245): Sending message to
+    disconnected agent '<id>'.` at debug level).
+  - It warns at start when [`remoted.control_keepalive_throttle`](#remotedcontrol_keepalive_throttle)
+    is at or above half of it.
+
+---
+
 ## Internal Options
 
 **Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
@@ -566,7 +628,7 @@ Debug logging level for remoted module.
 
 - **Default value:** `0`
 - **Allowed values:** `0` (disabled), `1` (basic), `2` (verbose)
-- **Note:** Use `debug2` for troubleshooting; generates significant log volume
+- **Note:** Use `2` for troubleshooting; it generates significant log volume
 - **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
   (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
   controls how many it can trigger; conditions an operator can act on are logged at info or warning
@@ -1438,7 +1500,7 @@ database.
   ignore the window: the first host-carrying notify, and the first notify after a `startup`
   (which must lift the agent out of the `pending` state a startup leaves in wazuh-db).
 - **Note:** Keep it below half of
-  [`<global><agents_disconnection_time>`](../task_manager/configuration.md#agents_disconnection_time)
+  [`<global><agents_disconnection_time>`](#agents_disconnection_time)
   (default `15m`), the one `<global>` option remoted reads; remoted
   warns at startup from half upward. The staleness the disconnection sweep compares against the
   threshold is the throttle plus the agent's notify interval, so any value at or above half can

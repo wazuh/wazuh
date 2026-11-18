@@ -56,7 +56,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
   object properties. Options without `default` (`remote.legacy.local_ip`, `remote.https.verification_mode`,
-  `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
+  `remote.https.groups`, `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
   meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either. A
   default the consuming module applies anyway is declared in the schema (`remote.https.ciphers`, `max_body_size`,
   `dual_stack` carry remoted_module's built-in values), so the effective document shows what is in force.
@@ -89,8 +89,8 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   `remote.https.bind_addr`) is a pattern for exactly the addresses `OS_IsValidIP()` returns `1` for (one IPv4
   dotted quad, optionally `::ffff:`-prefixed, or one full or compressed IPv6 address; no CIDR, netmask, `any` or host
   name — the `!` negation it also tolerates is refused, since it means nothing for a bind address), and the
-  `remote.https` strings carry the `maxLength` of `remote-config.h` (255 for `bind_addr`, `global_prefix` and
-  `ciphers`, 511 for the four paths). The pattern uses plain groups only: rapidjson's internal regex engine has no
+  `remote.https` strings carry the `maxLength` of `remote-config.h` (255 for `bind_addr`, `global_prefix`,
+  `ciphers` and `groups`, 511 for the four paths). The pattern uses plain groups only: rapidjson's internal regex engine has no
   `(?:…)`, and its `^`/`$` anchor the whole pattern, so the alternation is wrapped in one group to read the same in
   Python. `cluster.bind_addr` is not an `ip`: clusterd binds it through asyncio, which also accepts a host name, so it
   is a `#/definitions/host` (a host name of dot-separated labels — letters, digits, `-` and `_`, which container names
@@ -180,7 +180,7 @@ manager_config/
   reinstalled, not merely after `bin/wazuh-manager-conf` is.
 - **File checks**: `LoadOptions::checkFiles` / `mconf_load_ex`'s `check_files` (default on) resolve
   certificate/key paths against `home` and fail if they don't exist. Daemon start-up loads with
-  `check_files == 0` (P44) — file existence is `-t`'s and `wazuh-manager-conf validate`'s job, not the
+  `check_files == 0` — file existence is `-t`'s and `wazuh-manager-conf validate`'s job, not the
   plain loader's, so a daemon can come up with an as-yet-uncreated certificate and let `-t` catch it.
 - **`mconf_t` is immutable** after `mconf_load_ex()` returns: concurrent `mconf_section_json()` /
   `mconf_document_json()` calls on one handle need no external locking. Do not add mutation on the C++
