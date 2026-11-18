@@ -611,10 +611,54 @@ class MigrationToolTest(unittest.TestCase):
         code, out, _ = self.output_of(self.export)
         self.assertEqual(0, code)
         self.assertFalse(self.manifest()["default_group"]["customized"])
-        self.assertNotIn("rootkit_files.txt", out, "4.x ships it in every default group")
+        self.assertNotIn("rootkit_files.txt not migrated", out, "4.x ships it in every default group")
         self.assertEqual(0, self.do_import())
         self.assertEqual(FakeManager.STOCK_DEFAULT, FakeManager.configurations["default"],
                          "nothing to merge into the 5.0 default")
+
+    # What `ls /var/ossec/etc/shared/default/` shows on an untouched 4.14 installation.
+    STOCK_4_14_DEFAULT = (
+        "cis_apache2224_rcl.txt", "cis_debian_linux_rcl.txt", "cis_mysql5-6_community_rcl.txt",
+        "cis_mysql5-6_enterprise_rcl.txt", "cis_rhel5_linux_rcl.txt", "cis_rhel6_linux_rcl.txt",
+        "cis_rhel7_linux_rcl.txt", "cis_rhel_linux_rcl.txt", "cis_sles11_linux_rcl.txt",
+        "cis_sles12_linux_rcl.txt", "cis_win2012r2_domainL1_rcl.txt", "cis_win2012r2_domainL2_rcl.txt",
+        "cis_win2012r2_memberL1_rcl.txt", "cis_win2012r2_memberL2_rcl.txt", "merged.mg",
+        "rootkit_files.txt", "rootkit_trojans.txt", "system_audit_rcl.txt", "system_audit_ssh.txt",
+        "win_applications_rcl.txt", "win_audit_rcl.txt", "win_malware_rcl.txt")
+
+    def test_the_files_a_4x_installation_ships_in_default_are_not_reported(self):
+        for name in self.STOCK_4_14_DEFAULT:
+            self.write_group_file("default", name, "stock\n")
+        code, out, _ = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertNotIn("group 'default': cis_", out, "hyphenated stock names included")
+        self.assertEqual(0, self.export())
+        default = self.manifest()["default_group"]
+        self.assertEqual([], default["extra_files"])
+        self.assertEqual(len(self.STOCK_4_14_DEFAULT) - 1, len(default["stock_files"]),
+                         "merged.mg aside, every file is stock")
+
+    def test_4x_agents_are_told_to_keep_the_rootkit_lists(self):
+        for name in self.STOCK_4_14_DEFAULT:
+            self.write_group_file("default", name, "stock\n")
+        dry = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, self.export())
+        imported = self.output_of(self.do_import)
+        source = os.path.join(self.source, "etc", "shared", "default") + "/"
+        for code, out, _ in (dry, imported):
+            self.assertEqual(0, code)
+            self.assertEqual(1, out.count("4.x agents read rootkit_files.txt, rootkit_trojans.txt"
+                                          " and 19 stock audit policy file(s) from it"),
+                             "named once at every step")
+            self.assertIn("copy these files from %s" % source, out)
+            self.assertIn("to /etc/wazuh-manager/shared/default/", out)
+            self.assertIn("remove them once every agent runs 5.0", out)
+
+    def test_no_rootkit_advice_without_the_lists(self):
+        self.write_group_file("default", "system_audit_rcl.txt", "stock\n")
+        code, out, _ = self.output_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertNotIn("rootkit", out, "a 4.x default group without them loses no rootkit check")
 
     def test_a_customized_default_group_is_merged_after_the_5x_one(self):
         self.customize_default()

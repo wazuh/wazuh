@@ -458,7 +458,7 @@ if [ "$1" -eq 1 ]; then
     echo "ERROR: could not generate ${CONF_DIR}/wazuh-manager.conf." >&2
     exit 1
   fi
-  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE}; then
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE} > /dev/null; then
     rm -f ${CONF_STAGE}
     echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
     exit 1

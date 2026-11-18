@@ -119,10 +119,12 @@ own migration; see the guides for each.
 and macOS, `shared\<file>` on Windows). 5.0 agents still run them.
 
 **Other files in a group folder** are reported and left behind. No endpoint uploads them, and 5.0
-compiles everything in a group folder into what it pushes to that group's agents, so a 4.x CDB list
-or rootcheck file would be distributed to the fleet with no meaning attached. `export` names each
-one so the decision is yours rather than silent. The rootcheck lists every 4.x installation ships
-in `default` are not named.
+compiles everything in a group folder into what it pushes to that group's agents, so once every
+agent runs 5.0 a 4.x CDB list or rootcheck file is distributed to the fleet with no meaning attached.
+`export` names each one so the decision is yours rather than silent. The rootcheck lists and audit
+policies every 4.x installation ships in `default` are not named as left behind; when they include
+`rootkit_files.txt` or `rootkit_trojans.txt`, the review says instead that 4.x agents run no rootkit
+checks without them, and to copy them into the 5.0 `default` group until every agent is upgraded.
 
 **Agent labels** (`<labels>` in an `agent.conf`) are carried with the file, but 5.0 agents ignore
 them and `agent.labels.*` no longer reaches events. The review names every group that sets them;
