@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed `wazuh-db` not escaping map keys in its HTTP responses, which let the operating system platform reported by an agent alter or break the counts of `GET /agents/summary`. ([#41545](https://github.com/wazuh/wazuh/pull/41545))
+- Fixed `wazuh-clusterd` accepting divided messages from a peer that had not proven the cluster key, and copying the whole accumulated message on every received chunk, which let a connection without the key make the master hold hundreds of MiB and stop serving workers and `cluster_control` for tens of seconds. The connection is now closed at the header of a divided message received before the peer proves the key, or of a chunk larger than 10 MiB, and the chunks are accumulated in place. ([#41594](https://github.com/wazuh/wazuh/pull/41594))
 
 ### Ruleset
 
