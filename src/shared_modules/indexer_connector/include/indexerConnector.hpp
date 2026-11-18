@@ -13,6 +13,7 @@
 #define _INDEXER_CONNECTOR_HPP
 
 #include <json.hpp>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -61,6 +62,7 @@ class EXPORTED IndexerConnector final
     std::unordered_set<std::string> m_syncInProgress;
     uint32_t m_successCount {0};
     bool m_error413FirstTime {false};
+    std::optional<std::chrono::steady_clock::time_point> m_retryingSince;
     const bool m_useSeekDelete;
     bool m_blockedIndex {false};
     bool m_deletedIndex {false};
