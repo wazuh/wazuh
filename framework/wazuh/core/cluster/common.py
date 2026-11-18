@@ -367,6 +367,8 @@ class Handler(asyncio.Protocol):
         self.request_chunk = 5242880
         # Object use to encrypt and decrypt requests.
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        # Whether a message from the peer has been decrypted with the cluster key.
+        self.peer_authenticated = False
         # Logging.Logger object used to write logs.
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # Logging tag.
@@ -506,6 +508,20 @@ class Handler(asyncio.Protocol):
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
+                # A divided frame is only decrypted once the whole message is joined, so it cannot prove the key.
+                # No sender builds a frame larger than request_chunk, which MAX_CHUNK_SIZE bounds.
+                if self.my_fernet is not None and not self.peer_authenticated:
+                    if self.in_msg.flag_divided:
+                        raise exception.WazuhClusterError(
+                            3063, extra_message='divided message received before the handshake completed')
+                    if self.in_msg.total > MAX_CHUNK_SIZE:
+                        raise exception.WazuhClusterError(
+                            3063, extra_message=f'message of {self.in_msg.total} bytes received before the handshake '
+                                                f'exceeds the maximum of {MAX_CHUNK_SIZE}')
+                if self.in_msg.flag_divided and self.in_msg.total > MAX_CHUNK_SIZE:
+                    raise exception.WazuhClusterError(
+                        3063, extra_message=f'divided message chunk of {self.in_msg.total} bytes exceeds the maximum '
+                                            f'of {MAX_CHUNK_SIZE}')
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 # If payload bytes are still outstanding, arm the completion deadline so a
                 # peer that stops after the header cannot hold memory indefinitely.
@@ -552,6 +568,8 @@ class Handler(asyncio.Protocol):
                             else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
+                # msg_parse refuses divided frames until this is set, so with a key this payload was just decrypted.
+                self.peer_authenticated = True
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
                 self.in_msg = InBuffer()
             else:
@@ -842,16 +860,14 @@ class Handler(asyncio.Protocol):
                     current_size = len(self.div_msg_box.get(counter, b''))
                     if current_size + len(payload) > MAX_TOTAL_SIZE:
                         raise WazuhClusterError(3050, extra_message=str(current_size + len(payload)))
-                    try:
-                        self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                    except KeyError:
-                        self.div_msg_box[counter] = payload
+                    # Extended in place: concatenating would copy the whole accumulated message on every chunk.
+                    self.div_msg_box.setdefault(counter, bytearray()).extend(payload)
 
                 else:
                     # If the message is the last part of a division, join it.
                     if counter in self.div_msg_box:
-                        payload = self.div_msg_box[counter] + payload
-                        del self.div_msg_box[counter]
+                        self.div_msg_box[counter].extend(payload)
+                        payload = self.div_msg_box.pop(counter)
                         # Decrypt the joined payload
                         try:
                             payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet else bytes(payload)
@@ -875,6 +891,11 @@ class Handler(asyncio.Protocol):
                     f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
                     f"Closing connection."
                 )
+                if self.transport:
+                    self.close()
+                return
+            elif e.code == 3063:
+                self.logger.warning(f"Closing connection: {e}.")
                 if self.transport:
                     self.close()
                 return
