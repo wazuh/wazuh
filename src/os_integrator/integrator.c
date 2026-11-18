@@ -14,6 +14,68 @@
 #include "os_net/os_net.h"
 
 
+/* Returns a copy of str that cannot leave the single quotes of the shell-format alert file,
+ * truncated to max_len ending in "..." when max_len is not 0. The caller frees it. */
+static char *integrator_shell_value(const char *str, unsigned int max_len)
+{
+    int log_count = 0;
+    char *value;
+    char *tmpstr;
+
+    os_strdup(str, value);
+    tmpstr = value;
+
+    while(*tmpstr != '\0')
+    {
+        if(*tmpstr == '\'')
+        {
+            *tmpstr = ' ';
+        }
+        else if(*tmpstr == '\\')
+        {
+            *tmpstr = '/';
+        }
+        else if(*tmpstr == '`')
+        {
+            *tmpstr = ' ';
+        }
+        else if(*tmpstr == '"')
+        {
+            *tmpstr = ' ';
+        }
+        else if(*tmpstr == ';')
+        {
+            *tmpstr = ',';
+        }
+        else if(*tmpstr == '!')
+        {
+            *tmpstr = ' ';
+        }
+        else if(*tmpstr == '$')
+        {
+            *tmpstr = ' ';
+        }
+
+        else if(*tmpstr < 32 || *tmpstr > 122)
+        {
+            *tmpstr = ' ';
+        }
+        log_count++;
+        tmpstr++;
+
+        if(max_len && log_count >= (int)max_len)
+        {
+            *tmpstr='\0';
+            *(tmpstr -1)='.';
+            *(tmpstr -2)='.';
+            *(tmpstr -3)='.';
+            break;
+        }
+    }
+
+    return value;
+}
+
 void OS_IntegratorD(IntegratorConfig **integrator_config)
 {
     int s = 0;
@@ -294,64 +356,16 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     fclose(fp);
                     free(unformatted);
                 }else{
-                    int log_count = 0;
                     char *srcip = NULL;
                     json_field = cJSON_GetObjectItem(al_json, "full_log");
-                    char *full_log = json_field ? json_field->valuestring : "";
-                    char *tmpstr = full_log;
+                    char *full_log = integrator_shell_value(json_field ? json_field->valuestring : "", integrator_config[s]->max_log);
+                    char *tmpstr;
 
-                    while(*tmpstr != '\0')
-                    {
-                        if(*tmpstr == '\'')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == '\\')
-                        {
-                            *tmpstr = '/';
-                        }
-                        else if(*tmpstr == '`')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == '"')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == ';')
-                        {
-                            *tmpstr = ',';
-                        }
-                        else if(*tmpstr == '!')
-                        {
-                            *tmpstr = ' ';
-                        }
-                        else if(*tmpstr == '$')
-                        {
-                            *tmpstr = ' ';
-                        }
-
-                        else if(*tmpstr < 32 || *tmpstr > 122)
-                        {
-                            *tmpstr = ' ';
-                        }
-                        log_count++;
-                        tmpstr++;
-
-                        if(log_count >= (int)integrator_config[s]->max_log)
-                        {
-                            *tmpstr='\0';
-                            *(tmpstr -1)='.';
-                            *(tmpstr -2)='.';
-                            *(tmpstr -3)='.';
-                            break;
-                        }
-                    }
                     if (data = cJSON_GetObjectItem(al_json,"data"), data)
                     {
                         if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field)
                         {
-                            srcip = json_field->valuestring;
+                            os_strdup(json_field->valuestring, srcip);
                             tmpstr = srcip;
 
                             while(*tmpstr != '\0')
@@ -390,16 +404,16 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     date = json_field ? json_field->valuestring : "";
 
                     json_field = cJSON_GetObjectItem(al_json,"location");
-                    location = json_field ? json_field->valuestring : "";
+                    location = integrator_shell_value(json_field ? json_field->valuestring : "", 0);
 
                     json_field = cJSON_GetObjectItem(rule,"id");
-                    rule_id = json_field ? json_field->valuestring : "";
+                    rule_id = integrator_shell_value(json_field ? json_field->valuestring : "", 0);
 
                     json_field = cJSON_GetObjectItem(rule,"level");
                     alert_level = json_field ? json_field->valueint : 0;
 
                     json_field = cJSON_GetObjectItem(rule,"description");
-                    rule_description = json_field ? json_field->valuestring : "";
+                    rule_description = integrator_shell_value(json_field ? json_field->valuestring : "", 0);
 
 
                     fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
@@ -407,6 +421,11 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     mdebug2("File %s was written.", exec_tmp_file);
                     fclose(fp);
 
+                    os_free(full_log);
+                    os_free(srcip);
+                    os_free(location);
+                    os_free(rule_id);
+                    os_free(rule_description);
                 }
             }
 

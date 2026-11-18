@@ -201,9 +201,167 @@ void test_OS_IntegratorD(void **state) {
     cJSON_Delete(op_json);
 }
 
+/* JSON-escaped value with shell metacharacters, a newline and a backslash, and its shell-format result. */
+#define SHELL_PAYLOAD "evil'$(id)`id`;a\\nb\\\\c"
+#define SHELL_PAYLOAD_SANITIZED "evil  (id) id ,a b/c"
+
+void test_OS_IntegratorD_shell_format_sanitized(__attribute__((unused)) void **state) {
+    IntegratorConfig shell_config = { .name = "custom-shell", .enabled = 1, .max_log = 165 };
+    IntegratorConfig *integrator_config[2] = { &shell_config, NULL };
+
+    wfd_t *wfd = NULL;
+    os_calloc(1, sizeof(wfd_t), wfd);
+    wfd->file_out = (FILE *)1;
+
+    const char *al_string = "{\"timestamp\":\"2022-09-09T23:43:15.168+0200\",\"rule\":{\"level\":5,\"description\":\"desc-" SHELL_PAYLOAD "\",\"id\":\"5760" SHELL_PAYLOAD "\"},\"data\":{\"srcip\":\"10.0.0.5'$(id)\"},\"full_log\":\"log-" SHELL_PAYLOAD "\",\"location\":\"loc-" SHELL_PAYLOAD "\"}";
+    const char *alert_to_shell = "alertdate='2022-09-09T23:43:15.168+0200'\n"
+                                 "alertlocation='loc-" SHELL_PAYLOAD_SANITIZED "'\n"
+                                 "ruleid='5760" SHELL_PAYLOAD_SANITIZED "'\n"
+                                 "alertlevel='5'\n"
+                                 "ruledescription='desc-" SHELL_PAYLOAD_SANITIZED "'\n"
+                                 "alertlog='log-" SHELL_PAYLOAD_SANITIZED "'\n"
+                                 "srcip='10.0.0.5   id '";
+    const char *shell_file = "/tmp/custom-shell-1111-2222.alert";
+
+    cJSON *al_json = cJSON_Parse(al_string);
+    assert_non_null(al_json);
+
+    will_return(__wrap_jqueue_open, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+
+    expect_string(__wrap_File_DateofChange, file, "integrations/custom-shell");
+    will_return(__wrap_File_DateofChange, 1);
+    expect_string(__wrap__minfo, formatted_msg, "Enabling integration for: 'custom-shell'.");
+
+    will_return(__wrap_FOREVER, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "jqueue_next()");
+    will_return(__wrap_jqueue_next, al_json);
+    expect_string(__wrap__mdebug1, formatted_msg, "Sending new alert.");
+
+    will_return(__wrap_time, 1111);
+    will_return(__wrap_os_random, 2222);
+
+    expect_string(__wrap_wfopen, path, shell_file);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
+
+    expect_fprintf((FILE *)1, alert_to_shell, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/custom-shell-1111-2222.alert was written.");
+    expect_fclose((FILE *)1, 0);
+
+    will_return(__wrap_wpopenv, wfd);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
+    will_return(__wrap_fgets, 0);
+    will_return(__wrap_wpclose, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
+
+    expect_string(__wrap_unlink, file, shell_file);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_FOREVER, NULL);
+
+    OS_IntegratorD(integrator_config);
+
+    os_free(shell_config.path);
+    os_free(wfd);
+}
+
+void test_OS_IntegratorD_shell_format_keeps_alert(void **state) {
+    /* Below the configurable minimum to exercise the truncation with a short log. */
+    IntegratorConfig shell_config = { .name = "custom-shell", .enabled = 1, .max_log = 20 };
+    IntegratorConfig *integrator_config[3] = { &shell_config, state[0], NULL };
+
+    wfd_t *wfd = NULL;
+    os_calloc(1, sizeof(wfd_t), wfd);
+    wfd->file_out = (FILE *)1;
+
+    const char *al_string = "{\"timestamp\":\"2022-09-09T23:43:15.168+0200\",\"rule\":{\"level\":5,\"description\":\"Integrity checksum changed.\",\"id\":\"550\",\"groups\":[\"syscheck\"]},\"data\":{\"srcip\":\"10.0.0.5'$(id)\"},\"full_log\":\"log-" SHELL_PAYLOAD "\",\"location\":\"loc-" SHELL_PAYLOAD "\"}";
+    const char *alert_to_shell = "alertdate='2022-09-09T23:43:15.168+0200'\n"
+                                 "alertlocation='loc-" SHELL_PAYLOAD_SANITIZED "'\n"
+                                 "ruleid='550'\n"
+                                 "alertlevel='5'\n"
+                                 "ruledescription='Integrity checksum changed.'\n"
+                                 "alertlog='log-evil  (id) id...'\n"
+                                 "srcip='10.0.0.5   id '";
+    const char *shell_file = "/tmp/custom-shell-1111-2222.alert";
+    const char *virustotal_file = "/tmp/virustotal-3333-4444.alert";
+
+    cJSON *al_json = cJSON_Parse(al_string);
+    assert_non_null(al_json);
+    char *unformatted = cJSON_PrintUnformatted(al_json);
+    char alert_to_virustotal[2048];
+    snprintf(alert_to_virustotal, 2048, "%s\n", unformatted);
+
+    will_return(__wrap_jqueue_open, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+
+    expect_string(__wrap_File_DateofChange, file, "integrations/custom-shell");
+    will_return(__wrap_File_DateofChange, 1);
+    expect_string(__wrap__minfo, formatted_msg, "Enabling integration for: 'custom-shell'.");
+
+    expect_string(__wrap_File_DateofChange, file, "integrations/virustotal");
+    will_return(__wrap_File_DateofChange, 1);
+    expect_string(__wrap__minfo, formatted_msg, "Enabling integration for: 'virustotal'.");
+
+    will_return(__wrap_FOREVER, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "jqueue_next()");
+    will_return(__wrap_jqueue_next, al_json);
+    expect_string(__wrap__mdebug1, formatted_msg, "Sending new alert.");
+
+    will_return(__wrap_time, 1111);
+    will_return(__wrap_os_random, 2222);
+
+    expect_string(__wrap_wfopen, path, shell_file);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
+
+    expect_fprintf((FILE *)1, alert_to_shell, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/custom-shell-1111-2222.alert was written.");
+    expect_fclose((FILE *)1, 0);
+
+    will_return(__wrap_wpopenv, wfd);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
+    will_return(__wrap_fgets, 0);
+    will_return(__wrap_wpclose, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
+
+    expect_string(__wrap_unlink, file, shell_file);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_time, 3333);
+    will_return(__wrap_os_random, 4444);
+
+    expect_string(__wrap_wfopen, path, virustotal_file);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
+
+    expect_fprintf((FILE *)1, alert_to_virustotal, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/virustotal-3333-4444.alert was written.");
+    expect_fclose((FILE *)1, 0);
+
+    will_return(__wrap_wpopenv, wfd);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
+    will_return(__wrap_fgets, 0);
+    will_return(__wrap_wpclose, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
+
+    expect_string(__wrap_unlink, file, virustotal_file);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_FOREVER, NULL);
+
+    OS_IntegratorD(integrator_config);
+
+    os_free(shell_config.path);
+    os_free(wfd);
+    os_free(unformatted);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_OS_IntegratorD, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_IntegratorD_shell_format_sanitized, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_OS_IntegratorD_shell_format_keeps_alert, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
