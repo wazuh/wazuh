@@ -22,7 +22,7 @@ static char *integrator_shell_value(const char *str, unsigned int max_len)
     char *value;
     char *tmpstr;
 
-    os_strdup(str, value);
+    os_strdup(str ? str : "", value);
     tmpstr = value;
 
     while(*tmpstr != '\0')
@@ -363,7 +363,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
                     if (data = cJSON_GetObjectItem(al_json,"data"), data)
                     {
-                        if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field)
+                        if (json_field = cJSON_GetObjectItem(data,"srcip"), cJSON_IsString(json_field))
                         {
                             os_strdup(json_field->valuestring, srcip);
                             tmpstr = srcip;
