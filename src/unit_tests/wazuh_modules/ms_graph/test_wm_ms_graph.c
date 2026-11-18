@@ -1491,8 +1491,9 @@ void test_main_only_future_events_every_tenant(void **state) {
     current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
-    // The first scan saves the bookmark at the current time minus time_delay, with or without a token
-    const time_t first_bookmark = 1 - 10;
+    // The first scan saves the bookmark at the current time minus time_delay, with or without a token.
+    // time() is the same mock here as in the module: current_time on Linux, time_mock_value on Windows
+    const time_t first_bookmark = time(NULL) - 10;
 
     init_two_tenants_config(module_data);
     for (int i = 0; i < 2; i++) {
@@ -1630,8 +1631,9 @@ void test_main_only_future_events_tenant_without_token(void **state) {
     current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
-    // The first scan saves the bookmark at the current time minus time_delay, with or without a token
-    const time_t first_bookmark = 1 - 10;
+    // The first scan saves the bookmark at the current time minus time_delay, with or without a token.
+    // time() is the same mock here as in the module: current_time on Linux, time_mock_value on Windows
+    const time_t first_bookmark = time(NULL) - 10;
     curl_response* token_response;
 
     init_two_tenants_config(module_data);
@@ -1698,7 +1700,8 @@ void test_main_only_future_events_token_fails_several_scans(void **state) {
     current_time = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t saved_bookmark = { .next_time = 10 };
-    const time_t first_bookmark = 1 - 10;
+    // time() is the same mock here as in the module: current_time on Linux, time_mock_value on Windows
+    const time_t first_bookmark = time(NULL) - 10;
     curl_response* token_response;
 
     init_two_tenants_config(module_data);
@@ -1811,10 +1814,11 @@ void test_main_tenant_without_token_only_future_events_no(void **state) {
 
 void test_wm_ms_graph_save_first_bookmarks(void **state) {
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
-    // Saved at the current time minus time_delay
-    const time_t first_bookmark = 100 - 10;
-
     current_time = 100;
+    // Saved at the current time minus time_delay. time() is the same mock here as in the module:
+    // current_time on Linux, time_mock_value on Windows
+    const time_t first_bookmark = time(NULL) - 10;
+
     os_calloc(2, sizeof(wm_ms_graph_auth*), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
