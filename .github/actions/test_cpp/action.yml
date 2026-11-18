@@ -14,6 +14,12 @@ inputs:
     required: false
     description: "Preload ASAN library for tests. Only used when valgrind is disabled."
     default: "false"
+  allowed_skips:
+    required: false
+    description: >
+      Opt-in skip accounting. Empty (default): skipped GoogleTest cases are not counted, as before.
+      A number: the step fails when more than that many cases were skipped (GTEST_SKIP) in this run.
+    default: ""
 
 runs:
   using: "composite"
@@ -38,23 +44,59 @@ runs:
       # "No tests were found!!!" when it matches nothing (a renamed label, a test not registered
       # under this configuration). Without it such a job is green having run nothing.
       #
-      # The valgrind branch wraps only the ctest driver: without --trace-children=yes the test
-      # binaries do not run under valgrind, and without --error-exitcode a memcheck error would not
-      # fail the job anyway. The ASAN jobs are the memory gate; making this one real is an owner
-      # decision (it needs suppressions and a timeout budget for the slowed-down suites).
+      # The valgrind branch: `--trace-children=yes` is what puts the test binaries (children of the
+      # ctest driver) under memcheck, and `--error-exitcode=1` is what turns a memcheck error into a
+      # failed test. No caller passes `valgrind: "true"` today (the legs named "valgrind" pass
+      # "false" and are plain coverage-flag runs); a lane that turns it on owns its suppressions and
+      # its timeout budget.
+      #
+      # allowed_skips: ctest reports a GoogleTest binary whose cases called GTEST_SKIP as Passed, so
+      # a suite can go green having skipped everything. With the input set, every binary writes its
+      # XML report (GTEST_OUTPUT with a trailing slash: one uniquely named file per process) and the
+      # cases marked result="skipped" (googletest 1.11.0, gtest.cc OutputXmlTestInfo) are counted.
       - name: Test
+        env:
+          INPUT_ALLOWED_SKIPS: ${{ inputs.allowed_skips }}
         run: |
           SRC_FOLDER=$(pwd)/src
           cd $SRC_FOLDER/build
 
+          if [[ -n "$INPUT_ALLOWED_SKIPS" ]]; then
+            if ! [[ "$INPUT_ALLOWED_SKIPS" =~ ^[0-9]+$ ]]; then
+              echo "::error::allowed_skips must be a non-negative integer, got '$INPUT_ALLOWED_SKIPS'"
+              exit 1
+            fi
+            GTEST_XML_DIR="$(mktemp -d)"
+            export GTEST_OUTPUT="xml:${GTEST_XML_DIR}/"
+          fi
+
           if [[ "${{ inputs.valgrind }}" != "false" ]]; then
-            valgrind ctest --output-on-failure --no-tests=error -L ${{ inputs.target }}
+            valgrind --trace-children=yes --error-exitcode=1 ctest --output-on-failure --no-tests=error -L ${{ inputs.target }}
           else
             if [[ "${{ inputs.preload }}" != "false" ]]; then
               ASAN_LIB=$(gcc -print-file-name=libasan.so)
               LD_PRELOAD="${ASAN_LIB}" ASAN_OPTIONS=alloc_dealloc_mismatch=0 ctest --output-on-failure --no-tests=error -L ${{ inputs.target }}
             else
               ASAN_OPTIONS=alloc_dealloc_mismatch=0 ctest --output-on-failure --no-tests=error -L ${{ inputs.target }}
+            fi
+          fi
+
+          if [[ -n "$INPUT_ALLOWED_SKIPS" ]]; then
+            shopt -s nullglob
+            reports=("${GTEST_XML_DIR}"/*.xml)
+            if [[ ${#reports[@]} -eq 0 ]]; then
+              echo "::error::allowed_skips is set but no GoogleTest XML report was written: skips cannot be counted"
+              exit 1
+            fi
+            # `|| true`: grep exits 1 on no match, which is the good case here.
+            skipped=$(cat "${reports[@]}" | { grep -o '<testcase [^>]*result="skipped"' || true; } | wc -l)
+            echo "GoogleTest cases skipped: ${skipped} (allowed: ${INPUT_ALLOWED_SKIPS}, reports: ${#reports[@]})"
+            # `10#`: a zero-padded limit ("08") is otherwise read as octal, an arithmetic error that
+            # `if` takes for "not exceeded".
+            if (( skipped > 10#$INPUT_ALLOWED_SKIPS )); then
+              grep -h '<testcase [^>]*result="skipped"' "${reports[@]}" || true
+              echo "::error::${skipped} GoogleTest cases were skipped, more than the ${INPUT_ALLOWED_SKIPS} this lane allows"
+              exit 1
             fi
           fi
         shell: bash

@@ -212,6 +212,8 @@ jobs:
         with:
           name: libbpf-bootstrap
           path: output
+          # Fail here, not in the job that downloads it, if nothing was produced.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -273,6 +275,8 @@ jobs:
         with:
           name: externals-all
           path: externals-all.tar.gz
+          # Fail here, not in the job that downloads it, if nothing was produced.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -357,6 +361,8 @@ jobs:
         with:
           name: cpython-${{ matrix.architecture }}
           path: cpython-${{ matrix.architecture }}.tar.gz
+          # Fail here, not in the job that downloads it, if nothing was produced.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -434,6 +440,8 @@ jobs:
         with:
           name: pool-new
           path: pool-new.tar.gz
+          # Fail here, not in the job that downloads it, if nothing was produced.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}

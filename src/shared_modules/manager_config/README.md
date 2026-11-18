@@ -214,7 +214,7 @@ $TMP_PY_VENV/bin/python3 tests/parity.py schema/wazuh-manager.schema.json tests/
 ```
 
 CI runs all three on every PR touching `src/shared_modules/manager_config/**` (except this README),
-`error_messages.h`, the installer files the CLI suite executes (`gen_wazuh.sh`, `shared.sh`,
+`src/shared_modules/utils/managerConfDir.hpp`, the installer files the CLI suite executes (`gen_wazuh.sh`, `shared.sh`,
 `inst-functions.sh`, `template-select.sh` and the seven generic templates `WriteManager()` reads — it
 validates the configuration the installer generates) or the configure and build inputs, via
 `.github/workflows/5_testunit_managerconfig.yml` (its `paths:` list is the exact set): one job with the

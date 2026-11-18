@@ -50,9 +50,9 @@ namespace remoted::control
     struct Config
     {
         std::string clusterName;
-        bool isWorkerNode;
+        bool isWorkerNode {false};
         std::string managerVersion;
-        bool allowHigherVersions;
+        bool allowHigherVersions {false};
 
         nlohmann::json limits;
 

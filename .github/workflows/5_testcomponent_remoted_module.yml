@@ -9,7 +9,7 @@ on:
       # remoted_module_utest (test/CMakeLists.txt:14,26) links the remoted_module library built from
       # src/ and include/ (CMakeLists.txt:13-15). Not tools/ (load-balancer lab, send_*.py drivers)
       # or README.md. remoted_module links none of remoted's C sources; its only parent on the
-      # configure path is src/remoted/CMakeLists.txt:63 (registered at src/CMakeLists.txt:284).
+      # configure path is src/remoted/CMakeLists.txt (registered by src/CMakeLists.txt).
       - "src/remoted/remoted_module/CMakeLists.txt"
       - "src/remoted/remoted_module/include/**"
       - "src/remoted/remoted_module/src/**"
@@ -17,7 +17,7 @@ on:
       - "src/remoted/CMakeLists.txt"
       # Linked: wazuh_metrics, wazuh_uds_http_server, ca_bundle (CMakeLists.txt:42-43; the test also
       # links wazuh_metrics and ca_bundle directly, test/CMakeLists.txt). wazuh_uds_http_server is
-      # registered by the first consumer's guarded add_subdirectory (src/CMakeLists.txt:245-254).
+      # registered by the first consumer's guarded add_subdirectory (src/CMakeLists.txt).
       - "src/shared_modules/ca_bundle/**/CMakeLists.txt"
       - "src/shared_modules/ca_bundle/include/**"
       - "src/shared_modules/ca_bundle/src/**"
@@ -28,7 +28,7 @@ on:
       - "src/shared_modules/uds_http_server/include/**"
       - "src/shared_modules/uds_http_server/src/**"
       # Headers from shared_modules/utils and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps, step "Build flatbuffer schemas".
       # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
       # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -37,16 +37,18 @@ on:
       - "src/shared_modules/utils/tests/CMakeLists.txt"
       - "src/shared_modules/utils/benchmark/CMakeLists.txt"
       - "src/shared_modules/common/**"
+      # Licence texts, not build inputs.
+      - "!src/shared_modules/*/COPYING"
       # Configure path: build_target_cpp configures all of src/ as one tree
-      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
-      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake,
+      # VERSION.json) and src/external/CMakeLists.txt (ext_* targets, wazuhext).
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
+      # build_external_deps runs make deps/build-external (src/Makefile `deps`, ref list from
+      # tools/get_git_refs.sh, GIT_REFS_LIST) and builds the http-request submodule
+      # (step "Build http-request"). A submodule bump changes only the gitlink path, which no '/**'
       # pattern matches.
       - "src/Makefile"
       - "src/deps.lock.mk"
@@ -75,7 +77,9 @@ jobs:
           # This leg keeps its name (check names) but no longer wraps ctest in valgrind: test_cpp's
           # valgrind branch never instrumented the test binary (no --trace-children=yes,
           # test_cpp/action.yml), so it is the plain, non-sanitized build of the suite. The asan
-          # leg is the memory gate.
+          # leg is the memory gate. The two are not duplicates: each has failed on its own in CI
+          # (the suite binds real TCP ports and is timing-sensitive), and this one answers in
+          # about a third of the time.
           - test_type: valgrind
             asan_enabled: "false"
             valgrind_enabled: "false"
@@ -88,6 +92,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      # remoted_module_utest GTEST_SKIP()s its TLS, PKI and enrollment cases when the openssl CLI is
+      # missing (test/unit/testTlsServer.hpp, httpServer_test.cpp, the *E2E_test.cpp fixtures) and
+      # three admin-socket cases when the host has a real /etc/wazuh-manager
+      # (test/unit/adminServer_test.cpp), and ctest reports a binary with skipped cases as passed.
+      # Fail here, before the long build, rather than go green with those cases not run.
+      - name: Check the suite's preconditions
+        run: |
+          openssl version
+          if [ -e /etc/wazuh-manager ]; then
+            echo "::error::/etc/wazuh-manager exists on this runner; remoted_module_utest would skip its admin-socket cases"
+            exit 1
+          fi
 
       - uses: ./.github/actions/build_external_deps
 

@@ -10,14 +10,19 @@ on:
       - 'framework/**'
       # The job builds wazuh-manager-conf, and test_spec_manager_configuration.py reads its schema
       - 'src/shared_modules/manager_config/**'
-      # ...with the error catalogue on its include path (manager_config/CMakeLists.txt:50), whose
-      # codes framework/wazuh/core/manager_conf.py maps
-      - 'src/shared/include/error_messages/error_messages.h'
-      # Configure (src/CMakeLists.txt:86 includes src/cmake; ext_pugixml/ext_rapidjson are defined in
-      # src/external/CMakeLists.txt) and `make deps` (src/Makefile:708 runs get_git_refs.sh)
+      # ...with the one header outside the module that the library and the CLI compile
+      # (manager_config/CMakeLists.txt:43 and :52). error_messages.h is not listed on purpose: the
+      # CLI defines its own 1244 strings (cli/manager-conf.cpp:35-36) and includes no other header
+      # of src/shared
+      - 'src/shared_modules/utils/managerConfDir.hpp'
+      # Configure (src/CMakeLists.txt:95-96 include src/cmake, :140 reads VERSION.json and fails
+      # when it is empty; ext_pugixml/ext_rapidjson are defined in src/external/CMakeLists.txt) and
+      # `make deps` (src/Makefile:729 runs get_git_refs.sh; the http-request sources come from the
+      # ref pinned in src/Makefile, not from the gitlink: the checkout below has no submodules)
       - 'src/CMakeLists.txt'
       - 'src/cmake/**'
       - 'src/external/CMakeLists.txt'
+      - 'VERSION.json'
       - 'src/Makefile'
       - 'tools/get_git_refs.sh'
       - 'src/deps.lock.mk'
@@ -46,6 +51,8 @@ on:
       - '!api/wrappers/**'
       - '!api/Makefile'
       - '!api/setup.py'
+      # Prose: no build or test reads it
+      - '!src/shared_modules/manager_config/COPYING'
       - '!**/*.md'
   workflow_dispatch:
     inputs:

@@ -21,8 +21,14 @@ on:
       - "tools/manager_benchmark/tool_simulator/**"
       - "!tools/manager_benchmark/tool_simulator/docu/**"
       - "tools/manager_benchmark/scenarios/**"
+      # ...and the engine logs and dumps those scenarios reference: loading one stats every file it
+      # names (tool_simulator/internal/scenario/loader.go checkFiles, run by
+      # TestEveryShippedScenarioLoads), so a moved or deleted payload fails the Go tests.
+      - "tools/manager_benchmark/sample_payloads/**"
       - "src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs"
       - "src/deps.lock.mk"
+      # The "Obtain flatc" step fetches flatbuffers through this file's external/%.tar.gz rules (src/Makefile:666-673).
+      - "src/Makefile"
       # test_jwt_vectors_mirror.py compares the simulator's jwt_vectors.json with this header.
       - "src/shared_modules/utils/jwt/testVectors.hpp"
   workflow_dispatch:
