@@ -15,6 +15,7 @@ from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, charge_reques
     refuse_before_authentication
 from api.api_exception import ExpectFailedException
 from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
+from api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh-api')
 
@@ -136,7 +137,11 @@ async def http_error_handler(request: ConnexionRequest,
             # An exception raised in here is not dispatched again, so it would reach ServerErrorMiddleware
             # as an empty 500. A declared route answers the same failure with this JSON one.
             logger.error(f"Could not validate the token of a {status_code} response: {error!r}")
-            if not isinstance(error, exceptions.ProblemException):
+            try:
+                raise_if_exc(error)
+            except exceptions.ProblemException as problem:
+                error = problem
+            except Exception:
                 error = exceptions.InternalServerError()
             return await problem_error_handler(request, error)
         if error_code := await charge_request(request, authenticated):

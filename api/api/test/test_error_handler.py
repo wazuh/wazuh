@@ -16,7 +16,7 @@ from api.error_handler import _cleanup_detail_field, \
     expect_failed_error_handler, recursion_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, RATE_LIMIT_CODE_KEY, general_request_stats
 from api.api_exception import ExpectFailedException
-from wazuh.core.exception import WazuhInternalError
+from wazuh.core.exception import WazuhException, WazuhInternalError
 
 
 @pytest.fixture
@@ -148,7 +148,9 @@ async def test_http_error_handler_valid_token(status_code, reason, mock_request)
 @pytest.mark.asyncio
 @pytest.mark.parametrize('status_code, reason', [(404, 'Not Found'), (405, 'Method Not Allowed')])
 @pytest.mark.parametrize('error, title, wazuh_code', [
-    (WazuhInternalError(6003), 'Internal Server Error', None),
+    # A Wazuh error raised by the token check itself, e.g. a keypair that cannot be loaded
+    (WazuhInternalError(6003), 'Wazuh Internal Error', 6003),
+    (WazuhException(1000), 'Internal Server Error', None),
     (KeyError('run_as'), 'Internal Server Error', None),
     # What `raise_if_exc` makes of an error a DAPI call returns, e.g. 1017 while a core daemon is down
     (ProblemException(status=500, title='Wazuh Internal Error', detail='detail', ext={'code': 1017}),
