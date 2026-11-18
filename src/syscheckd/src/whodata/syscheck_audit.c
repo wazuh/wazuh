@@ -166,6 +166,19 @@ static int audit_socket_has_listener(void) {
     return 1;
 }
 
+// Auditd's start returns before its plugin listens, so connecting right away can be refused.
+static void audit_wait_for_listener(void) {
+    for (int i = 0; i < AUDIT_LISTENER_WAIT_STEPS; i++) {
+        if (audit_socket_has_listener()) {
+            return;
+        }
+
+        usleep(AUDIT_LISTENER_WAIT_STEP_US);
+    }
+
+    mdebug1("Audit socket '%s' still has no listener after restarting Auditd.", AUDIT_SOCKET);
+}
+
 // Unlinking before restarting loses a race: the old Auditd's plugin supervisor re-binds the freed path and leaves a new stale socket on exit.
 static int audit_recover_stale_socket(const char *abs_path_socket) {
     audit_stop();
@@ -176,7 +189,12 @@ static int audit_recover_stale_socket(const char *abs_path_socket) {
         return -1;
     }
 
-    return audit_start();
+    if (audit_start() != 0) {
+        return -1;
+    }
+
+    audit_wait_for_listener();
+    return 0;
 }
 
 // Set Auditd socket configuration

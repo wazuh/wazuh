@@ -568,6 +568,7 @@ void test_set_auditd_config_audit_socket_stale_restart(void **state) {
     will_return(__wrap_unlink, 0);
 
     will_return(__wrap_audit_start, 0);
+    expect_live_audit_socket_probe();
 
     int ret;
     ret = set_auditd_config();
@@ -592,6 +593,65 @@ void test_set_auditd_config_audit_socket_stale_restart_already_removed(void **st
     errno = ENOENT;
 
     will_return(__wrap_audit_start, 0);
+    expect_live_audit_socket_probe();
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart_wait_listener(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+    expect_string(__wrap__minfo, formatted_msg, buffer);
+
+    will_return(__wrap_audit_stop, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_audit_start, 0);
+
+    expect_audit_socket_probe(-1);
+    expect_function_call(__wrap_usleep);
+    expect_live_audit_socket_probe();
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart_no_listener(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+    expect_string(__wrap__minfo, formatted_msg, buffer);
+
+    will_return(__wrap_audit_stop, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_audit_start, 0);
+
+    for (int i = 0; i < AUDIT_LISTENER_WAIT_STEPS; i++) {
+        expect_audit_socket_probe(-1);
+        expect_function_call(__wrap_usleep);
+    }
+
+    snprintf(buffer, OS_SIZE_128, "Audit socket '%s' still has no listener after restarting Auditd.", AUDIT_SOCKET);
+    expect_string(__wrap__mdebug1, formatted_msg, buffer);
 
     int ret;
     ret = set_auditd_config();
@@ -2029,6 +2089,8 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_audit_socket_not_created_restart),
         cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart),
         cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_already_removed),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_wait_listener),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_no_listener),
         cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_unlink_error),
         cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_start_error),
         cmocka_unit_test(test_set_auditd_config_audit_socket_stale_no_restart),

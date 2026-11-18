@@ -26,6 +26,8 @@
 // Root-owned directory; only root creates this socket and connects to it.
 #define AUDIT_SOCKET                "queue/audit"
 #define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
+#define AUDIT_LISTENER_WAIT_STEPS   50         // Listener checks after restarting Auditd (10 s in total)
+#define AUDIT_LISTENER_WAIT_STEP_US 200000     // Delay between listener checks
 #define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
