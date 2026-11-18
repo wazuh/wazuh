@@ -50,10 +50,15 @@ STATIC int log_builder_update_host_ip(log_builder_t * builder);
 /* Number of seconds of how often the IP must be updated. */
 STATIC int g_ip_update_interval = 0;
 
+/* Host IP cache shared by every builder of the process, and the time of its last request. */
+STATIC char g_host_ip[IPSIZE] = { '\0' };
+STATIC time_t g_host_ip_last_update = 0;
+
 // Initialize a log builder structure
-log_builder_t * log_builder_init(bool update) {
+log_builder_t * log_builder_init(bool update, bool host_ip_used) {
     log_builder_t * builder;
     os_calloc(1, sizeof(log_builder_t), builder);
+    builder->host_ip_used = host_ip_used;
 
     {
         g_ip_update_interval = getDefine_Int("logcollector","ip_update_interval", 0, 3600);
@@ -243,23 +248,27 @@ int log_builder_update_hostname(log_builder_t * builder) {
     return retval;
 }
 
+// Check whether a log format uses the host IP
+bool log_builder_uses_host_ip(const char * pattern) {
+    return pattern != NULL && strstr(pattern, "$(host_ip)") != NULL;
+}
+
 // Update the host's IP value
 int log_builder_update_host_ip(log_builder_t * builder) {
-    static char host_ip[IPSIZE] = { '\0' };
-    static time_t last_update = 0;
     time_t now = time(NULL);
 
-    if (g_ip_update_interval > 0 && (now - last_update) >= g_ip_update_interval) {
-        last_update = now;
+    // Resolving the host IP lists every network interface, so it is skipped when no log format uses it.
+    if (builder->host_ip_used && g_ip_update_interval > 0 && (now - g_host_ip_last_update) >= g_ip_update_interval) {
+        g_host_ip_last_update = now;
 #ifdef WIN32
         char * tmp_host_ip = get_agent_ip_legacy_win32();
 
         if (tmp_host_ip) {
-            strncpy(host_ip, tmp_host_ip, IPSIZE - 1);
+            strncpy(g_host_ip, tmp_host_ip, IPSIZE - 1);
             os_free(tmp_host_ip);
         } else {
             mdebug1("Cannot update host IP.");
-            *host_ip = '\0';
+            *g_host_ip = '\0';
         }
 
 #elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
@@ -268,12 +277,12 @@ int log_builder_update_host_ip(log_builder_t * builder) {
 
         if (sock == -1) {
             mdebug1("Cannot update host IP: The control module is not available: %s (%d)", strerror(errno), errno);
-            last_update = 0;
+            g_host_ip_last_update = 0;
         } else {
             if (send(sock, REQUEST, strlen(REQUEST), 0) > 0) {
-                if (recv(sock, host_ip, IPSIZE - 1, 0) < 0) {
+                if (recv(sock, g_host_ip, IPSIZE - 1, 0) < 0) {
                     mdebug1("The control module did not respond: %s (%d).", strerror(errno), errno);
-                    *host_ip = '\0';
+                    *g_host_ip = '\0';
                 }
             }
 
@@ -282,8 +291,8 @@ int log_builder_update_host_ip(log_builder_t * builder) {
 #endif
     }
     rwlock_lock_write(&builder->rwlock);
-    if (*host_ip != '\0' && strcmp(host_ip, "Err")) {
-        strcpy(builder->host_ip, host_ip);
+    if (*g_host_ip != '\0' && strcmp(g_host_ip, "Err")) {
+        strcpy(builder->host_ip, g_host_ip);
     } else {
         strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }
