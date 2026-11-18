@@ -11,7 +11,7 @@ parser).
 | `wazuh-manager.conf` | `/etc/wazuh-manager` | 660 `root:wazuh-manager` | Main configuration: a single `<wazuh_config>` root with one element per section (see [the generated reference](reference.md)) |
 | `wazuh-manager.schema.json` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | JSON Schema (draft-04) the file is validated against; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`, replaced on every install and upgrade (product, not configuration) |
 | `wazuh-manager-internal-options.conf` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | Internal tuning parameters (`key=value`); ships with comments only, the defaults are compiled in, and an existing file is kept |
-| `api.yaml` | `/var/wazuh-manager/api/configuration/` | 660 `root:wazuh-manager` | REST API configuration (see [Server API configuration](../../modules/server-api/configuration.md)). Also installed (660) on a worker, which runs no API and never reads it |
+| `api.yaml` | `/var/wazuh-manager/api/configuration/` | 660 `root:wazuh-manager` | REST API configuration (see [Server API configuration](../../modules/server-api/configuration.md)). Also installed (660) on a worker, which runs no API but still checks it at every start (`wazuh-manager-apid -t`, error 20), and whose `wazuh-manager-clusterd` reads it when it starts and applies it to the requests the master forwards — for example the `upload_configuration` limits of a `PUT /cluster/{node_id}/configuration` aimed at that node |
 
 `wazuh-manager.conf` is **generated, not shipped**: the installer and the packages write it once
 (`src/init/gen_wazuh.sh conf manager <dist> <version>` prints the same document) from the templates in
@@ -50,8 +50,9 @@ element is rejected as a duplicate.
     `--skip-file-checks`, that every `indexer.ssl` file (each listed CA, `certificate`, `key`) is named directly in
     `/etc/wazuh-manager/certs` — the rule the credential check applies at start, so a 4.x
     `/etc/filebeat/certs/...` path is refused here with
-    `(1244): Invalid configuration at '/indexer/ssl/certificate_authorities/0': /etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs, [...]`;
-    whether those files exist is left to the start, which may import them from a co-located indexer). On success it prints one line on standard output naming the file it checked,
+    `(1244): Invalid configuration at '/indexer/ssl/certificate_authorities/0': /etc/filebeat/certs/root-ca.pem is outside /etc/wazuh-manager/certs, [...]`.
+    Whether the `indexer.ssl` files exist is left to the start, which may import them from a co-located
+    indexer. On success it prints one line on standard output naming the file it checked,
     `/etc/wazuh-manager/wazuh-manager.conf: configuration is valid.` (with `(referenced files not checked)` before
     the period under `--skip-file-checks`), and exits `0`; on failure it prints every problem it finds in one run, one line each,
     with the JSON pointer of the offending option:
@@ -82,8 +83,11 @@ element is rejected as a duplicate.
     judged by its `-t`, with the exceptions listed below), and what only a running system shows (an
     address this host does not have, a port another program holds). The API's `PUT` runs the same
     `validate`, so it has the same limits.
-    `wazuh-manager-control check` runs the whole pre-start sequence below — validation, credentials and
-    every daemon's `-t` — without stopping or starting anything. Through those `-t` runs it also judges
+    `wazuh-manager-control check` runs the pre-start checks below — validation, the credential check and
+    every daemon's `-t` — without stopping or starting anything; it does not run the credential
+    resolution (`--prestart`) a real start runs last, so what only that step refuses (an indexer
+    password nobody supplied) still refuses the next start. On `restart` and `reload` that step runs
+    after the stop, so its refusal leaves the manager stopped. Through those `-t` runs it also judges
     what the TLS files hold: `wazuh-manager-remoted -t` loads `remote.https.certificate` and `key` (and
     `remote.https.ca` when `verification_mode` needs it), and `wazuh-manager-authd -t` loads the
     `auth.ssl_*` files when authd's legacy enrollment listener (1515) will start — authd enabled, with
@@ -101,8 +105,10 @@ element is rejected as a duplicate.
       `authd.debug` and `wazuh_db.debug` are not read at all, by `-t` or by the start;
     - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
       1 GiB of queue slots at start), not against what the host can allocate — see the option in
-      [the reference](reference.md). A value above 262144 is not reported by `wazuh-manager-conf validate`
-      or `check`: only `wazuh-manager-remoted` logs the warning ("Queue size is very high"), at start;
+      [the reference](reference.md). A value above 262144 is refused by nothing: `wazuh-manager-conf
+      validate` says nothing about it, and only `wazuh-manager-remoted` warns ("Queue size is very high.
+      The application may run out of memory.") whenever it reads the configuration — its `-t` included,
+      so `check` relays the warning on stderr and still passes;
     - what the cluster protocol can carry: the schema only requires `cluster.name` and `cluster.node_name`
       to be non-empty — the names the handshake cannot carry are listed in
       [Cluster configuration](../../modules/cluster/configuration.md).
@@ -115,15 +121,23 @@ element is rejected as a duplicate.
   `--skip-file-checks`) and refuses to start any daemon when it is invalid: the CLI's verdict on stderr
   and as `wazuh-manager-control: ERROR: (1244): …` in `logs/wazuh-manager.log`, then
   `wazuh-manager.conf: Configuration error. Exiting` (`{"error":20,…}` with `-j`). After the credential
-  check it validates the file again with the file checks on, then runs each daemon's `-t`; for the C
-  daemons and the engine, `-t` validates the whole file, including the files it names. A C daemon
+  check (errors 22 and 21 — [Credentials](../../getting-started/credentials.md)) it validates the file
+  again with the file checks on, then runs each daemon's `-t`; for the C daemons and the engine, `-t`
+  validates the whole file, including the files it names. A daemon whose `-t` fails stops the sequence
+  with `<daemon>: Configuration error. Exiting` (error 20) and the line
+  `wazuh-manager-control: ERROR: <daemon>: Configuration error: <last line of its output>` in
+  `logs/wazuh-manager.log`. A start (not `check`) then resolves the credentials (`--prestart`, error 21).
+  The first refusal stops the sequence, and the script exits `1` for every refusal: the error codes
+  appear only in the `-j` output. A C daemon
   started against an invalid file logs `(1244): Invalid configuration at '<file>': <pointer>: <reason>.`
   in `logs/wazuh-manager.log` and exits; `wazuh-manager-remoted` and `wazuh-manager-authd` add the
   CRITICAL `(1202): Configuration error at '<file>'.`, `wazuh-manager-db` the CRITICAL
   `Invalid configuration block for Wazuh-DB.`. The engine prints
   `Error loading configuration: <pointer>: <reason>` on stderr instead.
-  `WAZUH_CONF` (a file name under `/etc/wazuh-manager`, default `wazuh-manager.conf`) moves only the two
-  validations of `wazuh-server.sh`: the credential check and every daemon's `-t` read the live
+  `WAZUH_CONF` (a file name under `/etc/wazuh-manager`, default `wazuh-manager.conf`) moves only what
+  the control script itself reads through `wazuh-manager-conf` — its two validations and the
+  `cluster.node_type` and `auth.disabled` lookups that decide whether apid and authd start: the
+  credential check and every daemon's `-t` read the live
   `wazuh-manager.conf`, so a copy named by `WAZUH_CONF` that passes `check` may still be refused at a
   real start, and a TLS path outside `certs/` in the copy goes unnoticed.
 - The API serves the effective sections as JSON (`GET /cluster/{node_id}/configuration`, optional
@@ -131,7 +145,9 @@ element is rejected as a duplicate.
   (`PUT /cluster/{node_id}/configuration`, `application/xml` or `application/octet-stream`); a
   malformed document is refused with error 1131 and an invalid one with error 1130 and the same JSON
   pointer. A new `<cluster><key>`, or any change to `<indexer>`, needs `cluster:read_secrets` over the
-  node (error 1132 otherwise); the `GET` returns the key masked as `*****` only to a caller without `cluster:read_secrets` over the node (one holding it, such as `administrator`, reads it in clear), and the masked value keeps the current key. After a `PUT` the file keeps its mode and
+  node (error 1132 otherwise); the `upload_configuration` block of the target node's `api.yaml` can
+  also forbid changing `<indexer>` (error 1127) or `agents.allow_higher_versions` under `auth` or
+  `remote` (error 1129) — see [Server API configuration](../../modules/server-api/configuration.md#upload_configuration); the `GET` returns the key masked as `*****` only to a caller without `cluster:read_secrets` over the node (one holding it, such as `administrator`, reads it in clear), and the masked value keeps the current key. After a `PUT` the file keeps its mode and
   is owned by `wazuh-manager:wazuh-manager` (the API runs as that user).
   `GET /cluster/{node_id}/configuration/{component}/{configuration}` returns what a running daemon
   reports instead (for example `request/internal` for remoted's `remoted.*` internal options).
@@ -142,13 +158,13 @@ element is rejected as a duplicate.
 |--------|---------|------------------|
 | [Server API](../../modules/server-api/configuration.md) | - (`api.yaml`) | - |
 | [Authentication](../../modules/authd/configuration.md) | `auth`, `remote` (`legacy.enabled`, and `https.port`/`global_prefix` for the enrollment tokens it mints; read-only consumer) | `authd.*`, `auth.timeout_seconds`, `auth.timeout_microseconds`; shared with other daemons: `remoted.jwt_max_age`, `remoted.jwt_clock_skew` (also Remoted) and `wazuh_modules.manager_task_max_pending_deletes` (also the Task Manager) |
-| [Cluster](../../modules/cluster/configuration.md) | `cluster` | `wazuh_clusterd.debug` |
+| [Cluster](../../modules/cluster/configuration.md) | `cluster`, `indexer` (read-only consumer) | `wazuh_clusterd.debug` |
 | [Database Sync](../../modules/database-sync/configuration.md) | - | `wazuh_database.*` |
 | [Engine](../../modules/engine/configuration.md) | `cluster`, `logging`, `indexer` (read-only consumer) | `analysisd.*` |
 | [Indexer Connector](../../modules/indexer_connector/configuration.md) | `indexer` | - |
-| [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer` (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
+| [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer`, `vulnerability-detection` (`enabled`) (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `logging` | - |
-| [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`), `global` (read-only consumer) | `remoted.*`, `fim.*_limit`, `sca.checks_limit`, `syscollector.*_limit` |
+| [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`), `global` and `auth` (the HTTPS enrollment policy; read-only consumer) | `remoted.*`, `fim.*_limit`, `sca.checks_limit`, `syscollector.*_limit` |
 | [Task Manager](../../modules/task_manager/configuration.md) (incl. [agent upgrades](../../modules/task_manager/agent-upgrades.md)) | `task-manager`, `global` ([`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time) is documented here), `remote` (delivery gates, read-only consumer) | `wazuh_modules.manager_task_*` (except `manager_task_create_timeout`, read only by the Vulnerability Scanner; `manager_task_max_pending_deletes` is also read by authd), `wazuh_modules.upgrade_*` |
 | [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `vulnerability-detection`, `indexer` (read-only consumer) | `vulnerability-detection.*`, `wazuh_modules.indexer_*`, `wazuh_modules.manager_task_create_timeout` |
 | [Wazuh DB](../../modules/wazuh_db/configuration.md) | `wdb` | `wazuh_db.*` |
@@ -157,8 +173,9 @@ Every option, with its type, default, constraints and description, is listed in 
 [Manager Configuration Reference](reference.md), generated from the schema. The `global` section only
 holds [`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time),
 documented with the Task Manager; it is read by both remoted (which stops pushing to an agent silent
-for longer, and checks `remoted.control_keepalive_throttle` against it) and the Task Manager's
-disconnection sweep, so it is shared configuration rather than one module's; the Task Manager reads `remote` the same way, for the gates that decide
+for longer, marks such agents disconnected when it starts, and checks `remoted.control_keepalive_throttle`
+against it) and the Task Manager's disconnection sweep, so it is shared configuration rather than one
+module's; the Task Manager reads `remote` the same way, for the gates that decide
 whether an upgrade could be delivered at all. There is no `agent-upgrade` section: that module is
 agent-only, the element is rejected as an unknown option, and the manager configures the upgrades it
 serves under `task-manager`. The manager's log-rotation and agent-retention tunables
@@ -171,11 +188,16 @@ Scanner) also read the process-wide `wazuh_modules.*` options documented in
 
 ## When a change takes effect
 
+Every daemon reads the file when it starts (the Python consumers also re-read `indexer`, below). `wazuh-manager-control restart` restarts all of them;
+`reload` restarts every daemon **except** `wazuh-manager-remoted`, which keeps what it read at its own
+start (`reload` still runs `wazuh-manager-remoted -t`, so it refuses a change that `-t` refuses).
+
 | Section | Applied |
 |---|---|
-| `cluster` | `wazuh-manager-control restart` or `reload` (clusterd re-reads the file on both) |
-| `indexer` | Python consumers re-read the file when its modification time changes; `wazuh-manager-modulesd` and the engine read it at start |
-| every other section | at daemon start (`restart`); note that `reload` does **not** restart `wazuh-manager-remoted`, so a change in `remote` needs `restart` (`reload` still runs `wazuh-manager-remoted -t`, so it refuses a `remote` change that the next `restart` would) |
+| `remote`, `global`, `auth` | `restart` for remoted (its listeners, the disconnection time, the HTTPS enrollment policy); `reload` reaches the other readers — authd, and the Task Manager's sweep and upgrade gates |
+| `logging`, `cluster` | `restart` for remoted, which reads the log format and the node name and role like every other daemon; `reload` for the others, clusterd and the engine included |
+| `indexer` | Python consumers re-read the file when its modification time changes; `wazuh-manager-modulesd` and the engine read it at start (`restart` or `reload`) |
+| `wdb`, `vulnerability-detection`, `task-manager` | `restart` or `reload` |
 
 ---
 

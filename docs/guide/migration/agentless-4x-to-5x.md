@@ -434,7 +434,8 @@ on the relay host:
 In 4.x, Agentless diff alerts carried the message prefix
 `ossec: agentless: Change detected:` and were matched by XML rules in the
 `agentless` rule group. 5.x does not run 4.x XML rules: the manager's engine
-decodes and evaluates events with YAML decoders and rules, so keeping that
+decodes events with YAML decoders, and the indexer evaluates the rules against
+the decoded events, so keeping that
 prefix in the wrapper scripts above does **not** make any 4.x agentless rule
 fire. It only gives your own 5.x decoder and rule a stable string to match.
 

@@ -19,9 +19,10 @@ is described in [Database Sync](README.md).
 **Internal Options:** `wazuh_database.*`
 
 The file ships with comments only, so every key below takes its default until set. Each value must be
-a plain non-negative integer inside its range: anything else makes `wazuh-manager-modulesd` exit at
-start with `(2302): Invalid definition for wazuh_database.<key>: '<value>'.` The options are read once,
-at start: restart the manager after a change.
+a plain non-negative integer inside its range: anything else makes `wazuh-manager-modulesd` exit with
+`(2302): Invalid definition for wazuh_database.<key>: '<value>'.`, at start and in
+`wazuh-manager-modulesd -t` alike, so `wazuh-manager-control check` refuses it too. The options are
+read once, at start: restart the manager after a change.
 
 ---
 
@@ -77,7 +78,7 @@ wazuh_database.max_queued_events=0
 ```
 
 - **Default value:** `0` (use the internal default of `16384` entries)
-- **Allowed values:** `0` or a positive integer
+- **Allowed values:** `0`-`2147483647`
 - **Note:** Only applies when `wazuh_database.real_time=1`.
 
 The module never changes the kernel's `fs.inotify.max_queued_events`. When the configured value is

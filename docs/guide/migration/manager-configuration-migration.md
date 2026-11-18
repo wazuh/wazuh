@@ -670,6 +670,11 @@ The following interval settings are new in 5.0 and appear in the `intervals.mast
 | `metrics_frequency` | `600` | Seconds between metrics snapshots written to the indexer; `0` disables them, and a value below `600` is raised to `600` |
 | `metrics_bulk_size` | `100` | Documents per bulk request when a metrics snapshot is written |
 
+`metrics_frequency` and `metrics_bulk_size` are internal `cluster.json` intervals like the others in this
+table, read by the master's metrics snapshot task: they are not operator options, have no
+`wazuh-manager.conf` or `api.yaml` counterpart, and the installed `cluster.json` is replaced on every
+installation and upgrade.
+
 ### New `common` section
 
 A new `intervals.common` block is introduced:
