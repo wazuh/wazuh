@@ -291,6 +291,17 @@ The root container is level 1: 256 nested containers (objects and arrays) parse,
 
 The XML parser creates one `json::PathWriter` per parse, and `xmlToJson` and the `windows` module read and write the document through it. Repeated sibling elements are appended to their array, which grows geometrically. The writer is described in the [JSON Path Writer](../base/README.md#json-path-writer) section of the `base` README.
 
+Sibling elements that share a name become one array under that name, in document order. The first one is written as an object and is moved into the array when the second one appears; each element of the array holds the `#text`, the `@<attribute>` members and the child elements of its own sibling, and the same rule applies inside it:
+
+| Input | Output |
+|---|---|
+| `<r><a>1</a></r>` | `{"r":{"a":{"#text":"1"}}}` |
+| `<r><a>1</a><a>2</a></r>` | `{"r":{"a":[{"#text":"1"},{"#text":"2"}]}}` |
+| `<r><a><x>1</x></a><a><x>2</x></a></r>` | `{"r":{"a":[{"x":{"#text":"1"}},{"x":{"#text":"2"}}]}}` |
+| `<r><a k="1"><b>1</b><b>2</b></a><a/></r>` | `{"r":{"a":[{"@k":"1","b":[{"#text":"1"},{"#text":"2"}]},{}]}}` |
+
+In `windows` mode the named `Data` of a repeated element are members of that element of the array: `<Event><EventData><Data Name="a">v</Data></EventData><EventData><Data Name="b">w</Data></EventData></Event>` maps to `{"EventData":[{"a":"v"},{"b":"w"}]}`. A `Data` without `Name` turns its parent into an array of strings, which a later sibling of that parent cannot tell apart from an array of repeated siblings: repeated elements that hold `Data` without `Name` do not produce one array element per sibling.
+
 XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is a leaf and does not produce a member of its own: `<a><![CDATA[x]]></a>` maps to `{"a":{"#text":"x"}}`.
 
 **Invariant**: building the document and walking it afterwards (parse, copy, serialization, merge) costs one recursion per level, and the cap is sized so that this recursion fits the default 8 MiB process stack. The stack requirement is part of the operator contract and lives in [Process limits](../../../../docs/ref/modules/engine/configuration.md#process-limits); the per-parser behavior is in the [parser reference](../../../../docs/ref/modules/engine/ref-parser.md). Neither is repeated here.

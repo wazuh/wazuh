@@ -30024,7 +30024,8 @@ Parses the input XML document into an object and stores it in the target field.
 Behavior:
 - Each element becomes a member named after it: its text goes to `#text`, each attribute to `@<name>`,
   an element with neither text nor attributes becomes `{}`, and repeated sibling elements become an
-  array of objects. Every value is a string; a document nested deeper than 256 levels fails.
+  array of objects, one per sibling, each with its own text, attributes and child elements. Every value
+  is a string; a document nested deeper than 256 levels fails.
 - With the `windows` mode (Windows Event Log XML): the `Event` element is skipped and its children are
   placed at its level, `<Data Name="X">v</Data>` becomes the member `X` of its parent, and a `Data`
   element without `Name` is appended to a string array in its parent.
@@ -30165,6 +30166,53 @@ normalize:
 
 ### Example 4
 
+Repeated sibling elements keep their child elements
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_xml($input)
+```
+
+#### Input Event
+
+```json
+{
+  "input": "<r><i><n>1</n></i><i><n>2</n></i></r>",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input": "<r><i><n>1</n></i><i><n>2</n></i></r>",
+  "target_field": {
+    "r": {
+      "i": [
+        {
+          "n": {
+            "#text": "1"
+          }
+        },
+        {
+          "n": {
+            "#text": "2"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
 In windows mode the Event element is skipped and named Data elements become members
 
 #### Asset
@@ -30204,7 +30252,7 @@ normalize:
 
 *The operation was successful*
 
-### Example 5
+### Example 6
 
 Fails on a document that is not well-formed
 
