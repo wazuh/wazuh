@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import os
+import struct
 import sys
 from contextvars import ContextVar
 from datetime import datetime
@@ -124,7 +125,7 @@ def test_inbuffer_get_info_from_header(unpack_mock):
     # If the flag value is the same as divide_flag, we will forward this value to the flag_divided attribute.
     assert in_buffer.cmd == b"pw"
     assert in_buffer.flag_divided == b"d"
-    assert in_buffer.payload == bytearray(in_buffer.total)
+    assert in_buffer.payload == bytearray()
 
     unpack_mock.return_value = (0, 2048, b'echo')
     in_buffer.get_info_from_header(b"header", "hhl", 1)
@@ -498,7 +499,7 @@ def test_handler_msg_parse():
     assert handler.msg_parse() is False
 
     # Test nested if
-    handler.in_buffer = b"much much longer command"
+    handler.in_buffer = struct.pack(handler.header_format, 1, 10, b"command")
     assert len(handler.in_buffer) >= handler.header_len
     assert handler.msg_parse() is True
 
@@ -523,6 +524,7 @@ def test_handler_get_messages_ok():
                 handler_mock.return_value = False
                 yield_value = i
             assert yield_value == ('', 0, 'decrypted payload', b'')
+            assert handler.peer_authenticated is True
 
             # Test else
             handler.in_msg.total = handler.in_msg.received + 10
@@ -540,6 +542,7 @@ def test_handler_get_messages_ko(decrypt_mock, msg_parse_mock):
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
         handler.in_msg.total = 0
         list(handler.get_messages())
+    assert handler.peer_authenticated is False
 
 
 @pytest.mark.asyncio
@@ -888,12 +891,12 @@ def test_handler_data_received_ok():
 
     # Test first if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"d")]):
-        # Test try
+        # First chunk
         handler.data_received(b"message")
         assert handler.div_msg_box[123] == b'bytes2'
 
-        # Test except
-        handler.div_msg_box = {123: b"bytes"}
+        # Next chunk
+        handler.div_msg_box = {123: bytearray(b"bytes")}
         handler.data_received(b"message")
         assert handler.div_msg_box[123] == b'bytesbytes2'
 
@@ -924,8 +927,95 @@ def test_handler_data_received_ko():
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
         with patch('cryptography.fernet.Fernet.decrypt', side_effect=cryptography.fernet.InvalidToken):
             with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
-                handler.div_msg_box = {123: b"bytes"}
+                handler.div_msg_box = {123: bytearray(b"bytes")}
                 handler.data_received(b"message")
+
+
+def receiving_handler(key: str = fernet_key) -> cluster_common.Handler:
+    """Build a Handler with a mocked transport, logger and dispatch to feed raw frames to data_received."""
+    handler = cluster_common.Handler(key, cluster_items)
+    handler.transport = MagicMock()
+    handler.logger = MagicMock()
+    handler.dispatch = MagicMock()
+    return handler
+
+
+def build_frames(command: bytes, counter: int, data: bytes, key: str = fernet_key, chunk: int = None) -> list:
+    """Build the frames a peer with the given key sends for a message, divided if chunk is smaller than it."""
+    sender = cluster_common.Handler(key, cluster_items)
+    if chunk:
+        sender.request_chunk = chunk
+    return [bytes(frame) for frame in sender.msg_build(command, counter, data)]
+
+
+def test_handler_data_received_divided_before_authentication_refused():
+    """A divided frame from a peer that has not proven the key is refused at its header, before its payload."""
+    handler = receiving_handler()
+    first_frame = build_frames(b'sendsync', 10, b'B' * 500, chunk=64)[0]
+
+    handler.data_received(first_frame[:handler.header_len])
+
+    handler.transport.close.assert_called_once()
+    assert '3063' in handler.logger.warning.call_args[0][0]
+    assert 'divided message received before the handshake completed' in handler.logger.warning.call_args[0][0]
+    assert handler.div_msg_box == {}
+    assert handler.peer_authenticated is False
+    handler.dispatch.assert_not_called()
+
+
+def test_handler_data_received_large_frame_before_authentication_refused():
+    """A non-divided frame larger than MAX_CHUNK_SIZE from a peer that has not proven the key is refused."""
+    handler = receiving_handler()
+
+    handler.data_received(struct.pack(handler.header_format, 8, cluster_common.MAX_CHUNK_SIZE + 1, b'sendsync ---'))
+
+    handler.transport.close.assert_called_once()
+    assert '3063' in handler.logger.warning.call_args[0][0]
+    assert handler.in_msg.payload == bytearray()
+    handler.dispatch.assert_not_called()
+
+
+def test_handler_data_received_divided_chunk_too_large_refused():
+    """After the peer proves the key, a divided frame larger than MAX_CHUNK_SIZE is refused at its header."""
+    handler = receiving_handler()
+    handler.data_received(build_frames(b'hello', 7, b'worker1')[0])
+    assert handler.peer_authenticated is True
+
+    handler.data_received(struct.pack(handler.header_format, 8, cluster_common.MAX_CHUNK_SIZE + 1, b'sendsync --d'))
+
+    handler.transport.close.assert_called_once()
+    assert '3063' in handler.logger.warning.call_args[0][0]
+    assert handler.div_msg_box == {}
+
+
+def test_handler_data_received_divided_after_authentication():
+    """After the peer proves the key, a divided message is accumulated in one buffer and reassembled."""
+    handler = receiving_handler()
+    handler.data_received(build_frames(b'hello', 7, b'worker1')[0])
+    frames = build_frames(b'sendsync', 10, b'B' * 500, chunk=64)
+    assert len(frames) > 2
+
+    handler.data_received(frames[0])
+    buffer = handler.div_msg_box[10]
+    assert isinstance(buffer, bytearray)
+    handler.data_received(frames[1])
+    assert handler.div_msg_box[10] is buffer
+
+    handler.data_received(b''.join(frames[2:]))
+    handler.dispatch.assert_called_with(b'sendsync', 10, b'B' * 500)
+    assert handler.div_msg_box == {}
+    handler.transport.close.assert_not_called()
+
+
+def test_handler_data_received_divided_without_key():
+    """Without a key, as in the local socket, divided messages are accepted from the first frame."""
+    handler = receiving_handler(key='')
+
+    handler.data_received(b''.join(build_frames(b'sendsync', 10, b'B' * 500, key='', chunk=64)))
+
+    handler.dispatch.assert_called_once_with(b'sendsync', 10, b'B' * 500)
+    assert handler.div_msg_box == {}
+    handler.transport.close.assert_not_called()
 
 
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["msg"])
@@ -1129,8 +1219,9 @@ def test_handler_process_error_str():
     assert handler.in_str == {}
 
     # Test return inside loop and condition
-    handler.in_str = {b"string_id": in_buffer}
-    assert handler.process_error_str(b"2048") == (b'ok', b'string_id')
+    local_in_buffer = cluster_common.InBuffer()
+    handler.in_str = {b"string_id": local_in_buffer}
+    assert handler.process_error_str(b"0") == (b'ok', b'string_id')
     assert handler.in_str == {}
 
 
