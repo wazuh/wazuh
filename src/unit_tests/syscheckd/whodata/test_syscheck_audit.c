@@ -307,6 +307,18 @@ static int test_audit_read_events_teardown(void **state) {
 }
 
 
+static void expect_audit_socket_probe(int sfd) {
+    expect_string(__wrap_OS_ConnectUnixDomain, path, AUDIT_SOCKET);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, sfd);
+}
+
+static void expect_live_audit_socket_probe(void) {
+    expect_audit_socket_probe(77);
+    expect_value(__wrap_close, fd, 77);
+}
+
 /* tests */
 
 void test_init_auditd_socket_success(void **state) {
@@ -368,6 +380,7 @@ void test_set_auditd_config_audit3_plugin_created(void **state) {
 
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
+    expect_live_audit_socket_probe();
 
     int ret;
     ret = set_auditd_config();
@@ -417,6 +430,7 @@ void test_set_auditd_config_audit2_plugin_created(void **state) {
 
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
+    expect_live_audit_socket_probe();
 
     int ret;
     ret = set_auditd_config();
@@ -506,6 +520,150 @@ void test_set_auditd_config_audit_socket_not_created_restart(void **state) {
     ret = set_auditd_config();
 
     assert_int_equal(ret, 99);
+}
+
+
+static void expect_stale_audit_socket_prologue(const char *version) {
+    char payload[64];
+    snprintf(payload, sizeof(payload), "auditctl version %s\n", version);
+    char msg[64];
+    snprintf(msg, sizeof(msg), "Audit version detected: %s", version);
+
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+
+    FILE * fp = tmpfile_with_content(payload);
+    expect_popen("auditctl -v 2>/dev/null", "r", fp);
+    expect_string(__wrap__mdebug2, formatted_msg, msg);
+
+    expect_abspath(AUDIT_SOCKET, 0);
+
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+
+    expect_string(__wrap_OS_SHA1_File, fname, "/etc/audit/plugins.d/af_wazuh.conf");
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    will_return(__wrap_OS_SHA1_File, 0);
+
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+    expect_audit_socket_probe(-1);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+    expect_string(__wrap__minfo, formatted_msg, buffer);
+
+    will_return(__wrap_audit_stop, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_audit_start, 0);
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart_already_removed(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+    expect_string(__wrap__minfo, formatted_msg, buffer);
+
+    will_return(__wrap_audit_stop, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, -1);
+    errno = ENOENT;
+
+    will_return(__wrap_audit_start, 0);
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, 0);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart_unlink_error(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+    expect_string(__wrap__minfo, formatted_msg, buffer);
+
+    will_return(__wrap_audit_stop, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, -1);
+    errno = EACCES;
+
+    snprintf(buffer, OS_SIZE_128, UNLINK_ERROR, AUDIT_SOCKET, EACCES, strerror(EACCES));
+    expect_string(__wrap__merror, formatted_msg, buffer);
+
+    // Auditd must not be left stopped
+    will_return(__wrap_audit_start, 0);
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart_start_error(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+    expect_string(__wrap__minfo, formatted_msg, buffer);
+
+    will_return(__wrap_audit_stop, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_audit_start, -1);
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_no_restart(void **state) {
+    char buffer[OS_SIZE_128] = {0};
+    syscheck.restart_audit = 0;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    snprintf(buffer, OS_SIZE_128, FIM_WARN_AUDIT_SOCKET_STALE, AUDIT_SOCKET);
+    expect_string(__wrap__mwarn, formatted_msg, buffer);
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, 1);
 }
 
 
@@ -1869,6 +2027,11 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_audit3_plugin_created),
         cmocka_unit_test(test_set_auditd_config_audit_socket_not_created),
         cmocka_unit_test(test_set_auditd_config_audit_socket_not_created_restart),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_already_removed),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_unlink_error),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_restart_start_error),
+        cmocka_unit_test(test_set_auditd_config_audit_socket_stale_no_restart),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_tampered_configuration),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fopen_error),

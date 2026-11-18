@@ -155,6 +155,30 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
     }
 }
 
+static int audit_socket_has_listener(void) {
+    int sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR);
+
+    if (sfd < 0) {
+        return 0;
+    }
+
+    close(sfd);
+    return 1;
+}
+
+// Unlinking before restarting loses a race: the old Auditd's plugin supervisor re-binds the freed path and leaves a new stale socket on exit.
+static int audit_recover_stale_socket(const char *abs_path_socket) {
+    audit_stop();
+
+    if (unlink(abs_path_socket) < 0 && errno != ENOENT) {
+        merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
+        audit_start();
+        return -1;
+    }
+
+    return audit_start();
+}
+
 // Set Auditd socket configuration
 int set_auditd_config(void) {
     char audisp_path[PATH_MAX] = {'\0'};
@@ -235,9 +259,20 @@ int set_auditd_config(void) {
         goto end;
     }
 
-    // Check that the socket exists
+    // The socket file can outlive Auditd, so also require a listener
     if (IsSocket(AUDIT_SOCKET) == 0) {
-        retval = 0;
+        if (audit_socket_has_listener()) {
+            retval = 0;
+            goto end;
+        }
+
+        if (syscheck.restart_audit) {
+            minfo(FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET);
+            retval = audit_recover_stale_socket(abs_path_socket);
+            goto end;
+        }
+
+        mwarn(FIM_WARN_AUDIT_SOCKET_STALE, AUDIT_SOCKET);
         goto end;
     }
 

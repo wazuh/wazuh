@@ -39,6 +39,7 @@
 #define FIM_AUDIT_NOSOCKET                  "(6023): No socket found at '%s'. Restarting Auditd service."
 #define FIM_AUDIT_SOCKET                    "(6024): Generating Auditd socket configuration file: '%s'"
 #define FIM_AUDIT_RESTARTING                "(6025): Audit plugin configuration (%s) was modified. Restarting Auditd service."
+#define FIM_AUDIT_STALE_SOCKET              "(6056): Audit socket '%s' has no listener. Removing it and restarting Auditd service."
 #define FIM_AUDIT_HEALTHCHECK_DISABLE       "(6026): Audit health check is disabled. Real-time Whodata could not work correctly."
 #define FIM_AUDIT_REMOVE_RULE               "(6027): Monitored directory '%s' was removed: Audit rule removed."
 

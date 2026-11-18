@@ -116,6 +116,22 @@ int audit_restart(void);
 
 
 /**
+ * @brief Stop Auditd service.
+ *
+ * @return Returns -1 on error and 0 if the service was stopped.
+ */
+int audit_stop(void);
+
+
+/**
+ * @brief Start Auditd service.
+ *
+ * @return Returns -1 on error and 0 if the service was started.
+ */
+int audit_start(void);
+
+
+/**
  * @brief Add or delete rules.
  *
  * @param action Values `#ADD_RULE` or `#DELETE_RULE`
