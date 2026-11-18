@@ -17,7 +17,6 @@
 
 #include "shared.h"
 #include "../wrappers/common.h"
-#include "../wrappers/wazuh/client-agent/notify_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
 /* log_builder_init() reads logcollector.ip_update_interval only in the agent build: the function is
@@ -43,10 +42,8 @@ static int reset_host_ip_state(void **state) {
 static void expect_host_ip_request() {
 #ifdef WIN32
     time_mock_value = 1000;
-    will_return(wrap_get_agent_ip_legacy_win32, strdup("1.2.3.4"));
-#else
-    will_return(__wrap_getPrimaryIP, strdup("1.2.3.4"));
 #endif
+    will_return(__wrap_getPrimaryIP, strdup("1.2.3.4"));
 }
 
 static log_builder_t * init_builder(int interval, bool host_ip_used) {
@@ -99,18 +96,13 @@ void test_log_builder_update(void **state)
     assert_non_null(builder);
 
 #ifdef WIN32
-    char * return_ip = "1.2.3.4";
     time_mock_value = 1000;
-    will_return(wrap_get_agent_ip_legacy_win32, strdup(return_ip));
-#elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-    will_return(__wrap_getPrimaryIP, NULL);
 #endif
+    will_return(__wrap_getPrimaryIP, NULL);
 
     int r = log_builder_update_host_ip(builder);
     assert_int_equal(r, 0);
-#ifdef WIN32
-    assert_string_equal(builder->host_ip, "1.2.3.4");
-#endif
+    assert_string_equal(builder->host_ip, "0.0.0.0");
     log_builder_destroy(builder);
 }
 

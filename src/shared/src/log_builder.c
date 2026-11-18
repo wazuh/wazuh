@@ -20,7 +20,6 @@
 // Remove static qualifier when unit testing
 #define STATIC
 #ifdef WIN32
-#define get_agent_ip_legacy_win32 wrap_get_agent_ip_legacy_win32
 #define getDefine_Int __wrap_getDefine_Int
 #define getDefine_Int_default __wrap_getDefine_Int_default
 #endif
@@ -272,19 +271,8 @@ int log_builder_update_host_ip(log_builder_t * builder) {
     // Skipped when no log format uses $(host_ip).
     if (builder->host_ip_used && g_ip_update_interval > 0 && (now - g_host_ip_last_update) >= g_ip_update_interval) {
         g_host_ip_last_update = now;
-#ifdef WIN32
-        char * tmp_host_ip = get_agent_ip_legacy_win32();
+        char * primary_ip = getPrimaryIP();
 
-        if (tmp_host_ip) {
-            strncpy(g_host_ip, tmp_host_ip, IPSIZE - 1);
-            os_free(tmp_host_ip);
-        } else {
-            mdebug1("Cannot update host IP.");
-            *g_host_ip = '\0';
-        }
-
-#elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-        char *primary_ip = getPrimaryIP();
         if (primary_ip) {
             strncpy(g_host_ip, primary_ip, IPSIZE - 1);
             os_free(primary_ip);
@@ -292,10 +280,9 @@ int log_builder_update_host_ip(log_builder_t * builder) {
             mdebug1("Cannot update host IP.");
             *g_host_ip = '\0';
         }
-#endif
     }
     rwlock_lock_write(&builder->rwlock);
-    if (*g_host_ip != '\0' && strcmp(g_host_ip, "Err")) {
+    if (*g_host_ip != '\0') {
         strcpy(builder->host_ip, g_host_ip);
     } else {
         strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
