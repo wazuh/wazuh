@@ -457,6 +457,30 @@ static void test_audit_start_close_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_audit_stop_close_error(void **state) {
+    wfd_t * wfd = *state;
+    wfd->file_out = (FILE*) 1234;
+
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
+    expect_string(__wrap_get_binary_path, command, "service");
+    will_return(__wrap_get_binary_path, service_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_wpclose, 0xff00);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not stop Auditd service.");
+
+    int ret = audit_stop();
+
+    assert_int_equal(ret, -1);
+}
+
 static void test_audit_rules_list_append(void **state) {
     (void) state;
 
@@ -711,6 +735,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_restart_close_error, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_audit_stop, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_audit_start_close_error, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_audit_stop_close_error, test_setup_file, test_teardown_file),
         cmocka_unit_test(test_audit_rules_list_append),
         cmocka_unit_test(test_search_audit_rule),
         cmocka_unit_test(test_search_audit_rule_null),

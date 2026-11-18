@@ -17,6 +17,10 @@
 #undef _unlink
 #define _unlink wrap__unlink
 
+/* errno set by a failing __wrap_unlink call (0 leaves errno untouched), and whether it records its call order */
+extern int test_unlink_errno;
+extern int test_unlink_record_call;
+
 int __wrap_unlink(const char *file);
 #ifdef WIN32
 int wrap__unlink(const char *file);

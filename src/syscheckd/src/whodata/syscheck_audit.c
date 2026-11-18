@@ -200,7 +200,7 @@ static int audit_recover_stale_socket(const char *abs_path_socket) {
         mwarn(FIM_WARN_AUDIT_STOP_FAILED, AUDIT_SOCKET);
 
         // Auditd may still be running or about to exit: only a restart ends with it running either way
-        if (audit_restart() != 0) {
+        if (audit_restart() != 0 && check_auditd_enabled() == 0) {
             merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
         }
 
