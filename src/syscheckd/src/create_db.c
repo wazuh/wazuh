@@ -1082,6 +1082,30 @@ void fim_db_remove_entry(void * data, void * ctx)
     fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
 }
 
+// Callback
+void fim_db_remove_wildcard_entry(void * data, void * ctx)
+{
+    char *path = (char *)data;
+    get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+    const directory_t *configuration = ctx_data->config;
+    const directory_t *nested = fim_configuration_directory(path);
+
+    // An entry configured under the removed directory keeps its own options.
+    if (nested != NULL && nested != configuration) {
+        const size_t len = strlen(configuration->path);
+
+#ifdef WIN32
+        if (strncasecmp(nested->path, configuration->path, len) == 0 && nested->path[len] == PATH_SEP) {
+#else
+        if (strncmp(nested->path, configuration->path, len) == 0 && nested->path[len] == PATH_SEP) {
+#endif
+            configuration = nested;
+        }
+    }
+
+    fim_generate_delete_event(path, ctx_data->event, configuration);
+}
+
 void fim_process_wildcard_removed(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
@@ -1101,9 +1125,12 @@ void fim_process_wildcard_removed(directory_t *configuration) {
         .path = configuration->path
     };
     callback_context_t callback_data;
-    callback_data.callback = fim_db_remove_entry;
+    callback_data.callback = fim_db_remove_wildcard_entry;
     callback_data.context = &ctx;
+
+    w_rwlock_rdlock(&syscheck.directories_lock);
     fim_db_file_pattern_search(pattern, callback_data);
+    w_rwlock_unlock(&syscheck.directories_lock);
 }
 
 // Callback
