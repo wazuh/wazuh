@@ -161,6 +161,33 @@ achieve leaves documents nothing will ever overwrite:
   rather than requiring the privilege; see the
   [inventory-sync-server deletion semantics](../inventory-sync-server/api-reference.md#whole-agent-deletion-semantics).
 
+### Searches and points in time
+
+Point-in-time (PIT) creation and searches are reads the caller takes as the whole answer: the engine
+builds a content space from them, the vulnerability feed advances its cursor past them. By default
+the indexer answers them even when some shards cannot take part, for example while the node that
+holds them is stopping: it replies `200`, leaves those shards' documents out and reports a smaller
+`hits.total`. Both connectors therefore ask the indexer to refuse instead:
+
+- **PIT creation sends `allow_partial_pit_creation=false`.** Without it, a PIT created while a shard
+  is unavailable simply leaves that shard out of the snapshot, and every later search on that PIT
+  reports a complete answer over the shards it has (`_shards.failed` 0), so the gap cannot be seen
+  afterwards. With it, the indexer answers `503` (`search_phase_execution_exception`, phase
+  `create_pit`).
+- **Every search sends `allow_partial_search_results=false`** (`IndexerConnectorAsync` also for its
+  search on an index or alias). A search that loses a shard, for instance on a PIT opened before the
+  node stopped, then fails with `500` (`search_phase_execution_exception`) instead of returning the
+  other shards' documents.
+- **HTTP errors keep their status.** A failed PIT creation or search carries the indexer's status in
+  `statusCode()`, so a `404` still means a missing index or document and a refusal is reported as the
+  `503`/`500` it is.
+- **Nothing is retried here except a `429`.** `IndexerConnectorSync` repeats a search answered `429`
+  within its retry budget; every other failure, a refusal included, goes to the caller, which repeats
+  the whole read (the engine's content sync, the vulnerability feed's page retry).
+- **A red cluster gets no request at all.** The health monitor takes a node whose cluster reports
+  `red` out of rotation, so the call fails earlier with `No available server`. A refusal is only
+  possible between a node leaving and the next health check (`monitoring_interval_seconds`).
+
 ## Indices
 
 | Index | Used by |

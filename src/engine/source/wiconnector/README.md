@@ -93,6 +93,8 @@ In `main.cpp`, the exit handler registers both: `requestShutdown()` executes fir
 
 For large result sets (`getPolicy`, `queryByBatches`), the connector always opens a **Point-In-Time** snapshot on the wazuh-indexer with a keep-alive of `5m` (`PIT_KEEP_ALIVE`). Results are retrieved in pages sorted by `_shard_doc`, `_id` using `search_after` cursors, guaranteeing a consistent view even if the index is being concurrently updated. The PIT is automatically deleted via an RAII guard (a failed delete is logged, not thrown). `getPolicy` pages by `maxHitsPerRequest` (the constructor argument; `main.cpp` passes `analysisd.cmsync_indexer_connector_sync_batch_size`; `0` is replaced by `1` with a warning).
 
+Every page must be complete. The shared `IndexerConnectorAsync` asks the indexer to refuse a PIT or a search it cannot answer over every shard (`allow_partial_pit_creation=false`, `allow_partial_search_results=false`); the indexer then answers `503`/`500` instead of leaving shards out, and the connector throws `IndexerConnectorException` with that status (see [Searches and points in time](../../../../docs/ref/modules/indexer_connector/README.md#searches-and-points-in-time)). On top of that, `getPolicy` refuses a walk that ends before the `total_hits` its first page announced (`Policy download for space '<space>' ended after <n> of <total> documents`): a page that comes back empty before that total would otherwise end the walk early, and the policy would then reference assets that were never downloaded. Either way nothing is returned, and the caller (CMSync) retries the download.
+
 ### Batched Query Abstraction with Consumer Validation
 
 The private `queryByBatches()` method provides the pagination loop used by `getIocTypeHashes()` and `streamIocsByType()`. It accepts:
@@ -299,11 +301,12 @@ Acquires shared lock, delegates to `indexDataStream()`. Exceptions are caught an
    - Returns `std::nullopt` if consumer not ready (cmsync skips sync cycle).
 2. **Otherwise** (no consumer validation):
    - Opens a PIT across all 5 policy aliases only.
-3. Filters by `space.name`, paginates through results using `search_after` cursors (aborting with `IndexerConnectorException` if `requestShutdown()` was called).
-4. Classifies each hit by index name into `IndexResourceType`; the policy document gets `/hash` from `space.hash.sha256` (missing → `IndexerConnectorException`).
-5. Accumulates resources into `PolicyResources` vectors (with pre-reserved capacity).
-6. Sets `/origin_space` on a non-empty policy.
-7. PIT is automatically cleaned up via RAII guard.
+3. Filters by `space.name`, paginates through results using `search_after` cursors (aborting with `IndexerConnectorException` if `requestShutdown()` was called). A partial page throws from the connector.
+4. Throws `IndexerConnectorException` (`Policy download for space '<space>' ended after <n> of <total> documents`) if the walk ended before `total_hits`.
+5. Classifies each hit by index name into `IndexResourceType`; the policy document gets `/hash` from `space.hash.sha256` (missing → `IndexerConnectorException`).
+6. Accumulates resources into `PolicyResources` vectors (with pre-reserved capacity).
+7. Sets `/origin_space` on a non-empty policy.
+8. PIT is automatically cleaned up via RAII guard.
 
 #### `getPolicyHashAndEnabled(space, consumerIdToValidate?)`
 

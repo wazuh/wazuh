@@ -487,7 +487,7 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 
 ### Synchronization failures
 
-**Cause:** `wazuh-indexer` unreachable, or its content not ready.
+**Cause:** `wazuh-indexer` unreachable, its content not ready, or an indexer node stopped during a download.
 
 1. Check the connector warnings, tagged `[CMSync]`, `[CM::Sync]` and `[IOC::Sync]`:
    ```bash
@@ -496,6 +496,10 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 2. Check the `<indexer>` section of `wazuh-manager.conf` and the indexer credentials in the keystore (see
    [Configuration sources](#configuration-sources)).
 3. Check the per-space state with `GET /status`.
+4. Attempts that fail with `Search request failed with status 500: … search_phase_execution_exception`,
+   `Failed to create PIT. … Status code: 503` or `Policy download for space '<space>' ended after <n> of <total>
+   documents` mean the indexer could not answer for every shard, usually because a node was restarting. Nothing
+   partial was imported and the deployed route stays; the next cycle synchronizes once the node is back.
 
 ## See also
 
