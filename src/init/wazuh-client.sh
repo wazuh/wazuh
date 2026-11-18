@@ -209,6 +209,8 @@ is_systemd() {
 add_to_cgroup()
 {
     CGROUP_PATH="/sys/fs/cgroup/systemd/system.slice/wazuh-agent.service/cgroup.procs"
+    # systemd 233+ in hybrid mode assigns units from the cgroup2 hierarchy
+    UNIFIED_PATH="/sys/fs/cgroup/unified/system.slice/wazuh-agent.service/cgroup.procs"
 
     # Check if cgroup path exists
     if [ ! -f "$CGROUP_PATH" ]; then
@@ -219,6 +221,9 @@ add_to_cgroup()
                 # Try to write to cgroup, capture any errors
                 if ! echo "$pid" >> "$CGROUP_PATH" 2>/dev/null; then
                     echo "Warning: Failed to add PID $pid to cgroup (${daemon})" >&2
+                fi
+                if [ -f "$UNIFIED_PATH" ] && ! echo "$pid" >> "$UNIFIED_PATH" 2>/dev/null; then
+                    echo "Warning: Failed to add PID $pid to unified cgroup (${daemon})" >&2
                 fi
             done
         done
