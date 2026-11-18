@@ -1,0 +1,22 @@
+<!-- DECTRAX Universal Decoders for Wazuh -->
+<!-- Target path in wazuh/wazuh: ruleset/decoders/0600-dectrax_decoders.xml -->
+<!-- Supports RFC-5424 Syslog (<130>1 ... DECTRAX ...) and ArcSight CEF 0.1 -->
+<decoder name="dectrax-syslog">
+  <program_name>DECTRAX</program_name>
+</decoder>
+
+<decoder name="dectrax-syslog-fields">
+  <parent>dectrax-syslog</parent>
+  <regex offset="after_parent">\[dectrax@5424\s+(?:attackerIp|src_ip)="(\S+)"\s+(?:targetPort|dst_port)="(\d+)"\s+protocol="(\S+)"</regex>
+  <order>srcip, dstport, protocol</order>
+</decoder>
+
+<decoder name="dectrax-cef">
+  <prematch>^CEF:0\|DECTRAX\|</prematch>
+</decoder>
+
+<decoder name="dectrax-cef-fields">
+  <parent>dectrax-cef</parent>
+  <regex offset="after_parent">^CEF:0\|DECTRAX\|([^\|]+)\|([^\|]+)\|([^\|]+)\|([^\|]+)\|(\d+)\|src=(\S+)\s+(?:dstPort|dpt)=(\d+)\s+proto=(\S+)</regex>
+  <order>extra_data, system_name, action, id, extra_data, srcip, dstport, protocol</order>
+</decoder>
