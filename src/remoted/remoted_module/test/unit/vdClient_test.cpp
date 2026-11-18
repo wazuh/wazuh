@@ -10,16 +10,22 @@
 
 #include "common/vdClient.hpp"
 #include "fakeVdServer.hpp"
+#include "vdHttpClient.hpp"
 
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <thread>
 
 using namespace std::chrono_literals;
 using remoted::common::VdClient;
+using remoted::test::CapturingClient;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
+using remoted::test::makeVdHttpClient;
 
 namespace
 {
@@ -38,10 +44,27 @@ TEST(VdClientTest, FreshInstanceQueriesVdOnFirstCall)
     FakeVdServer server(socketPath);
     server.setOffset(12345);
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     EXPECT_EQ(client.getOffset(), 12345u);
     EXPECT_EQ(server.offsetRequestCount(), 1u);
+}
+
+TEST(VdClientTest, TheOffsetQueryCarriesItsOwnDeadlines)
+{
+    const auto socketPath = makeUniqueVdSocketPath("request-shape");
+    auto capturing = std::make_shared<CapturingClient>(R"({"offset":5})");
+    VdClient client(capturing, socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    EXPECT_EQ(client.getOffset(), 5u);
+    EXPECT_EQ(capturing->request.socketPath, socketPath);
+    EXPECT_EQ(capturing->request.method, remoted::http::Method::Get);
+    EXPECT_EQ(capturing->request.path, "/vulnerability-detector/offset");
+    EXPECT_TRUE(capturing->body.empty());
+    // The /scan/vd budget is computed from these two constants, so the query must set them itself
+    // rather than inherit whatever the shared client is configured with.
+    EXPECT_EQ(capturing->request.writeTimeoutMs, VdClient::OFFSET_WRITE_TIMEOUT_SECONDS * 1000);
+    EXPECT_EQ(capturing->request.responseTimeoutMs, VdClient::OFFSET_READ_TIMEOUT_SECONDS * 1000);
 }
 
 TEST(VdClientTest, CachedValueServedWithoutRequeryingWithinTtl)
@@ -50,7 +73,7 @@ TEST(VdClientTest, CachedValueServedWithoutRequeryingWithinTtl)
     FakeVdServer server(socketPath);
     server.setOffset(100);
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     EXPECT_EQ(client.getOffset(), 100u);
     ASSERT_EQ(server.offsetRequestCount(), 1u);
@@ -67,7 +90,7 @@ TEST(VdClientTest, CacheExpiresAfterTtlAndRequeries)
     FakeVdServer server(socketPath);
     server.setOffset(100);
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     EXPECT_EQ(client.getOffset(), 100u);
     ASSERT_EQ(server.offsetRequestCount(), 1u);
@@ -83,7 +106,7 @@ TEST(VdClientTest, FailedQueryWithNoPriorValueReturnsZero)
 {
     // Nothing is listening on this path.
     const auto socketPath = makeUniqueVdSocketPath("nolistener");
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     EXPECT_EQ(client.getOffset(), 0u);
 }
@@ -94,7 +117,7 @@ TEST(VdClientTest, FailedQueryFallsBackToLastKnownGoodOffset)
     FakeVdServer server(socketPath);
     server.setOffset(100);
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
     EXPECT_EQ(client.getOffset(), 100u);
 
     server.setOffsetFailure(500);
@@ -109,7 +132,7 @@ TEST(VdClientTest, FailedAttemptGatesRetriesToFailureIntervalThenRecovers)
     FakeVdServer server(socketPath);
     server.setOffsetFailure(500);
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     EXPECT_EQ(client.getOffset(), 0u);
     ASSERT_EQ(server.offsetRequestCount(), 1u);
@@ -140,7 +163,7 @@ TEST(VdClientTest, AnswerWithoutEnabledFieldIsEnabled)
     FakeVdServer server(socketPath);
     server.setOffset(42);
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     const auto state = client.getFeedState();
     EXPECT_EQ(state.offset, 42u);
@@ -154,7 +177,7 @@ TEST(VdClientTest, DisabledVdIsReportedAndCached)
     server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
                             { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     EXPECT_FALSE(client.getFeedState().enabled);
     // Served from the cache: the enablement is part of the cached answer, not re-queried.
@@ -169,7 +192,7 @@ TEST(VdClientTest, FailedQueryKeepsLastKnownEnablement)
     server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
                             { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
     EXPECT_FALSE(client.getFeedState().enabled);
 
     server.setOffsetFailure(500);
@@ -181,7 +204,7 @@ TEST(VdClientTest, FailedQueryKeepsLastKnownEnablement)
 TEST(VdClientTest, NeverAnsweredVdIsNotReportedDisabled)
 {
     const auto socketPath = makeUniqueVdSocketPath("neveranswered");
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     const auto state = client.getFeedState();
     EXPECT_EQ(state.offset, 0u);
@@ -195,7 +218,7 @@ TEST(VdClientTest, NonBooleanEnabledFieldIsEnabled)
     server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
                             { res.set_content(R"({"offset":7,"enabled":"no"})", "application/json"); });
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     const auto state = client.getFeedState();
     EXPECT_EQ(state.offset, 7u);
@@ -215,7 +238,7 @@ TEST(VdClientTest, ConcurrentCallerDuringInFlightRefreshIsNeverBlocked)
             res.set_content(R"({"offset":777})", "application/json");
         });
 
-    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
 
     // Thread A: fresh client, cache is empty, so this call becomes the in-flight refresher and
     // blocks in the (slow) network call for SERVER_DELAY.
@@ -240,4 +263,49 @@ TEST(VdClientTest, ConcurrentCallerDuringInFlightRefreshIsNeverBlocked)
 
     // After the refresher completes, the value is cached and visible to everyone.
     EXPECT_EQ(client.getOffset(), 777u);
+}
+
+TEST(VdClientTest, RejectsANullHttpClient)
+{
+    EXPECT_THROW(VdClient(nullptr, makeUniqueVdSocketPath("null")), std::invalid_argument);
+}
+
+TEST(VdClientTest, AnOversizedOffsetAnswerIsAFailedQuery)
+{
+    const auto socketPath = makeUniqueVdSocketPath("oversized");
+    FakeVdServer server(socketPath);
+    server.setOffset(100);
+
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    ASSERT_EQ(client.getOffset(), 100u);
+
+    // Valid JSON carrying a different offset, but past the response cap: had it been read, the offset
+    // would now be 200.
+    // Captured by value: the server keeps the handler, and it outlives this test's locals.
+    const std::string body =
+        R"({"offset":200,"padding":")" + std::string(VdClient::MAX_RESPONSE_BODY_BYTES, 'x') + R"("})";
+    server.setOffsetHandler([body](const httplib::Request&, httplib::Response& res)
+                            { res.set_content(body, "application/json"); });
+    std::this_thread::sleep_for(TEST_CACHE_TTL + 20ms);
+
+    EXPECT_EQ(client.getOffset(), 100u) << "an answer over the cap must fail the query and keep the last offset";
+    EXPECT_EQ(server.offsetRequestCount(), 2u);
+}
+
+TEST(VdClientTest, AMissingSocketKeepsTheLastKnownOffset)
+{
+    const auto socketPath = makeUniqueVdSocketPath("gone");
+    auto server = std::make_unique<FakeVdServer>(socketPath);
+    server->setOffset(100);
+
+    VdClient client(makeVdHttpClient(), socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    ASSERT_EQ(client.getOffset(), 100u);
+
+    server.reset(); // VD stops: nothing listens on the socket any more
+    std::this_thread::sleep_for(TEST_CACHE_TTL + 20ms);
+
+    const auto start = std::chrono::steady_clock::now();
+    EXPECT_EQ(client.getOffset(), 100u);
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds {VdClient::CONNECT_TIMEOUT_MS})
+        << "a scanner that is not running is a refused connection, answered at once";
 }

@@ -442,20 +442,22 @@ namespace remoted::downstream
 
     struct AsioUdsHttpClient::Impl
     {
-        explicit Impl(DownstreamConfig cfg)
+        Impl(DownstreamConfig cfg, std::string clientName)
             : config {std::move(cfg)}
+            , name {std::move(clientName)}
             , work {asio::make_work_guard(ioc)}
         {
         }
 
         DownstreamConfig config;
+        std::string name;
         asio::io_context ioc;
         asio::executor_work_guard<asio::io_context::executor_type> work;
         std::vector<std::thread> threads;
     };
 
-    AsioUdsHttpClient::AsioUdsHttpClient(DownstreamConfig config)
-        : m_impl {std::make_unique<Impl>(std::move(config))}
+    AsioUdsHttpClient::AsioUdsHttpClient(DownstreamConfig config, std::string name)
+        : m_impl {std::make_unique<Impl>(std::move(config), std::move(name))}
     {
     }
 
@@ -487,17 +489,21 @@ namespace remoted::downstream
                     }
                     catch (const std::exception& e)
                     {
-                        LOGFN_ERROR(
-                            logFn(), "Downstream UDS client I/O thread ended on an unexpected exception: %s", e.what());
+                        LOGFN_ERROR(logFn(),
+                                    "Downstream UDS client for %s: I/O thread ended on an unexpected exception: %s",
+                                    m_impl->name.c_str(),
+                                    e.what());
                     }
                     catch (...)
                     {
-                        LOGFN_ERROR(logFn(), "Downstream UDS client I/O thread ended on a non-standard exception.");
+                        LOGFN_ERROR(logFn(),
+                                    "Downstream UDS client for %s: I/O thread ended on a non-standard exception.",
+                                    m_impl->name.c_str());
                     }
                 });
         }
 
-        LOGFN_INFO(logFn(), "Downstream UDS client started (%zu I/O thread(s)).", count);
+        LOGFN_INFO(logFn(), "Downstream UDS client for %s started (%zu I/O thread(s)).", m_impl->name.c_str(), count);
     }
 
     void AsioUdsHttpClient::stop() noexcept
@@ -523,11 +529,16 @@ namespace remoted::downstream
         }
         catch (const std::exception& e)
         {
-            LOGFN_ERROR(logFn(), "Failure while stopping the downstream UDS client: %s.", e.what());
+            LOGFN_ERROR(logFn(),
+                        "Failure while stopping the downstream UDS client for %s: %s.",
+                        m_impl->name.c_str(),
+                        e.what());
         }
         catch (...)
         {
-            LOGFN_ERROR(logFn(), "Non-standard exception while stopping the downstream UDS client.");
+            LOGFN_ERROR(logFn(),
+                        "Non-standard exception while stopping the downstream UDS client for %s.",
+                        m_impl->name.c_str());
         }
 
         m_impl->threads.clear();
@@ -545,13 +556,14 @@ namespace remoted::downstream
         // exactly what would make it break silently if this field ever became a non-trivial type.
         const int responseTimeoutMs =
             req.responseTimeoutMs > 0 ? req.responseTimeoutMs : m_impl->config.responseTimeoutMs;
+        const int writeTimeoutMs = req.writeTimeoutMs > 0 ? req.writeTimeoutMs : m_impl->config.writeTimeoutMs;
 
         auto session = std::make_shared<Session>(m_impl->ioc,
                                                  std::move(req),
                                                  std::move(bodyKeepAlive),
                                                  std::move(onComplete),
                                                  Millis {m_impl->config.connectTimeoutMs},
-                                                 Millis {m_impl->config.writeTimeoutMs},
+                                                 Millis {writeTimeoutMs},
                                                  Millis {responseTimeoutMs},
                                                  m_impl->config.maxResponseBodySize);
 

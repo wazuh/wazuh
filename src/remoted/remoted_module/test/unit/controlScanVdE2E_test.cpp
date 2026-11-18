@@ -35,6 +35,7 @@
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 #include "testTlsServer.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -149,15 +150,18 @@ namespace
             taskClient = std::make_shared<TaskClient>(
                 cfg.taskSocketPath, cfg.tmConcurrency, cfg.tmDeadlineMs, cfg.tmMaxQueueSize, controlMetrics);
             hashCache = std::make_shared<HashCache>(cfg);
+            // One client for VD's socket, held by both VdClient and the scan handler, as in production.
+            const auto vdHttpClient = remoted::test::makeVdHttpClient();
             // Short TTL: ScanVdMismatchedOffsetReturns409OverRealHttp relies on a fresh query
             // rather than the real 30s default cache window.
             vdClient = std::make_shared<remoted::common::VdClient>(
-                vdSocketPath, std::chrono::milliseconds {30}, std::chrono::milliseconds {30});
+                vdHttpClient, vdSocketPath, std::chrono::milliseconds {30}, std::chrono::milliseconds {30});
 
             controlHandler = std::make_unique<ControlHandler>(
                 registry, wdbClient, taskClient, hashCache, vdClient, controlMetrics, cfg);
             // Same vdClient as ControlHandler, same as production (see remotedModuleFacade.hpp).
-            scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient, scanVdMetrics, vdSocketPath);
+            scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(
+                vdClient, vdHttpClient, scanVdMetrics, vdSocketPath);
 
             server = makeHttpServer();
             gateway = std::make_unique<AuthGateway>(

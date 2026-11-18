@@ -17,25 +17,38 @@
 #include "fakeVdServer.hpp"
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
+#include "vdHttpClient.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#include <cerrno>
 #include <chrono>
+#include <cstring>
 #include <json.hpp>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::chrono_literals;
 using remoted::common::VdClient;
+using remoted::downstream::IDownstreamClient;
 using remoted::endpoints::scanvd::ScanVdOutcome;
 using remoted::endpoints::scanvd::ScanVdResponse;
 using remoted::scanvd::makeScanVdMetrics;
 using remoted::scanvd::ScanVdHandlerImpl;
 using remoted::scanvd::ScanVdMetrics;
+using remoted::test::CapturingClient;
 using remoted::test::FakeVdServer;
 using remoted::test::makeUniqueVdSocketPath;
+using remoted::test::makeVdHttpClient;
 
 namespace
 {
@@ -49,7 +62,8 @@ namespace
         return result;
     }
 
-    /// One test's whole rig: fake VD + real VdClient + metrics + the handler under test.
+    /// One test's whole rig: fake VD + one client for its socket + real VdClient + metrics + the handler under
+    /// test, wired as the facade wires them.
     struct Rig
     {
         explicit Rig(const std::string& tag,
@@ -57,21 +71,240 @@ namespace
                      long writeTimeout = ScanVdHandlerImpl::VD_SCAN_WRITE_TIMEOUT_SECONDS)
             : socketPath(makeUniqueVdSocketPath(tag))
             , server(socketPath)
-            , vdClient(std::make_shared<VdClient>(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY))
+            , httpClient(makeVdHttpClient())
+            , vdClient(std::make_shared<VdClient>(httpClient, socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY))
             , metrics(makeScanVdMetrics(metricsManager))
-            , handler(vdClient, metrics, socketPath, readTimeout, writeTimeout)
+            , handler(vdClient, httpClient, metrics, socketPath, readTimeout, writeTimeout)
         {
             server.setOffset(100);
         }
 
         std::string socketPath;
         FakeVdServer server;
+        std::shared_ptr<IDownstreamClient> httpClient;
+        std::shared_ptr<VdClient> vdClient;
+        wazuh::metrics::Manager metricsManager;
+        ScanVdMetrics metrics;
+        ScanVdHandlerImpl handler;
+    };
+
+    /// Owns one descriptor: a member or vector element of this type is closed even when the object
+    /// holding it throws from its constructor, where that object's own destructor never runs.
+    class OwnedFd
+    {
+    public:
+        explicit OwnedFd(int fd = -1) noexcept
+            : m_fd(fd)
+        {
+        }
+        OwnedFd(OwnedFd&& other) noexcept
+            : m_fd(std::exchange(other.m_fd, -1))
+        {
+        }
+        OwnedFd& operator=(OwnedFd&& other) noexcept
+        {
+            if (this != &other)
+            {
+                reset();
+                m_fd = std::exchange(other.m_fd, -1);
+            }
+            return *this;
+        }
+        OwnedFd(const OwnedFd&) = delete;
+        OwnedFd& operator=(const OwnedFd&) = delete;
+        ~OwnedFd()
+        {
+            reset();
+        }
+
+        int get() const noexcept
+        {
+            return m_fd;
+        }
+
+    private:
+        void reset() noexcept
+        {
+            if (m_fd >= 0)
+            {
+                ::close(m_fd);
+                m_fd = -1;
+            }
+        }
+
+        int m_fd;
+    };
+
+    /// A listener that never accepts, its accept backlog filled to the brim: the next connect is refused
+    /// with EAGAIN at once instead of waiting for a slot.
+    class FullBacklogListener
+    {
+    public:
+        explicit FullBacklogListener(std::string path)
+            : m_path(std::move(path))
+        {
+            sockaddr_un addr {};
+            if (m_path.size() >= sizeof(addr.sun_path))
+            {
+                throw std::invalid_argument("socket path too long for sockaddr_un: " + m_path);
+            }
+            addr.sun_family = AF_UNIX;
+            std::memcpy(addr.sun_path, m_path.c_str(), m_path.size() + 1);
+
+            ::unlink(m_path.c_str());
+            m_listenFd = OwnedFd {::socket(AF_UNIX, SOCK_STREAM, 0)};
+            if (m_listenFd.get() < 0 ||
+                ::bind(m_listenFd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 ||
+                ::listen(m_listenFd.get(), 0) != 0)
+            {
+                const int error = errno;
+                ::unlink(m_path.c_str());
+                throw std::runtime_error(std::string {"listener setup failed: "} + std::strerror(error));
+            }
+            constexpr int maxFillers = 64;
+            m_fillers.reserve(maxFillers);
+            for (int attempt = 0; attempt < maxFillers; ++attempt)
+            {
+                OwnedFd fd {::socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0)};
+                if (fd.get() < 0)
+                {
+                    break;
+                }
+                if (::connect(fd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
+                {
+                    m_full = (errno == EAGAIN);
+                    break;
+                }
+                m_fillers.push_back(std::move(fd));
+            }
+        }
+
+        // The descriptors close in their own destructors; only the path is left to remove.
+        ~FullBacklogListener()
+        {
+            ::unlink(m_path.c_str());
+        }
+
+        FullBacklogListener(const FullBacklogListener&) = delete;
+        FullBacklogListener& operator=(const FullBacklogListener&) = delete;
+
+        bool full() const
+        {
+            return m_full;
+        }
+
+    private:
+        std::string m_path;
+        OwnedFd m_listenFd;
+        std::vector<OwnedFd> m_fillers;
+        bool m_full {false};
+    };
+
+    /// The offset gate passes against a fake VD; the scan goes to `scanSocketPath` instead.
+    struct SplitRig
+    {
+        explicit SplitRig(const std::string& tag, std::string scanSocketPath)
+            : offsetSocketPath(makeUniqueVdSocketPath(tag + "-offset"))
+            , server(offsetSocketPath)
+            , httpClient(makeVdHttpClient())
+            , vdClient(std::make_shared<VdClient>(httpClient, offsetSocketPath, 5s, VDCLIENT_FAILURE_RETRY))
+            , metrics(makeScanVdMetrics(metricsManager))
+            , handler(vdClient, httpClient, metrics, std::move(scanSocketPath))
+        {
+            server.setOffset(100);
+        }
+
+        std::string offsetSocketPath;
+        FakeVdServer server;
+        std::shared_ptr<IDownstreamClient> httpClient;
         std::shared_ptr<VdClient> vdClient;
         wazuh::metrics::Manager metricsManager;
         ScanVdMetrics metrics;
         ScanVdHandlerImpl handler;
     };
 } // namespace
+
+TEST(ScanVdHandlerTest, RejectsANullHttpClient)
+{
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
+    const auto vdClient = std::make_shared<VdClient>(makeVdHttpClient(), makeUniqueVdSocketPath("null-client"));
+
+    EXPECT_THROW((ScanVdHandlerImpl {vdClient, nullptr, metrics}), std::invalid_argument);
+}
+
+TEST(ScanVdHandlerTest, RejectsANullVdClient)
+{
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
+
+    EXPECT_THROW((ScanVdHandlerImpl {nullptr, makeVdHttpClient(), metrics}), std::invalid_argument);
+}
+
+/**
+ * Both calls -- the offset query and the scan -- first have to reach VD's socket, each under its own
+ * fixed connect deadline. Those are part of what a slow request can pay, so the startup check counts them.
+ */
+TEST(ScanVdHandlerTest, TheStartupBudgetCountsBothConnectDeadlines)
+{
+    EXPECT_EQ(ScanVdHandlerImpl::budgetMsFor(5, 5),
+              (5 + 5 + VdClient::OFFSET_READ_TIMEOUT_SECONDS + VdClient::OFFSET_WRITE_TIMEOUT_SECONDS) * 1000 +
+                  2 * VdClient::CONNECT_TIMEOUT_MS);
+    EXPECT_EQ(ScanVdHandlerImpl::budgetMsFor(5, 5), 14000) << "the defaults, spelled out";
+}
+
+TEST(ScanVdHandlerTest, TheScanRequestCarriesTheConfiguredDeadlines)
+{
+    const auto socketPath = makeUniqueVdSocketPath("request-shape");
+    FakeVdServer server {socketPath};
+    server.setOffset(100);
+    const auto vdClient = std::make_shared<VdClient>(makeVdHttpClient(), socketPath);
+
+    auto capturing = std::make_shared<CapturingClient>();
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
+    ScanVdHandlerImpl handler {vdClient, capturing, metrics, socketPath, /*read=*/30, /*write=*/40};
+
+    ASSERT_EQ(callSync(handler, 42, 100).outcome, ScanVdOutcome::Accepted);
+    EXPECT_EQ(capturing->request.socketPath, socketPath);
+    EXPECT_EQ(capturing->request.method, remoted::http::Method::Post);
+    EXPECT_EQ(capturing->request.path, "/vulnerability-detector/scan");
+    EXPECT_EQ(capturing->request.contentType, "application/json");
+    EXPECT_EQ(capturing->request.writeTimeoutMs, 40000) << "remoted.vd_scan_write_timeout, not the client's default";
+    EXPECT_EQ(capturing->request.responseTimeoutMs, 30000) << "remoted.vd_scan_read_timeout, not the client's default";
+    EXPECT_EQ(nlohmann::json::parse(capturing->body).value("agent_id", std::string {}), "42");
+}
+
+TEST(ScanVdHandlerTest, AMissingScannerSocketIsAPromptVdUnreachable)
+{
+    SplitRig rig {"missing", makeUniqueVdSocketPath("missing-scan")};
+
+    const auto started = std::chrono::steady_clock::now();
+    const auto response = callSync(rig.handler, 7, 100);
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+
+    EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
+    EXPECT_EQ(response.errorCode, "vd_unreachable");
+    EXPECT_EQ(rig.metrics.vdError->get(), 1u);
+    EXPECT_LT(elapsed, 900ms) << "nothing listening is refused at once, not after the connect deadline";
+}
+
+TEST(ScanVdHandlerTest, AFullAcceptBacklogIsAPromptVdUnreachable)
+{
+    const auto scanSocketPath = makeUniqueVdSocketPath("backlog-scan");
+    FullBacklogListener listener {scanSocketPath};
+    ASSERT_TRUE(listener.full()) << "the backlog never filled; the case below would not test a full one";
+    SplitRig rig {"backlog", scanSocketPath};
+
+    const auto started = std::chrono::steady_clock::now();
+    const auto response = callSync(rig.handler, 7, 100);
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+
+    EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
+    EXPECT_EQ(response.errorCode, "vd_unreachable");
+    EXPECT_EQ(rig.metrics.vdError->get(), 1u);
+    EXPECT_LT(elapsed, 900ms) << "a full backlog refuses a non-blocking connect at once, not after the deadline";
+}
 
 /**
  * The facade checks this budget against remoted.http_request_timeout at startup, so it has to cover
@@ -203,12 +436,13 @@ TEST(ScanVdHandlerTest, AnUnreachableVdIsAnHonest503NotASilentDrop)
     auto server = std::make_unique<FakeVdServer>(socketPath);
     server->setOffset(100);
 
-    auto vdClient = std::make_shared<VdClient>(socketPath, 5s, VDCLIENT_FAILURE_RETRY);
+    const auto httpClient = makeVdHttpClient();
+    auto vdClient = std::make_shared<VdClient>(httpClient, socketPath, 5s, VDCLIENT_FAILURE_RETRY);
     ASSERT_EQ(vdClient->getOffset(), 100u) << "prime the cache while the server is up";
 
     wazuh::metrics::Manager metricsManager;
     ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
-    ScanVdHandlerImpl handler(vdClient, metrics, socketPath);
+    ScanVdHandlerImpl handler(vdClient, httpClient, metrics, socketPath);
 
     server.reset(); // VD goes away
 
