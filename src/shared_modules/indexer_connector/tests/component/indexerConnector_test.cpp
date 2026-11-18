@@ -1611,6 +1611,14 @@ TEST_F(IndexerConnectorTest, PublishRetriesExpectedErrorsWithoutWarning)
     EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_DEBUG_VERBOSE, "Reducing the elements to be sent to the indexer"), 1);
     EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, ""), 0);
     EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_ERROR, ""), 0);
+
+    // The accepted batch ended the streak: a conflict after the silent retry time starts a new one and stays quiet.
+    std::this_thread::sleep_for(std::chrono::minutes(1));
+    attempts = 0;
+    publishData["id"] = INDEX_ID_B;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&attempts]() { return attempts.load() >= 4; }, 6 * MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, ""), 0);
 }
 
 /**
