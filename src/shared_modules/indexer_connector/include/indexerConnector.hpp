@@ -255,6 +255,12 @@ public:
      * @param index Index name to search.
      * @param searchQuery JSON object containing the search query body.
      * @return JSON response from the indexer containing search results.
+     * @throws IndexerConnectorException if the search fails. On an HTTP error other than 429,
+     *         statusCode() holds the indexer's status. The indexer is asked to refuse an answer it
+     *         cannot give over every shard (allow_partial_search_results=false); that refusal is not
+     *         retried and reaches the caller. A 429 is retried within the retry budget first; when the
+     *         budget runs out the category is RetryExhausted and statusCode() is 0. statusCode() is 0
+     *         when no server is available and 0 or negative on a transport failure.
      */
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
 
@@ -270,6 +276,9 @@ public:
      *              The query MUST include a "sort" field for pagination to work correctly.
      * @param onResponse Callback function executed for each page of results.
      *                   The function receives a JSON object with the response for one page.
+     * @throws IndexerConnectorException as executeSearchQuery() does, for the page that fails: every
+     *         page is sent with allow_partial_search_results=false. onResponse has already run for the
+     *         pages before it, so a caller that acts on each page must treat the walk as incomplete.
      */
     void executeSearchQueryWithPagination(const std::string& index,
                                           const nlohmann::json& query,

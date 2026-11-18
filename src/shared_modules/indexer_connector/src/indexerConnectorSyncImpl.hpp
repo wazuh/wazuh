@@ -1490,14 +1490,16 @@ public:
                 // The transport reduces every HTTP failure to "Client error"/"Server error", so
                 // without the status and (truncated) body the exception is undiagnosable AND
                 // unclassifiable -- callers must be able to tell "no such index" (an empty
-                // dataset, e.g. no Windows agent ever synced a hotfix) from a real outage.
+                // dataset, e.g. no Windows agent ever synced a hotfix) from a real outage. The status
+                // also travels in statusCode(), so a refusal (503/500) is told from a 404 without
+                // reading the text; the text itself is a contract callers match on and must not change.
                 std::string detail = "Search query failed (status " + std::to_string(statusCode) + "): " + error;
                 if (!responseBody.empty())
                 {
                     detail += " - ";
                     detail += responseBody.substr(0, 256);
                 }
-                throw IndexerConnectorException(detail);
+                throw IndexerConnectorException(detail, IndexerConnectorException::Category::Other, statusCode);
             }
         };
 
@@ -1517,7 +1519,9 @@ public:
             url += serverUrl;
             url += "/";
             url += index;
-            url += "/_search";
+            // The caller takes the answer as the whole result, so ask the indexer to refuse it when some
+            // shards cannot take part instead of answering 200 without their documents.
+            url += "/_search?allow_partial_search_results=false";
 
             LOGFN_DEBUG2(m_logFn, "Executing search query on: %s", url.c_str());
 
