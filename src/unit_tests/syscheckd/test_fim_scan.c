@@ -701,6 +701,56 @@ static void test_fim_epoch_to_iso8601_buffer_too_small(void **state) {
     assert_false(fim_epoch_to_iso8601(1570184223, buffer, sizeof(buffer)));
 }
 
+static void assert_permissions_json(cJSON *array, const char *expected) {
+    char *printed = cJSON_PrintUnformatted(array);
+    assert_string_equal(printed, expected);
+    free(printed);
+    cJSON_Delete(array);
+}
+
+static void test_fim_win_permissions_json_acl(void **state) {
+    (void)state;
+    assert_permissions_json(
+        fim_win_permissions_json("{\"S-1-1-0\":{\"name\":\"Everyone\",\"allowed\":[\"read_data\",\"write_data\"],"
+                                 "\"denied\":[\"delete\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"read_data\"]}}"),
+        "[\"S-1-1-0:name:Everyone\",\"S-1-1-0:allowed:read_data\",\"S-1-1-0:allowed:write_data\",\"S-1-1-0:denied:delete\","
+        "\"S-1-5-18:name:SYSTEM\",\"S-1-5-18:allowed:read_data\"]");
+}
+
+static void test_fim_win_permissions_json_no_name(void **state) {
+    (void)state;
+    // Unresolved accounts have no name, or an empty one
+    assert_permissions_json(
+        fim_win_permissions_json("{\"S-1-5-21-1-2-3-1001\":{\"allowed\":[\"read_data\"]},"
+                                 "\"S-1-5-21-1-2-3-1002\":{\"name\":\"\",\"denied\":[\"write_data\"]}}"),
+        "[\"S-1-5-21-1-2-3-1001:allowed:read_data\",\"S-1-5-21-1-2-3-1002:denied:write_data\"]");
+}
+
+static void test_fim_win_permissions_json_malformed_entries(void **state) {
+    (void)state;
+    // Non-object ACEs and non-string rights are skipped
+    assert_permissions_json(
+        fim_win_permissions_json("{\"S-1-1-0\":\"bad\",\"S-1-5-18\":{\"name\":7,\"allowed\":[1,\"read_data\"],\"denied\":\"x\"}}"),
+        "[\"S-1-5-18:allowed:read_data\"]");
+}
+
+static void test_fim_win_permissions_json_empty_acl(void **state) {
+    (void)state;
+    assert_permissions_json(fim_win_permissions_json("{}"), "[]");
+}
+
+static void test_fim_win_permissions_json_not_acl(void **state) {
+    (void)state;
+    assert_permissions_json(fim_win_permissions_json("rw-r--r--"), "[\"rw-r--r--\"]");
+    assert_permissions_json(fim_win_permissions_json("[\"a\"]"), "[\"[\\\"a\\\"]\"]");
+    assert_permissions_json(fim_win_permissions_json(""), "[\"\"]");
+}
+
+static void test_fim_win_permissions_json_null(void **state) {
+    (void)state;
+    assert_permissions_json(fim_win_permissions_json(NULL), "[]");
+}
+
 static void test_fim_attributes_json(void **state) {
     fim_data_t *fim_data = *state;
     directory_t configuration = { .options = -1 };
@@ -4624,7 +4674,9 @@ void test_fim_calculate_dbsync_difference(void **state){
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
     #ifdef TEST_WINAGENT
     cJSON *permissions = cJSON_GetObjectItem(old_attributes, "permissions");
-    assert_int_equal(cJSON_GetArraySize(permissions), 4);
+    assert_int_equal(cJSON_GetArraySize(permissions), 47);
+    assert_string_equal(cJSON_GetArrayItem(permissions, 0)->valuestring, "S-1-5-32-544:name:Administrators");
+    assert_string_equal(cJSON_GetArrayItem(permissions, 1)->valuestring, "S-1-5-32-544:allowed:delete");
 
     cJSON *attributes = cJSON_GetObjectItem(old_attributes, "attributes");
     cJSON *attribute_item = cJSON_GetArrayItem(attributes, 0);
@@ -4753,10 +4805,53 @@ static void test_dbsync_attributes_json(void **state) {
         \"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\" }");
 
     char *result_str = "{\"size\":0,\"permissions\":["
-        "\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
-        "\"{\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
-        "\"{\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]}}\","
-        "\"{\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\"],"
+        "\"S-1-5-32-544:name:Administrators\","
+        "\"S-1-5-32-544:allowed:delete\","
+        "\"S-1-5-32-544:allowed:read_control\","
+        "\"S-1-5-32-544:allowed:write_dac\","
+        "\"S-1-5-32-544:allowed:write_owner\","
+        "\"S-1-5-32-544:allowed:synchronize\","
+        "\"S-1-5-32-544:allowed:read_data\","
+        "\"S-1-5-32-544:allowed:write_data\","
+        "\"S-1-5-32-544:allowed:append_data\","
+        "\"S-1-5-32-544:allowed:read_ea\","
+        "\"S-1-5-32-544:allowed:write_ea\","
+        "\"S-1-5-32-544:allowed:execute\","
+        "\"S-1-5-32-544:allowed:read_attributes\","
+        "\"S-1-5-32-544:allowed:write_attributes\","
+        "\"S-1-5-18:name:SYSTEM\","
+        "\"S-1-5-18:allowed:delete\","
+        "\"S-1-5-18:allowed:read_control\","
+        "\"S-1-5-18:allowed:write_dac\","
+        "\"S-1-5-18:allowed:write_owner\","
+        "\"S-1-5-18:allowed:synchronize\","
+        "\"S-1-5-18:allowed:read_data\","
+        "\"S-1-5-18:allowed:write_data\","
+        "\"S-1-5-18:allowed:append_data\","
+        "\"S-1-5-18:allowed:read_ea\","
+        "\"S-1-5-18:allowed:write_ea\","
+        "\"S-1-5-18:allowed:execute\","
+        "\"S-1-5-18:allowed:read_attributes\","
+        "\"S-1-5-18:allowed:write_attributes\","
+        "\"S-1-5-32-545:name:Users\","
+        "\"S-1-5-32-545:allowed:read_control\","
+        "\"S-1-5-32-545:allowed:synchronize\","
+        "\"S-1-5-32-545:allowed:read_data\","
+        "\"S-1-5-32-545:allowed:read_ea\","
+        "\"S-1-5-32-545:allowed:execute\","
+        "\"S-1-5-32-545:allowed:read_attributes\","
+        "\"S-1-5-11:name:Authenticated Users\","
+        "\"S-1-5-11:allowed:delete\","
+        "\"S-1-5-11:allowed:read_control\","
+        "\"S-1-5-11:allowed:synchronize\","
+        "\"S-1-5-11:allowed:read_data\","
+        "\"S-1-5-11:allowed:write_data\","
+        "\"S-1-5-11:allowed:append_data\","
+        "\"S-1-5-11:allowed:read_ea\","
+        "\"S-1-5-11:allowed:write_ea\","
+        "\"S-1-5-11:allowed:execute\","
+        "\"S-1-5-11:allowed:read_attributes\","
+        "\"S-1-5-11:allowed:write_attributes\"],"
         "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":\"2022-03-01T14:33:32.000Z\","
         "\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},"
         "\"attributes\":[\"ARCHIVE\"]}";
@@ -4831,6 +4926,12 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
+        cmocka_unit_test(test_fim_win_permissions_json_acl),
+        cmocka_unit_test(test_fim_win_permissions_json_no_name),
+        cmocka_unit_test(test_fim_win_permissions_json_malformed_entries),
+        cmocka_unit_test(test_fim_win_permissions_json_empty_acl),
+        cmocka_unit_test(test_fim_win_permissions_json_not_acl),
+        cmocka_unit_test(test_fim_win_permissions_json_null),
         cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
         cmocka_unit_test(test_fim_attributes_json_inode_number),
 

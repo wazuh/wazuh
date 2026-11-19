@@ -217,6 +217,17 @@ void fim_file_scan();
 bool fim_epoch_to_iso8601(time_t timestamp, char* buffer, size_t buffer_size);
 
 /**
+ * @brief Convert a stored Windows ACL JSON string into a keyword array.
+ *
+ * Each ACE becomes "<SID>:name:<account>" plus one "<SID>:<allowed|denied>:<right>" per right.
+ * A value that is not an ACL object is returned as a single-element array.
+ *
+ * @param permissions ACL as stored in the FIM database. May be NULL.
+ * @return New cJSON array, owned by the caller.
+ */
+cJSON* fim_win_permissions_json(const char* permissions);
+
+/**
  * @brief Create file attribute set JSON from a FIM entry structure
  *
  * @param dbsync_event Pointer to event dbsync JSON structure.
