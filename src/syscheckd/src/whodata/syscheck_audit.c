@@ -215,7 +215,10 @@ static int audit_recover_stale_socket(const char *abs_path_socket) {
 
     // Auditd was stopped above, so it must be started again whatever happened to the socket
     if (audit_start() != 0) {
-        merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
+        if (check_auditd_enabled() == 0) {
+            merror(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET);
+        }
+
         return -1;
     }
 
@@ -241,7 +244,6 @@ int set_auditd_config(void) {
     os_sha1 file_sha1, configuration_sha1;
     const char *plugin_dir = NULL;
     const char *audisp_config = NULL;
-    int check_stale_socket = 0;
 
     if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
         unsigned vcode;
@@ -250,7 +252,6 @@ int set_auditd_config(void) {
         if (get_audit_version_code(&vcode) != 0) {
             mdebug2("Could not get audit version code. Using default configuration.");
             audisp_config = AUDISP_CONFIGURATION_2;
-            check_stale_socket = 1;
         } else {
             mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
 
@@ -270,9 +271,6 @@ int set_auditd_config(void) {
                 // From audit version 4.0.3 format changes are included
                 audisp_config = AUDISP_CONFIGURATION_2;
             }
-
-            // From audit version 4.0.4 the af_unix plugin no longer removes a leftover socket before binding
-            check_stale_socket = vcode >= VERCODE(4, 0, 4);
         }
     } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
         plugin_dir = PLUGINS_OLD_DIR_AUDISP;
@@ -317,12 +315,7 @@ int set_auditd_config(void) {
     }
 
     if (IsSocket(AUDIT_SOCKET) == 0) {
-        if (!check_stale_socket) {
-            retval = 0;
-            goto end;
-        }
-
-        // The socket file can outlive Auditd, so also require a listener
+        // The socket file can outlive Auditd on any version, so also require a listener
         int listener = audit_socket_has_listener();
 
         if (listener != 0) {

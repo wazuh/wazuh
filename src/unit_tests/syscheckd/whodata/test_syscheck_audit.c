@@ -437,6 +437,7 @@ void test_set_auditd_config_audit3_plugin_created(void **state) {
 
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
+    expect_live_audit_socket_probe();
 
     int ret;
     ret = set_auditd_config();
@@ -486,6 +487,7 @@ void test_set_auditd_config_audit2_plugin_created(void **state) {
 
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
+    expect_live_audit_socket_probe();
 
     int ret;
     ret = set_auditd_config();
@@ -815,11 +817,23 @@ void test_set_auditd_config_audit_socket_stale_restart_stop_error_restart_error_
 }
 
 
-void test_set_auditd_config_audit403_socket_not_probed(void **state) {
+void test_set_auditd_config_audit403_socket_stale_restart(void **state) {
     syscheck.restart_audit = 1;
 
-    // Before 4.0.4 the plugin removes a leftover socket itself, so an existing file is used as is
-    expect_audit_socket_file_prologue("4.0.3");
+    // A distro build of an older version can carry the 4.0.4 plugin change, so the socket is checked on every version
+    expect_stale_audit_socket_prologue("4.0.3");
+
+    expect_string(__wrap__minfo, formatted_msg, test_msg(FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET));
+
+    expect_function_call(__wrap_audit_stop);
+    will_return(__wrap_audit_stop, 0);
+    expect_auditd_process_check(0);
+
+    expect_audit_socket_unlink(0, 0);
+
+    expect_function_call(__wrap_audit_start);
+    will_return(__wrap_audit_start, 0);
+    expect_live_audit_socket_probe();
 
     int ret;
     ret = set_auditd_config();
@@ -953,8 +967,35 @@ void test_set_auditd_config_audit_socket_stale_restart_start_error(void **state)
 
     expect_function_call(__wrap_audit_start);
     will_return(__wrap_audit_start, -1);
+    expect_auditd_process_check(0);
 
     expect_string(__wrap__merror, formatted_msg, test_msg(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET));
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_set_auditd_config_audit_socket_stale_restart_start_error_running(void **state) {
+    syscheck.restart_audit = 1;
+
+    expect_stale_audit_socket_prologue("4.1.2");
+
+    expect_string(__wrap__minfo, formatted_msg, test_msg(FIM_AUDIT_STALE_SOCKET, AUDIT_SOCKET));
+
+    expect_function_call(__wrap_audit_stop);
+    will_return(__wrap_audit_stop, 0);
+    expect_auditd_process_check(0);
+
+    expect_audit_socket_unlink(0, 0);
+
+    expect_function_call(__wrap_audit_start);
+    will_return(__wrap_audit_start, -1);
+
+    // The start reported an error but Auditd is running, so it is not reported as stopped
+    expect_auditd_process_check(1);
 
     int ret;
     ret = set_auditd_config();
@@ -980,6 +1021,7 @@ void test_set_auditd_config_audit_socket_stale_restart_unlink_error_start_error(
 
     expect_function_call(__wrap_audit_start);
     will_return(__wrap_audit_start, -1);
+    expect_auditd_process_check(0);
 
     expect_string(__wrap__merror, formatted_msg, test_msg(FIM_ERROR_AUDIT_LEFT_STOPPED, AUDIT_SOCKET));
 
@@ -2373,8 +2415,8 @@ int main(void) {
         cmocka_unit_test(test_init_auditd_socket_success),
         cmocka_unit_test(test_init_auditd_socket_failure),
         cmocka_unit_test(test_set_auditd_config_wrong_audit_version),
-        cmocka_unit_test(test_set_auditd_config_audit2_plugin_created),
-        cmocka_unit_test(test_set_auditd_config_audit3_plugin_created),
+        cmocka_unit_test_teardown(test_set_auditd_config_audit2_plugin_created, teardown_audit_wrappers),
+        cmocka_unit_test_teardown(test_set_auditd_config_audit3_plugin_created, teardown_audit_wrappers),
         cmocka_unit_test(test_set_auditd_config_audit_socket_not_created),
         cmocka_unit_test(test_set_auditd_config_audit_socket_not_created_restart),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart, teardown_audit_wrappers),
@@ -2384,7 +2426,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_stop_error, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_stop_error_restart_error, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_stop_error_restart_error_running, teardown_audit_wrappers),
-        cmocka_unit_test_teardown(test_set_auditd_config_audit403_socket_not_probed, teardown_audit_wrappers),
+        cmocka_unit_test_teardown(test_set_auditd_config_audit403_socket_stale_restart, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit404_socket_probed, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_proc_read_error, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_unknown_version, teardown_audit_wrappers),
@@ -2392,6 +2434,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_probe_error, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_unlink_error, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_start_error, teardown_audit_wrappers),
+        cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_start_error_running, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_restart_unlink_error_start_error, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit4_socket_live, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_no_restart, teardown_audit_wrappers),
