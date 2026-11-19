@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#41408](https://github.com/wazuh/wazuh/pull/41408))
 - Fixed `wazuh-clusterd` accepting divided messages and large frames from a peer that had not proven the cluster key, and copying the whole accumulated message on every received chunk, which let a connection without the key make the master hold large amounts of memory and stop serving workers and `cluster_control`. The connection is now closed at the header of a divided message or of a frame larger than 10 MiB received before the peer proves the key, or of a divided chunk larger than 10 MiB. The payload buffer grows as data arrives instead of being allocated from the size in the header, and the chunks are accumulated in place.
 - Fixed `wazuh-integratord` writing the alert location, rule ID and rule description unfiltered to the alert file of integrations that do not use the JSON alert format. These fields now get the same character filtering as the alert log. ([#41602](https://github.com/wazuh/wazuh/pull/41602))
+- Hardened how the vulnerability scanner processes syscollector delta and synchronization messages. ([#41394](https://github.com/wazuh/wazuh/pull/41394))
 
 ### Agent
 
