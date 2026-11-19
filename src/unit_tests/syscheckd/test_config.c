@@ -21,7 +21,7 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../rootcheck/rootcheck.h"
+#include "../rootcheck/include/rootcheck.h"
 
 /* redefinitons/wrapping */
 typedef struct entry_struct_s {
