@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-clusterd` accepting divided messages from a peer that had not proven the cluster key, and copying the whole accumulated message on every received chunk, which let a connection without the key make the master hold hundreds of MiB and stop serving workers and `cluster_control` for tens of seconds. The connection is now closed at the header of a divided message received before the peer proves the key, or of a chunk larger than 10 MiB, and the chunks are accumulated in place. ([#41594](https://github.com/wazuh/wazuh/pull/41594))
 - Fixed `wazuh-integratord` writing the alert location, rule ID and rule description unfiltered to the alert file of integrations that do not use the JSON alert format. These fields now get the same character filtering as the alert log. ([#41599](https://github.com/wazuh/wazuh/pull/41599))
 
+#### Changed
+
+- Enabled lz4 and zstd compression for the vulnerability detection feed database and for the local database and queue that the vulnerability detection uses to index its states, and made that queue give back the disk space of documents already sent. ([#41581](https://github.com/wazuh/wazuh/pull/41581))
+
 ### Ruleset
 
 #### Fixed
@@ -40,7 +44,6 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
-- Enabled lz4 and zstd compression for the vulnerability detection feed database and for the local database and queue that the vulnerability detection uses to index its states, and made that queue give back the disk space of documents already sent. ([#41581](https://github.com/wazuh/wazuh/pull/41581))
 
 ### Agent
 
