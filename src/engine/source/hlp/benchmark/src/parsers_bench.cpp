@@ -365,6 +365,91 @@ std::string xmlSiblingSubtreeNodes(int64_t k, bool repeated)
     return "<r><a>" + xmlLeaves(k) + "</a>" + (repeated ? "<a>v</a>" : "") + "</r>";
 }
 
+constexpr int64_t LEAF_COUNT = 4096;
+
+/** @brief "<N>" with LEAF_COUNT children "<b>v</b>" and "</N>", N made of nameLen bytes. */
+std::string xmlAncestorNameLeaves(int64_t nameLen)
+{
+    const std::string name(static_cast<size_t>(nameLen), 'a');
+    std::string text = "<" + name + ">";
+    for (int64_t i = 0; i < LEAF_COUNT; ++i)
+    {
+        text += "<b>v</b>";
+    }
+    text += "</" + name + ">";
+    return text;
+}
+
+/** @brief Element "<name>" with count children "<b>v</b>". */
+std::string xmlNamedChildren(const std::string& name, int64_t count)
+{
+    std::string text = "<" + name + ">";
+    for (int64_t i = 0; i < count; ++i)
+    {
+        text += "<b>v</b>";
+    }
+    text += "</" + name + ">";
+    return text;
+}
+
+/** @brief Empty element "<name" with count attributes ' a=""' and "/>". */
+std::string xmlEmptyAttributes(const std::string& name, int64_t count)
+{
+    std::string text = "<" + name;
+    for (int64_t i = 0; i < count; ++i)
+    {
+        text += " a=\"\"";
+    }
+    text += "/>";
+    return text;
+}
+
+/** @brief Chain "<e1><e2>...<eD>" with LEAF_COUNT children "<l>v</l>" in the innermost element. */
+std::string xmlDeepChain(int64_t depth)
+{
+    std::string text;
+    for (int64_t i = 1; i <= depth; ++i)
+    {
+        text += "<e" + std::to_string(i) + ">";
+    }
+    for (int64_t i = 0; i < LEAF_COUNT; ++i)
+    {
+        text += "<l>v</l>";
+    }
+    for (int64_t i = depth; i >= 1; --i)
+    {
+        text += "</e" + std::to_string(i) + ">";
+    }
+    return text;
+}
+
+/** @brief Chain of depth levels, each "<e_i>" followed by a same-named empty sibling "<e_i/>". */
+std::string xmlDeepChainPromoted(int64_t depth)
+{
+    std::string text;
+    for (int64_t i = 0; i < LEAF_COUNT; ++i)
+    {
+        text += "<l>v</l>";
+    }
+    for (int64_t i = depth; i >= 1; --i)
+    {
+        const auto name = "e" + std::to_string(i);
+        text = "<" + name + ">" + text + "</" + name + "><" + name + "/>";
+    }
+    return text;
+}
+
+/** @brief JSON pointer "<TARGET>/e1<step>/e2<step>.../eD<step>/l", with step empty or "/0". */
+std::string deepChainPointer(int64_t depth, const std::string& step)
+{
+    std::string pointer = TARGET;
+    for (int64_t i = 1; i <= depth; ++i)
+    {
+        pointer += "/e" + std::to_string(i) + step;
+    }
+    return pointer + "/l";
+}
+
 void BM_ParseKv_Flat(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
@@ -573,6 +658,62 @@ void BM_ParseXml_PlainSiblingNodes(benchmark::State& state)
     runParser(state, parser, xmlSiblingSubtreeNodes(state.range(0), false), {{TARGET + "/r/a", n}});
 }
 
+void BM_ParseXml_AncestorName(benchmark::State& state)
+{
+    const std::string name(static_cast<size_t>(state.range(0)), 'a');
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(state,
+              parser,
+              xmlAncestorNameLeaves(state.range(0)),
+              {{TARGET + "/" + name + "/b", static_cast<size_t>(LEAF_COUNT)}});
+}
+
+void BM_ParseXml_AncestorNameScaled(benchmark::State& state)
+{
+    const auto size = state.range(0);
+    const std::string name(static_cast<size_t>(size / 4), 'a');
+    const auto children = size / 16;
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(
+        state, parser, xmlNamedChildren(name, children), {{TARGET + "/" + name + "/b", static_cast<size_t>(children)}});
+}
+
+void BM_ParseXml_AncestorNameScaledControl(benchmark::State& state)
+{
+    const auto children = state.range(0) / 16;
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(state, parser, xmlNamedChildren("r", children), {{TARGET + "/r/b", static_cast<size_t>(children)}});
+}
+
+void BM_ParseXml_OwnNameAttributes(benchmark::State& state)
+{
+    const auto size = state.range(0);
+    const std::string name(static_cast<size_t>(size / 2), 'a');
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(state, parser, xmlEmptyAttributes(name, size / 10), {{TARGET + "/" + name, 1}});
+}
+
+void BM_ParseXml_OwnNameAttributesControl(benchmark::State& state)
+{
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(state, parser, xmlEmptyAttributes("r", state.range(0) / 10), {{TARGET + "/r", 1}});
+}
+
+void BM_ParseXml_DeepChain(benchmark::State& state)
+{
+    const auto depth = state.range(0);
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(state, parser, xmlDeepChain(depth), {{deepChainPointer(depth, ""), static_cast<size_t>(LEAF_COUNT)}});
+}
+
+void BM_ParseXml_DeepChainPromoted(benchmark::State& state)
+{
+    const auto depth = state.range(0);
+    const auto parser = hlp::parsers::getXMLParser(xmlParams());
+    runParser(
+        state, parser, xmlDeepChainPromoted(depth), {{deepChainPointer(depth, "/0"), static_cast<size_t>(LEAF_COUNT)}});
+}
+
 } // namespace
 
 // =============================================================================
@@ -640,3 +781,11 @@ BENCHMARK(BM_ParseXml_RepeatedSiblingBytes)->RangeMultiplier(4)->Range(256, 1048
 BENCHMARK(BM_ParseXml_PlainSiblingBytes)->RangeMultiplier(4)->Range(256, 1048576)->Unit(benchmark::kMicrosecond);
 BENCHMARK(BM_ParseXml_RepeatedSiblingNodes)->RangeMultiplier(4)->Range(64, 16384)->Unit(benchmark::kMicrosecond);
 BENCHMARK(BM_ParseXml_PlainSiblingNodes)->RangeMultiplier(4)->Range(64, 16384)->Unit(benchmark::kMicrosecond);
+// Element-name length, number of children or attributes, and nesting depth.
+BENCHMARK(BM_ParseXml_AncestorName)->Arg(1024)->Arg(65536)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_ParseXml_AncestorNameScaled)->Arg(65536)->Arg(262144)->Arg(1048576)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_ParseXml_AncestorNameScaledControl)->Arg(65536)->Arg(262144)->Arg(1048576)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_ParseXml_OwnNameAttributes)->Arg(65536)->Arg(262144)->Arg(1048576)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_ParseXml_OwnNameAttributesControl)->Arg(65536)->Arg(262144)->Arg(1048576)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_ParseXml_DeepChain)->Arg(1)->Arg(120)->Arg(250)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_ParseXml_DeepChainPromoted)->Arg(120)->Unit(benchmark::kMillisecond);

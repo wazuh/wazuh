@@ -56,20 +56,21 @@ const Token* tokensEnd(const rapidjson::Pointer& pointer)
     return pointer.GetTokens() + pointer.GetTokenCount();
 }
 
-// A relative path is valid when it is empty or starts with '/' and is a valid JSON pointer (no URI fragment form)
+// The pointer of a relative path, built once: a single return of a prvalue is elided (rapidjson::Pointer has no move
+// constructor, so returning a named pointer would copy it). The empty path never reads relPath.data(), and a path
+// that does not start with '/' is not parsed: both give the empty pointer, and checkRelativePointer() tells them apart.
 rapidjson::Pointer relativePointer(std::string_view relPath)
 {
-    if (relPath.empty())
+    return relPath.empty() || relPath[0] != '/' ? rapidjson::Pointer()
+                                                : rapidjson::Pointer(relPath.data(), relPath.size());
+}
+
+// A relative path is valid when it is empty or starts with '/' and is a valid JSON pointer (no URI fragment form)
+void checkRelativePointer(const rapidjson::Pointer& pointer, std::string_view relPath)
+{
+    if (relPath.empty() || (relPath[0] == '/' && pointer.IsValid()))
     {
-        return rapidjson::Pointer();
-    }
-    if (relPath[0] == '/')
-    {
-        auto pointer = rapidjson::Pointer(relPath.data(), relPath.size());
-        if (pointer.IsValid())
-        {
-            return pointer;
-        }
+        return;
     }
     throw std::runtime_error(fmt::format("Invalid relative pointer path '{}'", relPath));
 }
@@ -546,6 +547,7 @@ std::optional<PathWriter::Anchor> PathWriter::find(Anchor from, std::string_view
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     auto* value = get(node, tokensBegin(pointer), tokensEnd(pointer));
     if (value == nullptr)
     {
@@ -558,6 +560,7 @@ PathWriter::Anchor PathWriter::ensure(Anchor from, std::string_view relPath)
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     return Anchor(this, &create(node, tokensBegin(pointer), tokensEnd(pointer)));
 }
 
@@ -565,6 +568,7 @@ void PathWriter::setString(Anchor from, std::string_view value, std::string_view
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     setStringAt(node, pointer, value);
 }
 
@@ -572,6 +576,7 @@ void PathWriter::setObject(Anchor from, std::string_view relPath)
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     setObjectAt(node, pointer);
 }
 
@@ -579,6 +584,7 @@ void PathWriter::appendString(Anchor from, std::string_view value, std::string_v
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     appendStringAt(node, pointer, value);
 }
 
@@ -586,6 +592,7 @@ void PathWriter::appendJson(Anchor from, const Json& value, std::string_view rel
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     appendJsonAt(node, pointer, value);
 }
 
@@ -593,6 +600,7 @@ bool PathWriter::exists(Anchor from, std::string_view relPath) const
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     return existsAt(node, pointer);
 }
 
@@ -600,6 +608,7 @@ bool PathWriter::isObject(Anchor from, std::string_view relPath) const
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     return isObjectAt(node, pointer);
 }
 
@@ -607,6 +616,7 @@ bool PathWriter::isArray(Anchor from, std::string_view relPath) const
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     return isArrayAt(node, pointer);
 }
 
@@ -614,6 +624,7 @@ size_t PathWriter::size(Anchor from, std::string_view relPath) const
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     const auto result = sizeAt(node, pointer);
     if (!result.has_value())
     {
@@ -627,6 +638,7 @@ bool PathWriter::wrapInArray(Anchor from, std::string_view relPath)
 {
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
+    checkRelativePointer(pointer, relPath);
     auto* value = get(node, tokensBegin(pointer), tokensEnd(pointer));
     if (value == nullptr)
     {

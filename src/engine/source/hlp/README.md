@@ -289,7 +289,7 @@ The root container is level 1: 256 nested containers (objects and arrays) parse,
 
 `parser::run()` turns either failure into a `base::Error` that carries the message only when tracing is enabled (test mode) and is empty otherwise, exactly as for any other parse failure.
 
-The XML parser creates one `json::PathWriter` per parse, and `xmlToJson` and the `windows` module read and write the document through it. Repeated sibling elements are appended to their array, which grows geometrically. The writer is described in the [JSON Path Writer](../base/README.md#json-path-writer) section of the `base` README.
+The XML parser creates one `json::PathWriter` per parse, and `xmlToJson` and the `windows` module read and write the document through it. Repeated sibling elements are appended to their array, which grows geometrically. `xmlToJson` descends the XML tree carrying the [anchor](../base/README.md#json-path-writer) of the parent node and writes each element's text and attributes with paths relative to the element's own anchor. Each element resolves its name a fixed number of times, independent of how many writes or children it has, and promoting an element to an array on its first repeated sibling moves the value instead of copying it. The writer is described in the [JSON Path Writer](../base/README.md#json-path-writer) section of the `base` README.
 
 Sibling elements that share a name become one array under that name, in document order. The first one is written as an object and is moved into the array when the second one appears; each element of the array holds the `#text`, the `@<attribute>` members and the child elements of its own sibling, and the same rule applies inside it:
 

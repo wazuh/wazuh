@@ -1435,3 +1435,348 @@ TEST(ObjectBuildDiff, XmlRepeatedSiblingShapes)
     EXPECT_EQ(tally.compared, comparisons);
     EXPECT_EQ(tally.productive, comparisons);
 }
+
+namespace
+{
+// ---------------------------------------------------------------------------------------------------------------
+// xml: long names, long names with attributes, nested windows items, windows name collisions
+// ---------------------------------------------------------------------------------------------------------------
+
+constexpr std::size_t LONG_NAME_MIN = 4096;
+
+std::string longName(std::size_t size, char c)
+{
+    return std::string(size, c);
+}
+
+bool isLongName(const std::string& name)
+{
+    return name.size() >= LONG_NAME_MIN;
+}
+
+/// One node of XmlLongNames. Draw order: name, attributes, text, child count, children. @p repeated counts, for the
+/// sibling list the caller keeps in @p siblings, the long names seen again.
+void longNameNode(
+    std::mt19937& rng, std::string& out, std::size_t depth, std::vector<std::string>& siblings, std::size_t& repeated);
+
+/// @p n sibling nodes; every occurrence of a long name after the first one of that name in the list is counted.
+void longNameList(std::mt19937& rng, std::string& out, std::size_t n, std::size_t depth, std::size_t& repeated)
+{
+    std::vector<std::string> siblings;
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        longNameNode(rng, out, depth, siblings, repeated);
+    }
+}
+
+void longNameNode(
+    std::mt19937& rng, std::string& out, std::size_t depth, std::vector<std::string>& siblings, std::size_t& repeated)
+{
+    static const std::array<std::string, 5> names {
+        "a", "b", longName(4096, 'n'), longName(5000, 'm'), longName(4096, 'n') + "x"};
+    const auto& name = names[pick(rng, names.size())];
+    const auto attrs = xmlAttributes(rng);
+    const auto text = xmlText(rng);
+    const auto children = depth < 4 ? pick(rng, 4) : 0;
+    if (isLongName(name))
+    {
+        if (std::find(siblings.begin(), siblings.end(), name) != siblings.end())
+        {
+            ++repeated;
+        }
+        else
+        {
+            siblings.push_back(name);
+        }
+    }
+    out += fmt::format("<{}{}>{}", name, attrs, text);
+    longNameList(rng, out, children, depth + 1, repeated);
+    out += fmt::format("</{}>", name);
+}
+
+/// 1-2 roots whose names are short or 4096-5000 bytes long (two of them share a 4096-byte prefix).
+std::string generatedLongNamesXml(std::mt19937& rng, std::size_t& repeated)
+{
+    std::string xml;
+    const auto roots = 1 + pick(rng, 2);
+    longNameList(rng, xml, roots, 1, repeated);
+    return xml;
+}
+
+std::string distinctAttributes(std::size_t k)
+{
+    std::string attrs;
+    for (std::size_t i = 0; i < k; ++i)
+    {
+        attrs += fmt::format(" a{0}=\"v{0}\"", i);
+    }
+    return attrs;
+}
+
+/// State of the windows-nested generator: whether the input holds `<Data Name="a">` followed by `<a>`.
+struct NestedState
+{
+    bool pair = false;
+};
+
+std::string nestedWindowsItems(std::mt19937& rng, std::size_t depth, std::size_t maxCount, NestedState& state);
+
+std::string nestedWindowsItem(std::mt19937& rng, std::size_t depth, NestedState& state)
+{
+    static const std::array<const char*, 3> values {"v", "", "w"};
+    static const std::array<const char*, 13> names {
+        "a", "b", "5", "007", "a/b", "a~b", "a.b", "x y", "", "-", "a", "b", "c"};
+    static const std::array<const char*, 3> elements {"a", "b", "c"};
+    // containers carry no items at the last level (the count is not drawn there)
+    const auto inner = [&](std::size_t maxCount)
+    {
+        return depth < 5 ? nestedWindowsItems(rng, depth + 1, maxCount, state) : std::string {};
+    };
+
+    switch (pick(rng, 8))
+    {
+        case 0: return fmt::format("<Data>{}</Data>", values[pick(rng, values.size())]);
+        case 1: return "<Data><x>1</x></Data>";
+        case 2:
+        {
+            const auto name = names[pick(rng, names.size())];
+            return fmt::format("<Data Name=\"{}\">{}</Data>", name, values[pick(rng, values.size())]);
+        }
+        case 3: return "<Event>" + inner(4) + "</Event>";
+        case 4: return "<EventData>" + inner(4) + "</EventData>";
+        case 5:
+        {
+            const auto name = elements[pick(rng, elements.size())];
+            const auto attrs = xmlAttributes(rng);
+            const auto text = xmlText(rng);
+            return fmt::format("<{0}{1}>{2}{3}</{0}>", name, attrs, text, inner(4));
+        }
+        default:
+        {
+            state.pair = true;
+            const auto text = xmlText(rng);
+            return fmt::format("<Data Name=\"a\">v</Data><a>{}{}</a>", text, inner(3));
+        }
+    }
+}
+
+/// A random number (up to @p maxCount - 1) of items at @p depth.
+std::string nestedWindowsItems(std::mt19937& rng, std::size_t depth, std::size_t maxCount, NestedState& state)
+{
+    std::string xml;
+    const auto n = pick(rng, maxCount);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        xml += nestedWindowsItem(rng, depth, state);
+    }
+    return xml;
+}
+
+/// 1-4 top-level items, usually inside the Event wrapper the module skips.
+std::string generatedNestedWindowsXml(std::mt19937& rng, NestedState& state)
+{
+    std::string items;
+    const auto n = 1 + pick(rng, 4);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        items += nestedWindowsItem(rng, 1, state);
+    }
+    return pick(rng, 5) == 0 ? items : "<Event>" + items + "</Event>";
+}
+} // namespace
+
+TEST(ObjectBuildDiff, XmlLongNames)
+{
+    Tally tally;
+    std::size_t repeatedLong = 0;
+    for (std::uint32_t seed = 6000; seed < 6080 && !HasFailure(); ++seed)
+    {
+        std::mt19937 rng(seed);
+        std::size_t repeated = 0;
+        const auto text = generatedLongNamesXml(rng, repeated);
+        repeatedLong += repeated;
+        tally.add(
+            compareAll(Kind::Xml, seed % 2 == 0 ? hlp::Options {} : WINDOWS, text, seedLabel("long names", seed)));
+    }
+    RecordProperty("productive", static_cast<int>(tally.productive));
+    RecordProperty("repeatedLong", static_cast<int>(repeatedLong));
+    EXPECT_EQ(tally.compared, 80u);
+    EXPECT_GE(tally.productive, 60u);
+    EXPECT_GE(repeatedLong, 20u);
+}
+
+TEST(ObjectBuildDiff, XmlLongNameAttributes)
+{
+    struct Row
+    {
+        std::string label;
+        std::string name;
+        std::string xml;
+        std::size_t k;
+        bool sibling;
+        bool repeatedAttribute;
+    };
+
+    std::vector<Row> rows;
+    for (const bool sibling : {false, true})
+    {
+        for (const std::size_t size : {4096u, 20000u})
+        {
+            for (const std::size_t k : {3u, 200u, 300u})
+            {
+                for (const bool withText : {false, true})
+                {
+                    const auto name = longName(size, 'n');
+                    std::string xml =
+                        fmt::format("<r><{0}{1}>{2}</{0}>", name, distinctAttributes(k), withText ? "t" : "");
+                    if (sibling)
+                    {
+                        xml += fmt::format("<{} k=\"1\" j=\"2\"/>", name);
+                    }
+                    xml += "</r>";
+                    rows.push_back({fmt::format("name={} k={} text={} sibling={}", size, k, withText, sibling),
+                                    name,
+                                    xml,
+                                    k,
+                                    sibling,
+                                    false});
+                }
+            }
+        }
+    }
+    {
+        // pugixml keeps duplicate attributes, so the repeated attribute is written out as text
+        const auto name = longName(4096, 'n');
+        std::string xml = fmt::format("<r><{}", name);
+        for (std::size_t i = 0; i < 200; ++i)
+        {
+            xml += " a=\"v\"";
+        }
+        xml += fmt::format("/></r>");
+        rows.push_back({"name=4096 repeated attribute", name, xml, 200, false, true});
+    }
+
+    Tally tally;
+    std::size_t comparisons = 0;
+    for (const auto& row : rows)
+    {
+        for (const hlp::Options& options : {hlp::Options {}, WINDOWS})
+        {
+            const auto label = fmt::format("{} windows={}", row.label, !options.empty());
+            const auto out = compareAll(Kind::Xml, options, row.xml, label);
+            tally.add(out);
+            ++comparisons;
+            ASSERT_TRUE(out.equal) << label;
+            EXPECT_TRUE(out.productive) << label;
+            if (!out.productive)
+            {
+                continue;
+            }
+            const auto path = TARGET + "/r/" + row.name;
+            if (row.repeatedAttribute)
+            {
+                EXPECT_EQ(out.event.size(path), 1u) << label;
+            }
+            else if (row.sibling)
+            {
+                expectArrayOf(out.event, path, 2);
+            }
+            else if (row.k >= 200)
+            {
+                expectWide(out.event, path);
+            }
+        }
+    }
+    EXPECT_EQ(tally.compared, comparisons);
+    EXPECT_EQ(tally.productive, comparisons);
+}
+
+TEST(ObjectBuildDiff, XmlWindowsNested)
+{
+    Tally tally;
+    std::size_t withPair = 0;
+    std::size_t comparisons = 0;
+    for (std::uint32_t seed = 7000; seed < 7300 && !HasFailure(); ++seed)
+    {
+        std::mt19937 rng(seed);
+        NestedState state;
+        const auto text = generatedNestedWindowsXml(rng, state);
+        const bool even = seed % 2 == 0;
+        for (const hlp::Options& options : {WINDOWS, hlp::Options {}})
+        {
+            if (options.empty() && !even)
+            {
+                continue;
+            }
+            tally.add(compareAll(Kind::Xml, options, text, seedLabel("nested windows", seed)));
+            ++comparisons;
+            // the pair only collides under the windows module
+            if (state.pair && !options.empty())
+            {
+                ++withPair;
+            }
+        }
+    }
+    RecordProperty("productive", static_cast<int>(tally.productive));
+    RecordProperty("withPair", static_cast<int>(withPair));
+    EXPECT_EQ(comparisons, 450u);
+    EXPECT_EQ(tally.compared, 450u);
+    EXPECT_GE(tally.productive, 300u);
+    EXPECT_GE(withPair, 50u);
+}
+
+TEST(ObjectBuildDiff, XmlWindowsNameCollision)
+{
+    struct Row
+    {
+        std::string xml;
+        std::string expected;
+    };
+    const std::vector<Row> literal {
+        {R"(<Event><E><Data Name="foo">x</Data><foo>y<baz>w</baz></foo></E></Event>)",
+         R"({"out":{"E":{"foo":{"#text":"y","baz":{"#text":"w"}}}}})"},
+        {R"(<Event><E><Data Name="foo">x</Data><foo><baz>w</baz></foo></E></Event>)",
+         R"({"out":{"E":{"foo":{"baz":{"#text":"w"}}}}})"},
+        {R"(<Event><E><Data><x>1</x></Data><Data>2</Data></E></Event>)", R"({"out":{"E":["2"]}})"},
+        {R"(<Event><E><Data Name="">x</Data><q>1</q></E></Event>)", R"({"out":{"E":{"":"x","q":{"#text":"1"}}}})"},
+    };
+
+    Tally fixed;
+    for (const auto& row : literal)
+    {
+        const auto out = compareAll(Kind::Xml, WINDOWS, row.xml, "collision literal");
+        fixed.add(out);
+        ASSERT_TRUE(out.equal) << row.xml;
+        EXPECT_TRUE(out.productive) << row.xml;
+        EXPECT_EQ(out.event.str(), row.expected) << row.xml;
+    }
+    EXPECT_EQ(fixed.compared, literal.size());
+    EXPECT_EQ(fixed.productive, literal.size());
+
+    // oracle only: collision with attributes, repeated name after the collision, at the root, deep, reversed order, ...
+    const std::vector<std::string> oracleOnly {
+        R"(<Event><E><Data Name="foo">x</Data><foo k="1"><baz>w</baz></foo></E></Event>)",
+        R"(<Event><E><Data Name="foo">x</Data><foo>y<baz>w</baz></foo><foo>z<qux>u</qux></foo></E></Event>)",
+        R"(<Data Name="foo">x</Data><foo>y<baz/></foo>)",
+        R"(<Event><E><Data Name="foo">x</Data><foo>y<baz><deep><leaf>1</leaf></deep></baz></foo></E></Event>)",
+        R"(<Event><E><foo>y<baz>w</baz></foo><Data Name="foo">x</Data></E></Event>)",
+        R"(<Event><a><Event><b>1</b></Event></a></Event>)",
+        R"(<r><a><c>1</c></a><a><d>2</d></a><a><e>3</e></a></r>)",
+        R"(<a>1</a><a>2</a><b/>)",
+    };
+    Tally oracle;
+    std::size_t comparisons = 0;
+    for (const auto& xml : oracleOnly)
+    {
+        for (const hlp::Options& options : {hlp::Options {}, WINDOWS})
+        {
+            const auto out = compareAll(Kind::Xml, options, xml, fmt::format("collision windows={}", !options.empty()));
+            oracle.add(out);
+            ++comparisons;
+            EXPECT_TRUE(out.equal) << xml;
+            EXPECT_TRUE(out.productive) << xml;
+        }
+    }
+    EXPECT_EQ(oracle.compared, comparisons);
+    EXPECT_EQ(oracle.productive, comparisons);
+}
