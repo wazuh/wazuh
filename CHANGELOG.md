@@ -259,3 +259,4 @@
 | [#40946](https://github.com/wazuh/wazuh/issues/40946) | Fixed Logcollector losing lines when a truncated file grew past the old read position before the next check. |
 | [#41047](https://github.com/wazuh/wazuh/issues/41047) | Fixed `systemctl restart wazuh-agent` during a reload restarting only `wazuh-agentd`, and the ms-graph, office365, github, aws, azure and command modules losing every event after `wazuh-agentd` restarts. |
 | [#41165](https://github.com/wazuh/wazuh/issues/41165) | Fixed the "Ensure sudo is installed." check passing when sudo is not installed and failing on aarch64 in the AlmaLinux 8, 9 and 10, Amazon Linux 2023, CentOS 8, 9 and 10, and Oracle Linux 9 and 10 SCA policies. The check now queries the local rpm database instead of `dnf`. |
+| [#41622](https://github.com/wazuh/wazuh/issues/41622) | Fixed who-data falling back to real-time on EL hosts without `service`. |
