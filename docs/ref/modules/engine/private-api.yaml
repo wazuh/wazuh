@@ -845,7 +845,7 @@ paths:
       tags:
       - Raw Event Indexer
       summary: Get the status of the raw event indexer
-      description: Reports whether raw event indexing is enabled. The route exists only when the raw event indexer is created at startup.
+      description: Reports whether raw event indexing is enabled. The route exists only while `analysisd.server_enable_event_processing` is `true` (the raw event indexer is created at startup only then); otherwise it is answered `404`.
       requestBody:
         required: false
         content:

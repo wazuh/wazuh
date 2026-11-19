@@ -44,6 +44,9 @@ and configurations, and looking up a group's agents (`GET /groups/{group_id}/age
 `agent_groups -l -g`) matches the name exactly. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
 with its `agent.conf` at mode `0660`.
 
+A directory created or removed by hand under `/etc/wazuh-manager/shared/` is registered in, or removed
+from, `wazuh-manager-db` as a group by the [Database Sync](../database-sync/README.md) module.
+
 ## Managing groups with the Wazuh API
 
 | Task | Request | RBAC action |
@@ -62,7 +65,7 @@ with its `agent.conf` at mode `0660`.
 | Remove several agents from a group | `DELETE /agents/group?group_id=<GROUP_NAME>&agents_list=<ID>,<ID>` | `agent:modify_group`, `group:modify_assignments` |
 | List agents without a group | `GET /agents/no_group` | `agent:read` |
 | Delete groups | `DELETE /groups?groups_list=<GROUP_NAME>` (`all` for every group but `default`) | `group:delete` |
-| Restart / reload a group's agents | `PUT /agents/group/<GROUP_NAME>/restart`, `.../reload` | `agent:restart`, `agent:reload` |
+| Restart / reload a group's agents | `PUT /agents/group/<GROUP_NAME>/restart`, `.../reload` | `agent:restart` or `agent:reload`, plus `agent:read`, `group:read` |
 
 Example using `curl`:
 

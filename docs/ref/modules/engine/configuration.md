@@ -87,8 +87,8 @@ The debug level of the running engine is therefore set only by `analysisd.debug`
 
 After launching it, `start` waits up to 10 seconds for the PID file
 `/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid`, then sends `GET /status` to
-`/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second, up to 120 times, until the engine answers
-with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` up to 120 times, one second apart and each with a 5-second
+timeout, until the engine answers with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
 `wazuh-manager-analysisd died during the readiness check.` or
 `wazuh-manager-analysisd did not respond correctly after 120 attempts.` (the last one also kills the engine), and
 the start fails with `wazuh-manager-analysisd did not start correctly.`

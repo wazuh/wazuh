@@ -92,9 +92,9 @@ The same interpreter can run the `PRAGMA integrity_check` and `SELECT count(*)` 
 
 #### Committing pending agent registry changes
 
-`wazuh-manager-db` does not commit `global.db` on every write. It answers `ok` to a change (an agent registration, a group created or assigned) from inside an open transaction and commits it later on its own clock: within `wazuh_db.commit_time_min` (10 s) to `wazuh_db.commit_time_max` (60 s) by default, see [wazuh-db configuration](modules/wazuh_db/configuration.md). The SQLite backup API used by `.backup` sees committed data only, so a copy of a running manager's `global.db` can lack up to a minute of changes the API has already reported as done. Such a copy passes `PRAGMA integrity_check` and the agent count, and it can be older than the `client.keys` archived before it: restored, it shows a group with its agents missing, or a key with no registry row.
+A running `wazuh-manager-db` acknowledges agent registry changes (a registration, a group created or assigned) before it commits them, up to `wazuh_db.commit_time_max` seconds (60 by default) later — see [Writes and commits](modules/wazuh_db/README.md#writes-and-commits). The SQLite backup API used by `.backup` sees committed data only, so without this step a copy of a running manager's `global.db` can lack up to a minute of changes and be older than the `client.keys` archived before it, while still passing `PRAGMA integrity_check` and the agent count.
 
-Ask `wazuh-manager-db` to commit just before copying the database. `global commit` ends the open transaction at once, so the copy then holds every change acknowledged before the command. The procedures below that copy a running manager's database do this step:
+Send `global commit` to `wazuh-manager-db` just before copying the database; the copy then holds every change acknowledged before the command. The procedures below that copy a running manager's database do this step:
 
 ```bash
 sudo /var/wazuh-manager/framework/python/bin/python3 -I -c '
@@ -628,7 +628,7 @@ sudo chmod -R go-rwx $BACKUP_DIR
 
 A worker's global database and shared files come from the master, but its credential store and its credentials do not: restore `queue/keystore/` or the node cannot authenticate to the indexer, and restore `ca/` with `certs/`, because the start checks the pairs and the agents' bundle against that CA. A fresh installation minted a CA of its own, so the restore moves it aside instead of extracting over it.
 
-A backup taken without `ca/` (with an earlier version of this procedure) cannot be restored as it is: stage the CA that issued the node's pairs in `/etc/wazuh-manager/ca/` first, as described in [Cluster deployments](getting-started/credentials.md#cluster-deployments).
+A worker backup without `ca/` cannot be restored as it is: stage the CA that issued the node's pairs in `/etc/wazuh-manager/ca/` first, as described in [Cluster deployments](getting-started/credentials.md#cluster-deployments).
 
 ```bash
 BACKUP_DIR="/backup/wazuh-worker-$(hostname)-YYYYMMDD-HHMMSS"
@@ -761,6 +761,7 @@ docker compose exec -u root wazuh.manager sh -c '
     chmod 640 /etc/wazuh-manager/certs/*
     for D in ca export; do [ -d "/etc/wazuh-manager/$D" ] && chown -R root:root "/etc/wazuh-manager/$D" && chmod 700 "/etc/wazuh-manager/$D"; done
     [ -f /etc/wazuh-manager/local.env ] && chown root:root /etc/wazuh-manager/local.env && chmod 600 /etc/wazuh-manager/local.env
+    chown root:wazuh-manager /var/wazuh-manager/data/mmdb /var/wazuh-manager/data/store/geo/mmdb
     chown -R root:wazuh-manager /var/wazuh-manager/api/configuration
     chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/rbac.db
 '
@@ -1098,8 +1099,8 @@ sudo ls -l /var/ossec/queue/fim/db/
 sudo ls -l /var/ossec/queue/syscollector/db/
 sudo ls -l /var/ossec/queue/sca/db/
 
-# Set proper permissions
-sudo chown -R root:wazuh /var/ossec/queue
+# Set the owner the installer gives these directories (the service account, not root)
+sudo chown -R wazuh:wazuh /var/ossec/queue/fim/db /var/ossec/queue/syscollector/db /var/ossec/queue/sca/db
 
 # If databases are corrupted, remove them to allow recreation
 sudo rm /var/ossec/queue/fim/db/*.db

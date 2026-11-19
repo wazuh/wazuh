@@ -195,7 +195,8 @@ Checks domain names, subdomains, and hostnames against IOC databases.
     ],
     "explicit_fields": [
       "host.name",
-      "host.hostname"
+      "host.hostname",
+      "dns.question.name"
     ],
     "by_description_exact": {
       "enabled": true,
@@ -219,7 +220,7 @@ Checks domain names, subdomains, and hostnames against IOC databases.
   - `values`: Array of exact description strings. Fields with these descriptions will be EXCLUDED (useful to filter out fields like "user.domain" which refers to Active Directory, not internet domains)
 - `exclude.exclude_trees`: Additional field prefixes to exclude
 
-**Generated output:**
+**Generated output** (excerpt; the shipped configuration selects 26 fields):
 ```json,fragment
 "url_domain": {
   "sources": [
@@ -285,13 +286,13 @@ Checks file hashes against IOC databases. Supports multiple hash algorithms.
 
 All three levels are merged (union) when filtering fields.
 
-**Generated output:**
+**Generated output** (excerpt; sources are sorted):
 ```json,fragment
 "hash_md5": {
-  "sources": ["file.hash.md5", "process.hash.md5", "dll.hash.md5"]
+  "sources": ["dll.hash.md5", "file.hash.md5", "process.hash.md5"]
 },
 "hash_sha256": {
-  "sources": ["file.hash.sha256", "process.hash.sha256"]
+  "sources": ["dll.hash.sha256", "file.hash.sha256", "process.hash.sha256"]
 }
 ```
 

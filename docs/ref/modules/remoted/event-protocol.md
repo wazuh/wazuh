@@ -99,7 +99,9 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
   `wazuh.agent.id` must each appear exactly once, and `wazuh` and `wazuh.agent` must be objects.
   Names are compared after JSON unescaping, so `"wazuh"` and `"\u0077azuh"` are the same name. A header
   that repeats any of those is rejected with `400 Invalid event batch` and the batch is never
-  ingested — see [HTTPS events API](https-events-api.md#error-responses). Repeating other fields is
+  ingested — see [HTTPS events API](https-events-api.md#error-responses). On that path a dotted
+  member name that would expand into `wazuh.*` (a root member such as `"wazuh.agent.id"`, or any
+  dotted name inside `wazuh`) is rejected the same way. Repeating other fields is
   not rejected, but it is still outside this specification: each field is defined to appear once,
   and which copy survives is not contractual.
 
@@ -167,18 +169,22 @@ E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 
 ### Full Batch
 
+The request the legacy dispatcher sends for a 4.x agent. Its header is built from the keep-alive
+cache (see [Stateless Metadata](stateless-metadata.md)), so it carries the keep-alive's version text
+and no `groups`, and each event is the agent's message as received (`<queue>:<location>:<log>`):
+
 ```http
 POST /events/enriched HTTP/1.1
 Host: localhost
 Content-Type: application/x-wev1
-Content-Length: 655
+Content-Length: 635
 User-Agent: wazuh-manager-remoted/1.0
 Connection: keep-alive
 
-H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
-E {"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
-E {"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
-E {"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
+H {"wazuh":{"agent":{"host":{"os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"},"architecture":"x86_64","hostname":"web-server-01"},"id":"001","name":"web-server-01","version":"Wazuh v4.14.3"},"cluster":{"name":"production","node":"master-node"}}}
+E 1:/var/log/auth.log:Jan  5 10:00:00 web-server-01 sshd[1234]: Connection from 192.168.1.100 port 54321
+E 1:/var/log/auth.log:Jan  5 10:00:01 web-server-01 sshd[1234]: Accepted publickey for admin from 192.168.1.100
+E 1:/var/log/auth.log:Jan  5 10:00:02 web-server-01 sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx
 ```
 
 ## Parsing

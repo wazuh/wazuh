@@ -151,7 +151,7 @@ conf/
 | Element | Description |
 |---------|-------------|
 | `IFileLoader` | Interface with a protected `load()` method and a public `operator()()` |
-| `FileLoader` | Parses `analysisd.*` keys from a `.conf` file (default: `/etc/wazuh-manager/wazuh-manager-internal-options.conf`; standalone mode never reads it) |
+| `FileLoader` | Parses `analysisd.*` keys from the `.conf` file passed to its constructor (no default path: `main.cpp`'s `internalOptionsPath()` passes `/etc/wazuh-manager/wazuh-manager-internal-options.conf`; in standalone mode `load()` never calls it) |
 | `OptionMap` | `std::unordered_map<std::string, std::string>` — flat key→value map |
 
 ### Configuration Keys (include/conf/keys.hpp)
@@ -180,7 +180,7 @@ Then, for every unit registered with a `Range`, `load()` resolves the effective 
 (environment variable, else file, else default) and throws `std::runtime_error` when it is outside the range:
 `Invalid value for key '<key>' from the <source>: '<value>'. Allowed range: <min> to <max>.`, `<source>` being
 `internal options file` or `environment variable '<VAR>'`. The ranges are registered once, in the `Conf`
-constructor, and are the only copy: `main.cpp` no longer checks them, and both a start and `wazuh-manager-analysisd -t`
+constructor, and are the only copy: `main.cpp` does not check them, and both a start and `wazuh-manager-analysisd -t`
 call `load()`, so `-t` (and `wazuh-manager-control check`, which runs it) refuses every value a start would refuse.
 A range is checked even when the module that reads the key is disabled.
 
@@ -228,8 +228,8 @@ conf ──► base (PUBLIC), urlrequest (PRIVATE)
 
 ### Unit Tests (conf_test.cpp, unitconf_test.cpp)
 
-- **conf_test.cpp** (~476 lines): Tests `Conf` lifecycle (build, addUnit, load, get) with priority resolution.  Parameterized tests cover all type combinations × all three sources × valid/invalid values.
-- **unitconf_test.cpp** (~537 lines): Tests `UConf<T>` environment variable parsing for all supported types, including edge cases (overflow, whitespace, invalid format).
+- **conf_test.cpp**: Tests `Conf` lifecycle (build, addUnit, load, get) with priority resolution.  Parameterized tests cover all type combinations × all three sources × valid/invalid values.
+- **unitconf_test.cpp**: Tests `UConf<T>` environment variable parsing for all supported types, including edge cases (overflow, whitespace, invalid format).
 
 Both use `MockFileLoader` to isolate from filesystem.
 

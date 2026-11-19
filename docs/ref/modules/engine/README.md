@@ -1747,7 +1747,8 @@ kanban
 ```
 
 - **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The component type is
-  `decoder`, and the version must be 0, since versioning is not implemented.
+  `decoder`. Use version 0: asset versioning is not implemented, and the version part is not checked
+  (only the three parts and the prefix are, `cmstore/interface/cmstore/detail.hpp`).
 
 - **Metadata**: Provides descriptive information about the decoder. The decoder schema
   (`src/engine/ruleset/schemas/wazuh-decoders.json`, `metadata`) accepts only these fields; `title`, `author` and
@@ -1967,7 +1968,8 @@ kanban
 ```
 
 - **Name**: Identifies the output and follows the pattern `<asset_type>/<name>/<version>`. The component type is
-  `output`, and the version must be 0, since versioning is not implemented.
+  `output`. Use version 0: asset versioning is not implemented, and the version part is not checked
+  (only the three parts and the prefix are, `cmstore/interface/cmstore/detail.hpp`).
 
 - **Metadata**: Provides descriptive information about the output. Common fields include `module`, `title`,
   `description`, `compatibility`, `versions`, `author`, and `references`.
@@ -2707,6 +2709,10 @@ Wazuh components:
 /var/wazuh-manager/logs/wazuh-manager.log
 ```
 
+With `json` in the manager's [`logging`](../../configuration/manager/reference.md#logging) `log_format`, the
+same lines are also written, as JSON documents, to `/var/wazuh-manager/logs/wazuh-manager.json`; the plain file is
+written only while `log_format` holds `plain` (the default).
+
 Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
 Engine messages, including those of the Indexer Connector, use the `wazuh-manager-analysisd` component tag:
 
@@ -2862,7 +2868,7 @@ traces:
   ↳ cleanupDecoderTemporaryVariables() -> Success: Removed root keys prefixed with '_'
 [🟢] enrichment/Geo -> success
   ↳ Geo(89.160.20.156)|AS(89.160.20.156) -> Success: Geo and AS enrichment applied for IP at field 'source.ip'
-[🔴] enrichment/Ioc/connection -> failed
+[🔴] enrichment/IOC/connection -> failed
   ↳ IOC(connection) -> Failure: Source field(s) not found for 'source.ip, source.port'
 ```
 

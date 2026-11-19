@@ -5,7 +5,7 @@ a running installation:
 
 - [Requirements](requirements.md) — supported operating systems and minimum hardware.
 - [Packages](packages.md) — available packages per platform and where to download them.
-- [Installation](installation.md) — step-by-step installation for DEB and RPM platforms.
+- [Installation](installation.md) — step-by-step installation of the manager (DEB and RPM) and of the agents (Linux, macOS, Windows).
 - [Credentials](credentials.md) — how the manager provisions its passwords, the indexer
   credential and its TLS certificates, and what to do when it refuses to start.
 

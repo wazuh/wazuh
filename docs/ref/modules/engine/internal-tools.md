@@ -75,7 +75,7 @@ Details: `src/engine/tools/engine-metrics/README.md`.
 
 `engine-schema` generates the engine's schema and the associated decoder and enrichment configuration files from
 the Wazuh Common Schema (WCS) definitions. The manager installer runs it from the source tree; the generated files
-are installed into the engine store.
+are installed into the engine store. It is not installed in the `wazuh-internal-tools` virtual environment.
 
 Details: `src/engine/tools/engine-schema/README.md`.
 

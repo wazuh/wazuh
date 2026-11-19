@@ -18,7 +18,9 @@ is added to the local ones.
    [`remoted.shared_reload`](../remoted/configuration.md#remotedshared_reload) seconds (10 by
    default) and, when a file changed, rebuilds the group's `merged.mg`.
 3. On its next `POST /control` poll the agent learns that its configuration hash changed and
-   downloads the new `merged.mg` with `POST /download`.
+   downloads the new `merged.mg` with `POST /download`. An agent below 5.0, connected on the legacy
+   channel ([`legacy.enabled`](../remoted/configuration.md#legacyenabled)), has the new `merged.mg`
+   pushed to it by `wazuh-manager-remoted` instead.
 4. The agent unpacks it into its shared directory (`etc/shared/agent.conf` and the group's other
    files), validates it, and — with `<agent><auto_restart>` enabled, the default — reloads to apply it.
 
@@ -36,8 +38,7 @@ The `default` group's file, and the file every new group starts with
 (`/etc/wazuh-manager/shared/agent-template.conf`), hold an empty `<agent_config>` and a comment with
 examples to copy: collecting a log file, watching the users' download folders in real time (file
 integrity monitoring, which is what malware detection checks new files with), monitoring Docker, and
-turning on uninstall protection. The dashboard shows this file in **Agents management** > **Groups** >
-group > **Files** > **Edit group configuration**. Both are written at installation only when absent, so
+turning on uninstall protection. Both are written at installation only when absent, so
 an upgrade keeps the template and every group's file as they are.
 
 The uninstall-protection example is described in words, not written as XML: the agent package's
@@ -129,17 +130,19 @@ The agent's daemons read these sections from `agent.conf` (`read_main_elements()
 | `<gcp-pubsub>`, `<gcp-bucket>` | Google Cloud modules |
 | `<github>`, `<office365>`, `<ms-graph>` | Cloud log collection modules |
 | `<agent>` (or its 4.x spelling `<client>`) | Only its `<batch>` child (`<force_reconnect_interval>` is warned about and ignored); any other child is an error |
-| `<anti_tampering>` | Uninstall protection of Linux agents installed from a DEB or RPM package. Put it in an `<agent_config os="Linux">` block: Windows agents do not know the section, and an unscoped block makes the whole file invalid there. A value set here wins over the agent's local `ossec.conf`, both for the package's uninstaller and for what the agent reports (`GET /agents/{agent_id}/config/agent/anti_tampering`) |
+| `<anti_tampering>` | Uninstall protection of Linux agents installed from a DEB or RPM package. Put it in an `<agent_config os="Linux">` block: Windows agents do not know the section, and an unscoped block makes the whole file invalid there. A value set here wins over the agent's local `ossec.conf`, both for the package's uninstaller and for what the agent reports in its [configuration report](../client/configuration.md#config_report) (`wazuh.agent.configuration.content.agent.package_uninstallation.package_uninstallation` in the agent's `wazuh-agent-config` document) |
 
 Sections that are read only from the agent's local `ossec.conf`:
 
 - `<active-response>`: the agent's execd reads the whole block (`<disabled>`,
   `<repeated_offenders>`, `<allowlist>`) only from the local file, so an `<active-response>` block in
   `agent.conf` is accepted and ignored.
-- `<agent-upgrade>`: ignored in `agent.conf`.
+- `<agent-upgrade>`: ignored in `agent.conf`; `verify-agent-conf` warns
+  `agent-upgrade configuration is only set in the agent.` and still accepts the file.
 - `<logging>`: ignored in `agent.conf`.
 - `<cluster>`: ignored. `<client_buffer>` (4.x event buffering, replaced by `<agent><batch>`) is ignored
-  with the info line `'client_buffer' is no longer used and will be ignored.`
+  with the info line `'client_buffer' is no longer used and will be ignored. Event batching is configured
+  under <agent><batch>.`
 
 A manager-only section (`global`, `remote`, `auth`, `wdb`, `indexer`, `vulnerability-detection`,
 `vulnerability-detector`, `task-manager`) is skipped with the warning `<section> configuration is only set in the manager.` A
@@ -182,7 +185,8 @@ token)`, and the line and column in that message count from the API's own wrappe
 from the body itself. The `1114` detail is the reason `verify-agent-conf` gives
 (for an unknown section, `Invalid element in the configuration: '<section>'.`) and names the file as
 `<GROUP_NAME>/agent.conf`. A leading XML declaration (`<?xml version="1.0"?>`) in the body is accepted and
-dropped, so the file written has none. On disk it is the other way round: `verify-agent-conf` refuses an `agent.conf` that starts with an XML
+dropped, so the file written has none. A body with no element at all (plain text, or only a comment)
+is refused with `1114` `Configuration must contain at least one element`. On disk it is the other way round: `verify-agent-conf` refuses an `agent.conf` that starts with an XML
 declaration, with error `1226`, so do not add one when editing the file by hand. An `agent.conf` edited directly on disk is
 not checked by the manager: `wazuh-manager-remoted` distributes it as it is, so run
 `verify-agent-conf` after editing.

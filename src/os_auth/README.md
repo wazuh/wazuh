@@ -7,7 +7,7 @@ makes sure that agent's documents leave the indexer too.
 Three documentation layers cover authd, each with its own job:
 
 - **This README** — the developer's map: the [requirements catalog](#requirements) and
-  [design decisions](#design-decisions-d1d13), how the threads divide the work, which invariants are
+  [design decisions](#design-decisions-d1d17), how the threads divide the work, which invariants are
   load-bearing, and *why* it is built this way ([threads](#threads),
   [agent removal](#agent-removal), [invariants](#invariants), [operational notes](#operational-notes)).
 - **[`docs/ref/modules/authd/`](../../docs/ref/modules/authd/README.md)** — the operator-facing
@@ -77,8 +77,9 @@ it, inventory-sync applies it — and all three depend on these:
 | REQ-PURGE-5 | Deletion orders FIFO against that agent's in-flight sessions; neither authd nor the dispatcher serializes it |
 
 <a id="design-decisions-d1d12"></a>
+<a id="design-decisions-d1d13"></a>
 
-## Design decisions (D1–D13)
+## Design decisions (D1–D17)
 
 | # | Decision | Rationale |
 |---|---|---|
@@ -711,8 +712,7 @@ would make "the row is outstanding" and "the query failed" the same case.
   than `authd.purge_delay` after that. Tooling that deletes and immediately asserts on the indexer has
   to wait — but the deletion is now *recorded*, so waiting is all it has to do.
 - **A deletion can be refused.** `9021` / `1766` means the backlog is too deep; the agent is untouched
-  and the request can be retried once it drains. This is new, and it is the price of never orphaning
-  documents again.
+  and the request can be retried once it drains. It is the price of never orphaning documents.
 - **`queue/authd/pending-identities` holds credentials in the clear**, and is normally empty. A file
   that stays populated can indicate database-write or journal-compaction failures: the writer keeps
   retrying on its own clock, and enrollments start being refused with `9031` (a `503` at `/enroll`)
@@ -737,8 +737,7 @@ would make "the row is outstanding" and "the query failed" the same case.
 - **A re-enrollment is not a deletion**: same id, no purge, documents kept. Agents enrolled over port
   1515, and rows the database module rebuilt from `client.keys`, have no secret and answer `9026`
   until they enroll anew. Rebuilding those rows is not a recovery of the secret and never can be:
-  `client.keys` does not carry it, and neither does a `global.db` from a build older than the column
-  — that database is recreated, not migrated.
+  `client.keys` does not carry it.
 - **Re-enrollment supports agent ids of up to eight digits.** `OS_IsValidID()` caps the `kid` there
   and the agent applies the same rule to the answer, so an agent holding a nine- or ten-digit id
   cannot rotate its credentials. Administrative insertion still accepts the full range on purpose:

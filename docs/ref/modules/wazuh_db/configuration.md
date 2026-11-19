@@ -116,6 +116,9 @@ A database is vacuumed when its free-pages percentage is at least `free_pages_pe
 its fragmentation exceeds `max_fragmentation`, or it exceeds `fragmentation_threshold` and it has never
 been vacuumed or has grown more than `fragmentation_delta` points since the last vacuum.
 
+`wazuh_db.rlimit_nofile` follows the manager-wide rules in
+[File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
+
 ---
 
 ## Manager Configuration Examples

@@ -157,7 +157,7 @@ It is the single copy; the requirements above say why each rule exists.
 
 ## Test suite map
 
-`test/` builds `uds_http_server_utest` — pinned to C++17 (the floor's enforcement point) —
+`test/` builds `uds_http_server_utest` from the sources in `test/unit/` — pinned to C++17 (the floor's enforcement point) —
 with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no module bootstrap.
 
 | File | Pins |

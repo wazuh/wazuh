@@ -150,11 +150,8 @@ This page lists the supported operating systems and architectures for Wazuh Serv
 
 ## Package Download
 
-Wazuh packages are available in different repositories depending on the release stage. Package paths follow this structure:
-
-```
-<BASE_URL>/<PACKAGE_TYPE>/<COMPONENT>_<VERSION>[-<REVISION>]_<ARCH>.<EXT>
-```
+Wazuh packages are available in different repositories depending on the release stage. A package's URL is the
+repository's base URL followed by the path for its format, listed in [Package paths by format](#package-paths-by-format).
 
 ### Repository URLs
 

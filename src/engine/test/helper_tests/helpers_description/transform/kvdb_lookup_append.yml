@@ -24,6 +24,8 @@ metadata:
     - A number of arguments other than 2.
 
     Notes:
+    - During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+      no-op.
     - Unlike `array_append`, a target that is not an array is replaced instead of failing the operation.
   group: kvdb
   fails_when:

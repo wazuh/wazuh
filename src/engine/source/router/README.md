@@ -81,11 +81,12 @@ router/
 │   ├── environment.hpp / .cpp  # Environment — bk::IController wrapper
 │   ├── environmentBuilder.hpp  # EnvironmentBuilder — factory
 │   ├── entryConverter.hpp/.cpp # EntryConverter — JSON serialization
+│   ├── logThrottle.hpp         # LogThrottle — rate-limits the malformed-event warning
 │   └── orchestrator.cpp        # Orchestrator implementation
 └── test/
     ├── mocks/router/           # GMock mocks (mockRouter.hpp, mockTester.hpp)
     └── src/
-        ├── unit/               # Unit tests for each class
+        ├── unit/               # Unit tests for each class (+ mockRouter/mockTester/mockWorker.hpp)
         └── component/          # Integration tests (router_test, tester_test)
 ```
 

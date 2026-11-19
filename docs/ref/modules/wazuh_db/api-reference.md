@@ -118,7 +118,7 @@ id that does not exist.
 ## `GET /v1/agents/all`
 
 Every agent in `global.db`, ordered by `id` ascending, with a fixed set of 18 fields (credentials such
-as `internal_key` and `reenroll_secret` are never included). Agent `0` (the manager itself) is excluded.
+as `internal_key` and `reenroll_secret` are never included). A row with id `0` is never returned (`WHERE id > 0`).
 
 Field names are flattened with dots where the source is an OS attribute:
 

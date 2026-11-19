@@ -86,8 +86,8 @@ The two methods do not keep the same things:
 | `default` group's `agent.conf` | Appended to the 5.0 one when the 4.x one sets anything | Appended by hand ([Groups](#groups)) |
 | SCA policies in a group folder | Kept when the group's `agent.conf` loads them | Kept, with the whole folder |
 | Other files in a group folder | Named in the review, left behind | Kept, with the whole folder |
-| Enrollment password | `--with-password` | [Enrollment password](#enrollment-password) |
-| API users, roles and policies | `--with-rbac` | [API users, roles and policies](#api-users-roles-and-policies) |
+| Enrollment password | `--with-password`, given to both `export` and `import` | [Enrollment password](#enrollment-password) |
+| API users, roles and policies | `--with-rbac`, given to both `export` and `import` | [API users, roles and policies](#api-users-roles-and-policies) |
 | Verification | `check` | The queries in [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) |
 
 Use the manual steps only if you need the registration dates or the 4.x version and OS before the
@@ -333,8 +333,9 @@ Restart it, and it connects with the key it holds.
 
 A new agent installed during the window costs you something too, even on a first migration: it
 enrolls legitimately and takes the next free id, which is one the bundle is about to restore. The
-import then refuses to start, because the target already holds an agent, and with `--force` it fails
-on that agent with the manager's error `1708`. Either way you have two identities to reconcile by hand.
+migration tool's `import` then refuses to run, because the target already holds an agent; with
+`--force` it goes ahead and the manager refuses the colliding agent with error `1708`. Either way
+you have two identities to reconcile by hand.
 
 Both are avoided the same way, by closing the window rather than racing it. Install with the agent
 listeners pointed away from the fleet, which the installation variables already support:
@@ -449,12 +450,15 @@ or `agent_groups` in 4.x is in the same group on 5.0, even though its `ossec.con
 it. Review every `agent.conf` against the 5.0 agent configuration reference before starting.
 A removed option such as `scan_on_start` or `check_files`, or a top-level `<labels>` block (the
 4.x agent labels), only produces a warning, and `verify-agent-conf` still returns OK. The top-level
-settings a 5.0 agent ignores this way are `<labels>`, `<client_buffer>` (batching moved to
-`<agent><batch>`), `<integration>`, `<email_alerts>`, `<reports>`, `<syslog_output>`,
-`<agentless>`, `<database_output>`, `<alerts>`, `<command>`, `<ruleset>`, `<rule_test>`,
-`<agent-key-polling>` and `<fluent-forward>`. Each one logs
-`WARNING: (1223): '<name>' is no longer supported and will be ignored.` on the manager when the
-group is saved and on every agent of the group, repeatedly. Remove them. For `<labels>`, nothing
+settings a 5.0 agent ignores this way are `<labels>`, `<integration>`, `<email_alerts>`, `<reports>`,
+`<syslog_output>`, `<agentless>`, `<database_output>`, `<alerts>`, `<command>`, `<ruleset>`,
+`<rule_test>`, `<agent-key-polling>` and `<fluent-forward>`. Each one logs
+`WARNING: (1223): '<name>' is no longer supported and will be ignored.` followed on the same line by a
+short reason, on the manager when the group is saved and on every agent of the group, repeatedly.
+`<client_buffer>` is ignored too, with an INFO line instead (`'client_buffer' is no longer used and
+will be ignored. Event batching is configured under <agent><batch>.`), and a manager section such
+as `<global>`, `<remote>` or `<auth>` logs `WARNING: <name> configuration is only set in the
+manager.` Remove them. For `<labels>`, nothing
 carries `agent.labels.*` into 5.0 events any more: rules, dashboards or integrations that used a
 label need another key, such as group membership (`wazuh.agent.groups`). A `<labels>`
 wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
@@ -639,7 +643,8 @@ those differ: `dateAdd` is the moment the tool inserted the agent (`POST /agents
 registration date), and version and OS stay empty until the agent's first keepalive. Its `check`
 command compares the manager against the bundle and names any agent missing, renamed, present
 without having been in the bundle, or whose groups differ from the 4.x ones (a group missing, an
-extra one such as `default`, or a different order). It also checks that the `default` group holds
+extra one such as `default`, or a different order), and any carried group that does not exist. It
+also checks that the `default` group holds
 the 4.x settings the bundle carried and that every carried SCA policy is in its group folder.
 
 ## 6. Reconnect the 4.x agents

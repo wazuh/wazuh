@@ -144,13 +144,10 @@ option `wazuh_modules.manager_task_log_compress=0` they stay plain `.log` and `.
 
 ## Implementation Notes
 
-- **Reader:** `os_logging_config()` in `src/shared/src/debug_op.c`. On a manager C daemon it reads the
-  `logging` section of the effective configuration through the hook `libconfig` registers; with no
-  configuration available it falls back to `plain`. The engine has no such hook: it reads the same
-  setting through `base::managerConfig::logFormat()` at start-up and writes with its own sink
-  (`src/engine/source/base/src/managerLogSink.cpp`). On an agent it reads `ossec.conf` directly.
 - **Default file:** the installer writes the block from `etc/templates/config/generic/logging.template`
   (`plain`).
+- **Implementation:** the C reader (`os_logging_config()`), the configuration hook it reads through, and
+  the engine's hand-kept copy of the writer are described in the developer README, `src/shared/README.md`.
 
 ---
 

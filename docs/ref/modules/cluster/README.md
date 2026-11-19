@@ -88,7 +88,8 @@ exception, because it must be the same on every node.
 What an operator sees:
 
 - A worker whose own file says otherwise applies the master's value. `wazuh-manager-modulesd` logs a
-  warning at every start while they differ, and the worker's own setting is ignored until then.
+  warning at every start while they differ, and the worker's own setting is ignored for as long as
+  they do.
 - If the worker's vulnerability scanner is running with the other value when the worker connects,
   `cluster.log` records a warning and the worker reloads itself once. If the scanner still does
   not follow after that reload, an error is logged and the node is not reloaded again. A reload
@@ -97,7 +98,8 @@ What an operator sees:
   (`enabled`); reading the worker's `wazuh-manager.conf`, directly or through the API, shows its
   local value.
 - To switch vulnerability detection for the cluster, change it on the master and reload every node
-  (`PUT /cluster/reload`). Each worker restarts twice: the reload starts it with the value it had
+  (`PUT /cluster/reload`): the master answers with the value its own `wazuh-manager-clusterd` read
+  when it started, so a change on the master alone reaches no worker. Each worker restarts twice: the reload starts it with the value it had
   stored, and once it reconnects and learns the new one it reloads itself. Every daemon but
   `wazuh-manager-remoted` restarts each time.
 - The worker asks its local scanner until it answers, for as long as the connection to the master
@@ -151,18 +153,20 @@ Periodic tasks, with their intervals (internal, not configurable):
 | Local agent-groups | master | 10 s, after a 30 s start delay | Reads the agent-group assignments not yet synchronized from its `wazuh-manager-db` and broadcasts them to every connected worker. |
 | Agent-groups recv / recv full | worker | on each broadcast | Applies the assignments and compares its agent-groups checksum with the master's; after 5 mismatches in a row the worker requests the whole table. |
 
-When `<indexer><hosts>` is configured, `wazuh-manager-clusterd` also runs indexer-dependent tasks,
-started only while the indexer is reachable: on every node, the
-[active-response](../active-response/README.md) fetch task; on the master, the group and cluster-name
-synchronization of disconnected agents' indexed documents, and a periodic metrics snapshot. Without
-`<indexer><hosts>` it logs `Indexer configuration is unavailable; Indexer tasks will not be started.`
+`wazuh-manager-clusterd` also runs indexer-dependent tasks, started only while the indexer is
+reachable: on every node, the [active-response](../active-response/README.md) fetch task; on the
+master, the group and cluster-name synchronization of disconnected agents' indexed documents, and a
+periodic metrics snapshot. `<indexer><hosts>` is mandatory, so these tasks are always set up; only
+when the daemon cannot read the `<indexer>` section at start does it skip them and log
+`Indexer configuration is unavailable; Indexer tasks will not be started.` (on the master, after
+`Error loading indexer configuration: <reason>`).
 
 The indexer is checked every 300 s while it is reachable. The scheme of `<indexer><hosts>` decides
 TLS: `https://` hosts use `<ssl>`, `http://` hosts ignore it, and a list mixing both is refused. Two
 kinds of failure are told apart:
 
 - **A configuration that cannot work** — an `<indexer>` section that does not parse, mixed schemes, a
-  `<certificate>` without its `<key>`, a TLS file that cannot be loaded, or a missing indexer
+  `<certificate>` without its `<key>` (or the reverse), a TLS file that cannot be loaded, or a missing indexer
   credential in the keystore — is logged once, as an error: `Indexer tasks cannot start, the indexer
   configuration is not usable: <reason>`. It is logged again only when the reason changes, and is
   checked again every 300 s.

@@ -127,7 +127,10 @@ all reach `_log_function()`:
 
 `w_mconf_hook_set()` registers a section provider; `w_mconf_hook_section()` asks it for a section of
 the effective document (caller frees) and returns `NULL` without a provider. libconfig registers the
-provider when it loads the document (`src/config/src/mconf-config.c`); the readers inside libwazuh
+provider from a constructor when the library is loaded (`w_mconf_register_hook()` in
+`src/config/src/mconf-config.c`); when no document is loaded yet, the provider loads the default
+`wazuh-manager.conf` silently, since it may run inside the first log line, and returns `NULL` if that
+fails, leaving the daemon to report the error when it loads the file itself. The readers inside libwazuh
 — the cluster getters (`src/cluster_utils.c`) and the log format (`src/debug_op.c`) — go through
 it. Unit tests register their own (`test_cluster_utils`, `test_logging_config`). Manager only.
 

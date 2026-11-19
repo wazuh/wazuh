@@ -2,7 +2,9 @@
 
 In previous Wazuh versions (4.x), forwarding alerts to remote log servers via Syslog was managed directly in the Wazuh manager's `ossec.conf` file using `<syslog_output>` configuration blocks handled by the internal `csyslogd` daemon.
 
-Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `csyslogd` daemon, and `<syslog_output>` is not a section of the manager's `wazuh-manager.conf`. Leaving the block in place is a startup error (`(1244): Invalid configuration at '/syslog_output': unknown option ...`, or `duplicate element <syslog_output>` when there are several), so remove it. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
+Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `csyslogd` daemon (the manager runs `wazuh-manager-clusterd`, `-modulesd`, `-remoted`, `-analysisd`, `-db`, `-authd` and `-apid` only), and `<syslog_output>` is not a section of the manager's `/etc/wazuh-manager/wazuh-manager.conf`. Leaving the block in place stops the manager from starting with `(1244): Invalid configuration at '/syslog_output': unknown option (does not satisfy 'additionalProperties') [schema /].`, reported once however many blocks there are, so remove it. The engine (`wazuh-manager-analysisd`) has no Syslog output either: its outputs write events only to the Wazuh indexer (`wazuh-events-v5-<category>` data streams) or to a local file (see [Outputs](../../ref/modules/engine/ref-output.md)).
+
+Alert forwarding is now configured outside the manager, in the Wazuh dashboard, using the **Notifications** and **Alerting** plugins of the Wazuh indexer and dashboard (they are not part of the manager and have no manager option) to send webhooks.
 
 > **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x `<syslog_output>` configurations. You must manually recreate your data filtering and forwarding logic in the Wazuh dashboard. Use the mapping table below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
 
@@ -155,7 +157,7 @@ You can replicate this behavior with the following dashboard workflow:
 
 - **Type:** Per query monitor
 - **Index pattern:** `wazuh-findings-v5*`
-- **Data filter:** `wazuh.rule.tags` contains `authentication_failed`, and `wazuh.rule.level` is one of the severities that correspond to your old threshold (for example `high` or `critical`; adjust to the severity values present in your environment)
+- **Data filter:** `wazuh.rule.tags` contains `authentication_failed`, and `wazuh.rule.level` is one of the severities that correspond to your old threshold (for example `high` or `critical`; see [Map severity levels](rules-4x-to-5x.md#step-3-map-severity-levels) for how 4.x levels correspond to 5.x severities)
 
 **Trigger setup:**
 

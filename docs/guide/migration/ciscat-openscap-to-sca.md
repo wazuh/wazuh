@@ -162,7 +162,7 @@ When you need to migrate a specific check rather than a whole policy, map the XC
 </Rule>
 ```
 
-In SCA, the rule's metadata and its test live together in one self-contained YAML check. The OVAL "is the package installed" test becomes a command rule that inspects the package database directly. This is exactly how the bundled Ubuntu CIS policy expresses it (`ruleset/sca/ubuntu/cis_ubuntu22-04.yml`):
+In SCA, the rule's metadata and its test live together in one self-contained YAML check. The OVAL "is the package installed" test becomes a command rule that inspects the package database directly. This is how the bundled Ubuntu CIS policy expresses it (`ruleset/sca/ubuntu/cis_ubuntu22-04.yml`, abbreviated):
 
 ```yaml
 # SCA check
@@ -170,11 +170,12 @@ In SCA, the rule's metadata and its test live together in one self-contained YAM
   name: "Ensure AIDE is installed."
   description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
   rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
-  remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db."
+  remediation: |   # a multi-line block in the policy; abbreviated here
+    Install AIDE using the appropriate package manager or manual installation:
   compliance:
     nist_800_53: ["AC-6"]
     pci_dss: ["10.2.1", "10.2.1.1"]
-    # ... additional compliance keys omitted for brevity
+    # ... additional compliance keys and the mitre block omitted for brevity
   condition: all
   rules:
     - "c:dpkg-query -s aide -> r:Status: install ok installed"
@@ -199,7 +200,7 @@ Recommendation: 2.4.1.2 Ensure permissions on /etc/crontab are configured
 Result: fail
 ```
 
-Wazuh's bundled SCA CIS policies already implement these recommendations and preserve the CIS numbering in a comment, so the equivalent check is a direct lookup (`ruleset/sca/ubuntu/cis_ubuntu22-04.yml`):
+Wazuh's bundled SCA CIS policies already implement these recommendations and preserve the CIS numbering in a comment, so the equivalent check is a direct lookup (`ruleset/sca/ubuntu/cis_ubuntu22-04.yml`, abbreviated):
 
 ```yaml
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
@@ -207,11 +208,12 @@ Wazuh's bundled SCA CIS policies already implement these recommendations and pre
     name: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
-    remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on /etc/crontab: # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
+    remediation: |   # a multi-line block in the policy; abbreviated here
+      If cron is installed on the system, run the following commands to set ownership and permissions on `/etc/crontab`:
     compliance:
       nist_800_53: ["AC-5", "AC-6"]
       pci_dss: ["1.3.1", "7.1"]
-      # ... additional compliance keys omitted for brevity
+      # ... additional compliance keys and the mitre block omitted for brevity
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/crontab -> r:0 root 0 root && r:600'

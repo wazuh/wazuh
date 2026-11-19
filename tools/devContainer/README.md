@@ -319,6 +319,8 @@ Located at `tools/purge_wazuh.sh` (Wazuh repository root); run it as root. It re
 - Runs the same cleanup when no package is installed (an installation from sources)
 - Never touches `/etc/wazuh`
 
+Run it before re-running the E2E setup when a local installation must be reset completely. VS Code task: "Scripts: Purge Wazuh installation".
+
 ## E2E Testing Environment
 
 > [!NOTE]
@@ -416,22 +418,17 @@ Which files a manager needs and how the start checks them: [Provision certificat
 **VS Code Tasks:** "E2E Scripts: [Manager] Copy wazuh-manager certs" and, to re-issue the leaves while keeping the CA, "E2E Scripts: [Manager] Regenerate certs (keep CA)" (`Ctrl+Shift+P` → `Tasks: Run Task`)
 
 ### wazuh_install_manager.sh / wazuh_verify_manager.sh
-`wazuh_install_manager.sh` (root) is an unattended install of the manager from this checkout, with the certificates and the credentials of the E2E stack, a start and a verification; evidence goes to `--out` (default `$TMPDIR/wazuh-e2e-evidence/<timestamp>`). It refuses to run without `--yes`, because it is destructive: `--mode fresh` (the default, into `--dir`, default `/var/wazuh-manager`) stops the manager and runs `tools/purge_wazuh.sh`, which removes **every** Wazuh installation on the host and `/etc/wazuh-manager` (see [purge_wazuh.sh](#purge_wazuhsh)), plus a custom `--dir` (handed to it as `WAZUH_HOME`) — which must be absent, empty or a manager installation (`bin/wazuh-manager-control`), or the script refuses before touching anything; `--mode sandbox` installs into a directory named `wazuh-manager` (default `$TMP_CLEAN_ENV/wazuh-manager`), removing an existing one first, without registering the service, but still shares `/etc/wazuh-manager`. It refuses a `$WAZUH_REPO/src/build` configured as a test or sanitizer tree. The manager passwords of `.credentials.env` reach `install.sh` through its environment; the certificates are deployed with `init.sh --certs-only` and `wazuh_copy_certs.sh`. It records what it installed (commit, branch, merge-base, binary SHA-256s) in `<dir>/.install-provenance`, read back as the "before" of the next run and by `wazuh_verify_manager.sh`'s manifest: a dev-only marker beside the binaries it describes, which no package installs and `manager_base.csv` does not list (an earlier version wrote it to `/etc/wazuh-manager`, shared by every `--dir`; the script removes that copy). Options: `--before-hook`, `--snapshot`, `--skip-build` (`install.sh binary-install`), `--no-start`, `--api`, `--https-port`/`--legacy-port` (sandbox only); see `--help`.
+`wazuh_install_manager.sh` (root) is an unattended install of the manager from this checkout, with the certificates and the credentials of the E2E stack, a start and a verification; evidence goes to `--out` (default `$TMPDIR/wazuh-e2e-evidence/<timestamp>`). It refuses to run without `--yes`, because it is destructive: `--mode fresh` (the default, into `--dir`, default `/var/wazuh-manager`) stops the manager and runs `tools/purge_wazuh.sh`, which removes **every** Wazuh installation on the host and `/etc/wazuh-manager` (see [purge_wazuh.sh](#purge_wazuhsh)), plus a custom `--dir` (handed to it as `WAZUH_HOME`) — which must be absent, empty or a manager installation (`bin/wazuh-manager-control`), or the script refuses before touching anything; `--mode sandbox` installs into a directory named `wazuh-manager` (default `$TMP_CLEAN_ENV/wazuh-manager`), removing an existing one first, without registering the service, but still shares `/etc/wazuh-manager`. It refuses a `$WAZUH_REPO/src/build` configured as a test or sanitizer tree. The manager passwords of `.credentials.env` reach `install.sh` through its environment; the certificates are deployed with `init.sh --certs-only` and `wazuh_copy_certs.sh`. It records what it installed (commit, branch, merge-base, binary SHA-256s) in `<dir>/.install-provenance`, read back as the "before" of the next run and by `wazuh_verify_manager.sh`'s manifest: a dev-only marker beside the binaries it describes, which no package installs and `manager_base.csv` does not list (a stale `/etc/wazuh-manager/.install-provenance`, which every `--dir` would share, is deleted). Options: `--before-hook`, `--snapshot`, `--skip-build` (`install.sh binary-install`), `--no-start`, `--api`, `--https-port`/`--legacy-port` (sandbox only); see `--help`.
 
 `wazuh_verify_manager.sh` (root) is the verification on its own: `wazuh-manager-control status` (7 daemons by default, `--daemons`), `wazuh-manager-conf validate`, `GET <prefix>/cacerts` on the HTTPS listener, no new `ERROR`/`CRITICAL` line in `logs/wazuh-manager.log` since `--start-mark`, and with `--api` a Server API login. It prints one `PASS|FAIL|SKIP` line per check and exits 0 only when nothing failed.
 
 VS Code tasks: "E2E Scripts: [Manager] Fresh install from branch (purge!)" and "E2E Scripts: [Manager] Verify installed manager".
 
 ### cluster/
-An opt-in compose project (`dev-env-cluster`, on the E2E network) that turns the host manager into a cluster master and runs worker managers in containers, with `cluster.sh up|down`; see [cluster/README.md](e2e/cluster/README.md).
+An opt-in compose project (`dev-env-cluster`, on the E2E network) that turns the host manager into a cluster master and runs worker managers in containers, with `cluster.sh up|ports|down`; see [cluster/README.md](e2e/cluster/README.md).
 
 ### dashboard/
 Reproducible dashboard captures with Playwright; see [dashboard/README.md](e2e/dashboard/README.md).
-
-### purge_wazuh.sh
-Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup if you need to reset a local Wazuh installation completely.
-
-**VS Code Task:** Available as "Scripts: Purge Wazuh installation" in the task menu
 
 
 ## Additional Resources

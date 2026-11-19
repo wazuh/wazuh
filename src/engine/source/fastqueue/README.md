@@ -90,7 +90,7 @@ the byte count to 0, so call it before the queue is used):
   disabled and `bytesUsed()` / `maxBytes()` return 0.
 
 `main.cpp` sets it on the router's event queue to `analysisd.event_queue_max_bytes`, measuring each
-`IngestEvent` by the size of its raw string (`e.second.size()`).
+`IngestEvent` by the size of its raw string (`e.rawEvent.size()`).
 
 ### CQueue Traits
 

@@ -3,8 +3,8 @@
 In 5.x an agent's control traffic — "I started", "I am alive", "I am stopping" — is HTTP: a single
 authenticated route on remoted, `POST /control`, whose body is JSON discriminated by a `"type"`
 field. This is the manager's real hot path (one `notify` per agent per interval, forever), so the
-`agent` mode sends it for real; it is also the endpoint whose behavior at fleet scale F9c-4 must
-report on.
+`agent` mode sends it for real; it is also the endpoint whose behavior at fleet scale the load report must
+cover.
 
 Source of truth: `src/remoted/remoted_module/src/endpoints/controlEndpoint.cpp` and
 `src/remoted/remoted_module/src/control/controlHandler.cpp`.
@@ -164,7 +164,7 @@ and the loop continues. A `shutdown` answer is only counted (`control_shutdown_o
 The throttle matters for interpreting results, not for behavior: it does not slow the response, but
 it means a keepalive interval below 60 s produces cheap notifies most of the time and an expensive
 one periodically. A run whose interval is much shorter than 60 s therefore measures mostly the cheap
-path — the notify-storm scenario **SHOULD** report both, and F9c-4 **MUST** state the interval used.
+path — the notify-storm scenario **SHOULD** report both, and the load report **MUST** state the interval used.
 
 ## What the sender does with the response
 

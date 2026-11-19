@@ -166,8 +166,9 @@ retention period after it is marked disconnected, not the moment it is marked.
 protected is how long the handler holds its executor slot, measured in seconds, while the batch is
 counted in agents.
 
-If `wazuh-manager-authd` refuses a removal because its own deletion backlog is full, the sweep stops there
-and retries on the queue's backoff ladder rather than reporting success — the agent is still there.
+If `wazuh-manager-authd` refuses a removal — its own deletion backlog is full, or any other error — or
+does not answer within `wazuh_modules.manager_task_wdb_timeout`, the sweep stops there and retries
+from that agent on the queue's backoff ladder rather than reporting success — the agent is still there.
 An agent that is already gone, or one whose deletion `wazuh-manager-authd` has already journaled, counts as
 done. If `wazuh-manager-authd` answers that this node is not the master, the run is retired as
 `failed`: the node was demoted after spawning it, and the new master's own schedule takes over.

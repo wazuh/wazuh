@@ -176,5 +176,4 @@ set to a directory, `CaBundleTest.RenderBlockRoundTripsThroughParseBundle` write
 `bundle.pem` and the `leaf.pem` it signs there, and that pair is then loaded with
 `openssl storeutl -noout -certs`, verified with `openssl verify -CAfile bundle.pem leaf.pem` and
 handed to Python's `ssl.create_default_context(cafile=...)`. That external check is manual: no
-script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR` (the script
-and its output are kept).
+script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR`.

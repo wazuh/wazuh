@@ -315,7 +315,9 @@ If `apt remove` or `yum remove` of the agent fails with `Validation host not pro
 cannot be continued.`, uninstall protection is on: `<anti_tampering><package_uninstallation>` is `yes` in
 the group's `agent.conf` (which wins) or in the local `ossec.conf`.
 
-1. Check the value the agent applies: `GET /agents/{agent_id}/config/agent/anti_tampering`
+1. Check the value the agent applies: its [configuration report](configuration.md#config_report) carries it in
+   the agent's `wazuh-agent-config` document, as
+   `wazuh.agent.configuration.content.agent.package_uninstallation.package_uninstallation`
 2. Validate the removal: set `VALIDATION_HOST` and `VALIDATION_TOKEN` (or `VALIDATION_LOGIN`) for the
    package command, or in a root-owned `/var/ossec/etc/uninstall_validation.env`
 3. Or turn it off: set `package_uninstallation` to `no` where it is set, and wait for the agent to apply it

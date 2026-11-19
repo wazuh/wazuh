@@ -37,7 +37,7 @@ Each hop has its own clock, and they are not nested inside one another:
 | Downstream connect | [`remoted.downstream_connect_timeout`](configuration.md#remoteddownstream_connect_timeout) | 2 s | `503` |
 | Downstream body write | [`remoted.downstream_write_timeout`](configuration.md#remoteddownstream_write_timeout) | 5 s | `503` |
 | Downstream answer | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout) / [`..._stateful_...`](configuration.md#remoteddownstream_stateful_response_timeout) | 5 s / 20 s | `503` (`/stateful`: with `Retry-After` [`..._stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after), 20 s) |
-| Writing the response | [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) | 10 s | connection closed. Rearmed per chunk on a streamed `POST /download`, which does **not** make a slow transfer safe: below ~1 Mbit/s it is what aborts WPK downloads (§5) |
+| Writing the response | [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) | 10 s | connection closed. Rearmed per chunk on a streamed `POST /download`, which does **not** make a slow transfer safe: in the measurements, below ~1 Mbit/s it is what aborted WPK downloads (§5) |
 | The whole request, from the agent's side | `agent.https_request_timeout` / `agent.https_stateful_timeout` | 10 s / 90 s | attempt consumed, retry after backoff |
 | The whole `/enroll` request, from the agent's side | `agent.https_enroll_timeout` | 35 s | attempt consumed, retry after the enrollment ramp |
 
@@ -105,11 +105,12 @@ These have no option. They are the ceilings the tunable values have to fit under
 `http_read_timeout × link rate`, and inventory bodies compress ~16:1 on the wire, so the effective
 payload allowance is much larger than the raw figure suggests. The two casualties, in order, are
 (a) WPK downloads, which are binary and do not compress, and where the manager gives up before the
-agent does: below roughly 0.8–1.1 Mbit/s it tears the stream down (isolated to
-[`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout): 5/10 aborts at the
-shipped 10 s, 0/5 at 120 s on the same shaper), so a real 11,977,198 B WPK needs ~1.06 Mbit/s to
-land inside the agent's 90 s and the pass/fail band is [0.90, 1.10) Mbit/s — non-deterministic
-near it, so one passing run does not clear a link class; and (b) large first-time inventory
+agent does. These figures are lab measurements on a traffic shaper, not limits the code sets: below
+roughly 0.8–1.1 Mbit/s the manager tore the stream down, isolated to
+[`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) (5 of 10 transfers
+aborted at the shipped 10 s, 0 of 5 at 120 s on the same shaper); a real 11,977,198 B WPK needed
+~1.06 Mbit/s to land inside the agent's 90 s, and the pass/fail band was [0.90, 1.10) Mbit/s —
+non-deterministic near it, so one passing run does not clear a link class; and (b) large first-time inventory
 sessions, where the fix is reducing what one session carries rather than raising a timeout.
 Raise `remoted.http_read_timeout` and `agent.https_stateful_timeout` **together** — either alone
 is inert.
@@ -207,10 +208,9 @@ number that has to move.
 
 ## 9. Measured defaults record
 
-All shipped defaults were validated by measurement in the campaign; none needed changing.
-The two range fixes it produced (the batch-size ceiling, the startup warning for the throttle)
-shipped separately. Final sign-off of the defaults against a stated product envelope (target
-fleet size, worst supported link) is still pending.
+All shipped defaults were validated by measurement in the campaign; none needed changing. The
+figures on this page describe that campaign's reference pair; they are not guarantees for other
+hardware or links.
 
 ## See Also
 

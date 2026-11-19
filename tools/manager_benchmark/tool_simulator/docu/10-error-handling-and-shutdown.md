@@ -3,8 +3,7 @@
 The governing principle: **the sender never hides a problem to keep a run going, and it never judges
 a run's outcome.** A benchmark that retries its way past failures reports throughput it did not
 achieve, and a spurious error that gets swallowed is exactly the kind of bug this tooling is meant
-to surface (F9b found a real server-side race precisely because an unexplained disconnect was
-treated as a failure, not noise). At the same time, a `503` under saturation or a `409` on a
+to surface (an unexplained disconnect is treated as a failure, not noise). At the same time, a `503` under saturation or a `409` on a
 checksum is a *result to record*, not a failure — so the sender separates two ideas cleanly:
 
 - **run-invalidating conditions** set a non-zero exit code, because they mean the measurement itself
@@ -98,4 +97,4 @@ The signals are caught with `signal.NotifyContext` for the whole run, so a secon
 drain has no further effect: the drain window runs to its end.
 
 The sender **MUST NOT** clean up the enrolled fleet: removing agents is the orchestration's job
-(F9c-3), and a sender that deletes agents on exit makes a crashed run impossible to inspect.
+(`cleanup_agents.sh`), and a sender that deletes agents on exit makes a crashed run impossible to inspect.

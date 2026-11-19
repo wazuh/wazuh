@@ -99,6 +99,8 @@ The following changes were identified during agent startup validation after upgr
 | `<rootcheck><check_files>...</check_files></rootcheck>` | Removed | `INFO: Rootcheck option 'check_files' is no longer supported. Use the FIM module instead.` | Remove from `rootcheck`; use FIM (`syscheck`) controls. |
 | `<rootcheck><check_trojans>...</check_trojans></rootcheck>` | Removed | `INFO: Rootcheck option 'check_trojans' is no longer supported. Use the FIM module instead.` | Remove from `rootcheck`; use FIM (`syscheck`) controls. |
 | `<rootcheck><rootkit_files>...</rootkit_files></rootcheck>` | Removed | `INFO: Rootcheck option 'rootkit_files' is no longer supported.` | Remove from `rootcheck`. |
+| `<rootcheck>` `<rootkit_trojans>`, `<system_audit>`, `<windows_audit>` | Removed | `INFO: Rootcheck option 'rootkit_trojans' is no longer supported.` (one line per option) | Remove from `rootcheck`. |
+| `<rootcheck>` `<check_unixaudit>`, `<check_winaudit>`, `<check_winapps>`, `<check_winmalware>`, `<windows_apps>`, `<windows_malware>` | Removed | `INFO: Rootcheck option 'check_unixaudit' is no longer supported. Use the SCA module instead.` (one line per option) | Remove from `rootcheck`; use SCA policies. See [SCA policies from 4.x to 5.x](sca-policies-4x-to-5x.md). |
 | `<wodle name="cis-cat">...</wodle>` | Removed in 5.0 | `INFO: The 'cis-cat' module is deprecated. Use the SCA module instead.` | Migrate to SCA, then remove the `cis-cat` wodle block. See [Migrating from CIS-CAT and OpenSCAP to SCA](ciscat-openscap-to-sca.md). |
 | `<wodle name="osquery">...</wodle>` | Removed in 5.0 | `INFO: The 'osquery' module is deprecated. Use the Syscollector module instead.` | Migrate to IT Hygiene, then remove the `osquery` wodle block. See [Migrating from OSquery to IT Hygiene](osquery-to-it-hygiene.md). |
 | `<sca><skip_nfs>...</skip_nfs></sca>` | Deprecated | `INFO: The <skip_nfs> option is deprecated and no longer has any effect.` | Remove `<skip_nfs>` from `sca`. The 4.x default configuration sets it, so an upgraded agent reports it. See [SCA policies from 4.x to 5.x](sca-policies-4x-to-5x.md). |
@@ -201,7 +203,8 @@ Remove unsupported elements:
 <rootcheck>
 	<!-- remove check_files -->
 	<!-- remove check_trojans -->
-	<!-- remove rootkit_files -->
+	<!-- remove rootkit_files, rootkit_trojans, system_audit -->
+	<!-- Windows: remove windows_apps, windows_malware, windows_audit -->
 </rootcheck>
 
 <sca>

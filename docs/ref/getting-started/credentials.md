@@ -126,7 +126,7 @@ contain a lowercase letter, an uppercase letter, a digit and one of those symbol
 characters drawn the same way.
 
 The Server API's own rule, applied when a password is changed later, is wider: 12 to 64 printable ASCII characters
-with a letter and a digit. Every value the resolver accepts or generates also passes it, and the resolver's tests
+other than the space, with a letter and a digit. Every value the resolver accepts or generates also passes it, and the resolver's tests
 check that against the Server API's code. The reverse is not guaranteed: a password chosen through the Server API
 may be one the resolver refuses.
 
@@ -254,7 +254,8 @@ the next step (`--install` when the CA, the bundle or a server pair is missing o
 else start the manager) in place of ` - Configuration finished properly.`; it still exits `0` and finishes the
 installation.
 
-A fresh install with no indexer on the host:
+The resolver's own output on a fresh install with no indexer on the host (a package install or `install.sh`
+prints the two `MISSING` lines after the others):
 
 ```text
 resolve-credentials: WAZUH_MANAGER_API_PASSWORD: generated

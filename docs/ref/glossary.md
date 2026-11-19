@@ -38,8 +38,8 @@ pipeline; detection rules are no longer evaluated on the manager (see **Rule**).
 obtains its key, and declares its agent group. A 5.x agent enrolls over HTTPS
 (`POST /enroll` on Remoted's port 1517), which bridges to `wazuh-manager-authd`;
 `authd` owns the registration logic either way. Its own TLS listener on port 1515
-remains only for 4.x agents, gated by `<auth><legacy_enrollment>` (which follows
-`<remote><legacy><enabled>` when unset).
+remains only for 4.x agents, gated by `<auth><remote_enrollment>` and
+`<auth><legacy_enrollment>` (which follows `<remote><legacy><enabled>` when unset).
 
 **Event** — Normalized record produced by the Engine from raw input. Decoded
 events are indexed under `wazuh-events-v5-<category>`, the category being the

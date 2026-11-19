@@ -373,8 +373,10 @@ Tests are located in `test/src/component/bk_test.cpp`:
 - `BK/PipelineTest` — parameterized tests that **verify both implementations** (rx and taskf) with the same
   expressions and expected results (`TfProcessEvent`, `RxProcessEvent`). Its `TfProcessTraces` and
   `RxProcessTraces` cases are `GTEST_SKIP()` placeholders.
-- `BKTraceTest` — subscribe, unknown traceable, multiple subscribers and unsubscribe, on both backends; plus two
-  rx-only cases pinning that Chain forces success and runs the operand after a failed one.
+- `BKTraceTest` — subscribe, unknown traceable, multiple subscribers, unsubscribe, a traceable's publisher not
+  leaking to the siblings built after it (`TraceablePublisherNotLeakedToSiblings`) and a throwing Term being a
+  failure (`TermExceptionIsFailure`), on both backends; plus two rx-only cases pinning that Chain forces success and
+  runs the operand after a failed one.
 - `RxControllerTest.DoesNotRetainSourceExpression`.
 
 ### Test Structure

@@ -3,7 +3,7 @@
 The wire contract between agents and the manager is a single FlatBuffers schema:
 
 - **Schema file:** `src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs`
-- **C++ namespace:** `Wazuh.SyncSchema`
+- **Namespace:** `Wazuh.SyncSchema` in the schema, `Wazuh::SyncSchema` in the generated C++
 - **Root type:** `Message` (a union envelope whose payload for synchronization is `FullSession`)
 - **Generated header:** `src/shared_modules/utils/flatbuffers/include/inventorySync_generated.h`,
   produced by the `compile_schemas_input` CMake target (the header is generated at build time;
@@ -60,7 +60,7 @@ schema, by design.
 
 ```text
 table Start {
-    module: string;            // e.g. "syscollector", "fim", "sca"
+    module: string;            // e.g. "syscollector", "fim", "sca"; required (400 when empty)
     mode: Mode;
     index: [string];           // the indices this session targets
     option: Option;
@@ -75,7 +75,7 @@ table Start {
     agentid: string;           // MUST match remoted's authenticated id (403 otherwise)
     groups: [string];
     global_version: ulong;     // guards metadata/group updates against stale writers
-    cluster_name: string;      // MUST match the manager's cluster (403 otherwise)
+    cluster_name: string;      // MUST match the manager's cluster (403 otherwise; 400 when empty)
     feed_offset: ulong;        // agent's VD feed offset; VDFirst/VDSync sessions are answered 409 version_mismatch when it differs from this node's
 }
 ```

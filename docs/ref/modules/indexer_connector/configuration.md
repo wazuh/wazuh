@@ -76,7 +76,7 @@ CA certificates used to verify the Indexer's certificate, one per `<ca>` child e
 - **Default value:** empty list
 - **Allowed values:** paths of PEM files holding only CA certificates, directly in
   `/etc/wazuh-manager/certs`
-- **Note:** With a single CA, the connector refuses to start when the file does not exist
+- **Note:** The connector refuses to start when a listed file does not exist
   (`The CA root certificate file: '<path>' does not exist.`). With several, it concatenates them into
   `/var/wazuh-manager/tmp/root-ca-merged.pem`. Only `indexer-ca.pem` is imported from a co-located
   indexer, and only while this list names it; any other listed file is yours to stage.

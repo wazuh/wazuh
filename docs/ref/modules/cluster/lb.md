@@ -64,7 +64,7 @@ operation that creates or changes identity.
 |---|---|---|---|
 | `1517` | HTTPS agent API (5.x) | **every node** | The only channel a 5.x agent uses |
 | `1514` | Legacy agent traffic (4.x) | **every node** | Only when a `<remote><legacy>` block is present and not `<enabled>no` |
-| `1515` | Legacy enrollment (4.x) | **every node** | Only when `auth.legacy_enrollment` (which follows the legacy listener when unset) and `auth.remote_enrollment` are on; workers forward to the master |
+| `1515` | Legacy enrollment (4.x) | **every node** | Only when `wazuh-manager-authd` runs (`auth.disabled` off) and `auth.legacy_enrollment` (which follows the legacy listener when unset) and `auth.remote_enrollment` are on; workers forward to the master |
 | `1516` | Cluster transport | not balanced | Node to node; never exposed to agents |
 | `55000` | Server API | not covered here | Runs on the master only; different API and authentication model |
 | `9200` | Indexer | not balanced by this front end | — |

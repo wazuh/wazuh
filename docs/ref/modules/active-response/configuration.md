@@ -50,7 +50,13 @@ Longer timeouts for stateful responses that recur for the same keys.
 - **Note:** applies only to stateful responses. The first time execd sees a key, the response uses
   its `stateful_timeout`; the n-th repetition of that key uses the n-th value of the list, and the
   last value once the list is exhausted. A repetition that arrives while the reversal is still
-  pending counts too. The count lives in execd's memory and restarts with it.
+  pending counts too. The count lives in execd's memory only: it restarts with execd, and a key is
+  forgotten once longer than the largest value of the list has passed since its last reversal was
+  due (execd purges when a stateful response arrives: at most once a minute, or once a second while
+  the table is full). At most 10000 keys are
+  tracked: while the table is full a new key gets its `stateful_timeout`, and execd logs
+  `(1308): Tracking the maximum of 10000 repeated offenders. New offenders get the base timeout until older entries expire.`
+  at warning level, at most once a minute.
   execd logs `Adding offenders timeout: <n> (for #<k>)` for each value it reads
 
 ### allowlist
@@ -129,9 +135,10 @@ third after 60, and every later one after 120:
 
 ## Manager Configuration
 
-There is no `<active-response>` section in `wazuh-manager.conf`: in 5.0 the manager neither defines
-response triggers nor runs response scripts. A response is configured in the Wazuh Indexer, from the
-dashboard:
+There is no `<active-response>` section in `wazuh-manager.conf` (the schema accepts no unknown
+section, so such a block is a configuration error that stops the start): in 5.0 the manager neither
+defines response triggers nor runs response scripts, and the server API has no Active Response
+endpoint or RBAC action. A response is configured in the Wazuh Indexer, from the dashboard:
 
 1. a **notification channel** of the Active Response type says what to run: `name`, `executable`,
    `extra_arguments`, `type` and `stateful_timeout`, `location` and, for `defined-agent`, `agent_id`;
@@ -146,6 +153,17 @@ The manager's part is the poller in `wazuh-manager-clusterd`, described in
 editing and is replaced on upgrade: `active_response_polling`, `active_response_page_size` and
 `active_response_event_grace`. Defaults and trade-offs are in
 [Settings](architecture.md#settings).
+
+Three options of the manager's [`<task-manager>`](../task_manager/configuration.md) block apply to
+the tasks the poller creates:
+
+- [`task_ttl`](../task_manager/configuration.md#task_ttl): a task the agent has not fetched within
+  that time of its `create_time`, which is the response document's `@timestamp`, expires and is
+  never run (an agent that stays disconnected longer than that misses the response);
+- [`max_payload_bytes`](../task_manager/configuration.md#max_payload_bytes): a larger payload (the
+  response merged with its event) is refused, logged by the poller as `Task Manager refused the task`;
+- [`max_tasks_per_poll`](../task_manager/configuration.md#max_tasks_per_poll): how many tasks one
+  `POST /control` of the agent receives; the rest wait for its next poll.
 
 Manager-side log lines are in `logs/cluster.log` under the `[Active Response]` tag; the message
 catalogue is in [Messages](architecture.md#messages).

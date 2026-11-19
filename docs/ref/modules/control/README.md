@@ -92,8 +92,8 @@ by`) at info level; on a worker restarted through the master these lines go to t
 
 | Error | When |
 |-------|------|
-| `1903` *The manager service-control helper could not be run* | The socket is unavailable and the helper could not be started (missing, wrong owner or mode) |
-| `1904` *The manager service-control helper refused the restart request* (or *reload*) | The socket is unavailable and the helper refused the request, did not accept it within 5 seconds, or its check refused the restart within 4 seconds of accepting it; the message carries the helper's exit code and output |
+| `1903` *The manager service-control helper could not be run* | The socket is unavailable and the helper could not be started (missing, or not executable by `wazuh-manager`) |
+| `1904` *The manager service-control helper refused the restart request* (or *reload*) | The socket is unavailable and the helper refused the request (an unsafe owner or mode of itself or of the paths it checks included), did not accept it within 5 seconds, or its check refused the restart within 4 seconds of accepting it; the message carries the helper's exit code and output |
 | `1014` *Error communicating with socket* | The answer did not start with `ok` (for example `err Service control rejected action`), or the exchange failed |
 
 Both routes require the `cluster:read` and `cluster:restart` RBAC actions.
@@ -118,8 +118,9 @@ Options:
 
 It accepts exactly one argument. It runs only when the **real** user is `root` or `wazuh-manager`
 (the effective user being `root` through the setuid bit), and only if its own file, the install
-directory, `bin/`, `bin/wazuh-manager-control` and, when present, `bin/.process_list` are owned by
-`root` and not group- or world-writable — and its own file still carries the setuid bit. It then
+directory, `bin/`, `bin/wazuh-manager-control`, `bin/.process_list` when present and, when systemd is
+PID 1, `/usr/bin/systemctl` are owned by `root` and not group- or world-writable — and its own file still
+carries the setuid bit. It then
 clears the environment (`PATH=/usr/sbin:/usr/bin:/sbin:/bin`, `LANG=C`), reports acceptance to
 modulesd and becomes `root` before running:
 
@@ -179,8 +180,8 @@ configuration or a credential, the manager stays **down** until it is fixed and 
 API's helper does), or use `wazuh-manager-control restart`, which refuses before it stops anything but
 relaunches the daemons outside the unit (see
 [`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)). While one of the core daemons
-(`wazuh-manager-modulesd`, `-remoted`, `-analysisd`, `-db`) is down, the Server API still answers login, the
-status queries and the restart and reload endpoints, and every other call with error `1017`. `wm_control`
+(`wazuh-manager-modulesd`, `-remoted`, `-analysisd`, `-db`) is down, the Server API still answers login, logout,
+the status and health queries and the restart and reload endpoints, and every other call with error `1017`. `wm_control`
 lives in `wazuh-manager-modulesd`; with modulesd down the API runs `wazuh-manager-service-control` itself
 (see [Manager restart and reload](#manager-restart-and-reload)), so `PUT /cluster/restart` still works as long
 as `wazuh-manager-apid` runs. From a shell, `wazuh-manager-control start` relaunches only the dead daemon,

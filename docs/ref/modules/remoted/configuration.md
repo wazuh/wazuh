@@ -321,9 +321,14 @@ Path to the TLS certificate chain (PEM) presented by the server.
 - **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (any other value must also be an absolute path directly in `/etc/wazuh-manager/certs`; see the credential note below)
 - **Allowed values:** a path of at most 511 characters
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
-  `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
-  `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
-  refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
+  `ca_certificate` (for example one issued with the installation assistant's `wazuh-certs-tool`) — as
+  `root:wazuh-manager 640` before the first start. Missing together with its key:
+  `wazuh-manager-control start` (and `check`) refuses before any daemon runs with
+  `Unresolved credentials` (error 21 in `-j` output), the credential resolver naming the file
+  (`MISSING /etc/wazuh-manager/certs/remoted.pem: …`); missing beside a present key, it is
+  `half a pair` (`Invalid credentials`, error 22);
+  `wazuh-manager-remoted -t` run on its own reports
+  `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
   `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
   (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
@@ -344,8 +349,9 @@ Path to the TLS private key (PEM) matching `certificate`.
 - **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
 - **Allowed values:** a path of at most 511 characters
 - **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
-  behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
-  service user.
+  behaviour when missing or unreadable by the service user. A key missing beside its certificate is
+  refused by the credential check as `half a pair` (`Invalid credentials`, error 22);
+  `wazuh-manager-remoted -t` reports `(1244) … '/remote/https/key': file not found`.
 - **Note:** `certificate` and `key` must be set together or not at all: setting only one is
   rejected (`certificate and key must be set together`), so a custom certificate cannot silently
   pair with the default key.
@@ -385,8 +391,9 @@ A file it cannot parse to the end is refused whole rather than served up to its 
 - **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
-  A missing file stops `wazuh-manager-control start` like a missing certificate
-  (`(1244) … '/remote/https/ca_certificate': file not found`); a file the `wazuh-manager` user
+  A missing file stops `wazuh-manager-control start` like a missing certificate (`MISSING …`,
+  `Unresolved credentials`, error 21; `(1244) … '/remote/https/ca_certificate': file not found`
+  from `wazuh-manager-remoted -t`); a file the `wazuh-manager` user
   cannot read stops `wazuh-manager-remoted` at startup (`Cannot start the HTTPS agent listener: the
   CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable
   by the service user. …`); if it disappears while remoted is running, `GET /cacerts` answers 404. Replacing it needs no restart — the manager notices a change in the file's content
@@ -643,6 +650,7 @@ in steps of this size).
 
 - **Default value:** `4096`
 - **Allowed values:** Integer from `1024` to `16384`
+
 ### remoted.send_timeout_to_retry
 
 Seconds remoted waits before retrying once to queue a message for a legacy agent whose per-connection
@@ -650,6 +658,7 @@ send buffer ([`remoted.send_buffer_size`](#remotedsend_buffer_size)) is full.
 
 - **Default value:** `1`
 - **Allowed values:** Integer from `1` to `60`
+
 ### remoted.worker_pool
 
 Number of message-handler threads that decrypt and dispatch messages read off the legacy listener.
@@ -665,12 +674,14 @@ themselves over `POST /download`.
 
 - **Default value:** `8`
 - **Allowed values:** Integer from `1` to `64`
+
 ### remoted.control_msg_queue_size
 
 Queue size for agent keep-alive and control messages.
 
 - **Default value:** `16384`
 - **Allowed values:** Integer from `4096` to `1048576`
+
 ### remoted.batch_events_capacity
 
 Item capacity of the legacy events queue that the dispatcher batches, enriches and posts to the
@@ -678,6 +689,7 @@ engine.
 
 - **Default value:** `131072`
 - **Allowed values:** Integer from `0` to `1048576`; `0` removes the item-count cap
+
 ### remoted.queue_max_bytes
 
 Maximum bytes held in the input message queue (messages received from agents).
@@ -1096,10 +1108,9 @@ Seconds to wait for a response write to complete.
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `300`
 - **Note:** On a streamed `POST /download` the deadline is rearmed per chunk, but it still bounds
-  each chunk's flush, so it is the setting that aborts a WPK transfer over a slow link: measured
-  5/10 aborts at the shipped 10 s below ~1 Mbit/s against 0/5 at 120 s on the same shaper. Size it
-  against the slowest link that must be able to complete an upgrade
-  ([Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). The per-chunk deadline puts a
+  each chunk's flush, so it is the setting that aborts a WPK transfer over a slow link. Size it
+  against the slowest link that must be able to complete an upgrade (lab measurements and the recipe:
+  [Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). The per-chunk deadline puts a
   floor on the usable link speed, `remoted.http_stream_chunk_size` divided by this value, about
   6.5 KB/s at the defaults of 64 KiB and 10 s. An abort leaves no line in the manager log at any
   level: RESTinio reports the expiry from `handle_xxx_timeout()` at trace level, and the module's
@@ -1194,8 +1205,8 @@ Maximum simultaneous HTTPS connections.
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
   `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
-  a slot for as long as the transfer needs. A slow one does not get the same freedom: below roughly
-  1 Mbit/s the per-chunk write deadline is what aborts the transfer (see
+  a slot for as long as the transfer needs. A slow one does not get the same freedom: on a slow enough link
+  the per-chunk write deadline is what aborts the transfer (see
   [Connection timing tuning](timing-tuning.md#5-per-goal-recipes)). A mass upgrade (the whole fleet
   fetching a WPK at once, many over slow links) is therefore bounded only by this value. Started transfers and
   offered bytes are visible as `remoted.download.*` in

@@ -3,7 +3,7 @@
 Four containers built from the official agent packages, pointed at the manager installed in the
 devcontainer (`host.docker.internal` = the host). They exist so a change can be proven with a real
 agent enrolling and connecting, not with a simulator. The scripts here are the same ones the
-VS Code tasks `E2E Scripts: [Agent] …` and the Claude skill `agent-env` run.
+VS Code tasks `E2E Scripts: [Agent] …` run.
 
 ## Layout
 

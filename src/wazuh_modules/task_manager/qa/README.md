@@ -30,7 +30,7 @@ the summary shows tests passed. CI runs with `-rs` and fails the job on any skip
 | --- | --- |
 | `test_agent_tasks.py` | Creation, one-shot delivery, deterministic ids, bulk, payload and timestamp limits, invalid JSON, the unknown-route `404`, `/v1/health`, `/v1/metrics`, restart durability |
 | `test_manager_tasks.py` | Claim to completion, the retry and deferral ladders, coalescing, admission shedding, lookup, paging and counting, the recovery cases, and a WAL checkpoint while the module runs |
-| `test_agent_upgrade.py` | The two upgrade routes against a stub repository: one fetch and one download per platform for a whole fleet, SHA-1 verification, the delivery gates, custom WPKs, the always-200 envelope, the disabled module and shutdown answering parked requests |
+| `test_agent_upgrade.py` | The two upgrade routes against a stub repository: one fetch and one download per platform for a whole fleet, the `User-Agent` both requests carry, SHA-1 verification, the legacy delivery gate, custom WPKs, the always-200 envelope, the disabled module and shutdown answering parked requests |
 | `helpers/task_client.py` | The HTTP-over-UDS client, and the stub consumer whose answers each test scripts |
 | `helpers/wpk_repo.py` | `StubWpkRepository`: a TCP server serving `versions` files and WPK bodies, counting every request |
 

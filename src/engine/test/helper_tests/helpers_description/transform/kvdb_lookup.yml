@@ -21,6 +21,8 @@ metadata:
     - The target field is not a schema field and does not start with `_`.
 
     Notes:
+    - During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+      no-op.
     - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
       operations of the map block still run.
     - `kvdb_lookup_merge` merges the value into the target and `kvdb_lookup_append` appends one value per key.

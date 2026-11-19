@@ -26,7 +26,9 @@ once, when `wazuh-manager-modulesd` starts.
 
 ### task_ttl
 
-Time-to-live for a **pending** agent task, measured from its `create_time`. On each cleanup pass
+Time-to-live for a **pending** agent task, measured from its `create_time` (for an `active_response`
+task that is the response document's `@timestamp`, not the moment the task was stored, so an agent
+disconnected for longer than `task_ttl` after the response was raised never receives it). On each cleanup pass
 (every `cleanup_interval`), pending tasks older than `task_ttl` are moved to `expired` and are never
 handed out. Manager tasks are never expired by age.
 
@@ -233,8 +235,8 @@ cleanup pass, and the same pass returns the freed space to the filesystem; a lon
 delays deletion, expiry and the shrink. Manager-task rows are bounded by the
 [retention rules](manager-tasks.md#retention). If the log shows `Could not checkpoint the tasks
 database`, the `tasks.db-wal` file is what is growing. If it shows `The tasks database was created
-without incremental auto-vacuum`, the database predates the incremental compaction: its freed space
-is reused but the file never shrinks. Stop the manager and run
+without incremental auto-vacuum`, the file was not created by the module (which always enables it):
+its freed space is reused but the file never shrinks. Stop the manager and run
 `sqlite3 /var/wazuh-manager/queue/tasks/tasks.db 'PRAGMA auto_vacuum=INCREMENTAL; VACUUM;'` once to
 convert it.
 
@@ -396,7 +398,7 @@ fails `wazuh-manager-modulesd -t` rather than aborting later.
 | --- | --- | --- | --- |
 | `wazuh_modules.upgrade_workers` | `cores / 2`, clamped to 1–4 | 1–16 | upgrade **batches** run at once |
 | `wazuh_modules.upgrade_queue_depth` | 8 | 1–1000 | batches queued before a request is refused |
-| `wazuh_modules.upgrade_batch_deadline` | 180 | 10–3600 | seconds one batch may take before its remaining agents are failed |
+| `wazuh_modules.upgrade_batch_deadline` | 180 | 10–3600 | seconds a batch's repository stage (`versions` fetches and WPK downloads) may take, counted from the end of its per-agent lookups; the agents of packages not ready by then get error 12 |
 | `wazuh_modules.upgrade_max_agents` | 500 | 1–100000 | largest batch accepted in one request; a larger one answers every agent with error 2 |
 | `wazuh_modules.upgrade_download_attempts` | 3 | 1–10 | tries per WPK before giving up |
 | `wazuh_modules.upgrade_download_timeout` | 45000 | 1000–600000 | milliseconds per download attempt |
@@ -426,7 +428,9 @@ The module answering first is what makes a slow repository produce a per-agent e
 act on, instead of a connection the transport tore down. `upgrade_batch_deadline` is checked between
 download attempts and while queued for a download slot, not only between packages, so a batch cannot
 overrun it by `upgrade_download_attempts` × `upgrade_download_timeout` per package. One transfer
-already in flight still runs out its own timeout.
+already in flight still runs out its own timeout. The per-agent wazuh-db lookups that come first are
+not counted against it: each has a 10 s socket deadline, and five consecutive lookups that do not
+complete answer the rest of the batch with error 6 without querying them.
 
 **`upgrade_versions_ttl` is what keeps a fleet-wide upgrade cheap.** Agents that resolve to the same
 package share one `versions` fetch and one download, so 500 agents on one platform cost one of each

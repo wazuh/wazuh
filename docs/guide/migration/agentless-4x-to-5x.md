@@ -148,6 +148,12 @@ This covers the `periodic` mode and all `ssh_*_diff` scripts.
 > reference templates that you must create and deploy on the relay agent.
 > Adjust paths, credentials, and target addresses to match your environment.
 
+The examples below go in the relay agent's own `ossec.conf`. If you distribute
+them from the manager in a group's `agent.conf` instead, the agent ignores the
+commands unless its `local_internal_options.conf` sets
+`logcollector.remote_commands=1` (for `<localfile>` commands) or
+`wazuh_command.remote_commands=1` (for the command wodle); both default to `0`.
+
 ### Replacing ssh_integrity_check_linux (periodic mode)
 
 Run the same stat/md5sum/sha1sum loop that the original script did, but from a

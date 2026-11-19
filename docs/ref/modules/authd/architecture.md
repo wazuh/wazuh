@@ -413,8 +413,7 @@ Three things about those doors are worth calling out:
 - **A deletion itself can be refused** (`9021`, reported as `1766`) when too many earlier ones are
   still pending. It is decided on the REQUEST thread, before the agent leaves the keystore, so the
   agent is untouched and the caller can retry. One line later there would be nothing left to refuse
-  and nobody to tell — which is why the previous design, discovering a full queue in the writer, could
-  only drop the purge and orphan the documents.
+  and nobody to tell.
 
 authd's responsibility ends at the durable task row: nothing reports back to it. The Task Manager's
 dispatcher runs the task, and its type carries **no attempt budget** — once `client.keys` is written
@@ -504,8 +503,7 @@ would make a bulk deletion quadratic in file writes.
 Every surviving journal line is resolved on the next start against the `client.keys` just read: an
 agent still listed there means the deletion never became final, so the line is dropped; an absent one
 means the task is still owed and is created now. That comparison closes the window this design exists
-for — a crash between the key write and the task's creation, which the previous relay design lost
-silently.
+for: a crash between the key write and the task's creation.
 
 - If the clock is **earlier** than `last_update` on startup, every stored timestamp is untrustworthy
   and they are all re-stamped, so each deletion waits its full delay again.
@@ -567,7 +565,7 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Enrollment token 'X' minted for '…' (expires …, max_uses …, credential …)…` | a mint; never the secret or the token text |
 | `Agent key generated for agent 'N' (requested by <address>)` / `… (requested locally)` | a new agent on the local socket: the agent's peer address when the request came through remoted's `POST /enroll` (also when a worker forwarded it), `locally` for the server API |
 | `Enrollment token 'X' used by agent 'N' (U/M).` / `Enrollment token 'X' revoked.` | the token paths; `U/M` is uses spent against `max_uses` (`U/unlimited` when it is `0`, the default). A refused token logs `Local request refused with error 902x: …` at `INFO` |
-| `Local request refused with error N: …` / `Local request failed with error N: …` | every refusal decided by the socket dispatcher itself, at the level of whose fault it is: `INFO` for the caller's (a malformed request, an unknown function, a duplicate, a token not found, revoked, expired or exhausted, a write sent to a worker `9015`, …); `WARNING` for a capacity limit (`9013`, `9021`); debug level for the re-enrollment verdicts (`9026`–`9028`, `9030`), which anyone who reaches remoted's `/enroll` can trigger; `ERROR` (`… failed …`) only for this daemon failing (`9001`, `9009`, `9016`, `9029`, `9031`) |
+| `Local request refused with error N: …` / `Local request failed with error N: …` | a request the socket dispatcher refused before or around the verb itself: `INFO` for the caller's fault (malformed JSON, a missing or wrongly typed argument, an unknown function, an unstorable name, a token not found, revoked, expired or exhausted, a write sent to a worker `9015`, …), debug level for a malformed re-enrollment credential (`9027`), which anyone who reaches remoted's `/enroll` can trigger, and `ERROR` (`… failed …`) only for this daemon failing (`9001`, `9029`). The refusals decided inside `add`, `remove` and the re-enrollment carry their own lines instead: the `Duplicate …` lines below, `Unable to add agent: … Agent limit (N) reached.` (`9013`), `Refusing the deletion: …` (`9021`), `Agent ID '…' still has a pending deletion…` (`9018`), the identity-journal lines (`9031`), `Error 9016: Cannot communicate with master node.` on a worker, and debug-level `Re-enrollment of agent '…' refused: …` lines for `9026`–`9028` and `9030` |
 | `Duplicate IP '…', rejecting enrollment. …` / `Duplicate name '…', rejecting enrollment. …` | an enrollment refused because another agent holds the address or name (`INFO`, or `WARNING` when that agent is still connected). Throttled per message: the first is logged at once, the repeats in the next 90 seconds at debug level, and the next logged one ends with `(and <n> more like it in the last <s> s)` |
 | `Error N: <message>.` | a worker relaying the master's refusal of an enrollment it forwarded (`WARNING`), from port 1515 or the local socket alike; throttled like the line above on port 1515 |
 | `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |

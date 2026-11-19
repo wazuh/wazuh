@@ -329,7 +329,7 @@ total 8
 drwx------ 1 wazuh-manager wazuh-manager  38 Jun  2 19:31 .
 drwxrwx--- 1 root          wazuh-manager  78 Jun  2 19:31 ..
 -rw-rw---- 1 wazuh-manager wazuh-manager 215 Jun  2 18:39 agent.conf
--rw-r--r-- 1 wazuh-manager wazuh-manager 246 Jun  2 19:31 merged.mg
+-rw-rw---- 1 wazuh-manager wazuh-manager 246 Jun  2 19:31 merged.mg
 ```
 
 The groups are now visible from the dashboard in **Agents management -> Groups**.

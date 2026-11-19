@@ -223,10 +223,10 @@ The Vulnerability Scanner validates each upserted detection against `wazuh-state
 
 ## Building
 
-The Schema Validator is built as part of the Wazuh build system:
+The Schema Validator is built with the rest of the tree, for the manager or the agent:
 
 ```bash
-make TARGET=server|agent <DEBUG=1>
+make -C src -j TARGET=manager    # or TARGET=agent
 ```
 
 Schema resources are automatically embedded during the build process using CMake.
@@ -239,6 +239,9 @@ Run unit tests with:
 cd src/build
 ctest -L schema_validator -V
 ```
+
+The suite is built only in a tree configured with unit tests (`TEST=yes` on the `make` line); no manager CI
+lane runs it — only the agent lanes do.
 
 ## References
 

@@ -107,6 +107,11 @@ transport error is retryable; `409` is busy; `5xx`, `408` and `429` are retryabl
 is terminal — or retryable when the body carries `"retryable": true`, or for a type that does not
 allow terminal failure; any other non-`2xx` status is retryable.
 
+A `Retry-After` header on the consumer's answer is **ignored**: a `503` is retried on the backoff
+ladder below whatever the consumer asked for (inventory-sync attaches one to the `503` its scan
+route answers while the vulnerability feed is not ready). Nothing in the dispatcher reads response
+headers.
+
 A real attempt (retryable or timeout) and an incomplete run both reset the consecutive-deferral
 count; the retry delay doubles per attempt, the deferral delay per consecutive deferral.
 
@@ -255,11 +260,15 @@ the orphaned documents this feature exists to prevent.
 
 | Option | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise `wazuh-manager-modulesd -t` refuses the configuration before start |
-| `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | 1–3600 | Deadline on one scan call, and the type's watchdog budget |
+| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise `wazuh-manager-modulesd -t` refuses the configuration before start. **Keep it below 900 s**: that is the consumer route's own response backstop, past which inventory-sync answers a synthesized `504`, which re-queues the deletion — forever, since this type has no attempt budget. Nothing checks this |
+| `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | 1–3600 | Deadline on one scan call, and the type's watchdog budget. **Keep it below 450 s**, the consumer route's response backstop; a longer scan gets a synthesized `504` and is retried as a failed attempt. Nothing checks this |
 | `wazuh_modules.manager_task_max_pending_deletes` | 20000 | 0–1000000 | Admission bound on pending deletions. `0` removes the bound |
 | `wazuh_modules.manager_task_max_pending_scans` | 64 | 0–1000000 | Admission bound on pending on-demand scans. `0` removes the bound |
 | `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner's configuration reader, not by this module; an out-of-range value fails `wazuh-manager-modulesd -t` all the same |
+
+The two backstops (900 s and 450 s) are fixed in inventory-sync, in
+`src/wazuh_modules/inventory_sync_server/src/endpoints/deleteAgentEndpoint.hpp` and
+`src/wazuh_modules/inventory_sync_server/src/endpoints/vdScanEndpoint.hpp`; they are not options.
 
 A type this build does not register has a fixed bound of 100 pending rows instead — see
 [Task types](#task-types).

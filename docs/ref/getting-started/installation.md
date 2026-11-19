@@ -255,18 +255,15 @@ the installation directory `/var/wazuh-manager`, and the credential check refuse
 ### Start the manager
 
 On a fresh installation neither the packages nor `install.sh` start or enable the service: you start
-it when the deployment is ready. (An upgrade restarts a manager that was running before it.) An
+it when the deployment is ready. (A package upgrade restarts a manager that was running before it; an
+`install.sh` update always starts it.) An
 enablement you made earlier does not carry over a purge (`dpkg --purge`, `rpm -e`): it is removed with the
 package, so a later installation starts disabled; `dpkg --remove` keeps it. Set
 `USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway. A fresh package
-install ends by printing where the Server API passwords are (only when it published them: a resolver run
-stopped by an unsafe or invalid entry writes nothing), whether the credential
-resolution is incomplete and what completes it — the command
-`/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (run as root) when
-the CA, the agents' bundle or a server pair is missing or an entry is invalid or unsafe; when the CA was staged in
-`/etc/wazuh-manager/ca` without its key, staging that key as `/etc/wazuh-manager/ca/root-ca.key` (owned by root,
-mode `0400` or `0600`) before that command, or staging the missing server pairs in `/etc/wazuh-manager/certs` and
-starting the manager; otherwise the start itself once the indexer's password and files are supplied — and the command to start the service (and to enable it at boot, when systemd is running).
+install ends with its next steps: where the Server API passwords are (only when it published them), whether the
+credential resolution is incomplete and what completes it, and the command that starts the service (and enables
+it at boot, when systemd is running). Every line is listed in
+[The resolver and its modes](credentials.md#the-resolver-and-its-modes).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;
@@ -285,14 +282,16 @@ sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
 `wazuh-manager-control status` prints one `<daemon> is running...` line per daemon and exits `1` when
-any of them is down. `wazuh-manager-apid` is listed only on a master node, and
-`wazuh-manager-authd` only when `auth.disabled` is not set.
+any of them is down (`<daemon> not running...`, or `<daemon> refused its configuration...` and
+`<daemon> failed to start...` after a refused or failed start). `wazuh-manager-apid` is listed only on a master
+node, and `wazuh-manager-authd` only when `auth.disabled` is not `yes`.
 
 If it refuses to start, `wazuh-manager-control` (and so the journal) prints one line ending in `Exiting`:
 `wazuh-manager.conf: Configuration error.` or `<daemon>: Configuration error.` for the configuration, or
 `Unsafe credentials.`, `Invalid credentials.`, `Unresolved credentials.` or `Cannot check the credentials.` for the
 credentials. `/var/wazuh-manager/logs/wazuh-manager.log` records the reason: the `(1244)` verdict naming the
-option or file, or `wazuh-manager-control: ERROR: unresolved credentials` (or `unsafe`, `invalid`) followed by
+option or file, or `wazuh-manager-control: ERROR: unresolved credentials` (or `unsafe credentials`, `invalid credentials`,
+`cannot check the credentials`) followed by
 the resolver's lines naming the file or key and what to do. Fix it and start the service again; no reinstall is
 needed. See [When the manager does not start](credentials.md#when-the-manager-does-not-start).
 

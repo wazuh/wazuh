@@ -35,7 +35,7 @@ What the C daemon has to do, and where each requirement is answered.
 
 | # | Requirement | Where it is answered |
 |---|---|---|
-| RF-1 | Load the `remote` and `global` sections of the effective configuration and every `remoted.*` internal option, refusing an out-of-range value at load | `RemotedConfig()` (`src/config.c`) through `w_mconf_load()`/`w_mconf_section()` and `Read_Remote_JSON()`/`Read_Global_JSON()` in [`src/config/`](../config/README.md) |
+| RF-1 | Load the `remote` and `global` sections of the effective configuration, the `auth` policy `POST /enroll` applies, and every `remoted.*` internal option, refusing an out-of-range value at load | `RemotedConfig()` (`src/config.c`) through `w_mconf_load()`/`w_mconf_section()` and `Read_Remote_JSON()`/`Read_Global_JSON()` in [`src/config/`](../config/README.md); the `auth` section through `Read_Authd_JSON()` in `remoted_enrollment_config()` (`src/secure.c`) |
 | RF-2 | `-t`: validate the file with file checks on, every internal option the C++ module owns, and the TLS material the listener would load; exit non-zero on the first error | `main()` (`src/main.c`): `w_mconf_validate()` then `w_remoted_validate_module_config()` (`src/secure.c`), which calls `remoted_module_validate_tls()` |
 | RF-3 | Refuse to start, before the PID file exists, when a TLS file of the HTTPS listener is unreadable by the service user, with exactly one deterministic message | `w_remoted_preflight_tls_files()` / `w_remoted_check_tls_files()` (`src/secure.c`), messages `REMOTED_TLS_FILES_*` (`include/remoted.h`) — D2 |
 | RF-4 | Start the HTTPS agent API with a typed configuration on every start, whatever the legacy setting | `HandleSecure()` → `remoted_module_start(mtLoggingFunctionsWrapper, &rm_config)`, `atexit(remoted_module_stop)` — D1, D3 |
@@ -67,7 +67,7 @@ What the C daemon has to do, and where each requirement is answered.
 
 | Path | Contents |
 |---|---|
-| `src/main.c` | `main()`: options, home (`w_homedir()`, which reads `WAZUH_MANAGER_FORCE_HOME` first, then `-D`), `chdir`, `RemotedConfig()`, node role, `-t`, daemonize, group drop, `HandleRemote()` |
+| `src/main.c` | `main()`: options, home (`w_homedir()`: `WAZUH_MANAGER_FORCE_HOME`, then `WAZUH_MANAGER_HOME`, then auto-detected; `-D` overrides all three), `chdir`, `RemotedConfig()`, node role, `-t`, daemonize, group drop, `HandleRemote()` |
 | `src/remoted.c` | the globals `keys`, `logr`, `node_name`, `cluster_name`; `HandleRemote()`: raise `RLIMIT_NOFILE`, bind the legacy sockets, load the OpenSSL configuration as root, drop to the user, TLS preflight, PID file, `HandleSecure()` |
 | `src/secure.c` | `HandleSecure()` and the event loop; building the module configuration (`w_remoted_build_module_config()` and the `remoted_module_*_config()` readers of the `remoted.*` options the module owns); the TLS preflight; the legacy subsystems, the frame handler `HandleSecureMessage()`, the control-message thread and the event dispatcher |
 | `src/config.c` | `RemotedConfig()`, every legacy `remoted.*` internal option and the agent module limits (`fim.*`, `syscollector.*`, `sca.*`); the three `getconfig` answers |
@@ -194,7 +194,8 @@ flowchart LR
   keep-alive replaces a queued one (`rem_inc_ctrl_queue_replaced()`).
 - The dispatcher posts one agent turn per request. When the engine socket cannot be opened, or a
   post fails, it drops that turn and backs off (0.5 s doubling, capped at 30 s), draining and
-  dropping until a client opens again. Each event dropped this way is counted
+  dropping until a client opens again; a failed post logs `analysisd offline? POST failed (rc=<n>,
+  http=<status>, curl=<code>). Dropping events until recovery.` Each event dropped this way is counted
   (`rem_inc_recv_events_failed()`) and reported at WARNING at most once per 90 s
   (`drop_consumer()`: `Dropped <n> event(s) in the last <s> s: unable to connect with analysisd.`); an
   event refused by the full queue on the way in is counted the same way, with its own warning at most

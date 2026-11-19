@@ -89,4 +89,4 @@ document and dump generation, metrics snapshots, the verdict and the bootstrap
 (`internal/runner/bootstrap_test.go`). `control`, `scanvd`, `cacerts` and `engine` have none.
 `make test` runs them all (`go test ./...`); run `make generate` first, since `fbbuild` — and
 `runner` and `cmd/` through it — do not compile without the generated bindings. Everything else
-needs a manager, and belongs to F9c-2's smoke and F9c-3's scenarios.
+needs a manager, and belongs to the scenario library ([`SCENARIOS.md`](../../SCENARIOS.md)).

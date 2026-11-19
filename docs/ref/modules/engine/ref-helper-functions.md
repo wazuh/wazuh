@@ -22843,9 +22843,12 @@ Build errors:
   values of one type.
 - `db` or `table` is not a literal string, or `mask` is not a reference.
 - A number of arguments other than 3.
-- The target field is a schema field whose elements are not strings.
+- The target field is a schema field whose elements are not strings, or `mask` is a schema field that
+  is not a string.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB and the table are not read, so the
+  table errors above are not reported and the operation is a no-op.
 - A mask with no decodable bit (a mask of `0` included) makes the operation fail and leaves the target
   unchanged.
 - `kvdb_lookup_append` appends the values of a list of keys instead of the values of the set bits.
@@ -23248,6 +23251,8 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+  no-op.
 - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
   operations of the map block still run.
 - `kvdb_lookup_merge` merges the value into the target and `kvdb_lookup_append` appends one value per key.
@@ -23634,6 +23639,8 @@ Build errors:
 - A number of arguments other than 2.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+  no-op.
 - Unlike `array_append`, a target that is not an array is replaced instead of failing the operation.
 
 
@@ -24119,6 +24126,8 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+  no-op.
 - In `deep` mode an object or array in the KVDB value whose counterpart in the target has another type
   fails the operation; the target is left untouched.
 - `lookup_merge` does the same merge with a value taken from an object.

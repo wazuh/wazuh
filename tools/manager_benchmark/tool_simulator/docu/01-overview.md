@@ -56,7 +56,7 @@ one that stresses the manager's cross-lane paths (see [07](07-scenario-schema.md
 ## What the sender does NOT do
 
 - **It does not interpret the manager's configuration.** `POST /control` answers with `limits`,
-  `cluster`, `agent.groups`, `config_hash`, `settings_hash`, `ca_generation`, `vd_feed_offset` and
+  `cluster`, `agent.groups`, `agent.config_hash`, `agent.config_token`, `settings_hash`, `ca_generation`, `vd_feed_offset` and
   pending `tasks`. The sender **MUST** validate that response (status `200`, parseable JSON) and
   record its latency, and **MUST NOT** let any field of it change its behavior: no rate
   limit is adopted, no group is honored, no task is executed, no hash is compared. The one

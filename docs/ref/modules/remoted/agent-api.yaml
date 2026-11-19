@@ -451,7 +451,8 @@ paths:
         `ca_generation` (the generation the CA bundle `GET /cacerts` would serve
         right now is published under, costing this hot path no extra file read -- see that route's
         own description for what an agent does with a rotation once it sees one here), a strictly
-        higher `vd_feed_offset` (request a re-scan via `POST /scan/vd`), and `tasks` when the manager
+        higher `vd_feed_offset` (request a re-scan via `POST /scan/vd`; omitted while Vulnerability
+        Detection is disabled on this node), and `tasks` when the manager
         has work to dispatch.
 
         `ca_generation` carries one of three states, and they are NOT interchangeable: a timestamp
@@ -497,7 +498,9 @@ paths:
             Message accepted. The body depends on `type`: `startup` returns the agent's limits,
             cluster name and groups; `notify` returns change-detection hashes, `ca_generation`, the
             VD feed offset and any pending tasks; `shutdown` returns an empty object. On a `notify`
-            every field is always present: `tasks` is `[]` when there is no work, `config_hash` is
+            every field is always present except `vd_feed_offset`, which is omitted while
+            Vulnerability Detection is disabled on this node (an agent that receives no offset
+            requests no scan): `tasks` is `[]` when there is no work, `config_hash` is
             the literal `"0"` when the selector resolves to no `merged.mg` (or it cannot be hashed),
             and `config_token` is never empty (`default` for an empty selector).
           content:
@@ -1103,7 +1106,7 @@ paths:
                   summary: Also vd_error, or VD's own code for any other VD answer
                   value: { error: "vd_unreachable" }
                 vdNotInitialized:
-                  summary: The scanner never initialized on this node
+                  summary: Vulnerability Detection is disabled on this node, or its start failed
                   value: { error: "vd_not_initialized" }
 
   /enroll:
@@ -1809,5 +1812,5 @@ components:
             `WAZUH-REENROLL-KEY` derivation (see `WazuhEnrollAuthentication`), the only thing that lets
             the agent re-enroll later keeping this `id` instead of appearing as a new agent. Handed
             out once per (re-)enrollment; each successful re-enrollment replaces both `key` and
-            `reenroll_secret`. Absent only when the master node's `authd` predates this field.
+            `reenroll_secret`. Omitted, never sent empty, when `authd`'s answer carries none.
           example: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0

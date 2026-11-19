@@ -270,6 +270,9 @@ not an escalation, but grant `users_admin` only to whom you would trust with rem
 | `wazuh_indexer_readonly` | `user_name` is `wazuh-readonly` |
 | `wazuh_indexer_demo` | `user_name` is `wazuh-demo` |
 
+Each is a `FIND` rule (`framework/wazuh/rbac/default/rules.yaml`): the key may sit at any depth of the
+authorization context, and its value must equal the one shown (a list value must contain it).
+
 These reserved rules are evaluated only for the `wazuh-internal-client` user (ID 2); rules created through the API
 apply to any user with `allow_run_as`.
 

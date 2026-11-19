@@ -85,7 +85,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
     "api_version": "5.0.0",
     "revision": "rc3",
     "license_name": "GPL 2.0",
-    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE",
+    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc3/LICENSE",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
   },
@@ -194,9 +194,12 @@ curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=t
 Deleting an agent also removes its documents from the Wazuh Indexer (inventory state, reported
 configuration and statistics), which is why its data disappears from the dashboard. That cleanup is
 not part of this call: `wazuh-manager-authd` records a durable `agent_delete_indexer` task that the
-task manager runs no earlier than `authd.purge_delay` (120 seconds by default) after the removal, and
-retries until the indexer accepts it — see the
-[Inventory Sync Server FAQ](../inventory-sync-server/README.md#faq-operations) for how to check it.
+task manager runs no earlier than `authd.purge_delay` (an internal option, 120 seconds by default) after
+the removal, and retries until the indexer accepts it — see the
+[Inventory Sync Server FAQ](../inventory-sync-server/README.md#faq-operations) for how to check it. While
+too many of those purges are still pending, a deletion is refused: the agent is a failed item with error
+`1766` (*The agent was not deleted: too many deletions are still pending*), is left untouched, and can be
+deleted again once the backlog drains.
 
 ```bash
 # Delete disconnected agents older than 30 days
@@ -450,7 +453,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/security/roles/{role_id}/rules` | Assign rules |
 | DELETE | `/security/roles/{role_id}/rules` | Remove rules |
 | GET | `/security/policies` | List policies |
-| POST | `/security/policies` | Create policy (a policy whose content equals an existing one, a default included, is refused with `4009` even under another name; `effect` is not validated as `allow`/`deny`) |
+| POST | `/security/policies` | Create policy (a policy whose content equals an existing one, a default included, is refused with `4009` even under another name; an `effect` other than `allow`/`deny`, an unknown action or resource type is `4006`: see [What a create or update accepts](../rbac/README.md#what-a-create-or-update-accepts)) |
 | DELETE | `/security/policies` | Delete policies |
 | PUT | `/security/policies/{policy_id}` | Update policy |
 | GET | `/security/rules` | List rules |
@@ -599,10 +602,11 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 |-------|----------|----------|
 | 900–901 | API process pool errors | Child process terminated, executor failure |
 | 999–1099 | Core Wazuh errors | Incompatible Python, internal error, command errors, socket issues |
-| 1100–1199 | Configuration errors | Invalid section/field/type, validation, protected options (`1127`, `1129`, `1132`) |
+| 1100–1199 | Configuration errors | Invalid section/field/type (`1103` is also a `field` given without its `section` in `GET /cluster/{node_id}/configuration`), validation, protected options (`1127`, `1129`, `1132`) |
 | 1300–1399 | Statistics errors | Invalid parameters |
 | 1400–1499 | Query and pagination errors | Invalid offset/limit/sort, invalid `q` query filter or operator, invalid time frame |
 | 1700–1799 | Agent errors | Agent not found, duplicate, version mismatch |
+| 1810–1828 | Agent upgrade errors | `PUT /agents/upgrade` and `/agents/upgrade_custom`: the task manager's upgrade error plus 1810, with its message (these codes are not in `exception.py`'s catalog). A per-agent verdict is a failed item; a code that concerns the whole request is raised for it. The codes: [Task Manager agent upgrade routes](../task_manager/api-reference.md#agent-upgrade-routes) |
 | 1900–1999 | Manager errors | Control socket, configuration validation, request body |
 | 2000–2099 | Internal service errors | wazuh-db, engine, modulesd and remoted admin sockets |
 | 2200–2299 | Indexer errors | Connection, credentials |

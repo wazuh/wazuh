@@ -51,7 +51,8 @@ across the rest of the platform.
 
 The table below maps the most commonly used OSquery state tables to the
 Syscollector inventory category that covers the same data. The "Since" column
-indicates the Wazuh version in which that category was introduced.
+indicates the Wazuh version in which that category was introduced; the last
+four rows are OSquery tables that Syscollector does not collect in 5.0.
 
 | IT Hygiene category | OSquery source tables | Since | Platform notes |
 |---|---|---|---|
@@ -65,10 +66,10 @@ indicates the Wazuh version in which that category was introduced.
 | **Groups** | `groups`, `user_groups` | 4.14 | All platforms. `user_groups` is resolved to a `group.users` member list (not a separate document). Linux: no `description` or `uuid` (not available in `/etc/group`). Windows: adds `description` and `uuid` (Windows SID). macOS: adds `description`, `uuid`, and `is_hidden` from Directory Services. |
 | **Services** | `systemd_units` (Linux), `services` (Windows), `launchd` (macOS) | 4.14 | Platform-specific source. On Linux the systemd D-Bus API is used; additional fields `enabled`, `following`, `object_path`, and `target.*` have no OSquery equivalent. On macOS the launchd plist reader adds `restart`, `frequency`, `starts_on_*`, and log file paths. |
 | **Browser Extensions** | `chrome_extensions`, `firefox_addons` | 4.14 | Chrome/Chromium and Firefox on all platforms. Windows also collects `ie_extensions` (IE/Edge legacy). macOS also collects `safari_extensions` (requires Full Disk Access permission). Safari is not available on Linux or Windows. |
-| **Disks & Devices** | `disk_info`, `memory_devices`, `pci_devices`, `usb_devices` | Planned (Tier 3) | |
-| **Kernel Modules** | `kernel_modules`, `drivers`, `kernel_extensions` | Planned (Tier 3) | |
-| **Firmware** | `platform_info`, `secureboot`, `tpm_info` | Planned (Tier 3) | |
-| **WiFi** | `wifi_networks`, `wifi_status`, `wifi_survey` | Planned (Tier 3) | macOS only. |
+| **Disks & Devices** | `disk_info`, `memory_devices`, `pci_devices`, `usb_devices` | Not collected | |
+| **Kernel Modules** | `kernel_modules`, `drivers`, `kernel_extensions` | Not collected | |
+| **Firmware** | `platform_info`, `secureboot`, `tpm_info` | Not collected | |
+| **WiFi** | `wifi_networks`, `wifi_status`, `wifi_survey` | Not collected | macOS only. |
 
 ## Configuration mapping
 
@@ -844,8 +845,9 @@ SELECT id, description, sub_state, load_state, active_state, unit_file_state,
 | — | `job_type` | `service.target.type` | Associated systemd job type (Linux) |
 | — | `job_path` | `service.target.address` | Associated systemd job path (Linux) |
 
-> **Note:** The `load_state` column present in the OSquery `systemd_units` table is not
-> captured by Wazuh 5.0. Services in a non-`loaded` load state are generally not reported.
+> **Note:** Unlike the OSquery `systemd_units` table, which lists every unit type, Wazuh 5.0
+> collects only `.service` units, and skips placeholder units (load state `not-found` and
+> inactive). The `load_state` column itself is not stored.
 
 
 **Example alert 4.x:**
@@ -1096,6 +1098,10 @@ default, so in most cases no configuration change is needed:
   </wodle>
 ```
 
+`all="yes"` on `<ports>` is the one setting above that is not a default: without
+it, Syscollector reports only the TCP ports in the listening state (UDP ports
+are always reported).
+
 After saving, restart the agent:
 
 ```bash
@@ -1147,8 +1153,9 @@ of items in the inventory.
 
 ### Step 5 – Recreate visualizations and dashboards in 5.0
 
-In Wazuh 5.0 the inventory index patterns (`wazuh-states-inventory-*`) are
-created automatically by the server — you do not need to create them manually.
+In Wazuh 5.0 you do not create the inventory indices (`wazuh-states-inventory-*`):
+their templates ship with the Wazuh indexer, and the manager's inventory
+synchronization writes each agent's documents into them.
 If you had custom index patterns over `wazuh-alerts-*` scoped to OSquery data
 (for example, a pattern filtered to rule group `osquery`), those need to be
 recreated only if you still need to query historical OSquery alerts from the
@@ -1206,7 +1213,7 @@ The OSquery wodle has been fully removed in Wazuh 5.0: a leftover block is ignor
 | **Event-based tables** | Supported (e.g., `process_events`, `file_events`, `socket_events`) | Out of scope; use FIM for file events, Audit/Syscall monitoring for process and socket events |
 | **Custom tables** | OSquery extensions / ATC tables | Not supported |
 | **Pack scheduling** | Per-query intervals defined in pack files | Single scan interval for all enabled categories |
-| **Tier 3 categories** | Full OSquery table coverage | Planned: Disks & Devices, Kernel Modules, Firmware, WiFi |
+| **Uncovered categories** | Full OSquery table coverage | Not collected: Disks & Devices, Kernel Modules, Firmware, WiFi |
 
 ## Related resources
 

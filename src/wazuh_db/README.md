@@ -14,8 +14,9 @@ Three documentation layers cover wazuh-db, each with its own job:
   [transaction model](#transactions-and-durability), the [invariants](#invariants) a change must keep,
   and the [test map](#tests).
 - **[`docs/ref/modules/wazuh_db/`](../../docs/ref/modules/wazuh_db/README.md)** — the operator
-  contract: the command line, the socket protocol and every command's syntax, the databases and their
-  tables ([overview](../../docs/ref/modules/wazuh_db/README.md)), the `wdb` section and the
+  contract: the command line, the socket protocol and the
+  [catalog of every `global` command](../../docs/ref/modules/wazuh_db/README.md#global-commands) with
+  its callers, the databases and their tables ([overview](../../docs/ref/modules/wazuh_db/README.md)), the `wdb` section and the
   `wazuh_db.*` internal options ([configuration](../../docs/ref/modules/wazuh_db/configuration.md)), and
   the HTTP routes with their bodies and status codes
   ([API reference](../../docs/ref/modules/wazuh_db/api-reference.md)). Nothing here restates them.
@@ -162,8 +163,9 @@ The streaming and paging helpers exist because of the frame limit: a worker's an
    nowhere else (the operator page's table of `global.db`), so D1's premise does not hold for it;
    weigh that before relying on `synchronous=NORMAL` for new state.
 8. **The socket paths are spelled in several places.** `wdb.sock`: `WDB_LOCAL_SOCK` in
-   `src/shared/include/defs.h`, `WDB_SOCKET` in `framework/wazuh/core/common.py`, and `kWdbSocket` in
-   `src/remoted/remoted_module/src/common/installPaths.hpp`. `wdb-http.sock`: the literal passed to
+   `src/shared/include/defs.h`, `WDB_SOCKET` in `framework/wazuh/core/common.py`, `kWdbSocket` in
+   `src/remoted/remoted_module/src/common/installPaths.hpp`, and `WDB_SOCKET` in
+   `src/shared_modules/utils/socketDBWrapper.hpp` (the C++ client). `wdb-http.sock`: the literal passed to
    `wdb_http_start()` in `src/main.c` and `WDB_HTTP_SOCKET` in `common.py` — there is no C constant.
 
 ## Clients
@@ -171,12 +173,14 @@ The streaming and paging helpers exist because of the frame limit: a worker's an
 | Client | Socket | Code |
 |---|---|---|
 | C daemons (authd, remoted, modulesd's database and task-manager modules) | `wdb.sock` | `src/shared/src/wazuhdb_op.c` (framing, `wdbc_query_ex()`), `src/shared/src/wazuhdb_queries_op.c` (one helper per command) |
-| The framework and the Server API | `wdb.sock` | `framework/wazuh/core/wdb.py` (`WazuhDBConnection`) |
+| The vulnerability scanner (`get-agent-info`, `get-all-agents context`) | `wdb.sock` | `src/shared_modules/utils/socketDBWrapper.hpp` (framing), `wazuhDBQueryBuilder.hpp` (query text) |
+| remoted's HTTPS control path (`update-agent-data`, `update-keepalive`, `update-connection-status`, `update-status-code`, `select-agent-group`) | `wdb.sock` | `src/remoted/remoted_module/src/control/wazuhDBClient.cpp` |
+| The framework, the Server API and clusterd | `wdb.sock` | `framework/wazuh/core/wdb.py` (`WazuhDBConnection`, `AsyncWazuhDBConnection`) |
 | clusterd and the framework | `wdb-http.sock` | `framework/wazuh/core/wdb_http.py`; the readiness client is named in the [API reference](../../docs/ref/modules/wazuh_db/api-reference.md) |
 
-A change to a command's syntax or answer moves the daemon's parser, the C helper in
-`wazuhdb_queries_op.c` or the framework client, their tests, and the
-[operator page](../../docs/ref/modules/wazuh_db/README.md); a route change moves its endpoint header,
+A change to a command's syntax or answer moves the daemon's parser, every client that sends it (the C
+helper in `wazuhdb_queries_op.c`, the framework, the C++ clients above), their tests, and the
+[operator catalog](../../docs/ref/modules/wazuh_db/README.md#global-commands); a route change moves its endpoint header,
 `registerRoute()`'s table and the [API reference](../../docs/ref/modules/wazuh_db/api-reference.md).
 
 ## Tests

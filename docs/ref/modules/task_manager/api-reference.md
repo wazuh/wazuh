@@ -175,9 +175,10 @@ deliberate ways:
 - **They are asynchronous.** The handler parses the body, hands the batch to the upgrade worker pool
   and returns without answering; the reply is sent from the pool when the batch finishes, normally
   within [`upgrade_batch_deadline`](configuration.md#internal-options-the-upgrade-path-adds) (180 s).
-  The deadline is checked between downloads, not inside one: a transfer already in flight when it
-  passes runs out its own `upgrade_download_timeout` first, and the per-agent wazuh-db lookups that
-  precede the downloads are bounded by their own 10 s socket deadline instead.
+  The deadline covers only the repository stage and is checked between download attempts and while
+  waiting for a download slot, not inside a transfer: one already in flight when it passes runs out
+  its own `upgrade_download_timeout` first. The per-agent wazuh-db lookups that precede the downloads
+  are not counted against it; each is bounded by its own 10 s socket deadline instead.
 - **They always answer `200`**, including for a body that could not be parsed. The verdicts are in
   the body, and the Server API turns each per-agent `error` into an exception code by adding 1810; a
   non-2xx would make that client raise before it ever read them.

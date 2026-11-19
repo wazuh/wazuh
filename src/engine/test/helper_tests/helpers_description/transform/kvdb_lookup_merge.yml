@@ -27,6 +27,8 @@ metadata:
     - The target field is not a schema field and does not start with `_`.
 
     Notes:
+    - During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+      no-op.
     - In `deep` mode an object or array in the KVDB value whose counterpart in the target has another type
       fails the operation; the target is left untouched.
     - `lookup_merge` does the same merge with a value taken from an object.

@@ -10,7 +10,7 @@ The **wiconnector** module provides the **Wazuh Indexer Connector** — a thread
 - **IOC operations** — checking whether the IOC index exists (`false` only on a 404; any other failure throws), reading hash manifests, and streaming IOC records by type with batched pagination.
 - **CTI consumer readiness** — a pre-flight check on `.wazuh-cti-consumers`.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Queue introspection** — reporting the pending-queue size in bytes and the dropped-event count (exported by `main.cpp` as indexer metrics).
+- **Queue introspection** — reporting the pending-queue size in bytes and the dropped, requeued and deduplicated event counts (exported by `main.cpp` as indexer metrics).
 
 Internally the module wraps an asynchronous `IndexerConnectorAsync` instance (from the shared `indexer_connector` library in `src/shared_modules/indexer_connector/`; operator page [indexer_connector](../../../../docs/ref/modules/indexer_connector/README.md)) behind the internal `IIndexerConnectorAsync` interface (`IndexerConnectorAsyncAdapter`, so tests can inject a mock), and protects every operation with a `std::shared_mutex` for concurrent access.
 
@@ -77,7 +77,7 @@ The consumer IDs are passed by the callers (`cmsync`, `iocsync`); the connector 
 
 ### Thread Safety
 
-Every public method except `requestShutdown()` acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal connector, subsequent calls degrade: `index()` returns (debug log), `getQueueSize()`/`getDroppedEvents()`/`getDeduplicatedEvents()` return `0`, `isConsumerReadyForSync()` returns `false`, and the other query methods throw `std::runtime_error` (`IndexerConnectorAsync is not initialized`).
+Every public method except `requestShutdown()` acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal connector, subsequent calls degrade: `index()` returns (debug log), `getQueueSize()`/`getDroppedEvents()`/`getRequeuedEvents()`/`getDeduplicatedEvents()` return `0`, `isConsumerReadyForSync()` returns `false`, and the other query methods throw `std::runtime_error` (`IndexerConnectorAsync is not initialized`).
 
 ### Graceful Shutdown
 
@@ -141,21 +141,14 @@ struct Config
 Credentials are not part of `Config`: the shared `indexer_connector` library reads them from the keystore (`indexer` / `username`, `password`).
 
 `main.cpp` uses the JSON-string constructor in both modes: it takes the base JSON above and folds in eight more settings
-from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or
-default — env var wins), validating their ranges first (an out-of-range value aborts startup). They are documented in the
-[engine configuration reference § Indexer connector settings](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings);
-the keys, env vars and defaults (`conf.cpp`) are:
-
-| Internal option | Env Override | Default |
-|-----------------|--------------|---------|
-| `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | `67108864` (64 MB) |
-| `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | `8388608` (8 MB) |
-| `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | `20` |
-| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | `8` |
-| `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | `1` |
-| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | `15` |
-| `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | `60` |
-| `analysisd.indexer_monitoring_interval` | `WAZUH_INDEXER_MONITORING_INTERVAL` | `10` |
+from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or default — env var wins), whose ranges
+`confManager.load()` checks first (an out-of-range value aborts startup): `analysisd.indexer_queue_max_bytes` →
+`max_queue_bytes`, `analysisd.indexer_bulk_max_bytes` → `bulk_max_bytes`, `analysisd.indexer_flush_interval` →
+`flush_interval_seconds`, `analysisd.indexer_logger_queue_size` → `logger_queue_size`, `analysisd.indexer_logger_threads`
+→ `logger_threads`, `analysisd.indexer_max_retry_delay` → `max_retry_delay_seconds`, `analysisd.indexer_request_timeout`
+→ `request_timeout_seconds` and `analysisd.indexer_monitoring_interval` → `monitoring_interval_seconds`. Their env vars,
+defaults and ranges (`conf.cpp`) are documented once, in the
+[engine configuration reference § Indexer connector settings](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings).
 
 ## Directory Structure
 
@@ -353,7 +346,7 @@ Uses `queryByBatches()` (always a PIT over `wazuh-threatintel-enrichments`) with
 - The PIT also includes `.wazuh-cti-consumers`; the consumer is validated to be `ready` within the snapshot.
 - Returns `std::nullopt` if consumer not ready (iocsync skips sync cycle).
 
-Parses the `__ioc_type_hashes__` manifest into a `map<type, sha256>` (an invalid manifest → `IndexerConnectorException`). When the manifest document is absent (a fresh indexer), the code also returns `std::nullopt`, although the interface comment says it throws.
+Parses the `__ioc_type_hashes__` manifest into a `map<type, sha256>` (an invalid manifest → `IndexerConnectorException`). When the manifest document is absent (a fresh indexer), it also returns `std::nullopt` (logged at debug level).
 
 #### `getEngineRemoteConfig()`
 
@@ -382,4 +375,4 @@ Searches `.wazuh-settings` (`match_all`, `size=1`, source `engine` only); exactl
 | `iocsync` | `wIndexerConnector::iwIndexerConnector` | Reads IOC type hashes and streams IOC records for local KVDB synchronization |
 | `rawevtindexer` | `wIndexerConnector::iwIndexerConnector` | Indexes raw events into the wazuh-indexer |
 | `confremote` | `wIndexerConnector::iwIndexerConnector` | Retrieves remote engine configuration from `.wazuh-settings` |
-| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Creates the `WIndexerConnector` (only when event processing is enabled), injects it into consuming modules, exports `getQueueSize()`/`getDroppedEvents()`/`getDeduplicatedEvents()` as metrics, and registers `requestShutdown()`/`shutdown()` on exit |
+| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Creates the `WIndexerConnector` (only when event processing is enabled), injects it into consuming modules, exports `getQueueSize()`/`getDroppedEvents()`/`getRequeuedEvents()`/`getDeduplicatedEvents()` as metrics (`indexer.queue.size`, `indexer.events.dropped`, `indexer.events.requeued`, `indexer.events.deduplicated`, plus `indexer.queue.usage.percent` derived from the queue size), and registers `requestShutdown()`/`shutdown()` on exit |

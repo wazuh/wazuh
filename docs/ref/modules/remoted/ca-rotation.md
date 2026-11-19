@@ -273,8 +273,9 @@ means the token is stale, not that the manager is being impersonated; see
   placed by hand — is served as it is and announced as `0` with an INFO line; nothing changes until an
   operator runs `stamp` (or `add`) on the master for the first time.
 - **4.x agents mid-upgrade** receive, over the legacy WPK channel, only the single CA that the
-  currently served leaf chains to, re-serialized — the same anchor they would have received before
-  this feature, regardless of how many CAs the bundle carries.
+  currently served leaf chains to, re-serialized, regardless of how many CAs the bundle carries —
+  unless [`legacy.ca_delivery`](configuration.md#legacyca_delivery) is off, in which case they
+  receive none.
 - **The `##` publication block** is PEM explanatory text (RFC 7468 §2): remoted and
   `wazuh-manager-certs` read it, and any other PEM consumer (OpenSSL, an agent's trust store) ignores
   it, so a stamped bundle stays an ordinary CA file. `GET /cacerts` serves only the re-serialised

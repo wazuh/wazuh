@@ -85,8 +85,6 @@ WARNING: could not generate /etc/wazuh-manager/wazuh-manager.conf.new. The curre
 
 The `ERROR:` line does not fail the upgrade: the live configuration is preserved either way.
 
-Note also the indexer connector's trust anchor: a fresh installation names `/etc/wazuh-manager/certs/indexer-ca.pem` in `<indexer><ssl><certificate_authorities>`, while a configuration preserved from an earlier 5.0 build still names `certs/root-ca.pem`, which is now the agents' CA bundle only. Change that `<ca>` to `/etc/wazuh-manager/certs/indexer-ca.pem` in the live configuration (see [Indexer trust](getting-started/credentials.md#indexer-trust)).
-
 Note in particular `remote.https.global_prefix`: its schema default, `/wazuh-manager/`, is applied to every configuration the manager loads, preserved or not. A preserved `wazuh-manager.conf` with no `<global_prefix>` element therefore serves routes under `/wazuh-manager/`, exactly like a fresh install. Agents use the same prefix by default; only an agent whose `<manager><endpoint>` ends in a bare `/` expects unprefixed routes (see [Client configuration](modules/client/configuration.md#endpoint)). To keep such agents working, add `<global_prefix>/</global_prefix>` to the live configuration (and, on DEB, to `wazuh-manager.conf.new` before adopting it), then move them to the prefixed path as a coordinated agent-side change.
 
 **If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
