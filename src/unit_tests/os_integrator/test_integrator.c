@@ -288,6 +288,41 @@ void test_OS_IntegratorD_output_masked(void **state) {
     os_free(hook.path);
 }
 
+void test_OS_IntegratorD_output_masked_query(void **state) {
+    (void) state;
+    IntegratorConfig hook = { .name = "custom-query", .hookurl = "https://hooks.example?token=CANARY_HOOK",
+                              .alert_format = "json" };
+    IntegratorConfig *integrator_config[] = { &hook, NULL };
+    wfd_t wfd = { .file_out = (FILE *)1 };
+
+    will_return(__wrap_jqueue_open, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+    expect_enable_integration("integrations/custom-query", "Enabling integration for: 'custom-query'.");
+
+    expect_read_alert();
+    expect_alert_file("/tmp/custom-query-1111-2222.alert", "File /tmp/custom-query-1111-2222.alert was written.");
+    will_return(__wrap_wpopenv, &wfd);
+
+    will_return(__wrap_getline, strdup("Max retries exceeded with url: /?token=CANARY_HOOK\n"));
+    expect_string(__wrap__mdebug2, formatted_msg, "Max retries exceeded with url: /*****\n");
+    will_return(__wrap_getline, NULL);
+
+    will_return(__wrap_wpclose, 1 << 8);
+    expect_string(__wrap__merror, formatted_msg, "Unable to run integration for custom-query -> integrations");
+    expect_string(__wrap__merror, formatted_msg, "While running custom-query -> integrations. Output: "
+                                                 "Max retries exceeded with url: /*****\n ");
+    expect_string(__wrap__merror, formatted_msg, "Exit status was: 1");
+
+    expect_string(__wrap_unlink, file, "/tmp/custom-query-1111-2222.alert");
+    will_return(__wrap_unlink, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    OS_IntegratorD(integrator_config);
+
+    os_free(hook.path);
+}
+
 void test_OS_IntegratorD_output_not_carried_over(void **state) {
     (void) state;
     IntegratorConfig first = { .name = "custom-first", .alert_format = "json" };
@@ -374,6 +409,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_OS_IntegratorD, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_OS_IntegratorD_output_masked, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_OS_IntegratorD_output_masked_query, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_OS_IntegratorD_output_not_carried_over, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_OS_IntegratorD_exec_errors_hide_arguments, setup_test_mode, teardown_test_mode),
     };
