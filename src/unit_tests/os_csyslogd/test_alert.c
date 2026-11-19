@@ -163,6 +163,45 @@ static void test_cef_header_location_does_not_fit(void **state) {
                " src=9.9.9.9 spt=5555 shost=9.9.9.9 suser=admin suser=admin msg=log");
 }
 
+/* The alert carries no extension field but msg */
+static void send_cef_header_of_size(size_t size, int fits) {
+    const char *rest = "|5|dvc=indexer2 cs1=" LOCATION " cs1Label=Location";
+    size_t comment_len = size - strlen(CEF_HEADER) - strlen(rest);
+    char comment[OS_SIZE_2048];
+    char expected[OS_SIZE_4096];
+    alert_data *al_data;
+
+    memset(comment, 'a', comment_len);
+    comment[comment_len] = '\0';
+
+    al_data = make_alert(comment, LOCATION, "9.9.9.9", 0, "admin", "log");
+    os_free(al_data->group);
+    os_free(al_data->srcip);
+    os_free(al_data->user);
+
+    snprintf(expected, sizeof(expected), "%s%s%s msg=log", CEF_HEADER, fits ? comment : "", rest);
+    send_alert(CEF_CSYSLOG, al_data, expected);
+}
+
+static void test_cef_header_size_fits(void **state) {
+    send_cef_header_of_size(OS_SIZE_2048 - 1, 1);
+}
+
+static void test_cef_header_size_does_not_fit(void **state) {
+    send_cef_header_of_size(OS_SIZE_2048, 0);
+}
+
+static void test_cef_header_null_comment(void **state) {
+    alert_data *al_data = make_alert(COMMENT, LOCATION, "9.9.9.9", 5555, "admin", "log");
+
+    os_free(al_data->comment);
+
+    /* glibc prints a NULL %s as (null) */
+    send_alert(CEF_CSYSLOG, al_data,
+               CEF_HEADER "(null)|5|dvc=indexer2 cs1=" LOCATION " cs1Label=Location cat=" GROUP
+               " src=9.9.9.9 spt=5555 shost=9.9.9.9 suser=admin suser=admin msg=log");
+}
+
 static void test_default_unescaped(void **state) {
     send_alert(DEFAULT_CSYSLOG, make_alert(COMMENT, LOCATION, "9.9.9.7", 5557, "x\",forged=\"CEO", LOG_2003),
                HEADER_DATE " indexer2 ossec: Alert Level: 5; Rule: 5760 - " COMMENT "; Location: " LOCATION ";"
@@ -182,6 +221,9 @@ int main() {
         cmocka_unit_test(test_cef_header),
         cmocka_unit_test(test_cef_header_does_not_fit),
         cmocka_unit_test(test_cef_header_location_does_not_fit),
+        cmocka_unit_test(test_cef_header_size_fits),
+        cmocka_unit_test(test_cef_header_size_does_not_fit),
+        cmocka_unit_test(test_cef_header_null_comment),
         cmocka_unit_test(test_default_unescaped),
     };
 
