@@ -90,7 +90,9 @@ agent's documents). The situations an operator will recognize:
   mismatch confirmed on every attempt makes it full-resync that module. A third result: if the
   indexer answered `5xx` to the checksum read, the session is answered `503` (no `Retry-After`,
   never `409`) and the check ends there without a verdict, also when it follows a `409`: no
-  resync happens, and the agent tries again at its next periodic check.
+  resync happens. The agent's sender retries the same request within its attempt budget first, so
+  one refused check is answered `503` more than once; the check ends when the last of those
+  answers reaches the agent's sync protocol, and the agent tries again at its next periodic check.
 - **Full resync**: two ordinary requests — clean the module's indices, then re-send the full
   dataset. Their order is guaranteed by the per-agent worker shard.
 - **Agent deletion**: when an agent is removed, authd records a deletion task and the Task Manager's
