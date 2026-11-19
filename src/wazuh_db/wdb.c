@@ -137,7 +137,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
     [WDB_STMT_FIM_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry ORDER BY file;",
     [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;",
-    // FIM sync deletions and clears skip rows without checksum, saved by the legacy decoder (agentless) and never synchronized
+    // AROUND, RANGE and CLEAR, here and in FIM_FILE_*, skip rows without checksum: saved by the legacy decoder (agentless, agents before 3.12) and never synchronized
     [WDB_STMT_FIM_DELETE_AROUND] = "DELETE FROM fim_entry WHERE checksum IS NOT NULL AND (file < ? OR file > ?) RETURNING file;",
     [WDB_STMT_FIM_DELETE_RANGE] = "DELETE FROM fim_entry WHERE checksum IS NOT NULL AND file > ? AND file < ? RETURNING file;",
     [WDB_STMT_FIM_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE file = ? RETURNING file;",
