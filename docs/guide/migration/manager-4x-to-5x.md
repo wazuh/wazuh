@@ -65,7 +65,8 @@ the manager's own API rather than by writing its files, so the manager validates
 group and writes `client.keys` and the registry itself. One difference from the manual procedure
 follows from that: the tool needs the 5.0 manager **running**, where the steps below need it
 stopped. Installing it out of the fleet's reach, as [Step 2](#2-install-the-50-manager) describes,
-gives you both at once — the API answers on loopback while no agent can reach the manager.
+gives you both at once — the API answers (the tool reaches it on loopback) while no agent can reach
+the manager.
 
 Read this section either way: the decisions it describes are still yours, and the tool cannot carry
 what no endpoint accepts, which is listed in its README. Run its `export` with `--dry-run` first: it
@@ -351,8 +352,14 @@ works against it — while no agent can reach it on `1514`, `1515` or `1517`. In
 [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) you set
 `<remote><https><bind_addr>` back to `0.0.0.0` and `<remote><legacy><enabled>` back to `yes`, and the
 fleet reconnects against a registry that already knows it. It is also what the
-[migration tool](#3-restore-the-identity-data) wants: it talks to the API, which answers on loopback
+[migration tool](#3-restore-the-identity-data) wants: it talks to the API, which it reaches on loopback
 throughout.
+
+The two variables close only the agent listeners. The Server API keeps its default bind, every address
+on port `55000` (`host: ['0.0.0.0', '::']` in `/var/wazuh-manager/api/configuration/api.yaml`), so during
+the window it is reachable from the network like any other API: keep `55000` firewalled from everything
+but the hosts that administer the migration, or set `host` to `['127.0.0.1']` in `api.yaml` before the
+first start and back once the fleet is open.
 
 Stopping the agents works too. On a fleet of any size the two variables are the cheaper guarantee,
 and they need nothing of the endpoints.
@@ -464,8 +471,9 @@ label need another key, such as group membership (`wazuh.agent.groups`). A `<lab
 wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
 section, it is rejected (`(1230): Invalid element in the configuration`) and the configuration
 does not compile; see [`label`](../../ref/modules/logcollector/configuration.md#label). A
-`<label>` key starting with `_` inside a `<localfile>` does not fail the check either:
-`verify-agent-conf` never returns on it, so a check that seems stuck points to such a key.
+`<label>` key starting with `_` inside a `<localfile>` does not fail the check either: that
+label is skipped with the warning `Labels starting with "_"  are reserved for internal use.`, and
+the rest of the block loads.
 Do the extraction with the manager stopped: `wazuh-manager-modulesd` drops a group whose
 directory it cannot open, and between the extraction and the `chown` these carry the 4.x owner,
 which is exactly that. The group comes back on the next synchronization, after a `delete-group`
@@ -632,7 +640,7 @@ Then confirm the registry through the API, with the `wazuh` password published i
 `/etc/wazuh-manager/export/credentials.env`, or the 4.x one if you carried `rbac.db`:
 
 ```bash
-TOKEN=$(curl -sk -u <user>:<password> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -sk -u <user> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -sk "https://localhost:55000/agents?select=id,name,version,status,group,dateAdd" -H "Authorization: Bearer $TOKEN"
 curl -sk "https://localhost:55000/groups" -H "Authorization: Bearer $TOKEN"
 ```

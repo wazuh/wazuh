@@ -134,10 +134,12 @@ Number of worker processes dedicated to authentication requests.
 - **Note:** Increase for high-concurrency environments with many simultaneous login attempts
 - **Note:** At most `authentication_pool_size - 1` password checks (at least one) run at once, so with
   two or more workers one is always left for validating tokens. Once eight times that many logins are
-  running or waiting, a further login is refused with `429` and error `6006` before its password is checked
+  running or waiting, a further login is refused with `429` and error `6006` before its password is checked.
+  The refusal does not count towards `access.max_login_attempts`: only logins that fail their credentials do
 - **Note:** A login admitted to the queue still counts against `intervals.request_timeout`: under load, one
   that waits longer than that for its password check answers `500` with error `3021` (a timeout, not a wrong
-  password). Retry it, or raise this pool size if it happens routinely
+  password, so it does not count towards the lockout either). Retry it, or raise this pool size if it happens
+  routinely
 
 ### intervals
 
@@ -436,7 +438,8 @@ Page large result sets with `offset` and `limit` (500 by default, at most 100,00
 Verify the API is running and responsive (every endpoint but the login ones needs a token):
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+# curl prompts for the password of `wazuh`, so it does not reach the process list
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -k -X GET "https://localhost:55000/" -H "Authorization: Bearer $TOKEN"
 ```
 

@@ -376,8 +376,10 @@ extern int synced_docs_registry_values;  // Current count of synced registry val
 ```
 
 **Behavior:**
-- **`sync_limit = 0`** (default): Unlimited synchronization - all items have `sync=1`
 - **`sync_limit > 0`**: Items inserted while the synced count is below N get `sync=1`; the rest are stored with `sync=0`
+- **`sync_limit = 0`**: Unlimited synchronization - all items have `sync=1`
+
+The limits come from the manager, one per index: `fim.file_limit`, `fim.registry_key_limit` and `fim.registry_value_limit` in the manager's `/etc/wazuh-manager/wazuh-manager-internal-options.conf`, each **`30000` by default** (see [Agent module limits](../remoted/configuration.md#agent-module-limits-fim-syscollector-sca)). An agent therefore synchronizes at most 30000 files (and, on Windows, 30000 registry keys and 30000 registry values) unless the manager raises the option; `0` there removes the limit.
 
 ### Recovery with Limits
 
@@ -1084,21 +1086,22 @@ FIM validates data for the following Wazuh indices:
 | Registry key events | `wazuh-states-fim-registry-keys` | Registry key changes (Windows) |
 | Registry value events | `wazuh-states-fim-registry-values` | Registry value changes (Windows) |
 
+The field sets below are the stateful documents' mappings in the indexer templates (`fim-files.json`, `fim-registry-keys.json` and `fim-registry-values.json` in `src/external/indexer-plugins`, see [Database Schema](database-schema.md)). There is no `event.*`, `agent.*` or `host.*` object: the agent builds the module fields, `checksum` and `state`, and the manager's [Inventory Sync Server](../inventory-sync-server/README.md) adds the `wazuh.*` metadata when it indexes the document.
+
 #### File Event Structure
 
-- `file.*`: File attributes (path, size, permissions, ownership, timestamps)
-- `file.hash.*`: File checksums (md5, sha1, sha256)
-- `event.*`: Event metadata (action, type, category)
-- `agent.*`: Agent information
-- `host.*`: Host information
+- `file.*`: `path`, `size`, `permissions`, `attributes`, `owner`, `uid`, `group`, `gid`, `inode`, `device`, `mtime`
+- `file.hash.*`: `md5`, `sha1`, `sha256` of the content
+- `checksum.hash.sha1`: checksum of the whole entry, used for change detection
+- `state.document_version`, `state.modified_at`: document version and last modification time
+- `wazuh.agent.*` (`id`, `name`, `version`, `groups`, `host.*`), `wazuh.cluster.*` (`name`, `node`), `wazuh.schema.version`: added by the manager
+- `message`
 
 #### Registry Event Structure
 
-- `registry.*`: Registry key/value information (path, value_name, value_type, value_data)
-- `registry.hash.*`: Registry checksums
-- `event.*`: Event metadata
-- `agent.*`: Agent information
-- `host.*`: Host information
+- Keys (`wazuh-states-fim-registry-keys`): `registry.*` with `path`, `hive`, `key`, `architecture`, `permissions`, `owner`, `uid`, `group`, `gid`, `mtime`
+- Values (`wazuh-states-fim-registry-values`): `registry.*` with `path`, `hive`, `key`, `value`, `architecture`, `size`, `data.type`, `data.hash.md5`, `data.hash.sha1`, `data.hash.sha256`
+- Both: `checksum.hash.sha1`, `state.document_version`, `state.modified_at`, `message`, and the manager-added `wazuh.agent.*`, `wazuh.cluster.*`, `wazuh.schema.version`
 
 ### Error Handling
 

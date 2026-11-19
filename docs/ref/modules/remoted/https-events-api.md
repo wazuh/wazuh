@@ -120,7 +120,7 @@ Without a usable pair the manager **fails closed**, in four layers, from the out
    `(1244) … file not found` verdict is what `wazuh-manager-remoted -t` prints for a missing
    certificate or key when it is run on its own.
 3. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
-   (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
+   (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits after logging, at **CRITICAL** level (`wazuh-manager-remoted: CRITICAL: Cannot start the HTTPS agent listener: …`), exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
    or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
    service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
@@ -355,7 +355,11 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 
 On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
 few seconds earlier (on the master, or forwarded by any node), until the new `client.keys` reaches
-that worker through the cluster's integrity sync — typically 10 to 35 seconds (20-35 seconds observed on a two-node cluster). An agent
+that worker through the cluster's integrity sync — typically between about 8 and 35 seconds (8.4–13 s
+measured on a three-node cluster, 20–35 s on a two-node one; see
+[Load-balanced deployment](../cluster/lb.md)). A token minted on the master reaches the workers'
+replicas the same way, so on a worker `POST /enroll` can answer `token_unknown` for a fresh token
+for up to about 15 seconds (14.0 s measured). An agent
 that lands on such a worker right after enrolling (for example behind a round-robin load balancer)
 recovers on its own once the key has arrived — by retrying, or, where it took the answer for the loss
 of its identity, by enrolling again; nothing has to be done on the manager.
@@ -483,7 +487,11 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
-  return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on
+  return the errors above. Each E line must carry `<queue>:<location>:<message>` (a one-byte queue
+  identifier, e.g. `E 1:/var/log/syslog:hello`; see [Event Line (E)](event-protocol.md#event-line-e)):
+  the engine parses the lines only after enqueueing the batch, so a line without that prefix still
+  gets `202` and is then dropped (`router.events.malformed`, WARNING
+  `Dropped a malformed event: <reason>`). Note the agent sends **no `Content-Type`** on this route — nothing on
   the manager side reads one, and the `application/x-ndjson` label exists only on the downstream hop
   to the engine. Do not configure an intermediary to require or rewrite it.
 - **`POST /control`** — authenticated agent lifecycle and control messages. Once the signature is
@@ -658,8 +666,10 @@ Seven more that are not about tuning:
   rejection since the previous line, and the address is the one of the rejection that triggered this
   line, not of every peer in `N`; a burst is reported in full only when a later rejection arrives.
   Behind a load balancer the address is the balancer's own. It points at a problem; it is not a
-  per-source record (the manager keeps none). `wazuh-manager-authd` logs `Invalid password provided by
-  <address>` for each failure on `1515`.
+  per-source record (the manager keeps none). `wazuh-manager-authd` logs a wrong password on `1515` as
+  `Invalid password provided by <address>. Closing connection.` at **INFO** level, throttled the same
+  way: the first one is logged, the rest within 90 seconds go to debug level, and the next one logged
+  after that window carries the count (`… Closing connection (and N more like it in the last T s)`).
 - **`Rejected N agent request(s) with an invalid or missing bearer credential <period> (latest from
   <address>: <class>).`** (WARNING) is the same line for every bearer route (`/stateless`, `/stateful`,
   `/stats`, `/config`, `/control`, `/download`, `/scan/vd`), on its own throttle: no or a malformed
@@ -676,7 +686,7 @@ Seven more that are not about tuning:
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
   distinct from an unreadable or invalid password file (see above).
 - **`Cannot start the HTTPS agent listener: the TLS certificate '…' / private key '…' is missing
-  or unreadable by the service user.`** (ERROR, then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`, and in every mode `the CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.`) is remoted's own preflight,
+  or unreadable by the service user.`** (CRITICAL — `wazuh-manager-remoted: CRITICAL: Cannot start the HTTPS agent listener: …` — then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`, and in every mode `the CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.`) is remoted's own preflight,
   run after it has dropped privileges and before remoted writes its PID file. A missing file rarely
   gets this far — `wazuh-manager-control start` refuses first, with the credential check's
   `MISSING …` (`Unresolved credentials`, error 21) for the certificate, key and `ca_certificate`, or
@@ -781,8 +791,11 @@ deliberately skips the check to keep the hot path fast. A rejection also writes
 | Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored with a `v` prefix (`5.1.0` as `v5.1.0`) |
 
 Whatever spelling the agent sends — `5.0.0`, `v5.0.0` or `V5.0.0`, all accepted — the manager writes
-the version to wazuh-db as `v5.0.0`, on `startup` and on `notify` alike, so one version never
-appears under two spellings in the agent listing.
+the version to wazuh-db as `v5.0.0`, so one version never appears under two spellings in the agent
+listing. `startup` always writes it; a `notify` writes it only when it carries a `host` block (the
+full metadata update, itself throttled by the keep-alive interval except for the first host-carrying
+notify). A `notify` without `host` updates only the keep-alive and status, so the version it carries
+is not stored.
 
 The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
 re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
@@ -1692,6 +1705,10 @@ python3 send_stateless.py --agent-id 1001 --tamper
 # unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
+# --body replaces the whole request body: keep the H line naming --agent-id and the
+# "E <queue>:<location>:<message>" event shape, e.g.
+#   --body $'H {"wazuh":{"agent":{"id":"1001"}}}\nE 1:/var/log/syslog:hello'
+# (any other E line is still answered 202, then dropped by the engine)
 ```
 
 `src/remoted/remoted_module/tools/send_control.py` does the same for `POST /control`:

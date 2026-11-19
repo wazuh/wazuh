@@ -476,7 +476,6 @@ sudo ls -l /etc/wazuh-manager/client.keys
 sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 
 # Verify network connectivity
-ping <master_node_ip>
 bash -c '</dev/tcp/<master_node_ip>/1516' && echo open   # telnet and nc are not installed by default
 
 # Check the cluster daemon (a Python process, listed by status)
@@ -534,8 +533,10 @@ sudo tail -50 /var/ossec/logs/ossec.log
 # Verify client.keys exists
 sudo ls -l /var/ossec/etc/client.keys
 
-# Check permissions
-sudo chown -R root:wazuh /var/ossec/etc
+# Check permissions: the top-level files are root:wazuh 0640. Fix only those; never chown -R
+# etc/, whose shared/ and certs/ (the trust anchor the agent owns) have owners of their own
+sudo ls -l /var/ossec/etc/client.keys /var/ossec/etc/ossec.conf
+sudo chown root:wazuh /var/ossec/etc/client.keys /var/ossec/etc/ossec.conf
 ```
 
 **Issue: Agent not connecting after upgrade**

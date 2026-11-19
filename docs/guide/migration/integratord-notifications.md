@@ -256,7 +256,7 @@ The custom webhook channel can be used for services like `Slack` or `Chime`, thi
 
 Custom webhook channels support:
 
-- Methods: `PUT`, `POST`, or `PATCH`
+- Methods: `PUT`, `POST`, or `PATCH`. The Notifications API does not restrict the method to these three: it also accepts a channel created with `GET`, so check the method of a channel created through the API rather than the dashboard
 - Endpoint definition: webhook URL or a custom URL with query parameters
 - Custom headers: e.g. `Authorization`, `Content-Type`
 

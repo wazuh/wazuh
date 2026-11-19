@@ -115,3 +115,72 @@ TEST(DetailTest, DuplicateNonUUIDIdentifierThrows)
     EXPECT_THROW(cm::store::detail::findDuplicateOrInvalidUUID({"custom/id_1", "custom/id_1"}, TYPE),
                  std::runtime_error);
 }
+
+namespace
+{
+
+// Keys of the object at `path`, in document order (duplicates included)
+std::vector<std::string> keysAt(const json::Json& doc, const std::string& path)
+{
+    std::vector<std::string> keys;
+    for (const auto& [key, _] : doc.getObject(path).value())
+    {
+        keys.push_back(key);
+    }
+    return keys;
+}
+
+} // namespace
+
+TEST(DetailTest, AdaptDecoderKeepsNormalizeBlockAsWritten)
+{
+    // The builder enforces the block layout: the adapter must not reorder, deduplicate or drop sub-blocks
+    const json::Json doc {R"({
+        "name": "decoder/test/0",
+        "enabled": true,
+        "normalize": [
+            {"map": [], "check": []},
+            {"parse|a": [], "parse|b": []},
+            {"parse|a": ["x"], "parse|a": ["y"]},
+            {"check": [], "unknown": []}
+        ]
+    })"};
+
+    const auto adapted = cm::store::detail::adaptDecoder(doc);
+
+    EXPECT_EQ(keysAt(adapted, "/normalize/0"), (std::vector<std::string> {"map", "check"}));
+    EXPECT_EQ(keysAt(adapted, "/normalize/1"), (std::vector<std::string> {"parse|a", "parse|b"}));
+    EXPECT_EQ(keysAt(adapted, "/normalize/2"), (std::vector<std::string> {"parse|a", "parse|a"}));
+    EXPECT_EQ(keysAt(adapted, "/normalize/3"), (std::vector<std::string> {"check", "unknown"}));
+}
+
+TEST(DetailTest, AdaptDecoderRejectsNonObjectNormalizeBlock)
+{
+    const json::Json doc {R"({"name": "decoder/test/0", "enabled": true, "normalize": ["map"]})"};
+    EXPECT_THROW(cm::store::detail::adaptDecoder(doc), std::runtime_error);
+}
+
+TEST(DetailTest, AdaptOutputKeepsFirstOfBranchAsWritten)
+{
+    const json::Json doc {R"({
+        "name": "output/test/0",
+        "enabled": true,
+        "outputs": [
+            {"first_of": [{"then": [{"file": {"path": "x"}}], "check": "$a == 1"}]},
+            {"first_of": [{"check": "$a == 1", "then": [], "extra": 1}]},
+            {"file": {"path": "y"}}
+        ]
+    })"};
+
+    const auto adapted = cm::store::detail::adaptOutput(doc);
+
+    EXPECT_EQ(keysAt(adapted, "/outputs/0/first_of/0"), (std::vector<std::string> {"then", "check"}));
+    EXPECT_EQ(keysAt(adapted, "/outputs/1/first_of/0"), (std::vector<std::string> {"check", "then", "extra"}));
+    EXPECT_EQ(keysAt(adapted, "/outputs/2"), (std::vector<std::string> {"file"}));
+}
+
+TEST(DetailTest, AdaptOutputRejectsNonObjectFirstOfBranch)
+{
+    const json::Json doc {R"({"name": "output/test/0", "enabled": true, "outputs": [{"first_of": ["x"]}]})"};
+    EXPECT_THROW(cm::store::detail::adaptOutput(doc), std::runtime_error);
+}

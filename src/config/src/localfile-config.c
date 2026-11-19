@@ -258,16 +258,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
 
-            // Skip labels with "_"
-            if (flags.system == 1)
-                continue;
+            // Skip labels with "_": the warning above was logged; move on to the next element
+            if (flags.system != 1) {
+                if (!key_value) {
+                    merror("Expected 'key' attribute for label.");
+                    return (OS_INVALID);
+                }
 
-            if (!key_value) {
-                merror("Expected 'key' attribute for label.");
-                return (OS_INVALID);
+                logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, flags, 1);
             }
-
-            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, flags, 1);
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {

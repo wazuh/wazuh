@@ -122,7 +122,7 @@ Integrations are assigned to one of 8 predefined categories (`categories.hpp`; `
 
 ### Asset Adaptation
 
-The `detail.hpp` header provides `adaptDecoder()`, `adaptFilter()` and `adaptOutput()`, which rebuild a JSON asset document with its known keys in a canonical order (unknown keys are dropped), check that `name` is `<type>/<name>/<version>`, and require a boolean `enabled`. `cmcrud` applies them before storing an asset. For decoders: `name → parents → definitions → check → parse|* (at most one) → normalize → enabled → id`; for filters: `name → parents → definitions → type → check → enabled → id`; for outputs: `name → parents → definitions → outputs → enabled → id`. It also provides `findDuplicateOrInvalidUUID()` for reference lists.
+The `detail.hpp` header provides `adaptDecoder()`, `adaptFilter()` and `adaptOutput()`, which rebuild a JSON asset document with its known keys in a canonical order (unknown keys are dropped), check that `name` is `<type>/<name>/<version>`, and require a boolean `enabled`. `cmcrud` applies them before storing an asset. For decoders: `name → parents → definitions → check → parse|* (at most one) → normalize → enabled → id`; for filters: `name → parents → definitions → type → check → enabled → id`; for outputs: `name → parents → definitions → outputs → enabled → id`. The content of `normalize` blocks and `outputs` elements (including `first_of` branches) is copied as written, keeping key order, repeated keys and unknown keys: the builder enforces their layout (`check`, `parse|<field>`, `map` with at most one parse; `check` then `then`) and must see what the author wrote. It also provides `findDuplicateOrInvalidUUID()` for reference lists.
 
 ## Directory Structure
 

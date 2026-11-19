@@ -401,7 +401,8 @@ int local_start()
      * across both platforms and this caller must not collapse TRANSIENT and PERMANENT into the
      * same outcome the way a bare "!= 0" check would. A token the manager does not accept yet
      * (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
-     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S.
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S; an enrollment refused for a reason the manager's state
+     * can change (a group that does not exist yet...) comes back TRANSIENT and is retried too.
      *
      * Only a token that was present and (after any transient retries) still failed does this. An
      * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal
@@ -422,12 +423,12 @@ int local_start()
         if (token_bootstrap_delay < agt->enrollment.retry_max) {
             token_bootstrap_delay += agt->enrollment.retry_delta;
         }
-        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        mdebug1("Token bootstrap: not enrolled yet, retrying in %d seconds.", token_bootstrap_delay);
         sleep(token_bootstrap_delay);
     }
 
     if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
-        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+        merror_exit("Enrollment-token bootstrap failed: %s", w_agent_token_bootstrap_failure());
     }
 
     /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS

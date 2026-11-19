@@ -1383,6 +1383,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);
+            /* The rest of the answers the regular enrollment loop retries
+             * (w_enrollment_apply_policy()): the manager's state may change -- a group created, a
+             * duplicate deleted, enrollment re-enabled -- and the same token then succeeds. */
+            report->refused = !report->transient && !report->pending && !report->token_rejected &&
+                              enroll_status != W_ENROLL_ERR_AUTH_FATAL && enroll_result.http_code != 200;
         }
 
         w_enroll_request_destroy(&built_request);
@@ -1497,6 +1502,23 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     return W_TOKEN_ENROLL_OK;
 }
 
+/* Why the last bootstrap gave up, for the line its caller exits with. */
+static char g_token_bootstrap_failure[512];
+
+static void token_bootstrap_set_failure(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+static void token_bootstrap_set_failure(const char *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(g_token_bootstrap_failure, sizeof(g_token_bootstrap_failure), fmt, args);
+    va_end(args);
+}
+
+const char *w_agent_token_bootstrap_failure(void) {
+    return g_token_bootstrap_failure[0] != '\0' ? g_token_bootstrap_failure : "refusing to enroll unverified.";
+}
+
 bool w_agent_token_bootstrap_will_enroll(void) {
     return IsFile(AGENT_ANCHOR_CA) != 0 && FileSize(KEYS_FILE) <= 0 && IsFile(AGENT_ENROLLMENT_TOKEN_FILE) == 0;
 }
@@ -1504,7 +1526,13 @@ bool w_agent_token_bootstrap_will_enroll(void) {
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     w_token_enroll_opts_t opts = {0};
     w_token_enroll_report_t report = {0};
+    w_token_enroll_status_t enroll_status;
     char *token_text = NULL;
+    /* Only an agent that already holds a key keeps running when the anchor cannot be installed:
+     * a credential-less token also runs anchor-only, on an agent with nothing else to trust. */
+    bool already_enrolled = false;
+
+    g_token_bootstrap_failure[0] = '\0';
 
 #ifdef WIN32
     /* On Windows nothing is chowned at all, so the gid is unused too -- local_start() passes
@@ -1563,6 +1591,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         minfo("Token bootstrap: this agent is already enrolled; installing the manager's CA "
               "without re-enrolling.");
         opts.anchor_only = true;
+        already_enrolled = true;
     } else if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
         /* Legacy install, no token provided: not an error. */
         return W_TOKEN_BOOTSTRAP_DONE;
@@ -1574,12 +1603,35 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
 
         /* Rereading it cannot change the answer, and an enrolled agent has nothing to protect
          * here: it starts as it did before the token arrived. */
-        if (opts.anchor_only) {
+        if (already_enrolled) {
             unlink(AGENT_ENROLLMENT_TOKEN_FILE);
             return W_TOKEN_BOOTSTRAP_DONE;
         }
 
+        token_bootstrap_set_failure("the enrollment token file '%s' could not be read; refusing to "
+                                    "enroll unverified.", AGENT_ENROLLMENT_TOKEN_FILE);
         return W_TOKEN_BOOTSTRAP_PERMANENT;
+    }
+
+    /* A credential-less token (--no-credential) says where the manager is and which CA to trust,
+     * and nothing more: enrolling with it would present no credential at all, so a manager that
+     * requires one refuses it, and the anchor -- committed only with a successful enrollment --
+     * would never be installed. It installs the anchor alone instead, as --certs-only does, and
+     * leaves the enrollment to the regular loop: AgentdStart() resolves the TLS posture again once
+     * the anchor exists, so that enrollment is verified against it, and it presents the agent's
+     * configured credential (an authd.pass password) or none. A token that fails to decode is left
+     * to w_agent_token_enroll(), which names the reason. */
+    if (!already_enrolled) {
+        w_etoken_t probe;
+
+        if (w_etoken_decode(token_text, &probe) == ETOKEN_OK) {
+            if (!probe.has_key) {
+                minfo("Token bootstrap: the enrollment token carries no credential; installing the "
+                      "manager's CA, then enrolling with the agent's configured credential, if any.");
+                opts.anchor_only = true;
+            }
+            w_etoken_free(&probe);
+        }
     }
 
     opts.token_text = token_text;
@@ -1589,13 +1641,13 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
      * key, which it never touches. */
     opts.transactional = false;
 
-    if (w_agent_token_enroll(&opts, &report) != W_TOKEN_ENROLL_OK) {
+    if ((enroll_status = w_agent_token_enroll(&opts, &report)) != W_TOKEN_ENROLL_OK) {
         os_free(token_text);
 
         /* An enrolled agent has no enrollment here to protect: it keeps its registration and runs
          * as it did before the token arrived. Only a transient failure keeps the token, so the
          * next start tries again. */
-        if (opts.anchor_only) {
+        if (already_enrolled) {
             merror("Token bootstrap: the manager's CA could not be installed; the agent keeps its "
                    "registration and runs without a trust anchor.");
 
@@ -1621,9 +1673,30 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
             return W_TOKEN_BOOTSTRAP_PENDING;
         }
 
+        /* Refused for a reason the manager's state can change -- a group that does not exist
+         * yet, a duplicate agent, enrollment disabled. w_enrollment_process_response() already
+         * logged the manager's reason; the token is kept and the request repeated, verified as
+         * before, until it is accepted. */
+        if (report.refused) {
+            minfo("Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
+            return W_TOKEN_BOOTSTRAP_TRANSIENT;
+        }
+
+        if (report.transient) {
+            return W_TOKEN_BOOTSTRAP_TRANSIENT;
+        }
+
         /* Unchanged either way: this boot still refuses to enroll unverified. What changes is
          * that the next one starts with no token and takes the "legacy install" path. */
-        return report.transient ? W_TOKEN_BOOTSTRAP_TRANSIENT : W_TOKEN_BOOTSTRAP_PERMANENT;
+        if (report.token_rejected && report.token_refusal[0] != '\0') {
+            token_bootstrap_set_failure("%s", report.token_refusal);
+        } else {
+            token_bootstrap_set_failure("%s; refusing to enroll unverified.",
+                                        w_agent_token_enroll_strerror(enroll_status));
+        }
+
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     os_free(token_text);
@@ -1649,6 +1722,8 @@ w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_res
     merror("The manager still does not accept the enrollment token after %ld seconds. It may not "
            "have reached this node, or it was deleted: mint a new token, or restart the agent to "
            "try again.", (long)(now - *pending_since));
+    token_bootstrap_set_failure("the manager did not accept the enrollment token within %ld seconds.",
+                                (long)(now - *pending_since));
 
     return W_TOKEN_BOOTSTRAP_PERMANENT;
 }

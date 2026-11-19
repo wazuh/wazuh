@@ -103,7 +103,10 @@ Path to an optional client (mTLS) certificate the agent presents to the manager.
 
 - **Default value:** None (no client certificate presented)
 - **Allowed values:** Path to a PEM-encoded certificate file, readable by the agent
-- **Note:** Must be set together with `<key>`; setting only one of the two is rejected.
+- **Note:** Must be set together with `<key>`; setting only one of the two is rejected when the
+  agent starts (`Config rejected: client certificate and key must be set together.`), and the agent
+  does not connect. `wazuh-agentd -t` does **not** check the pair and accepts such a configuration,
+  so a configuration test passing is no proof that the two are set together.
 
 #### key
 
@@ -148,7 +151,7 @@ How strictly the agent verifies the manager's TLS certificate.
   Two consequences worth reading twice:
 
   * **A stock install with no trust material verifies nothing**, and logs
-    `TLS verification is DISABLED (verify_mode=none)` at warning level. `none` is never chosen over
+    `TLS verification is DISABLED (verification_mode=none).` at warning level. `none` is never chosen over
     a usable anchor, but it *is* what an agent given nothing falls back to, because `system` could
     only ever refuse: the manager's certificate is signed by its own `root-ca.pem`, which is in no
     OS trust store.
@@ -400,9 +403,11 @@ unattended recovery capability:
 
 - It is **narrower**: it rotates the key of that one agent id and cannot mint a
   new identity. A stolen secret is worth one endpoint, not the fleet.
-- It gets `client.keys`'s protection (mode `0640`, same owner), because it has
-  `client.keys`'s power. A process that can rewrite the key already owns the
-  agent.
+- It gets `client.keys`'s mode (`0640`), because it has `client.keys`'s power.
+  A process that can rewrite the key already owns the agent. Its owner is the
+  account that wrote it: rotations are written by the agent daemon after it
+  drops privileges, so the file is normally `wazuh:wazuh`, while `client.keys`
+  is installed `root:wazuh`.
 - It must stay writable by the unprivileged agent user: every rotation is
   performed by the running daemon, after the privilege drop.
 
@@ -413,7 +418,11 @@ already knows, and omitting the hash re-registers the agent under a new id. Such
 an agent keeps working on the key it holds, but the upgrade removes its
 `authd.pass`, so it has no unattended recovery left. If it is ever removed on the
 manager, register it again with
-[`wazuh-agent-auth --force-enroll`](README.md#enrolling-or-re-pointing-an-agent).
+[`wazuh-agent-auth --force-enroll`](README.md#enrolling-or-re-pointing-an-agent);
+while the manager still holds its name, that takeover is subject to the manager's
+[`auth.force` guards](../authd/README.md#force-re-enrollment) and, with the
+defaults, is refused (`Duplicate agent name`) within 1 h of the previous
+registration (`after_registration_time`).
 
 The agent only discards an identity when the manager explicitly says it is
 unknown. Any other authentication failure — a clock outside the manager's
@@ -540,7 +549,9 @@ Periodic push of the agent's effective configuration to the manager's `/config` 
 
 Removed in 5.0.0: buffering and pacing belong to the HTTPS transport's
 accumulator, configured under `<agent><batch>`. The section is still accepted
-and ignored, with a warning.
+and ignored. It is reported at INFO level, not as a warning —
+`'client_buffer' is no longer used and will be ignored. Event batching is configured under <agent><batch>.`
+— once per read of the configuration, so a start usually logs it more than once.
 
 ---
 

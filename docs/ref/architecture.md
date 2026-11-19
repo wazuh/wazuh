@@ -213,7 +213,8 @@ daemons it manages are, in order, `wazuh-manager-clusterd`, `-modulesd`, `-remot
 `-db`, `-authd` and `-apid`; `start` launches them in the reverse order. Two are skipped by `start` and
 `status` (`stop` stops whatever is running): `wazuh-manager-apid` unless `bin/wazuh-manager-conf --skip-file-checks get
 cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` is `true` (both read without
-checking the files the configuration names, so a missing certificate does not hide a running apid from `status`).
+checking the files the configuration names, so a missing certificate does not hide a running apid from `status`;
+when the role cannot be read at all, `status` lists apid anyway, as described after the pre-start checks below).
 
 | Action | Behaviour |
 | ------ | --------- |
@@ -222,7 +223,7 @@ checking the files the configuration names, so a missing certificate does not hi
 | `restart` | Runs the first three pre-start checks **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again; a daemon that fails to start leaves the manager stopped, as `start` does. |
 | `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up (also when a daemon fails to start: the reload stops the daemons it started, and remoted is left running alone). Its checks still include `wazuh-manager-remoted -t`: remoted reads the configuration at its next restart, so a `remote` change it would refuse is refused now, while the manager is up. |
 | `check` | Runs the first three pre-start checks and nothing else: no daemon is stopped or started, no lock is taken, and the `var/run/<daemon>.failed` verdicts of the last start are left alone. Exits `0` when a start would pass them (`Configuration and credentials checks passed.`, or `{"error":0,"data":[]}` with `-j`) and `1` otherwise, with the same message, `-j` error code (`20`, `21` or `22`) and log lines the start would print. Run it as `root`, like `start`: `wazuh-manager-control` is `root:root 0750`, so any other user gets `Permission denied` (shell exit `126`) and no check runs. Step 4 is not part of it — it opens the keystore, which must not happen while the manager is up — so what only step 4 refuses (an indexer password in neither the keystore nor any source, the resolver's lock held for over 60 seconds) passes the check and still refuses the start that follows. |
-| `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict in `var/run/<daemon>.failed`), and exits `1` when any daemon is down. |
+| `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict in `var/run/<daemon>.failed`), and exits `1` when any daemon is down, except a stopped `wazuh-manager-apid` while the role cannot be read. |
 | `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option: a missing or other option prints the usage (one `{"error":1,…}` document with `-j`) and exits `1` before the start lock is taken; success prints nothing, or `{"error":0,"data":[]}` with `-j`. The exception is `wazuh-manager-analysisd`: only its `-t` gets `-d`, and it is started with no flags, so the engine's level is set by the internal option `analysisd.debug` ([Engine configuration](modules/engine/configuration.md)). |
 | `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. With `-j`, `{"error":0,"data":[…]}` holds the three, or the one asked for; an unknown flag is `{"error":1,…}`. |
 
@@ -246,8 +247,12 @@ daemon that did not start) appear only in the `-j` output, as
 `{"error":<code>,"message":"<reason>."}`. The messages, codes and log
 lines of each step are in [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
 When `bin/wazuh-manager-resolve-credentials` is missing or not executable, steps 2 and 4 are skipped. A
-configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
-configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`
+configuration the validator refuses is refused by step 1 (`Configuration error`) before the role is read.
+`status` reads the role without validating first, and on such a configuration it cannot: it prints `Cannot
+read cluster.node_type, check the /etc/wazuh-manager/wazuh-manager.conf file.` (on standard error with
+`-j`, whose document is unchanged), then lists `wazuh-manager-apid` from its pid file like every other
+daemon, so a running apid stays visible. A stopped apid is then listed as not running but does not make
+`status` exit `1`, since the node may be a worker; any other daemon that is down still does.
 
 An unknown action prints the usage and exits `1`; with `-j` it prints only `{"error":1,"message":"Invalid action: <action>."}` (or `Missing action.`).
 Anything after `start`, `stop`, `restart`, `reload`, `check` or `status` is ignored, not refused:

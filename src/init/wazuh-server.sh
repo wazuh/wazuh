@@ -386,12 +386,24 @@ status()
 
     node_type=$(get_node_type);
 
+    # A configuration the validator refuses has no readable role. Say so, and list apid from its pid
+    # file like any other daemon rather than hiding it: a running apid must stay visible. A stopped
+    # one does not fail the status then, since this may be a worker, where apid never runs.
+    if [ -z "$node_type" ]; then
+        role_message="Cannot read cluster.node_type, check the ${CONF_DIR}/${WAZUH_CONF} file."
+        if [ $USE_JSON = true ]; then
+            echo "${role_message}" >&2
+        else
+            echo "${role_message}"
+        fi
+    fi
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
         ## The API daemon only runs on the master node
-        if [ "$i" = "wazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+        if [ "$i" = "wazuh-manager-apid" ] && [ -n "$node_type" ] && [ "$node_type" != "master" ]; then
             continue
         fi
 
@@ -423,7 +435,9 @@ status()
             else
                 echo "${i} not running..."
             fi
-            RETVAL=1
+            if [ "$i" != "wazuh-manager-apid" ] || [ -n "$node_type" ]; then
+                RETVAL=1
+            fi
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'

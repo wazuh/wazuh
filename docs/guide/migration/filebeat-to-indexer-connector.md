@@ -53,7 +53,11 @@ rm -f /tmp/root-ca.pem
 ```
 
 The file is `root:wazuh-manager` `0640`, the ownership and mode the installation gives the connector's files, so
-the daemons read it after dropping privileges. Staged without an import marker, it is checked before every start
+the daemons read it after dropping privileges. These commands run after the 5.x package is installed, which creates
+the `wazuh-manager` group, and before the first start. To stage the file before installing instead, create
+`/etc/wazuh-manager` (`0770`) and `certs/` (`0750`) `root:root` and install the file with `-g root`: the DEB and RPM
+packages re-own every `certs/*.pem` to `root:wazuh-manager` `0640` before their credential resolver runs (see
+[Using certificates issued elsewhere](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)). Staged without an import marker, it is checked before every start
 and never replaced: a file that holds anything but CA certificates stops the start with an `INVALID` line naming
 it, while an expired or not-yet-valid CA only logs a `WARNING` (the indexer connection fails until it is renewed).
 

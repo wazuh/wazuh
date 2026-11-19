@@ -1089,8 +1089,13 @@ editable draft that accepts content which would not build yet, so a user can wor
 that content once, as a whole, when the user promotes it: the Wazuh Indexer sends the full policy to
 `POST /content/validate/policy` (see the [Public API Reference](public-api-reference.md)), and the Engine
 imports it into a temporary namespace and builds it exactly as it would run. A promotion succeeds only if
-that build does. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at
-promotion.
+that build does.
+
+Each asset is also checked on its own when it is created or updated in the draft: the Wazuh Indexer sends it
+to `POST /content/validate/resource`, which checks its structure, name and `id`, and builds a decoder or
+filter in isolation, without resolving anything it references (parents, KVDBs, other assets of the space). A mistake
+that involves more than one asset — a duplicate name, a missing parent, a decoder no integration lists, a
+disabled root decoder — therefore passes that check and surfaces only at promotion.
 
 The checks that most often refuse a promotion, with the error the Engine returns (all but the first come from
 building the policy, so the Engine returns them prefixed with `Failed to create the testing environment: `):
@@ -1202,10 +1207,20 @@ Attributes are configuration details and metadata about the asset. Every asset s
   not when the asset is created in the Wazuh Indexer — see
   [Where content is validated](#where-content-is-validated).
 - **`id`**: A string that uniquely identifies the asset across the system. It is opaque to the Engine:
-  any UUID version or other format is accepted, and one is generated (UUIDv4) when the asset does not carry it.
-  The only constraints are that it must be non-empty, at most 256 characters long and free of control
-  characters. Identifiers are never normalized: they are compared byte by byte, so two identifiers that
-  only differ in case are distinct.
+  any UUID version or other format is accepted. The only constraints are that it must be non-empty, at
+  most 256 characters long and free of control characters. Identifiers are never normalized: they are
+  compared byte by byte, so two identifiers that only differ in case are distinct. Whether an absent `id`
+  is accepted depends on where the asset enters the Engine:
+  - **Validation** (`POST /content/validate/resource` and every asset of `POST /content/validate/policy`)
+    requires it. A decoder, filter or output without an `id`, or with an empty one, is refused with
+    `Asset '<name>' is missing required UUID at JSON path '/id'`; an integration or KVDB without one with
+    `Integration JSON must have a valid id` / `KVDB JSON must have a valid id`, and with an empty one with
+    `Integration UUID cannot be empty` / `KVDB UUID cannot be empty`.
+  - **Storing** a decoder, filter or output in a space (synchronizing a space from the Wazuh Indexer,
+    upserting it through the private API, or loading the store from disk) generates a UUIDv4 when the
+    `id` is absent; an empty one is refused (`Resource UUID at '/id' is not a valid identifier: …`).
+    Integrations and KVDBs synchronized from the Wazuh Indexer must carry their `id`; only the private
+    API's upsert generates one for them.
 - **`enabled`**: Boolean flag. Disabled assets are ignored when building the policy operational graph.
   The policy's root decoder is the one exception: because it anchors the whole decoder tree, the build
   fails with an explicit error if it is disabled, belongs only to disabled integrations, or is not
@@ -1300,7 +1315,10 @@ The key syntax is `parse|<source_field>: [<expr1>, <expr2>, ...]`.
 - **`map`** *(optional)*: Array of field assignments in the form `{target_field: value_or_expression}`. Maps and transforms values into the event.
 
 Within a block the sub-stages must appear in this order (`check`, then `parse|<field>`, then `map`), and a block can hold
-at most one `parse|<field>`; any other order, or a second parse, makes the asset fail to build.
+at most one `parse|<field>` (two different fields or the same key written twice). The block is checked as written: any
+other order fails the build with `Stage 'normalize': subblocks must be in order: check, parse, map`, and a second parse
+with `Stage 'normalize': only one 'parse|' (or 'parse') is allowed inside the same object.`; any other key in a block
+also fails it (`In stage 'normalize' block '<key>' is not supported`).
 
 *Available in*: decoders.
 
@@ -1752,7 +1770,9 @@ kanban
 
 - **Metadata**: Provides descriptive information about the decoder. The decoder schema
   (`src/engine/ruleset/schemas/wazuh-decoders.json`, `metadata`) accepts only these fields; `title`, `author` and
-  `description` are required:
+  `description` are required. The Engine does not apply that schema: it drops `metadata` when it reads the
+  asset, so a decoder with a missing required field or an unknown key builds, validates and runs. Whatever
+  enforces the schema does so before the asset reaches the Engine (an editor's JSON-schema validation, for example):
     - `title` (string): Human-readable label (e.g., `Windows Event Log Decoder`).
     - `author` (string): Author of the decoder (e.g., `Wazuh, Inc.`).
     - `description` (string): Brief description of the decoder.
@@ -2008,7 +2028,8 @@ kanban
 ```
 
 - **Name**: Identifies the filter and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
-  be repeated. The component type is `filter`, and the version must be 0, since versioning is not implemented.
+  be repeated. The component type is `filter`. Use version 0: asset versioning is not implemented, and the version
+  part is not checked (only the three parts and the prefix are, `cmstore/interface/cmstore/detail.hpp`).
 
 - **ID**: Unique identifier for the filter. It is opaque to the Engine: any UUID version or other format is accepted (non-empty, at most 256 characters, no control characters).
 
@@ -2021,7 +2042,8 @@ kanban
 - **Metadata**: Provides descriptive information about the filter. The filter schema
   (`src/engine/ruleset/schemas/wazuh-filters.json`) requires `title`, `author` and `description` and also accepts
   `date` and `modified` (ISO 8601 date-time, `2024-01-31T00:00:00Z`), `references`, `documentation`,
-  `compatibility` and `supports`. This metadata does not affect processing stages.
+  `compatibility` and `supports`. The Engine does not apply that schema (it drops `metadata` when it reads the
+  asset, so a missing field or an unknown key builds), and this metadata does not affect processing stages.
 
 - **Check**: Evaluates conditions against the event without modifying it. If the check fails, the event is blocked.
   See the [Check/Allow stage](#checkallow) for syntax details.
@@ -2791,17 +2813,26 @@ Traces let you test how the Engine processes a specific event without sending it
 through production. A trace is a detailed report of what happened inside the
 selected policy while the event was evaluated.
 
-There are three levels of detail:
+The detail is chosen with the request's `trace_level` (`POST /logtest`, see the
+[Public API Reference](public-api-reference.md)):
 
-- **Graph history** — shows the assets and policy phases that evaluated the event,
-  including filters, decoders, enrichment, and outputs when they are part of the
-  selected policy. Good for understanding where an event was accepted, rejected,
-  or discarded.
-- **Full traces** — adds a step-by-step breakdown of every operation inside each
+- **`NONE`** (the default) — no traces, only the output event.
+- **`ASSET_ONLY`** (graph history) — shows the assets and policy phases that evaluated
+  the event, including filters, decoders, enrichment, and outputs when they are part
+  of the selected policy, each with its success or failure. Good for understanding
+  where an event was accepted, rejected, or discarded.
+- **`ALL`** (full traces) — adds a step-by-step breakdown of every operation inside each
   asset. Use this level when you need to understand exactly where parsing, checks,
   mapping, or enrichment failed.
-- **Asset filtering** — limits the output to a specific group of assets, to reduce
-  noise when you already know which area to investigate.
+
+`POST /logtest` always traces every asset of the policy. Limiting the traces to a
+group of assets (asset filtering) is available only on the private
+`POST /_internal/tester/run/post` route, through its `asset_trace` list (see the
+[Private API Reference](private-api-reference.md)); every listed asset must belong to
+the session's policy.
+
+The API returns the traces as JSON: `result.asset_traces` is a list with one entry per
+traced asset, `{"asset": "<asset name>", "success": true|false, "traces": ["<operation> -> <result>", ...]}`.
 
 The policy flow is evaluated in phases. Pre-filter assets are evaluated before
 decoders. If a pre-filter fails, the event does not continue to decoder evaluation.
@@ -2813,8 +2844,12 @@ In traces, filters appear with their asset names, such as `filter/DiscardedEvent
 Some policies do not print a separate `pre-filter` or `post-filter` wrapper; the
 filter asset itself shows the decision that was made.
 
-**Generic trace structure** — a trace follows the event through the policy. Not
-every policy prints every phase, but the usual order is:
+**Generic trace structure** — a trace follows the event through the policy. The
+listings below are the rendering of the `engine-test` development tool (see
+[Internal Development Tools](internal-tools.md)), which prints each `asset_traces`
+entry as `[🟢] <asset> -> success` or `[🔴] <asset> -> failed` followed by its
+`traces` lines prefixed with `↳`. Not every policy prints every phase, but the usual
+order is:
 
 ```
 traces:

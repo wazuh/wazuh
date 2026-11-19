@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "indexerOutput.hpp"
 
+#include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+
+#include <base/logging.hpp>
 
 #include "builders/utils.hpp"
 
@@ -15,6 +20,49 @@ namespace builder::builders
 namespace
 {
 constexpr std::string_view INDEX_PREFIX = "wazuh-events-v5-";
+constexpr size_t MAX_INDEX_NAME_SIZE = 255;
+constexpr auto NOT_INDEXED_LOG_WINDOW = std::chrono::seconds(60);
+
+/**
+ * @brief Rate limit of the "event not indexed" warning of one output operation.
+ *
+ * The first occurrence is logged, then at most one per window, carrying how many were suppressed since the previous
+ * line. Shared by every worker thread running the same operation.
+ */
+class NotIndexedLogThrottle
+{
+public:
+    using Clock = std::chrono::steady_clock;
+
+    /**
+     * @brief Record one occurrence.
+     *
+     * @return The number of occurrences suppressed since the previous logged one when this one must be logged,
+     * std::nullopt when it must be suppressed.
+     */
+    std::optional<std::uint64_t> record()
+    {
+        const auto now = Clock::now();
+        std::lock_guard lock {m_mutex};
+        if (m_hasLogged && now - m_lastLog < NOT_INDEXED_LOG_WINDOW)
+        {
+            ++m_suppressed;
+            return std::nullopt;
+        }
+
+        const auto suppressed = m_suppressed;
+        m_suppressed = 0;
+        m_lastLog = now;
+        m_hasLogged = true;
+        return suppressed;
+    }
+
+private:
+    std::mutex m_mutex;
+    Clock::time_point m_lastLog {};
+    bool m_hasLogged {false};
+    std::uint64_t m_suppressed {0};
+};
 
 /**
  * @brief Parses an index name of the form wazuh-events-v5-(?:[a-z0-9.-]+|\$\{[^}]+\})*
@@ -136,9 +184,6 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
-    const auto failureTrace2 = fmt::format("{} -> Couldn't get field {} from event", name, "{}");
-    const auto failureTrace3 = fmt::format("{} -> Index name '{}' exceeds 255 characters limit", name, "{}");
 
     // Get shared ptr
     auto wic = iConnector.lock();
@@ -147,24 +192,48 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
         throw std::runtime_error("Indexer connector is not available");
     }
 
+    // The index name and the field values are user content: they are never used as a format string. An event that
+    // cannot be indexed is a failure of the operation with the cause in the trace; outside test mode it is also
+    // reported by a rate-limited warning (without the event).
+    auto notIndexedLog = std::make_shared<NotIndexedLogThrottle>();
+
     return base::Term<base::EngineOp>::create(
         name,
-        [indexName,
-         placeholderPPVec,
-         wic,
-         successTrace,
-         failureTrace,
-         failureTrace2,
-         failureTrace3,
-         isTestMode = buildCtx->isTestMode()](base::Event event) -> base::result::Result<base::Event>
+        [name, indexName, placeholderPPVec, wic, successTrace, notIndexedLog, isTestMode = buildCtx->isTestMode()](
+            base::Event event) -> base::result::Result<base::Event>
         {
+            auto fail = [&](const std::string& cause) -> base::result::Result<base::Event>
+            {
+                if (isTestMode)
+                {
+                    return base::result::makeFailure(event, name + " -> " + cause);
+                }
+
+                if (const auto suppressed = notIndexedLog->record(); suppressed)
+                {
+                    if (*suppressed == 0)
+                    {
+                        LOG_WARNING("[builder] Event not indexed by '{}': {}", name, cause);
+                    }
+                    else
+                    {
+                        LOG_WARNING("[builder] Event not indexed by '{}': {} ({} more events not indexed by this "
+                                    "output since the previous report)",
+                                    name,
+                                    cause,
+                                    *suppressed);
+                    }
+                }
+                return base::result::makeFailure(event);
+            };
+
             std::string finalIndexName = indexName;
             for (const auto& [placeholder, jsonPathPP] : placeholderPPVec)
             {
                 std::string fieldValue;
                 if (event->getString(fieldValue, jsonPathPP) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace2, placeholder));
+                    return fail("Couldn't get field " + placeholder + " from event");
                 }
 
                 // Replace all occurrences of the placeholder in the indexName
@@ -176,9 +245,9 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                 }
             }
 
-            if (finalIndexName.size() > 255)
+            if (finalIndexName.size() > MAX_INDEX_NAME_SIZE)
             {
-                RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace3, finalIndexName));
+                return fail("Index name '" + finalIndexName + "' exceeds 255 characters limit");
             }
 
             wic->index(finalIndexName, event->str());

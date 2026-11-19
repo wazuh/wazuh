@@ -48,11 +48,12 @@ Each policy file is a YAML file defining checks (rules) grouped by sections and 
 
 ## Document Limits (Internal)
 
-The manager can provide an internal **sync limit** during the SCA synchronization handshake. When enabled, the agent
-keeps the full local SCA state but synchronizes only the first **N** stateful documents (FIFO order). A limit of `0`
-or an unset value means **unlimited** synchronization.
+The manager provides a **sync limit** that the agent obtains from wazuh-agentd (`getdoclimits sca`) when the module
+starts. The agent keeps the full local SCA state but synchronizes only the first **N** stateful documents (FIFO
+order). The limit is the manager's `sca.checks_limit` internal option, **`30000` by default**; `0` there means
+**unlimited** synchronization (see [Agent module limits](../remoted/configuration.md#agent-module-limits-fim-syscollector-sca)).
 
 Important behavior:
 - The limit applies **only** to stateful SCA documents sent to the indexer.
 - **Stateless** real-time SCA alerts are still generated for the **full** local state.
-- This is an **internal manager setting** and is not a user-facing configuration option.
+- It is set on the manager, in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`, not in the agent's `<sca>` block; set the same value on every cluster node.

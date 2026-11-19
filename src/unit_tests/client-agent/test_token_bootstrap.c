@@ -1243,7 +1243,8 @@ static void test_fatal_token_refusal_discards_the_dead_token(void **state) {
 /* The other 403: enrollment administratively disabled, which carries authd code 0 and is
  * W_ENROLL_ERR_DISABLED rather than fatal. An operator can re-enable it, so the one-shot token must
  * survive -- discarding it here would need a newly minted token to undo a condition that clears
- * itself. This is the case that makes the fix a check on the STATUS and not on the 403. */
+ * itself -- and the bootstrap retries, as the regular enrollment loop does. This is the case that
+ * makes the fix a check on the STATUS and not on the 403. */
 static void test_disabled_enrollment_keeps_the_token(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1260,8 +1261,11 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
     assert_int_equal(g_enroll_call_count, 1);
 
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
@@ -1269,8 +1273,8 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
 
 /* The 403 the HTTPS server sends, before /enroll runs, when the client certificate's SAN does not
  * list the peer address (verification_mode=full; behind a stream proxy the peer is the proxy). It
- * must be logged with that reason, not as "disabled", and handled as before: not transient, and
- * the token is kept -- it was never judged, so a fixed certificate can still use it. */
+ * must be logged with that reason, not as "disabled", and the token is kept -- it was never judged,
+ * so a fixed certificate can still use it. Retried like the regular enrollment loop retries it. */
 static void test_certificate_mismatch_403_keeps_the_token(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1290,8 +1294,11 @@ static void test_certificate_mismatch_403_keeps_the_token(void **state) {
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment rejected by the manager (HTTP 403): Client certificate does not "
                   "match the peer address.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
     assert_int_equal(g_enroll_call_count, 1);
 
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
@@ -1374,6 +1381,53 @@ static void test_token_expired_401_is_permanent_and_deletes_the_token(void **sta
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+    /* The line agentd exits with names the token and what happened to it, not a trust failure. */
+    assert_string_equal(w_agent_token_bootstrap_failure(),
+                        "enrollment token AQEBAQEBAQEBAQEBAQEBAQ has expired. Create a new enrollment "
+                        "token on the manager.");
+}
+
+/* A group named at install time that does not exist on the manager yet: authd refuses with 9014,
+ * which /enroll answers as a 400. The manager's reason is logged, the token is kept, and the
+ * bootstrap retries -- the agent enrolls once the group is created, without a restart. */
+static void test_missing_group_is_retried_and_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 400L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9014,\"message\":\"Invalid Group(s) Name(s)\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_enrolling_as_line();
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: invalid request. Invalid Group(s) Name(s)");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+/* A pending token that never becomes accepted ends with a reason of its own. */
+static void test_bound_pending_give_up_sets_the_failure(void **state) {
+    (void) state;
+    time_t since = 1000;
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1075),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_string_equal(w_agent_token_bootstrap_failure(),
+                        "the manager did not accept the enrollment token within 75 seconds.");
 }
 
 static void test_bound_pending_passes_other_results_through(void **state) {
@@ -1629,12 +1683,13 @@ static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
     assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
-/* The requirement: "a credential-less token enrolls when the simulator requires no credential,
- * and is not treated as an error." has_key=false must not short-circuit into an error path --
- * enrollment still runs, just with no enroll_kid/enroll_key_hex on the wire (and no fallback to
- * a configured password either, per token_bootstrap.c's own comment on that branch --
- * g_enroll_request.password stays empty exactly as it does on the keyed happy path). */
-static void test_credential_less_token_enrolls_without_error(void **state) {
+/* A credential-less token (--no-credential) has nothing to enroll with: it installs the pinned CA
+ * as the anchor, exactly as the other shapes do, and leaves the enrollment to the regular loop,
+ * which runs verified against that anchor and presents the agent's configured credential, or
+ * none. Enrolling here with no credential committed the anchor only when the manager accepted an
+ * enrollment without one, so against a manager requiring a password the agent ended up with no
+ * anchor and exited. */
+static void test_credential_less_token_installs_the_anchor_and_leaves_enrollment_to_the_agent(void **state) {
     (void) state;
     write_token_file(true, false, NULL);
 
@@ -1642,44 +1697,84 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
     will_return(__wrap_hc_fetch_cacerts, 1);
     will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
-    will_return(__wrap_hc_enroll, 200L);
-    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
-    will_return(__wrap_hc_enroll, 1);
-    expect_valid_ip("10.0.0.5");
 
-    /* Same benign TempFile() FSTAT_ERROR mdebug1 as the other happy-path tests, once for
-     * AGENT_ANCHOR_CA and once for KEYS_FILE. */
-    expect_any(__wrap__mdebug1, formatted_msg);
-    expect_any(__wrap__mdebug1, formatted_msg);
-
-    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
-    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
-    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
-                  "trust anchor.");
+                  "Token bootstrap: the enrollment token carries no credential; installing the "
+                  "manager's CA, then enrolling with the agent's configured credential, if any.");
+    expect_string(__wrap__minfo, formatted_msg, "The manager's CA is now the agent's trust anchor.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_spki_call_count, 1);
-    assert_int_equal(g_enroll_call_count, 1);
+    /* No enrollment from the token: the regular loop enrolls once the anchor is in place. */
+    assert_int_equal(g_enroll_call_count, 0);
 
-    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    /* The pinned certificate alone, not the bundle it arrived in: anything else in that body
-     * was chosen by whoever answered an unverified fetch, and installing it would hand them a
-     * trust anchor beside the genuine one. */
+    /* The pinned certificate alone, not the bundle it arrived in. */
     assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
-    assert_int_equal(IsFile("etc/client.keys"), 0);
+    assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
     assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+}
 
-    assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
-    assert_true(strlen(g_enroll_config.ca_path) > 0);
-    /* No key on the token: no kid, no derived key, and no fallback to a configured password
-     * either -- the request goes out with no credential at all (see the comment next to this
-     * branch in token_bootstrap.c). */
-    assert_string_equal(g_enroll_request.password, "");
-    assert_int_equal((int) strlen(g_enroll_request.enroll_kid), 0);
-    assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 0);
+/* The same with the CA embedded in the token: nothing is fetched, the CA is installed as is. */
+static void test_credential_less_embedded_ca_token_installs_the_anchor(void **state) {
+    (void) state;
+    write_token_file(false, false, "FAKE-EMBEDDED-CA");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__minfo, formatted_msg, "The manager's CA is now the agent's trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-EMBEDDED-CA");
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* The trust checks are those of every token: a CA that fails the pin is never installed, and an
+ * agent with nothing else to trust refuses to start, saying why. */
+static void test_credential_less_token_pin_mismatch_is_permanent(void **state) {
+    (void) state;
+    write_token_file(true, false, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, NULL);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "pin_mismatch -- fetched CA does not match the enrollment "
+                  "token's pin, refusing to trust it.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_string_equal(w_agent_token_bootstrap_failure(),
+                        "the manager's certificate authority could not be established; refusing to "
+                        "enroll unverified.");
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* Unreachable: retried, never DONE, since the agent would otherwise enroll with no anchor. */
+static void test_credential_less_token_unreachable_manager_is_transient(void **state) {
+    (void) state;
+    write_token_file(true, false, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 0);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts adr_unreachable -- could not reach the manager to "
+                  "fetch the certificate authority.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
 /* The bound has to clear what authd is willing to mint, not what a pin-only token happens to
@@ -2049,6 +2144,7 @@ static void test_enroll_flat_403_reason_reaches_the_report(void **state) {
     assert_false(report.transient);
     assert_false(report.token_rejected);
     assert_false(report.pending);
+    assert_true(report.refused);
 
     os_free(token);
 }
@@ -2139,6 +2235,7 @@ static void test_enroll_duplicate_without_a_timeout_stays_generic(void **state) 
                   "Enrollment rejected by the manager: duplicate agent. Duplicate name");
     assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
     assert_false(report.transient);
+    assert_true(report.refused);
 
     os_free(token);
 }
@@ -3098,9 +3195,11 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_token_expired_401_is_permanent_and_deletes_the_token, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_missing_group_is_retried_and_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test(test_bound_pending_passes_other_results_through),
         cmocka_unit_test(test_bound_pending_retries_within_the_window),
         cmocka_unit_test(test_bound_pending_gives_up_after_the_window),
+        cmocka_unit_test(test_bound_pending_give_up_sets_the_failure),
         cmocka_unit_test(test_bound_pending_window_survives_transient_results),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_explicit_none_warns_and_still_enrolls_verified, setup_test,
@@ -3117,7 +3216,10 @@ int main(void) {
                                         teardown_test),
 #endif
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_credential_less_token_installs_the_anchor_and_leaves_enrollment_to_the_agent, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_credential_less_embedded_ca_token_installs_the_anchor, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_credential_less_token_pin_mismatch_is_permanent, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_credential_less_token_unreachable_manager_is_transient, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_path_presents_the_client_certificate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_embedded_ca_path_presents_the_client_certificate, setup_test,

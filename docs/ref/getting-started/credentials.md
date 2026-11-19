@@ -168,9 +168,28 @@ dashboard: the certificate alone is enough to verify the API.
 
 **Dashboard on the same host.** It reads both files as root; nothing has to be copied.
 
-**Dashboard on another host.** Copy the certificate to it, and put the password in the dashboard's
-`wazuh_core.hosts.<host>.password`. In a 5.0 package installation the dashboard verifies the Server API with
-`/etc/wazuh-dashboard/certs/manager-ca.pem`:
+**Dashboard on another host.** Copy the certificate to it, and give the password to the dashboard's own
+credential resolver. In a 5.0 package installation that resolver (`/usr/share/wazuh-dashboard/bin/resolve-credentials`,
+part of the dashboard package, not of the manager) reads `WAZUH_MANAGER_WUI_PASSWORD` — and the indexer's
+`WAZUH_INDEXER_KIBANASERVER_PASSWORD` — from its environment, then from `/etc/wazuh-dashboard/local.env`, then from
+the `export/credentials.env` of a peer on the same host, and stores them in the dashboard's keystore
+(`wazuh_core.hosts.default.password` for the manager), never in `opensearch_dashboards.yml`. With the manager on
+another host there is no co-located export, so write both keys in the dashboard host's `local.env`, one
+`NAME=value` per line and readable by root only, like the manager's own `local.env` ([The keys](#the-keys)):
+
+```bash
+# on the dashboard host
+sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-dashboard/local.env
+sudo tee /etc/wazuh-dashboard/local.env > /dev/null <<'EOF'
+WAZUH_MANAGER_WUI_PASSWORD='<the value in the manager's /etc/wazuh-manager/export/credentials.env>'
+WAZUH_INDEXER_KIBANASERVER_PASSWORD='<the kibanaserver password on the indexer>'
+EOF
+```
+
+The dashboard's resolver is described here only as far as the manager side needs it; its rules (when it runs,
+what else it reads) belong to the dashboard package.
+
+The dashboard verifies the Server API with `/etc/wazuh-dashboard/certs/manager-ca.pem`:
 
 ```bash
 # on the manager
@@ -254,8 +273,10 @@ the next step (`--install` when the CA, the bundle or a server pair is missing o
 else start the manager) in place of ` - Configuration finished properly.`; it still exits `0` and finishes the
 installation.
 
-The resolver's own output on a fresh install with no indexer on the host (a package install or `install.sh`
-prints the two `MISSING` lines after the others):
+The resolver's own output on a fresh install with no indexer on the host, in the order a terminal shows it. The
+`resolve-credentials:` lines go to standard output and the problem lines (`MISSING`, `INVALID`, `UNSAFE`) to
+standard error, so wherever the two streams are read apart the `MISSING` lines come after all the others: a
+package install and `install.sh` relay them that way, and so does any capture that keeps stderr separate:
 
 ```text
 resolve-credentials: WAZUH_MANAGER_API_PASSWORD: generated
@@ -581,7 +602,7 @@ To run the manager on your own PKI, stage the CA in `<CONF>/ca/`, the server pai
 `<CONF>/certs/`, and for an indexer on another host its CA and the indexer password (plus the client pair it
 issued for this node, when the configuration names one). The CA and `local.env` can be staged before installing,
 in a `root:root` `/etc/wazuh-manager` you create; the files of `certs/` need the `wazuh-manager` group, so they are
-staged after installing, before the first start (a Debian package also re-owns files staged before it). The
+staged after installing, before the first start, or before installing a DEB or RPM package, which re-owns them. The
 procedure, with the commands, is in
 [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere). Staged files carry
 no marker, so the resolver validates them at every start and never replaces them.

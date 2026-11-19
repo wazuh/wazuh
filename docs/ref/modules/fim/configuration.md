@@ -108,7 +108,7 @@ Same as `nodiff` but for Windows registry values. The path must include the valu
 
 Defines which directories to monitor. This is the primary configuration element for FIM on Linux, Unix, macOS, and Windows.
 
-- **Default value:** `<directories>/etc,/usr/bin,/usr/sbin</directories>` and `<directories>/bin,/sbin,/boot</directories>`
+- **Default value:** none built in: FIM monitors only the directories the configuration lists. The `ossec.conf` an agent package generates lists `<directories>/etc,/usr/bin,/usr/sbin</directories>` and a second line that depends on the platform template: `<directories>/bin,/sbin,/boot</directories>` in the generic one, but only `<directories>/boot</directories>` for distributions whose `/bin` and `/sbin` are links into `/usr` (current Ubuntu and Debian, the RHEL family, Fedora, Amazon Linux). macOS gets `/private/etc,/usr/bin,/usr/sbin` and `/bin,/sbin`. Check the agent's own `ossec.conf` for the list in effect
 - **Allowed values:** Any directory path or environment variable
 
 **Rules:**
@@ -188,7 +188,9 @@ Disables or enables the entire syscheck module.
 
 ### file_limit
 
-Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are not added to the database until the count drops below it (events for them may still be generated).
+Sets a hard cap on the number of files FIM can monitor. Once the database reaches this limit, newly discovered files are not added to the database until the count drops below it, and they produce **no events**: FIM logs `Couldn't insert '<path>' entry into DB. The DB is full, please check your configuration.` at debug level 1 and skips the file. Changes to files already in the database keep producing events. The fill level is logged as `(6038): File database is 80% full.`, `(6040): File database is 90% full.` (info), `(6926): File database is 100% full.` (warning) and `(6036): The file database status returns to normal.`
+
+This is the agent's local cap. The number of files whose state is synchronized to the indexer is capped separately by the manager (`fim.file_limit`, `30000` by default; see [Document Limits](architecture.md#document-limits)).
 
 ```xml
 <file_limit>
@@ -850,7 +852,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 1. Create `/tmp/fim-whodata` and wait for FIM to begin monitoring.
 2. As a specific user (e.g., `www-data`), modify a file inside the directory.
 
-**Expected result:** The generated alert includes `data.file.audit.effective_name`, `data.file.audit.process_name`, and `data.file.audit.process_id` fields (all who-data fields live under `data.file.audit.*`) identifying the user and process that made the change.
+**Expected result:** The event identifies the user and process that made the change. The agent sends the who-data in the stateless event under `data.file.audit.*` (`user_id`, `user_name`, `process_name`, `process_id`, and on Linux also `cwd`, `group_id`, `group_name`, `audit_uid`, `audit_name`, `effective_uid`, `effective_name`, `parent_name`, `parent_cwd`, `ppid`). The engine's FIM decoder (from the content the manager synchronizes) maps them to ECS fields, so the indexed event in `wazuh-events-v5-*` has **no** `*.audit.*` field: query `user.effective.*` (the effective user), `process.name` and `process.pid` (the process), `process.parent.*` (its parent) and `process.real_user.*` instead, for example `user.effective.name: www-data`. The who-data is not part of the stateful `wazuh-states-fim-files` document.
 
 ### UC-06: nodiff - sensitive file content not leaked
 
@@ -909,7 +911,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 2. Create an 11th file.
 3. Wait for the next scheduled scan.
 
-**Expected result:** Events are still generated for all the files found, including the 11th, even though the database holds only 10 entries. A warning log entry indicates the database limit has been reached.
+**Expected result:** The database holds 10 entries and the agent log shows the warning `(6926): File database is 100% full.` The 11th file is not added and produces no event (with `syscheck.debug=1` the log shows `Couldn't insert '/tmp/fim-limit/<file>' entry into DB. The DB is full, please check your configuration.`). Changes to the first 10 files still produce events.
 
 ### UC-09: Windows registry change detection
 

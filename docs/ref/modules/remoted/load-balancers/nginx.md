@@ -51,6 +51,14 @@ passthrough, `:8443` is termination. In production you would keep only the one y
 Lines marked `[!]` are the ones that break things if changed — section 3 explains each.
 
 ```nginx
+# The 'stream' block below needs NGINX's stream module. Where the distribution ships it as a
+# dynamic module (Ubuntu/Debian: package libnginx-mod-stream; RHEL family: nginx-mod-stream),
+# a file that replaces the stock nginx.conf -- which pulls it in through its modules-enabled/
+# include -- must load it itself, or 'nginx -t' fails with 'unknown directive "stream"'.
+# Drop this line where stream is compiled in (the nginx.org packages, 'nginx -V' showing
+# --with-stream without '=dynamic').
+load_module modules/ngx_stream_module.so;
+
 worker_processes auto;
 error_log /var/log/nginx/error.log info;
 
@@ -218,7 +226,8 @@ authenticated-body cap: between the two, remoted answers its own JSON `413`, whi
 
 ### 3.3. TLS 1.3 to the backend, and the cipher directive that stops NGINX from starting
 
-`proxy_ssl_protocols TLSv1.3` is required: remoted refuses anything lower and the agent sees `502`.
+`proxy_ssl_protocols TLSv1.3` is required: remoted refuses anything lower and the agent sees `502`
+(HAProxy answers `503` in the same situation).
 
 The natural next step is to also pin the cipher suites with `proxy_ssl_ciphers`. **Do not.** That
 directive talks to an OpenSSL function that only covers TLS 1.2 and below, so with TLS 1.3 suite

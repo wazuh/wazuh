@@ -1156,6 +1156,11 @@ of items in the inventory.
 In Wazuh 5.0 you do not create the inventory indices (`wazuh-states-inventory-*`):
 their templates ship with the Wazuh indexer, and the manager's inventory
 synchronization writes each agent's documents into them.
+Index patterns are a different thing: they are Wazuh dashboard saved objects, so
+neither the manager nor the indexer templates create them. A custom visualization
+or dashboard over these indices needs an index pattern in the dashboard; if none
+matching exists yet, create it in **Dashboard management > Index patterns** (for
+example `wazuh-states-inventory-services*`).
 If you had custom index patterns over `wazuh-alerts-*` scoped to OSquery data
 (for example, a pattern filtered to rule group `osquery`), those need to be
 recreated only if you still need to query historical OSquery alerts from the

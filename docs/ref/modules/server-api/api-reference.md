@@ -31,7 +31,8 @@ Most `GET` endpoints that return a list accept these standard parameters (`prett
 ### Obtain JWT token
 
 ```bash
-curl -u <USER>:<PASSWORD> -k -X POST "https://localhost:55000/security/user/authenticate"
+# curl prompts for the password, so it does not reach the process list
+curl -u <USER> -k -X POST "https://localhost:55000/security/user/authenticate"
 ```
 
 ```json
@@ -149,6 +150,12 @@ curl -k -X POST "https://localhost:55000/agents?pretty=true" \
 #### Restart agent
 
 **`PUT /agents/{agent_id}/restart`** — Restart a specific agent. Requires agent v5.0.0+: an older agent fails with error `1761`.
+An agent that has never connected to the node answering (no version in its database) fails there with error `1774`
+(`The agent has never connected to this node, which holds no information about it`), yet the command **is still
+queued** on that node and runs if the agent polls it within `task-manager.task_ttl` — do not resend it. The request
+is broadcast to every cluster node, so check the `nodes` breakdown for the node the agent connects to. The same
+applies to the reload endpoints below; see
+[Agent version requirement and error codes](../control/README.md#agent-version-requirement-and-error-codes).
 
 ```bash
 curl -k -X PUT "https://localhost:55000/agents/002/restart?pretty=true" \
@@ -273,7 +280,18 @@ curl -k -X PUT "https://localhost:55000/agents/002/group/web-servers?pretty=true
 
 #### Cluster status
 
-**`GET /cluster/status`** — Check if the cluster is enabled and running.
+**`GET /cluster/status`** — Check whether the local node's `wazuh-manager-clusterd` is running. The
+answer has a single field, `running` (`"yes"` or `"no"`); there is no `enabled` field, since every manager is
+a cluster node.
+
+```json
+{
+  "data": {
+    "running": "yes"
+  },
+  "error": 0
+}
+```
 
 ```bash
 curl -k -X GET "https://localhost:55000/cluster/status?pretty=true" \
@@ -366,7 +384,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/agents` | Create agent. authd issues and stores a re-enrollment secret for it, but the response carries only `id` and `key` and the secret is never returned, so an agent registered this way (or through the two `insert` routes below) cannot rotate its key by re-enrolling under its id |
 | DELETE | `/agents` | Delete agents |
 | POST | `/agents/insert` | Insert agent with key |
-| POST | `/agents/insert/quick` | Quick insertion |
+| POST | `/agents/insert/quick` | Quick insertion: the name comes from the required query parameter `agent_name` (no body; letters, digits and `-`, `_`, `.`, up to 128 characters), the IP is `any`; answers the new `id` and `key` |
 | POST | `/agents/enrollment-tokens` | Mint an enrollment token (the `token` is returned once) |
 | GET | `/agents/enrollment-tokens` | List enrollment tokens (never their credential) |
 | DELETE | `/agents/enrollment-tokens/{token_id}` | Revoke an enrollment token (`404` `1767` for an unknown id; an already revoked one answers `200` again) |
@@ -401,8 +419,8 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/groups` | Create group |
 | DELETE | `/groups` | Delete groups |
 | GET | `/groups/{group_id}/agents` | Group agents |
-| GET | `/groups/{group_id}/configuration` | Group config, as JSON: one entry per set of `<agent_config>` filters, with those `filters` and the `config` of every block that has them. Sections are keyed by tag (a wodle by its `name`); `syscheck`, `rootcheck`, `sca`, `syscollector` and `client` sections are merged into one object, any other section is a list with one object per occurrence, including sections the manager does not know |
-| PUT | `/groups/{group_id}/configuration` | Update group config |
+| GET | `/groups/{group_id}/configuration` | Group config, as JSON: one entry per set of `<agent_config>` filters, with those `filters` and the `config` of every block that has them. Sections are keyed by tag (a wodle by its `name`); `syscheck`, `rootcheck`, `sca`, `syscollector` and `client` sections are merged into one object, any other section is a list with one object per occurrence, including sections the manager does not know (such a file can only have been written outside the API: the `PUT` below refuses it) |
+| PUT | `/groups/{group_id}/configuration` | Update group config. The body is checked with `verify-agent-conf` before it is stored: an XML error is `1113`, an element the agent configuration readers do not accept (an unknown section included) is `1114` (`Wazuh syntax error`, with the validator's message) and nothing is written. A validator that has not finished after 5 seconds is killed and the request answers `1115` (`Error executing verify-agent-conf: the configuration could not be verified within 5 seconds; it was not applied`), with `verify-agent-conf did not finish within 5 seconds and was killed` in `api.log` |
 | GET | `/groups/{group_id}/files` | Group files |
 | GET | `/groups/{group_id}/files/{file_name}` | File content |
 
@@ -422,7 +440,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/{node_id}/info` | Node info |
 | GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` over that node |
 | PUT | `/cluster/{node_id}/configuration` | Update node config. A cluster key sent back masked keeps the current one; changing it, or changing the indexer section, requires `cluster:read_secrets` over that node (`1132` otherwise) |
-| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config, from the daemon that holds it. The valid pairs are `auth/auth`, `request/global`, `request/remote`, `request/internal` (remoted's `remoted.*` internal options), `wazuh-manager-db/wdb`, `wazuh-manager-db/internal` (`wazuh_db.*` internal options) and `wmodules/wmodules`; any other pair is an error. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
+| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config, from the daemon that holds it. The valid pairs are `auth/auth`, `request/global`, `request/remote`, `request/internal` (remoted's `remoted.*` internal options), `wazuh-manager-db/wdb`, `wazuh-manager-db/internal` (`wazuh_db.*` internal options) and `wmodules/wmodules`; any other pair is an error. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in the master's `logs/api.log` when the master answers itself, in the worker's `logs/cluster.log` when the request is forwarded to a worker ([Auditing a disclosure](authentication.md#auditing-a-disclosure)) |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
 | GET | `/cluster/{node_id}/daemons/remoted/tls` | TLS certificate validity of remoted's listener and its CA bundle (dates, `x509-sha256` identities, which CA signs the leaf). `available: false` with a `reason` when remoted on that node cannot answer |
 | GET | `/cluster/{node_id}/logs` | Node logs |
@@ -616,7 +634,10 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 6000–6999 | Security errors | Blocked IP, request rate limit reached, login queue full, `run_as` not enabled for the user |
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
 
-Error responses include a `dapi_errors` field in cluster deployments.
+Error responses include a `dapi_errors` field in cluster deployments, keyed by the name of the node that
+raised the error (`{"<node>": {"error": "<message>"}}`, plus `logfile` for an internal error). The node name is
+read under the caller's own permissions: a caller without `cluster:read` over that node gets the key
+`unknown-node` instead.
 
 Agents are the exception to the 404 rule. Every endpoint that names agents, the single-agent paths
 included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,

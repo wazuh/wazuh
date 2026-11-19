@@ -221,7 +221,7 @@ Counters and times are cumulative since the daemon started; nothing resets them 
 | Database | Path | Purpose |
 |----------|------|---------|
 | `global.db` | `queue/db/global.db` | Agent registry, groups, connection status. Created by the daemon on first use from the schema embedded at build time (`src/wazuh_db/schemas/schema_global.sql`), owned by `wazuh-manager`, mode `0640` |
-| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data (ATT&CK v19.2), generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py`. The daemon opens it read-only |
+| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data, generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py`; the daemon opens it read-only. The bundled dataset is the ATT&CK v19.2 release, but the database does not record which release it holds: its `metadata` row `mitre_version` stores the file's STIX `spec_version` (`2.0`), not the ATT&CK version, and `db_version` (`1`) is the schema of the database itself |
 
 Only these two databases exist; the daemon accepts no other `<database>` target.
 

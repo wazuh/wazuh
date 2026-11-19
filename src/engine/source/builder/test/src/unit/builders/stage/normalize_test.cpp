@@ -108,6 +108,17 @@ INSTANTIATE_TEST_SUITE_P(
                FAILURE([](const auto& mocks) { return None {}; })),
         StageT(R"z([{"check": [], "map": [], "parse|key": []}])z",
                normalizeBuilder,
+               FAILURE([](const auto& mocks) { return None {}; })),
+        StageT(R"z([{"map": [], "check": []}])z", normalizeBuilder, FAILURE([](const auto& mocks) { return None {}; })),
+        // At most one parse per block, whether it targets another field or repeats the same key
+        StageT(R"z([{"parse|key": [], "parse|other": []}])z",
+               normalizeBuilder,
+               FAILURE([](const auto& mocks) { return None {}; })),
+        StageT(R"z([{"parse|key": [], "parse|key": []}])z",
+               normalizeBuilder,
+               FAILURE([](const auto& mocks) { return None {}; })),
+        StageT(R"z([{"check": [], "parse|key": [], "parse|other": [], "map": []}])z",
+               normalizeBuilder,
                FAILURE([](const auto& mocks) { return None {}; }))
         // END VALUES
         ),

@@ -217,7 +217,7 @@ template(name="RemoteHostLogs" type="string"
          string="/var/log/remote/%FROMHOST-IP%.log")
 
 ruleset(name="remote_to_file") {
-    action(type="omfile" dynaFile="RemoteHostLogs")
+    action(type="omfile" dynaFile="RemoteHostLogs" template="RSYSLOG_TraditionalFileFormat")
 }
 
 input(type="imudp" port="514" ruleset="remote_to_file")
@@ -266,7 +266,7 @@ Edit the agent's configuration file at `/var/ossec/etc/ossec.conf` and add a `<l
 
 This single block covers all files written by rsyslog under `/var/log/remote/`, regardless of how many source hosts are added in the future.
 
-> **Message format and Wazuh decoder compatibility:** The `dynaFile` approach above uses rsyslog's default message format, which includes the syslog timestamp (`Jun  3 08:14:22`). The syslog decoders expect this RFC 3164 header, timestamp first. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
+> **Message format and Wazuh decoder compatibility:** Without a `template`, an `omfile` action uses the host's default file format, which is not the same everywhere. rsyslog's built-in default (`RSYSLOG_FileFormat`) starts each line with an RFC 3339 timestamp (`2026-06-03T08:14:22.123456+00:00`), and recent distributions (Ubuntu 26.04, for example) keep it; only a host whose `rsyslog.conf` sets `$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat` writes the RFC 3164 timestamp (`Jun  3 08:14:22`). The syslog decoders expect the RFC 3164 header, timestamp first, which is why the action above names `RSYSLOG_TraditionalFileFormat` instead of relying on the host default. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
 >
 > ```
 > # Correct — timestamp is present, Wazuh syslog decoders match

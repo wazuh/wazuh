@@ -70,7 +70,7 @@ Add to your agent's `ossec.conf`:
     <groups>yes</groups>
     <services>yes</services>
     <browser_extensions>yes</browser_extensions>
-    <hotfixes>yes</hotfixes> <!-- Windows only -->
+    <hotfixes>yes</hotfixes> <!-- Windows only: remove it on other platforms, where it logs a warning and is ignored -->
 </wodle>
 ```
 

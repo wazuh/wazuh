@@ -57,7 +57,11 @@ Longer timeouts for stateful responses that recur for the same keys.
   tracked: while the table is full a new key gets its `stateful_timeout`, and execd logs
   `(1308): Tracking the maximum of 10000 repeated offenders. New offenders get the base timeout until older entries expire.`
   at warning level, at most once a minute.
-  execd logs `Adding offenders timeout: <n> (for #<k>)` for each value it reads
+  execd logs `Adding offenders timeout: <n> (for #<k>)` at start for each value it reads, up to the
+  sixth: a `0` and the values after it are logged too (`Adding offenders timeout: 0 (for #2)`,
+  `Adding offenders timeout: 120 (for #3)`, …) although the list in effect stops at the first `0`, so a
+  value logged after a `0` is never used. An empty item (`30,,60`) is skipped without a line and does not
+  take a position
 
 ### allowlist
 
@@ -141,7 +145,11 @@ defines response triggers nor runs response scripts, and the server API has no A
 endpoint or RBAC action. A response is configured in the Wazuh Indexer, from the dashboard:
 
 1. a **notification channel** of the Active Response type says what to run: `name`, `executable`,
-   `extra_arguments`, `type` and `stateful_timeout`, `location` and, for `defined-agent`, `agent_id`;
+   `extra_args` (the **Extra arguments** field), `type` and `stateful_timeout`, `location` and, for
+   `defined-agent`, `agent_id`. The channel's field is `extra_args`; the response documents it writes
+   carry the value as `wazuh.active_response.extra_arguments`. A channel created through the
+   Notifications API with a field named `extra_arguments` drops it without an error, and the agent then
+   receives `extra_arguments: null`;
 2. an **Alerting monitor** says when: a trigger whose action targets that channel writes one response
    document per matching event into `wazuh-active-responses`. The monitor must watch
    `wazuh-events-v5-*` or `wazuh-findings-v5-*`: the manager discards a response whose event lives

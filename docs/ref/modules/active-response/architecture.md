@@ -104,7 +104,7 @@ from an in-process queue and the agent's main thread runs the timeout check ever
    [Manager-side ingestion](#manager-side-ingestion)).
 3. **Task creation**: clusterd creates one Task Manager task per target agent: type
    `active_response`, the merged payload, and a task id derived from the document `_id`, so every
-   cluster node creates the same task.
+   cluster node creates a task with the same id in its own Task Manager (see [The cluster](#the-cluster)).
 4. **Delivery**: on the agent's next `POST /control`, remoted asks the Task Manager for the agent's
    pending tasks (`POST /v1/tasks/pending`), which marks them `delivered` as it returns them. There
    is no acknowledgment after execution: the task is fire-and-forget.
@@ -256,9 +256,14 @@ unreachable indexer is not this line: it is the `WARNING` `Cannot connect to Waz
 
 Every node runs the same poller against the same stream with its own bookmark. Nothing is owned:
 with stateless HTTPS an agent may talk to any node, so there is no agent-to-node assignment to
-filter by and no leader. The N tasks the N nodes create for one document collapse into one row
-because the Task Manager derives the task id from `source_id` (the document's `_id`), the agent,
-the type and `create_time`; see [Task Manager](../task_manager/README.md). The corollary is that
+filter by and no leader. Each node creates the task in its own Task Manager, so one document gives
+one task row per node, not one row: the rows only share the same task id, because the Task Manager
+derives it from `source_id` (the document's `_id`), the agent, the type and `create_time`; see
+[Task Manager](../task_manager/README.md). An agent that polls more than one node therefore receives
+the task once per node, and the deduplication happens on the agent: `wazuh-agentd` records every task
+id it dispatches (24 hours by default, in its agent-info registry) and drops a repeated one at debug
+level 2 (`Dropping /control task <id>: already seen (or its durable record could not be confirmed).`),
+so `wazuh-execd` runs the response once. The corollary is that
 every node reads every document: a document that stalls a cycle stalls it fleet-wide, at once.
 
 ### Settings
@@ -420,10 +425,15 @@ run once and never reverted (`Active response won't be added to timeout list. Me
 with alert keys from script '<path>'` at debug level).
 
 Each entry is identified by a key built from the executable's file name followed by `-<key>` for
-each string in `parameters.keys`, e.g. `block-ip-192.168.1.100` (at most 4095 characters; longer
-keys are truncated with a WARNING). A line that is not a `check_keys` message, or one with an empty
-`keys` array, leaves the key as the file name alone: every stateful response of that executable is
-then treated as the same action. For a stateful response:
+each string in `parameters.keys`, e.g. `block-ip-192.168.1.100`. The `-<key>` parts are appended in
+order while they fit in 4,095 characters: the first one that does not fit is dropped **silently**, with
+every key after it (no log line at any level). A single key longer than about 4 KB therefore leaves
+nothing to append. The file name plus the kept keys are then capped at 4,095 characters, and only that
+cap logs the WARNING `Active response key exceeds maximum size (4096). Truncating keys.`. A line that is not a
+`check_keys` message, one with an empty `keys` array, or one whose keys were all dropped leaves the key
+as the file name alone: every such stateful response of that executable is then treated as the same
+action, so one of them pending makes execd answer `abort` to the next even when it targets something
+else. For a stateful response:
 
 - **Key not in the list**: execd stores the message with `command` set to `disable`, the timeout and
   the current time, and answers `continue`.
@@ -540,7 +550,7 @@ Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.
 | WARNING | `Active response command '<path>' reported failure (exit code <n>).` | the executable exited non-zero |
 | WARNING | `Active response command '<path>' terminated abnormally.` | the executable was killed by a signal |
 | WARNING | `Could not determine exit status of active response command '<path>'.` | execd could not wait for the executable (Unix) |
-| WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the keys do not fit in the entry key |
+| WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the executable's file name plus the kept keys exceed 4,095 characters; keys that do not fit in 4,095 characters on their own are dropped before this check without any message (see [Deduplication and timeouts](#deduplication-and-timeouts)) |
 | WARNING | `(1308): Tracking the maximum of 10000 repeated offenders. New offenders get the base timeout until older entries expire.` | the `repeated_offenders` table is full; at most once a minute |
 | INFO | `(1350): Active response disabled.` | `<disabled>yes</disabled>`; nothing is executed |
 | INFO | `Adding offenders timeout: <n> (for #<k>)` | one `repeated_offenders` value read at start |

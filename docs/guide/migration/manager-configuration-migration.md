@@ -235,8 +235,9 @@ The following 4.x sections must be removed. The 5.0 schema admits only the secti
 `logging`, `remote`, `auth`, `wdb`, `vulnerability-detection`, `indexer`, `task-manager` and
 `cluster`, so leaving any of these in place is a **startup error**:
 `(1244): Invalid configuration at '/<section>': unknown option (does not satisfy 'additionalProperties') [...]`
-(or `duplicate element <section>` when the block is repeated, as `<localfile>` and `<wodle>` usually
-are), and `wazuh-manager-control start` starts nothing.
+— one such line per section, also when the block is repeated, as `<localfile>` and `<wodle>` usually are
+(`duplicate element` is reported only for an option the schema knows) — and `wazuh-manager-control start`
+starts nothing.
 
 | Section | Notes |
 |---------|-------|

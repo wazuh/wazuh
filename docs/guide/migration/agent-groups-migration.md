@@ -13,7 +13,7 @@ Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/
 
 Group assignment in Wazuh 5.0 is driven by the agent's enrollment:
 
-1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`; an enrollment that declares no group is recorded in `default`. If a declared group has no folder under `/etc/wazuh-manager/shared/` on the manager, **enrollment is rejected and the agent cannot connect**; the agent keeps retrying with a backoff, so it enrolls on its own once the group exists.
+1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`; an enrollment that declares no group is recorded in `default`. If a declared group has no folder under `/etc/wazuh-manager/shared/` on the manager, **enrollment is rejected and the agent cannot connect**; the agent keeps retrying with a backoff, so it enrolls on its own once the group exists. An agent installed with an enrollment token does the same on its first start: it keeps the token and retries with it.
 2. **Persistence.** The assignment persists in `global.db` and survives agent and manager restarts, so it does not need to be resent on every connection.
 3. **Reconnection.** On each keepalive, the manager looks up the agent's groups in `global.db` and sends the agent the merged shared configuration (`merged.mg`) of those groups when the agent's copy differs.
 
@@ -152,7 +152,7 @@ You can also check the group assignment for a specific agent using the Wazuh API
 > [!NOTE]
 > The API requires an authentication token. Request one from the manager with your API credentials (default user `wazuh`), then reuse it in the calls below. The token can expire, so request a new one if it stops working:
 > ```bash
-> TOKEN=$(curl -u <user>:<password> -k -X POST \
+> TOKEN=$(curl -u <user> -k -X POST \
 >     "https://<manager-ip>:55000/security/user/authenticate?raw=true")
 > ```
 
@@ -191,7 +191,22 @@ On a 5.0 agent, which enrolls over HTTPS on `1517`, `ossec.log` shows the reject
 wazuh-agentd: ERROR: Enrollment rejected by the manager: invalid request. Invalid Group(s) Name(s)
 ```
 
+An agent installed with an enrollment token, on its first start, follows each such line with
+`INFO: Token bootstrap: the manager refused the enrollment; retrying with the same enrollment token.`
+It keeps the token, does not exit, and enrolls with it once the group exists.
+
 A 4.x agent, which enrolls on `1515`, logs `ERROR: Invalid group: <group>. Unable to add agent (from manager)` instead.
+
+**When the agent reaches a worker**, the worker forwards the enrollment to the master, which refuses it and
+logs `Invalid group: <group>` as above. The worker relays only the master's code and generic message, so
+the group's name appears on neither the worker nor the agent: the worker's log shows
+
+```
+wazuh-manager-authd: WARNING: Error 9014: Invalid Group(s) Name(s).
+```
+
+throttled like the master's line, and a 4.x agent is told `Invalid Group(s) Name(s)` rather than
+`Invalid group: <group>`. Look for the group in the master's log.
 
 To resolve it, do one of the following:
 

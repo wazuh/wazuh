@@ -182,8 +182,12 @@ shape remoted classifies a `kid` by; the pin is 43 characters in the token and 6
 characters on the CLI.
 
 A `--no-credential` token has **no `key` member at all**. It says where to connect and which CA to
-trust, and nothing more; remoted never accepts its id as a bearer `kid`, and the enrollment it
-enables is whatever the manager's configuration would have allowed with no credential.
+trust, and nothing more; remoted never accepts its id as a bearer `kid`. On an agent that is not
+enrolled yet, the first start uses it only to install the manager's CA as the trust anchor (pinned
+or embedded, with the same checks as the other shapes), then hands over to the agent's normal
+enrollment, verified against that anchor: with the password configured in the agent's
+`authd.pass` when there is one, with no credential otherwise. `wazuh-agent-auth` given such a token
+enrolls with no credential.
 
 ## Step 3: The agent derives a key and signs a bearer
 
@@ -498,11 +502,14 @@ before the request was sent (DNS, connection refused, a refused TLS handshake) n
   out or got no answer` on each such refusal. The manager may keep listing the agent as
   `active` while it is locked out.
 - **First enrollment with a token.** The manager registered the agent, which stays `never_connected`,
-  and the retry is refused as a duplicate (`9008`). `wazuh-agentd` exits with `Enrollment-token
-  bootstrap failed; refusing to enroll unverified.`, after logging `Enrollment was refused as a
-  duplicate after an earlier attempt in this start timed out or got no answer`. A single-use token
-  was already spent by the lost request, so the retry is refused with `9024` instead, and the agent
-  adds that the earlier attempt most likely registered it.
+  and the retry is refused as a duplicate (`9008`). The agent logs `Enrollment was refused as a
+  duplicate after an earlier attempt in this start timed out or got no answer`, then `Token
+  bootstrap: the manager refused the enrollment; retrying with the same enrollment token.`, and
+  keeps retrying with the same token until the agent is deleted on the manager. A single-use token
+  was already spent by the lost request, so the retry is refused with `9024` instead, the agent adds
+  that the earlier attempt most likely registered it, and `wazuh-agentd` exits with
+  `Enrollment-token bootstrap failed: enrollment token <id> has no uses left. Create a new
+  enrollment token on the manager.`
 
 In both cases, delete the agent on the manager, wait for its deletion to finish (see
 [Agent removal](README.md#agent-removal)), and enroll the agent again with a new enrollment token.

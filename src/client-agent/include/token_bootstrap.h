@@ -127,6 +127,13 @@ typedef struct {
     /** A 401 `token_unknown` or `stale_token` from /enroll: the node does not accept the token
      *  yet (its copy of the token store has not caught up, or the clocks disagree). */
     bool pending;
+    /** /enroll answered and refused the request for a reason other than the token itself or the
+     *  node's own trouble: a group that does not exist on the manager, a duplicate agent,
+     *  enrollment disabled, an invalid request, a refused signature or client certificate. The
+     *  manager's state can change while the agent waits, so the regular enrollment loop retries
+     *  these (w_enrollment_apply_policy()) and so does w_agent_token_bootstrap(), with the same
+     *  token. Never set together with transient, pending or token_rejected. */
+    bool refused;
     /** The pending 401 was `stale_token`: the manager refused the request's timestamp, so the clocks
      *  disagree and the token itself may be fine. Lets wazuh-agent-auth point at the clock rather
      *  than at the token. Meaningful only when pending is set. */
@@ -220,8 +227,8 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * W_TOKEN_BOOTSTRAP_TRANSIENT and W_TOKEN_BOOTSTRAP_PERMANENT only ever come from an attempted
  * bootstrap that did not finish (a token file was present). PERMANENT causes -- a token that
  * fails to decode, an address it names that cannot be parsed, a fetched CA that fails the
- * token's pin, a 4xx from /cacerts or /enroll (the manager has already decided this request is
- * not going to succeed), or a local I/O failure writing the anchor/keys -- are not worth
+ * token's pin, a 4xx from /cacerts, the manager refusing the token itself on /enroll, or a
+ * local I/O failure writing the anchor/keys -- are not worth
  * retrying: the same token, dialled again, fails the same way. TRANSIENT causes -- the address
  * unreachable, a 5xx from /cacerts or /enroll, a 429 from /cacerts (its rate limit is the
  * node's, not a verdict on this request), or the verified enroll's own transport failing --
@@ -233,6 +240,12 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * W_TOKEN_BOOTSTRAP_PENDING is the one 4xx that may clear on its own: /enroll answered a 401
  * `token_unknown` or `stale_token` (see w_token_enroll_report_t.pending). It is retried like
  * TRANSIENT, but only for W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S (see w_token_bootstrap_bound_pending()).
+ *
+ * Every other refusal from /enroll that is not about the token itself (a group that does not exist
+ * yet, a duplicate agent, enrollment disabled... see w_token_enroll_report_t.refused) is
+ * TRANSIENT, without a window: the regular enrollment loop retries the same answers, and a
+ * token-installed agent enrolls once the manager's state allows it. Only the manager refusing the
+ * token itself (expired, revoked, out of uses, unknown to the master) is PERMANENT on /enroll.
  */
 typedef enum {
     W_TOKEN_BOOTSTRAP_DONE = 0,
@@ -259,6 +272,12 @@ typedef enum {
  * registration is left alone, and a failure is logged and returns DONE: the agent starts as it
  * did before, without an anchor. Only a transient failure keeps the token for the next start.
  *
+ * A credential-less token (minted with --no-credential) on an agent that is not enrolled yet also
+ * installs the anchor only, and returns DONE once it is committed: the token has no credential to
+ * enroll with, so the regular enrollment loop then enrolls, verified against the new anchor, with
+ * the agent's configured credential (an authd.pass password) or with none. A failure to install
+ * the anchor is handled as for any token on that agent: TRANSIENT or PERMANENT, never DONE.
+ *
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.
  *
@@ -281,6 +300,15 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
  *        neither an anchor nor a key. Only that path can outlast wazuh-control's start deadline.
  */
 bool w_agent_token_bootstrap_will_enroll(void);
+
+/**
+ * @brief Why the last w_agent_token_bootstrap() or w_token_bootstrap_bound_pending() call returned
+ *        W_TOKEN_BOOTSTRAP_PERMANENT: one sentence, ending in a period, for the line the caller
+ *        exits with. A token the manager refused is named with what happened to it (expired,
+ *        revoked, out of uses, unknown); a failure to establish the manager's CA says the agent
+ *        refuses to enroll unverified. Never NULL.
+ */
+const char *w_agent_token_bootstrap_failure(void);
 
 /**
  * @brief Turns a W_TOKEN_BOOTSTRAP_PENDING result into TRANSIENT while the pending window lasts,

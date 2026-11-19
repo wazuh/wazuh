@@ -121,7 +121,36 @@ H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","group
 
 Format: `E <EVENT_PAYLOAD><LF>`
 
-Payload is raw event data (JSON or text), UTF-8 encoded.
+The payload is the agent's message, UTF-8 encoded, in the classic queue format the engine parses:
+
+```text
+<queue>:<location>:<message>
+```
+
+- `<queue>` — exactly **one byte**, the source queue identifier, followed by `:`. The value must be
+  in `0x01`..`0x7F`; agents use printable characters (`1` for log collection, `8` for FIM, `9` for
+  rootcheck, `d` for syscollector, `f` for Windows event channel, `p` for SCA).
+- `<location>` — where the message came from (a log file path, a module name); it cannot be empty.
+  It ends at the first `:` not preceded by `|`: a colon inside the location is written `|:`, and the
+  engine unescapes it back to `:`.
+- `<message>` — everything after that separator, kept verbatim: plain text or a JSON document. It
+  may itself contain `:`.
+
+A line that does not follow this format — a bare JSON document or plain text with no queue and
+location prefix, for instance — is **not** rejected with the batch: the batch is still accepted
+(`200` from the engine, so `202` to an agent on `POST /stateless`), and each such line is dropped
+later by the engine's router, counted in `router.events.malformed` and logged as the WARNING
+`Dropped a malformed event: <reason>` at most once a minute per router worker. The reasons are:
+
+| Line | Reason |
+|---|---|
+| Shorter than 5 bytes | `Invalid format: event must be at least 5 bytes ("<byte>:<location>:<message>")` |
+| Second byte is not `:` | `Invalid format: missing ':' after the one-byte queue identifier ("<byte>:<location>:<message>")` |
+| Queue byte outside `0x01`..`0x7F` | `Invalid format: queue identifier 0x<XX> is outside 0x01..0x7F` |
+| No unescaped `:` after the location | `Invalid format: missing unescaped ':' between location and message` |
+| Empty location | `Invalid format: location cannot be empty` |
+
+See the engine's [events API reference](../engine/api-events-reference.md) for the engine side.
 
 **Multi-line payloads are supported and are not escaped.** Events are framed by the `\nE `
 delimiter, so a payload containing that sequence would otherwise be read as two events. The sender
@@ -135,7 +164,7 @@ A three-line payload travels as one event, its second and third lines each inden
 (the leading space is protocol framing, not part of the payload):
 
 ```
-E java.lang.IllegalStateException: pool closed
+E 1:/var/log/app/server.log:java.lang.IllegalStateException: pool closed
      at com.example.Pool.acquire(Pool.java:88)
      at com.example.Worker.run(Worker.java:31)
 ```
@@ -163,8 +192,8 @@ TCP/UDP channel a single agent message is bounded by the receive buffer, `OS_MAX
 
 ```
 H {"wazuh":{"agent":{"id":"001","name":"web-01","version":"v5.0.0","groups":["web"],"host":{"os":{"type":"linux"}}}}}
-E {"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
-E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
+E 1:/var/log/app/events.json:{"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
+E 1:/var/log/app/events.json:{"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 ```
 
 ### Full Batch
@@ -196,7 +225,9 @@ Trailing newlines are trimmed from each event; blank lines between events are sk
 
 ## Engine Responses
 
-- `200`: the batch was parsed and its events queued for processing.
+- `200`: the batch was parsed and its events queued for processing. Event lines are parsed only
+  afterwards, so a `200` does not mean every line was valid: a malformed line is dropped then (see
+  [Event Line (E)](#event-line-e)).
 - `400`: the batch could not be parsed (`{"error": "<parser message>", "code": 400}`); nothing of it
   is ingested. The engine logs `[API::Event] Failed to parse request: '<message>'` at most once per minute,
   with the count of requests rejected since the previous line.

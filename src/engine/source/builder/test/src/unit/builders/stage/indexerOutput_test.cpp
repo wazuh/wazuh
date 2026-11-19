@@ -492,4 +492,82 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     ASSERT_EQ(*result.payload(), *event);
 }
 
+// A placeholder whose field is missing (or not a string) fails the operation with the documented trace; the index
+// name is never used as a format string (a '${field}' in it used to throw "argument not found").
+TEST_F(IndexerOutputOperationTest, missing_field_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.missing}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+
+    for (const auto* messageStr : {R"({"wazuh":{"integration":{"category":"applications"}}})",
+                                   R"({"wazuh":{"integration":{"category":"applications"},"missing":1}})"})
+    {
+        auto event = std::make_shared<json::Json>(messageStr);
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success());
+        EXPECT_EQ(result.trace(),
+                  "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.integration.category}-${wazuh.missing}) -> "
+                  "Couldn't get field ${wazuh.missing} from event");
+    }
+}
+
+TEST_F(IndexerOutputOperationTest, too_long_index_name_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.name}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    // 16 (prefix) + 239 = 255 characters: indexed
+    const std::string longest(239, 'a');
+    auto event = std::make_shared<json::Json>("{}");
+    event->setString(longest, "/wazuh/name");
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-" + longest, ::testing::_));
+    EXPECT_TRUE(operation(event).success());
+
+    // 256 characters: not indexed
+    const std::string tooLongName = "wazuh-events-v5-" + longest + "b";
+    event->setString(longest + "b", "/wazuh/name");
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    base::result::Result<base::Event> result;
+    ASSERT_NO_THROW(result = operation(event));
+    EXPECT_FALSE(result.success());
+    EXPECT_EQ(result.trace(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Index name '" + tooLongName
+                  + "' exceeds 255 characters limit");
+}
+
+// Outside test mode the failure carries no trace and nothing throws, however many events fail
+TEST_F(IndexerOutputOperationTest, missing_field_fails_without_trace_outside_test_mode)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.missing}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    for (int i = 0; i < 3; ++i)
+    {
+        auto event = std::make_shared<json::Json>(messageStr.c_str());
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success());
+        EXPECT_TRUE(result.trace().empty());
+    }
+}
+
 } // namespace indexeroutputtest

@@ -94,9 +94,17 @@ What an operator sees:
   `cluster.log` records a warning and the worker reloads itself once. If the scanner still does
   not follow after that reload, an error is logged and the node is not reloaded again. A reload
   request that was refused is tried again on the next connection.
-- The value in effect is the one `GET /vulnerability-detector/status` reports on that node
-  (`enabled`); reading the worker's `wazuh-manager.conf`, directly or through the API, shows its
-  local value.
+- The value in effect is the `enabled` field that the vulnerability scanner's local socket reports
+  on that node — run on the node itself, as root or a member of `wazuh-manager`:
+
+  ```bash
+  curl -s --unix-socket /var/wazuh-manager/queue/sockets/vd-http.sock \
+       http://localhost/vulnerability-detector/status
+  ```
+
+  That route exists only on `vd-http.sock` ([Local HTTP API](../vulnerability-scanner/api-reference.md#local-http-api-vd-httpsock));
+  the server API on port 55000 has no such path and answers `404`. Reading the worker's
+  `wazuh-manager.conf`, directly or through the API, shows its local value.
 - To switch vulnerability detection for the cluster, change it on the master and reload every node
   (`PUT /cluster/reload`): the master answers with the value its own `wazuh-manager-clusterd` read
   when it started, so a change on the master alone reaches no worker. Each worker restarts twice: the reload starts it with the value it had
@@ -201,7 +209,7 @@ command-line options, for running it by hand:
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
 | `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error (schema violations read `ERROR: Error 3006 - Error reading cluster configuration: ...`, a bad `nodes` entry `Error 3004`), and also writes it to `logs/cluster.log` only when the file checked is the live configuration (a copy named with `-c` reports refusals on standard error only; a non-fatal warning, such as more than one `<node>`, is written to the live `logs/cluster.log` even for a copy) |
-| `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
+| `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`). Started as root, the daemon drops to the `wazuh-manager` account **before** reading it (unless `-r`), so the file and every directory above it must be readable by that account — a copy in `/root` or a `0600 root` file is refused as unreadable even under `sudo` |
 | `-h` | Print the help and exit |
 
 The debug level can also be set with the `wazuh_clusterd.debug` internal option (see

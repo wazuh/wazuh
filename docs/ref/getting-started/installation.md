@@ -71,7 +71,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 > [!NOTE]
 > When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before the generated configuration is put in place. (On RPM no `wazuh-manager.conf` exists until then; on DEB the default `wazuh-manager.conf` the package ships stays in place, unused, while the package is half-configured, and is replaced once a configure succeeds.) A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
 >
-> An aborted package installation leaves the package's files in place but unconfigured. On DEB, `dpkg -l wazuh-manager` shows it half-configured (state `iF`); finish it by configuring it again with a valid value, or with the variable unset to take the default: `sudo WAZUH_REMOTE_HTTPS_PORT='1517' dpkg --configure wazuh-manager`. On RPM the transaction reports that the `%post` scriptlet failed; remove the package with `sudo rpm -e wazuh-manager` and install it again with valid values.
+> An aborted package installation leaves the package's files in place but unconfigured. On DEB, `dpkg -l wazuh-manager` shows it half-configured (state `iF`); finish it by configuring it again with a valid value, or with the variable unset to take the default: `sudo WAZUH_REMOTE_HTTPS_PORT='1517' dpkg --configure wazuh-manager`. On RPM the failure is only a warning after the error line (`warning: %post(wazuh-manager-<version>-<release>.<arch>) scriptlet failed, exit status 1`): `rpm` itself exits `0` and records the package as installed, so a script that checks only the exit code sees success while `/etc/wazuh-manager/wazuh-manager.conf` does not exist and the manager cannot start. Look for that warning (or for the missing file), remove the package with `sudo rpm -e wazuh-manager` and install it again with valid values.
 >
 > The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
 
@@ -199,13 +199,12 @@ refused as unsafe. With the CA's certificate staged but not its key, the install
 /etc/wazuh-manager/ca` (and the same for `apid.pem`); staging the pairs afterwards resolves it, and the start needs
 no rerun of `--install`.
 
-On a Debian package install you can stage `certs/` before installing as well, with `-g root`: create it with
+On a DEB or RPM package install you can stage `certs/` before installing as well, with `-g root` (the
+`wazuh-manager` group does not exist yet): create it with
 `sudo install -d -m 0750 -o root -g root /etc/wazuh-manager/certs` and install each file `root:root` `0640`. The
-package's `postinst` sets `/etc/wazuh-manager` to `root:wazuh-manager` `0770`, `certs/` to `root:wazuh-manager`
-`0750` and every `certs/*.pem` to `root:wazuh-manager` `0640` before the credential resolver runs; `ca/` and
-`local.env` are left as staged. The RPM package re-owns the `*.pem` files only after its resolver has run, which
-then refuses them as unsafe (`group is root, not wazuh-manager`) and issues nothing: on RPM systems, stage `certs/`
-after installing.
+package sets `/etc/wazuh-manager` to `root:wazuh-manager` `0770`, `certs/` to `root:wazuh-manager` `0750` and every
+regular `certs/*.pem` file to `root:wazuh-manager` `0640` before the credential resolver runs (DEB `postinst`, RPM
+`%post`); `ca/` and `local.env` are left as staged.
 
 If the install already minted a CA before you staged yours, remove `ca/root-ca.key` and
 `ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and replace `certs/root-ca.pem` and the pairs
@@ -329,12 +328,20 @@ and `wazuh-internal-client` has ID `2` (`GET /security/users`). Change `wazuh-in
 password invalidates every token that user holds, so once `wazuh`'s own password changes the token
 obtained below stops working.
 
+No password goes on a command line, where `ps` shows it to every user of the host: `curl` prompts for
+`wazuh`'s current one, and the new ones reach it as the request body on its standard input (`printf` and
+`read` are shell builtins). In a script, hand the current one over the same way, as a `curl` config on
+standard input: `printf 'user = "wazuh:%s"\n' "$CURRENT" | curl -K - …`.
+
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
-curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_MANAGER_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
-curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_MANAGER_API_PASSWORD>"}' "https://localhost:55000/security/users/1"
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+read -rs -p 'New wazuh-internal-client password: ' NEW_WUI; echo
+printf '{"password":"%s"}' "$NEW_WUI" | curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" --data @- "https://localhost:55000/security/users/2"
+read -rs -p 'New wazuh password: ' NEW_API; echo
+printf '{"password":"%s"}' "$NEW_API" | curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" --data @- "https://localhost:55000/security/users/1"
+unset NEW_WUI NEW_API
 ```
 
 See [Default users](../modules/server-api/authentication.md#default-users) for the `allow_run_as` semantics, the endpoint rules that apply to these reserved users, and [what a password change does and does not do](../modules/server-api/authentication.md#what-a-password-change-does-and-does-not-do).
@@ -441,12 +448,12 @@ A token comes in three shapes, and every installation method below accepts any o
 |---|---|---|
 | Pinned | the default | Fetches the manager's CA, installs only the certificate that matches the pin in the token as the trust anchor |
 | Embedded CA | `--embed-ca` | Installs every CA certificate the token carries as the trust anchor; no fetch |
-| Credential-less | `--no-credential` | Points the agent at the manager and installs the trust anchor, but presents no enrollment credential |
+| Credential-less | `--no-credential` | Installs the trust anchor like the shapes above (fetched and pin-checked, or embedded) and carries no enrollment credential: the agent then enrolls, verified against that anchor, with the enrollment password configured on the agent (`authd.pass`) if it has one, or with no credential, which only a manager that accepts credential-less enrollment honours |
 
 In a [CA rotation](../modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation) that changes the CA key, pinned tokens minted before the manager's certificates are replaced, and `--embed-ca` tokens minted before the new CA was added, stop working once the certificates are replaced; agents already enrolled with them are not affected. Mint new ones for any still used to enroll agents once every node's certificate has been replaced.
 
 > [!IMPORTANT]
-> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs and starts normally and then fails to register. The agent log names the token id the manager refused.
+> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs, and its first start then fails: `wazuh-agentd` logs `ERROR: Enrollment token <id> has expired (token_expired). A new enrollment token is needed.` (`(code 9023)` instead when authd, not remoted, refused it) and exits with `CRITICAL: Enrollment-token bootstrap failed: enrollment token <id> has expired. Create a new enrollment token on the manager.` The token is discarded; give the agent a new one with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent). A refusal that can clear on its own, such as a group that does not exist on the manager yet, is retried instead.
 
 ### Installation methods
 
@@ -601,10 +608,10 @@ The agent keeps running without module verification. To enable it, install the r
 
 ### Verifying the agent connected
 
-Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise). `<WAZUH_MANAGER_API_PASSWORD>` is the current password of the `wazuh` user. Until you change it, that is the `WAZUH_MANAGER_API_PASSWORD` line of `/etc/wazuh-manager/export/credentials.env` on the master (see [The published passwords](credentials.md#the-published-passwords)); the file keeps the install-time value, so after a change use the new password:
+Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise). `curl` prompts for the current password of the `wazuh` user (so it never reaches the process list). Until you change it, that is the `WAZUH_MANAGER_API_PASSWORD` line of `/etc/wazuh-manager/export/credentials.env` on the master (see [The published passwords](credentials.md#the-published-passwords)); the file keeps the install-time value, so after a change use the new password:
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X GET "https://localhost:55000/agents?name=web-server-01&select=id,name,status,ip&pretty=true" \
     -H "Authorization: Bearer $TOKEN"
 ```

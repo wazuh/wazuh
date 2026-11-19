@@ -122,7 +122,7 @@ Sends the events of this `<localfile>` to one or more outputs instead of the man
 
 - **Default value:** `agent` (events are sent to the manager)
 - **Allowed values:** Comma-separated list of `agent` and the `name` of `<socket>` sections defined in the same configuration
-- **Note:** A file path is not accepted. A name that matches no `<socket>` makes `wazuh-logcollector` exit right after it starts (`CRITICAL: Socket '<name>' for '<location>' is not defined.`), so no log is collected. In a centralized `agent.conf` (with `logcollector.remote_commands=0`, the default), an undefined name is logged and removed from the list instead, and a `<localfile>` left with no target is ignored. On Windows there is no socket output: every target delivers to the manager, so `agent` together with a socket name sends each event twice
+- **Note:** A file path is not accepted. A name that matches no `<socket>` passes `wazuh-logcollector -t` (exit `0`), but makes `wazuh-logcollector` exit right after it starts (`CRITICAL: Socket '<name>' for '<location>' is not defined.`). The agent's start then fails as a whole: `wazuh-control start` reports `wazuh-logcollector did not start`, stops the daemons it had started and exits `1`, and under systemd the unit stops every daemon, so the agent does not run until the name is fixed. In a centralized `agent.conf` (with `logcollector.remote_commands=0`, the default), an undefined name is logged and removed from the list instead, and a `<localfile>` left with no target is ignored. On Windows there is no socket output: every target delivers to the manager, so `agent` together with a socket name sends each event twice
 
 ### out_format
 
@@ -149,7 +149,7 @@ Adds a custom field to each event read from a `json` log.
 - **Attributes:** `key` (required) - name of the field to add. A `<label>` with no `key`, or an empty one, is a configuration error. Do not use a key starting with `_`: it is reserved (see **Errors**)
 - **Format:** `<label key="key_name">value</label>`, directly under `<localfile>`. Repeat the element to add more fields
 - **Note:**
-  - **Errors:** There is no `<labels>` wrapper. One is rejected with `(1230): Invalid element in the configuration: 'labels'.`: in `ossec.conf` the agent does not start; in a group's `agent.conf` the agent rejects the whole downloaded configuration and keeps the one it had, so none of that update applies, including unrelated sections, and an agent still waiting for its first configuration from the manager keeps its modules on hold. Run `verify-agent-conf` on the manager before distributing a group's `agent.conf` to catch it. A key starting with `_` is not reported: the parser loops on it, logging the reserved-label warning without end. In `ossec.conf`, logcollector never finishes reading its configuration. In a group's `agent.conf`, `wazuh-agentd` also hangs on every agent in the group, at startup and when checking a downloaded configuration, so the agent cannot download a corrected `agent.conf` until the file is removed on each host. `verify-agent-conf` and uploading the group configuration through the API hang the same way instead of reporting an error, so check those keys by hand before distributing
+  - **Errors:** There is no `<labels>` wrapper. One is rejected with `(1230): Invalid element in the configuration: 'labels'.`: in `ossec.conf` the agent does not start; in a group's `agent.conf` the agent rejects the whole downloaded configuration and keeps the one it had, so none of that update applies, including unrelated sections, and an agent still waiting for its first configuration from the manager keeps its modules on hold. Run `verify-agent-conf` on the manager before distributing a group's `agent.conf` to catch it. A key starting with `_` is not an error: that label is skipped with `WARNING: Labels starting with "_"  are reserved for internal use. Skipping label '<key>'.`, logged once per such label each time the configuration is read, and the rest of the `<localfile>` block loads as usual. `verify-agent-conf` logs the same warning and still returns OK, so uploading the group configuration through the API succeeds
   - **Formats:** Labels are only added to `json` events. Other formats keep them in the configuration (the agent's reported localfile configuration lists them, always as strings) but add nothing to the events, and only `journald` and `macos` log a warning
   - **Merging:** A label never overwrites a field that is already in the event, whether the event carried it or an earlier label added it. Field names are compared without regard to case: `Host` is dropped when the event has `host`, and `App.env` goes into an existing `app` object. A key with a dot (`app.env`) is added as a nested object inside `app`, and dropped when `app` already exists and is not an object. Empty parts in a dotted key are not validated: `app.` or `.env` load without error and add a field with an empty name, so avoid them
   - **Repeated and overlapping keys:** A repeated key keeps its last value, at the position of its first occurrence, and labels are added in that order. Keys are only treated as repeated when they match exactly, including case: `Env` followed by `env` are kept as two labels, and since the event compares field names without regard to case, the first one (`Env`) is added and the second is dropped. Do not combine a key with dotted keys under it (`app` and `app.env`): whichever is added first wins and the other is dropped
@@ -216,7 +216,7 @@ Command whose output is collected (`command` and `full_command` only).
 
 - **Default value:** None (required with `command` and `full_command`)
 - **Allowed values:** A command line, run by the agent with the agent's privileges
-- **Note:** Used instead of `location`. A `command` or `full_command` source without it is ignored with an error. Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`: the whole `<localfile>` is then ignored with an error. On Windows, a network path is ignored with a warning
+- **Note:** Used instead of `location`. A `command` or `full_command` source without it is a configuration error, not an ignored block: the reader logs `(1902): Missing 'location' element.` and refuses the file, so `wazuh-logcollector -t` fails and the agent does not start (`wazuh-control start` stops at its configuration test with `wazuh-logcollector: Configuration error. Exiting`). Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`: the whole `<localfile>` is then ignored with an error. On Windows, a network path is ignored with a warning
 - **Example:** `<command>df -h</command>`
 
 ### frequency
@@ -278,7 +278,7 @@ Text written in front of every event sent to the socket.
 
 ## Internal Options
 
-**Configuration file:** `/var/ossec/etc/internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\internal_options.conf` (Windows)
+**Configuration file:** `/var/ossec/etc/local_internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\local_internal_options.conf` (Windows). The agent reads it before `internal_options.conf`, which holds the shipped defaults and is replaced by an upgrade, so set overrides there.
 
 Internal options provide advanced tuning for the Logcollector module. These options are global and apply to all log collection operations.
 
@@ -773,7 +773,7 @@ grep -A5 "location>/var/log/application.log" /var/ossec/etc/ossec.conf
 **Check for file limit:**
 
 ```bash
-grep "max_files" /var/ossec/etc/internal_options.conf
+grep "max_files" /var/ossec/etc/local_internal_options.conf /var/ossec/etc/internal_options.conf
 ```
 
 ### High CPU Usage

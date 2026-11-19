@@ -364,7 +364,7 @@ Wazuh 5.0 raises the minimum TLS protocol version of the manager's legacy enroll
 
 ### Manager: `<auth><ciphers>` must use a TLS 1.3 ciphersuite list
 
-Do not carry a 4.x `<auth><ciphers>` value into `wazuh-manager.conf`. In 5.0 it is a colon-separated list of TLS 1.3 ciphersuite names, and `wazuh-manager-authd` accepts only these: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. Omit the option to use the default, `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
+Do not carry a 4.x `<auth><ciphers>` value into `wazuh-manager.conf`. In 5.0 it is a colon-separated list of TLS 1.3 ciphersuite names, and `wazuh-manager-authd` accepts only these: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. Omit the option to use the default, `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`. The installer does not omit it: the `wazuh-manager.conf` it generates already writes that default explicitly in `<auth><ciphers>`, so what you find there after installing is the default, not a carried-over value — replace it only with another list of the names above.
 
 The schema's pattern lists those five names, so anything else is refused before any daemon starts: a 4.x-style OpenSSL cipher-list string (for example the 4.x default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`), and equally a value of the right shape that names a suite outside the list (`TLS_AES_256_CBC_SHA`). `wazuh-manager-control start` logs:
 

@@ -112,7 +112,10 @@ with no CA bundle has every download refused, and is told so once at start-up.
 
 `file_path` must resolve to a file **directly inside `var/upgrade/`** — symlinks are followed before
 the check, and anything landing elsewhere, in a subdirectory included, is rejected with *The WPK file
-does not exist*. The file is hashed locally; nothing is downloaded. The task payload carries
+does not exist* (error `14` on the Task Manager's socket, `1824` from the Server API). The Server API checks first: a
+`file_path` outside the installation directory (`/var/wazuh-manager`) fails the request's `wpk_path`
+format and is answered `400` without reaching the Task Manager, so `1824` is what a path inside the
+installation but outside `var/upgrade/` gets. The file is hashed locally; nothing is downloaded. The task payload carries
 only the file's **basename**, and both delivery paths join that name to `var/upgrade/`, so a path
 anywhere else would name a file the agent could never fetch.
 

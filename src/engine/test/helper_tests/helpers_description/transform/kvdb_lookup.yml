@@ -26,6 +26,11 @@ metadata:
     - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
       operations of the map block still run.
     - `kvdb_lookup_merge` merges the value into the target and `kvdb_lookup_append` appends one value per key.
+    - The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+      loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+      name ships with the manager, so the results shown hold only for that test content.
+    - An example described as rejected at build time processes no event: its asset does not build, and the
+      result shown is that build failure (an Outcome Event only repeats the input).
   group: kvdb
   fails_when:
     - The key is not present in the KVDB.

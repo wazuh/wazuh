@@ -60,10 +60,10 @@ The module options (`disabled`, `interval`, `run_on_start`, `skip_on_error`) are
 | Option | Required | Default | Description |
 |--------|:--------:|---------|-------------|
 | `subscriber` | Yes | — | The `type` attribute is required: `security_hub` here (`security_lake` and `buckets` are the other valid values). |
-| `sqs_name` | Yes | — | Name of the SQS queue receiving the bucket's notifications: up to 80 letters, digits, hyphens and underscores. Cannot be empty. |
+| `sqs_name` | Yes | — | Name of the SQS queue receiving the bucket's notifications: up to 80 letters, digits, hyphens and underscores. Cannot be empty. Checked by the `aws-s3` script at each run, not when the configuration is loaded (see [AWS values checked only at run time](README.md#aws-values-checked-only-at-run-time)). |
 | `aws_profile` | No | — | Profile from the agent host's AWS credentials and config files used to authenticate. |
 | `iam_role_arn` | No | — | ARN of an IAM role to assume. Cannot be empty when given. |
-| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. |
+| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. Checked by the `aws-s3` script at each run, not when the configuration is loaded (see [AWS values checked only at run time](README.md#aws-values-checked-only-at-run-time)). |
 | `external_id` | No | — | External ID passed when assuming `iam_role_arn`. Cannot be empty when given. |
 | `discard_regex` | No | — | Skip the events whose `field` matches this regular expression (dots for nested fields): `<discard_regex field="fieldName">regex</discard_regex>`. Without the `field` attribute the option is accepted but no event is discarded. |
 | `sts_endpoint` | No | — | Custom STS endpoint (for example a VPC endpoint) used to assume `iam_role_arn`. |

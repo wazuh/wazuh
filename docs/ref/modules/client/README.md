@@ -161,7 +161,7 @@ Both actions drive `wazuh-agent-auth`, the same command-line tool used directly 
 ```bash
 echo '<TOKEN>' | sudo /var/ossec/bin/wazuh-agent-auth                          # enroll
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll from a file
-sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll   # re-register, new id
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll   # re-register, new id (subject to auth.force)
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only     # refresh CA + address
 sudo /var/ossec/bin/wazuh-agent-auth --show-token --token-file /root/token     # decode a token
 ```
@@ -184,7 +184,7 @@ The token is read from `--token-file` or standard input, never from the command 
 | `--token-file <path>` | Read the token from `<path>`, or from standard input with `-` |
 | `-n`, `--dry-run` | Report what would change. Contacts nothing, writes nothing |
 | `-d` | Debug output, repeatable |
-| `--force-enroll` | Required when the agent already has a key. It is registered again and receives a **new** id. The previous id is named; what becomes of it is the manager's replacement policy |
+| `--force-enroll` | Required when the agent already has a key. It is registered again and receives a **new** id. The previous id is named; what becomes of it is the manager's replacement policy. On a manager that still holds the agent's name, the new registration is a takeover that every [`auth.force` guard](../authd/README.md#force-re-enrollment) must allow: with the defaults it is refused (`Duplicate agent name: <name>`, nothing changed) while that registration is younger than `after_registration_time` (1 h) or the agent has not been `disconnected` for `disconnected_time` (1 h) |
 
 The agent name, groups and address come from `<enrollment>` in `ossec.conf`, so the command takes none of them and a later re-enrollment by the agent itself registers the same way.
 
@@ -234,7 +234,7 @@ sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9
 |---|---|---|
 | `/cacerts adr_unreachable` | The address in the token answers nothing | Check routing, and that the manager is listening on 1517 |
 | `tls_rejected` (on `/cacerts` or `/enroll`) | The manager was reached but refused the TLS handshake over the agent's client certificate; the alert it sent is named in parentheses (`certificate required`: none was presented; `unknown ca`, `bad certificate`, `certificate expired`: the one presented is not accepted). Retrying does not change it, so the agent does not retry | Set `<ssl><certificate>` and `<key>` to a certificate signed by the CA the manager checks client certificates against (`remote.https` `verification_mode` `certificate` or `full`). The token bootstrap presents it on both `/cacerts` and `/enroll`. A token does not replace it |
-| `/cacerts not_found` | The manager answered, but has no CA to hand out | Nothing on the endpoint changes this. The manager has to be given its CA before any agent can bootstrap against it |
+| `/cacerts not_found` | `/cacerts` answered `404`. The line always reads `the manager has no certificate authority configured`, but a `404` has two causes: the manager has no CA to hand out, **or** the path in the token's address (a token that pins the CA rather than embedding it fetches `<address>/cacerts`) does not match the prefix the manager serves, so nothing serves `/cacerts` there | Check the token's address first (`wazuh-agent-auth --show-token`): a wrong path prefix is fixed by minting a token whose address carries the manager's prefix. Otherwise nothing on the endpoint changes this: the manager has to be given its CA before any agent can bootstrap against it. Retrying does not help either way, so the agent does not retry |
 | `/cacerts ca_mismatch` | The certificate the manager serves does not chain to the CA it would hand out — a CA that expired, or whose validity window has not opened yet, counts as not chaining | Nothing on the endpoint changes this. Retrying will keep failing until the manager's certificate and CA match (a CA that is merely not yet valid heals on its own once its window opens) |
 | `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated after the token was minted (see [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation)). Use a fresh token |
 | `The verified enrollment request could not be sent: (60) SSL peer certificate … was not OK` | The certificate of the manager node the agent enrolls through failed verification: it does not chain to the CA the token gave the agent, or it does not name the token's address | The detail after `(60)` says which. A chain error usually means a token minted before a CA rotation (see [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation)); use a fresh token. A name error means that node's certificate lacks the token's address in its SAN |

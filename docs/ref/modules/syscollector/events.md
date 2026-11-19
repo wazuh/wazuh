@@ -603,6 +603,20 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
 | `log_file_path` | `log.file.path` |
 | `error_log_file_path` | `error.log.file.path` |
 
+On Linux the services come from systemd (`ListUnits` over D-Bus plus each unit's properties), and only part of
+the table is filled: `service.id` and `service.name` are both the unit name without its `.service` suffix, `service.state` is the unit's active
+state, `service.sub_state` its sub-state, `service.enabled` its unit-file state, `process.executable` the unit
+file (`FragmentPath`, not the service binary), `process.user.name` the unit's `User=`, `file.path` its
+`SourcePath`, and `service.following`, `service.object_path` and the `service.target.*` fields the unit's
+`ListUnits` job and link data. Only `.service` units are collected (inactive `not-found` placeholders are
+skipped). `process.pid` is always `0`; `service.type`, `service.start_type`,
+`service.restart`, `service.address`, `process.args`, `process.group.name`, `process.working_directory`,
+`process.root_directory`, `log.file.path`, `error.log.file.path` and `service.starts.on_path_modified`/
+`on_not_empty_directory` are always `null`; `service.frequency`, `service.exit_code` and
+`service.win32_exit_code` are `0`, `service.starts.on_mount` and `service.inetd_compatibility` are `false`. An
+empty property is `null`: for example a unit with no `User=`, or the job type of a unit with no queued job (its
+`service.target.address` is then `/` and `service.target.ephemeral_id` `"0"`). A Linux sample:
+
 ```json
 {
     "collector": "dbsync_services",
@@ -621,7 +635,7 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
             "type": "created"
         },
         "file": {
-            "path": "/lib/systemd/system/wazuh-agent.service"
+            "path": null
         },
         "log": {
             "file": {
@@ -630,11 +644,11 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
         },
         "process": {
             "args": null,
-            "executable": "/usr/bin/wazuh-agent",
+            "executable": "/usr/lib/systemd/system/wazuh-agent.service",
             "group": {
                 "name": null
             },
-            "pid": 1234,
+            "pid": 0,
             "root_directory": null,
             "user": {
                 "name": null
@@ -642,31 +656,31 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
             "working_directory": null
         },
         "service": {
-            "address": "/lib/systemd/system/wazuh-agent.service",
+            "address": null,
             "description": "Wazuh agent",
             "enabled": "enabled",
             "exit_code": 0,
             "following": null,
-            "frequency": null,
+            "frequency": 0,
             "id": "wazuh-agent",
-            "inetd_compatibility": null,
-            "name": "wazuh-agent.service",
+            "inetd_compatibility": false,
+            "name": "wazuh-agent",
             "object_path": "/org/freedesktop/systemd1/unit/wazuh_2dagent_2eservice",
             "restart": null,
-            "start_type": "auto",
+            "start_type": null,
             "starts": {
-                "on_mount": null,
+                "on_mount": false,
                 "on_not_empty_directory": null,
                 "on_path_modified": null
             },
-            "state": "running",
+            "state": "active",
             "sub_state": "running",
             "target": {
-                "address": null,
+                "address": "/",
                 "ephemeral_id": "0",
                 "type": null
             },
-            "type": "systemd",
+            "type": null,
             "win32_exit_code": 0
         }
     }

@@ -235,11 +235,13 @@ The complete WCS field list is at the [WCS field reference (CSV)](https://github
 The authoritative way to find the WCS field path for a given log value is to run a sample log through logtest.
 The calls in this guide go to the Wazuh Indexer as its `admin` user, whose password is generated at install:
 it is the `WAZUH_INDEXER_ADMIN_PASSWORD` line of `/etc/wazuh-indexer/export/credentials.env` on the indexer host
-(readable by root only). Load it into the shell first:
+(readable by root only). Put it in a curl configuration file readable by you alone, so it never appears on a
+command line (`ps` would show it), and pass that file with `-K`:
 
 ```bash
-INDEXER_ADMIN_PASSWORD=$(sudo sh -c '. /etc/wazuh-indexer/export/credentials.env && printf %s "$WAZUH_INDEXER_ADMIN_PASSWORD"')
-curl -sk -u "admin:${INDEXER_ADMIN_PASSWORD}" -X POST \
+(umask 077; sudo sed -n 's/^WAZUH_INDEXER_ADMIN_PASSWORD=//p' /etc/wazuh-indexer/export/credentials.env \
+  | sed 's/^/user = "admin:/; s/$/"/' > ~/.indexer-admin.curl)
+curl -sk -K ~/.indexer-admin.curl -X POST \
   "https://localhost:9200/_plugins/_content_manager/logtest" \
   -H 'Content-Type: application/json' \
   -d '{
@@ -485,7 +487,7 @@ When migrating, you must **create a new custom integration** in user space (Draf
 Rules are linked to an integration at creation time via the API. The integration must be in the draft space, `logsource.product` must equal its `metadata.title`, and `metadata.title` must be unique within the draft space (a duplicate is refused with `409`). The example assumes an integration titled `o365`:
 
 ```bash
-curl -sk -u "admin:${INDEXER_ADMIN_PASSWORD}" -X POST \
+curl -sk -K ~/.indexer-admin.curl -X POST \
   "https://localhost:9200/_plugins/_content_manager/rules" \
   -H 'Content-Type: application/json' \
   -d '{

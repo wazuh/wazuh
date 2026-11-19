@@ -159,7 +159,10 @@ replacement going ahead with a purge that cannot be recorded.
 id; the replaced id is not handed out again. The one case where a caller can name an id is
 `POST /agents/insert`, and there authd refuses rather than replacing: an id outside
 `[1, 2147483647]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` (the server API
-reports it as `1765`) before any keystore lookup even runs; an id that belongs to an existing agent
+reports it as `1765`) before any keystore lookup even runs. Through the server API the request schema
+is checked first: an `id` that is not all digits or is shorter than three characters (`0`, `42`, `-1`,
+`abc`) is answered `400` by the API's validation and never reaches authd, so only an id of three or more
+digits outside the range (`000`, `2147483648`) gets `1765`; an id that belongs to an existing agent
 answers `9012 Duplicate ID`, and one whose purge is still pending answers
 `9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
@@ -193,7 +196,7 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
-| `-D <dir>` | Accepted, but does not change the working directory: the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
+| `-D <dir>` | Accepted but ignored (`-h`: `Accepted but ignored: the daemon always runs from /var/wazuh-manager.`): the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
 | `-p <port>` | Listening port. Overrides [`port`](configuration.md#port). Not range-checked: `0` or a non-numeric value is rejected (`Invalid port: <value>`), but a value above `65535` wraps. | `1515` |
 | `-P` | Require the shared enrollment password. Overrides [`use_password`](configuration.md#use_password), but can only turn it on. | off |
 | `-c <suites>` | TLS 1.3 cipher suites. Overrides [`ciphers`](configuration.md#ciphers); validated the same way. | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
@@ -263,8 +266,9 @@ a token for one worker's own address is refused unless the master's certificate 
 `--port`/`--prefix` default to the running `remote.https` values, `--ttl` to 30 days (`N[d|h|m|s]`),
 `--max-uses` to unlimited.
 
-**What a mint refuses about the request itself**, before any certificate is read, and identically from
-the CLI and the API:
+**What a mint refuses about the request itself**, before any certificate is read. These are authd's rules,
+so the CLI and the socket answer them as below; the Server API applies the same limits but refuses them
+the `ttl` and length limits itself, with its own errors (see after the table):
 
 | Rule | Why |
 |------|-----|
@@ -276,7 +280,14 @@ the CLI and the API:
 
 A refusal is `9025` with the reason (`Enrollment token refused: ttl must be between 1 and 315360000
 seconds (3650 days); 0 takes the default`). The CLI refuses an out-of-range `--ttl` locally, without
-reaching the socket; it also refuses `--ttl 0` (the `0` = default form is the socket's and the API's: omit `--ttl` on the CLI to get the 30 days), and a `--max-uses` above 1000000000.
+reaching the socket; it also refuses `--ttl 0` (the `0` = default form is the socket's only: omit `--ttl` on the CLI to get the 30 days), and a `--max-uses` above 1000000000.
+
+Through the Server API (`POST /agents/enrollment-tokens`) the request never reaches authd with these values.
+A `ttl` of `0`, one over 3650 days (`3651d`) or one that is not seconds or a number followed by `d`, `h`, `m`
+or `s` is refused by the framework with error `1411` (`TimeFrame is not valid: <ttl>`, HTTP `400`), not
+`9025`: as on the CLI, omit `ttl` to get the 30 days. The length limits are also the request schema's
+(`maxLength`), so an over-long `address`, `description` or `prefix` is answered `400` by the API's own
+validation before authd sees it.
 
 An entry of the store that cannot be read — a negative `expires`, or any other malformed field — is **dropped with a warning** and the rest of the file is
 loaded; the next write removes it from the file. What is still refused whole is a document that is not

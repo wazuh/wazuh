@@ -168,60 +168,19 @@ inline json::Json adaptDecoder(const json::Json& document)
         }
     }
 
-    // 4. normalize
+    // 4. normalize: each block is copied as written. The key order and every key (a repeated `parse|`, an unknown
+    // sub-block) reach the builder unchanged, which enforces the block layout (check, parse|<field>, map; at most one
+    // parse) and fails the build on a violation.
     if (const auto normalizeOpt = document.getArray("/normalize"); normalizeOpt.has_value())
     {
         result.setArray("/normalize");
-        const auto& normalizeArray = *normalizeOpt;
-        for (const auto& element : normalizeArray)
+        for (const auto& element : *normalizeOpt)
         {
-            if (element.isObject())
+            if (!element.isObject())
             {
-                json::Json orderedObj;
-                orderedObj.setObject();
-
-                // Order keys check, parse|.*, map
-                if (element.exists("/check"))
-                {
-                    auto checkOpt = element.getJson("/check");
-                    if (checkOpt.has_value())
-                    {
-                        orderedObj.set("/check", *checkOpt);
-                    }
-                }
-
-                {
-                    const auto fullElemOpt = element.getObject();
-                    if (!fullElemOpt.has_value())
-                    {
-                        throw std::runtime_error("Decoder normalize array contains invalid element, not an object");
-                    }
-                    for (const auto& [key, value] : *fullElemOpt)
-                    {
-                        if (key.find("parse|") == 0)
-                        {
-                            orderedObj.set(fmt::format("/{}", key), value);
-                            break; // Only one parse|XXX expected
-                        }
-                    }
-                }
-
-                if (element.exists("/map"))
-                {
-                    auto mapOpt = element.getJson("/map");
-                    if (mapOpt.has_value())
-                    {
-                        orderedObj.set("/map", *mapOpt);
-                    }
-                }
-
-                result.appendJson(orderedObj, "/normalize");
+                throw std::runtime_error("Decoder normalize array contains invalid element type, expected object");
             }
-            else
-            {
-                throw std::runtime_error(
-                    "Decoder normalize array contains invalid element type, expected string or object");
-            }
+            result.appendJson(element, "/normalize");
         }
     }
 
@@ -329,7 +288,7 @@ inline json::Json adaptOutput(const json::Json& document)
     json::Json result;
     result.setObject();
 
-    // Order: name, outputs (with first_of, check, then)
+    // Order: name, parents, definitions, outputs, enabled, id
 
     // 1. name (from /name)
     if (document.exists("/name"))
@@ -362,75 +321,31 @@ inline json::Json adaptOutput(const json::Json& document)
         result.set("/definitions", *defJsonOpt);
     }
 
-    // 4. outputs array (contains the first_of logic with check and then blocks)
+    // 4. outputs array: each element is copied as written. The key order of a first_of branch reaches the builder
+    // unchanged, which requires exactly `check` then `then` and fails the build otherwise.
     if (const auto outputsArrayOpt = document.getArray("/outputs"); outputsArrayOpt.has_value())
     {
         result.setArray("/outputs");
-        const auto& outputsArray = *outputsArrayOpt;
-
-        for (const auto& outputElement : outputsArray)
+        for (const auto& outputElement : *outputsArrayOpt)
         {
-            if (outputElement.isObject())
-            {
-                // Check if it has first_of array
-                if (outputElement.exists("/first_of"))
-                {
-                    const auto firstOfArrayOpt = outputElement.getArray("/first_of");
-                    if (firstOfArrayOpt.has_value())
-                    {
-                        json::Json orderedOutput;
-                        orderedOutput.setObject();
-                        orderedOutput.setArray("/first_of");
-                        const auto& firstOfArray = *firstOfArrayOpt;
-
-                        for (const auto& firstOfElement : firstOfArray)
-                        {
-                            if (firstOfElement.isObject())
-                            {
-                                json::Json orderedFirstOf;
-                                orderedFirstOf.setObject();
-
-                                // Order: check, then
-                                if (firstOfElement.exists("/check"))
-                                {
-                                    auto checkOpt = firstOfElement.getJson("/check");
-                                    if (checkOpt.has_value())
-                                    {
-                                        orderedFirstOf.set("/check", *checkOpt);
-                                    }
-                                }
-
-                                if (firstOfElement.exists("/then"))
-                                {
-                                    auto thenOpt = firstOfElement.getJson("/then");
-                                    if (thenOpt.has_value())
-                                    {
-                                        orderedFirstOf.set("/then", *thenOpt);
-                                    }
-                                }
-
-                                orderedOutput.appendJson(orderedFirstOf, "/first_of");
-                            }
-                            else
-                            {
-                                throw std::runtime_error(
-                                    "Output first_of array contains invalid element type, expected object");
-                            }
-                        }
-
-                        result.appendJson(orderedOutput, "/outputs");
-                    }
-                }
-                else
-                {
-                    // If no first_of, copy the element as-is
-                    result.appendJson(outputElement, "/outputs");
-                }
-            }
-            else
+            if (!outputElement.isObject())
             {
                 throw std::runtime_error("Output outputs array contains invalid element type, expected object");
             }
+
+            if (const auto firstOfArrayOpt = outputElement.getArray("/first_of"); firstOfArrayOpt.has_value())
+            {
+                for (const auto& firstOfElement : *firstOfArrayOpt)
+                {
+                    if (!firstOfElement.isObject())
+                    {
+                        throw std::runtime_error(
+                            "Output first_of array contains invalid element type, expected object");
+                    }
+                }
+            }
+
+            result.appendJson(outputElement, "/outputs");
         }
     }
 

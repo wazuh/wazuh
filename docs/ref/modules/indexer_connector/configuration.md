@@ -236,9 +236,11 @@ for: take `<indexer>` from the output of `/var/wazuh-manager/bin/wazuh-manager-c
 rather than assuming the indexer is local.
 
 ```bash
-curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
-     -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     https://<indexer>:9200/_cluster/health
+# as root; the password goes to curl as a config file on its standard input (-K -), never on its
+# command line, which ps shows to every user of the host (printf is a shell builtin)
+printf 'user = "wazuh-manager:%s"\n' \
+    "$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" |
+  curl -K - --cacert /etc/wazuh-manager/certs/indexer-ca.pem https://<indexer>:9200/_cluster/health
 ```
 
 The connector treats a node as available when its health is `green` or `yellow`.

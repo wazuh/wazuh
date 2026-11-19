@@ -79,7 +79,13 @@ Agent restart and reload are `agent_restart` / `agent_reload` tasks handled by t
 | Manager: `/var/wazuh-manager/logs/cluster.log`, tag `[Active Response]` | What the poller read, dispatched, held or discarded |
 
 The agent's default `ossec.conf` also monitors `logs/active-responses.log` with a `<localfile>`
-block, so its lines reach the manager as events.
+block, so its lines reach the manager as events. The shipped content has no decoder for them: they
+come out **unclassified** (`wazuh.integration.category` `unclassified`) and are counted in the engine's
+`space.<space>.events.unclassified` metric, but a policy indexes unclassified events only when its
+`index_unclassified_events` flag is on, and it is off by default. With the default policy these lines
+are therefore not indexed and not visible in the Wazuh dashboard; enable unclassified indexing, or add a
+decoder for them, to keep them (see
+[Unclassified events](../engine/README.md#unclassified-events)).
 
 ## Documentation
 

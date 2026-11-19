@@ -198,7 +198,9 @@ key of an agent that already exists. Every key served is recorded as a `secret_r
 naming the caller and the agents, never a key.
 
 `agent:restart` and `agent:reload` are dispatched as task manager tasks that the agent fetches; an
-agent older than v5.0.0 is refused with error `1761`.
+agent older than v5.0.0 is refused with error `1761`. A node that has never seen the agent answers error `1774`
+for it but still queues the command (see
+[Agent version requirement and error codes](../control/README.md#agent-version-requirement-and-error-codes)).
 
 The group variants, `PUT /agents/group/{group_id}/restart` and `/reload`, first list the group's agents
 and then act on that list, so they need three actions: `group:read` over the group, `agent:read` over

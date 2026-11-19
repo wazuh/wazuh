@@ -70,12 +70,14 @@ GET /cluster/{node_id}/configuration/request/remote                      # effec
 
 ## Protocol Example
 
-The batch both channels post to the engine ([Event Protocol](event-protocol.md)):
+The batch both channels post to the engine ([Event Protocol](event-protocol.md)). Every event line
+carries `<queue>:<location>:<message>`; a line without that prefix is accepted with the batch and then
+dropped by the engine:
 
 ```text
 H {"wazuh":{"agent":{"id":"001","name":"web-01","groups":["web"]}}}
-E {"log":"Connection from 192.168.1.100"}
-E {"log":"Authentication successful"}
+E 1:/var/log/app/events.json:{"log":"Connection from 192.168.1.100"}
+E 1:/var/log/app/events.json:{"log":"Authentication successful"}
 ```
 
 ## References

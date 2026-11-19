@@ -108,7 +108,7 @@ the AWS and Google Cloud blocks as `verify-agent-conf:aws-s3`, `verify-agent-con
 ```text
 2026/07/06 12:34:56 wazuh-manager-db: INFO: Started (pid: 12345).
 2026/07/06 12:34:56 wazuh-manager-modulesd:control: INFO: Starting control thread.
-2026/07/06 12:34:57 wazuh-manager-remoted: INFO: Started (pid: 12350). Legacy listener disabled (remote.legacy.enabled is false).
+2026/07/06 12:34:57 wazuh-manager-remoted: INFO: Started (pid: 12350). Listening on port 1514/TCP (secure).
 ```
 
 Levels are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`; the engine

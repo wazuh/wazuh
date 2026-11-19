@@ -134,7 +134,7 @@ static void help_authd(char * home_path)
     print_out("    -f          Run in foreground.");
     print_out("    -u <user>   User to run as. Default: %s.", USER);
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
+    print_out("    -D <dir>    Accepted but ignored: the daemon always runs from %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Force shared-password enrollment on (enabled by default in the installer-shipped config, but off by default in the daemon itself); password read from %s or generated.", AUTHD_PASS);
     print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
@@ -939,7 +939,13 @@ static void process_message(struct client *client) {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
+        if (config.worker_node) {
+            /* The master that issued the key already logged it at INFO */
+            mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, source);
+        } else {
+            /* The audit line a forwarded enrollment leaves on the master (local-server.c), worded alike */
+            minfo("Agent key generated for agent '%s' (requested by %s)", client->agentname, source);
+        }
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);

@@ -753,6 +753,29 @@ static void test_process_message_holder_replaced_once_enrolls(void ** state) {
     assert_int_equal(agents_named(DUP_NAME), 1);
 }
 
+static void test_process_message_master_logs_the_key_at_info(void ** state) {
+    (void)state;
+    /* A request served by the master itself leaves the same INFO audit line as one a worker forwards,
+     * naming the peer the request came from. */
+    snprintf(enrollment_client->read_buffer, OS_SIZE_4096, "OSSEC A:'fresh-agent'\n");
+    EXPECT_LOG_DEBUG1();
+    expect_any_count(__wrap__mdebug2, formatted_msg, -2);
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'fresh-agent' (requested by 127.0.0.1)");
+
+    process_message(enrollment_client);
+
+    assert_int_equal(rows_read, 0);
+    assert_keystore_lock_is_free();
+    assert_true(enrollment_client->enrollment_ok);
+    assert_int_equal(strncmp(enrollment_client->write_buffer, "OSSEC K:'", strlen("OSSEC K:'")), 0);
+    assert_non_null(strstr(enrollment_client->write_buffer, " fresh-agent any "));
+    assert_null(queue_remove);
+    assert_int_equal(agents_named("fresh-agent"), 1);
+}
+
 static void test_process_message_on_a_worker_does_not_judge_duplicates(void ** state) {
     (void)state;
     EXPECT_LOG_DEBUG1();
@@ -796,6 +819,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_message_unreadable_row_is_refused, setup_process_message, teardown_process_message),
         cmocka_unit_test_setup_teardown(test_process_message_changing_holder_is_refused_after_the_retries, setup_process_message, teardown_process_message),
         cmocka_unit_test_setup_teardown(test_process_message_holder_replaced_once_enrolls, setup_process_message, teardown_process_message),
+        cmocka_unit_test_setup_teardown(test_process_message_master_logs_the_key_at_info, setup_process_message, teardown_process_message),
         cmocka_unit_test_setup_teardown(test_process_message_on_a_worker_does_not_judge_duplicates, setup_process_message, teardown_process_message),
     };
 

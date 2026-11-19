@@ -44,8 +44,13 @@ is chosen when the binary is built for its operating system.
 | ipfw | `ipfw -q table 00001 add 192.168.1.100`; creates rules `00001` denying traffic from and to `table(00001)` when `ipfw show` lacks them | `ipfw -q table 00001 delete 192.168.1.100` | `ipfw` found |
 | pf | `pfctl -t wazuh_fwtable -T add 192.168.1.100`, then `pfctl -k 192.168.1.100` | `pfctl -t wazuh_fwtable -T delete 192.168.1.100` | `pfctl` found, `/dev/pf` present, `pfctl -s info` reports `Status: Enabled` |
 | npf | `npfctl table wazuh_blacklist add 192.168.1.100` | `npfctl table wazuh_blacklist del 192.168.1.100` | `npfctl` found, `npfctl show` reports filtering active and a `wazuh_blacklist` table |
-| hosts.deny | appends `ALL:192.168.1.100` to `/etc/hosts.deny`; FreeBSD appends `ALL : 192.168.1.100 : deny` to `/etc/hosts.allow`. The address is written in its canonical form, and a file that already holds that exact line is left as it is | removes only the lines identical to that rule; a line of your own that merely contains the address is kept | the file exists |
+| hosts.deny | appends `ALL:192.168.1.100` to `/etc/hosts.deny`; FreeBSD appends `ALL : 192.168.1.100 : deny` to `/etc/hosts.allow`. The address is written in its canonical form, and a file that already holds that exact line is left as it is | removes only the lines identical to that rule; a line of your own that merely contains the address is kept | the file (`/etc/hosts.deny`, or `/etc/hosts.allow` on FreeBSD) already exists: `block-ip` never creates it. When it is missing the method is skipped with the WARNING `File '<path>' not found` in `active-responses.log` and the chain moves on to `route` |
 | route | Linux: `route add 192.168.1.100 reject`; BSD: `route -q add 192.168.1.100 127.0.0.1 -blackhole` | Linux: `route del 192.168.1.100 reject`; FreeBSD: `route -q delete 192.168.1.100 127.0.0.1 -blackhole`; OpenBSD/NetBSD: `route -q delete 192.168.1.100` | `route` found |
+
+Many current Linux distributions (Ubuntu 26.04 and AlmaLinux/RHEL 10 among them) ship no
+`/etc/hosts.deny`, so on a host without firewalld or iptables the Linux chain skips hosts.deny and
+blocks with `route`. Create the file (`touch /etc/hosts.deny`) if you want the hosts.deny method to apply;
+it only affects services built with TCP wrappers.
 
 The `pf`, `npf` and `wazuh_blacklist` tables and their block rules are not created by `block-ip`;
 `ipfw`'s are. firewalld, iptables and hosts.deny take a lock directory under `active-response/bin/`

@@ -142,7 +142,7 @@ Continue on hash verification failure (log warning instead of blocking).
 
 ## Internal Options
 
-Additional command wodle settings can be configured in `internal_options.conf` or `local_internal_options.conf`:
+Additional command wodle settings are read from `local_internal_options.conf` (`/var/ossec/etc/` on Linux/Unix, `C:\Program Files (x86)\ossec-agent\` on Windows), the file to edit: the agent reads it before `internal_options.conf`, which holds the shipped defaults and is replaced by an upgrade:
 
 ```ini
 # Allow remote commands from centralized configuration (0=no, 1=yes, default: 0)
@@ -298,7 +298,7 @@ You can define multiple command wodles in the same configuration:
 
 ## Command Output Format
 
-Command output is forwarded to the manager as events. The manager can analyze the output with custom rules.
+Command output is forwarded to the manager as events. The manager's engine decodes and indexes them; it has no rules. Detection on the output is done by the Wazuh Indexer's Security Analytics detectors (Sigma-based detection rules) on the indexed events.
 
 **Output format:** one JSON event per execution, with the complete output (all lines, newlines preserved) in `process.io.text`. See [Event format](README.md#event-format) for the full document.
 
@@ -319,7 +319,7 @@ Command output is forwarded to the manager as events. The manager can analyze th
 **Processing:**
 - Each execution generates one event; multi-line output stays in a single `process.io.text` value. Output that does not fit in a single message (64 KB) is sent in several events split on line boundaries (see `wazuh_command.split_output`)
 - Events carry the configured `tag` in the `tags` array
-- Manager rules can parse and alert on the event
+- The engine decodes the event and indexes it; alerting on its content is done by indexer-side detection rules
 - If the command details alone fill the message, an event without output is sent (empty `process.io.text`)
 - With `ignore_output` set to `yes`, no event is sent
 
@@ -345,8 +345,7 @@ Standard environment variables are available to commands. Set custom variables i
 
 ### Output Handling
 
-- **Standard output (stdout):** Forwarded to manager (unless `ignore_output=yes`)
-- **Standard error (stderr):** Logged locally, not forwarded to manager
+- **Standard output (stdout) and standard error (stderr):** The command's stderr is redirected into the same pipe as its stdout, so both are captured together, in the order the command wrote them, and forwarded in `process.io.text` (unless `ignore_output=yes`). To keep stderr out of the event, redirect it in the command or a wrapper script (for example `2>/dev/null`)
 - **Exit codes:** Logged for debugging; non-zero codes generate warnings
 
 ---
@@ -577,8 +576,9 @@ tail -f /var/ossec/logs/ossec.log | grep "system-check"
 ### View Command Output
 
 ```bash
-# On agent (local logs)
-grep "output:" /var/ossec/logs/ossec.log
+# On agent (local logs): the output is logged only with wazuh_modules.debug=2 and
+# only for a command that returned a non-zero exit code
+grep "wazuh-modulesd:command.*OUTPUT:" /var/ossec/logs/ossec.log
 
 # On manager (in alerts)
 # (requires a policy with a `file` output; see ../engine/ref-output.md)
@@ -589,10 +589,10 @@ tail -f /var/wazuh-manager/logs/<channel>/$(date +%Y/%b)/wazuh-<channel>-$(date 
 
 ```bash
 # Count executions of a specific command
-grep "Executing command" /var/ossec/logs/ossec.log | grep "system-check" | wc -l
+grep "Starting command 'system-check'" /var/ossec/logs/ossec.log | wc -l
 
 # View last execution time
-grep "Executing command" /var/ossec/logs/ossec.log | grep "system-check" | tail -1
+grep "Starting command 'system-check'" /var/ossec/logs/ossec.log | tail -1
 ```
 
 ### Check for Errors
@@ -648,8 +648,11 @@ export CHECK_TYPE=disk
 Enable detailed logging:
 
 ```ini
-# local_internal_options.conf
+# local_internal_options.conf (Linux/Unix agents; Windows agents use windows.debug=2)
+wazuh_modules.debug=2
 ```
+
+Restart the agent to apply it. Level 1 adds `Command '<tag>' finished.`, the checksum results and the split-output counts; level 2 adds `Sleeping until: <time>` and, for a command that returns a non-zero exit code, its output as `OUTPUT: <output>`.
 
 View debug logs:
 ```bash

@@ -29,7 +29,7 @@ Check [engine documentation](../../ref/modules/engine/README.md#decoders) to div
 | parse\| + map | Extraction, then assignment |
 | parse\| | Extraction only |
 
-Inside a block, the sub-blocks must appear in the order `check`, `parse|`, `map`, and a block holds at most one `parse|<field>`; the Engine refuses to build a decoder that breaks either rule.
+Inside a block, the sub-blocks must appear in the order `check`, `parse|`, `map`, and a block holds at most one `parse|<field>`; the Engine checks each block as written and refuses to build a decoder that breaks either rule (`Stage 'normalize': subblocks must be in order: check, parse, map` or `Stage 'normalize': only one 'parse|' (or 'parse') is allowed inside the same object.`).
 
 ## 2. XML to YAML equivalences
 

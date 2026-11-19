@@ -894,8 +894,11 @@ sudo tar -xzf $BACKUP_DIR/wazuh-agent-etc.tar.gz -C /var/ossec
 # Optional: Restore databases
 sudo tar -xzf $BACKUP_DIR/wazuh-agent-db.tar.gz -C /var/ossec 2>/dev/null || true
 
-# Set proper permissions
-sudo chown -R root:wazuh /var/ossec/etc
+# Set proper permissions on the top-level files only. tar, run as root, already restores the
+# archived owners; never chown -R etc/: etc/shared/ holds what the agent writes from the manager's
+# shared configuration, and etc/certs/ the trust anchor the agent owns (it replaces it on a CA
+# rotation) beside a root-owned marker, so a recursive chown breaks both
+sudo chown root:wazuh /var/ossec/etc/client.keys /var/ossec/etc/ossec.conf
 sudo chmod 640 /var/ossec/etc/client.keys
 sudo chmod 640 /var/ossec/etc/ossec.conf
 
@@ -936,8 +939,8 @@ sudo tar -xzf $BACKUP_DIR/wazuh-agent-etc.tar.gz -C /Library/Ossec
 # Optional: Restore databases
 sudo tar -xzf $BACKUP_DIR/wazuh-agent-db.tar.gz -C /Library/Ossec 2>/dev/null || true
 
-# Set proper permissions
-sudo chown -R root:wazuh /Library/Ossec/etc
+# Set proper permissions on the top-level files only (never chown -R etc/: see the Linux steps)
+sudo chown root:wazuh /Library/Ossec/etc/client.keys /Library/Ossec/etc/ossec.conf
 sudo chmod 640 /Library/Ossec/etc/client.keys
 
 # Start the agent

@@ -1286,7 +1286,8 @@ predefined, and locale-aware parsing. Automatically applied to schema fields def
     - a sample date (any other value): the format is the single predefined format that matches the whole sample. A
       sample that matches no predefined format, or more than one, makes the asset fail to build.
 - `Locale`: Optional locale name used to parse the date (for example `en_GB.UTF-8`). The default is the C/POSIX
-    locale. The locale must be installed on the host, otherwise the asset fails to build.
+    locale. The locale must be installed on the host, otherwise the asset fails to build (see
+    [Examples: With locale](#examples-with-locale) for installing one).
 
 More than two arguments make the asset fail to build.
 
@@ -1377,7 +1378,12 @@ parse|event_time:
 > [!NOTE]
 > The `date` parser use is implicit, because the parser is automatically applied to schema fields defined as type `date`
 > like `event.start`; `HTTPDATE` and `en_GB.UTF-8` are its two arguments. The `en_GB.UTF-8` locale must be installed
-> on the host, otherwise the asset fails to build.
+> on the host, otherwise the asset fails to build with `Can't build date parser, locale 'en_GB.UTF-8' not found`.
+> The manager packages do not install any locale, and minimal hosts and container images usually ship only
+> `C`/`POSIX` and `C.UTF-8` (`locale -a` lists them). Install the locale on every manager node before using it in
+> a decoder: on Debian/Ubuntu, `apt-get install locales`, enable it in `/etc/locale.gen` and run `locale-gen`
+> (or `locale-gen en_GB.UTF-8` on Ubuntu); on RHEL-like systems, install its langpack
+> (`dnf install glibc-langpack-en`).
 
 
 **Example 1**

@@ -120,11 +120,12 @@ element is rejected as a duplicate.
 - `bin/wazuh-manager-control start|restart|reload|check` validates the file first (with
   `--skip-file-checks`) and refuses to start any daemon when it is invalid: the CLI's verdict on stderr
   and as `wazuh-manager-control: ERROR: (1244): …` in `logs/wazuh-manager.log`, then
-  `wazuh-manager.conf: Configuration error. Exiting` (`{"error":20,…}` with `-j`). After the credential
+  `wazuh-manager.conf: Configuration error. Exiting` (`{"error":20,…}` with `-j`) on standard output only:
+  that line is not written to the log, where the `(1244)` lines are the record. After the credential
   check (errors 22 and 21 — [Credentials](../../getting-started/credentials.md)) it validates the file
   again with the file checks on, then runs each daemon's `-t`; for the C daemons and the engine, `-t`
   validates the whole file, including the files it names. A daemon whose `-t` fails stops the sequence
-  with `<daemon>: Configuration error. Exiting` (error 20) and the line
+  with `<daemon>: Configuration error. Exiting` (error 20) on standard output, and logs the line
   `wazuh-manager-control: ERROR: <daemon>: Configuration error: <last line of its output>` in
   `logs/wazuh-manager.log`. A start (not `check`) then resolves the credentials (`--prestart`, error 21).
   The first refusal stops the sequence, and the script exits `1` for every refusal: the error codes

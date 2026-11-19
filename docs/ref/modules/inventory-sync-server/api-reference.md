@@ -375,7 +375,7 @@ These can be returned on any route, by the transport rather than by a handler:
 | `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for the two `_internal` routes: an object carrying a usable `agent_id`). Of these, only malformed HTTP is answered by the transport; the shape checks are the handlers' |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
-| `400` (chunked) | Chunked transfer encoding is not supported; on an installed manager a chunked request is answered `400`, not `411` |
+| `411` | A chunked request (`Transfer-Encoding: chunked`): bodies must be `Content-Length` delimited. The body is `{"error":"Content-Length is required; chunked transfer encoding is not supported","code":411}` |
 | `413` | A body declaring more bytes than the total in-flight budget (or over `max_body_size`, when one is explicitly configured), or, on the two `_internal` routes, more than `control_max_body_bytes` |
 | `414` | Request target over `max_url_size` |
 | `431` | A header name or value over its cap, or more than 32 header lines |

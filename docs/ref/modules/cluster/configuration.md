@@ -25,7 +25,11 @@ read-only, to reach the indexer from the master and worker tasks that use it.
 > loader. An invalid or incomplete block is rejected at startup with the JSON
 > pointer of the offending option (`(1244): Invalid configuration at
 > '/cluster/key': ...`), and `bin/wazuh-manager-conf validate` reports the same
-> verdict.
+> verdict for everything the schema and the loader's semantic checks cover. It does not run
+> `wazuh-manager-clusterd`'s own checks: a [`<node>`](#nodes) of `localhost`, `0.0.0.0` or
+> `127.0.1.1` passes `validate`, and is refused only by `wazuh-manager-clusterd -t` (which
+> `wazuh-manager-control check` and every start run) or at clusterd's start, with error `3004`
+> (`Invalid elements in node fields: <names>.`).
 
 ---
 

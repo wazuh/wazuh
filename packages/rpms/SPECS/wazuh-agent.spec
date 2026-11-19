@@ -24,7 +24,7 @@ Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
 Conflicts:   ossec-hids ossec-hids-agent wazuh-local
 AutoReqProv: no
 
-Requires: coreutils findutils procps
+Requires: coreutils diffutils findutils procps
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python perl
 
 ExclusiveOS: linux
@@ -569,10 +569,11 @@ if [ $1 = 0 ]; then
       }' "$1"
   }
 
-  # Function to extract package_uninstallation value from XML
+  # Prints the package_uninstallation value file $1 applies: the last occurrence, as the agent's
+  # Read_AntiTampering() keeps the last one it parses (a duplicated block overrides, never adds up).
   get_package_uninstallation_value() {
     local file_path="$1"
-    local value=$(strip_xml_comments "$file_path" | sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
+    local value=$(strip_xml_comments "$file_path" | sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tail -n 1)
     echo "$value"
   }
 

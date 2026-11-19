@@ -305,6 +305,49 @@ def test_docker_import_error_writes_stderr_and_exits():
     assert 'docker' in written
 
 
+def test_docker_namespace_package_is_a_missing_sdk():
+    """A 'docker' that is only a directory (a namespace package, no SDK API) is reported as a missing SDK."""
+    import runpy
+    import types
+
+    saved_docker = sys.modules.get('docker', _SENTINEL := object())
+    sys.modules['docker'] = types.ModuleType('docker')
+    try:
+        with patch('sys.stderr') as mock_stderr, pytest.raises(SystemExit) as exc:
+            runpy.run_path(DOCKER_PATH, run_name='DockerListener_namespace_test')
+    finally:
+        if saved_docker is _SENTINEL:
+            sys.modules.pop('docker', None)
+        else:
+            sys.modules['docker'] = saved_docker
+
+    assert exc.value.code == 1
+    written = ''.join(c[0][0] for c in mock_stderr.write.call_args_list)
+    assert "'docker' module needs to be installed." in written
+
+
+def test_installed_layout_without_sdk_exits(tmp_path):
+    """Installed as wodles/docker/DockerListener, the listener's own directory never stands in for the SDK.
+
+    The script runs without site-packages (-S), so the SDK is missing: it must exit 1 with the documented message
+    instead of importing wodles/docker/ as a namespace package and waiting for the Docker service forever.
+    """
+    import shutil
+    import subprocess
+
+    wodles_dir = tmp_path / 'wodles'
+    (wodles_dir / 'docker').mkdir(parents=True)
+    shutil.copy(os.path.join(os.path.dirname(DOCKER_PATH), '..', 'utils.py'), wodles_dir / 'utils.py')
+    script = wodles_dir / 'docker' / 'DockerListener'
+    shutil.copy(DOCKER_PATH, script)
+
+    result = subprocess.run([sys.executable, '-S', str(script)], capture_output=True, text=True, timeout=30)
+
+    assert result.returncode == 1
+    assert "'docker' module needs to be installed." in result.stderr
+    assert 'Docker service is not running' not in result.stderr
+
+
 # ---------------------------------------------------------------------------
 # log() helper — newline appended when missing
 # ---------------------------------------------------------------------------

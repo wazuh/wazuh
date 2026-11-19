@@ -44,9 +44,9 @@ executor, the scheduler, the store or the schema — `TASK_TYPE` is opaque to st
 **A type not in this table is accepted but never run.** Its rows stay `pending` until the next start
 of the module retires them (see [Ownership and stuck tasks](#ownership-and-stuck-tasks)), so each
 such type has an admission bound of its own: 100 pending rows, or the request's own positive
-`max_pending`. Beyond it the create answers `503 queue_full`, as for the built-in bounds. The bound
-is fixed, not an internal option; it exists so that a producer sending a misspelt type cannot grow the
-table without limit until a restart.
+`max_pending`. Beyond it the create answers `503 queue_full`, as for the built-in bounds. The default
+of 100 is a code constant, not an internal option; it exists so that a producer sending a misspelt
+type cannot grow the table without limit until a restart.
 
 **Isolation is a concurrency cap, not a dedicated thread.** A 300-second vulnerability scan must not
 sit in front of a bulk deletion, and a cap of one on `vd_scan` guarantees that. Only the two log
@@ -270,7 +270,8 @@ The two backstops (900 s and 450 s) are fixed in inventory-sync, in
 `src/wazuh_modules/inventory_sync_server/src/endpoints/deleteAgentEndpoint.hpp` and
 `src/wazuh_modules/inventory_sync_server/src/endpoints/vdScanEndpoint.hpp`; they are not options.
 
-A type this build does not register has a fixed bound of 100 pending rows instead — see
+A type this build does not register is bounded by the request's positive `max_pending`, or 100
+pending rows without one — see
 [Task types](#task-types).
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's

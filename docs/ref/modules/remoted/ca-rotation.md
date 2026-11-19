@@ -5,8 +5,12 @@ How to rotate the CA that signs `wazuh-manager-remoted`'s HTTPS listener without
 what the manager tells you along the way. For every command, flag, guard and exit code named here,
 `wazuh-manager-certs`'s developer README (`src/shared_modules/manager_certs/README.md` in the source
 tree) is the authoritative reference; this page does not repeat its command table or examples. The
-tool is installed as `/var/wazuh-manager/bin/wazuh-manager-certs` (`root:wazuh-manager 0750`), runs
-as root only, and serializes its writes on a lock file next to the bundle (`<bundle>.lock`).
+tool is installed as `/var/wazuh-manager/bin/wazuh-manager-certs` (`root:wazuh-manager 0750`), so root
+and the `wazuh-manager` account can run it. The commands that write — `add`, `remove`,
+`prune-expired`, `stamp` and `--from-master` — must run as root (otherwise exit `2`); the read-only
+`inspect` and `check` also run as the `wazuh-manager` account (for example
+`sudo -u wazuh-manager /var/wazuh-manager/bin/wazuh-manager-certs check`). Writes are serialized on a
+lock file next to the bundle (`<bundle>.lock`).
 
 Two things rotate on different clocks, and the whole procedure exists to keep that difference safe:
 
