@@ -20,7 +20,7 @@ sudo ./install.sh
 
 Follow the interactive wizard to install the manager. The manager is installed under `/var/wazuh-manager`, with its configuration in `/etc/wazuh-manager`.
 
-`install.sh` builds before it installs: unless `USER_BINARYINSTALL` is set, it runs `make deps` only when `src/external/` has no subdirectory yet, then `make TARGET=manager INSTALLDIR=<dir> build` in the same build tree (the one whose cache is `src/build/CMakeCache.txt`). Whatever flags that tree has cached (`TEST`, `DEBUG`, `FSANITIZE`, …, see [Build Options](build-sources.md#build-options)) end up in the installed binaries, and with a cached `TEST=1` the build produces no daemons at all: clear them first.
+`install.sh` builds before it installs: unless `USER_BINARYINSTALL` is set, it runs `make deps` only when `src/external/` has no subdirectory yet, then `make TARGET=manager INSTALLDIR=<dir> build` in the same build tree (the one whose cache is `src/build/CMakeCache.txt`). Whatever flags that tree has cached (`TEST`, `DEBUG`, `FSANITIZE`, …, see [Build Options](build-sources.md#build-options)) end up in the installed binaries, and with a cached `TEST=1` the build produces no daemons at all: clear them first. The installer does not stop when a binary it copies is missing (`cannot stat build/bin/…`): it finishes and exits 0, leaving that daemon missing or stale, so read its output.
 
 ### Unattended Installation
 
@@ -40,8 +40,8 @@ USER_AUTO_START="n" \
 
 ### Installing into a Sandbox Directory
 
-`install.sh` registers the system service (`systemctl start wazuh-manager`, or
-`service wazuh-manager start` on SysV hosts) for the directory it installs into.
+`install.sh` points the system service (what `systemctl start wazuh-manager`, or
+`service wazuh-manager start` on SysV hosts, starts) at the directory it installs into.
 When a service definition already exists and names a *different* directory, the
 installer leaves it alone and warns instead of repointing it, so a throwaway
 install cannot take over the service of the real installation.
@@ -101,17 +101,19 @@ and [Credentials](../ref/getting-started/credentials.md).
 
 The repository carries a certificate tool for test PKI, `tools/devContainer/scripts/wazuh-certs-tool.sh`
 (driven by `wazuh-certs-tool.yml` next to it). In the devcontainer, the E2E environment uses it and adds a
-script that deploys its output with the names and ownership above, puts the tool's CA in
-`/etc/wazuh-manager/ca/` (certificate only), and runs `--install` and `--check`. The copy script refuses to
-run while the manager is running, so stop it first:
+script that deploys its output with the names and ownership above, replaces the installation's CA in
+`/etc/wazuh-manager/ca/` with the tool's CA certificate (deleting the CA key the installer minted, so this node
+can no longer issue pairs), and runs `--install` and `--check`. The copy script refuses to run while the manager
+is running, so stop it first:
 
 ```bash
 cd $WAZUH_REPO/tools/devContainer/e2e
-./init.sh --certs-only --no-listeners   # issues certs/ (reuses certs/root-ca.pem when present)
+./init.sh --certs-only --no-listeners   # issues certs/ (keeps the CA of certs/ when root-ca.pem and root-ca.key exist)
 sudo ./wazuh_copy_certs.sh              # -> /etc/wazuh-manager/certs
 ```
 
-Without `--no-listeners`, `init.sh` also edits `/etc/wazuh-manager/wazuh-manager.conf`: it replaces a
+When `certs/` already holds files, `init.sh` asks before regenerating them unless `--reuse-certs` (keep them)
+or `--regen-certs` (replace them) is given. Without `--no-listeners`, it also edits `/etc/wazuh-manager/wazuh-manager.conf`: it replaces a
 `127.0.0.1` `local_ip`/`bind_addr` in `<remote>` with `0.0.0.0`, for agents in containers, and resets the file
 to `root:wazuh-manager 660`.
 

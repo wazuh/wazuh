@@ -100,6 +100,21 @@ on Windows), where `<module>` is
 the agent's `local_internal_options.conf` and restart the agent — see
 [Common Internal Options](../../configuration/agent/README.md#common-internal-options).
 
+### AWS values checked only at run time
+
+The agent's configuration reader checks the structure of an `aws-s3` block (required tags present and
+not empty, no unknown tag, valid `yes`/`no` flags). The value rules the AWS pages state — the S3 bucket naming rules of a bucket `name`, the
+`900`–`3600` range of `iam_role_duration` (and that it needs `iam_role_arn`), the 80-character pattern
+of `sqs_name`, the ARN format of `iam_role_arn` — are enforced by the `aws-s3` script when it parses its
+arguments at each run. A configuration that breaks one of them passes `wazuh-modulesd -t` and the agent
+starts; each run of that bucket, service or subscriber then stops before reading anything, and the agent
+log shows, under the `wazuh-modulesd:aws-s3` tag, the WARNING `<title> Returned exit code 2` followed by
+`<title> Error parsing arguments…`, where `<title>` starts with `Bucket:`, `Service:` or `Subscriber:`. The script's own message (for example
+`Invalid session duration specified. Value must be between 900 and 3600.`) is in the `… OUTPUT: …` line,
+logged at `wazuh_modules.debug=1`. An `iam_role_duration` without `iam_role_arn` exits with code `1`
+instead, logged as `<title> Returned exit code 1` and
+`<title> Unknown error: Used --iam_role_duration argument but no --iam_role_arn provided.`.
+
 ## Other AWS sources
 
 The `aws-s3` module accepts more sources than the four that have their own page. They are configured

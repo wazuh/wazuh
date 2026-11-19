@@ -15,7 +15,7 @@
  * @file cacertsEndpoint.hpp
  * @brief `GET /cacerts`: hands out the CA that signs this listener's certificate
  *        (`remote.https.ca_certificate`), so an agent can bootstrap trust in the manager without
- *        an out-of-band copy of the PEM (RF-27).
+ *        an out-of-band copy of the PEM.
  *
  * Unauthenticated by nature (the caller has nothing to authenticate with yet), body-less, and
  * exempt from the in-flight byte budget like the health probe: a trust bootstrap must not be shed
@@ -25,9 +25,9 @@
  *   - 200 `application/x-pem-file`: the CERTIFICATE blocks of the configured file, re-serialised
  *     here from the parsed X.509 objects. A bundle is served as a bundle; anything else the file
  *     carries (a private key, a comment, a CRL) is not part of the answer, because the answer is
- *     built rather than forwarded (issue #39078, H01). Every 200 also carries
+ *     built rather than forwarded. Every 200 also carries
  *     `Wazuh-CA-Generation`: the generation the bundle is published under, 0 when no guard vouched
- *     for it (RF-4). Never a hash of anything -- the 404 and the 503 carry no such header.
+ *     for it. Never a hash of anything -- the 404 and the 503 carry no such header.
  *   - 404 `{"error":"not_found"}`: the file is missing, unreadable, too large, carries no
  *     certificate, or could not be parsed to its end -- a document we do not fully understand is
  *     refused whole. Same body as the transport's unknown-route 404.
@@ -37,7 +37,7 @@
  *
  * Both the bytes and the verdict come from ONE read of the file, cached under its content hash by
  * CaCertificateSource: a replaced CA is noticed in the request that reads it, not up to a day
- * later (H06). A snapshot with no certificates at all reads "unknown" rather than "mismatch": if
+ * later. A snapshot with no certificates at all reads "unknown" rather than "mismatch": if
  * the file is unreadable now, the answer is 404, not a refusal.
  */
 
@@ -54,8 +54,8 @@ namespace remoted::endpoints::cacerts
     constexpr auto PEM_CONTENT_TYPE {"application/x-pem-file"};
 
     /// Header every 200 carries: the generation the served bundle is published under, 0 when no
-    /// guard vouched for it (RF-4). Shared with the tests so neither side drifts from the other's
-    /// literal (issue #39319).
+    /// guard vouched for it. Shared with the tests so neither side drifts from the other's
+    /// literal.
     constexpr auto CA_GENERATION_HEADER {"Wazuh-CA-Generation"};
 
     /**
@@ -72,7 +72,7 @@ namespace remoted::endpoints::cacerts
      *                    when non-null -- the facade keeps it as a value member, like every other
      *                    endpoint's.
      * @param deliverCaRecordEvents Says out loud, and persists, whatever the read just above
-     *                    noticed about the bundle's PUBLICATION (issue #39319): the facade hands in
+     *                    noticed about the bundle's PUBLICATION: the facade hands in
      *                    a function that drains the CA source's event mailbox, logs each event and
      *                    flushes the publication record. Called once per request, right after the
      *                    snapshot is taken and BEFORE any of the three answers is sent, so an

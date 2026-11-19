@@ -73,7 +73,7 @@ jobs:
 
       - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4
@@ -144,7 +144,7 @@ jobs:
 
       - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4

@@ -20,7 +20,7 @@
 #include <string>
 
 /**
- * @brief One /enroll attempt (#38465).
+ * @brief One /enroll attempt.
  *
  * A single POST, no retry loop, no shared CompressionGate/AuthGate: the C
  * side (client-agent/src/start_agent.c's w_agentd_keys_init() for first boot,
@@ -43,7 +43,7 @@ class EnrollClient
          * @param password Empty means no password-mode signature: the mTLS
          *        client cert (if `config` has one) or nothing at all
          *        authenticates the request instead. Both a cert and a
-         *        password may be set together (#38465 Q3, confirmed with the
+         *        password may be set together (confirmed with the
          *        server team): the cert authenticates the connection, the
          *        password authenticates/signs the request -- no precedence
          *        between them, no "choose a mode" logic.
@@ -67,7 +67,7 @@ class EnrollClient
          *         if the response carried the manager's Date and it disagrees
          *         with `clock` by more than a noise floor, the clock is
          *         corrected and the request is re-signed and resent once
-         *         (#38440's self-correction, extended to /enroll) -- only a 401
+         *         (the clock-skew self-correction, extended to /enroll) -- only a 401
          *         that survives that retry reaches the caller.
          */
         HttpResponse enroll(const std::string& bodyJson, const std::string& password,

@@ -18,6 +18,11 @@ metadata:
     - During shallow asset validation (dependencies not loaded) the check is a no-op that always passes.
     - `is_key_of` is the same check against a JSON object.
     - `not_in_kvdb` is not the negation of this helper: both are false for a missing or non-string target.
+    - The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+      loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+      name ships with the manager, so the results shown hold only for that test content.
+    - An example described as rejected at build time processes no event: its asset does not build, and the
+      result shown is that build failure (an Outcome Event only repeats the input).
   group: kvdb
   fails_when:
     - The target field does not exist.

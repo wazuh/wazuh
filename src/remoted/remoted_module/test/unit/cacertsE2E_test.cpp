@@ -15,7 +15,7 @@
  * applied like on every other route, and a CA that does not sign the served leaf is refused (503)
  * by the real start-time evaluation, not a faked status.
  *
- * The CA file the fixture installs is a STAMPED bundle (issue #39319, D9): the `##` publication
+ * The CA file the fixture installs is a STAMPED bundle: the `##` publication
  * block `wazuh-manager-certs` writes, in front of the certificate. That is the shape a rotated
  * manager has on disk, so it is the shape these end-to-end tests run against -- and what the route
  * answers with is still the certificate alone, re-serialised by the process, never the file.
@@ -169,7 +169,7 @@ namespace
             files.push_back(m_foreignCa->keyPath);
             m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(std::move(files));
 
-            // Stamp the CA file the way the tool does (D9): the block, then the certificate it
+            // Stamp the CA file the way the tool does: the block, then the certificate it
             // describes. `##` lines are comments to every PEM reader, so nothing downstream --
             // OpenSSL's trust store, the source, the route -- changes shape because of them.
             const std::string caPath = m_pki->caCertPath;
@@ -217,7 +217,7 @@ namespace
                 { responder->send(HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
                 /*countAgainstBudget=*/false);
             // Same slice as the facade: the CA the transport publishes comes from the transport
-            // itself, so the bytes and the verdict cannot disagree (issue #39078).
+            // itself, so the bytes and the verdict cannot disagree.
             m_server->addRoute(Method::Get,
                                "/cacerts",
                                remoted::endpoints::cacerts::makeHandler(
@@ -274,17 +274,17 @@ TEST_F(CacertsE2ETest, ServesTheCaTheListenerChainsTo)
     const auto [head, body] = remoted::test::splitResponse(response);
     EXPECT_NE(head.find("Content-Type: application/x-pem-file"), std::string::npos) << head;
 
-    // The real transport puts the generation the fixture stamped the file with on the wire (issue
-    // #39319, RF-4), the same value the block above carries -- not a hash of anything.
+    // The real transport puts the generation the fixture stamped the file with on the wire,
+    // the same value the block above carries -- not a hash of anything.
     EXPECT_NE(head.find("Wazuh-CA-Generation: " + std::to_string(m_publication)), std::string::npos) << head;
 
     // The file carries the publication block; what the route hands out is the certificate this
-    // process re-serialised out of it, with no `##` line in sight (D9).
+    // process re-serialised out of it, with no `##` line in sight.
     ASSERT_NE(m_caFileContents.find("## Wazuh CA bundle"), std::string::npos);
     EXPECT_EQ(body, m_servedCa);
     EXPECT_EQ(body.find("##"), std::string::npos);
 
-    // The property (design §2.3): a client that trusts ONLY what /cacerts handed out verifies this
+    // The property: a client that trusts ONLY what /cacerts handed out verifies this
     // very listener's certificate -- the served CA really is the one the leaf chains to.
     const auto verified = remoted::test::sendGetRequestVerifying(m_port, "/", body);
     EXPECT_EQ(statusOf(verified), 200) << "verifying handshake failed against the served CA: " << verified;
@@ -341,8 +341,8 @@ TEST_F(CacertsE2ETest, MissingCaKeepsServingThePreviousSnapshot)
     ASSERT_EQ(statusOf(first), 200) << first;
     const auto firstBody = remoted::test::splitResponse(first).second;
 
-    // The file is read per request, but a failed read is a window, not a decision (issue
-    // #39318): moving the CA away keeps the last good snapshot being served, no tick or restart
+    // The file is read per request, but a failed read is a window, not a decision:
+    // moving the CA away keeps the last good snapshot being served, no tick or restart
     // needed -- not a 404, which is what would strand every agent until the file came back.
     const auto moved = m_pki->caCertPath + ".off";
     ASSERT_EQ(std::rename(m_pki->caCertPath.c_str(), moved.c_str()), 0);

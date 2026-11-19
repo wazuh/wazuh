@@ -37,8 +37,12 @@ class Restriction:
         self.details = details
 
 
+# Example.target_field when the test sets no target field (None is an explicit null, False a boolean).
+NO_TARGET_FIELD = object()
+
+
 class Example:
-    def __init__(self, arguments, should_pass, description, target_field=False, expected=None):
+    def __init__(self, arguments, should_pass, description, target_field=NO_TARGET_FIELD, expected=None):
         self.arguments = arguments
         self.should_pass = should_pass
         self.description = description

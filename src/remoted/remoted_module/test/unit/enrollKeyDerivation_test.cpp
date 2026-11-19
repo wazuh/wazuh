@@ -44,7 +44,7 @@ TEST(EnrollKeyDerivation, EmptyPasswordYieldsNoKey)
     EXPECT_FALSE(enroll::deriveEnrollKey("").has_value());
 }
 
-// ---------------------------------------------------------------- `kid` forms (issue #38993)
+// ---------------------------------------------------------------- `kid` forms
 
 namespace
 {

@@ -99,7 +99,7 @@ namespace
     const std::string TOKEN_KID = jwt_profile::v1::base64UrlEncode(std::string(16, '\x01'));
     const std::string TOKEN_KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
-    // #39064: the other keyed credential. The `kid` is a canonical AGENT id, not a 22-character
+    // The other keyed credential. The `kid` is a canonical AGENT id, not a 22-character
     // token id, and the key is derived under WAZUH-REENROLL-KEY -- both frozen in
     // jwt/testVectors.hpp, which is what authd verifies against.
     const std::string REENROLL_KID = "001";
@@ -205,7 +205,7 @@ TEST(EnrollClientTest, PasswordModeAddsABearerTheSharedVerifierAccepts)
     client.enroll(BODY, "s3cr3t");
 }
 
-// #38492/#38491: the manager routes on the literal wire request-target
+// The manager routes on the literal wire request-target
 // (prefix included), so /enroll must be sent under the prefixed target too,
 // exactly like every other endpoint (RetrySender::attemptOnce carries the
 // equivalent test); the bearer does not bind the target.
@@ -233,7 +233,7 @@ TEST(EnrollClientTest, ConfiguredEndpointIsFoldedIntoTheTarget)
 
 TEST(EnrollClientTest, CertAndPasswordCoexistNoPrecedence)
 {
-    // #38465 Q3 (confirmed with the server team): a client cert and a
+    // Confirmed with the server team: a client cert and a
     // password can both be configured at once -- the cert authenticates the
     // connection (handled entirely by CurlPerformer/m_config, invisible
     // here), the password still signs the request. EnrollClient must not
@@ -551,7 +551,7 @@ TEST(EnrollClientTest, TokenKidTakesPriorityOverAConfiguredPassword)
     client.enroll(BODY, "s3cr3t", TOKEN_KID, TOKEN_KEY_HEX);
 }
 
-// Re-enrollment (#39064): the same two fields carry an agent's own credential. The `kid` is a
+// Re-enrollment: the same two fields carry an agent's own credential. The `kid` is a
 // canonical agent id, so this proves the client is generic over the `kid`'s shape -- it neither
 // validates it as a token id nor re-derives the key.
 
@@ -643,7 +643,7 @@ TEST(EnrollClientTest, AKidWithNoKeyFallsBackToThePassword)
 
 TEST(EnrollClientTest, RetriesOnceOn401InTokenKidModeAndCorrectsSkew)
 {
-    // Same one-shot grace-retry as password mode (#38440's self-correction): a 401 in
+    // Same one-shot grace-retry as password mode (the clock-skew self-correction): a 401 in
     // token-kid mode is not exempt just because it is not the password branch.
     NiceMock<MockFsProbe> fsProbe;
     NiceMock<MockHttpPerformer> performer;

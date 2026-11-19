@@ -24,10 +24,13 @@ key and IV are stored together with the ciphertext. The encryption therefore kee
 read as plain text in the files; what protects them is the ownership and mode of the directory.
 
 The [credential resolver](../../getting-started/credentials.md) writes the `indexer` entries, through
-`wazuh-manager-keystore`, at installation and before every start: `username` is set to `wazuh-manager`
-when absent, and, only while the keystore holds no `password`, `password` comes from
-`WAZUH_INDEXER_MANAGER_PASSWORD`. A stored password is never replaced by the resolver; change it with
-the CLI below.
+`wazuh-manager-keystore`, at installation, after an upgrade and before every start: `username` is set to
+`wazuh-manager` when absent, and, while the keystore holds no `password`, `password` is stored from
+`WAZUH_INDEXER_MANAGER_PASSWORD` as the resolver finds it (the environment, then
+`/etc/wazuh-manager/local.env`, then a co-located indexer's export). A stored password is kept: a value
+in the environment or `local.env` never replaces it, and only a co-located indexer's export that
+publishes a different password does (and only while neither of those sets the variable, since the first
+source found wins). Otherwise change it with the CLI below.
 
 ## CLI usage
 
@@ -88,13 +91,6 @@ A held lock is never treated as damage. The database is repaired (RocksDB `Repai
 recover every value) only when opening it reports corruption; any other open error is reported
 without a repair.
 
-## Design decisions
-
-| Decision | Why |
-|---|---|
-| The database is opened per operation, never held open by a daemon | A RocksDB handle holds the database's `LOCK` file for as long as it lives. The keystore is shared by separate processes — modulesd (`keystore_server`, the Indexer Connector), the engine and the CLI — and a long-lived handle in any one of them would lock every other one out for the life of that process; the CLI, which the resolver runs before every start, would never get in. The cost is one open per request, which is cheap next to the lock contention a long-lived handle would turn into a permanent refusal. At idle the requests come from the master's framework, two (`username`, `password`) each time it builds an Indexer client: the active-response poll every 30 s (`active_response_polling`), which builds two clients per cycle even when it finds nothing (one to search for active responses, one to look up their events), and the indexer check, disconnected-agent and metrics tasks every 5 to 10 minutes — about nine to ten opens a minute. Each open of the read-write database writes a new `MANIFEST`, write-ahead log and `OPTIONS` file, so the file numbers in `queue/keystore/` climb several times faster than the opens; they are not an open counter |
-| Contention is waited out with a jittered backoff; the CLI waits longer than the daemons | Callers that lost the same race used to retry on the same schedule and collide again, so under a burst some exhausted their wait without ever seeing the lock free. Randomizing each step spreads them out. Daemons keep a short wait (5 s) because they are answering a caller that retries; the CLI waits 30 s because it runs once, and a burst of daemon reads should delay it, not fail it |
-
 ## `keystore_server`
 
 `keystore_server` (source: `src/wazuh_modules/keystore_server/`) is the modulesd module that exposes
@@ -102,13 +98,11 @@ the `Keystore` library to non-C++ callers. Its one production consumer is the Py
 `KeystoreClient` (`framework/wazuh/core/indexer/credential_manager.py`) fetches the Indexer
 credentials the framework's Indexer client needs.
 
-- **Loading:** it is always loaded on a manager and has no configuration. modulesd resolves
-  `libkeystore_server.so` with `dlopen`/`dlsym` and calls its exported
-  `keystore_server_start(callbackLog, socketPath)` and `keystore_server_stop(void)`
-  (`src/wazuh_modules/src/wm_keystore_server.c`,
-  `src/wazuh_modules/keystore_server/include/keystore_server.h`). A missing library, a missing
-  symbol or a socket that cannot be bound is fatal for `wazuh-manager-modulesd`
-  (`The keystore server cannot bind its socket; see the preceding error. Not running without keystore
+- **Loading:** it is always loaded on a manager (`/var/wazuh-manager/lib/libkeystore_server.so`) and
+  has no configuration. A missing library, a missing entry point or a socket that cannot be bound stops
+  `wazuh-manager-modulesd` (`Unable to load libkeystore_server.so; the installation is broken.`,
+  `libkeystore_server.so does not export keystore_server_start; the installation is broken.`,
+  `The keystore server cannot bind its socket; see the preceding error. Not running without keystore
   access.`), since an API that silently lost its Indexer credentials is worse than one that refuses
   to start. Its log tag is `wazuh-manager-modulesd:keystore-server`.
 - **Transport:** the Unix domain socket `/var/wazuh-manager/queue/sockets/keystore.sock`, mode 0660,
@@ -118,10 +112,11 @@ credentials the framework's Indexer client needs.
   because the server is event-driven.
 - **Protocol:** a pipe-delimited text query answered with JSON — `GET|<columnFamily>|<key>`,
   `PUT|<columnFamily>|<key>|<value>`, `DELETE|<columnFamily>|<key>` (a DELETE is implemented as a
-  PUT of an empty value). Successful responses look like
-  `{"status": "ok", "operation": "get", "columnFamily": ..., "key": ..., "value": ...}` (`value` only
-  for `GET`, empty when the key is not set); failures are `{"status": "error", "message": ...}`. This
-  wire format is a live contract with `KeystoreClient` on the Python side.
+  PUT of an empty value). A success is a JSON object with `status` `ok`, `operation` (`get`, `put` or
+  `delete`), `columnFamily`, `key` and, for `GET` only, `value` (empty when the key is not set); a
+  failure is `{"message":…,"status":"error"}` (`Invalid query format`, `Unknown operation`, or the
+  library's error, such as a lock wait that ran out). This wire format is a live contract with
+  `KeystoreClient` on the Python side.
 - **Relationship to the library:** `keystore_server` holds no storage or crypto logic — every request
   is translated directly into `Keystore::get()` or `Keystore::put()`.
 
@@ -133,13 +128,9 @@ an empty value without creating the family. There is no migration of older data:
 always a fresh installation, so no pre-5.0 keystore reaches this code (see the `upgrade()` comment in
 `src/shared_modules/keystore/src/keyStore.cpp`).
 
-## Key source files
+## Implementation
 
-| File | Purpose |
-|------|---------|
-| `src/shared_modules/keystore/include/keyStore.hpp` | Public API: `Keystore::put()`, `Keystore::get()` |
-| `src/shared_modules/keystore/src/keyStore.cpp` | Encryption, RocksDB persistence, version stamping |
-| `src/shared_modules/keystore/src/main.cpp` | CLI: input handling, privilege drop, `-g` |
-| `src/shared_modules/keystore/src/argsParser.hpp` | Command-line parser (`-f`, `-k`, `-v`, `-vp`, `-g`) |
-| `src/shared_modules/utils/evpHelper.hpp` | AES-256-CBC encryption with a per-value random key and IV |
-| `src/wazuh_modules/keystore_server/src/keystoreServer.cpp` | `keystore.sock` server and request handler |
+Requirements, design decisions (why the database is opened per operation, why the CLI waits longer
+than the daemons) and the source layout are in the developer READMEs:
+`src/shared_modules/keystore/README.md` for the library and the CLI,
+`src/wazuh_modules/keystore_server/README.md` for the socket module.

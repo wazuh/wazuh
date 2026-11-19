@@ -80,8 +80,10 @@ Authorization: Bearer <header>.<claims>.<signature>
 protocol-version: 1
 ```
 
-The key is never transmitted. A token is accepted while `now - iat <= 60 s + 30 s` of tolerated
-skew and is never accepted more than 30 s before it was issued, so **the manager and its agents need
+The key is never transmitted. By default a token is accepted while `now - iat <= 60 s + 30 s` of
+tolerated skew and is never accepted more than 30 s before it was issued (the remoted internal options
+[`remoted.jwt_max_age`](../../ref/modules/remoted/configuration.md#remotedjwt_max_age) and
+`remoted.jwt_clock_skew` set the window), so **the manager and its agents need
 roughly synchronized clocks** — a skewed agent clock is a new failure mode with no 4.x equivalent. It
 surfaces as `401 Invalid client authentication` (the agent corrects itself from the manager's `Date`
 header once and retries). The token does not sign the method, path or body: TLS protects them, so a
@@ -119,8 +121,8 @@ configuration and remote upgrade. It does **not** get:
 - **dbsync deltas.** `5:` messages are discarded.
 - **Rootcheck signature and audit files.** The 5.0 `default` group carries only `agent.conf`, so
   `rootkit_files.txt`, `rootkit_trojans.txt` and the CIS and system audit files leave the agent's
-  `etc/shared/` with its first 5.0 `merged.mg`. Rootcheck keeps running without them, and the agent
-  only logs `WARNING: No rootcheck_files file`. To keep these checks until the agents are upgraded,
+  `etc/shared/` with its first 5.0 `merged.mg`. The 4.x agent's rootcheck keeps running without them
+  and only logs `WARNING: No rootcheck_files file`. (A 5.0 agent no longer reads these files at all.) To keep these checks until the agents are upgraded,
   copy the files from the 4.x `etc/shared/default/` into the 5.0 one; see
   [Migrating a Wazuh manager from 4.x to 5.0](manager-4x-to-5x.md#1-back-up-the-4x-manager).
 

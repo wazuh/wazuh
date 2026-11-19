@@ -1902,7 +1902,7 @@ void fim_open_key(HKEY root_key_handle,
     int result_transaction = -1;
 
     /* Same pruning as fim_checker(): this recursion runs under fim_registry_scan_mutex, which the
-     * shutdown teardown needs to release the registry transaction contexts (issue #38212). The
+     * shutdown teardown needs to release the registry transaction contexts. The
      * check belongs here and not only in the caller's loop, because a single top level key takes
      * minutes on its own. */
     if (mode == FIM_SCHEDULED && fim_shutdown_process_on()) {
@@ -2287,7 +2287,7 @@ void fim_registry_scan() {
                     registry_keys_count, registry_values_count);
 
             // Under the handle read lock, like the file path does: the shutdown destroys the handle
-            // under the write lock, so reading it unlocked is a use-after-free window (issue #38212).
+            // under the write lock, so reading it unlocked is a use-after-free window.
             bool sync_handle_available = false;
             bool dataCleanSent = false;
 
@@ -2366,7 +2366,7 @@ void fim_registry_scan() {
 
     /* The whole transaction lifecycle stays inside fim_registry_scan_mutex, like the file scan keeps
      * its own inside fim_scan_mutex: the shutdown teardown takes this mutex to know no registry
-     * transaction is in flight before it releases the database context (issue #38212). */
+     * transaction is in flight before it releases the database context. */
     w_mutex_lock(&syscheck.fim_registry_scan_mutex);
 
     // Re-checked with the mutex held: the teardown may have run while this scan was waiting.

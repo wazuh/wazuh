@@ -19,7 +19,7 @@ namespace remoted::endpoints::stateful
 {
     namespace
     {
-        /// The sync contract's status codes (inventory_sync_server doc 03 §6): what the server
+        /// The sync contract's status codes: what the server
         /// answers is what the agent must see. Anything else is not a session result.
         bool isContractStatus(const int status)
         {

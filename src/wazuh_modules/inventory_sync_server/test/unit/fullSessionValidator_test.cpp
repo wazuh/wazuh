@@ -187,7 +187,7 @@ TEST(FullSessionValidatorTest, TheModeXPayloadMatrixIsEnforced)
 {
     namespace fb = invsync::schema::fb;
 
-    // Valid combinations (doc 02 §2): they must all validate.
+    // Valid combinations: they must all validate.
     for (const auto mode : {fb::Mode_ModuleDelta})
     {
         SessionSpec spec;

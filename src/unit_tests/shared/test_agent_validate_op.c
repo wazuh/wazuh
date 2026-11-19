@@ -227,7 +227,7 @@ static void test_valid_agent_key_rejects_other_shapes(void **state) {
     assert_false(OS_IsValidAgentKey("asdfASD0101asdfASD0101asdfASD0101asdfASD0101asdfASD0101asdfASD01"));
 }
 
-/* --- re-enrollment secret (#38993) --------------------------------------------------------- */
+/* --- re-enrollment secret ---------------------------------------------------------------- */
 
 static void test_new_reenroll_secret_is_64_lowercase_hex_and_fresh(void **state) {
     (void) state;
@@ -254,8 +254,8 @@ static void test_new_reenroll_secret_is_64_lowercase_hex_and_fresh(void **state)
     assert_string_equal(a, "");
 }
 
-// OS_NewAgentKey() is the generator behind OS_AddNewAgent()'s NULL key, exposed for authd's re-enrollment
-// (#38993), which needs the key BEFORE touching the keystore. Same shape, same refusal rules as the secret.
+// OS_NewAgentKey() is the generator behind OS_AddNewAgent()'s NULL key, exposed for authd's re-enrollment,
+// which needs the key BEFORE touching the keystore. Same shape, same refusal rules as the secret.
 static void test_new_agent_key_is_64_lowercase_hex_and_fresh(void **state) {
     (void) state;
     char a[AGENT_KEY_HEX_CHARS + 1] = {0};

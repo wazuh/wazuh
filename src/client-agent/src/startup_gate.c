@@ -9,10 +9,10 @@
  */
 
 /*
- * One feed: the manager-reported config_hash (SHA-256, #37733) against a
+ * One feed: the manager-reported config_hash (SHA-256) against a
  * SHA-256 of the local merged.mg. The legacy handshake fed the same decision an
  * MD5 merged_sum -- two digests that could never agree -- and went with the TCP
- * data path (#38030). SHA-256 survives: it is what the manager advertises and
+ * data path. SHA-256 survives: it is what the manager advertises and
  * what /download already verifies with (configFetcher.cpp).
  */
 

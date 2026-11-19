@@ -26,7 +26,7 @@ namespace invsync::vd
     /**
      * @brief This server's side of the vulnerability scanner's NEUTRAL coordination boundary.
      *
-     * The design's simplification (doc 06 §5) made concrete: with the scan synchronous, "session
+     * The design's simplification made concrete: with the scan synchronous, "session
      * in flight" and "scan in flight" are the same thing, so the only question the scanner's feed
      * update asks -- fence this agent and wait for it to go quiet -- is answered from the shared
      * agent registry alone. No session table, no ghost state between response and scan.

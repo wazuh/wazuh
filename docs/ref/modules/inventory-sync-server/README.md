@@ -86,7 +86,8 @@ agent's documents). The situations an operator will recognize:
   compression exists for).
 - **Steady state**: small periodic deltas per module.
 - **Checksum reconciliation**: the agent periodically sends a checksum-of-checksums
-  (`ModuleCheck`). A `409` answer is one mismatch observation: the agent repeats the check, and a
+  (`ModuleCheck`). A `409` answer is one mismatch observation: the agent repeats the check (up to five attempts, 10 s apart, because a recent write may not
+  be visible in the indexer yet), and a
   mismatch confirmed on every attempt makes it full-resync that module. A third result: if the
   indexer answered `5xx` to the checksum read, the session is answered `503` (no `Retry-After`,
   never `409`) and the check ends there without a verdict, also when it follows a `409`: no

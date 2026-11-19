@@ -223,7 +223,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     // (see isCaFileLoadFailure()'s own comment). Only meaningful once THIS attempt was
     // actually dialed against the fallback (wasUsingFallback) -- the very first attempt
     // ever made, against the OS store, uses caPath, not the fallback path, so a load
-    // failure there is a different (pre-existing, out of #39123's scope) problem.
+    // failure there is a different (pre-existing, out of the fallback's scope) problem.
     if (wasUsingFallback && isCaFileLoadFailure(response) && m_config.verifyMode == HC_VERIFY_SYSTEM)
     {
         LOGFN_CRITICAL(m_logFn,
@@ -234,9 +234,9 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
         return response;
     }
 
-    // verify_mode=system's local-anchor fallback (#39123). Guarded tightly: only a genuine,
+    // verify_mode=system's local-anchor fallback. Guarded tightly: only a genuine,
     // unclassified chain/CA-trust failure (isUnclassifiedChainFailure() -- never a hostname
-    // mismatch or certificate-date problem, which #39062's classifier already told apart and
+    // mismatch or certificate-date problem, which the TLS failure classifier already told apart and
     // a different anchor would not fix either way) under 'system'.
     if (!isUnclassifiedChainFailure(response) || m_config.verifyMode != HC_VERIFY_SYSTEM)
     {
@@ -566,11 +566,11 @@ bool CurlPerformer::applyTls(ICurlHandle& handle, bool useFallbackAnchor) const
            && applyTrustAnchors(handle, useFallbackAnchor)
            && applyClientCertificate(handle)
            && applyCiphers(handle)
-           && setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // H4: no redirects.
-           && setMandatoryOption(handle, CurlOption::NoSignal, 1L)       // H6.
+           && setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // No redirects.
+           && setMandatoryOption(handle, CurlOption::NoSignal, 1L)
            // Never let a forward-proxy's CONNECT-tunnel response headers reach
            // headerTrampoline: without this, a proxy's own Date could be
-           // captured as if it were the manager's (#38439 clock-skew fix).
+           // captured as if it were the manager's (clock-skew fix).
            && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L);
 }
 
@@ -578,7 +578,7 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle, bool useFallbackAncho
 {
     // useFallbackAnchor is perform()'s decision for THIS attempt, made once before the
     // attempt started and passed down -- not read from m_usingSystemFallbackAnchor here.
-    // The two strings it selects between are both fixed after construction (#39123 -- only
+    // The two strings it selects between are both fixed after construction (only
     // that atomic flag ever changes), so this by itself would be a race-free read; the
     // reason it is a parameter instead is that this attempt's outcome must be judged against
     // whichever anchor THIS attempt actually dialed, not whatever the flag says by the time
@@ -602,7 +602,7 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle, bool useFallbackAncho
         // which fails with X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN unless this is set. Not
         // under 'system' verifying against the OS bundle: caPath is the whole store there,
         // and relaxing chain building across it widens what the agent accepts. Once the
-        // #39123 fallback has latched, though, caPath is one specific pinned file (the same
+        // fallback has latched, though, caPath is one specific pinned file (the same
         // CA:TRUE self-signed anchor full/certificate mode already needs this for), not the
         // store -- so the relaxation is back to being exactly as narrow as it is everywhere
         // else, and skipping it would just make the fallback unable to verify the one
@@ -632,7 +632,7 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle, bool useFallbackAncho
     // Elsewhere (verify_mode=none with no configured CA) libcurl already defaults
     // to the system bundle it was built with. Not reached under verify_mode=system: the
     // constructor guarantees caPath is non-empty there once validateTls has passed -- either
-    // an OS bundle was found, or (#39123) none was and a fallback anchor is configured, in
+    // an OS bundle was found, or none was and a fallback anchor is configured, in
     // which case the constructor seeds caPath with it directly and starts already latched
     // onto it, rather than leaving caPath empty and landing here with no CAINFO set at all.
     return true;

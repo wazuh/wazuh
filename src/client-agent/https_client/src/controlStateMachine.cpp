@@ -24,7 +24,7 @@ ControlStateMachine::ActionKind ControlStateMachine::nextAction() const
     }
 
     // AuthError and Stopping send nothing: AuthError waits for a new key
-    // (all traffic paused, #37828); Stopping is draining.
+    // (all traffic paused); Stopping is draining.
     return ActionKind::Idle;
 }
 
@@ -57,7 +57,7 @@ ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
 
         case Event::AuthFailed:
             {
-                // The credential is dead -- which since #39064 means a 401 naming `unknown_agent`,
+                // The credential is dead -- which means a 401 naming `unknown_agent`,
                 // and nothing else: ControlStream raises this event only for an incident the
                 // AuthGate latched (from any sender, even one already renewed), so the other seven
                 // classes arrive as TransientFailure and never get here. All traffic pauses (via

@@ -168,7 +168,7 @@ Agent                                   Manager
 Agent                                   Manager
   |                                        |
   |------------- FullSession ------------> |
-  |   Start(mode=DELTA, index=[...])       |
+  |   Start(mode=ModuleDelta, index=[...]) |
   |   payload = Cleans{                    |
   |     DataClean(index="<index 1>"),      |
   |     DataClean(index="<index 2>")}      |
@@ -186,7 +186,7 @@ There is no `Mode::FULL`/in-memory recovery API anymore. `Mode::FULL` used to ma
 that one session — safe only as long as the payload always went whole. Once DELTA sessions
 started being byte-capped and split into blocks, stamping a byte-capped payload as `Mode::FULL`
 would still trigger the unconditional delete, permanently losing whatever did not fit in that one
-session (see the change that removed it).
+session.
 
 A full-replace resync (recovery after a checksum mismatch, or a module's first sync) is instead
 two ordinary operations already described above: a `Cleans` session to explicitly and scopedly

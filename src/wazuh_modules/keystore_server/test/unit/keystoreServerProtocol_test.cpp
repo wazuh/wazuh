@@ -30,8 +30,8 @@
  * KeystoreClient (framework/wazuh/core/indexer/credential_manager.py fetches the indexer
  * credentials through it), and it had ZERO tests while it lived inside inventory_sync. These pin
  * it byte-for-byte as it moves into its own module. The one thing deliberately NOT preserved is the
- * old oddity where a GET of an empty/absent value answered the literal "wazuh-manager": see
- * https://github.com/wazuh/wazuh/issues/39554 -- answering a known credential for a key nobody set
+ * old oddity where a GET of an empty/absent value answered the literal "wazuh-manager":
+ * answering a known credential for a key nobody set
  * made "not set" and "set to wazuh-manager" indistinguishable, which is the exact question the
  * credential resolver has to answer.
  */
@@ -54,7 +54,8 @@ namespace
 
     /**
      * @brief Minimal SizeHeaderProtocol client: 4-byte little-endian length prefix + body, one
-     *        request per connection -- the exact wire shape the Python WazuhSocket client uses.
+     *        request per connection. (The Python client may send several queries on one
+     *        connection; that shape is not covered here.)
      */
     nlohmann::json query(const std::string& socketPath, const std::string& request)
     {

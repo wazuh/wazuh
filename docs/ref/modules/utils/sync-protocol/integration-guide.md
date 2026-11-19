@@ -544,7 +544,7 @@ LoggerFunc logger = [](modules_log_level_t level, const std::string& message) {
 
 ### Unit Testing
 
-Mock the `IAgentSyncProtocol` interface for unit tests:
+Mock the `IAgentSyncProtocol` interface for unit tests (the library's own complete GMock is `src/shared_modules/sync_protocol/tests/mocks/mock_agent_sync_protocol.hpp`):
 
 ```cpp
 class MockAgentSyncProtocol : public IAgentSyncProtocol

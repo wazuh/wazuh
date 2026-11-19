@@ -732,7 +732,7 @@ Public Function SetWazuhPermissions()
         remAuthenticatedUsersPermsToken = "icacls """ & home_dir & "enrollment_token" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsToken, 0, True
 
-        ' The per-agent re-enrollment secret (#39064) gets client.keys's treatment, because it has
+        ' The per-agent re-enrollment secret gets client.keys's treatment, because it has
         ' client.keys's power: it rotates the key of that one agent id. Written by the agent at
         ' enrollment time rather than by this installer, so this only runs against an existing file
         ' on a reinstall or upgrade -- icacls on a missing path is a harmless no-op, and the ACL is
@@ -825,7 +825,7 @@ Public Function CreateDumpRegistryKey()
 End Function
 
 ' Deletes legacy DBs when upgrading from pre-5.x; WiX filters the version.
-' #39064: drop the fleet-wide enrollment password on upgrade. It is one secret that enrols any
+' Drop the fleet-wide enrollment password on upgrade. It is one secret that enrols any
 ' endpoint, left at rest on every one of them; 5.0 replaces it with an enrollment token. An
 ' agent that enrols through POST /enroll also receives a per-agent re-enrollment secret; one
 ' enrolled before the upgrade holds none, so once the file is gone it has no unattended

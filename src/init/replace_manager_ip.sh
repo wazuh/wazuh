@@ -44,7 +44,7 @@ edit_endpoint_tag() {  # file value
     fi
 }
 
-# Read the manager target out of the previous configuration. Since #38624 the generated
+# Read the manager target out of the previous configuration. In 5.x the generated
 # configuration carries it as one <endpoint>, so that is what gets written; the older
 # spellings are still read here because an upgrade meets whatever the operator had.
 previous_endpoint() {  # old_file

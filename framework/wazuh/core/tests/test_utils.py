@@ -491,7 +491,7 @@ def test_clean_pid_files_kills_stale_orphan(mock_process, mock_kill):
 @patch('wazuh.core.utils.os.kill')
 @patch('wazuh.core.utils.psutil.Process')
 def test_clean_pid_files_does_not_kill_recycled_pid(mock_process, mock_kill):
-    """Regression for wazuh/wazuh#38695.
+    """Regression: a recycled PID must not be killed.
 
     A live process whose PID matches a stale pidfile but was created after the file
     was written recycled that PID from the kernel; it is not the process that wrote

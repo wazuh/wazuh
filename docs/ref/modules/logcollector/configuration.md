@@ -122,7 +122,7 @@ Sends the events of this `<localfile>` to one or more outputs instead of the man
 
 - **Default value:** `agent` (events are sent to the manager)
 - **Allowed values:** Comma-separated list of `agent` and the `name` of `<socket>` sections defined in the same configuration
-- **Note:** A file path is not accepted. A name that matches no `<socket>` makes `wazuh-logcollector` exit right after it starts (`CRITICAL: Socket '<name>' for '<location>' is not defined.`), so no log is collected. In a centralized `agent.conf` (with `logcollector.remote_commands=0`, the default), an undefined name is logged and removed from the list instead, and a `<localfile>` left with no target is ignored. On Windows there is no socket output: every target delivers to the manager, so `agent` together with a socket name sends each event twice
+- **Note:** A file path is not accepted. A name that matches no `<socket>` passes `wazuh-logcollector -t` (exit `0`), but makes `wazuh-logcollector` exit right after it starts (`CRITICAL: Socket '<name>' for '<location>' is not defined.`). The agent's start then fails as a whole: `wazuh-control start` reports `wazuh-logcollector did not start`, stops the daemons it had started and exits `1`, and under systemd the unit stops every daemon, so the agent does not run until the name is fixed. In a centralized `agent.conf` (with `logcollector.remote_commands=0`, the default), an undefined name is logged and removed from the list instead, and a `<localfile>` left with no target is ignored. On Windows there is no socket output: every target delivers to the manager, so `agent` together with a socket name sends each event twice
 
 ### out_format
 
@@ -216,7 +216,7 @@ Command whose output is collected (`command` and `full_command` only).
 
 - **Default value:** None (required with `command` and `full_command`)
 - **Allowed values:** A command line, run by the agent with the agent's privileges
-- **Note:** Used instead of `location`. A `command` or `full_command` source without it is ignored with an error. Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`: the whole `<localfile>` is then ignored with an error. On Windows, a network path is ignored with a warning
+- **Note:** Used instead of `location`. A `command` or `full_command` source without it is a configuration error, not an ignored block: the reader logs `(1902): Missing 'location' element.` and refuses the file, so `wazuh-logcollector -t` fails and the agent does not start (`wazuh-control start` stops at its configuration test with `wazuh-logcollector: Configuration error. Exiting`). Not accepted from a centralized `agent.conf` unless `logcollector.remote_commands=1`: the whole `<localfile>` is then ignored with an error. On Windows, a network path is ignored with a warning
 - **Example:** `<command>df -h</command>`
 
 ### frequency
@@ -278,7 +278,7 @@ Text written in front of every event sent to the socket.
 
 ## Internal Options
 
-**Configuration file:** `/var/ossec/etc/internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\internal_options.conf` (Windows)
+**Configuration file:** `/var/ossec/etc/local_internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\local_internal_options.conf` (Windows). The agent reads it before `internal_options.conf`, which holds the shipped defaults and is replaced by an upgrade, so set overrides there.
 
 Internal options provide advanced tuning for the Logcollector module. These options are global and apply to all log collection operations.
 
@@ -773,7 +773,7 @@ grep -A5 "location>/var/log/application.log" /var/ossec/etc/ossec.conf
 **Check for file limit:**
 
 ```bash
-grep "max_files" /var/ossec/etc/internal_options.conf
+grep "max_files" /var/ossec/etc/local_internal_options.conf /var/ossec/etc/internal_options.conf
 ```
 
 ### High CPU Usage

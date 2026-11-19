@@ -109,7 +109,7 @@ static void test_create_agent_add_payload(void **state) {
     os_free(str_force);
 }
 
-// An enrollment presented with a token (#38993): the worker forwards the token id so the master can
+// An enrollment presented with a token: the worker forwards the token id so the master can
 // count the use; the master's local_dispatch reads it back as `arguments.token_id`. Built on every
 // target, like test_create_agent_add_payload: the payload builder is plain cJSON.
 static void test_create_agent_add_payload_carries_token_id(void **state) {
@@ -126,7 +126,7 @@ static void test_create_agent_add_payload_carries_token_id(void **state) {
     cJSON_Delete(payload);
 }
 
-// A re-enrollment (#38993): the worker forwards the agent id the bearer names and the bearer itself,
+// A re-enrollment: the worker forwards the agent id the bearer names and the bearer itself,
 // verbatim and unverified -- the master, which holds the agent's secret, reads them back as
 // `arguments.reenroll.{kid,bearer}`. A kid without a bearer (or the reverse) travels as nothing.
 static void test_create_agent_add_payload_carries_reenroll_credential(void **state) {
@@ -657,7 +657,7 @@ static void test_parse_agent_add_response(void **state) {
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
 
-    /* Re-enrollment secret (#38993): copied when the master sends it, empty (not an error) when it does not */
+    /* Re-enrollment secret: copied when the master sends it, empty (not an error) when it does not */
     char* secret_response = "{\"error\":0,\"data\":{\"id\":\"001\",\"name\":\"agent1\",\"ip\":\"any\",\"key\":\"347e2dc688148aec8544c9777ff291b8868b885\",\
 \"reenroll_secret\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}}";
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = "stale";
@@ -683,7 +683,7 @@ static void test_parse_agent_add_response_logs_only_without_error_code(void **st
     int error_code = 0;
 
     /* A caller that asks for the master's code reports the rejection itself: no warning here, or the
-     * rejection is logged twice on a worker (issue #40482) */
+     * rejection is logged twice on a worker */
     int err = w_parse_agent_add_response(error_response, err_response, NULL, NULL, NULL, FALSE, FALSE, &error_code);
     assert_int_equal(err, -1);
     assert_int_equal(error_code, 9026);

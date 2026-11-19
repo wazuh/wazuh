@@ -25,7 +25,7 @@
 #include <cstdint>
 
 /**
- * @brief Whole-request retry loop (D9).
+ * @brief Whole-request retry loop.
  *
  * Every attempt mints a fresh bearer token (new jti, iat = now; the manager
  * bounds a token's accepted age), only Retryable/BackPressure outcomes are
@@ -54,11 +54,11 @@ class RetrySender final
         /// uncompressed, on the same 415.
         /// authGate (optional): a 401 naming `unknown_agent` reports here once
         /// the gate's unknown_agent window has run out, pausing all traffic and
-        /// surfacing re-enrollment once (#37828). Since #39064 the other seven
+        /// surfacing re-enrollment once. The other seven
         /// classes -- and a 401 carrying no readable class -- are logged and
         /// returned unescalated instead: only a manager that says the identity
         /// is gone may cost us the identity.
-        /// serverEndpoint (#38492/#38491, optional): the configured reverse-proxy
+        /// serverEndpoint (optional): the configured reverse-proxy
         /// path segment, already normalized (no leading/trailing '/'). When
         /// non-empty, attemptOnce() folds it into HttpRequestSpec::target
         /// (via prefixedTarget()) -- a routing matter only; the bearer token

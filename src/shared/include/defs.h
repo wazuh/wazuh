@@ -307,7 +307,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Agent trust anchor: the CA the agent verifies the manager against when <ssl> does not
- * name one (#38940 requirement 4). Its presence is the verification state -- see
+ * name one. Its presence is the verification state -- see
  * w_agent_resolve_ssl_posture() -- so it deliberately lives outside ossec.conf, which a
  * configuration-management run templates and would otherwise overwrite.
  *
@@ -318,7 +318,7 @@ https://www.gnu.org/licenses/gpl.html\n"
  *
  * The same path is hard-coded in the two WPK upgrade gates (src/init/pkg_installer.sh and
  * src/win32/do_upgrade.ps1), which predate this constant and cannot include it. They also
- * still mirror the pre-#39025 resolution; reconciling them is #38949 question 6. */
+ * still mirror the older resolution; reconciling them is an open question. */
 #ifndef WIN32
 #define AGENT_ANCHOR_CA "etc/certs/root-ca.pem"
 #else
@@ -326,8 +326,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Written beside the anchor once one has been committed, and never removed. Records that this
- * install has held a trust anchor, which the anchor's own presence can no longer answer: since
- * #39321 the agent owns the anchor so it can replace it on a CA rotation, and an agent that can
+ * install has held a trust anchor, which the anchor's own presence can no longer answer: the
+ * agent owns the anchor so it can replace it on a CA rotation, and an agent that can
  * replace a file can also delete it. Without this, deleting one file would send
  * w_agent_resolve_ssl_posture() back to 'none' and the agent would come up unverified, looking
  * exactly like a stock install that never had an anchor at all.
@@ -356,7 +356,7 @@ https://www.gnu.org/licenses/gpl.html\n"
  * (an anchor on disk, or a non-empty KEYS_FILE) or once this run's own bootstrap succeeds --
  * kept on disk through almost every failure, permanent or transient, since a failure is usually
  * exactly what makes a later attempt worth retrying. The one exception is a 403 in which authd
- * names this token itself unknown, revoked or out of uses (#39064): no later attempt can turn
+ * names this token itself unknown, revoked or out of uses: no later attempt can turn
  * that into a success, so it is deleted rather than re-presented to the same refusal on every
  * restart. See token_bootstrap.c. Relative, same convention as AGENT_ANCHOR_CA above. */
 #ifndef WIN32
@@ -365,7 +365,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENT_ENROLLMENT_TOKEN_FILE "enrollment_token"
 #endif
 
-/* Per-agent re-enrollment secret (issue #39064): the credential this agent re-enrolls with when
+/* Per-agent re-enrollment secret: the credential this agent re-enrolls with when
  * the manager says its key is unknown, replacing the fleet-wide etc/authd.pass as the endpoint's
  * recovery capability. Written from the `reenroll_secret` field of an /enroll 200 and rotated by
  * every subsequent one; holds "<id> <secret>", because the bearer's `kid` is the agent's own id
@@ -392,7 +392,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AUTHD_QUEUE_DIR     "queue/authd"
 #define PENDING_PURGES_FILE "queue/authd/pending-purges"
 
-/* The credentials authd has already handed out and the database has not stored yet (issue #39078).
+/* The credentials authd has already handed out and the database has not stored yet.
  * Same directory and the same reason: it is authd's own durable state, and it carries secrets, so
  * it is written 0640 and never shared with the other daemons. */
 #define PENDING_IDENTITIES_FILE "queue/authd/pending-identities"

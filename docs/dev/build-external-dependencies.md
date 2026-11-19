@@ -50,7 +50,7 @@ What catches a mistake:
 | Mistake | What fails |
 |---|---|
 | Lock not regenerated | `deps.py lock --check` |
-| README table not regenerated | the `deps.py` tests, and `generate.py readme --check` once ready |
+| README table not regenerated | the `deps.py` tests, and `generate.py readme --check` in `5_codequality_spdx.yml` (every non-draft pull request in `wazuh/wazuh`) |
 | Wrong sha256 | the build leg, when it checks the download |
 | Patch no longer applies | the build leg |
 | Entry without a component in `components.json` | `deps.py check` |
@@ -138,7 +138,7 @@ The key is the first 12 hex digits of a sha256 over everything that decides the 
 | A `# deps-entry <name>` block of those scripts | that library and the ones that link it |
 | The macOS runners and Xcode version in `builder-images.json` | every library built on macOS |
 | `framework/cpython/compile.sh`, `framework/cpython/custom/**`, `framework/requirements.txt`, `framework/.python-version`, the `# cpython-recipe` block of `src/Makefile` | cpython |
-| `ebpf/build_ebpf.sh`, `src/syscheckd/src/ebpf/src/modern.bpf.c` | libbpf-bootstrap |
+| `packages/externals/ebpf/build_ebpf.sh`, `src/syscheckd/src/ebpf/src/modern.bpf.c` | libbpf-bootstrap |
 | `KEY_EPOCH` in `deps.py` | everything |
 
 Whole-line `#` comments of those files are ignored, so a comment or header edit gives no new ref (`#!` lines, patches, overlays and C sources count as they are). The `# deps-recipe` blocks wrap only what reaches the external build; product settings around them (Wazuh include directories, SELinux, audit, jemalloc options) are left out, and so are the test, Debug and sanitizer options (`TEST`, `ENGINE_TEST`, `DEBUG`, `FSANITIZE`, `TSANITIZE`, `EXTERNAL_SANITIZE`, the Debug flags and the Debug branch of `WazuhExternalFlags.cmake`), since the pool is never built with them: `build_external.sh` clears them and fails if the configured cache has any of them. Header-only targets in `src/external/CMakeLists.txt` sit in the `# deps-entry` block of their `built: false` entry, which goes into no key. The plumbing of the pipeline scripts (logging, leg selection, argument handling, toolchain records, guards that only abort) is left out too. What one library needs from the pipeline scripts (the expat workaround of `dbus`, the Perl modules of `openssl`, the autotools of `libplist`, the `sqlite`, `cJSON` and `procps` fixes) goes in a `# deps-entry <name>` block there, whose name must be an inventory entry not built by its own script. Nothing checks where a new setting goes: one that changes how the dependencies compile must go inside a block. Linking is declared in `links` and must match the `DEPENDS` of the library's `ExternalProject_Add`; `deps.py check` fails when a block uses a library its `links` do not reach.
@@ -168,7 +168,7 @@ check ─► build-externals (7 legs) ─┐                                    
 
 Build legs: agent on `rpm-amd64`, `rpm-arm64` (CentOS 6 image, glibc 2.12), `macos-intel64`, `macos-arm64` and `windows-i686` (MinGW); manager on `rpm-amd64` and `rpm-arm64` (CentOS 7, glibc 2.17). There are no deb legs and no macOS or Windows manager. Intermediate artifacts go to the CI internal S3 bucket.
 
-`cpython` and `libbpf-bootstrap` are built by their own scripts (`framework/cpython/compile.sh`, `ebpf/build_ebpf.sh`). Like `build_external.sh` for the rest, both download the release tarball of their inventory `url` and check it against `upstream_sha256`. A wheel bump in `framework/requirements.txt` rebuilds only cpython.
+`cpython` and `libbpf-bootstrap` are built by their own scripts (`framework/cpython/compile.sh`, `packages/externals/ebpf/build_ebpf.sh`). Like `build_external.sh` for the rest, both download the release tarball of their inventory `url` and check it against `upstream_sha256`. A wheel bump in `framework/requirements.txt` rebuilds only cpython.
 
 ### Publishing
 

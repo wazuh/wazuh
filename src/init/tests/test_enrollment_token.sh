@@ -9,7 +9,7 @@
 
 # Drives register_configure_agent.sh against a throwaway INSTALLDIR to check what
 # resolve_deployment_conflicts() accepts, what it refuses, and what a refusal leaves behind.
-# Since #39063 the token is the only way to register, so the cases are the absence of one, the
+# In 5.x the token is the only way to register, so the cases are the absence of one, the
 # decoder's own failures, the one variable that can still defeat a token, and the address
 # grammar -- which now reaches <endpoint> only through the token.
 #

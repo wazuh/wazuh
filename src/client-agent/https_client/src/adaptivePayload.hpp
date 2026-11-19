@@ -15,7 +15,7 @@
 #include <cstdint>
 
 /**
- * @brief The effective /stateless payload budget (#37835). Starts at the
+ * @brief The effective /stateless payload budget. Starts at the
  *        configured max; a 413 halves it, a successful send doubles it back
  *        toward the max. Halving has NO lower clamp (only never-zero): with a
  *        hard floor, a server cap below floor + header would wedge the stream

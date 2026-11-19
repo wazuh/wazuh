@@ -169,7 +169,8 @@ Syscollector implements an inventory limit mechanism to control the number of sy
 
 **Configuration:**
 - Document limits are set by the manager and delivered to the module through agentd (the `getdoclimits syscollector` query), which Syscollector requests before its first scan loop
-- Limits are applied per inventory index (packages, processes, ports, etc.)
+- Limits are applied per inventory index (packages, processes, ports, etc.), one manager internal option each (`syscollector.<name>_limit`, for example `syscollector.packages_limit`, in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`)
+- Each defaults to **`30000`**, so an agent synchronizes at most 30000 documents per index unless the manager raises it (see [Agent module limits](../remoted/configuration.md#agent-module-limits-fim-syscollector-sca))
 - Value of `0` means unlimited (all items are synchronized)
 - Non-zero values enforce a maximum number of synchronized items
 

@@ -645,7 +645,7 @@ TEST(CaBundleTest, VouchReportsTooManyCertificatesBeforeTooManyBytes)
     EXPECT_EQ(verdict.failure, GuardFailure::too_many_certificates);
 }
 
-// --- leafChainsToAnyCa(): a real chain, not a signature (issue #39319, C33) --------------------
+// --- leafChainsToAnyCa(): a real chain, not a signature --------------------
 //
 // The guard this replaced checked only the signature, so a certificate carrying the issuing CA's
 // public key under ANOTHER subject passed every check while the leaf named the other one as its
@@ -667,7 +667,7 @@ namespace
 
 TEST(CaBundleTest, LeafDoesNotChainToACaWithTheSameKeyAndAnotherSubject)
 {
-    // THE regression test of C33 (Codex, P1). The impostor holds the issuing CA's public key, so it
+    // THE regression test of D-8 (ca_bundle README). The impostor holds the issuing CA's public key, so it
     // verifies the leaf's signature perfectly, and it is a valid, current CA:TRUE certificate. What
     // it is not is the issuer the leaf NAMES, so nothing chains to it: an agent handed this bundle
     // gets "unable to get local issuer certificate" and cannot verify this manager at all.
@@ -701,7 +701,7 @@ TEST(CaBundleTest, AnExpiredSignerIsNotAnAnchor)
 {
     // The rotation overlap: the same CA re-issued, and the expired copy left in the bundle. It
     // signs the leaf (same key, same subject), and an agent's verifier still refuses it -- so it no
-    // longer counts here either, which is the behaviour change C33 documents.
+    // longer counts here either, which is the behaviour change D-8 documents.
     const auto pki = makePki("chain-expired");
     const auto expired = selfSignedCaWithKey("chain-expired-ca", pki.caKey.get(), -3 * kDay, -kDay);
 
@@ -751,7 +751,7 @@ TEST(CaBundleTest, AnIntermediateAloneIsNotAnAnchorWithDefaultFlags)
 
 TEST(CaBundleTest, AnExpiredServedLeafChainsToNothing)
 {
-    // The other end of the window check, and the one case of C33 that is about the LEAF rather than
+    // The other end of the window check, and the one case of D-8 that is about the LEAF rather than
     // the anchor: a served certificate past its notAfter validates against nothing, so its bundle
     // is refused too. An agent could not complete a handshake with it either, but the guard is
     // stricter than it was here as well -- worth stating, because the operator's fix is to renew
@@ -874,7 +874,7 @@ TEST(CaBundleTest, VouchRefusesABundleWhoseCaOnlySignsTheLeaf)
 {
     // The same impostor, now through the guard that decides what generation is announced: a
     // correctly stamped bundle whose hash matches its certificates, refused because the leaf does
-    // not chain to any of them. This is what C33 keeps remoted from publishing.
+    // not chain to any of them. This is what D-8 keeps remoted from publishing.
     const auto pki = makePki("vouch-impostor");
     const auto impostor = selfSignedCaWithKey("vouch-impostor-other-subject", pki.caKey.get());
     const auto served = bundleOf({impostor.get()});

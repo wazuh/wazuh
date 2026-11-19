@@ -23,8 +23,8 @@
 
 /* Real definition lives in wazuh_modules/src/wmodules.c. On agent/manager
  * this test binary doesn't link that object, so it provides its own stand-in
- * -- exactly what stop_wmodules()/local_start() flip in the real agent
- * (issue 38428). winagent's unit tests all link a monolithic aggregate of the
+ * -- exactly what stop_wmodules()/local_start() flip in the real agent.
+ * winagent's unit tests all link a monolithic aggregate of the
  * main build's object files (see winagent.cmake's DEPENDENCIES_O), which
  * already pulls in the real definition -- a second one here would conflict
  * with it at link time, so just reuse it. */

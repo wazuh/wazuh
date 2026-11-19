@@ -55,7 +55,7 @@ GET /cluster/{node_id}/configuration/request/remote                      # effec
 | Is the HTTPS byte budget shedding load? | `remoted.server.budget.rejected.total` — [Metrics](metrics.md#public-transport-backpressure--remotedserverbudget) |
 | Is a downstream service slow or down? | `remoted.forwarder.error.*`, `remoted.forwarder.deferred.rejected.total` — [Metrics](metrics.md#downstream-failures--remotedforwarder) |
 | Why are agents getting `401`? | `remoted.auth.reject.*` — [Metrics](metrics.md#authentication-rejections--remotedauthreject) |
-| Is enrollment being paced by its rate limit? | `remoted.enroll.rate_limited`, `remoted.enroll.rate_limit.available` — [Metrics](metrics.md#rate-limits--remotedendpointrate_limit) |
+| Is enrollment being paced by its rate limit? | `remoted.enroll.rate_limited`, `remoted.enroll.rate_limit.available` (verified credentials), `remoted.enroll.unverified.rate_limit.available` (re-enrollments, no credential, spent tokens) — [Metrics](metrics.md#rate-limits--remotedendpointrate_limit) |
 | Is the legacy channel dropping messages? | `metrics.messages.received_breakdown.discarded` and `events_failed` in the daemons-stats answer — [Queue Byte Limits](configuration.md#queue-byte-limits) |
 
 ## Settings that most often need changing
@@ -70,12 +70,14 @@ GET /cluster/{node_id}/configuration/request/remote                      # effec
 
 ## Protocol Example
 
-The batch both channels post to the engine ([Event Protocol](event-protocol.md)):
+The batch both channels post to the engine ([Event Protocol](event-protocol.md)). Every event line
+carries `<queue>:<location>:<message>`; a line without that prefix is accepted with the batch and then
+dropped by the engine:
 
 ```text
 H {"wazuh":{"agent":{"id":"001","name":"web-01","groups":["web"]}}}
-E {"log":"Connection from 192.168.1.100"}
-E {"log":"Authentication successful"}
+E 1:/var/log/app/events.json:{"log":"Connection from 192.168.1.100"}
+E 1:/var/log/app/events.json:{"log":"Authentication successful"}
 ```
 
 ## References

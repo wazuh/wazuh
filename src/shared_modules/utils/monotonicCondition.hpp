@@ -23,8 +23,10 @@
 #include <pthread.h>
 #endif
 
-/// Condition variable whose waits are immune to system-clock jumps (see PR description for the libstdc++/glibc
-/// rationale).
+/// Condition variable whose waits are immune to system-clock jumps. std::condition_variable::wait_for stays
+/// monotonic only when libstdc++ was built with _GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT (glibc >= 2.30); older
+/// toolchains convert each wait to a CLOCK_REALTIME deadline, so a backward clock jump of N seconds extends it by
+/// N seconds. This one pins the condition to CLOCK_MONOTONIC with pthread_condattr_setclock.
 #if defined(__linux__)
 
 class MonotonicCondition final

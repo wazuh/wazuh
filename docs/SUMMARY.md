@@ -207,5 +207,3 @@
 - [Security](ref/security/README.md)
   - [Cluster Security Model](ref/security/cluster-model.md)
 - [Glossary](ref/glossary.md)
-
-# Diagnostic Documentation

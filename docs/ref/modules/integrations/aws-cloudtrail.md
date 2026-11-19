@@ -58,10 +58,10 @@ same on the other AWS pages.
 | Option | Required | Default | Description |
 |--------|:--------:|---------|-------------|
 | `bucket` | Yes | — | An S3 bucket to read. Several may be given. The `type` attribute selects the log format: `cloudtrail` here (other values in [Other AWS sources](README.md#other-aws-sources)). |
-| `name` | Yes | — | Name of the S3 bucket. It must follow the S3 bucket naming rules. |
+| `name` | Yes | — | Name of the S3 bucket. It must follow the S3 bucket naming rules. Checked by the `aws-s3` script at each run, not when the configuration is loaded (see [AWS values checked only at run time](README.md#aws-values-checked-only-at-run-time)). |
 | `aws_profile` | No | — | Profile from the agent host's AWS credentials and config files used to authenticate. |
 | `iam_role_arn` | No | — | ARN of an IAM role to assume to read the bucket. |
-| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. |
+| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. Checked by the `aws-s3` script at each run, not when the configuration is loaded (see [AWS values checked only at run time](README.md#aws-values-checked-only-at-run-time)). |
 | `access_key` | No | — | AWS access key ID. Deprecated since 4.4: a warning is logged; use another [authentication](#authentication) method. |
 | `secret_key` | No | — | AWS secret access key. Deprecated since 4.4, as `access_key`. |
 | `aws_organization_id` | No | — | AWS Organizations ID, for an organization trail: the logs are read under `AWSLogs/<organization ID>/`. |

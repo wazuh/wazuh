@@ -53,7 +53,8 @@ WAZUH_ENGINE_STANDALONE=true
 WAZUH_SERVER_API_SOCKET=/tmp/engine/queue/sockets/engine-api-http.sock
 ```
 
-The variables the engine reads are registered in `Conf::Conf` in `src/engine/source/conf/src/conf.cpp`. The
+The variables the engine reads are registered in `Conf::Conf` in `src/engine/source/conf/src/conf.cpp`, except
+`WAZUH_ENGINE_STANDALONE` (`ENV_ENGINE_STANDALONE` in `src/engine/source/base/include/base/process.hpp`). The
 test suites ship their own (`test/integration_tests/configuration_files/config.env`,
 `test/helper_tests/configuration_files/config.env`), which their `init` subcommands copy into the test
 environment.

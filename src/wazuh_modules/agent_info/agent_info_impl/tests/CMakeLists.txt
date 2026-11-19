@@ -135,7 +135,7 @@ add_test(NAME AgentInfoVdOffsetTest COMMAND agent_info_vd_offset_test)
 
 set_tests_properties(AgentInfoVdOffsetTest PROPERTIES LABELS "agent_info")
 
-# Agent Info Sync Classification Tests (SyncModuleResult classification flags, issue #38621)
+# Agent Info Sync Classification Tests (SyncModuleResult classification flags)
 add_executable(agent_info_sync_classification_test agent_info_sync_classification_test.cpp agent_info_mock.cpp)
 target_link_libraries(agent_info_sync_classification_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoSyncClassificationTest COMMAND agent_info_sync_classification_test)

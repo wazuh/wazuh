@@ -16,7 +16,7 @@
 
 /**
  * @brief One-time gate that holds the data streams until Startup is accepted
- *        (D6: producers wait until the handshake succeeds once). abort() wakes
+ *        (producers wait until the handshake succeeds once). abort() wakes
  *        any waiter during shutdown so a client that never registered still
  *        stops cleanly.
  */

@@ -5,7 +5,7 @@ the manager can be configured for (see the "Enrollment endpoint" chapter of remo
 and docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll):
 
   - Open        -- no credential at all. Just send the request.
-  - Password    -- Authorization: Bearer <wazuh-enroll+jwt> (issue #38582): an HS256 JWT whose
+  - Password    -- Authorization: Bearer <wazuh-enroll+jwt>: an HS256 JWT whose
                    header is exactly {"alg":"HS256","typ":"wazuh-enroll+jwt"} (no kid) and whose
                    claims are exactly {exp, iat, jti, nbf} (exp = iat + 60, nbf = iat, jti = 16
                    CSPRNG bytes base64url), signed with

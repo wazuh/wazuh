@@ -188,8 +188,8 @@ namespace
     // testTlsServer.hpp's generateCaSignedCertificate(), except the CA gets an explicit
     // `basicConstraints=critical,CA:FALSE`. `openssl x509 -req -CA` does not itself check the
     // issuing certificate's own constraints, so this signs cleanly; what refuses it afterwards is
-    // the publication/serving guard itself (issue #39319, C33: nothing chains to a certificate that
-    // is not a CA) as well as chainValidates() (issue #39318).
+    // the publication/serving guard itself (nothing chains to a certificate that
+    // is not a CA) as well as chainValidates().
     struct NonCaSignedCertificate
     {
         std::string caCertPath;
@@ -240,7 +240,7 @@ namespace
     // that CA -- `openssl verify -CAfile` says OK, and so does the guard, which sets no purpose --
     // while `openssl verify -purpose sslserver` fails with "unsupported certificate purpose", which
     // is what chainValidates() adds. The one fixture that keeps the "chains but is not a usable
-    // SERVER certificate" WARN reachable now that the guard is a chain validation too (C33).
+    // SERVER certificate" WARN reachable now that the guard is a chain validation too.
     std::optional<NonCaSignedCertificate> generateClientAuthOnlyCertificate(const std::string& prefix)
     {
         const auto base = "/tmp/" + prefix + "_" + std::to_string(::getpid());
@@ -446,7 +446,7 @@ TEST_F(RemotedModuleTest, StartStopStartAgainWorks)
     remoted_module_stop();
 }
 
-// GET /cacerts, end to end through the real module (issue #39318): a read failure is a window,
+// GET /cacerts, end to end through the real module: a read failure is a window,
 // not a decision -- the last good bundle keeps being served, and the module names the cause in
 // wazuh-manager.log. This is the only place that WARN is observable at all (testLogRecorder.hpp).
 // The route's log throttles belong to the handler makeHandler() builds, so the module started here
@@ -511,16 +511,16 @@ TEST_F(RemotedModuleTest, CacertsNotFoundNamesTheReadCause)
     ::rmdir(caDir.c_str());
 }
 
-// The chain verdict is information for the operator, never the 503 decision (issue #39318): a CA
+// The chain verdict is information for the operator, never the 503 decision: a CA
 // that signs the served leaf directly but is not itself a valid CA (no CA:TRUE) still lets
 // GET /cacerts serve 200 -- and the module logs the WARN a verifying agent's otherwise-mysterious
 // rejected handshake would need. RestinioHttpServer.cpp's logCertificateStatus() is what emits it.
 TEST_F(RemotedModuleTest, CacertsRefusesACaWithoutCaTrueThatMerelySignsTheLeaf)
 {
-    // Before C33 this bundle was SERVED (200) with a WARN: the guard was a signature check, and the
+    // Previously this bundle was SERVED (200) with a WARN: the guard was a signature check, and the
     // "CA" signs the leaf. It is not an anchor any verifying agent could use, so the guard is a
     // chain validation now and the route refuses it -- 503, ca_mismatch, with the ERROR line naming
-    // what is wrong. The behaviour change is deliberate and is the point of C33.
+    // what is wrong. The behaviour change is deliberate.
     auto pki = generateNonCaSignedCertificate("rmt-cacerts-nonca");
     ASSERT_TRUE(pki.has_value()) << "could not generate the throwaway non-CA-signed certificate";
     remoted::test::ScratchFileCleanup cleanup {pki->files()};
@@ -550,7 +550,7 @@ TEST_F(RemotedModuleTest, CacertsWarnsWhenTheChainDoesNotValidate)
     // direction: the leaf CHAINS to the configured CA (so the bundle is served) and yet validating
     // it as a SERVER certificate fails, because its extendedKeyUsage is clientAuth only. An agent
     // that pins this CA will still reject the handshake, so the WARN has to be said -- it is
-    // information, never a refusal (issue #39318).
+    // information, never a refusal.
     auto pki = generateClientAuthOnlyCertificate("rmt-cacerts-clientauth");
     ASSERT_TRUE(pki.has_value()) << "could not generate the throwaway clientAuth-only certificate";
     remoted::test::ScratchFileCleanup cleanup {pki->files()};

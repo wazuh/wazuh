@@ -184,7 +184,7 @@ parsec/
 | Target | Type | Description |
 |--------|------|-------------|
 | `parsec` | INTERFACE | Header-only library |
-| `parsec_test` | EXECUTABLE | Unit tests |
+| `parsec_test` | EXECUTABLE | Unit tests (`ENGINE_BUILD_TEST`) |
 
 **Dependencies:**
 
@@ -196,7 +196,7 @@ parsec  ←── base (INTERFACE)
 
 ### Unit Tests (parsec_test.cpp)
 
-Comprehensive coverage of all types and combinators:
+Covers both types and every combinator except the lookaheads (`negativeLook`, `positiveLook` have no direct test; they are exercised only through `builder`'s `helperParser.hpp`):
 
 | Category | Tests |
 |----------|-------|

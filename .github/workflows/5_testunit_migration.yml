@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check prerequisites
-        # The TLS case is skipUnless(openssl) (test_wazuh_migrate_identity.py:813); fail instead of
+        # The TLS case is skipUnless(openssl) (the `openssl` skipUnless in test_wazuh_migrate_identity.py); fail instead of
         # letting it skip silently.
         run: command -v openssl
 

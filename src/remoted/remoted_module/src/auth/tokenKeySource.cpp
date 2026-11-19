@@ -216,7 +216,7 @@ namespace remoted::auth
         /// authd's own loader gives. Refusing the file over one record was how a single token with, say, a
         /// negative `expires` (a record a manager could write before the lifetime was bounded) froze every
         /// worker's replica at whatever it held before, permanently, and took token enrollment down with
-        /// it (issue #39133). @p reason then names the last record dropped, for the log.
+        /// it. @p reason then names the last record dropped, for the log.
         ///
         /// A duplicate id stays a document-level refusal: authd never writes two records with one id, so
         /// it means the file was edited by hand, and choosing between them would be guessing.

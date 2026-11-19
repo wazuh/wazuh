@@ -477,7 +477,7 @@ TEST_F(StatelessStreamTest, ForceFlushesEvenBelowThreshold)
 
 TEST_F(StatelessStreamTest, PayloadTooLargeKeepsEventsInOrderAndHalves)
 {
-    // 413 must NOT drop a multi-event batch (#37835): the events stay, in
+    // 413 must NOT drop a multi-event batch: the events stay, in
     // order, and the effective payload halves so the next flush is smaller.
     std::vector<std::string> bodies;
     EXPECT_CALL(m_performer, perform(_))
@@ -775,8 +775,8 @@ TEST_F(StatelessStreamTest, AFailedFlushFallsBackToTheBatchInterval)
 TEST_F(StatelessStreamTest, UnescalatedAuthFailBacksOffInsteadOfTheFixedInterval)
 {
     // invalid_signature (or any class but unknown_agent): RetrySender returns this outcome
-    // unescalated on every call (#39064), so nothing else may slow the retry cadence except the
-    // Backoff this stream already owns -- not the fixed batch interval (#39601).
+    // unescalated on every call, so nothing else may slow the retry cadence except the
+    // Backoff this stream already owns -- not the fixed batch interval.
     ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
     StatelessStream stream {m_config, m_performer, m_signer, m_clock, random, m_sink, m_authGate, m_compressionGate};
     stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10); // Submits to `stream`, not m_stream.
@@ -801,7 +801,7 @@ TEST_F(StatelessStreamTest, SuccessAfterUnescalatedAuthFailuresResetsTheBackoff)
     stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10);
 
     EXPECT_CALL(m_performer, perform(_))
-    // Each AuthFail tick is 2 calls: RetrySender's one-shot clock-skew grace retry (#39064)
+    // Each AuthFail tick is 2 calls: RetrySender's one-shot clock-skew grace retry
     // fires unconditionally before the 401 survives unescalated.
     .WillOnce(Return(response(TransportStatus::Ok, 401)))
     .WillOnce(Return(response(TransportStatus::Ok, 401)))
@@ -993,7 +993,7 @@ TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
 
 TEST_F(StatelessStreamTest, HeaderLineFollowsTheSignerIdentityAfterAReenroll)
 {
-    // hc_set_agent_identity() can hand the signer a new numeric id (#38465).
+    // hc_set_agent_identity() can hand the signer a new numeric id.
     // The H line must name the same agent as the bearer that signs the batch,
     // or the manager answers 400 PayloadAgentMismatch to every batch.
     m_signer.setAgentId("002");
@@ -1015,7 +1015,7 @@ TEST_F(StatelessStreamTest, HeaderLineFollowsTheSignerIdentityAfterAReenroll)
 
 TEST_F(StatelessStreamTest, IdentitySwapMidFlightKeepsTheBatchAndRestampsItNextFlush)
 {
-    // The re-enroll path (#38465): a batch built for "001" is in flight when
+    // The re-enroll path: a batch built for "001" is in flight when
     // hc_set_agent_identity() swaps the signer to "002". Its retry is signed by
     // "002" but the H line still names "001", so the manager answers 400. That
     // 400 must not drop the events: the next flush re-stamps them with "002".

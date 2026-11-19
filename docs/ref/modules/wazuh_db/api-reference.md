@@ -79,8 +79,7 @@ the first one), at most once per 90 seconds so a polling load balancer does not 
 process that can work: `wazuh-manager-db` can be running and accepting connections on this socket
 while being unable to query `global.db`. Before this route existed, that state was only observable
 one request at a time, after an agent had already been served badly — a node in it kept answering
-`remoted`'s liveness probe with `200` and stayed in a load balancer's rotation indefinitely
-(issue #39429).
+`remoted`'s liveness probe with `200` and stayed in a load balancer's rotation indefinitely.
 
 The check is deliberately cheap and read-only: it reads `sqlite_master`, not agent rows, and runs no
 integrity check. A status route that is expensive stops being safe to poll, and whoever consumes
@@ -119,7 +118,7 @@ id that does not exist.
 ## `GET /v1/agents/all`
 
 Every agent in `global.db`, ordered by `id` ascending, with a fixed set of 18 fields (credentials such
-as `internal_key` and `reenroll_secret` are never included). Agent `0` (the manager itself) is excluded.
+as `internal_key` and `reenroll_secret` are never included). A row with id `0` is never returned (`WHERE id > 0`).
 
 Field names are flattened with dots where the source is an OS attribute:
 

@@ -45,8 +45,11 @@ Each carries a free-form JSON `payload` defined by the producer and interpreted 
 `task_type` is not checked against this list: the store accepts any non-empty type.
 
 Only a v5.x agent fetches these itself, over remoted's `POST /control`. A pre-v5.0.0 agent is served
-by remoted's legacy poller, which pushes **only `remote_upgrade`**: the other three types are never
-delivered to such an agent and expire after `task_ttl`.
+by remoted's legacy poller, which pushes **only `remote_upgrade`**. Its poll takes every pending
+task of a connected pre-v5.0.0 agent, so the other three types are marked `delivered` like the
+rest, logged at INFO as `legacy_task_delivery: task type '<type>' not supported for legacy agents,
+not delivered (task '<task_id>', agent '<agent_id>')` and dropped, never retried. Such a task
+expires after `task_ttl` only if the agent was not connected to this node while it was pending.
 
 Manager tasks are described in [Manager tasks](manager-tasks.md); the three recurring ones in [Recurring manager tasks](schedules.md).
 

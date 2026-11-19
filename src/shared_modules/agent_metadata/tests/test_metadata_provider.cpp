@@ -105,7 +105,7 @@ TEST_F(MetadataProviderTest, GetMetadataBeforeUpdate)
     EXPECT_EQ(metadata_provider_get(&retrieved), -1);
 }
 
-// #39543: metadata_provider_update_vd_feed_offset() must refuse (no-op) before any full
+// metadata_provider_update_vd_feed_offset() must refuse (no-op) before any full
 // metadata_provider_update() ever succeeded -- setting only this field with no prior snapshot
 // would let a reader see every other field (hostname, os_*, ...) as blank.
 TEST_F(MetadataProviderTest, UpdateVdFeedOffsetNoOpBeforeAnyFullUpdate)
@@ -135,7 +135,7 @@ TEST_F(MetadataProviderTest, UpdateVdFeedOffsetAfterFullUpdateTouchesOnlyThatFie
     EXPECT_STREQ(retrieved.os_name, "Ubuntu");
 }
 
-// #39543 review follow-up: update() must never clobber a vd_feed_offset that
+// update() must never clobber a vd_feed_offset that
 // updateVdFeedOffset() already published, even when the caller's own struct carries a
 // different (stale) value -- e.g. populateAgentMetadata() read an old DB snapshot before
 // observeVdFeedOffset() published a newer one. update() simply never writes this field.
@@ -158,7 +158,7 @@ TEST_F(MetadataProviderTest, UpdatePreservesExistingVdFeedOffsetAcrossFullUpdate
     EXPECT_EQ(retrieved.vd_feed_offset, 777u); // ...but left vd_feed_offset untouched.
 }
 
-// NOTE (#39543 review follow-up, investigated but deliberately not fixed here): a first
+// NOTE (investigated but deliberately not fixed here): a first
 // version of this test stressed update() and updateVdFeedOffset() concurrently from two
 // threads while a third thread called get(), expecting no torn record. It failed -- not
 // because s_writeMutex above fails to serialize the two writers (it does, which is exactly
@@ -516,7 +516,7 @@ TEST_F(MetadataProviderTest, GroupsReplacementOnUpdate)
 
 extern const char* g_testBinaryPath;
 
-// #38766: a provider teardown registered after agentd's atexit(w_https_client_stop) runs
+// A provider teardown registered after agentd's atexit(w_https_client_stop) runs
 // before it, so the drain that follows reads a dangling pointer and the process is
 // killed instead of exiting. Re-executes this binary because the fixture's SetUp() has
 // already built the singleton here; see runAtexitChild() in main.cpp.
@@ -543,7 +543,7 @@ TEST_F(MetadataProviderTest, ReadFromAtexitAfterProviderTeardownDoesNotCrash)
     EXPECT_EQ(WEXITSTATUS(status), 0);
 }
 
-// #38813: the shm fd was left open for the provider's whole lifetime, with no O_CLOEXEC,
+// The shm fd was left open for the provider's whole lifetime, with no O_CLOEXEC,
 // so it leaked into every child process spawned afterward (e.g. SCA's command rules via
 // wm_exec()) -- exactly what an enforcing SELinux policy denies once such a child
 // transitions into a restricted domain, even though the child never touches the file.

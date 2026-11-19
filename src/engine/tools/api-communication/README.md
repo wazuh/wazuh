@@ -41,10 +41,12 @@ type of the request message (`endpoints.py`); an unknown message type is returne
 
 - `send(request, response_type)` serializes a protobuf request message.
 - `jsend(json_body, request_type, response_type)` sends an already built dictionary.
+- `send_recv(request)` serializes a request message and returns the response body as a dictionary without
+  checking its `status` (a non-200 answer with a body is returned as a response, not as an error).
 
-Both return a tuple `(error, response)`: `error` is `None` on success, and otherwise a string (a transport
-error, an unparsable response, or the `error` field of a response whose `status` is not `OK`), with an empty
-dictionary as `response`.
+All three return a tuple `(error, response)`: `error` is `None` on success, and otherwise a string (a
+transport error, a non-200 answer without a body, an unparsable response or, for `send`/`jsend`, the `error`
+field of a response whose `status` is not `OK`), with an empty dictionary as `response`.
 
 For example, to get a resource from a namespace:
 

@@ -174,5 +174,5 @@ Two operational notes learned the hard way:
   check it: an over-long `--socket` shows up as transport errors, which fail a `uds` run.
 - How the head and body reach the socket (one write or several) is decided by Go's `net/http`, not
   by the sender. A request split across segments exercises a different server-side path — one that
-  hid a genuine race until F9b — so this is worth remembering when a run looks cleaner than
+  can hide server-side races — so this is worth remembering when a run looks cleaner than
   expected.

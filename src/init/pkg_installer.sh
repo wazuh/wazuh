@@ -99,7 +99,7 @@ xml_value() {
 # content -- distinct from xml_value, which returns "" both when the tag is absent
 # and when it's present but empty, since $(...) can't tell "no output" from "one
 # empty line of output" apart. Needed wherever an empty tag is a meaningful,
-# deliberate value rather than "unset" (e.g. <endpoint></endpoint>, #38492).
+# deliberate value rather than "unset" (e.g. <endpoint></endpoint>).
 # The self-closing <tag/> form counts as present: OS_XML parses it as exactly
 # equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml), so
 # the agent reads it as the same empty-content opt-out and this must agree.
@@ -109,7 +109,7 @@ xml_tag_present() {
 }
 
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
-# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
+# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix).
 DEFAULT_MANAGER_PORT="1517"
 DEFAULT_MANAGER_ENDPOINT="/wazuh-manager/"
 
@@ -196,7 +196,7 @@ parse_manager_endpoint() {
                     ;;
             esac
             # A zone id (%25<iface>, percent-encoded inside a URL) stays part of the
-            # host: the agent resolves it with if_nametoindex() at startup (#38624).
+            # host: the agent resolves it with if_nametoindex() at startup.
             ;;
         *:*:*)
             mep_error "${mep_raw}" "an IPv6 address must be bracketed, e.g. [2001:db8::1]:${DEFAULT_MANAGER_PORT}."
@@ -259,7 +259,7 @@ parse_manager_endpoint() {
 
 # Check that the manager answers on the HTTPS control port. Every endpoint,
 # including the health probe, is served under the manager's global_prefix
-# (#38491) -- an unprefixed request always gets a 404, so the probe URL must
+# -- an unprefixed request always gets a 404, so the probe URL must
 # include the same endpoint/prefix the agent itself connects with (arg 3).
 # Shared by probe_server()/probe_server_verified(), which differ only in which curl/wget
 # flags decide whether to accept the manager's certificate, not in how the target URL is
@@ -274,7 +274,7 @@ probe_build_target() {
         *:*:*) PROBE_HOST="[${PROBE_HOST}]" ;;
     esac
 
-    # An empty endpoint (the <endpoint></endpoint> opt-out, #38492) must probe the
+    # An empty endpoint (the <endpoint></endpoint> opt-out) must probe the
     # bare root: "/${3}/" would emit "//", and the manager's HTTP router does not
     # collapse duplicate slashes -- it 404s them, so the probe would fail against
     # the very unprefixed manager the opt-out exists for. Mirrors do_upgrade.ps1.
@@ -641,7 +641,7 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         if [ "${CA_BYTES}" -eq 0 ] || [ "${CA_BYTES}" -gt 65536 ]; then
             CA_REJECT_REASON="is empty or larger than the 64 KiB a CA certificate should ever need"
         else
-            # A trust store is legitimately a BUNDLE since #39321: the agent adopts up to
+            # A trust store is legitimately a BUNDLE: the agent adopts up to
             # ca_bundle::kMaxCertificates from a manager publication, and during a rotation
             # overlap two or more roots are trusted at once. So every certificate is validated
             # here, rather than the file being refused for holding more than one -- openssl x509
@@ -761,7 +761,7 @@ else
 fi
 
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
-# to read both (#38624):
+# to read both:
 #
 #   current  <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
 #   upgraded the deprecated <agent><manager><address>/<port>, or a 4.x

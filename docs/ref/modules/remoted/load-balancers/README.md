@@ -161,8 +161,10 @@ encoding.
 ### 4.2. The backend connection must be TLS 1.3
 
 remoted requires TLS 1.3 as its minimum version and it is not configurable. A proxy that offers
-only TLS 1.2 to the backend fails the handshake, and the agent sees `502` — while the agent and its
-token were perfect, which makes it a confusing failure to chase.
+only TLS 1.2 to the backend fails the handshake, and the agent sees `502` from NGINX or `503` from
+HAProxy (which counts the failed handshake as a connection failure to the server, and its health
+check marks the server down) — while the agent and its token were perfect, which makes it a
+confusing failure to chase.
 
 Note the asymmetry: the connection **from the agent** may be more permissive; the connection **to
 remoted** may not.

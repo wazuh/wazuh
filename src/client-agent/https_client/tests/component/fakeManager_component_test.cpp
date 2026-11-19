@@ -10,8 +10,7 @@
 
 /*
  * The fixture itself: a FakeManager whose port is already taken must fail the test at once and
- * name the port, not probe for 300s and leave the test to fail as if the code under test hung
- * (#38329).
+ * name the port, not probe for 300s and leave the test to fail as if the code under test hung.
  */
 
 #include "fakeManager.hpp"

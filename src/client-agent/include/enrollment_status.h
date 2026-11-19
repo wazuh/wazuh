@@ -23,11 +23,11 @@
 #define ENROLLMENT_STATUS_H
 
 /**
- * @brief Outcome of parsing an /enroll response (#38465 R12, refined by #39064).
+ * @brief Outcome of parsing an /enroll response.
  *
  * The three authentication outcomes are separate because they need three different answers, and
- * before #39064 the agent had only one: every 401 meant "retry for ever". The manager now names
- * the failure class on every 401 (#39040), so a credential that will never work is told apart
+ * previously the agent had only one: every 401 meant "retry for ever". The manager now names
+ * the failure class on every 401, so a credential that will never work is told apart
  * from one that might work on the next attempt.
  */
 typedef enum {
@@ -47,7 +47,7 @@ typedef enum {
                                     *   the manager refused outright (`invalid_signature`, which
                                     *   must never re-enroll but is still worth retrying: the fix
                                     *   is on the manager). Also any 401 whose class could not be
-                                    *   read, which is the fail-safe reading (design §2.9 rule 3). */
+                                    *   read, which is the fail-safe reading. */
     W_ENROLL_ERR_AUTH_FATAL,      /**< Nothing the agent can retry into success. From the wire that
                                     *   is the manager refusing an enrollment token whose signature
                                     *   it already VERIFIED (w_enrollment_token_refusal()): a 401
@@ -89,7 +89,7 @@ typedef enum {
  * @brief Turns one failed attempt's status into the policy decision, and performs the one side
  *        effect that decision implies.
  *
- * The three re-enrollment triggers the design allows (§2.9) are: no key at all, the transport's
+ * The three re-enrollment triggers the design allows are: no key at all, the transport's
  * `unknown_agent` latch, and an operator. Nothing here adds a fourth; this only decides whether an
  * already-started enrollment loop keeps going.
  *
@@ -101,7 +101,7 @@ typedef enum {
  * can only ever produce the same rejection again, and keeping it would stop the agent from falling
  * back to a credential that still works -- or, where none is configured, from enrolling
  * credential-less the way it first did. That case then RETRYs regardless: shredding has already
- * made the next attempt a different request, so it is not the loop #39064 removed. Only
+ * made the next attempt a different request, so it is not the retry-for-ever loop. Only
  * W_ENROLL_ERR_AUTH_FATAL stops.
  */
 w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status);

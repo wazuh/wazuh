@@ -15,7 +15,7 @@
 /// hand in the canonical form the verifier expects and the frozen vectors pin (keys in ASCII
 /// order, no whitespace), so agent, manager tests and the Python tools agree byte for byte.
 /// sign() mints the shared-key form (no `kid`; what the agent sends today); signWithKid() the two
-/// `kid` forms of issue #38993 (enrollment token id, or the canonical agent id when re-enrolling).
+/// `kid` forms (enrollment token id, or the canonical agent id when re-enrolling).
 
 #pragma once
 
@@ -48,7 +48,7 @@ namespace jwt_profile::v1::enroll
             return mint(key, now, headerJson(), jtiOverride);
         }
 
-        /// @brief Same token with a `kid` in the header (issue #38993). `kid` must be one of the two
+        /// @brief Same token with a `kid` in the header. `kid` must be one of the two
         /// disjoint forms the verifier classifies (peekKid()): the enrollment token id as 22 canonical
         /// base64url chars (key = deriveEnrollTokenKey()) or a canonical agent id (key =
         /// deriveReenrollKey()). Any other text is nullopt rather than a token nobody can verify.

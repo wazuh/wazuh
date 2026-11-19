@@ -324,7 +324,7 @@ REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.forwarder.deferred.rejected.total", "forwarder_deferred_rejected_total"),
     ("remoted.server.connections.open", "server_connections_open"),
     ("remoted.server.connections.max", "server_connections_max"),
-    # The TLS handshake guard (issue #6883): a slot is taken at accept, before the handshake, so
+    # The TLS handshake guard: a slot is taken at accept, before the handshake, so
     # peers that never complete one hold slots no request metric sees. handshaking is a level (a
     # subset of connections.open); the two totals are what the deadline and the per-source cap closed.
     ("remoted.server.connections.handshaking", "server_connections_handshaking"),

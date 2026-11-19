@@ -114,8 +114,8 @@ namespace remoted::scanvd
             else if (vdAnswer.second == "vd_not_initialized")
             {
                 // VD is disabled on this node (or its start failed, which VD logs itself): a
-                // state, not a relay failure, and with VD disabled a permanent one. Since #41101
-                // notify no longer advertises an offset while VD is disabled, so this is a
+                // state, not a relay failure, and with VD disabled a permanent one. Notify
+                // no longer advertises an offset while VD is disabled, so this is a
                 // straggler (a request already in flight when VD went down); warning on it would
                 // tell an operator who disabled VD on purpose that something is wrong.
                 incVdError(m_metrics);

@@ -15,7 +15,7 @@
 #include <vector>
 
 /**
- * @brief Tests for the live handshake re-query mechanism (#37543).
+ * @brief Tests for the live handshake re-query mechanism.
  *
  * agent-info previously read cluster_name/agent_groups from a cache
  * populated once at module startup, so a manager-side cluster_name change was never
@@ -225,7 +225,7 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQueryFailure_KeepsLastKnownValue)
 
 TEST_F(AgentInfoHandshakeTest, LiveClusterNameChange_DoesNotFreezeGroupsFromHandshake)
 {
-    // Regression guard for a review finding on #37543: the live re-query is scoped to
+    // Regression guard: the live re-query is scoped to
     // cluster_name only. agent_groups must keep tracking merged.mg on every
     // cycle exactly as before - it must NOT get "frozen" at whatever agent_groups value
     // the live handshake callback happens to report, even though that callback succeeds

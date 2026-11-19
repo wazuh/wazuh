@@ -50,7 +50,7 @@
 #define SEC_B64URL  "EBESExQVFhcYGRobHB0eHw"
 #define KEY_B64URL  "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
 #define DERIVED_HEX "5da72b786a15757caa8d825a74a3474c3f15b048fd1064b49863ffc715a95860"
-/* Re-enrollment (#39064), frozen alongside the C++ side: secret bytes 0x00..0x1f, and the key
+/* Re-enrollment, frozen alongside the C++ side: secret bytes 0x00..0x1f, and the key
  * HKDF-SHA256 derives from them under the label "WAZUH-REENROLL-KEY". Copied verbatim from
  * shared_modules/utils/jwt/testVectors.hpp (kReenrollSecretHex / kReenrollKeyHex), which is what
  * authd verifies with -- if the two ever disagree, an agent signs a bearer the manager cannot

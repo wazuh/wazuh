@@ -198,7 +198,7 @@ anchor_is_a_dir() {
 
 }
 
-# The agent keeps etc/certs 01770 so it can replace the anchor at runtime (#39321).
+# The agent keeps etc/certs 01770 so it can replace the anchor at runtime.
 sticky_certs_dir() {
 
     mkdir -m 1770 "$1/etc/certs"

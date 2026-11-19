@@ -7,8 +7,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Exercises CaPublicationRecord on its own: load()'s five statuses (issue #39319, C23), the
- * atomic-replace write (temporary, fsync, fchmod, rename, directory fsync -- C22) and its failure
+ * Exercises CaPublicationRecord on its own: load()'s five statuses, the
+ * atomic-replace write (temporary, fsync, fchmod, rename, directory fsync) and its failure
  * paths through the injectable RecordIo seam, since root (this suite's usual runner) ignores the
  * permission tricks that would otherwise be needed to fail a write for real.
  */
@@ -274,7 +274,7 @@ TEST(CaPublicationRecord, StoreEnforcesModeUnderRestrictiveAndPermissiveUmask)
         struct stat info {};
         ASSERT_EQ(::stat(recordPath.c_str(), &info), 0);
         // fchmod(0640) is explicit in the code, never the umask-adjusted mode open(2) would have
-        // left on the temporary (objection 14): both a hostile and a wide-open umask land the same.
+        // left on the temporary: both a hostile and a wide-open umask land the same.
         EXPECT_EQ(info.st_mode & 0777, 0640U) << "umask " << std::oct << mask;
     }
 }
@@ -395,8 +395,8 @@ TEST(CaPublicationRecord, ConcurrentStoresUseDistinctTemporaries)
     EXPECT_TRUE(okA.load());
     EXPECT_TRUE(okB.load());
 
-    // Whichever rename() landed last, the record is a coherent, fully-written one (D22 defers
-    // rejecting the loser; this test is only about the temporaries never colliding).
+    // Whichever rename() landed last, the record is a coherent, fully-written one (rejecting
+    // the loser is deferred; this test is only about the temporaries never colliding).
     const auto outcome = record.load(bundlePath);
     ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
     EXPECT_TRUE(outcome.entry.fileSha256 == "hash-a" || outcome.entry.fileSha256 == "hash-b")

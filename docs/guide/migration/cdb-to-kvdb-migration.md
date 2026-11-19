@@ -4,14 +4,14 @@ In Wazuh 4.x, rules looked up threat data in CDB (Constant Database) lists store
 
 ## 0. Migration prerequisites
 
-Read the [Engine introduction for related migrations](engine-introduction.md) first: it explains the decoder stages (`check`, `normalize`) and the content spaces this guide relies on.
+Read the [Engine introduction for related migrations](engine-introduction.md) first: it explains how 5.x decoders differ from the 4.x XML decoder tree. The decoder stages this guide relies on (`check`, `normalize`) are described in [Decoders](../../ref/modules/engine/README.md#decoders), and the content spaces in [Spaces](../../ref/modules/engine/README.md#spaces).
 
 ## 1. Structural differences between CDB and KVDB
 
 - In 4.x, CDB lookups appeared only in rules (the `<list>` element). In 5.x, KVDB lookups are helper functions in decoder (and filter) stages. Rule-level CDB lookup logic must be moved into the decoder that processes those events.
 - CDB lists were plain `key:value` text files in `/var/ossec/etc/lists/`, compiled by the manager. A KVDB is a document with an `id`, a name (`metadata.title`, the name helpers use), an `enabled` flag and a `content` object; it belongs to an integration, is stored in wazuh-indexer, and is synced to the Engine automatically.
 - A CDB value was a string. A KVDB value is any JSON value: string, number, boolean, object or array.
-- A decoder can only use a KVDB that is listed, and enabled, in the `kvdbs` of its own integration; otherwise the decoder fails to build (`KVDB '<name>' is not declared in the integration`).
+- A decoder can only use a KVDB that is listed, and enabled, in the `kvdbs` of its own integration; otherwise the decoder fails to build (`KVDB '<name>' is not declared in the integration`, or `KVDB '<name>' is disabled in the integration`).
 
 ## 2. Implementation equivalences
 

@@ -14,7 +14,7 @@
 /**
  * @file handshakeLedger.hpp
  * @brief Which connections of the public listener hold a slot, which of them are still in the TLS
- *        handshake, and from where (issue #6883).
+ *        handshake, and from where.
  *
  * WHY THIS EXISTS. RESTinio takes one of max_parallel_connections' slots when it accepts a socket,
  * and arms its first timer only once the TLS handshake has succeeded. A peer that connects and

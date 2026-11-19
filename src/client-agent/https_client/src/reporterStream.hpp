@@ -28,7 +28,7 @@
 #include <string>
 
 /**
- * @brief The periodic /stats and /config reporter (#37843). One worker thread
+ * @brief The periodic /stats and /config reporter. One worker thread
  *        drives two independent cadences: each due path collects a snapshot,
  *        stamps agent_id, the manager-authoritative cluster and the agent
  *        metadata (groups, host), signs and POSTs.

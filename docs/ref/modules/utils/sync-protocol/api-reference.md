@@ -579,7 +579,7 @@ typedef struct SyncModuleResult_t {
 - `success`: whether the synchronization completed successfully.
 - `failureReason`/`failure_reason`: human-readable reason, may be empty.
 - `stopped`: `true` if the operation was aborted because `stop()` was called — lets the caller demote an expected shutdown-time failure to INFO/DEBUG instead of WARNING.
-- `managerNotReady`/`manager_not_ready`: `true` if the manager did not answer the handshake, or answered `Offline`. Describes what happened, not how serious it is — use it together with `consecutiveFailures` (see `SYNC_MANAGER_NOT_READY_TOLERANCE`) to decide the log level.
+- `managerNotReady`/`manager_not_ready`: `true` if the session got no HTTP response (connection, TLS or transport timeout, or no result within the 15-minute safety net), or the manager answered `503` or `415`. Describes what happened, not how serious it is — use it together with `consecutiveFailures` (see `SYNC_MANAGER_NOT_READY_TOLERANCE`) to decide the log level.
 - `consecutiveFailures`/`consecutive_failures`: consecutive failed synchronizations for this module, including this one; reset to zero on the first success.
 - `awaitingPrerequisite`/`awaiting_prerequisite`: `true` if the sync was aborted because the manager has not yet supplied the agent's groups. Expected right after an agent restart and normally clears within a cycle or two, so the caller can log it at INFO/DEBUG.
 - `localTransportUnavailable`/`local_transport_unavailable`: `true` if the local `queue-sync` intake could not be reached (the `wazuh-agentd` HTTPS client is not up yet). Nothing reached the manager, so this is not a manager-side condition. In this case `consecutiveFailures` counts consecutive failures to reach the intake, a streak separate from the sync one.

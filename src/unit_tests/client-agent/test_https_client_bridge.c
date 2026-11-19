@@ -127,14 +127,14 @@ bool __wrap_hc_submit_event(hc_handle *handle, const uint8_t *frame, size_t leng
     return mock();
 }
 
-/* Returns a w_enroll_status_t since #39064: the loops no longer treat every non-zero the same,
+/* Returns a w_enroll_status_t now: the loops no longer treat every non-zero the same,
  * so a test has to say WHICH failure it is scripting. */
 w_enroll_status_t __wrap_try_enroll_to_server(void)
 {
     return (w_enroll_status_t)mock();
 }
 
-/* hc_enroll mock (#38465): captures the transport config and the request
+/* hc_enroll mock: captures the transport config and the request
  * bridge_build_transport_config()/w_https_client_enroll() built, so tests can
  * assert /enroll dials the exact same server/TLS material as every other
  * endpoint, and never the agent's identity (agent_id/agent_key stay empty --
@@ -167,7 +167,7 @@ void __wrap_w_agentd_state_update(w_agentd_state_update_t type, void *data)
     check_expected(data);
 }
 
-/* bridge_on_config_downloaded's apply chain (M1/finding 1): no pre-existing
+/* bridge_on_config_downloaded's apply chain: no pre-existing
  * wrapper for these two ABIs either (unlike w_copy_file/UnmergeFiles/
  * cldir_ex_ignore below, which reuse the shared wrappers already used by
  * remoted/test_manager.c and wazuh_modules/agent_upgrade). */
@@ -447,7 +447,7 @@ static void set_agent_key(const char *id, const char *raw_key)
     keys.keysize = 1;
 }
 
-/* Enables auto-enrollment (#38465: agt->enrollment is a by-value struct now,
+/* Enables auto-enrollment (agt->enrollment is a by-value struct now,
  * no separate enrollment target to configure -- try_enroll_to_server()
  * always dials agt->server[0], the same single target every other HTTPS
  * endpoint already uses). */
@@ -477,8 +477,8 @@ static int setup_test(void **state)
      * individual tests override this to exercise the rejection paths. */
     set_agent_key("001", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
-    /* Process-wide globals bridge_on_startup_result writes into (finding 1b,
-     * config.c): reset every test so none leaks state into the next one. */
+    /* Process-wide globals bridge_on_startup_result writes into
+     * (config.c): reset every test so none leaks state into the next one. */
     memset(&agent_module_limits, 0, sizeof(agent_module_limits));
     agent_cluster_name[0] = '\0';
     agent_agent_groups[0] = '\0';
@@ -550,7 +550,7 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     assert_int_equal(g_captured_config.server_port, 8443);
     assert_string_equal(g_captured_config.agent_id, "001");
     assert_int_equal(g_captured_config.verify_mode, HC_VERIFY_FULL);
-    /* #39321: a CA the agent did not install is not a CA it may overwrite. Without this the
+    /* A CA the agent did not install is not a CA it may overwrite. Without this the
      * refresh would write to a path the unprivileged agent cannot replace, and retry it for as
      * long as the manager kept advertising. */
     assert_false(g_captured_config.ca_refresh_allowed);
@@ -780,7 +780,7 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     w_https_client_stop();
 }
 
-/* #38492: the reverse-proxy path segment, <endpoint>, plumbed through the
+/* The reverse-proxy path segment, <endpoint>, plumbed through the
  * same bridge_build_transport_config() every other field above already goes
  * through -- so it reaches /enroll for free, proven below. */
 
@@ -830,7 +830,7 @@ static void test_absent_endpoint_leaves_the_field_empty(void **state)
     w_https_client_stop();
 }
 
-/* w_https_client_enroll() / bridge_build_transport_config() (#38465): /enroll
+/* w_https_client_enroll() / bridge_build_transport_config(): /enroll
  * must dial the exact same server/TLS material as every other endpoint, and
  * must never carry the agent's identity (agent_id/agent_key) -- an enrolling
  * agent has neither yet, regardless of whatever client.keys already holds. */
@@ -936,12 +936,12 @@ static void test_enroll_passes_body_and_password_through(void **state)
     assert_string_equal(g_captured_enroll_request.body_json, "{\"name\":\"agent01\"}");
     assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
     /* No keyed credential passed: the module must see empty fields, not stale bytes, or it would
-     * try to mint a bearer from them (#39064). */
+     * try to mint a bearer from them. */
     assert_string_equal(g_captured_enroll_request.enroll_kid, "");
     assert_string_equal(g_captured_enroll_request.enroll_key_hex, "");
 }
 
-/* #39064: a re-enrollment credential reaches the module as a `kid` + derived key, and the module
+/* A re-enrollment credential reaches the module as a `kid` + derived key, and the module
  * is what gives it priority over the password. The bridge's only job is to pass both through. */
 static void test_enroll_passes_the_keyed_credential_through(void **state)
 {
@@ -1024,7 +1024,7 @@ static void test_config_checksum_is_empty_when_local_file_unreadable(void **stat
     w_https_client_stop();
 }
 
-/* Key validation (M4): a broken client.keys must be caught once, loudly, at
+/* Key validation: a broken client.keys must be caught once, loudly, at
  * start -- not left to fail every signing attempt silently forever. */
 
 static void test_missing_key_refuses_to_start(void **state)
@@ -1162,7 +1162,7 @@ static void test_hc_create_failure_is_logged(void **state)
     /* No hc_start/hc_destroy expectation: neither must be reached. */
 }
 
-/* #38859: a rejected transport config (e.g. an inverted https_backoff_base/
+/* A rejected transport config (e.g. an inverted https_backoff_base/
  * https_backoff_cap pair -- see ModuleConfigTest.ValidateRejectsInvertedBackoffBounds)
  * surfaces here as hc_start() returning false. Before this fix the caller
  * (AgentdStart()) had no way to observe that: w_https_client_start() was void,
@@ -1184,7 +1184,7 @@ static void test_hc_start_failure_destroys_and_logs(void **state)
     assert_false(w_https_client_start());
 }
 
-/* 401 -> re-enrollment (M5): bridge_on_reenroll_required's spawn decision,
+/* 401 -> re-enrollment: bridge_on_reenroll_required's spawn decision,
  * exercised through the real callback the module would actually invoke
  * (captured from a successful w_https_client_start()). */
 
@@ -1254,7 +1254,7 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
 
     bridge_reenroll_thread(FAKE_HANDLE);
 
-    /* #38601: the new id has to reach the metadata provider here. Every outgoing session is
+    /* The new id has to reach the metadata provider here. Every outgoing session is
      * stamped from it, and each module compares against it to notice its own id changed, so
      * leaving it stale means 403s and blind detection until something else republishes. */
     assert_int_equal(g_populate_metadata_calls, 1);
@@ -1287,7 +1287,7 @@ static void test_reenroll_thread_reloads_a_copied_identity(void **state)
     assert_null(keys.keyentries);
 }
 
-/* #39064: the loop used to run for ever on any failure. A credential the manager judged and
+/* The loop used to run for ever on any failure. A credential the manager judged and
  * refused must stop it instead -- the agent keeps the key it has, the AuthGate keeps traffic
  * paused, and an operator has something to see. Deliberately no hc_set_agent_identity and no gate
  * release: nothing has changed that would make the paused traffic succeed. */
@@ -1313,7 +1313,7 @@ static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state
     (void)state;
     enable_enrollment();
 
-    /* First pass fails (#38465: a single unconditional target now --
+    /* First pass fails (a single unconditional target now --
      * agt->server[0] via the shared transport config -- so one failure is
      * one whole pass, unlike the old dual-target loop). */
     will_return(__wrap_try_enroll_to_server, W_ENROLL_ERR_TRANSPORT);
@@ -1404,12 +1404,12 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
 
     bridge_reenroll_thread(FAKE_HANDLE);
 
-    /* #38601: no republish when the identity failed validation -- the module keeps traffic
+    /* No republish when the identity failed validation -- the module keeps traffic
      * paused, so there is no session to stamp and nothing for a module to act on yet. */
     assert_int_equal(g_populate_metadata_calls, 0);
 }
 
-/* on_state_change -> .state (M7 partial): exercised through the real
+/* on_state_change -> .state (partial): exercised through the real
  * callback, like the reenroll spawn-decision tests above. */
 
 /* Finding 2: a REGISTERED transition must clear the WAIT_FILE/os_setwait()
@@ -3140,7 +3140,7 @@ static void test_on_remote_upgrade_ready_subdirectory_wpk_file_counts_failed(voi
     w_https_client_stop();
 }
 
-/* Staging now always unlinks INCOMING_DIR/<wpk_file> first (#38833: a prior legacy-path upgrade,
+/* Staging now always unlinks INCOMING_DIR/<wpk_file> first (a prior legacy-path upgrade,
  * delivered by root, can leave a same-named WPK behind that the unprivileged agent process
  * cannot open for writing), then copies via wfopen(src)/w_fopen_nofollow(dst) instead of
  * w_copy_file(). ENOENT from that unlink is the common case (no stale file) and is not an error. */
@@ -3237,7 +3237,7 @@ static void test_on_remote_upgrade_ready_stage_dest_open_failure_counts_failed(v
 }
 
 /* Mirrors the symlink hardening already applied to the legacy path's WCOM uncompress()
- * (os_execd/src/wcom.c, #38200): a symlink planted at INCOMING_DIR/<wpk_file> between the
+ * (os_execd/src/wcom.c): a symlink planted at INCOMING_DIR/<wpk_file> between the
  * unlink() above and this open must be refused, not followed. */
 static void test_on_remote_upgrade_ready_stage_symlink_rejected_counts_failed(void **state)
 {

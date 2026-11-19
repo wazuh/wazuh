@@ -36,7 +36,7 @@ enum class HeaderLineTrim
 };
 
 /**
- * @brief The /stateless sender (D6). Intake appends to the accumulator; the
+ * @brief The /stateless sender. Intake appends to the accumulator; the
  *        sender thread flushes on the size/age/forced conditions. Each flush
  *        prepends the H metadata line, signs (via RetrySender), and on success
  *        consumes the sent prefix. Back-pressure defers only this stream's
@@ -87,7 +87,7 @@ class StatelessStream final
     private:
         bool flushDue(bool force) const;
         /// Returns the outcome of the attempt (not just ok/failed) so tick() can tell an
-        /// unescalated AuthFail apart from every other failure and back off accordingly (#39601).
+        /// unescalated AuthFail apart from every other failure and back off accordingly.
         OutcomeClass flushOnce(Waiter& waiter,
                                uint32_t timeoutMs,
                                uint32_t maxAttempts,

@@ -140,7 +140,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
     {
         /* Destroy the sync protocol handle so its SQLite connection to fim_sync.db is
          * closed cleanly (checkpointing and removing the -wal/-shm files) instead of
-         * being leaked (issue #37334). The write lock excludes the handle users that
+         * being leaked. The write lock excludes the handle users that
          * are not joined above (event persistence, syscom's fim_sync responses, the
          * DataClean paths and the scheduled-scan asp_reset), which take it for reading
          * around each call. */
@@ -165,7 +165,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
     }
 
     /* Not HandleSIG(): its exit() would run the static destructors and the atexit handlers
-     * while the threads this waiter could not join are still using them (issue #37993). */
+     * while the threads this waiter could not join are still using them. */
     minfo(SIGNAL_RECV, (int)fim_shutdown_sig, strsignal((int)fim_shutdown_sig));
 #ifdef ENABLE_AUDIT
     clean_rules();
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
     }
 
     /* Spawn the shutdown waiter before registering the termination signal handler
-     * that wakes it through the pipe (issue #37334) */
+     * that wakes it through the pipe */
     if (pipe(fim_shutdown_pipe) < 0 || pipe(fim_sync_exit_pipe) < 0) {
         merror_exit("Could not create the shutdown pipes: %s (%d)", strerror(errno), errno);
     }
@@ -383,7 +383,7 @@ int main(int argc, char **argv)
     // gate releases. rootcheck_init() emits STARTUP_MSG ("wazuh-rootcheck:
     // INFO: Started"); running it before the gate would make rootcheck
     // appear as "Started" while every module is in fact still blocked
-    // waiting for the manager's merged.mg hash to validate (issue 36239).
+    // waiting for the manager's merged.mg hash to validate.
     if (rootcheck_init(0, cfg) == 0) {
         syscheck.rootcheck = 1;
     } else {

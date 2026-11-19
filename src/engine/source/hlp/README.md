@@ -156,6 +156,7 @@ hlp/
 │       ├── eof.cpp                   # getEofParser — match end of input
 │       ├── parse_field.hpp          # Field class + getField/unescape/updateDoc helpers
 │       └── parse_field.cpp          # Field parsing implementation (for DSV/KV)
+├── benchmark/src/parsers_bench.cpp   # kv/xml JSON-building cost vs members per object (hlp_benchmark)
 └── test/src/unit/
     ├── hlp_test.hpp                  # Test harness and helpers
     ├── address_space_cap.hpp         # Runs a check in a child with a capped address space (KV numeric keys)
@@ -178,7 +179,8 @@ hlp/
     ├── web_test.cpp
     ├── kvmap_test.cpp
     ├── dsv_csv_test.cpp
-    └── parse_field_test.cpp          # getField quoting/escaping edge cases
+    ├── parse_field_test.cpp          # getField quoting/escaping edge cases
+    └── objectBuild_diff_test.cpp     # kv/xml output compared with a frozen pre-PathWriter copy (namespace legacy)
 ```
 
 ## Public Interface
@@ -335,7 +337,8 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 | Target | Type | Description |
 |--------|------|-------------|
 | `hlp` | STATIC | All parser implementations (`base` public; FastFloat, date-tz, pthread, curl, pugixml private) |
-| `hlp_utest` | Executable | Unit tests (`ENGINE_BUILD_TEST`; one test file per parser type plus `parse_field_test.cpp`); `HLP_TEST_TZDB_PATH` is `${CMAKE_SOURCE_DIR}/external/tzdata`, the top-level tree's downloaded tzdata |
+| `hlp_utest` | Executable | Unit tests (`ENGINE_BUILD_TEST`; one test file per parser type plus `parse_field_test.cpp` and `objectBuild_diff_test.cpp`); `HLP_TEST_TZDB_PATH` is `${CMAKE_SOURCE_DIR}/external/tzdata`, the top-level tree's downloaded tzdata |
+| `hlp_benchmark` | Executable | Google Benchmark of the kv/xml document-building stage (`ENGINE_BUILD_BENCHMARK`) |
 
 ## Testing
 

@@ -45,7 +45,7 @@ namespace
         return value;
     }
 
-    /// A 401 that names its failure class, as remoted renders it. Since #39064 only
+    /// A 401 that names its failure class, as remoted renders it. Only
     /// `unknown_agent` latches the AuthGate, so a test about the latch has to say which 401 it
     /// means -- a classless 401 is deliberately retried without ever touching the identity.
     HttpResponse authFail(const std::string& code = "unknown_agent")
@@ -272,7 +272,7 @@ TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
 
 TEST_F(ControlStreamTest, RetryableAuthFailureDoesNotGoAuthError)
 {
-    // A 401 the AuthGate did not latch must not reach AUTH_ERROR (#39064). AUTH_ERROR sends
+    // A 401 the AuthGate did not latch must not reach AUTH_ERROR. AUTH_ERROR sends
     // nothing (nextAction() is Idle), slows the cadence, drops an armed settings refresh, and can
     // only be left through CredentialRenewed -- "a new key is in place" -- which would be false
     // here, since nothing was renewed. Going there and self-healing back cost a full
@@ -306,10 +306,10 @@ TEST_F(ControlStreamTest, UnknownAgentAuthFailureStillGoesAuthError)
 TEST_F(ControlStreamTest, UnescalatedAuthFailureReportsABackoffOverrideInsteadOfTheFixedCadence)
 {
     // A 401 the AuthGate did not latch must not keep retrying on the plain notify cadence
-    // forever: RetrySender returns it unescalated on every call (#39064), and useSlowCadence()/
+    // forever: RetrySender returns it unescalated on every call, and useSlowCadence()/
     // rejectedRetryIntervalS stays reserved for the genuine unknown_agent/AUTH_ERROR path (see
     // UnknownAgentAuthFailureStillGoesAuthError above) -- so this stream's own Backoff has to
-    // govern the cadence instead (#39601).
+    // govern the cadence instead.
     ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
     ControlStream stream {m_config,          m_performer,     m_signer,        m_clock,
                           random,            m_sink,          m_spoolFactory,  m_configHash,
@@ -377,7 +377,7 @@ TEST_F(ControlStreamTest, AKeyRenewedInsideTheReenrollCallbackStillReRegisters)
 {
     // hc_set_agent_identity() may run inside on_reenroll_required, so the gate can be released
     // before the step that latched it classifies its own 401. That 401 still named
-    // unknown_agent: it must reach AUTH_ERROR and re-register, not pass as retryable (#38329).
+    // unknown_agent: it must reach AUTH_ERROR and re-register, not pass as retryable.
     EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})"))) // Startup accepted.
@@ -421,7 +421,7 @@ TEST_F(ControlStreamTest, AnotherSendersRenewedIncidentStillReRegisters)
 {
     // A 401 latched by another sender sharing the gate -- here the config fetcher's /download,
     // run from this very Notify -- can be renewed before the next step polls the gate. That
-    // incident must still go through AUTH_ERROR and re-register (#38329).
+    // incident must still go through AUTH_ERROR and re-register.
     const std::string notify =
         R"({"status":"ok","agent":{"config_token":"web-servers","config_hash":"0123456789abcdef"}})";
     std::vector<hc_conn_state_t> states;
@@ -477,7 +477,7 @@ TEST_F(ControlStreamTest, AReleaseWithoutAnIncidentDoesNotReRegister)
 
 TEST_F(ControlStreamTest, ARetryable401WhileAnotherSenderLatchedTheGateStillGoesAuthError)
 {
-    // The gate decides, not this 401's class: a stale_token on /control, which #39064 retries,
+    // The gate decides, not this 401's class: a stale_token on /control, which is now retried,
     // still means AUTH_ERROR when another sender latched the gate while it was in flight.
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
@@ -1699,7 +1699,7 @@ TEST_F(ControlStreamTest, NotifyWithALowerCaGenerationIsIgnored)
     EXPECT_EQ(0, m_caPublication.pending());
 }
 
-/* A manager predating #39321 says nothing about CA bundles, which is not the same as a manager
+/* A manager predating CA rotation says nothing about CA bundles, which is not the same as a manager
  * reporting that nobody has published one -- but both leave the trust store alone. */
 TEST_F(ControlStreamTest, NotifyWithoutCaGenerationArmsNothing)
 {
@@ -1812,7 +1812,7 @@ TEST_F(ControlStreamTest, PendingRescanTriggersScanVdRequestAndClearsOnSuccess)
     EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(100u));
 }
 
-// D5/Case 6: a 409 on /scan/vd reporting a newer current_version must re-observe (which
+// A 409 on /scan/vd reporting a newer current_version must re-observe (which
 // advances the store and re-runs the VDFirst-done gate for the new offset) and retry with
 // it -- all within the same RescanRequester::requestRescan() call, bounded to a few rounds.
 TEST_F(ControlStreamTest, PendingRescanAdvancesOffsetAndRetriesOn409WithNewerVersion)

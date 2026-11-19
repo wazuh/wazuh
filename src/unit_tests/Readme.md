@@ -336,7 +336,7 @@ ctest -R <name> -V    # run the matching ones
 ```
 
 ## How CI runs them
-[5_testunit_linux-win.yml](../../.github/workflows/5_testunit_linux-win.yml) runs the `manager`, `agent` and `winagent` targets on Ubuntu 24.04, as matrix legs that a `detect-targets` job picks from the pull request's diff (a manager-only change runs only the `manager` leg; an agent-only change runs all three; a change to the CI plumbing runs all three). Each leg installs its dependencies ([install_build_deps](../../.github/actions/install_build_deps/action.yml), CMake 3.31.6 through [reinstall_cmake](../../.github/actions/reinstall_cmake/action.yml) and GCC 14.3 under `/opt/gcc-14`), then runs the functions in [legacy_unit_tests.sh](../../.github/actions/legacy_unit_tests.sh):
+[5_testunit_linux-win.yml](../../.github/workflows/5_testunit_linux-win.yml) runs the `manager`, `agent` and `winagent` targets on Ubuntu 24.04, as matrix legs that a `detect-targets` job picks from the pull request's diff (a manager-only change runs only the `manager` leg; an agent-only change runs the `agent` and `winagent` legs; a change to the CI plumbing runs all three). Each leg installs its dependencies ([install_build_deps](../../.github/actions/install_build_deps/action.yml), CMake 3.31.6 through [reinstall_cmake](../../.github/actions/reinstall_cmake/action.yml) and GCC 14.3 under `/opt/gcc-14`), then runs the functions in [legacy_unit_tests.sh](../../.github/actions/legacy_unit_tests.sh):
 
 1. `make clean-deps`, `rm -rf src/external/* src/unit_tests/build` and `make clean`;
 2. `make deps TARGET=<target>` and `make TARGET=<target> TEST=1` (half the CPUs);

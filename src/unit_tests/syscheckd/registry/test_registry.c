@@ -2407,7 +2407,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_default_type, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_no_config, setup_test_hashes, teardown_test_hashes),
 
-        /* UTF-16 to UTF-8 conversion tests for Issue #33371 */
+        /* UTF-16 to UTF-8 conversion tests */
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_utf16_conversion, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_utf16_multi_sz, setup_test_hashes, teardown_test_hashes),
         cmocka_unit_test(test_fim_registry_convert_value_for_diff_reg_sz_success),

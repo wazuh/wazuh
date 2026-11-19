@@ -16,9 +16,9 @@
 /// even when fed the same bytes:
 ///   deriveEnrollKey(password)        "WAZUH-ENROLL-JWT-KEY"   -- the shared key (no `kid`); manager
 ///                                    (PasswordKeySource) and agent (EnrollSigner) share it, so the two
-///                                    can never drift. Unchanged since #38582.
-///   deriveEnrollTokenKey(secret16)   "WAZUH-ENROLL-TOKEN-KEY" -- `kid` = enrollment token id (#38993)
-///   deriveReenrollKey(secret32)      "WAZUH-REENROLL-KEY"     -- `kid` = canonical agent id (#38993)
+///                                    can never drift. Unchanged since the profile was introduced.
+///   deriveEnrollTokenKey(secret16)   "WAZUH-ENROLL-TOKEN-KEY" -- `kid` = enrollment token id
+///   deriveReenrollKey(secret32)      "WAZUH-REENROLL-KEY"     -- `kid` = canonical agent id
 /// authd replicates the token derivation in C (src/shared/src/enrollment_token.c); the frozen vectors
 /// (testVectors.hpp, jwt_vectors.json) pin that both sides agree byte for byte.
 /// OpenSSL 3 EVP_KDF; header-only like the rest of this library.

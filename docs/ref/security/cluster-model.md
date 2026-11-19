@@ -91,8 +91,8 @@ one half round trip before `hello`. Each side reads exactly 37 bytes before it
 parses any frame; anything that follows them in the same read belongs to the
 first frame. A wrong magic or version closes the connection with error 3063.
 That is what a peer running an older protocol sees, in either direction, instead
-of a decryption error. A peer that never sends a preamble is closed by the
-existing pre-handshake deadline (`PRE_AUTH_PAYLOAD_TIMEOUT`).
+of a decryption error. A worker that never sends a preamble is closed by the
+master's handshake deadline (`PRE_AUTH_PAYLOAD_TIMEOUT`, 30 s).
 
 ### Key schedule
 
@@ -112,9 +112,9 @@ discarded with the connection; every reconnect derives new ones.
 
 ### Message format
 
-The outer header is unchanged (`!2I12s`, 20 bytes), and so are message
-division into `request_chunk` pieces and the `d` flag. What changes is the
-plaintext that each Fernet token encrypts:
+The outer header is the plaintext `!2I12s` (20 bytes), and a long message is
+divided into `request_chunk` pieces flagged `d`. The payload is sealed with its
+own header inside each Fernet token:
 
 ```text
 token = Fernet(k_send).encrypt( pack("!QI11s", seq, counter, command) || payload )
@@ -132,7 +132,7 @@ token = Fernet(k_send).encrypt( pack("!QI11s", seq, counter, command) || payload
   header: the 12-byte field up to its first space, without the padding and the
   division flag. It is NUL-padded to 11 bytes, the longest command allowed.
 
-On receipt the message is decrypted once, after reassembly as today, with
+On receipt the message is decrypted once, after reassembly, with
 `k_recv`. It is accepted only if all three inner fields match: `seq` equals the
 expected number, `counter` equals the outer counter, and `command` equals the
 command parsed from the header of the message's last frame. Then the expected
@@ -180,12 +180,15 @@ constants of `framework/wazuh/core/cluster/`, not configuration:
 | Connections in total | 1024 | the new connection is closed (`Too many total connections`) |
 | Time to complete the handshake (`hello` accepted) | 30 s | the connection is closed (`handshake not completed within deadline`) |
 | Time to receive a payload whose header has arrived | 30 s | the connection is closed (`incomplete message payload not received within deadline`) |
-| Connections closed by the master before the handshake, in a row (worker side) | 3, then every 30 | WARNING on the worker suggesting a cluster key mismatch (`The master closed the connection before the handshake completed <n> times in a row`); the count spans the reconnections and restarts after a completed handshake or a restart of clusterd |
 | Size of one message, divided or not | 256 MiB | error 3050 |
 | Divided messages being received at once | 10 | error 3051 |
 | Size of one frame of a divided message (senders use 5 MiB) | 10 MiB | error 3063, the connection is closed |
 | Divided message before the peer proved the key (a whole message of it decrypted) | none accepted | error 3063, the connection is closed at the first frame header |
 | Size of any frame before the peer proved the key (the hello is a single small frame) | 10 MiB | error 3063, the connection is closed at the frame header |
+
+The master gives no reason to a peer whose messages it cannot decrypt: what a worker with a different
+cluster key logs, and the warning it raises after repeated refusals, are described in the cluster
+reference's [How it works](../modules/cluster/README.md#how-it-works).
 
 ### What this does not provide
 

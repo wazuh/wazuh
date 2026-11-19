@@ -23,12 +23,12 @@ typedef struct agent_flags_t {
 } agent_flags_t;
 
 typedef struct agent_server {
-    char * rip;      ///< Host parsed out of <endpoint> (#38624): IPv4, hostname, or a bare
+    char * rip;      ///< Host parsed out of <endpoint>: IPv4, hostname, or a bare
                      ///< (unbracketed) IPv6 literal, which ModuleConfig::baseUrl() re-brackets.
     int port;        ///< Port from <endpoint>, or DEFAULT_HTTPS_REMOTE_PORT when omitted.
-    char * endpoint; ///< Reverse-proxy path prefix from <endpoint> (#38492/#38624), normalized
+    char * endpoint; ///< Reverse-proxy path prefix from <endpoint>, normalized
                      ///< (no leading/trailing '/'); NULL when the operator opted out of a prefix.
-    uint32_t scope_id; ///< IPv6 zone id from <endpoint> (#38624), resolved through
+    uint32_t scope_id; ///< IPv6 zone id from <endpoint>, resolved through
                        ///< if_nametoindex(); 0 when the address carries no zone.
     int max_retries; ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
     int retry_interval; ///< Time interval between connection attempts (legacy TCP; removed with the cutover).
@@ -56,7 +56,7 @@ typedef enum agent_verify_mode_t {
     AGENT_VERIFY_UNSET = 4   ///< Not yet resolved; never valid past ClientConf() returning.
 } agent_verify_mode_t;
 
-/* Agent-side HTTPS transport TLS settings: the <agent><ssl> block (FR10 / #37702 §10). */
+/* Agent-side HTTPS transport TLS settings: the <agent><ssl> block. */
 typedef struct agent_ssl {
     char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
     char * key;                     ///< <key>: optional client (mTLS) private key.
@@ -75,7 +75,7 @@ typedef struct agent_ssl {
 } agent_ssl;
 
 /**
- * @brief <agent><batch>: the /stateless send-rate model (#37835).
+ * @brief <agent><batch>: the /stateless send-rate model.
  *
  * Replaces the leaky bucket's <client_buffer><events_per_second> pacing for
  * stateless traffic. Zero means "unset": the transport module applies its own
@@ -88,7 +88,7 @@ typedef struct agent_batch {
 
 /**
  * @brief <agent><stats_report> / <agent><config_report>: the periodic push of
- *        a whole-agent snapshot to /stats and /config (#37843).
+ *        a whole-agent snapshot to /stats and /config.
  *
  * The two are independent. <stats_report> stays off until <enabled> says
  * otherwise; <config_report> ships on by default (ClientConf() sets it before
@@ -106,7 +106,7 @@ typedef struct agent_report {
 } agent_report;
 
 /**
- * @brief <agent><enrollment>: agent-side enrollment over HTTPS (#38465).
+ * @brief <agent><enrollment>: agent-side enrollment over HTTPS.
  *
  * By-value, like agent_ssl/agent_server -- unlike the pointer-based
  * w_enrollment_ctx it replaces, which made this block untestable (the config
@@ -117,7 +117,7 @@ typedef struct agent_report {
  * and `agent_certificate_path`/`agent_key_path`/`server_ca_path`/`ssl_cipher`
  * (superseded by <agent><ssl>) are gone: enrollment dials the same target
  * and presents the same TLS material as every other HTTPS endpoint, by
- * design (#38465 explicit scope decision) -- there is no second connection
+ * design -- there is no second connection
  * to configure. `recv_timeout` is gone too: it timed the legacy raw SSL
  * socket read (enrollment_op.c), which no longer exists; the /enroll request
  * timeout comes from the shared hc_config_t, like every other endpoint's.
@@ -199,7 +199,7 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
 void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch);
 
 /**
- * @brief Parse a combined <endpoint>-grammar value into host, port, prefix and scope id (#38624).
+ * @brief Parse a combined <endpoint>-grammar value into host, port, prefix and scope id.
  *
  * Exposed (client-config.c's own <agent><manager> parser is its only other caller) so
  * token_bootstrap.c can split an enrollment token's `adr` field into the same hc_config_t
@@ -221,12 +221,12 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
                            bool *port_present, char *endpoint, size_t endpoint_size,
                            uint32_t *scope_id);
 
-/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
+/* Validation bound for <endpoint>, well under hc_config_t::server_endpoint's
  * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
  * that passed validation here. */
 #define AGENT_SERVER_ENDPOINT_MAX_LEN 128
 
-/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
+/* Bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
  * 256) for the same reason. */
 #define AGENT_SERVER_HOST_MAX_LEN 255
 
@@ -256,7 +256,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent *logr);
  * rewrites ossec.conf) or is left unconfigured.
  *
  * This does NOT mirror remoted's compiled default, which is "/" -- endpoints served
- * unprefixed (remote-config.h, #38491). What makes the two agree is the shipped
+ * unprefixed (remote-config.h). What makes the two agree is the shipped
  * etc/wazuh-manager.conf writing <global_prefix>/wazuh-manager/</global_prefix>
  * explicitly, so a packaged manager and a default agent match. A manager whose
  * operator deletes that line serves unprefixed and will 404 a default agent, which

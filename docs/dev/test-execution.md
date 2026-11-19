@@ -43,21 +43,23 @@ cmake --build src/build --target <module>_utest
 cd src/build && ctest --output-on-failure --no-tests=error -L <label>
 ```
 
-Before that, CI's dependency step (`.github/actions/build_external_deps/action.yml`) also builds `shared_modules/http-request`, `shared_modules/keystore` and the FlatBuffers schemas as standalone projects; copy its commands when a module target does not link. Each workflow then builds the module once with coverage flags and once with AddressSanitizer (`.github/actions/build_target_cpp/action.yml`, `.github/actions/test_cpp/action.yml`), and most also fail under a line-coverage floor (`.github/actions/coverage_cpp/action.yml`, 90% unless the workflow sets another `threshold`).
+Before that, CI's dependency step (`.github/actions/build_external_deps/action.yml`) also builds `shared_modules/http-request`, `shared_modules/keystore` and the FlatBuffers schemas as standalone projects; copy its commands when a module target does not link. Each workflow then builds the module once with coverage flags and once with AddressSanitizer (`.github/actions/build_target_cpp/action.yml`, `.github/actions/test_cpp/action.yml`), and most also fail under a coverage floor on lines and functions (`.github/actions/coverage_cpp/action.yml`, 90% unless the workflow sets another `threshold`; `validate_function_coverage: false` drops the functions check).
 
-The label is not always the target name: each workflow (`5_testunit_<module>.yml`) names the target it builds and the label it runs. `--no-tests=error` makes a label that matches no test fail instead of passing. A `UNIT_TEST=ON` tree builds no daemon executables, and the option stays in the CMake cache until it is set back to `OFF`.
+The label is not always the target name: each workflow (`5_testunit_<module>.yml`) names the target it builds and the label it runs. `--no-tests=error` makes a label that matches no test fail instead of passing. A `UNIT_TEST=ON` tree builds no daemon executables, and the option stays in the CMake cache until it is set back to `OFF`, together with the engine options it forces (see [Build Options](build-sources.md#build-options)).
 
 ### Engine
 
 ```bash
 make -C src deps TARGET=manager
 make -C src TARGET=manager ENGINE_TEST=1
-cd src/build/engine && ctest --output-on-failure
+cd src/build/engine && ctest --output-on-failure --no-tests=error
 ```
+
+`--no-tests=error` makes a tree configured without the engine tests fail instead of passing having run nothing, as CI does.
 
 Do not combine `ENGINE_TEST` with `TEST`: with any `TEST` value set, the engine test option is skipped and the engine tests are built with AddressSanitizer forced on.
 
-CI (`5_testunit_engine.yml`) builds the engine tests with AddressSanitizer by editing the default of the `ENGINE_ENABLE_ASAN` option in `src/engine/CMakeLists.txt` to `ON` before configuring. To run the same tests locally, configure once with `-DENGINE_ENABLE_ASAN=ON` (`cmake -S src -B src/build -DENGINE_ENABLE_ASAN=ON`) and build again; like the other options it stays in the cache until set back to `OFF`.
+CI (`5_testunit_engine.yml`) builds the engine tests with AddressSanitizer by editing the default of the `ENGINE_ENABLE_ASAN` option in `src/engine/CMakeLists.txt` to `ON` before configuring. To run the same tests locally, configure once with `-DENGINE_ENABLE_ASAN=ON` (`cmake -S src -B src/build -DENGINE_ENABLE_ASAN=ON`) and build again; like the other options it stays in the cache until set back to `OFF`, and a release tree that keeps it is still hardened, with an AddressSanitizer engine.
 
 ### Framework and API
 

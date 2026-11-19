@@ -108,7 +108,7 @@ static void on_task(const char *task_id, const char *task_type, const char *payl
     printf("[+%7ld ms] >> TASK received: id=%s type=%s payload=%s\n", elapsed_ms(), task_id,
            task_type, payload_json);
     fflush(stdout);
-    /* All four contract types are fire-and-forget (#37733): nothing is
+    /* All four contract types are fire-and-forget: nothing is
      * reported back; a real agent routes them to their handlers here. */
 }
 
@@ -170,7 +170,7 @@ static void nap(int ms)
     nanosleep(&t, NULL);
 }
 
-/* Reporter collectors (#37843): run on the module's reporter thread, return a
+/* Reporter collectors: run on the module's reporter thread, return a
  * malloc'd JSON object the module owns (frees) after stamping identity. A real
  * agent aggregates every module's stats/config here. */
 static char *collect_stats(void *user_data)
@@ -276,7 +276,7 @@ static bool extract_json_string_field(const char *json, const char *field, char 
     return true;
 }
 
-/* First-boot enrollment (#38465): hc_enroll() is deliberately handle-less --
+/* First-boot enrollment: hc_enroll() is deliberately handle-less --
  * it must work before hc_create() ever runs, exactly like this. password may
  * be empty (open mode: no Authorization header, mock_manager.py must be
  * started without --enroll-password for this to succeed). On success, fills
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
     sigaction(SIGTERM, &action, NULL);
 
     const uint16_t server_port = (uint16_t)atoi(argv[2]);
-    /* #38465: "enroll" or "enroll:<password>" in the key_hex slot drives a
+    /* "enroll" or "enroll:<password>" in the key_hex slot drives a
      * real first-boot POST /enroll against mock_manager.py instead of using a
      * pre-provisioned key, exactly as agentd's try_enroll_to_server() does
      * before hc_create() ever runs. */
@@ -453,7 +453,7 @@ int main(int argc, char **argv)
     hc_notify_now(handle);
 
     /* Let the control loop deliver the fire-and-forget task batch (notify
-     * #2); nothing is reported back (#37733: no response message). Then the
+     * #2); nothing is reported back (no response message). Then the
      * mock flips its config at #3 (-> /download), its settings at #5 (-> an
      * in-place startup refresh) and rotates its key at #7 (-> 401, one
      * re-enroll callback, hc_set_agent_identity recovery). */

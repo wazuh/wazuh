@@ -239,7 +239,7 @@ def test_validation_json_ok(value, format):
         ("7a", "timeframe"),
         ("s1", "timeframe"),
         ("asdfASD0101!", "wazuh_key"),
-        # alphanumeric but not hex (#38582 follow-up: keys accepted by the API must decode as hex)
+        # alphanumeric but not hex (keys accepted by the API must decode as hex)
         ("asdfASD0101", "wazuh_key"),
         ("g" * 64, "wazuh_key"),
         ("2019-02-26-test", "date"),

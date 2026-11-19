@@ -87,8 +87,8 @@ The debug level of the running engine is therefore set only by `analysisd.debug`
 
 After launching it, `start` waits up to 10 seconds for the PID file
 `/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid`, then sends `GET /status` to
-`/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second, up to 120 times, until the engine answers
-with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` up to 120 times, one second apart and each with a 5-second
+timeout, until the engine answers with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
 `wazuh-manager-analysisd died during the readiness check.` or
 `wazuh-manager-analysisd did not respond correctly after 120 attempts.` (the last one also kills the engine), and
 the start fails with `wazuh-manager-analysisd did not start correctly.`
@@ -239,7 +239,7 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
 | `analysisd.geo_sync_interval` | `WAZUH_GEO_SYNC_INTERVAL` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` | both |
-| `analysisd.geo_db_path` | `WAZUH_GEO_DB_PATH` | Directory holding the downloaded GeoIP (MaxMind) database. Only read while GeoIP sync is enabled. | `/var/wazuh-manager/data/mmdb` | both |
+| `analysisd.geo_db_path` | `WAZUH_GEO_DB_PATH` | Directory holding the downloaded GeoIP (MaxMind) database. Only read while GeoIP sync is enabled. The package installs the default directory `root:wazuh-manager` `0770` (the engine writes into it through the group) and the database files in it `wazuh-manager:wazuh-manager` `0640`. | `/var/wazuh-manager/data/mmdb` | both |
 | `analysisd.geo_manifest_url` | `WAZUH_GEO_MANIFEST_URL` | URL of the GeoIP database manifest used to check for updates. | `https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json` | both |
 | `analysisd.geo_download_timeout` | `WAZUH_GEO_DOWNLOAD_TIMEOUT` | Timeout in milliseconds for downloading the GeoIP database. | `60000` (60 s) | both |
 
@@ -302,7 +302,7 @@ file.
 |:--|:--|:--|:--:|:--:|
 | `analysisd.server_api_socket` | `WAZUH_SERVER_API_SOCKET` | Unix domain socket path for the engine's HTTP API server. Do not change it on a manager: the readiness probe of `wazuh-manager-control start` and the Server API use the fixed default path. | `/var/wazuh-manager/queue/sockets/engine-api-http.sock` | both |
 | `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | Tester timeout in milliseconds: how long a test run (`/logtest`, `/_internal/tester/run/post`) waits for the event's result before answering `400` with `Timeout waiting for ingestTest`. Allowed range: `1` to `2147483647`, else the engine fails to start. | `5000` (5 s) | both |
-| `analysisd.server_api_payload_max_bytes` | `WAZUH_SERVER_API_PAYLOAD_MAX_BYTES` | Maximum request payload size in bytes for the engine's HTTP API server. `0` means unlimited. A negative value is clamped to `0` with a warning. | `0` | both |
+| `analysisd.server_api_payload_max_bytes` | `WAZUH_SERVER_API_PAYLOAD_MAX_BYTES` | Maximum request payload size in bytes for the engine's HTTP API server. `0` means unlimited. A negative value is accepted by `wazuh-manager-analysisd -t` (and `wazuh-manager-control check`) without any message; at start the engine clamps it to `0` and logs `Invalid configuration: analysisd.server_api_payload_max_bytes is negative (<value>). Setting to 0 (unlimited).` as a WARNING. | `0` | both |
 | `analysisd.server_enriched_events_socket` | `WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` | Unix domain socket path for the engine's enriched-events HTTP ingest server (`POST /events/enriched`). Do not change it on a manager: `wazuh-manager-remoted` and the vulnerability scanner send events to the fixed default path. | `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` | both |
 | `analysisd.server_enable_event_processing` | `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | Master switch for the event-processing pipeline (indexer connector, stream loggers, raw-event indexer, remote-conf and CM/IOC sync, dumper, enriched-events HTTP server). With `false` the manager starts but processes no events: there is no event dumper (its routes answer `500`), and `GET /status` — which the readiness probe of `wazuh-manager-control start` uses — answers with no `spaces` or `ioc` entries and `ready: false`. | `true` | both |
 | `analysisd.api_resource_payload_max_bytes` | `WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE` | Maximum payload size in bytes accepted for a resource in the engine's HTTP API server. | `50000` | both |
@@ -450,9 +450,13 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
   `wazuh-manager-internal-options.conf`. `wazuh-manager-control check` (or `wazuh-manager-analysisd -t`) reports the
   same error without stopping the manager.
 - A permission error naming a path under `/var/wazuh-manager` — a path the engine writes at runtime (`data/store`,
-  `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<channel>/`) is not owned by `wazuh-manager`,
-  typically because it was created by hand as `root`. With the daemon stopped, restore it with
-  `chown -R wazuh-manager:wazuh-manager <path>` (see [Process privileges](#process-privileges)).
+  `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<channel>/`) is not writable by `wazuh-manager`,
+  typically because it, or something inside it, was created by hand as `root`. With the daemon stopped, restore it
+  with `chown -R wazuh-manager:wazuh-manager <path>` (see [Process privileges](#process-privileges)). `data/mmdb`
+  is the exception: the directory itself is `root:wazuh-manager` `0770` by design (the engine writes into it through
+  the group) and only its contents are `wazuh-manager:wazuh-manager`, so restore it with
+  `chown wazuh-manager:wazuh-manager /var/wazuh-manager/data/mmdb/*`, then
+  `chown root:wazuh-manager /var/wazuh-manager/data/mmdb` and `chmod 0770 /var/wazuh-manager/data/mmdb`.
 
 ### Events being dropped
 

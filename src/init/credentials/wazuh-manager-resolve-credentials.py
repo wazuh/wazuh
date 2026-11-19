@@ -608,7 +608,7 @@ class Lookup:
 
 def conf_spec(paths: Paths) -> Spec:
     """<CONF> is root:<service group>, group-writable by design (authd, remoted and the API write there), never
-    world-writable. Being group-writable is the documented exception to rule 1 of #40339: nothing in it is
+    world-writable. Being group-writable is the documented exception to rule 1: nothing in it is
     trusted unless it is root's and meets its own specification. The group must keep rwx: without them the daemons
     can neither write there nor reach certs/ (0770 as installed; 1770 passes too)."""
     return Spec("dir", uid=0, gid=paths.service_gid(), forbid=0o002, require=0o070)
@@ -1146,6 +1146,9 @@ def indexer_names(paths: Paths, document: dict, conf_file: str, report: Report) 
     """indexer.ssl.*, resolved against the home as the connector resolves them. The certificate and its key are set
     together or not at all (both empty: no client certificate)."""
     certs = os.path.join(paths.conf, CERTS_DIR)
+    # The fallback is the generated configuration's CA list (wodle-indexer.manager.template), used only when the
+    # configuration could not be read, as default_tls_names() does. It is deliberately not the schema's default
+    # ([]): a readable configuration always carries the key, since wazuh-manager-conf dump applies that default.
     listed = [value for value in _conf_value(document, "indexer.ssl.certificate_authorities", list,
                                              [os.path.join(certs, INDEXER_CA)]) if isinstance(value, str) and value]
     cas = []

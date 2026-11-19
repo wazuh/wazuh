@@ -15,7 +15,7 @@
  * @file certificateDescriptor.hpp
  * @brief One certificate as an operator reads it: names, validity window, identity. What `GET /tls`
  *        on the admin socket says about the listener's leaf and about every certificate of the CA
- *        bundle (issue #39320), and the one place the `x509-sha256:` identity the rotation runbook
+ *        bundle, and the one place the `x509-sha256:` identity the rotation runbook
  *        types is computed.
  *
  * Pure functions of an X509: no I/O, no clock, no logger, so the tests drive them from certificates

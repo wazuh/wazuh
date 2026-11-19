@@ -55,7 +55,7 @@
  * boundary and never parses what follows. */
 #define CERT_BODY "-----BEGIN CERTIFICATE-----\nQUJD\n-----END CERTIFICATE-----\n"
 
-/* rename() is the instant the trust store is committed, and #39321's crash-atomicity
+/* rename() is the instant the trust store is committed, and the crash-atomicity
  * criterion is a claim about exactly that instant: everything before it is invisible, and the
  * call itself either happens whole or not at all. The kernel guarantees the second half. The
  * first half is this code's responsibility, and wrapping rename() is what makes it assertable
@@ -377,7 +377,7 @@ static void test_install_leaves_the_store_untouched_until_the_commit(void **stat
  * manager, and so unable to reach /cacerts to repair itself.
  *
  * EPERM is not hypothetical here. The anchor lives in a sticky directory, where renaming over a
- * file owned by someone else is refused -- which is what a pre-#39321 install looks like until
+ * file owned by someone else is refused -- which is what an older install looks like until
  * its ownership is repaired. */
 static void test_install_leaves_the_store_intact_when_the_commit_fails(void **state) {
     (void) state;
@@ -465,7 +465,7 @@ static void test_interrupted_installs_do_not_accumulate_staging_files(void **sta
     assert_int_equal(w_ca_publication_read(STORE_PATH), 1789000012LL);
 }
 
-/* etc/certs is group-writable and sticky since #39321, so the staging file's name is a path the
+/* etc/certs is group-writable and sticky now, so the staging file's name is a path the
  * runtime user can plant something at. A symlink there must never be followed: opening it with
  * "w" would truncate whatever it points at, with the agent's privileges, on a schedule the
  * manager controls.

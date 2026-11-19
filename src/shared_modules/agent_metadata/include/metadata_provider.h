@@ -53,7 +53,7 @@ typedef struct
  * function (e.g. a periodic metadata-gathering cycle) typically read its own copy of the
  * offset from a separate, possibly-stale source (a DB snapshot) some time before this call
  * actually runs, and blindly writing it here could clobber a fresher value
- * metadata_provider_update_vd_feed_offset() published in the meantime (#39543). Callers may
+ * metadata_provider_update_vd_feed_offset() published in the meantime. Callers may
  * still populate this field in the struct they pass -- it is simply ignored.
  *
  * @param metadata Pointer to metadata structure to store

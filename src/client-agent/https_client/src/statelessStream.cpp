@@ -17,7 +17,7 @@
 
 namespace
 {
-    /// Builds the H metadata line that opens every /stateless body (#37732).
+    /// Builds the H metadata line that opens every /stateless body.
     ///
     /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
     /// validatePayloadIdentity() reads exactly that pointer to cross-check the
@@ -157,7 +157,7 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
 {
     // Paused on a dead credential (401): the accumulator keeps filling (the
     // drop-newest ladder still applies) but nothing is sent until a new key
-    // clears the pause (#37828).
+    // clears the pause.
     if (m_authGate.paused())
     {
         return std::chrono::milliseconds {m_config.batchIntervalMs};
@@ -166,7 +166,7 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
     // Back-pressure (503/Retry-After) is honored inside RetrySender, which
     // waits and retries on this stream's own thread; the next flush is thus
     // naturally deferred while the accumulator (fed by the intake thread) keeps
-    // absorbing (D5/D6).
+    // absorbing.
     if (flushDue(force))
     {
         const auto outcome = flushOnce(waiter, m_config.requestTimeoutMs, m_config.statelessMaxAttempts);
@@ -185,10 +185,10 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
         {
             // The manager keeps refusing this credential's signature/shape/timestamp/etc (not
             // unknown_agent -- that pauses everything via the AuthGate above instead).
-            // RetrySender deliberately returns this outcome unescalated on every call (#39064),
+            // RetrySender deliberately returns this outcome unescalated on every call,
             // so nothing else slows this stream's own retry cadence: back off on the Backoff
             // this stream's RetrySender already resets on success, instead of hammering the
-            // manager on the plain batch interval (#39601).
+            // manager on the plain batch interval.
             return m_backoff.next();
         }
 
@@ -294,7 +294,7 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
 
     if (outcome == OutcomeClass::PayloadTooLarge)
     {
-        // Split + resend smaller, never drop (#37835). The only exception: a
+        // Split + resend smaller, never drop. The only exception: a
         // lone event that already 413s cannot be split, so drop and count it.
         if (snapshot.eventCount == 1)
         {
@@ -337,7 +337,7 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
         if (identityChanged)
         {
             // hc_set_agent_identity() landed while this batch was in flight (the
-            // re-enroll path, #38465): the retry was signed by the new agent but
+            // re-enroll path): the retry was signed by the new agent but
             // the H line still named the old one, which the manager rejects with
             // 400 (PayloadAgentMismatch). The events are fine -- keep them and let
             // the next flush re-stamp the header with the live id.

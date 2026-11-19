@@ -80,13 +80,13 @@ struct SyncModuleResult
     /// Not a general license to gate durable state on this field alone: a marker that records
     /// "the manager has this agent's data" should normally be gated on something that proves a
     /// round trip, such as @ref IAgentSyncProtocol::notifyDataClean -- gating it on a bare sync
-    /// result instead is what lets an untransmitted cycle be recorded as a completed one (#38899).
+    /// result instead is what lets an untransmitted cycle be recorded as a completed one.
     ///
     /// FIM's and syscollector's own first-sync-completed markers are a deliberately accepted,
     /// narrower exception: they gate on `success && sentAnything` together, not on this field
     /// alone. `success` covers the whole DELTA session for the cycle (it turns false the moment
     /// any block fails), so the pair proves "every block this cycle sent actually round-tripped",
-    /// closing the exact #38899 symptom (an empty-queue cycle no longer masquerades as a
+    /// closing the exact symptom (an empty-queue cycle no longer masquerades as a
     /// completed sync). It is still not the same claim as "the manager has the agent's complete
     /// current state": a first sync bigger than AgentSyncProtocol's own
     /// per-cycle block limit (agent.sync_max_blocks_per_cycle) leaves items queued for a later cycle, and

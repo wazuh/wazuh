@@ -92,7 +92,7 @@ TEST(CacertsClientTest, ConfiguredEndpointPrefixIsFoldedIntoTheTarget)
     client.fetch();
 }
 
-/* The refresh leg of #39321 uses this same class with the agent's real posture, because the
+/* The CA-rotation refresh leg uses this same class with the agent's real posture, because the
  * contract forbids ever fetching a replacement bundle over an unverified connection. What the
  * class must NOT do is re-derive the decision: a verifying config reaches the wire verified. */
 TEST(CacertsClientTest, AVerifiedConfigIsSentVerified)

@@ -211,7 +211,7 @@ namespace
 
     TEST(MiddlewareAddress, RejectionIsReportedAsInvalidSignatureNotUnknownAgent)
     {
-        // Same status and message as every credential failure; the public class (issue #38993) is
+        // Same status and message as every credential failure; the public class is
         // `invalid_signature` -- the agent must not re-enroll over an address rule -- and never
         // `unknown_agent`, which would tell it to.
         const auto denied = publicErrorFor(AuthError::AddressNotAllowed);
@@ -444,7 +444,7 @@ namespace
 
     // --- public mapping ----------------------------------------------------------------------------
 
-    // Issue #38993 (T10): every credential failure is a 401 with the same generic message, and the
+    // Every credential failure is a 401 with the same generic message, and the
     // wire names its public CLASS -- the body's `code` and the RFC 6750 challenge's
     // error_description -- which is coarser than AuthError: the agent-actionable answer, not the
     // diagnosis (that stays in the log and in remoted.auth.reject.*).

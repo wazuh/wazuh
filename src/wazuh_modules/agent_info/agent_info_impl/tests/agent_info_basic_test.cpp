@@ -291,7 +291,7 @@ TEST_F(AgentInfoImplTest, ConstructorThrowsWhenQueryModuleFunctionIsNull)
     std::invalid_argument);
 }
 
-// Regression test for the clean-stop ordering fix (issues #37629 / #37714).
+// Regression test for the clean-stop ordering fix.
 //
 // stop() is signal-only: it must return promptly even with the run loop mid-iteration,
 // so the shutdown loop can reach the sibling modules this loop may be waiting on.

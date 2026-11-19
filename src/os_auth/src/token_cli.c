@@ -8,7 +8,7 @@
  * Foundation.
  */
 
-/* The utility mode of wazuh-manager-authd for enrollment tokens (issue #38993): a client of the
+/* The utility mode of wazuh-manager-authd for enrollment tokens: a client of the
  * running daemon's auth.sock verbs (token_create / token_list / token_revoke, local-server.c), plus
  * an offline --show-token over the shared codec. See token_cli.h for the contract with main().
  */

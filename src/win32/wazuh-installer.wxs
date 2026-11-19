@@ -196,7 +196,7 @@
             <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
 
-            <!-- #39064: the fleet-wide enrollment password has no role in 5.0. Every upgrade, not
+            <!-- The fleet-wide enrollment password has no role in 5.0. Every upgrade, not
                  only one from prior to 5.x: an early 5.0 install could still have written one. -->
             <Custom Action="SetCustomActionDataRemoveFleetPassword" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="RemoveFleetEnrollmentPassword" After="InstallFiles">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>

@@ -28,7 +28,7 @@
  * cannot read an agent's groups from here, and until now that failure was only ever observable
  * one request at a time, after an agent had already been served badly. A node in that state kept
  * answering its own liveness probe with `200` and stayed in a load balancer's rotation
- * indefinitely (issue #39429).
+ * indefinitely.
  *
  * Liveness is not enough to detect it, and that is the distinction this route draws. The process
  * being up says nothing about the database being usable: `wazuh-manager-db` can be running,

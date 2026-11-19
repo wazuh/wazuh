@@ -74,7 +74,7 @@ static void w_agentd_keys_init (void) {
             w_enroll_status_t status;
 
             while ((status = try_enroll_to_server()) != W_ENROLL_OK) {
-                /* #39064: not every rejection is worth another attempt. A credential the manager
+                /* Not every rejection is worth another attempt. A credential the manager
                  * judged and refused will be refused again, for ever, at the top of the ramp --
                  * which is the lab loop this issue exists to remove. w_enrollment_apply_policy()
                  * owns that decision (and shreds a dead re-enrollment secret on the way), so this
@@ -87,10 +87,10 @@ static void w_agentd_keys_init (void) {
                                 "is stopping. See the error above for what has to change.");
                 }
 
-                /* #38465: a single unconditional target now (agt->server[0] via
+                /* A single unconditional target now (agt->server[0] via
                  * the shared transport config), so the dual-target loop this
                  * used to have (a configured enrollment server, then each
-                 * agt->server[rc] in turn) is gone -- see plan.md's D4/Q6. The
+                 * agt->server[rc] in turn) is gone. The
                  * retry ramp itself is unchanged and still shared with
                  * bridge_reenroll_thread()'s loop, both reading the values ClientConf() resolved. */
                 if (delay_sleep < agt->enrollment.retry_max) {
@@ -118,7 +118,7 @@ static void w_agentd_keys_init (void) {
     mdebug1("Using AES as encryption method.");
 }
 
-/* Orchestrates one enrollment attempt over HTTPS (#38465): agentd builds the
+/* Orchestrates one enrollment attempt over HTTPS: agentd builds the
  * request, sends it via the shared transport, and parses the response --
  * enrollment.c and https_client_bridge.c never call each other directly.
  * There is no per-attempt server selection any more (unlike the legacy
@@ -175,7 +175,7 @@ w_enroll_status_t try_enroll_to_server(void) {
  * and bridge_on_control_response() from the module's dispatcher thread, and
  * bridge_reenroll_thread() from the re-enrollment worker -- this local mutex serializes
  * those call sites within agentd itself. metadata_provider_update() additionally serializes
- * internally against every writer within its own process now too (#39543 review follow-up),
+ * internally against every writer within its own process now too,
  * so a concurrent write from agent-info (a different process) can no longer tear the record
  * either.
  *

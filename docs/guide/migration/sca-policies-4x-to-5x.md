@@ -16,7 +16,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 | MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object with the keys `tactic`, `technique`, and `subtechnique`, each an object holding parallel `id` and `name` arrays. | Move MITRE values out of `compliance` and into `mitre`, as `id`/`name` arrays. A key whose value is not an object (for example a plain array of IDs) is dropped from the check's results without a warning. |
 | Numeric comparisons | Some stock 4.x rules used forms such as `compare =`, `compare =>`, `compare =<`, missing spaces, or an escaped `\!=`. | Numeric expressions require `compare <`, `compare <=`, `compare ==`, `compare !=`, `compare >=`, or `compare >` followed by a value. Spaces are required around `compare` and the operator. | Normalize every `n:` expression and make sure the regex captures the numeric value in a group. |
 | Process rules | `p:` values were matched against the process name reported by `ps` (on Linux, the kernel task name), case-insensitively, with `r:`, `n:`, `!` and `&&` support. A `->` part was kept in the value, so such a rule never matched. | `p:` values are matched against the process name, its executable path or argv[0], and on Linux the kernel task name, with the same case-insensitive and pattern behavior. A `->` part makes the rule invalid. | Remove any `->` part from process rules. |
-| SCA configuration | Some 4.x configurations included `<skip_nfs>`. | `<skip_nfs>` is deprecated for SCA and is logged at INFO level as no longer available. SCA synchronization settings are available under `<synchronization>`. | Remove `<skip_nfs>` from SCA configuration. Keep or tune synchronization settings as needed. |
+| SCA configuration | The default configuration included `<skip_nfs>`; `<day>`, `<wday>` and `<time>` scheduled the scan. | All four are ignored. `<skip_nfs>` logs `The <skip_nfs> option is deprecated and no longer has any effect.` at INFO; `<day>`, `<wday>` and `<time>` log the same message as a WARNING, and the scan runs every `<interval>`. SCA synchronization settings are available under `<synchronization>`. | Remove these options from the SCA configuration and express the schedule with `<interval>`. Keep or tune synchronization settings as needed. |
 | Stock policies | Stock policy files under `ruleset/sca` were package-managed. | Upgrades replace stock policies. Some legacy stock policies were removed, including HP-UX, RHEL 5, SLES/SUSE 11, and Solaris/SunOS policies. | Do not customize files under `ruleset/sca`. Keep custom policies in a separate managed path and reference them explicitly. |
 
 ## Step-by-step migration
@@ -25,7 +25,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
    Include policies referenced from `<sca><policies>` and any policy copied into a shared agent group. Check both local agent policies and manager-distributed policies.
 
-   Watch for `<policy>` entries that reference legacy filenames ending in `_rcl.yml`, such as `cis_rhel7_linux_rcl.yml`, `system_audit_rcl.yml`, or `win_audit_rcl.yml`. These are old policy names carried over from earlier Wazuh versions, not 5.x SCA policy files. The SCA configuration reader keeps a built-in list of these filenames and silently skips them, without logging a warning, if they are still referenced in `<sca><policies>`, so remove or replace those references. Note that only the exact filenames in that built-in list are skipped silently; any other missing or unresolved policy path instead logs a `File '...' not found.` warning when the configuration is read, or `Policy file does not exist: ...` when the module loads its policies.
+   Watch for `<policy>` entries that reference legacy filenames ending in `_rcl.yml`, such as `cis_rhel7_linux_rcl.yml`, `system_audit_rcl.yml`, or `win_audit_rcl.yml`. These are old policy names carried over from earlier Wazuh versions, not 5.x SCA policy files. The SCA configuration reader keeps a built-in list of these filenames and silently skips a `<policy>` entry, without logging a warning, when its value is one of them written as a bare filename, so remove or replace those references. Only a bare filename is matched: the same name with a directory in front (`ruleset/sca/cis_rhel7_linux_rcl.yml`), like any other missing or unresolved policy path, logs a `File '...' not found.` warning when the configuration is read, or `Policy file does not exist: ...` when the module loads its policies.
 
 2. Back up policies and move custom files out of package-managed paths.
 
@@ -109,7 +109,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 6. Remove deprecated SCA configuration.
 
-   Delete `<skip_nfs>` from the SCA module configuration. If you explicitly configure synchronization, keep it under `<synchronization>` as shown in step 2.
+   Delete `<skip_nfs>`, `<day>`, `<wday>` and `<time>` from the SCA module configuration. If you explicitly configure synchronization, keep it under `<synchronization>` as shown in step 2.
 
 7. Validate the migrated policy on Wazuh 5.x.
 
@@ -196,5 +196,5 @@ checks:
 - All regex and numeric expressions compile as PCRE2.
 - `compliance` is an object with supported keys only.
 - MITRE metadata is under `mitre`, as `id`/`name` arrays per category.
-- `<skip_nfs>` is removed from SCA configuration.
+- `<skip_nfs>`, `<day>`, `<wday>` and `<time>` are removed from SCA configuration.
 - A non-production 5.x validation scan completes without SCA parsing or PCRE2 errors.

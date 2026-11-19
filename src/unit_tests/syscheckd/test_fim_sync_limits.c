@@ -553,7 +553,7 @@ static void test_process_pending_sync_updates_files(void **state) {
     OSList_Destroy(pending);
 }
 
-/* Tests (#36134) for drop_orphaned_promoted_documents() */
+/* Tests for drop_orphaned_promoted_documents() */
 
 // All paths still resolve to a configuration → array is unchanged.
 static void test_drop_orphaned_promoted_documents_no_orphans(void **state) {
@@ -787,7 +787,7 @@ int main(void) {
         // Helper function tests
         cmocka_unit_test(test_add_pending_sync_item_success),
         cmocka_unit_test(test_process_pending_sync_updates_files),
-        // drop_orphaned_promoted_documents tests (#36134)
+        // drop_orphaned_promoted_documents tests
         cmocka_unit_test(test_drop_orphaned_promoted_documents_no_orphans),
         cmocka_unit_test(test_drop_orphaned_promoted_documents_some_orphans),
         cmocka_unit_test(test_drop_orphaned_promoted_documents_all_orphans),

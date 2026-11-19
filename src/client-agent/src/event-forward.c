@@ -29,7 +29,7 @@ void *EventForward()
 
     while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
         /* Everything on this queue is a stateless event: sync sessions go
-         * straight to the module's STREAM intake (#37836), so there is no 's'
+         * straight to the module's STREAM intake, so there is no 's'
          * frame class left to route. The accumulator owns the back-pressure
          * (drop-newest), so a full one drops this frame and the loop goes on. */
         w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);

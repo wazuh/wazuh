@@ -61,7 +61,7 @@ UUID in `wazuh.event.id`. There is no rootcheck-specific object: the detection i
     "original": "Ending rootcheck scan.",
     "dataset": "wazuh.rootcheck",
     "kind": "event",
-    "type": ["info", "end"],
+    "type": ["end"],
     "category": ["host"],
     "outcome": "success"
   },
@@ -72,7 +72,7 @@ UUID in `wazuh.event.id`. There is no rootcheck-specific object: the detection i
 }
 ```
 
-`Starting rootcheck scan.` produces the same shape, with an `event.type` that marks the start.
+`Starting rootcheck scan.` produces the same shape, with `"type": ["start"]`.
 
 ## Detection example: file in /dev
 
@@ -87,7 +87,7 @@ The detection fields the engine adds to the common structure above (`wazuh.*` om
     "original": "File '/dev/e2etest' present on /dev. Possible hidden file.",
     "dataset": "wazuh.rootcheck",
     "kind": "event",
-    "type": ["info", "indicator"],
+    "type": ["info"],
     "category": ["malware", "file"],
     "action": "malware-detected"
   },
@@ -136,7 +136,7 @@ event keeps the whole message in `event.original`. The ECS classification (`even
 | `event.original` | Full detection message | `File '/dev/e2etest' present on /dev. …` |
 | `event.dataset` | Dataset | `wazuh.rootcheck` |
 | `event.kind` | Event kind | `event` |
-| `event.type` | `["info", "indicator"]` for a detection; the scan markers carry `info` and the scan phase (`end` for the end marker) | `["info", "indicator"]` |
+| `event.type` | `["info"]` for a detection; `["start"]` and `["end"]` for the scan markers | `["info"]` |
 | `event.category` | Categories | `["malware", "file"]` |
 | `threat.indicator.type` | Kind of indicator | `file` |
 | `file.path`, `file.owner`, `process.pid`, `destination.port`, `observer.ingress.interface.name` | Detection-specific, see the table above | `/dev/e2etest` |
@@ -210,9 +210,9 @@ wazuh.protocol.location: rootcheck
 `event.original` is stored but not indexed, so a query on it never matches (or errors): filter on the fields the
 decoder extracts instead (see [Messages and the fields extracted from them](#messages-and-the-fields-extracted-from-them)).
 
-**Exclude scan messages** (detections carry `indicator` in `event.type`, the scan markers do not):
+**Exclude scan messages** (the scan markers carry `start` or `end` in `event.type`, detections carry `info`):
 ```
-wazuh.protocol.location: rootcheck AND event.type: indicator
+wazuh.protocol.location: rootcheck AND event.type: info
 ```
 
 **Specific detection types:**
@@ -285,7 +285,7 @@ Use ignore patterns in configuration:
 </rootcheck>
 ```
 
-Or create custom rules to reduce severity of known false positives.
+The manager's engine has no rules: it only decodes the event, which is indexed whatever it contains. Severity and alerting come from the Wazuh Indexer's Security Analytics detectors, which evaluate indexed events against Sigma-based detection rules; tune or exclude a known false positive in those rules, or filter it out in the dashboard.
 
 ## Working with JSON Alerts
 

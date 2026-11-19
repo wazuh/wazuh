@@ -6,7 +6,7 @@ The `agent_info` module uses a local SQLite database to persist agent metadata, 
 
 ## Tables
 
-> **`db_status_field_dm`:** the tables synchronized through DBSync (`agent_metadata` and `agent_groups` here) carry one more column in the live database, `db_status_field_dm INTEGER DEFAULT 1`, added by DBSync at start. It is internal bookkeeping for change detection and is not part of the DDL shown below.
+> **`db_status_field_dm`:** every table the module writes through a DBSync transaction (`agent_metadata`, `agent_groups`, `db_metadata` and `vd_feed_state`; not `tasks`) carries one more column in the live database, `db_status_field_dm INTEGER DEFAULT 1`, added by DBSync the first time a transaction opens on that table. It is internal bookkeeping for change detection and is not part of the DDL shown below.
 
 ### `agent_metadata`
 

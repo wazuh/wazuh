@@ -51,12 +51,12 @@ namespace remoted::endpoints::cacerts
             return remoted::http::describeReadFailure(failure, remoted::http::CaCertificateSource::kMaxBytes);
         }
 
-        // Every 200 says which generation the bundle it carries is published under (RF-4): the
+        // Every 200 says which generation the bundle it carries is published under: the
         // block's publication once every guard vouched for it, and 0 for a bundle that was never
         // stamped or that no guard would vouch for -- 0 being exactly what an agent reads as "this
         // manager has no published bundle". Only the generation travels: no hash of the file or of
         // its certificates is ever put in a header, because an unverified bootstrap caller must not
-        // be handed anything it could mistake for proof (CA-9). The 404 and the 503 do not come
+        // be handed anything it could mistake for proof. The 404 and the 503 do not come
         // through here, so they carry no such header at all.
         remoted::http::HttpResponse pemResponse(std::string pem, std::int64_t publication)
         {
@@ -102,7 +102,7 @@ namespace remoted::endpoints::cacerts
             auto snapshot = snapshotOf ? snapshotOf() : remoted::http::CaCertificateSnapshot {};
 
             // Before ANY of the three answers below, never after: whatever that read noticed about
-            // the bundle's publication is logged and persisted here (issue #39319). It runs on the
+            // the bundle's publication is logged and persisted here. It runs on the
             // 404 and 503 paths too -- a bundle that stopped being servable, or one nothing chains
             // to, is
             // exactly when an operator needs the publication line -- and it takes no lock of the
@@ -147,7 +147,7 @@ namespace remoted::endpoints::cacerts
 
             if (snapshot.lastReadFailure.has_value())
             {
-                // The source kept the last good bundle through a read that failed (issue #39318):
+                // The source kept the last good bundle through a read that failed:
                 // answer from it -- 200 or 503, exactly as that bundle deserves -- and say so, once
                 // per window, so the operator learns about the file before the agents do.
                 if (const auto throttle = throttles->readFailure.record())

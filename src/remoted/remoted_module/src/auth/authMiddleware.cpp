@@ -104,7 +104,7 @@ namespace remoted::auth
 
     namespace
     {
-        // The 401 classes and their RFC 6750 §3 challenges (issue #38993, T10). One literal per class:
+        // The 401 classes and their RFC 6750 §3 challenges. One literal per class:
         // errorResponseFor() renders them on every rejected request and must stay allocation-free.
         constexpr const char* kAuthMessage = "Invalid client authentication";
         constexpr const char* kUnknownAgent = "unknown_agent";
@@ -156,13 +156,13 @@ namespace remoted::auth
             case AuthError::MalformedAuthorization:
                 return {401, kAuthMessage, kInvalidRequest, kChallengeInvalidRequest};
 
-            // The three agent-actionable classes of the document's §2.10.
+            // The three agent-actionable classes.
             case AuthError::UnknownAgent: return {401, kAuthMessage, kUnknownAgent, kChallengeUnknownAgent};
             case AuthError::StaleToken: return {401, kAuthMessage, kStaleToken, kChallengeStaleToken};
             // Everything that says "this credential does not work for this identity": a bad MAC, a
             // token that is not a wazuh-agent+jwt, a `sub`/`iss` naming another agent, a peer address
             // the entry does not allow, an entry whose key does not decode. None of them is fixed by
-            // re-enrolling, so they share the class that tells the agent not to (T10).
+            // re-enrolling, so they share the class that tells the agent not to.
             case AuthError::InvalidSignature:
             case AuthError::InvalidToken:
             case AuthError::IdentityMismatch:
@@ -172,7 +172,7 @@ namespace remoted::auth
             case AuthError::EnrollmentKeyUnavailable:
                 return {401, kAuthMessage, kEnrollmentKeyUnavailable, kChallengeBare};
 
-            // /enroll's enrollment-token states (issue #38993).
+            // /enroll's enrollment-token states.
             case AuthError::TokenUnknown: return {401, kAuthMessage, kTokenUnknown, kChallengeTokenUnknown};
             case AuthError::TokenExpired: return {401, kAuthMessage, kTokenExpired, kChallengeTokenExpired};
             case AuthError::TokenRevoked: return {401, kAuthMessage, kTokenRevoked, kChallengeTokenRevoked};

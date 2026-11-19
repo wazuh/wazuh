@@ -77,7 +77,7 @@ inline std::string fakeManagerSettingsHash(const std::string& startupBody)
 }
 
 /**
- * @brief Shapes the CA-rotation surface of the fake manager (#39321): what every notify
+ * @brief Shapes the CA-rotation surface of the fake manager: what every notify
  *        advertises, and what GET /cacerts answers with.
  *
  * Grouped rather than spread over yet more positional constructor arguments, because these
@@ -87,7 +87,7 @@ inline std::string fakeManagerSettingsHash(const std::string& startupBody)
 struct CaBundleOptions
 {
     /// Reported top-level as "ca_generation" on every notify. 0 -> the field is omitted
-    /// entirely, which is exactly what a manager predating #39321 looks like on the wire.
+    /// entirely, which is exactly what a manager predating CA rotation looks like on the wire.
     std::int64_t advertisedGeneration {0};
     /// Sent as the Wazuh-CA-Generation response header on /cacerts. 0 -> no header at all,
     /// one of rule 5.3's discard reasons. Set it different from advertisedGeneration to
@@ -129,16 +129,16 @@ class FakeManager final
         /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
         /// serves nothing else, so the client must relay the token verbatim.
         /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
-        /// 413, so the client must split and resend smaller (#37835).
+        /// 413, so the client must split and resend smaller.
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
         /// notifies the server verifies ONLY against rotatedKeyHex, so the old
-        /// key starts getting 401 (#37828 re-enrollment).
+        /// key starts getting 401 (re-enrollment).
         /// statefulHoldFile set: /stateful does not answer while that path
         /// exists, so a test can hold one session open and watch the other
         /// endpoints carry on. The server forks and shares no memory with the
-        /// test, so the file is the release signal (#37836 isolation).
+        /// test, so the file is the release signal (isolation).
         /// vdFeedOffset > 0: every notify additionally reports top-level
-        /// "vd_feed_offset":N (issue #38204), so a real client detects the
+        /// "vd_feed_offset":N, so a real client detects the
         /// offset and issues a real /scan/vd request over the wire.
         /// scanVdRejectFirstNAttempts > 0: the first that many /scan/vd
         /// requests are answered 409 with {"error":"version_mismatch",
@@ -146,7 +146,7 @@ class FakeManager final
         /// a manager node still on an older feed); subsequent attempts get 200.
         /// enrollPassword empty (default): /enroll accepts any request whose
         /// protocol-version header is present, no signature required (open
-        /// mode, #38465 Q3). Non-empty: /enroll additionally requires an
+        /// mode). Non-empty: /enroll additionally requires an
         /// `Authorization: Bearer <wazuh-enroll+jwt>` header that verifies with the
         /// manager's own shared JwtEnrollTokenVerifier against the HKDF key of
         /// this password (jwt/enrollKeyDerivation.hpp -- the same construction
@@ -156,7 +156,7 @@ class FakeManager final
         /// with a generic error body instead of running the real flow, so a
         /// test can drive the 400/401/403/409/500/503 mapping in
         /// w_enrollment_process_response() without needing five fake servers.
-        /// caBundle: the CA-rotation surface (#39321) -- what notify advertises
+        /// caBundle: the CA-rotation surface -- what notify advertises
         /// and what /cacerts serves. Defaults leave both routes exactly as the
         /// bootstrap suite has always seen them.
         FakeManager(uint16_t port,
@@ -197,7 +197,7 @@ class FakeManager final
             m_cacertsPem = makeCacertsPem(m_caBundle.bundleCertificates);
 
             // The listener's own certificate is minted here too, and for the same reason:
-            // #39321's refresh travels over a VERIFIED connection, so a test driving it has
+            // The CA refresh travels over a VERIFIED connection, so a test driving it has
             // to hold the anchor to write into ca_path. Generating it inside runServer()
             // would leave those bytes in a process this one cannot read. It is CA:TRUE with
             // SAN IP:127.0.0.1 so it can act as its own trust anchor under HC_VERIFY_FULL;
@@ -314,7 +314,7 @@ class FakeManager final
 
             // The key every endpoint verifies against: after the configured
             // notify count the server rotates to the new key, so requests
-            // minted with the old key start getting 401 (#37828).
+            // minted with the old key start getting 401.
             const int rotateAfter = m_rotateKeyAfterNotifies;
             const std::string rotatedKey = m_rotatedKeyHex;
             const auto verify =
@@ -323,7 +323,7 @@ class FakeManager final
                 const bool rotated = rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
                 return verifyBearer(rotated ? rotatedKey : keyHex, target, request);
             };
-            // #39040/#39064: a 5.0 manager names the authentication failure class on every 401,
+            // A 5.0 manager names the authentication failure class on every 401,
             // and the agent's auth gate escalates to re-enrollment on `unknown_agent` alone -- a
             // bodyless 401 reads as Unclassified, which means "retry and keep the identity". A test
             // that rotates the key is modelling a manager that no longer holds this identity's
@@ -544,7 +544,7 @@ class FakeManager final
                     return;
                 }
 
-                // Chunked transfer on purpose (#37733 5.2.3): the client's
+                // Chunked transfer on purpose: the client's
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
                 response.set_chunked_content_provider("application/octet-stream",
@@ -637,7 +637,7 @@ class FakeManager final
                     *controlTypes += ";";
                 }
 
-                // #37733 5.1: startup answers the handshake metadata (v1 or
+                // Startup answers the handshake metadata (v1 or
                 // v2 after the settings flip); notify reports agent.groups
                 // and the settings_hash of the CURRENT startup body; response
                 // answers a plain ok.
@@ -672,7 +672,7 @@ class FakeManager final
                     const std::string vdFeedOffsetField =
                         vdFeedOffset > 0 ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset) : std::string {};
                     // Top-level, beside settings_hash rather than nested under agent -- where
-                    // #39321 rule 3 puts it, and where ControlStream reads it from.
+                    // the CA-rotation contract puts it, and where ControlStream reads it from.
                     const std::string caGenerationField =
                         caBundle.advertisedGeneration > 0
                         ? R"(,"ca_generation":)" + std::to_string(caBundle.advertisedGeneration)
@@ -719,9 +719,9 @@ class FakeManager final
                 response.set_content(*lastNotifyBody, "text/plain");
             });
 
-            // POST /scan/vd (issue #38204): the manager-side contract this
+            // POST /scan/vd: the manager-side contract this
             // workspace's agent-side code is built against (manager itself out
-            // of scope here -- see plan.md). Rejects the first
+            // of scope here). Rejects the first
             // scanVdRejectFirstNAttempts attempts with 409 + current_version =
             // vdFeedOffset+1 (simulating a load-balanced hit on a node ALREADY
             // ahead of the one that answered notify -- genuinely higher, so a
@@ -777,9 +777,9 @@ class FakeManager final
                 response.set_content(std::to_string(scanVdAttempts->load()), "text/plain");
             });
 
-            // POST /enroll (#38465): the agent-side contract this workspace's
-            // agent-side code is built against (manager itself, #38438, out of
-            // scope here -- see plan.md). Records the last body via
+            // POST /enroll: the agent-side contract this workspace's
+            // agent-side code is built against (manager itself, out of
+            // scope here). Records the last body via
             // /peek/enroll, same peek idiom as the other endpoints.
             const std::string enrollPassword = m_enrollPassword;
             const int enrollForcedStatus = m_enrollForcedStatus;
@@ -896,7 +896,7 @@ class FakeManager final
             // is the client's job (prefixedTarget(), see cacertsClient.hpp), covered at
             // the unit level, not here.
             //
-            // Under #39321 this route is also the refresh path, so it additionally stamps
+            // Under CA rotation this route is also the refresh path, so it additionally stamps
             // Wazuh-CA-Generation and can be made to fail: caBundle.forcedStatus drives the
             // 404/503/429 cases, optionally only for the first few attempts so a test can
             // watch the agent come back and succeed.
@@ -1001,7 +1001,7 @@ class FakeManager final
 
         // Self-signed cert + key generated in-process (no CLI, no files). Most of the suite
         // runs HC_VERIFY_NONE and needs only that the cert exist; CA:TRUE and SAN
-        // IP:127.0.0.1 are here so the #39321 refresh suite can verify against it for real.
+        // IP:127.0.0.1 are here so the CA refresh suite can verify against it for real.
         static void makeSelfSigned(EVP_PKEY** keyOut, X509** certOut)
         {
             EVP_PKEY* pkey = EVP_RSA_gen(2048);

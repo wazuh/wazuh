@@ -943,7 +943,7 @@ void fim_checker(const char *path,
      * that mutex to release the database contexts in a controlled order. Pruning the walk here
      * (every recursion step returns at once) frees the mutex in about a second instead of the
      * minutes a large tree takes, so the stop does not have to choose between waiting for the scan
-     * and leaving the databases open (issue #38212). Placed after the checks above that do not read
+     * and leaving the databases open. Placed after the checks above that do not read
      * evt_data: fim_db_process_missing_entry() reaches this with a NULL event, and returns at the
      * configuration lookup before anything dereferences it. */
     if (evt_data->mode == FIM_SCHEDULED && fim_shutdown_process_on()) {
@@ -1200,7 +1200,7 @@ void fim_file(const char *path,
 
         // Sync flag updates deferred like the scan path (file.c's fim_file_scan()) so the
         // DELETED branch's later read of the sync column (run_check.c) is not stuck at its
-        // insert-time default of 0 for files first seen outside a scheduled scan (#38522).
+        // insert-time default of 0 for files first seen outside a scheduled scan.
         // Unlike fim_file_scan(), this path doesn't need syscheck.fim_scan_mutex: both
         // fim_db_file_update() above and fim_db_set_sync_flag() (inside
         // process_pending_sync_updates() below) go through FIMDB::updateItem(), which already
@@ -1379,8 +1379,7 @@ void fim_handle_delete_by_path(const char *path,
  * spurious WARNING (the row is gone by then) and leave the counter permanently inflated.
  *
  * Must run after transaction_callback() has finished populating both lists for this scan, and
- * before either cleanup_failed_fim_files() or process_pending_sync_updates() consumes them —
- * see #38608.
+ * before either cleanup_failed_fim_files() or process_pending_sync_updates() consumes them.
  *
  * @param failed_paths OSList of char* paths that failed schema validation this scan.
  * @param pending_sync_updates OSList of pending_sync_item_t queued for a sync flag update;
@@ -1519,7 +1518,7 @@ void fim_file_scan() {
 
     /* Re-checked now that this thread owns the mutex: the shutdown teardown may have released the
      * database context while this scan was waiting, and a transaction started against it would run
-     * on freed memory (issue #38212). */
+     * on freed memory. */
     if (fim_shutdown_process_on()) {
         mdebug1("Shutdown in progress: skipping the file scan.");
         w_mutex_unlock(&syscheck.fim_scan_mutex);
@@ -1577,7 +1576,7 @@ void fim_file_scan() {
     } else {
         fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
-        // #38608: see reconcile_failed_paths_with_pending_sync()'s doc comment for why this
+        // See reconcile_failed_paths_with_pending_sync()'s doc comment for why this
         // has to run before either list is consumed below.
         reconcile_failed_paths_with_pending_sync(failed_paths, pending_sync_updates);
 

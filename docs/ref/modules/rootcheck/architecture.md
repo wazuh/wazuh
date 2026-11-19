@@ -394,7 +394,7 @@ Nothing is stored in a manager database, unlike pre-5.0 versions.
 | **Trojan Signatures** | rootkit_trojans.txt checked | Signature checking removed |
 | **Policy Checking** | system_audit_*.txt processed | Policy checking removed |
 | **State** | Stateful (stored history) | Stateless (alerts only) |
-| **API Endpoints** | Full CRUD operations | Limited (no historical data) |
+| **API Endpoints** | Full CRUD operations | None (the server API has no rootcheck endpoint) |
 
 ### Rationale for Changes
 
@@ -405,13 +405,13 @@ Nothing is stored in a manager database, unlike pre-5.0 versions.
 
 ### Migration Impact
 
-- Existing rootcheck queries against API return limited data
+- The server API has no rootcheck endpoint: a pre-5.0 `/rootcheck` request answers 404. Query the `wazuh-events-v5-security` data stream in the indexer instead
 - Historical rootcheck data not migrated
 - Configuration remains compatible (deprecated options ignored)
 
 ## Internal Options
 
-Advanced tuning via `/var/ossec/etc/internal_options.conf`:
+Advanced tuning via `/var/ossec/etc/local_internal_options.conf` (Linux/Unix agents). The agent reads this file before `internal_options.conf`, which holds the shipped defaults and is replaced by an upgrade:
 
 ```
 # rootcheck.sleep
@@ -432,7 +432,7 @@ rootcheck.max_pid=32768
 Enable verbose logging:
 
 ```bash
-# Add to internal_options.conf. Rootcheck runs inside wazuh-syscheckd, so its
+# Add to local_internal_options.conf. Rootcheck runs inside wazuh-syscheckd, so its
 # debug level is syscheck.debug (0-2); there is no rootcheck.debug key.
 syscheck.debug=2
 

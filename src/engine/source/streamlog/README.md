@@ -142,7 +142,7 @@ streamlog/
 
 | Header | Audience | Depends on |
 |--------|----------|------------|
-| `interface/streamlog/ilogger.hpp` | **Any consumer**: `RotationConfig`, `WriterEvent`, `ILogManager` | `<filesystem>`, `<memory>`, `<string>`, `<string_view>` |
+| `interface/streamlog/ilogger.hpp` | **Any consumer**: `RotationConfig`, `WriterEvent`, `ILogManager` | `<filesystem>`, `<memory>`, `<stdexcept>`, `<string>`, `<string_view>` |
 | `include/streamlog/logger.hpp` | **Owner / configurator**: `LogManager` | `ilogger.hpp`, `store::IStore`, `scheduler::IScheduler` |
 | `src/channel.hpp` | **Library-internal only** | `logger.hpp`, `base/logging`, `fastqueue`, `store`, `scheduler` |
 
@@ -308,14 +308,7 @@ Deferring cleanup to post-compression avoids a race where the still-uncompressed
 
 ### Configuration
 
-Set via `wazuh-manager-internal-options.conf` or environment variables:
-
-| Key | Env var | Default |
-|-----|---------|---------|
-| `analysisd.streamlog_max_files` | `WAZUH_STREAMLOG_MAX_FILES` | `90` |
-| `analysisd.streamlog_max_accumulated_size` | `WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE` | `21474836480` (20 GiB) |
-
-Set either to `0` to disable that specific policy.
+`main.cpp` fills `maxFiles` and `maxAccumulatedSize` from the internal options `analysisd.streamlog_max_files` and `analysisd.streamlog_max_accumulated_size` (defaults in `conf.cpp`); keys, env vars and defaults are documented once, in the engine [configuration reference](../../../../docs/ref/modules/engine/configuration.md#stream-log). Set either to `0` to disable that specific policy.
 
 ---
 

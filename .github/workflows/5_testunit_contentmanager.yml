@@ -97,7 +97,7 @@ jobs:
         with:
           submodules: recursive
 
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4
@@ -121,8 +121,8 @@ jobs:
           test: "true"
           asan: "false"
 
-      # Valgrind off: test_cpp's valgrind branch wraps only the ctest driver (no
-      # --trace-children=yes, test_cpp/action.yml), so it never instrumented the test binary.
+      # Valgrind off (when enabled, test_cpp's valgrind branch traces the test binaries with
+      # --trace-children=yes).
       # The ASAN job below is the memory gate.
       - name: Content manager - Run tests
         uses: ./.github/actions/test_cpp
@@ -174,7 +174,7 @@ jobs:
         with:
           submodules: recursive
 
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4

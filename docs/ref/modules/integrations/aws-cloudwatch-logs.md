@@ -52,7 +52,7 @@ The module options (`disabled`, `interval`, `run_on_start`, `skip_on_error`) are
 | `regions` | No | — | Comma-separated list of regions. When unset, the region of the profile in `~/.aws/config` of the user running the agent is used (`default` when no `aws_profile` is set), and failing that every region. An invalid region stops the run. |
 | `aws_profile` | No | — | Profile from the agent host's AWS credentials and config files used to authenticate. |
 | `iam_role_arn` | No | — | ARN of an IAM role to assume. |
-| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. |
+| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. Checked by the `aws-s3` script at each run, not when the configuration is loaded (see [AWS values checked only at run time](README.md#aws-values-checked-only-at-run-time)). |
 | `access_key` | No | — | AWS access key ID. Deprecated since 4.4: a warning is logged. |
 | `secret_key` | No | — | AWS secret access key. Deprecated since 4.4: a warning is logged. |
 | `aws_account_id` | No | — | AWS account ID. Cannot be empty when given. |

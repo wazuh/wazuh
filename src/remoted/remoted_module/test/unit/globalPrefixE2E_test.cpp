@@ -1,5 +1,5 @@
 /*
- * Wazuh remoted module - global endpoint prefix end-to-end test (issue #38491)
+ * Wazuh remoted module - global endpoint prefix end-to-end test
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it

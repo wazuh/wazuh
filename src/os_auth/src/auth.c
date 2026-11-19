@@ -107,8 +107,8 @@ static purge_reserved_t *purge_reserved = NULL;
  * The reservation is taken BEFORE the request reads the agent's re-enrollment secret from wazuh-db,
  * which is the only placement that closes the window: the row keeps saying the old secret until the
  * writer updates it, so a second request that got as far as reading it would verify the same bearer
- * and rotate again, handing out two credentials for one agent and invalidating the first (issue
- * #39078, H02). It is released when the writer persists the transition -- never when the write
+ * and rotate again, handing out two credentials for one agent and invalidating the first.
+ * It is released when the writer persists the transition -- never when the write
  * FAILS, because then the old secret is still what the database holds, and letting it authorise
  * another rotation is the very hole this closes.
  *
@@ -160,7 +160,7 @@ static reenroll_slot_t *reenroll_slot_locked(const char *agent_id) {
 /// checked against the eight-digit id rule, and the reservation is taken before the agent is known
 /// to exist -- so a caller that reaches POST /enroll can otherwise seed a slot per invented id,
 /// costing memory that never comes back and a longer linear search under this mutex for every
-/// legitimate rotation after it (issue #39078, review round).
+/// legitimate rotation after it.
 static void reenroll_slot_discard_locked(reenroll_slot_t *victim) {
     reenroll_slot_t **prev;
     reenroll_slot_t *slot;
@@ -472,7 +472,7 @@ void add_insert(const keyentry *entry, const char *group, const char *reenroll_s
     insert_tail = &node->next;
 }
 
-// Append a rotated key to the insertion queue (re-enrollment, #38993)
+// Append a rotated key to the insertion queue (re-enrollment)
 void add_rotate(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
     struct keynode *node;
 

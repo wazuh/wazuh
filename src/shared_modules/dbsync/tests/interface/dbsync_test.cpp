@@ -935,7 +935,7 @@ TEST_F(DBSyncTest, syncRowIgnoreFieldsWithExplicitVersionChange)
 }
 
 // A partial row must not become an INSERT when the row is missing: the columns it omits
-// may be NOT NULL. This is FIM's sync-flag update failing on file_entry.checksum (#37993).
+// may be NOT NULL. This is FIM's sync-flag update failing on file_entry.checksum.
 TEST_F(DBSyncTest, syncRowUpdateOnlyDoesNotInsertMissingRow)
 {
     const auto sql{ "CREATE TABLE file_entry(`path` TEXT, `checksum` TEXT NOT NULL, `sync` INTEGER DEFAULT 0, PRIMARY KEY (`path`)) WITHOUT ROWID;"};

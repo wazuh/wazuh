@@ -53,7 +53,7 @@ Operator view (spaces, the synchronization process, the `analysisd.cm_sync_*` an
 
 To prevent partial policy downloads when the wazuh-indexer is mid-update, `CMSync` implements **consumer validation via Point-In-Time (PIT)**. The `ready`/`running`/`failed` status is the one the Content Manager plugin of the wazuh-indexer writes in `.wazuh-cti-consumers`.
 
-0. **Pre-flight check** (spaces with a consumer id — only `standard`, `cti:catalog:consumer:ruleset`, by default): `isConsumerReadyForSync()` reads the consumer document directly and requires `status == "ready"` and `local_offset != 0` (at least one CTI update loaded). Otherwise the space is skipped with `Synchronization skipped for space '…' because wazuh-indexer consumer '…' is not ready for sync`.
+0. **Pre-flight check** (spaces with a consumer id — only `standard`, `cti:catalog:consumer:ruleset`, by default): `isConsumerReadyForSync()` reads the consumer document directly and requires `status == "ready"` and `local_offset != 0` (at least one CTI update loaded). Otherwise the space is skipped with `Synchronization skipped for space '…' because wazuh-indexer consumer '…' is not ready for sync (might be updating or no data)` (`INFO`).
    - A missing consumer document, or a missing `.wazuh-cti-consumers` index (404 `index_not_found_exception`, a fresh indexer), also counts as "not ready", without retries.
    - Any other error (transport, 429, 5xx, 401/403) is raised, so `executeWithRetry()` retries it and the real cause is logged.
 
@@ -126,7 +126,7 @@ An indexer node that stops during a download is one of these retried failures. D
 
 ### Early Retry While a Space Has No Route
 
-When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. The retry interval is capped at `analysisd.cm_sync_interval`. "Disabled policy" is the last successful policy read (`disabled_by_policy` in the state document), so a cycle that fails before reading the policy does not change it. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
+When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. The retry interval is capped at `analysisd.cm_sync_interval`. "Disabled policy" is the last successful policy read (`disabled_by_policy` in the state document; a policy with no integrations or no root decoder reads as disabled, case 1), so a cycle that fails before reading the policy does not change it. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
 
 ### Logging of a Missing Space
 

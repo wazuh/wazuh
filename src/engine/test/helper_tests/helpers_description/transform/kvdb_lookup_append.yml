@@ -24,7 +24,14 @@ metadata:
     - A number of arguments other than 2.
 
     Notes:
+    - During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+      no-op.
     - Unlike `array_append`, a target that is not an array is replaced instead of failing the operation.
+    - The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+      loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+      name ships with the manager, so the results shown hold only for that test content.
+    - An example described as rejected at build time processes no event: its asset does not build, and the
+      result shown is that build failure (an Outcome Event only repeats the input).
   group: kvdb
   fails_when:
     - Any key is not present in the KVDB.

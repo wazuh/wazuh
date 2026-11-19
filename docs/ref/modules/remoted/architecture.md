@@ -137,9 +137,11 @@ Neither sends `Retry-After`: this is server-side load-shedding, not rate limitin
 agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
 
-Rate limiting is the third, separate bound: two token buckets, one in front of `POST /enroll` and
-one in front of `GET /cacerts`, the two routes whose callers hold no credential to gate them with. It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
-allowance — and answers `429` with a `Retry-After` —
+Rate limiting is the third, separate bound, on the two routes whose callers hold no credential to
+gate them with: `POST /enroll`, with two token buckets of the same configured rate (one for
+enrollments whose credential remoted verified, one for the rest), and `GET /cacerts`, with one. It
+caps how fast each route is served at all — a node-wide ceiling, not a per-caller allowance — and
+answers `429` with a `Retry-After` —
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes).
 
 ### Local admin plane

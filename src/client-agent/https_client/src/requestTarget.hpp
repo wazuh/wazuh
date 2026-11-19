@@ -13,7 +13,7 @@
 
 #include <string>
 
-/// #38492/#38491: joins the configured reverse-proxy path segment (already
+/// Joins the configured reverse-proxy path segment (already
 /// normalized -- no leading/trailing '/', e.g. "wazuh-manager") with a bare
 /// endpoint target (e.g. "/stateless") into "/wazuh-manager/stateless".
 /// Returns target unchanged when endpoint is empty.

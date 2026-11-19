@@ -1219,7 +1219,7 @@ static size_t wm_sys_query_handler(void* data, char* query, char** output)
         return 0;
     }
 
-    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the
+    // Mirrors FIM: when synchronization is disabled the sync worker never runs, so the
     // syscollector first-sync marker is never set. Report it as completed so agent-info coordination
     // is not blocked deferring on a first sync that will never happen. The startup priming path calls
     // syscollector_query_ptr directly and is unaffected by this handler-level short-circuit.

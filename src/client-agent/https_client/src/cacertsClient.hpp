@@ -28,7 +28,7 @@
  *
  *  - The enrollment-token bootstrap, UNVERIFIED by definition -- there is no trust anchor yet to
  *    verify against, so the body is pin-compared before anything is trusted.
- *  - The publication refresh (#39321), VERIFIED against the anchor the agent already holds. The
+ *  - The publication refresh, VERIFIED against the anchor the agent already holds. The
  *    contract requires it: "never with verification disabled, and never via a bootstrap-style
  *    unverified fetch".
  *

@@ -47,7 +47,7 @@ def parse_yaml_to_documentation(parser: Parser):
             test.get('arguments', {}),
             test['should_pass'],
             test['description'],
-            test.get('target_field', None),
+            test.get('target_field', NO_TARGET_FIELD),
             test.get('expected')) for test in tests]
 
     documentation = Documentation(

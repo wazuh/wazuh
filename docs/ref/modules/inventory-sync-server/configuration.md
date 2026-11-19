@@ -44,7 +44,8 @@ These options and the `<indexer>` block are read once, when `wazuh-manager-modul
 takes effect at the next restart (or `reload`, which restarts modulesd). The module also reads
 [`vulnerability-detection.enabled`](../vulnerability-scanner/configuration.md#enabled) at start, to
 know whether this node's scanner will serve the vulnerability-detection lane before the scanner
-itself has started.
+itself has started. On a cluster worker that value is the master's, not the local file's: the worker
+follows the master's `vulnerability-detection.enabled`.
 
 The shipped `wazuh-manager-internal-options.conf` carries only a comment header: every default below
 is compiled into the module. Add a line only to override one. The file is never overwritten during

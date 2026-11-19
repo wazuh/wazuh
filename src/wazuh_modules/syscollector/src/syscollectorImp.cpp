@@ -851,7 +851,7 @@ void Syscollector::releaseResources()
     // down. The scan and sync workers are joined before this runs (see wm_syscollector.c),
     // but query() is not: wcom's dispatcher is detached and agent-info polls it in-process,
     // so without this lock a get_first_sync_completed query could be inside
-    // getMetadataValue() dereferencing m_spDBSync while it is reset here (issue #38203).
+    // getMetadataValue() dereferencing m_spDBSync while it is reset here.
     std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
 
     // Join any in-flight asynchronous flush before the members it uses are reset.
@@ -2590,7 +2590,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
 
     bool overallSuccess = true;
-    // #38601: true once either protocol actually opened a session with queued items. Success
+    // True once either protocol actually opened a session with queued items. Success
     // alone cannot say that -- an empty queue reports success without contacting the manager.
     bool sentAnything = false;
     // True when either protocol stopped at its per-cycle block limit, so entries may still be
@@ -2732,7 +2732,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             {
                 // Same grace as the managerNotReady/localTransportUnavailable branch above: a
                 // session rejection (e.g. 409 version_mismatch -- most commonly a fresh agent's
-                // first VD sync racing the manager's already-loaded feed, #39543) is ordinarily
+                // first VD sync racing the manager's already-loaded feed) is ordinarily
                 // transient -- the agent's locally known feed offset is expected to catch up
                 // within a cycle or two -- so it is not yet worth a WARNING.
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred" +
@@ -2768,8 +2768,8 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
     // its place -- two consecutive bools, so nothing would fail to compile.
     // Designated, not positional: this struct grows from more than one direction and its new
     // fields are all bool, so a list written for the old shape still compiles and binds values
-    // to the wrong members. That is not hypothetical -- rebasing onto #38656, which appends
-    // sessionSkipped, left this list one short and fed sentAnything into sessionSkipped, which
+    // to the wrong members. That is not hypothetical -- a positional list written before
+    // sessionSkipped was appended is one short and fed sentAnything into sessionSkipped, which
     // is the field persistVDFirstSyncIfNeeded() gates the VD first-sync marker on.
     return {.success = overallSuccess,
             .failureReason = std::move(failureReason),
@@ -3045,7 +3045,7 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
 
     // Not for a call that ran no session at all: a flush landing on top of the periodic cycle
     // is reported as a success, and recording a VD first sync for it would tell agent-info a
-    // full scan has covered this agent when nothing was sent. #38899: an empty queue takes the
+    // full scan has covered this agent when nothing was sent. An empty queue takes the
     // same early-success path (sentAnything false), so it must be excluded here too -- success
     // alone does not prove the manager received this agent's first snapshot.
     persistVDFirstSyncIfNeeded(vdResult.success && vdResult.sentAnything && !vdResult.sessionSkipped, firstSyncDone);
@@ -3789,7 +3789,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
         }
         else if (command == "get_synced_agent_id")
         {
-            // #38601: which agent id the manager's copy of this inventory belongs to. Zero means
+            // Which agent id the manager's copy of this inventory belongs to. Zero means
             // none has been recorded yet, which is adopted rather than resynced. Exposed for the
             // same reason as the markers above -- it decides whether a cycle resends everything,
             // so it has to be observable without opening the database by hand.
@@ -5170,7 +5170,7 @@ bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) cons
     return true;
 }
 
-// #38601: no longer excluded wholesale. The lane choice, the DataClean and the marker gating
+// No longer excluded wholesale. The lane choice, the DataClean and the marker gating
 // are driven by syscollector_identity_tests.cpp against mocked protocols; only the per-item
 // persist loop below still needs a manager, and that is what stays excluded.
 bool Syscollector::resyncTableToManager(const std::string& tableName,
@@ -5238,7 +5238,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
     // byte-capped/truncated payload and could permanently drop whatever didn't
     // fit in that one session).
     //
-    // #38601: on the protocol this index's data actually rides, not unconditionally
+    // On the protocol this index's data actually rides, not unconditionally
     // the plain one. Recovering a VD index while cleaning the plain queue would
     // clear a queue that never held the rows and leave the VD one holding stale
     // ones.
@@ -5291,7 +5291,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
 
         if (shouldPersist)
         {
-            // #38601: same protocol the DataClean above targeted. Sending a VD
+            // Same protocol the DataClean above targeted. Sending a VD
             // index's rows down the plain protocol repopulates
             // wazuh-states-inventory-* but never reaches the vulnerability
             // scanner, so a recovered agent gets its inventory back while its
@@ -5684,7 +5684,7 @@ void Syscollector::runRecoveryProcess()
         recoveryGuard.emplace(m_recoveryInProgress, m_pauseCv);
     }
 
-    // #38601: identity before integrity. If this agent's id changed, the manager holds nothing
+    // Identity before integrity. If this agent's id changed, the manager holds nothing
     // under it, and the per-table checksum loop below would only rediscover that one table at a
     // time, an integrity_interval apart each. Safe to drive the resync from here rather than
     // from syncModule(): the wodle calls this after a successful sync, so resyncTableToManager()

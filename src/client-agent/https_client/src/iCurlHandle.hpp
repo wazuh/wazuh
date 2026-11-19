@@ -40,8 +40,8 @@ enum class CurlOption
     SslVersion,     ///< long, the minimum TLS version to negotiate
     SslCiphers,     ///< string TLS 1.3 ciphersuite list
     SslOptions,     ///< long, the TLS behaviour bitmask
-    FollowLocation, ///< long, always 0 (H4: no redirects)
-    NoSignal,       ///< long, always 1 (H6)
+    FollowLocation, ///< long, always 0 (no redirects)
+    NoSignal,       ///< long, always 1 (no signals: the client is multi-threaded)
     /// long, always 1: never deliver a forward-proxy's CONNECT-tunnel
     /// response headers to the header callback. Without this, a proxy's own
     /// Date could be captured as if it were the manager's (headerTrampoline
@@ -72,7 +72,7 @@ struct HeaderCapture
     long* retryAfter {nullptr};
     std::time_t* serverDate {nullptr};
     /// Wazuh-CA-Generation on a GET /cacerts: the publication the answering node vouches for.
-    /// Left at 0 when the header is absent, which is what a manager predating #39321 sends and
+    /// Left at 0 when the header is absent, which is what a manager predating CA rotation sends and
     /// is never adopted either way.
     std::int64_t* caGeneration {nullptr};
 };

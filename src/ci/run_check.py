@@ -410,7 +410,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # Running UTs and coverage
     runTests(moduleName=moduleName)
-    # The coverage for these modules in 'winagent' target will be added in #17008
+    # The coverage for these modules in 'winagent' target is still to be added
     if (target == 'winagent' and moduleName == 'data_provider') or \
        (target == 'winagent' and moduleName == 'shared_modules/file_helper'):
         utils.printInfo(msg="Skipping coverage for {} in {} target".format(
@@ -419,7 +419,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
         runCoverage(moduleName=moduleName, target=target)
 
     # We run valgrind for all targets except Windows
-    # The memory analysis for Wine will be enabled in #17018
+    # The memory analysis for Wine is still to be enabled
     if target != "winagent":
         runValgrind(moduleName=moduleName)
 
@@ -438,7 +438,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
-    # Running this type of check in Windows will be analyzed in #17019
+    # Running this type of check in Windows is still to be analyzed
     if target != "winagent" and moduleName != "shared_modules/agent_metadata" and moduleName != "shared_modules/file_helper" and moduleName != "wazuh_modules/agent_info" and moduleName != "wazuh_modules/sca" and moduleName != "client-agent/https_client":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)

@@ -20,7 +20,7 @@ namespace
     // Not 5: /stateful's downstream (the inventory sync server) validates, indexes and flushes the
     // whole session inside the request. 20 s keeps the default budget (2+5+20) inside the default
     // http_request_timeout (30 s) so a stock install starts warning-free; calibration with real
-    // session sizes is F9's job (inventory_sync_server_docs 13 §3.3).
+    // session sizes is a follow-up.
     constexpr int DEFAULT_STATEFUL_RESPONSE_TIMEOUT_SEC {20};
     // The re-send then lands at twice the deadline, past the immediate-session p90 measured under
     // group rotation (31 s); a deployment whose sessions run longer raises it, 0 drops the header.

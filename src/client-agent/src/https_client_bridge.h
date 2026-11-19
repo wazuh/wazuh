@@ -59,7 +59,7 @@ void w_https_client_notify_config_reload_completed(void);
 int w_https_client_submit_event(const char *frame, size_t length);
 
 /**
- * @brief Perform exactly one /enroll HTTP request (#38465), against the same
+ * @brief Perform exactly one /enroll HTTP request, against the same
  *        manager/TLS material already configured for every other HTTPS
  *        endpoint (<agent><manager>, <agent><ssl>). Handle-less: usable before
  *        the module is started (first-boot enrollment has no handle yet) or

@@ -21,7 +21,7 @@ extern "C" {
 #define W_REENROLL_STALE   (-2) /* well-formed and correctly signed, but outside the accepted time window */
 
 /**
- * @brief Verifies the `wazuh-enroll+jwt` bearer an agent re-enrolls with (issue #38993).
+ * @brief Verifies the `wazuh-enroll+jwt` bearer an agent re-enrolls with.
  *
  * The bearer's `kid` must be exactly @p agent_id, and its HS256 signature must verify with the key
  * HKDF-derived (label WAZUH-REENROLL-KEY) from the agent's re-enrollment secret -- the same

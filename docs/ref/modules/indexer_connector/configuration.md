@@ -76,7 +76,7 @@ CA certificates used to verify the Indexer's certificate, one per `<ca>` child e
 - **Default value:** empty list
 - **Allowed values:** paths of PEM files holding only CA certificates, directly in
   `/etc/wazuh-manager/certs`
-- **Note:** With a single CA, the connector refuses to start when the file does not exist
+- **Note:** The connector refuses to start when a listed file does not exist
   (`The CA root certificate file: '<path>' does not exist.`). With several, it concatenates them into
   `/var/wazuh-manager/tmp/root-ca-merged.pem`. Only `indexer-ca.pem` is imported from a co-located
   indexer, and only while this list names it; any other listed file is yours to stage.
@@ -236,9 +236,11 @@ for: take `<indexer>` from the output of `/var/wazuh-manager/bin/wazuh-manager-c
 rather than assuming the indexer is local.
 
 ```bash
-curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
-     -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     https://<indexer>:9200/_cluster/health
+# as root; the password goes to curl as a config file on its standard input (-K -), never on its
+# command line, which ps shows to every user of the host (printf is a shell builtin)
+printf 'user = "wazuh-manager:%s"\n' \
+    "$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" |
+  curl -K - --cacert /etc/wazuh-manager/certs/indexer-ca.pem https://<indexer>:9200/_cluster/health
 ```
 
 The connector treats a node as available when its health is `green` or `yellow`.

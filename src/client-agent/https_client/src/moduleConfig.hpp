@@ -32,11 +32,11 @@ struct ModuleConfig
 {
         std::string serverHost;
         uint16_t serverPort {443};
-        /// IPv6 zone id resolved from <endpoint> by the C-side parser (#38624).
+        /// IPv6 zone id resolved from <endpoint> by the C-side parser.
         /// baseUrl() appends it to the bracketed host as "%25<id>" so libcurl
         /// scopes the connection to that interface. 0 -> no zone.
         uint32_t serverScopeId {0};
-        /// Optional reverse-proxy path segment, <endpoint> (#38492), already
+        /// Optional reverse-proxy path segment, <endpoint>, already
         /// normalized (no leading/trailing '/') by the C-side parser. Empty ->
         /// today's unprefixed behavior. baseUrl() does NOT insert it: callers
         /// fold it into HttpRequestSpec::target (via prefixedTarget(),
@@ -51,7 +51,7 @@ struct ModuleConfig
         /// verify_mode=system only: the agent's own trust anchor (AGENT_ANCHOR_CA,
         /// bridged from the bootstrap/upgrade paths), tried only after the OS trust
         /// store has actually failed to verify the manager's certificate
-        /// (CurlPerformer's fallback, #39123) -- never a substitute for the OS store,
+        /// (CurlPerformer's fallback) -- never a substitute for the OS store,
         /// which is still tried first on every connection. Empty when no such file
         /// exists; the fallback then never engages, exactly like today.
         std::string systemFallbackCaPath;
@@ -114,7 +114,7 @@ struct ModuleConfig
 
         std::string spoolDir;
 
-        // #37843 periodic reporters. Struct defaults only; fromC() always overrides
+        // Periodic reporters. Struct defaults only; fromC() always overrides
         // both from the agent config, where <config_report> ships on and
         // <stats_report> stays off (see ClientConf() in client-agent/src/config.c).
         bool statsEnabled {false};
@@ -139,7 +139,7 @@ struct ModuleConfig
         /// The TLS half of validate() alone (fail-closed CA check + client-cert
         /// pairing), without the serverHost/agentId precondition -- an
         /// enrolling agent has no agentId yet, but the same TLS matrix still
-        /// has to hold before its /enroll request goes out (#38465).
+        /// has to hold before its /enroll request goes out.
         /// @param unverifiedByDesign Set only by the enrollment-token bootstrap's GET /cacerts
         ///        leg, which forces verify_mode=none because the anchor it is about to fetch is
         ///        the very thing there would be to verify against. Reported as what it is rather

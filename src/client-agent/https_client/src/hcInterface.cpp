@@ -368,7 +368,7 @@ extern "C"
             const auto typedConfig = ModuleConfig::fromC(*config);
             FsProbe fsProbe;
             // SkewCorrectedClock, not a bare SystemClock: EnrollClient's own
-            // 401 grace-retry (#38440, extended to /enroll) calls
+            // 401 grace-retry (extended to /enroll) calls
             // correctToServerTime() on a skewed clock reading, which is a
             // silent no-op on SystemClock. This instance is local to one
             // hc_enroll() call (no handle/facade exists yet on first boot to

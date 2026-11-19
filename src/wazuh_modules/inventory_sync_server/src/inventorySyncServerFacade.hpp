@@ -447,8 +447,8 @@ namespace invsync
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
-            // rather than sharing one handler because their real payloads will diverge. DATA class
-            // (U4): these carry documents agents send through remoted -- payloads of agent origin
+            // rather than sharing one handler because their real payloads will diverge. DATA class:
+            // these carry documents agents send through remoted -- payloads of agent origin
             // that must charge the byte budget exactly like /stateful, not control-plane reads.
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
@@ -460,7 +460,7 @@ namespace invsync
                                    invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
-            // Whole-agent deletion (design doc 04): UDS-local, manager-internal, deferred to the
+            // Whole-agent deletion: UDS-local, manager-internal, deferred to the
             // agent's pipeline shard and ANSWERED AT COMPLETION -- the item carries its responder,
             // so the pipeline answers only once the purge has flushed. That is what lets the Task
             // Manager write a row `completed` and have it mean purged, rather than "inventory-sync
@@ -498,7 +498,7 @@ namespace invsync
                                                    invsync::endpoints::delete_agent::responseTimeoutSeconds()});
             }
 
-            // On-demand vulnerability rescan of one agent (design doc 04's sibling): UDS-local,
+            // On-demand vulnerability rescan of one agent: UDS-local,
             // manager-internal, executed on the VD scan lane and ANSWERED AT COMPLETION, so the
             // Task Manager row behind it means scanned rather than accepted. Its caller is the
             // dispatcher; the scanner's own admission route is untouched.
@@ -542,7 +542,7 @@ namespace invsync
         }
 
         /**
-         * @brief Publish the transport's bounded resources as pull metrics (U10).
+         * @brief Publish the transport's bounded resources as pull metrics.
          *
          * Called after every successful start: the weak target is repointed at the new server,
          * while the pulls themselves are registered exactly once (iManager has no unregister).
@@ -1362,7 +1362,7 @@ namespace invsync
         /// shared_ptr, not unique_ptr: an in-flight attempt takes a counted reference so stop()
         /// clearing this member cannot dangle a connector constructor still running on it.
         std::shared_ptr<invsync::indexer::IIndexerSession> m_indexerSession;
-        /// shared_ptr for the same reason as the async one below: the sync pipeline workers (F2) will
+        /// shared_ptr for the same reason as the async one below: the sync pipeline workers will
         /// hold it weakly. The factory still returns unique_ptr; the assignment converts.
         std::shared_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
         /// shared_ptr because the /stats and /config handlers hold it WEAKLY (which needs a shared

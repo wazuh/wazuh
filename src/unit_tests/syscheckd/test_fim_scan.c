@@ -124,7 +124,7 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
 extern int __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
 
 /* Snapshot of mutex_unlock_call_count taken inside the wrap below, used by the
- * regression test for issue #37824 (fim_scan_mutex must stay held through
+ * regression test (fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction). */
 static unsigned int unlock_count_at_pending_sync_updates = 0;
 
@@ -1167,7 +1167,7 @@ static void test_fim_file_add(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
-// Regression test for #38522, end-to-end through fim_file()'s non-transactional (realtime/
+// Regression test, end-to-end through fim_file()'s non-transactional (realtime/
 // whodata) path itself — not through transaction_callback() called directly. The other tests in
 // this file only prove process_pending_sync_updates() gets called with whatever list fim_file()
 // built; since __wrap_fim_db_file_update() never drives its callback, that list is always empty,
@@ -1269,7 +1269,7 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     // process_pending_sync_updates() now genuinely has 1 item to process. No "Processed N
     // pending sync flag updates" log is expected here: that summary is only logged by callers
     // that run once per full scan (fim_file_scan(), fim_registry_scan()) — logging it from this
-    // realtime/whodata call site too would flood debug=1 on a mass create/modify (#38537 review).
+    // realtime/whodata call site too would flood debug=1 on a mass create/modify.
     expect_function_call(__wrap_process_pending_sync_updates);
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "Setting sync=1 for path: c:\\windows\\system32\\cmd.exe");
@@ -1400,7 +1400,7 @@ static void test_fim_file_modify(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
-// Regression tests for #38608: reconcile_failed_paths_with_pending_sync() must remove, from
+// Regression tests: reconcile_failed_paths_with_pending_sync() must remove, from
 // pending_sync_updates, only the items whose path also failed schema validation this scan
 // (failed_paths), compensating synced_docs_files for any that had sync_value == 1 — and must
 // leave every other pending item (and the counter, when nothing matches) untouched.
@@ -2594,7 +2594,7 @@ static void test_fim_file_scan_no_warn_not_symlink(void **state) {
     fim_file_scan();
 }
 
-/* Regression test for issue #37824: fim_scan_mutex must stay held through
+/* Regression test: fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction. */
 static void test_fim_file_scan_holds_mutex_through_pending_sync_updates(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
@@ -3520,7 +3520,7 @@ static void test_fim_directory(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-// Regression test for issue #34878: an entry whose name has characters outside
+// Regression test: an entry whose name has characters outside
 // the process ANSI code page (Turkish) must be enumerated wide and reported as
 // UTF-8, lowercasing ASCII only and preserving the non-ASCII bytes.
 static void test_fim_directory_non_ascii_name(void **state) {
@@ -4188,7 +4188,7 @@ static void test_transaction_callback_add(void **state) {
     data->txn_context->entry = NULL;
 }
 
-// Regression test for #38522: fim_file()'s non-transactional path (realtime/whodata) now wires a
+// Regression test: fim_file()'s non-transactional path (realtime/whodata) now wires a
 // real pending_sync_updates list into the callback_ctx it hands to transaction_callback (it used to
 // leave the field NULL, so the INSERTED branch below silently skipped queuing the sync flag update
 // and the row stayed at sync=0 forever). This asserts the queuing itself, given a non-NULL list.
@@ -4295,7 +4295,7 @@ static void test_transaction_callback_modify(void **state) {
     data->txn_context->entry = NULL;
 }
 
-// Regression test for #38522: the MODIFIED branch's promotion path ("old" row has sync=0 and
+// Regression test: the MODIFIED branch's promotion path ("old" row has sync=0 and
 // there's room under file_limit) reads txn_context->pending_sync_updates the same way INSERTED
 // does. Before the fix, fim_file()'s non-transactional (realtime/whodata) path left that field
 // NULL, so this promotion was silently skipped there too, not just the INSERTED case. This
@@ -4861,7 +4861,7 @@ int main(void) {
         /* init_fim_data_entry */
         cmocka_unit_test(test_init_fim_data_entry),
 
-        /* reconcile_failed_paths_with_pending_sync (#38608) */
+        /* reconcile_failed_paths_with_pending_sync */
         cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_no_overlap),
         cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates),
         cmocka_unit_test(test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero),

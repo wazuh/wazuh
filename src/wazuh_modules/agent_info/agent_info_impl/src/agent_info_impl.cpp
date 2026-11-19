@@ -231,7 +231,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, const std::functi
     // still true here (a genuinely fresh agent-info instance: no metadata or groups baseline
     // yet), coordination cannot fire this cycle no matter how long we wait, and the delay is
     // pure, harmful latency -- it is exactly what stalls populateAgentMetadata() past
-    // syscollector's own first VD sync attempt (#39543): both start at the same moment, but
+    // syscollector's own first VD sync attempt: both start at the same moment, but
     // syscollector's first scan-to-sync takes ~1-2s while this delay held metadata_provider's
     // vd_feed_offset at its stale/zero value for a full 5s, guaranteeing a 409 the manager's
     // feed had already moved past. Skipping it here does not touch the delay for any other
@@ -510,7 +510,7 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     // Re-query agentd for fresh handshake data on every cycle instead of relying on a
-    // one-time cached copy (see #37543): a manager-side cluster_name change is picked up
+    // one-time cached copy: a manager-side cluster_name change is picked up
     // by agentd on reconnect, but was never re-read here, so it stayed stale until the
     // agent process restarted.
     //
@@ -551,7 +551,7 @@ void AgentInfoImpl::populateAgentMetadata()
     // Get agent groups (only for agents)
     // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     //
-    // Deliberately out of scope for #37543 (which is about cluster_name
+    // Deliberately out of scope for the live handshake re-query (which is about cluster_name
     // staying live): group reassignments are pushed by remoted via merged.mg without
     // necessarily forcing a reconnect, whereas agentd's handshake-sourced group list is
     // only refreshed on (re)connect. Preferring the live handshake groups on every cycle
@@ -593,7 +593,7 @@ void AgentInfoImpl::populateAgentMetadata()
     }
 
     // Surface the durable VD feed offset (0/absent = not yet received from the manager) so
-    // it reaches agent_sync_protocol's Start message via the metadata provider (D9). Read
+    // it reaches agent_sync_protocol's Start message via the metadata provider. Read
     // fresh every cycle rather than cached in memory, same reasoning as the live handshake
     // query above: a single source of truth in agent_info.db, no separate cache to go stale.
     const VdFeedState vdFeedState = getVdFeedState();
@@ -687,7 +687,7 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
 
     // metadata_provider_update() (called below) ignores this field -- vd_feed_offset is
     // exclusively published via metadata_provider_update_vd_feed_offset(), from
-    // observeVdFeedOffset() (#39543 review follow-up). Still copied here so `metadata` stays a
+    // observeVdFeedOffset(). Still copied here so `metadata` stays a
     // faithful snapshot for any future consumer of this struct; it is not currently used for
     // anything else downstream of this function.
     if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
@@ -1665,7 +1665,7 @@ bool AgentInfoImpl::isVDFirstSyncDone()
     // syscollectorImp.cpp's SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY /
     // get_vd_first_sync_completed). Reused here rather than reinvented: do not fire a
     // /scan/vd request before VDFirst has completed, since VDFirst's own full scan already
-    // covers the current feed (Q5).
+    // covers the current feed.
     const std::string message = createJsonCommand("get_vd_first_sync_completed");
     const ModuleResponse response = queryModuleWithRetry(SYSCOLLECTOR_WM_NAME, message);
 
@@ -1755,7 +1755,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
                 // SCA/syscollector pause synchronously, but like FIM they deliver their initial
                 // state via a one-shot first sync. Defer coordination until that completes so we do
                 // not pause/flush and advance the group/metadata version mid-first-sync (extends the
-                // FIM guard from #36762 to these modules).
+                // FIM guard to these modules).
                 if (!isModuleFirstSyncCompleted(module))
                 {
                     if (m_deferralLoggedModules.insert(module).second)
@@ -2543,8 +2543,8 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
         // Publish to metadata_provider right here, on this IPC/query thread, BEFORE the durable
         // DBSync write below -- not just to agent-info's own durable vd_feed_state table.
         // Waiting for the next populateAgentMetadata() cycle (main loop, its own cadence) is what
-        // let a fresh agent's first VD sync race an empty/stale offset in metadata_provider
-        // (#39543): local metadata gathering (hostname/os info, fast, no network) usually
+        // let a fresh agent's first VD sync race an empty/stale offset in metadata_provider:
+        // local metadata gathering (hostname/os info, fast, no network) usually
         // finishes well before this observe() call (which needs a round trip to the manager)
         // ever fires, so has_metadata is normally already true here and this actually takes
         // effect. When it is not yet true (no full snapshot exists at all so far), this is a
@@ -2592,7 +2592,7 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
     }
 
     // else: VDFirst has not completed yet. Its own full scan will cover this offset via
-    // Start.feed_offset (D9/Q5), so no re-scan request is needed here -- the offset itself
+    // Start.feed_offset, so no re-scan request is needed here -- the offset itself
     // is already persisted above, so it is not lost.
 
     result.pending = state.pending;

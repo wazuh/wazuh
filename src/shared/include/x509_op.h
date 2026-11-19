@@ -33,7 +33,7 @@ X509 *w_x509_load_pem(const char *path);
  * What a CA bundle needs: w_x509_load_pem() stops at the first block, so a signer listed second
  * is invisible to it. Non-certificate blocks (a private key in a combined file) are skipped by
  * the reader, and a file that cannot be parsed to its end yields nothing at all -- a document we
- * do not fully understand is not one to publish from (issue #39078, H01).
+ * do not fully understand is not one to publish from.
  *
  * @param path Path of the PEM file.
  * @param count Receives how many certificates were read; 0 on error.

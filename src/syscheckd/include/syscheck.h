@@ -351,7 +351,7 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
 void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1, 3, 4)));
 
 /**
- * @brief Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334).
+ * @brief Serializes syscheck.sync_handle use against the shutdown teardown.
  *
  * The sync protocol users that are not joined before the handle is destroyed (event
  * persistence, syscom's fim_sync responses, the DataClean paths and the scheduled-scan
@@ -928,7 +928,7 @@ bool fim_shutdown_process_on();
 #ifdef WIN32
 /**
  * @brief Registers the FIM database teardown hook that closes the inventory synchronization
- *        database on the service stop path (issue #38212).
+ *        database on the service stop path.
  *
  * Call it as soon as the synchronization handle exists, so a stop arriving before the
  * synchronization thread is launched still closes fim_sync.db.

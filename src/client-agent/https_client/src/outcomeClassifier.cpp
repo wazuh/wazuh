@@ -35,7 +35,7 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     // 401: the only auth code in the contract. Which of the eight failure classes it is stays out
     // of OutcomeClass on purpose -- that keeps its "what was observed" contract, and the class is a
     // property of the body, not of the status. RetrySender reads it with parseAuthFailClass() where
-    // the escalation decision is actually made (#39064).
+    // the escalation decision is actually made.
     if (code == 401)
     {
         return OutcomeClass::AuthFail;
@@ -51,13 +51,13 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     }
 
     // 413: the /stateless batch exceeds what the manager accepts; the stream
-    // splits it and resends smaller (#37835), never dropping events.
+    // splits it and resends smaller, never dropping events.
     if (code == 413)
     {
         return OutcomeClass::PayloadTooLarge;
     }
 
-    // 409 Conflict: protocol/agent version not supported (the #37733 /control
+    // 409 Conflict: protocol/agent version not supported (the /control
     // contract). The client goes REJECTED and re-tries Startup on the slow
     // cadence.
     if (code == 409)

@@ -38,7 +38,7 @@ namespace remoted::enrollment
         /// "mode" (mTLS XOR Password) would have silently dropped the password check whenever a
         /// client certificate was also required -- this flag exists so that can't happen.
         ///
-        /// An enrollment-token bearer (a `kid` naming a token id, issue #38993) is verified whether
+        /// An enrollment-token bearer (a `kid` naming a token id) is verified whether
         /// or not this is set: a credential the agent presents is never ignored. This flag only
         /// decides what happens to a request that presents NO token credential.
         bool requirePassword {false};
@@ -82,7 +82,7 @@ namespace remoted::enrollment
     };
 
     /**
-     * @brief The re-enrollment form (issue #38993): the bearer's `kid` names an agent that already has an
+     * @brief The re-enrollment form: the bearer's `kid` names an agent that already has an
      *        identity, and the bearer is signed with the key derived from that agent's re-enrollment
      *        secret. remoted does NOT verify it -- the secret lives in the master's global.db and nowhere
      *        else -- so the bearer travels to authd verbatim (`arguments.reenroll`) and the master is the
@@ -109,14 +109,14 @@ namespace remoted::enrollment
      *   - no `kid`: the shared password key (PasswordKeySource, HKDF of authd's enrollment
      *     password). Required when requirePassword is set; ignored otherwise (Open mode, or a
      *     listener that requires a client certificate instead).
-     *   - `kid` = enrollment token id (issue #38993): the key derived from that token's secret, from
+     *   - `kid` = enrollment token id: the key derived from that token's secret, from
      *     TokenKeySource's replica of authd's store. Verified ALWAYS, in every mode -- a presented
      *     credential is never ignored -- then the token's own state (expired / revoked) is checked,
      *     in this order: lookup, signature, expiry, revocation, so only a caller that holds the
      *     token's secret learns anything about its status (ids are 128-bit random values, so an
      *     "unknown" answer for a guessed id leaks nothing either). On success the token id travels
      *     to authd (EnrollmentGranted::tokenId), which consumes one use.
-     *   - `kid` = canonical agent id (re-enrollment, issue #38993): recognised by shape and handed
+     *   - `kid` = canonical agent id (re-enrollment): recognised by shape and handed
      *     back as ReenrollmentRequested in EVERY mode, unverified -- the secret that signs it is in the
      *     master's global.db, so authd on the master is the only place it can be verified. Only the
      *     protocol version and the body cap are checked here for it, like for every other request.

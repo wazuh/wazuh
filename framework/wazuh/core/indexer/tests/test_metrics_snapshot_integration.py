@@ -183,7 +183,7 @@ class TestMetricsPipelineIntegration:
     indexer and confirms documents land in the three *real* data streams
     (wazuh-metrics-agents, wazuh-metrics-comms-v4, wazuh-metrics-normalization) with
     the shape their index templates expect — not an ad-hoc scratch index, which is
-    what let a real template mismatch (issue #39283) pass unnoticed here before.
+    what let a real template mismatch pass unnoticed here before.
 
     Collection (_collect_agents / _collect_comms_all_nodes /
     _collect_normalization_all_nodes) is mocked — this test's job is the last mile:

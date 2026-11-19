@@ -34,7 +34,7 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,getDefine_Int_default
 list(APPEND os_auth_names "test_local-server")
 # The mint reads the `remote` section through w_mconf_section (wrapped: the test hands it the JSON that points
 # at its own certificate files); the store and the X509 checks run for real on temporary files.
-# Re-enrollment (#38993): the row's secret comes from wazuh-db (wrapped: the test hands it the row) and the
+# Re-enrollment: the row's secret comes from wazuh-db (wrapped: the test hands it the row) and the
 # bearer's verdict from the C++ bridge (wrapped here: test_reenroll_verify exercises the real one).
 # manager_task_agent_status: the purge check a caller-supplied id goes through, followed by its id.
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,w_mconf_section -Wl,--wrap,OS_IsValidIP \

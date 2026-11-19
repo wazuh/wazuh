@@ -470,7 +470,10 @@ are what make that safe.
 The checksum verification (`executeChecksum`) pages the agent's documents with `search_after`
 (1000 per page by default — `inventory_sync_server_session_query_batch_size` —, deterministic
 order), aggregates SHA-1, and answers `200`/`409 {"status":"checksum_mismatch"}`. One attempt, no
-retry loop. Its reads ask the indexer for `allow_partial_search_results=false`: when the indexer
+retry loop (D16). The confirmation lives on the agent instead: `AgentSyncProtocol` repeats a
+mismatched check up to `CHECKSUM_MISMATCH_MAX_ATTEMPTS` (5) times, `CHECKSUM_RETRY_DELAY` (10 s)
+apart, before it reports a mismatch and the module full-resyncs (`agent_sync_protocol.hpp`/`.cpp`
+in `src/shared_modules/sync_protocol/`). Its reads ask the indexer for `allow_partial_search_results=false`: when the indexer
 cannot answer over every shard (a node restarting, for instance) it answers `5xx` instead of a
 partial result, and the session is answered `503` with the generic body and no `Retry-After`,
 never `409`, because no mismatch was calculated. This is the third result of the check. Only
@@ -823,7 +826,8 @@ the transport configuration (`udsHttpServerConfig_test`; the transport itself is
 `src/shared_modules/uds_http_server/test/`), the remaining seams one file each
 (`agentInFlightRegistry_test`, `agentSessionLimiter_test`, `serverScanCoordinator_test`,
 `vdScanEndpoint_test`, `vdScannerAdapter_test`, `statsEndpoint_test`, `configEndpoint_test`,
-`reportedAgentMetadata_test`, `metricsEndpoint_test`, `jsonNestingDepth_test`, `clusterIdentity_test`,
+`reportedAgentMetadata_test`, `metricsEndpoint_test`, `jsonNestingDepth_test`, `jsonMemberNames_test`,
+`clusterIdentity_test`,
 `indexerConnectorConfig_test`, `indexerSyncSeam_test`, `inventorySyncServerModule_test`) — and
 `statefulEndpointE2E_test`, which boots the REAL module through the C ABI and drives the full
 contract matrix over a real socket with only the indexer faked.
@@ -893,7 +897,7 @@ rejections count into the same request family, and `vd.retry_after.total` is inc
 feed gates (the sync endpoint's strand-side check and the lane's dispatch-time re-check),
 resolved through the single `makeVdRetryAfterCounter()` helper so its metadata has one source.
 The facade additionally registers eleven `server.*` PULL metrics over
-`IUdsHttpServer::diagnostics()`: the seven transport budget/session levels (U10) plus the four
+`IUdsHttpServer::diagnostics()`: the seven transport budget/session levels plus the four
 cumulative `server.rejected.*` shed counters — registered once per process, behind a weak target
 that quiesces to 0 after `stop()`. Constructors take the
 manager as an optional trailing parameter; a null falls back to a private disconnected manager,

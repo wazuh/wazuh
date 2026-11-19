@@ -8,13 +8,13 @@
  * Foundation.
  */
 
-// SPIKE (issue #38491, global endpoint prefix -- plan E0): pins the matching semantics of
+// SPIKE (global endpoint prefix): pins the matching semantics of
 // RESTinio's express_router_t for PREFIXED literal routes, which the repo cannot establish by
 // reading (RESTinio is fetched by `make deps`, not vendored). No product code is exercised
 // beyond the current addRoute/start API: routes are registered at literally-prefixed paths.
 //
 // The assertions below record OBSERVED router behavior, not a feature contract: the global
-// prefix feature (plan E1) only concatenates `prefix + path` at registration time, so whatever
+// prefix feature only concatenates `prefix + path` at registration time, so whatever
 // this suite pins is exactly what the feature inherits. Cases marked [hypothesis] started as
 // path2regex-default guesses (sensitive=false, strict=false, no percent-decoding before match)
 // and were corrected to the observed result if the run disagreed. The server has since made
@@ -185,7 +185,7 @@ TEST_F(RouterSemanticsSpike, S2b_QueryAfterBarePrefix)
 
 TEST_F(RouterSemanticsSpike, S9_BarePatternMatchesBothSpellings)
 {
-    // The registration shape plan E1 should use for the "/" health route under a prefix:
+    // The registration shape the prefix feature should use for the "/" health route under a prefix:
     // registering the BARE pattern ("/q", no trailing slash) answers both spellings.
     EXPECT_EQ(statusOf(sendRaw(m_port, "GET", "/q")), 200);
     EXPECT_EQ(statusOf(sendRaw(m_port, "GET", "/q/")), 200);

@@ -29,7 +29,7 @@
 #include "metadata_provider.h"
 #include "version_op.h"
 
-/* What is left of start_agent.c after the TCP path was retired (#38030): the
+/* What is left of start_agent.c after the TCP path was retired: the
  * metadata publication and the agent-start event, now over /stateless. */
 
 extern void send_msg_on_startup(void);
@@ -112,8 +112,8 @@ static void test_send_msg_on_startup_goes_to_https(void **state) {
 }
 
 /* w_agentd_populate_metadata: publishes the local data plus the cluster/groups
- * the bridge writes from the manager's Startup response. vd_feed_offset is never touched here
- * (#39543 review follow-up): metadata_provider_update() ignores that field unconditionally now
+ * the bridge writes from the manager's Startup response. vd_feed_offset is never touched here:
+ * metadata_provider_update() ignores that field unconditionally now
  * (it is exclusively owned by metadata_provider_update_vd_feed_offset(), called from agent-info),
  * so this function has nothing to carry over or retry -- the three-attempt-read/carry-over
  * dance this file used to test here no longer exists in start_agent.c. */

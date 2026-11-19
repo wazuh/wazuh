@@ -74,6 +74,8 @@ sequenceDiagram
         S-->>R: 503 + Retry-After (nothing processed)
     else VD session and the scan lane queue is full
         S-->>R: 503 scan capacity exhausted (nothing processed)
+    else non-VD session and no indexer host is healthy, or the pipeline queue is over sync_queue_bytes
+        S-->>R: 503 (nothing processed)
     else non-VD session
         S->>Q: enqueue {request, responder, session} (hash(agentId) → shard)
         Note over S: strand freed, the byte reservation travels with the request
@@ -244,8 +246,9 @@ production adapter is confined to a single translation unit
 The same lane also runs **on-demand rescans** (`POST /_internal/vd/scan`): one agent, no session and
 no inventory — the scanner reads the agent's stored packages and writes its findings itself, so the
 answer is the scan's own outcome. Running it here is what puts it under the same per-agent exclusion
-as the agent's sessions. A request for an agent that already has a scan in flight is refused at once
-with `409 scan_in_progress` instead of waiting behind it. Once admitted, it waits only for a free
+as the agent's sessions. A request for an agent that is already busy — a scan or one of its sessions
+being applied, or a feed-update rescan fencing it — is refused at once with `409 scan_in_progress`
+instead of waiting behind it. Once admitted, it waits only for a free
 lane worker (and, rarely, for a session of the same agent that started in between); the scanner's
 per-agent fence does not wait for the lane's own hold. Statuses are in the
 [API reference](api-reference.md#on-demand-vulnerability-scans).
@@ -394,7 +397,7 @@ the lane waits for it to finish.
 
 Every per-request failure condition keeps one throttled log line (90 s window; the first
 occurrence always emits, so transitions are visible immediately): handler throws (answered
-`500`), limit rejections (`413`/`414`/`431`, and `400` for a chunked request), unknown routes (`404`/`405` — the trace that
+`500`), limit rejections (`413`/`414`/`431`, and `411` for a chunked request), unknown routes (`404`/`405` — the trace that
 catches a route mismatch with remoted), malformed HTTP, budget and connection-cap rejections,
 identity mismatches (`403` on an authenticated channel is operator-relevant), feed-not-ready and
 scan-capacity rejections, accept and session-bring-up failures, response write failures, and
@@ -443,7 +446,7 @@ answers to) lives in the module's in-tree developer README,
 | 5 | **The in-flight byte budget is the size limit** — no per-request body cap by default. A session declaring more than the total budget answers `413`. | One limit that actually bounds memory, instead of two that can contradict each other. |
 | 6 | **Per-agent ordering by sharding**, not by locking: `hash(agentId) % workers`, one connector per worker, group commit. | Ordering becomes a topology property; the indexer sees few large bulks; no shared connector state on the hot path. |
 | 7 | **A `200` means flushed.** Bulk responses wait for the group commit; immediate sessions flush inside their own execution. | "The agent saw success" and "the indexer has the data" can never diverge. |
-| 8 | **Checksum verification is one attempt on the server, no retry loop.** Mismatch answers `409`; the agent repeats the check and, once the mismatch is confirmed on every attempt, full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison inside the server only delays the answer; whether to check again is the agent's call. |
+| 8 | **Checksum verification is one attempt on the server, no retry loop.** Mismatch answers `409`; the agent confirms it by repeating the check (up to five attempts, 10 s apart) and, once the mismatch is confirmed on every attempt, full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison inside the server only delays the answer; the agent's spaced re-checks cover a recent write the indexer has not made visible yet. |
 | 9 | **VD sessions scan synchronously, and the scan gates indexing** — scan → ok → index → `200`; failure → `500` with nothing indexed. | A VD `200` certifies both halves; there is no window where inventory exists without its scan. |
 | 10 | **Feed not ready ⇒ `503` + `Retry-After`, rejected without processing.** Nobody blocks waiting for the CVE feed. | The re-POST applies ingest and scan together; threads are never parked on a download that can take minutes. |
 | 11 | **A short scan-lane queue** with immediate `503` on overflow, and per-agent cross-lane exclusion through a shared registry. | Early rejection beats late timeout; the pipeline and the lane can never interleave one agent's operations. |

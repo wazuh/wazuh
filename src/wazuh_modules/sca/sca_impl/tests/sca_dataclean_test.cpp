@@ -30,7 +30,7 @@
  * - All policies removed: DataClean + DB wipe + exit
  * - Partial policy removal: delete events + continue
  *
- * Issue Reference: #32183 - SCA Case: DataClean on Policy Removal
+ * SCA Case: DataClean on Policy Removal
  */
 class SCADataCleanTest : public ::testing::Test
 {
@@ -77,7 +77,7 @@ class SCADataCleanTest : public ::testing::Test
             EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
             .WillOnce(::testing::Return()) // Sync manager initialization query
             .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-            .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+            .WillOnce(::testing::Return()) // first_scan_completed metadata lookup
             .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                            std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
             {
@@ -156,7 +156,7 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_DataCleanFailure_Retries)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
     .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -201,7 +201,7 @@ TEST_F(SCADataCleanTest, NoPoliciesNoData_ExitsCleanly)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
     .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -241,7 +241,7 @@ TEST_F(SCADataCleanTest, HandleAllPoliciesRemoved_SendsDataCleanAndExits)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
     .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -349,7 +349,7 @@ TEST_F(SCADataCleanTest, DataClean_WithoutSyncProtocol_Fails)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
     .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -385,7 +385,7 @@ TEST_F(SCADataCleanTest, DataClean_WaitsForSyncInProgress)
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
     .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup
     .WillOnce(::testing::Invoke(
                   [](const nlohmann::json& /* query */,
                      std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)

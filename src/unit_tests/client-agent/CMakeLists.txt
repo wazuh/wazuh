@@ -147,7 +147,7 @@ list(APPEND client-agent_flags " ")
 list(APPEND client-agent_names "test_client_conf_ssl_resolution")
 list(APPEND client-agent_flags " ")
 
-# w_enrollment_build_request()/w_enrollment_process_response() (#38465): pure
+# w_enrollment_build_request()/w_enrollment_process_response(): pure
 # functions, no https_client involvement, so no hc_*/wurl_* wraps needed --
 # just the log wrappers every merror()/minfo() call goes through, plus
 # OS_IsValidIP (real PCRE2 matching isn't safe/deterministic to call
@@ -157,14 +157,14 @@ list(APPEND client-agent_names "test_enrollment")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,TempFile -Wl,--wrap,rename \
                                 -Wl,--wrap,chmod -Wl,--wrap,fchmod ${DEBUG_OP_WRAPPERS}")
 
-# w_reenroll_secret_store()/load()/clear() (#39064): the real store against real files relative to
+# w_reenroll_secret_store()/load()/clear(): the real store against real files relative to
 # the working directory -- the atomic rename and the 0640 mode are the point, so nothing about the
 # filesystem is mocked. TempFile, rename and chmod are wrapped only to record the staged name and
 # to make a step fail on request; they reach the real calls.
 list(APPEND client-agent_names "test_reenroll_secret")
 list(APPEND client-agent_flags "-Wl,--wrap,TempFile -Wl,--wrap,rename -Wl,--wrap,chmod -Wl,--wrap,fchmod ${DEBUG_OP_WRAPPERS}")
 
-# w_shred_file_in_place()/w_agent_shred_enrollment_password() (#39064): the real shredder against
+# w_shred_file_in_place()/w_agent_shred_enrollment_password(): the real shredder against
 # real files relative to the working directory. Whether the open truncates is the whole point, so
 # nothing about the filesystem is mocked -- only the log wrappers, same as test_reenroll_secret
 # above, whose w_reenroll_secret_clear() shares this shredder.
@@ -403,7 +403,7 @@ if(${TARGET} STREQUAL "agent" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_test(NAME test_task_registry_ipc_component COMMAND test_task_registry_ipc_component)
   set_tests_properties(test_task_registry_ipc_component PROPERTIES LABELS "client-agent;agent_info")
 
-  # Component test for the VD feed offset IPC round-trip (issue #38204), same
+  # Component test for the VD feed offset IPC round-trip, same
   # shape as test_task_registry_ipc_component above -- see
   # test_vd_offset_ipc_component.cpp's file banner for what is real vs. harness.
   add_executable(test_vd_offset_ipc_component test_vd_offset_ipc_component.cpp)

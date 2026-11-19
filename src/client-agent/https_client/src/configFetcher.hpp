@@ -25,8 +25,8 @@
 #include <string>
 
 /**
- * @brief Pulls a new merged configuration through POST /download (#37733
- *        5.2): a signed request streamed into a spool file, verified against
+ * @brief Pulls a new merged configuration through POST /download: a signed
+ *        request streamed into a spool file, verified against
  *        the manager-advertised SHA-256 before it is handed anywhere.
  *
  * Runs blocking on the control thread with few attempts: a failed fetch

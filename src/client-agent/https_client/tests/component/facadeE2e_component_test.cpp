@@ -93,7 +93,7 @@ namespace
         recorder->states.push_back(state);
     }
 
-    /// Stands in for agent-info's durable vd_feed_state (issue #38204):
+    /// Stands in for agent-info's durable vd_feed_state:
     /// tracks the last observed offset and a pending flag in memory, same
     /// monotonic + gate-free semantics as AgentInfoImpl::observeVdFeedOffset
     /// (VDFirst-gating is a unit-level concern -- see FakeVdOffsetStore in
@@ -333,7 +333,7 @@ namespace
 
 TEST_F(FacadeE2eTest, GracefulStopSendsControlShutdown)
 {
-    // Finding 3 (#37831 QA round): the manager was observed never receiving
+    // QA finding: the manager was observed never receiving
     // {"type":"shutdown"} on a graceful stop, with HttpsClientFacade::drain()'s
     // guard (paused-or-not-registered) suspected as the likely (but, per that
     // round's own report, unconfirmed) cause. This is the direct, live
@@ -366,7 +366,7 @@ TEST_F(FacadeE2eTest, GracefulStopSendsControlShutdown)
         seenTypes = result->body;
     }
 
-    // If this fails, finding 3 is confirmed live (not just suspected from
+    // If this fails, the problem is confirmed live (not just suspected from
     // reading the source) and HttpsClientFacade::drain()'s guard (or
     // something upstream of it) needs an actual behavior fix, not just the
     // logging this same change adds. If it passes, the guard is NOT the
@@ -605,7 +605,7 @@ TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
 
 TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
 {
-    // #37836 wants this proven, not assumed: a sync session is one long POST,
+    // This must be proven, not assumed: a sync session is one long POST,
     // so while the manager sits on it the stateless and control planes must
     // keep flowing on their own threads. The manager holds /stateful until the
     // gate file goes away, which makes the window a fact rather than a race
@@ -761,9 +761,9 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
 {
     // The manager rotates its key after 2 notifies: the old key starts getting
     // 401, the module pauses + fires on_reenroll_required once, the callback
-    // swaps the key via hc_set_agent_identity, and the client re-registers (#37828).
+    // swaps the key via hc_set_agent_identity, and the client re-registers.
     //
-    // Those 401s name `unknown_agent` (FakeManager::authFailBody). Since #39064 the auth gate
+    // Those 401s name `unknown_agent` (FakeManager::authFailBody). The auth gate
     // escalates on that class alone -- every other class, and an unnamed 401, mean "retry and keep
     // the identity" -- so a manager that has stopped holding this identity's credential has to say
     // which of the two it is. Naming anything else here would exercise the narrowing instead, which
@@ -809,7 +809,7 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
 TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
 {
     // The manager 413s any /stateless body over ~600 bytes; the client must
-    // split and resend smaller so every event lands exactly once (#37835).
+    // split and resend smaller so every event lands exactly once.
     const uint16_t port = TLS_PORT + 3;
     FakeManager manager {port, KEY_HEX, /*tls=*/true, 0, {}, /*statelessMaxBody=*/600};
 
@@ -898,7 +898,7 @@ TEST_F(FacadeE2eTest, ReporterPostsStampedStatsAndConfig)
 {
     // With both reporters on, the module POSTs the collected snapshots to
     // /stats and /config, stamped with agent_id and the manager-authoritative
-    // cluster (proving the commit-4 plumbing end to end). #37843.
+    // cluster (proving the commit-4 plumbing end to end).
     const uint16_t port = TLS_PORT + 5;
     FakeManager manager {port, KEY_HEX, /*tls=*/true};
 
@@ -1066,7 +1066,7 @@ TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
     EXPECT_NE(recorder.states.end(), std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
 }
 
-// Issue #38204: a real notify carrying vd_feed_offset must drive a real
+// A real notify carrying vd_feed_offset must drive a real
 // POST /scan/vd over the wire (real TLS, real bearer token verified
 // server-side), and a 200 must clear the pending flag through the real
 // callback -- this is the one thing the mocked-transport unit tests
@@ -1130,7 +1130,7 @@ TEST_F(FacadeE2eTest, NotifyWithVdFeedOffsetTriggersRealScanVdRequestAndClearsOn
     hc_destroy(handle);
 }
 
-// D5/Case 6, over the real wire: a 409 reporting a genuinely newer
+// Over the real wire: a 409 reporting a genuinely newer
 // current_version must be followed by a real retry with the advanced offset,
 // which the fake manager then accepts.
 TEST_F(FacadeE2eTest, NotifyWithVdFeedOffsetRetriesRealScanVdRequestAfter409)

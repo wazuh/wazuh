@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""Enrollment tokens (issue #38993): the framework side of authd's `token_create` / `token_list` /
+"""Enrollment tokens: the framework side of authd's `token_create` / `token_list` /
 `token_revoke` local-socket verbs -- the ones `wazuh-manager-authd --create-enrollment-token`,
 `--list-enrollment-tokens` and `--revoke-enrollment-token` already speak (os_auth/src/token_cli.c).
 
@@ -118,7 +118,7 @@ def _authd_request(function: str, arguments: dict = None):
         if e.code == AUTHD_STORE_FAILED:
             # Nothing the caller did wrong and nothing they can fix by changing the request: authd
             # holds the intent and retries the write on its own, so this is an internal error the
-            # caller should retry, not a 4xx (issue #39078, H04).
+            # caller should retry, not a 4xx.
             raise WazuhInternalError(1771)
         if (e.code >= _AUTHD_CODE_FLOOR and e.code != AUTHD_INTERNAL
                 and e.code not in _AUTHD_FRAMEWORK_FAULT_CODES):

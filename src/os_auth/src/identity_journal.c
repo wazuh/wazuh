@@ -12,7 +12,7 @@
  * An enrollment or a re-enrollment answers with a key and a re-enrollment secret long before the
  * writer puts them in global.db, and until now a failure there -- wazuh-db down, a socket timeout,
  * a crash between the two -- was logged and forgotten: the agent kept credentials the database had
- * never seen (issue #39078, H03). This journal is the record that lets the writer finish the job
+ * never seen. This journal is the record that lets the writer finish the job
  * later, or the next process start pick it up.
  *
  * It holds the credential in the clear, not a hash, because the verifier derives the signing key
@@ -27,8 +27,7 @@
  *     (auth.c), since its entries can be rebuilt from client.keys; here the secret exists nowhere
  *     else, so an unrecorded transition is one we must not perform.
  *   - No fsync. What this recovers from is a process crash and a wazuh-db outage, not a power cut
- *     with the page still in cache; an fsync per enrollment would be paid by every agent
- *     (issue #39078, D13).
+ *     with the page still in cache; an fsync per enrollment would be paid by every agent.
  */
 
 #include <shared.h>
@@ -369,8 +368,8 @@ identity_journal_entry_t* identity_journal_snapshot(size_t max, long long upto_s
             /* Entries newer than the caller's mark are skipped: they were appended while the
              * writer was already working, so their keys have not reached client.keys yet and
              * their own queue nodes have not been processed. Applying and forgetting one here
-             * would leave a credential the next start could not recover (issue #39078, review
-             * round). Zero means "everything". */
+             * would leave a credential the next start could not recover. Zero
+             * means "everything". */
             if (upto_seq > 0 && node->entry.seq > upto_seq) {
                 continue;
             }

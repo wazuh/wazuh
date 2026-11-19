@@ -55,7 +55,7 @@ else
     fail cli_validate_invalid "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
-# Every problem of the file in one run (#40814): one (1244) line each, in the order of the file.
+# Every problem of the file in one run: one line each, in the order of the file.
 cat > "$TMP/many-errors.conf" << 'EOF'
 <wazuh_config>
   <auth><port>1515</port><port>1516</port><use_password>true</use_password></auth>

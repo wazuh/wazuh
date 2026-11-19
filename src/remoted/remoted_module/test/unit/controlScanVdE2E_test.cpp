@@ -218,7 +218,7 @@ TEST(ControlScanVdE2ETest, NotifyResponseCarriesVdFeedOffsetOverRealHttp)
 
 TEST(ControlScanVdE2ETest, NotifyResponseOmitsVdFeedOffsetWhileVdIsDisabled)
 {
-    // #41101: a disabled VD refuses every scan, so advertising its offset would have the agents
+    // A disabled VD refuses every scan, so advertising its offset would have the agents
     // request one forever. The agent leaves a missing vd_feed_offset alone.
     ControlScanVdE2EFixture f;
     if (!f.start())

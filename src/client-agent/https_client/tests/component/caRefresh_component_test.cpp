@@ -9,7 +9,7 @@
  */
 
 /*
- * The #39321 CA refresh over the real curl path against a real TLS listener,
+ * The CA refresh over the real curl path against a real TLS listener,
  * verified for real. The unit suite drives CaBundleFetcher against a mocked
  * IHttpPerformer and so can only prove what the class does with a response it
  * was handed; nothing there establishes that Wazuh-CA-Generation survives an

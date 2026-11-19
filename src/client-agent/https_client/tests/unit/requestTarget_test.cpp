@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-// #38492/#38491: the configured reverse-proxy segment is folded into the wire target -- a routing
+// The configured reverse-proxy segment is folded into the wire target -- a routing
 // matter only, since the bearer token does not bind the target.
 
 TEST(PrefixedTargetTest, EmptyEndpointLeavesTheTargetUnchanged)

@@ -26,7 +26,7 @@ The library provides these classes:
 
 ## How it works
 
-1. The caller instantiates a connector with a JSON configuration built from the `indexer` section of `wazuh-manager.conf` (see [Configuration](configuration.md)). A connector without `hosts` fails (`No hosts found in the configuration`), and so does one whose single CA file does not exist (`The CA root certificate file: '<path>' does not exist.`). With several CA files, they are concatenated into `tmp/root-ca-merged.pem` under the manager home.
+1. The caller instantiates a connector with a JSON configuration built from the `indexer` section of `wazuh-manager.conf` (see [Configuration](configuration.md)). A connector without `hosts` fails (`No hosts found in the configuration`), and so does one that lists a CA file that does not exist (`The CA root certificate file: '<path>' does not exist.`). With several CA files, they are concatenated into `tmp/root-ca-merged.pem` under the manager home.
 2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart of every process that links the library (`wazuh-manager-modulesd` and `wazuh-manager-analysisd`). If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
 3. A background health-monitor thread polls `GET /_cat/health` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available. A host answering HTTP 429 (for example a tripped circuit breaker) is throttled: it stays in rotation and the requests sent to it back off on their own 429s; this is logged once as `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.`, with a warning when the breaker reports `PERMANENT` durability, and as `Indexer node '<host>' accepts requests again.` when it clears. Any other answer or error (a transport failure, 401/403, any other 4xx, a 5xx, a red cluster) marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`, with the indexer's error type and reason in parentheses after `Unauthorized` when its answer carries them) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
 4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`, true while some host is not down, and the stricter `hasAvailableServer()`, true only while some host is neither down nor throttled) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes. When every host is down, a request fails with `No available server. Unavailable nodes: <host>: <reason>` (an `IndexerConnectorException`, like every other connector failure); the background flush thread logs it as a warning, `Error processing bulk: No available server. …`.
@@ -218,22 +218,9 @@ holds them is stopping: it replies `200`, leaves those shards' documents out and
 Which agent module feeds which index family is described in the
 [Inventory Sync Server reference](../inventory-sync-server/README.md).
 
-## Key source files
+## Implementation
 
-| File | Purpose |
-|------|---------|
-| `src/shared_modules/indexer_connector/include/indexerConnector.hpp` | Public API: `IndexerConnectorSync`, `IndexerConnectorAsync`, `IndexerSession` |
-| `src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp` | Sync implementation: in-memory buffer, bulk flush, 413 splitting, by-query operations |
-| `src/shared_modules/indexer_connector/src/indexerConnectorAsyncImpl.hpp` | Async implementation: in-memory bulk queue, background flusher |
-| `src/shared_modules/indexer_connector/src/exponentialBackoff.hpp` | Exponential backoff with jitter, shared by both retry paths |
-| `src/shared_modules/indexer_connector/src/serverSelector.hpp` | Round-robin load balancer with health tracking |
-| `src/shared_modules/indexer_connector/src/monitoring.hpp` | Background health-monitor thread (default 10 s interval) |
-| `src/shared_modules/indexer_connector/src/indexerTransport.cpp` | TLS material and keystore credentials |
-| `src/shared_modules/indexer_connector/testtool/` | CLI test tool: `push-events`, `export-policy`, `generate-full-policy` |
-
-## Test tool
-
-`indexer_connector_tool` is a developer tool built in the build tree
-(`cmake --build src/build --target indexer_connector_tool`, output `src/build/bin/indexer_connector_tool`);
-it is not installed with the manager. Its reference is
-`src/shared_modules/indexer_connector/testtool/README.md`.
+The library's internals (source layout, requirements, numbered design decisions, consumer contract and
+test suites) and its developer test tool, `indexer_connector_tool` (built in the build tree, not
+installed with the manager), are described in the developer README,
+`src/shared_modules/indexer_connector/README.md`.

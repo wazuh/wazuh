@@ -99,7 +99,8 @@ backend remoted_nodes_tcp
     # connections, which a frozen (SIGSTOP, deadlocked) remoted still does: its share of the agents would time
     # out. 'check-ssl' makes the probe speak TLS to the backend and 'option httpchk' asks the unauthenticated
     # health route. Agent traffic stays layer 4; only the probe is HTTP. 'verify none' is limited to the
-    # probe, which carries no secret.
+    # probe, which carries no secret, and it is required here: HAProxy verifies backend TLS by default
+    # and refuses to start on a TLS server line that has neither 'ca-file' nor 'verify none' -- see 3.4.
     option httpchk
     http-check send meth GET uri /wazuh-manager/
     http-check expect status 200
@@ -154,7 +155,8 @@ backend remoted_nodes_http
     # [!] ONE physical line per server -- HAProxy has no line continuation, see 3.2.
     #   ssl                  speak TLS (remoted has no plaintext port)
     #   ssl-min-ver TLSv1.3  remoted requires TLS 1.3 as a minimum
-    #   verify required      validate the manager's certificate (HAProxy does NOT by default)
+    #   verify required      validate the manager's certificate (already HAProxy's default; stated
+    #                        so that a global 'ssl-server-verify none' cannot silently turn it off)
     #   verifyhost           which name that certificate is checked against
     #   sni                  send that name during the handshake
     #   crt                  the client certificate HAProxy presents if remoted requires mTLS
@@ -208,11 +210,17 @@ byte. remoted does not parse it, so those bytes land where the TLS handshake sho
 agent's connection fails — with no HTTP status code, only TLS errors. `send-proxy-v2` (the binary
 variant, and what an AWS NLB target group would enable) fails the same way.
 
-### 3.4. Backend TLS is not verified by default
+### 3.4. Backend TLS verification needs a CA file and a name
 
-HAProxy connects to a TLS backend **without validating its certificate** unless you say
-`verify required`. Always include it, together with `ca-file` and `verifyhost`; otherwise anything
-that can impersonate the manager's address is accepted.
+HAProxy **verifies** a TLS backend's certificate by default: a `server` line's `verify` defaults to the
+global `ssl-server-verify`, which is `required` unless set otherwise. Verification needs a trust
+store, so a `server ... ssl` line (or a `check-ssl` probe) with neither `ca-file` nor `verify none` is
+refused at configuration check — `haproxy -c` reports an alert saying verification is enabled by
+default but no CA file is specified, and HAProxy does not start. Write `verify required` explicitly
+anyway, together with `ca-file` and `verifyhost`: the explicit keyword keeps a global
+`ssl-server-verify none` from disabling it, and `verifyhost` pins the name checked, so that only a
+certificate issued for the manager is accepted. Use `verify none` only for a probe that carries no
+secret, as the passthrough health check above does.
 
 `verifyhost` is HAProxy's equivalent of NGINX's `proxy_ssl_name`: the name checked against the
 manager certificate's SAN.

@@ -326,7 +326,7 @@ async def restart_agents(agent_list: list = None, request_time: int = None) -> A
                 # affected, so in a cluster it survives only in this node's own `nodes` entry --
                 # and it is the whole answer when no node has ever seen the agent. What it must
                 # not do is answer 1761, which blames the agent's version for what is this node's
-                # own gap, and which the per-node breakdown added in #39428 made visible.
+                # own gap, and which the per-node breakdown made visible.
                 logger.debug("restart_agents: no version for agent %s in this node's database; queuing its "
                              "task, to be answered once the task manager has replied", agent_id)
                 agents_unknown_here.add(agent_id)
@@ -478,7 +478,7 @@ async def reload_agents(agent_list: list = None, request_time: int = None) -> Af
                 # affected, so in a cluster it survives only in this node's own `nodes` entry --
                 # and it is the whole answer when no node has ever seen the agent. What it must
                 # not do is answer 1761, which blames the agent's version for what is this node's
-                # own gap, and which the per-node breakdown added in #39428 made visible.
+                # own gap, and which the per-node breakdown made visible.
                 logger.debug("reload_agents: no version for agent %s in this node's database; queuing its "
                              "task, to be answered once the task manager has replied", agent_id)
                 agents_unknown_here.add(agent_id)
@@ -817,7 +817,7 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
 def create_enrollment_token(address: str = None, port: int = None, prefix: str = None, ttl: str = None,
                             max_uses: int = None, description: str = None, embed_ca: bool = False,
                             no_credential: bool = False) -> WazuhResult:
-    """Mint an enrollment token (issue #38993).
+    """Mint an enrollment token.
 
     The token text is returned here, once: GET /agents/enrollment-tokens never shows it again.
 

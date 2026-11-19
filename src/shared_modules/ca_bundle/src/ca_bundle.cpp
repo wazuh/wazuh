@@ -93,7 +93,7 @@ namespace ca_bundle
 
         /// Whether @p ca signed @p leaf: one signature check, and nothing more -- what describe()
         /// reports as `signsLeaf`. NOT what decides a publication: leafChainsToAnyCa() does, and a
-        /// signature is only one of the things it needs (C33).
+        /// signature is only one of the things it needs (D-8).
         bool caSignsLeaf(const X509* ca, const X509* leaf)
         {
             if (ca == nullptr || leaf == nullptr)
@@ -477,7 +477,7 @@ namespace ca_bundle
                 return {0, GuardFailure::hash_mismatch};
             }
             // Named no_ca_signs_leaf for the callers already written against it, but the question is
-            // leafChainsToAnyCa()'s since C33: a CA that merely signs the leaf is not one an agent can
+            // leafChainsToAnyCa()'s since D-8: a CA that merely signs the leaf is not one an agent can
             // use, so it must not decide which generation this manager announces.
             if (!leafChains())
             {

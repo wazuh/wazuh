@@ -42,7 +42,7 @@ run_target() {
 
 }
 
-# Same as run_target, but leaves the tree in place and echoes its path: the #39064 cases below
+# Same as run_target, but leaves the tree in place and echoes its path: the authd.pass cases below
 # assert on files BESIDE ossec.conf (etc/authd.pass, logs/ossec.log), which run_target deletes.
 # The caller is responsible for removing what it gets back.
 run_target_keep() {
@@ -210,7 +210,7 @@ check "the commented-out block does not absorb the insertion" \
 unset WAZUH_AGENT_NAME
 
 # --- Removed names are reported, and write nothing --------------------------------------------
-# Sixteen registration variables went with #39063. Each is still read so an install carrying an
+# Sixteen registration variables were removed in 5.x. Each is still read so an install carrying an
 # old playbook is told, rather than quietly producing an agent that never registers.
 
 removed() {
@@ -300,10 +300,10 @@ check "WAZUH_GROUP still aliases WAZUH_AGENT_GROUP" "1" \
       "$(printf '%s\n' "${actual}" | grep -c "<groups>alpha</groups>")"
 unset WAZUH_GROUP
 
-# ---- #39064: the fleet-wide enrollment password is never created ----
+# ---- The fleet-wide enrollment password is never created ----
 #
-# "Fresh 5.0 installs skip creation" and "no authd.pass is written" (#39064). The variable is
-# IGNORED rather than removed from the accepted set -- #39063 does that -- so a playbook that still
+# "Fresh 5.0 installs skip creation" and "no authd.pass is written". The variable is
+# IGNORED rather than removed from the accepted set -- the token rules do that -- so a playbook that still
 # sets it is told, instead of quietly enrolling with nothing.
 
 export WAZUH_REGISTRATION_SERVER="10.0.0.2"

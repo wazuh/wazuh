@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""The two server pairs, remoted and apid: issued with one profile (the shell resolver's _wmc_generate_server_pair,
-wazuh/wazuh#40085), kept when usable, never repaired, and refused when half or broken."""
+"""The two server pairs, remoted and apid: issued with one profile (the shell resolver's _wmc_generate_server_pair),
+kept when usable, never repaired, and refused when half or broken."""
 
 import datetime
 import hashlib

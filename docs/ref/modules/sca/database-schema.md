@@ -35,7 +35,7 @@ This table stores data for each security policy used in the SCA module, includin
 |     ✔️    | `id`          | TEXT      | Unique identifier of the policy                      | policy.id   | keyword       |
 |           | `name`        | TEXT      | Human-readable name of the policy                    | policy.name | keyword       |
 |           | `file`        | TEXT      | Path to the policy definition file                   | policy.file | keyword       |
-|           | `description` | TEXT      | Description of the policy purpose and content        | policy.description | text    |
+|           | `description` | TEXT      | Description of the policy purpose and content        | policy.description | keyword |
 |           | `refs`        | TEXT      | External references related to the policy (e.g. CIS) | policy.references | keyword  |
 
 **Indexes:**
@@ -86,18 +86,18 @@ This table stores individual checks associated with a policy. Each check include
 |     ✔️    | `id`          | TEXT      | Unique identifier of the check                                           | check.id    | keyword       |
 |     ✔️    | `policy_id`   | TEXT      | Reference to the associated policy ID                                    | policy.id   | keyword       |
 |           | `name`        | TEXT      | Short name summarizing the check                                         | check.name  | keyword       |
-|           | `description` | TEXT      | Detailed explanation of what the check evaluates                         | check.description | text    |
-|           | `rationale`   | TEXT      | Justification or reason behind the check                                 | check.rationale | text      |
-|           | `remediation` | TEXT      | Instructions for correcting a failed check                               | check.remediation | text    |
+|           | `description` | TEXT      | Detailed explanation of what the check evaluates                         | check.description | keyword |
+|           | `rationale`   | TEXT      | Justification or reason behind the check                                 | check.rationale | keyword   |
+|           | `remediation` | TEXT      | Instructions for correcting a failed check                               | check.remediation | keyword |
 |           | `refs`        | TEXT      | External references related to the check                                 | check.references | keyword  |
 |           | `result`      | TEXT      | Current evaluation result (Passed, Failed, Not run, Not applicable)      | check.result | keyword      |
-|           | `reason`      | TEXT      | Explanation for the check's result                                       | check.reason | text         |
+|           | `reason`      | TEXT      | Explanation for the check's result                                       | check.reason | keyword      |
 |           | `condition`   | TEXT      | Logical condition under which the check applies (all, any, none)        | check.condition | keyword    |
 |           | `compliance`  | TEXT      | JSON-serialized compliance object (see [Compliance format](#compliance-format)) | check.compliance.* | keyword |
 |           | `mitre`       | TEXT      | JSON-serialized MITRE ATT&CK object (see [MITRE format](#mitre-format))         | check.mitre.*      | keyword |
-|           | `rules`       | TEXT      | Serialized rule(s) logic used to perform the actual check               | check.rules | text          |
+|           | `rules`       | TEXT      | Serialized rule(s) logic used to perform the actual check               | check.rules | keyword       |
 |           | `regex_type`  | TEXT      | Internal regex engine identifier for rule evaluation                    | N/A         | N/A          |
-|     ✔️    | `version`     | INTEGER   | Monotonic version for stateful synchronization                          | state.document_version | long |
+|     ✔️    | `version`     | INTEGER   | Monotonic version for stateful synchronization                          | state.document_version | integer |
 |     ✔️    | `sync`        | INTEGER   | Internal sync flag (1 = synced, 0 = local-only)                         | N/A         | N/A          |
 
 **Indexes:**

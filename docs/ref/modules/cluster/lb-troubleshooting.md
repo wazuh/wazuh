@@ -214,9 +214,23 @@ Correlate with batch size before looking at the node.
 
 ### A backend the balancer cannot reach or validate
 
+On HAProxy, read the backend states from its statistics page. The configurations on these pages do
+not enable it (the lab's reference `haproxy.cfg` does, on port 8404); add this section to `haproxy.cfg` (it serves read-only statistics without authentication,
+so bind it to an address only operators reach), check with `haproxy -c -f /etc/haproxy/haproxy.cfg`
+and reload:
+
+```haproxy
+listen stats
+    mode http
+    bind 127.0.0.1:8404
+    stats enable
+    stats uri /stats
+    stats refresh 5s
+```
+
 ```bash
-# HAProxy
-curl -s "http://<balancer>:8404/stats;csv" | awk -F, '{print $1,$2,$18}'
+# On the balancer: proxy, server and status (UP, DOWN, ...) of every backend server
+curl -s "http://127.0.0.1:8404/stats;csv" | awk -F, '{print $1,$2,$18}'
 ```
 
 A backend marked `DOWN` right after a certificate change is §8.
@@ -348,7 +362,13 @@ See [§8.2 of the architecture page](lb.md#82-issue-certificates).
 
 ### After changing an agent's trust material
 
-An agent with **no** `<ssl>` block and no CA on disk runs with verification disabled and logs it.
+An agent with **no** `<ssl>` block and no CA on disk runs with verification disabled and logs it —
+but only if it never held a trust anchor. Once an anchor has been installed, the agent keeps the
+root-owned marker `etc/certs/.anchor-committed` beside it, and deleting `etc/certs/root-ca.pem` then
+makes the agent **refuse to start** with `(4125): the trust anchor 'etc/certs/root-ca.pem' is gone but
+this agent has held one ('etc/certs/.anchor-committed' is still there). ...` rather than fall back to
+no verification. Restore the anchor, reinstall it with `wazuh-agent-auth --certs-only`, or set
+`<ssl><verification_mode>` explicitly (see the [agent's startup refusals](../client/README.md)).
 Placing a CA at `etc/certs/root-ca.pem` silently promotes it to full verification, including the
 hostname check — which then requires the SAN rule above. See
 [agent configuration](../client/configuration.md).
@@ -423,7 +443,7 @@ from the balancer yourself and restart it.
 |---|---|---|
 | `401` right after enrolling | replication window | **yes**, clears within ~25 s |
 | `401` persistent | clock drift | no |
-| `401 token_unknown` | token not replicated yet | **yes**, clears within ~15 s |
+| `401 token_unknown` | token not replicated yet | **yes**, clears within ~15 s (14.0 s measured) |
 | `401 token_expired` / `token_revoked` | the token itself is dead | no, final: the agent deletes its token file; create a new token |
 | `403` on configuration download | node has not met the agent yet | **yes**, scales with node count |
 | `404` on everything | `global_prefix` mismatch, or path rewriting | no |

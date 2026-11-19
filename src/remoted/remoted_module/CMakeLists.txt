@@ -39,7 +39,7 @@ target_include_directories(
 # wazuh_modules, before remoted -- and the same guard below keeps this module independent of that
 # order. Its asio/llhttp deps stay PRIVATE inside the archive, and it compiles the same vendored
 # standalone asio (ASIO_STANDALONE) ext_restinio already uses.
-# ca_bundle: shared_modules/ca_bundle, the CA bundle's parsing/hashing/guards (issue #39319), which
+# ca_bundle: shared_modules/ca_bundle, the CA bundle's parsing/hashing/guards, which
 # the certs tool answers the same questions with. Its PUBLIC include directory propagates through
 # this PRIVATE link, so http_server/ resolves <ca_bundle/ca_bundle.hpp> with nothing added below.
 if(NOT TARGET wazuh_uds_http_server)

@@ -6,7 +6,8 @@
 > - A field expression must target a field of the schema or a temporary field whose first path segment starts with
 >   `_` (for example `_output_field`); any other name makes the asset fail to build. `~` parses without storing.
 >   That is why the examples below store into `_`-prefixed fields.
-> - A schema field always uses the parser of its schema type, and every argument after its name goes to that parser
+> - A schema field always uses the parser of its schema type (unless `wazuh-logpar-overrides.json` assigns it another
+>   one; that file ships empty), and every argument after its name goes to that parser
 >   (`<event.start/RFC3339>`). A temporary field uses `text` unless its first argument names another parser
 >   (`<_tmp/long>`); the remaining arguments go to that parser.
 > - A parser expression must consume the whole input: anything left after the last token makes the parse fail.
@@ -1285,7 +1286,8 @@ predefined, and locale-aware parsing. Automatically applied to schema fields def
     - a sample date (any other value): the format is the single predefined format that matches the whole sample. A
       sample that matches no predefined format, or more than one, makes the asset fail to build.
 - `Locale`: Optional locale name used to parse the date (for example `en_GB.UTF-8`). The default is the C/POSIX
-    locale. The locale must be installed on the host, otherwise the asset fails to build.
+    locale. The locale must be installed on the host, otherwise the asset fails to build (see
+    [Examples: With locale](#examples-with-locale) for installing one).
 
 More than two arguments make the asset fail to build.
 
@@ -1376,7 +1378,12 @@ parse|event_time:
 > [!NOTE]
 > The `date` parser use is implicit, because the parser is automatically applied to schema fields defined as type `date`
 > like `event.start`; `HTTPDATE` and `en_GB.UTF-8` are its two arguments. The `en_GB.UTF-8` locale must be installed
-> on the host, otherwise the asset fails to build.
+> on the host, otherwise the asset fails to build with `Can't build date parser, locale 'en_GB.UTF-8' not found`.
+> The manager packages do not install any locale, and minimal hosts and container images usually ship only
+> `C`/`POSIX` and `C.UTF-8` (`locale -a` lists them). Install the locale on every manager node before using it in
+> a decoder: on Debian/Ubuntu, `apt-get install locales`, enable it in `/etc/locale.gen` and run `locale-gen`
+> (or `locale-gen en_GB.UTF-8` on Ubuntu); on RHEL-like systems, install its langpack
+> (`dnf install glibc-langpack-en`).
 
 
 **Example 1**
@@ -1923,9 +1930,10 @@ strings, numbers, and booleans.
 - Parses one JSON value at the start of the input and stops where that value ends.
 - Supports nested JSON structures up to the nesting limit below.
 - Accepts no parameters.
-- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
-  The root container is level 1: 256 nested containers (objects and arrays) parse, the 257th fails. The limit is
-  fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
+- Input nested deeper than 256 levels is rejected: the root container is level 1, so 256 nested containers (objects
+  and arrays) parse and the 257th fails. The parser then fails as on invalid input and the field is not set; nothing is
+  logged, and a traced run (tester session) shows `<field expression>: nesting depth exceeds the limit (256)`. The
+  limit is fixed (not configurable).
 - No end token is required.
 
 ### Signature
@@ -2024,7 +2032,7 @@ Windows event logs which often contain complex and repetitive tag structures.
 - Repeated sibling elements with the same name become an array.
 - In `windows` mode only: the root `Event` element (and its attributes) is omitted, and each `Data` element with a
   `Name` attribute is stored as a string member named after that attribute, instead of a `Data` object.
-- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; a traced run (tester session) shows `XML nesting depth exceeds the limit (256)`.
   Depth is counted in objects and arrays of the result: the result itself is level 1, each element adds one and a
   repeated sibling two (the array and its element), so 255 nested elements parse and the 256th fails; text and CDATA
   are leaves (`#text`) and add no level. In `windows` mode the omitted `Event` and the `Data` elements add no level.
@@ -2218,10 +2226,11 @@ nested delimiters or escape sequences.
   must be non-empty and different, the quote and the escape must be single characters; otherwise the asset fails to
   build.
 - Values are stored as strings with the outer quotes removed; a key with an empty value is stored as `null`.
-- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
-  For every key, with or without a value, each `.` in the key creates one nested level in the output (`a.b=` maps to
-  `{"a":{"b":null}}`), so the destination path has one level per `.` plus one and the limit counts those levels: a key
-  with 255 dots is mapped, a key with 256 dots fails. The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
+- Output nested deeper than 256 levels is rejected: for every key, with or without a value, each `.` in the key
+  creates one nested level in the output (`a.b=` maps to `{"a":{"b":null}}`), so the destination path has one level
+  per `.` plus one: a key with 255 dots is mapped, a key with 256 dots makes the parser fail as on invalid input, and
+  the field is not set. Nothing is logged; a traced run (tester session) shows
+  `parse_kv: key nesting depth exceeds the limit (256)`. The limit is fixed (not configurable).
 - It does not require an end token.
 
 ### Signature

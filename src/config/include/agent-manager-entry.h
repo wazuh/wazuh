@@ -22,7 +22,7 @@ void w_agent_free_managers(agent *logr);
 /**
  * @brief Make a manager the agent's single entry, replacing any earlier one.
  *
- * 5.x connects to one manager (#37702), so logr->server always holds one entry and the
+ * 5.x connects to one manager, so logr->server always holds one entry and the
  * NULL-rip sentinel after it. Shared by <agent><manager> and the legacy <client> block.
  *
  * @param host Manager host. An IPv6 address is stored expanded.

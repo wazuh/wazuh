@@ -136,7 +136,7 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
         cJSON_AddStringToObject(body, "ip", ip_value);
     }
 
-    /* key_hash (#38465): present only when an entry already exists (a
+    /* key_hash: present only when an entry already exists (a
      * re-enrollment, or an agent that lost the manager's copy but kept its
      * own) -- absent on a genuine first enrollment. Same SHA1(id,name,raw_key)
      * the legacy K:'<hash>' field carried; the manager's force-replace logic
@@ -162,14 +162,14 @@ int w_enrollment_build_request(w_enroll_request_t *out) {
 
     out->body_json = json_str;
 
-    /* This agent's own credential first (#39064). Re-read per attempt like the password below,
+    /* This agent's own credential first. Re-read per attempt like the password below,
      * and for the same reason: a rotation replaces the file while the daemon is running. */
     if (w_enrollment_load_reenroll_credential(out) == 1) {
         minfo("Re-enrolling with this agent's own re-enrollment secret.");
         return 0;
     }
 
-    /* Re-read on every attempt (#38465 D6), never cached: rotating
+    /* Re-read on every attempt, never cached: rotating
      * etc/authd.pass this way doesn't need an agent restart. */
     out->password = w_enrollment_load_password(agt->enrollment.authorization_pass_path);
     if (out->password) {
@@ -487,7 +487,7 @@ STATIC w_enroll_status_t w_enrollment_handle_answer(const hc_enroll_result_t *re
         cJSON *name = cJSON_GetObjectItem(response, "name");
         cJSON *ip = cJSON_GetObjectItem(response, "ip");
         cJSON *key = cJSON_GetObjectItem(response, "key");
-        /* Optional fifth field (#38993): omitted, not empty, when the manager issues none -- an
+        /* Optional fifth field: omitted, not empty, when the manager issues none -- an
          * older manager, or a path that does not mint one. */
         cJSON *reenroll_secret = cJSON_GetObjectItem(response, "reenroll_secret");
 
@@ -512,7 +512,7 @@ STATIC w_enroll_status_t w_enrollment_handle_answer(const hc_enroll_result_t *re
             return W_ENROLL_ERR_SERVER;
         }
 
-        /* Before client.keys, never after (#39064). The manager rotated both when it answered, so
+        /* Before client.keys, never after. The manager rotated both when it answered, so
          * the only crash window that leaves the agent recoverable is one where the secret landed
          * and the key did not: it re-enrolls with the secret and gets a fresh key. The reverse
          * leaves a usable key and a dead secret, and the next recovery needs an operator. */
@@ -701,7 +701,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
  * @brief Maps a 401's failure class onto the three answers the agent has.
  *
  * The class strings are the manager's own (remoted's authMiddleware.cpp), and the mapping is the
- * one the design fixes in §2.9: only `unknown_agent` may cost an identity, only `invalid_signature`
+ * one the design fixes: only `unknown_agent` may cost an identity, only `invalid_signature`
  * is worth giving up on, and everything else -- including a class this agent does not recognise and
  * a 401 with no readable class at all -- retries without touching the credential.
  *
@@ -714,7 +714,7 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
     const char *detail = manager_message ? manager_message : "";
 
     if (auth_class == NULL) {
-        /* Fail-safe, never fail-closed (design §2.9 rule 3): an older manager, an intermediary that
+        /* Fail-safe, never fail-closed: an older manager, an intermediary that
          * replaced the body, or a class this build does not know. A manager that cannot say why it
          * refused us has not told us to throw away our credential. */
         merror("Enrollment rejected by the manager: invalid or missing authentication, with no "
@@ -734,8 +734,8 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
     if (strcmp(auth_class, "invalid_signature") == 0) {
         /* The credential was judged and failed on something a fresh attempt cannot change by
          * itself: the signature, the token's shape, or the identity it claims. So this must never
-         * trigger re-enrollment -- a new identity fixes none of them, and #39064 states the rule
-         * as "preserves credentials and explicitly prevents re-enrollment".
+         * trigger re-enrollment -- a new identity fixes none of them, and the rule is that this
+         * "preserves credentials and explicitly prevents re-enrollment".
          *
          * It does NOT stop the loop, though: only a refusal of the token itself does, and that
          * never reaches this function. A 401 here can still be fixed without the agent doing
@@ -771,7 +771,7 @@ w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
              * Shred it, then keep going.
              *
              * Shredding is what makes the next attempt a different request, and that is why
-             * retrying here is not the loop #39064 set out to remove. With the dead secret gone the
+             * retrying here is not the loop the failure classes set out to remove. With the dead secret gone the
              * agent is in exactly the state of one that has never enrolled, and an agent in that
              * state enrolls: it may have a token or a password to present, or it may have nothing
              * at all -- which, on a manager that accepts credential-less enrollment, is not a dead
@@ -871,7 +871,7 @@ STATIC char *w_enrollment_extract_agent_name(void) {
 }
 
 /**
- * @brief Resolves the "ip" body field per #38465's 3-case mapping of the
+ * @brief Resolves the "ip" body field per the 3-case mapping of the
  *        legacy IP:'...' field:
  *        - agent_address configured (and use_source_ip=no) -> the explicit IP.
  *        - use_source_ip=yes (no agent_address) -> the literal "src" (a plain
@@ -905,7 +905,7 @@ STATIC int w_enrollment_resolve_ip(const char **ip_value) {
 
 /**
  * @brief Loads the enrollment password from `path`, re-read on every call
- *        (#38465 D6: no caching, so rotating the file needs no restart).
+ *        (no caching, so rotating the file needs no restart).
  * @return A newly allocated password, or NULL when the file is missing/empty
  *         (mTLS/open mode -- not an error).
  */
@@ -940,7 +940,7 @@ STATIC char *w_enrollment_load_password(const char *path) {
  * @brief Stores one "ID NAME IP KEY" line to client.keys.
  *
  * Platform split preserved from the legacy
- * enrollment_op.c:w_enrollment_store_key_entry() (#38465 -- do not unify):
+ * enrollment_op.c:w_enrollment_store_key_entry() (do not unify):
  * Linux writes atomically (temp file + fchmod 0640 + rename); Windows writes
  * the file directly, without atomicity.
  */

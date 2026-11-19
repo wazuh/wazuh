@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-// The bearer-token auth contract as seen ON THE WIRE, through a real RestinioHttpServer over TLS
-// (issue #38582): a request that carries `Authorization` or `protocol-version` twice -- identical or
+// The bearer-token auth contract as seen ON THE WIRE, through a real RestinioHttpServer over TLS:
+// a request that carries `Authorization` or `protocol-version` twice -- identical or
 // case-variant spellings -- is rejected instead of "first wins" (the transport collapses the
 // duplicate to an empty value, RestinioHttpServer::makeHttpRequest), every 401 carries
 // `WWW-Authenticate: Bearer`, and the raw header text an agent puts on the wire authenticates.
@@ -174,7 +174,7 @@ TEST_F(AuthHeadersE2ETest, DuplicatedOrdinaryHeadersStillPass)
     EXPECT_EQ(statusOf(response), 200) << response;
 }
 
-// Issue #38993 (T10): every 401 on the wire names its public class twice -- in the RFC 6750
+// Every 401 on the wire names its public class twice -- in the RFC 6750
 // challenge (`error_description`) and as the body's `code` -- with the same generic message. The
 // class is the agent-actionable answer: `invalid_signature` for anything that will not be fixed by a
 // new identity (a token that is not a wazuh-agent+jwt, a bad MAC), `invalid_request` when no usable

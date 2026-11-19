@@ -25,12 +25,20 @@ metadata:
       values of one type.
     - `db` or `table` is not a literal string, or `mask` is not a reference.
     - A number of arguments other than 3.
-    - The target field is a schema field whose elements are not strings.
+    - The target field is a schema field whose elements are not strings, or `mask` is a schema field that
+      is not a string.
 
     Notes:
+    - During shallow asset validation (dependencies not loaded) the KVDB and the table are not read, so the
+      table errors above are not reported and the operation is a no-op.
     - A mask with no decodable bit (a mask of `0` included) makes the operation fail and leaves the target
       unchanged.
     - `kvdb_lookup_append` appends the values of a list of keys instead of the values of the set bits.
+    - The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+      loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+      name ships with the manager, so the results shown hold only for that test content.
+    - An example described as rejected at build time processes no event: its asset does not build, and the
+      result shown is that build failure (an Outcome Event only repeats the input).
   group: kvdb
   fails_when:
     - The mask reference does not exist, is not a string or is not a hexadecimal number.

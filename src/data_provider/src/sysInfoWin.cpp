@@ -1460,7 +1460,7 @@ namespace
     /// @brief Per-thread COM initializer for the syscollector hotfixes collector.
     ///
     /// getHotfixes() runs on syscollector's single long-lived scan thread, so COM is
-    /// initialized once per thread (issue #37655) instead of on every scan cycle: a
+    /// initialized once per thread instead of on every scan cycle: a
     /// per-cycle CoInitializeEx/CoUninitialize churns the COM/RPC infrastructure (notably
     /// the Windows Update Agent) and leaks ~1 anonymous Event handle per cycle.
     ///
@@ -1549,7 +1549,7 @@ nlohmann::json SysInfo::getHotfixes() const
     std::ostringstream oss;
     ComHelper comHelper;
 
-    // Initialize COM once per thread instead of per scan cycle (issue #37655).
+    // Initialize COM once per thread instead of per scan cycle.
     if (g_hotfixComContext.ensureInitialized())
     {
         try

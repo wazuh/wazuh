@@ -14,7 +14,7 @@
 
 #include "auth/credentialRejection.hpp"
 #include "common/logThrottle.hpp"
-#include "control/controlTypes.hpp"    // isValidVersion(), isAgentVersionTooNew() -- shared with /control (D8)
+#include "control/controlTypes.hpp"    // isValidVersion(), isAgentVersionTooNew() -- shared with /control
 #include "endpoints/endpoint.hpp"      // remoted::endpoints::errorResponseFor() -- shared auth-rejection logging
 #include "http_server/headerUtils.hpp" // remoted::http::headerValue() -- case-insensitive lookup
 #include "json.hpp"
@@ -93,7 +93,7 @@ namespace remoted::enrollment
         }
 
         // The 401 shape: `code` is the authentication failure class (string), the same value the
-        // WWW-Authenticate challenge carries as error_description -- see PublicError (issue #38993).
+        // WWW-Authenticate challenge carries as error_description -- see PublicError.
         remoted::http::HttpResponse errorResponse(int status, std::string_view code, std::string_view message)
         {
             nlohmann::json j;
@@ -102,7 +102,7 @@ namespace remoted::enrollment
             return remoted::http::HttpResponse::json(status, j.dump());
         }
 
-        // The enrollment-token rejections remoted decided on its own (issue #38993), in the
+        // The enrollment-token rejections remoted decided on its own, in the
         // outcome-shaped remoted.enroll.token.* family; the per-cause remoted.auth.reject.token_*
         // cells are bumped by errorResponseFor()'s funnel like every other AuthError.
         void countTokenRejection(remoted::auth::AuthError err, EnrollmentMetrics& metrics)
@@ -411,8 +411,8 @@ namespace remoted::enrollment
                 case 9007:
                 case 9008:
                 case 9012:
-                case 9030: // a rotation for that agent is already accepted and not yet persisted
-                           // (issue #39078, H02): the caller's bearer was fine, so this is not an
+                case 9030: // a rotation for that agent is already accepted and not yet persisted:
+                           // the caller's bearer was fine, so this is not an
                            // authentication failure -- it is the same "that state is taken" 409 the
                            // duplicate name and ip get, and the agent may retry once it lands.
                     return 409;
@@ -421,12 +421,12 @@ namespace remoted::enrollment
                            // since it never sends an id of its own.
                 case 9015: // worker rejection (remove/get, post cluster-forwarding fix)
                 case 9016: // clustered forward to master failed
-                case 9031: // authd could not journal the credential it was about to hand out
-                           // (issue #39078, H03), so it handed out none. Nothing is wrong with the
+                case 9031: // authd could not journal the credential it was about to hand out,
+                           // so it handed out none. Nothing is wrong with the
                            // request: this manager cannot record the transition right now, and the
                            // agent should come back -- the same shape as the two above.
                     return 503;
-                case 9022: // enrollment token unknown or revoked (issue #38993)
+                case 9022: // enrollment token unknown or revoked
                 case 9023: // enrollment token expired
                 case 9024: // enrollment token has no uses left
                     // 403, not 401: the bearer DID verify (remoted checked the signature against the
@@ -440,7 +440,7 @@ namespace remoted::enrollment
             }
         }
 
-        // What authd said about the enrollment token the request used (issue #38993), by counter.
+        // What authd said about the enrollment token the request used, by counter.
         // 9022 folds "not found" and "revoked" together on authd's side (telling them apart on the
         // wire would let a caller probe ids), so it lands in rejected_unknown here; remoted's own
         // replica check normally catches both earlier, in their own cells.
@@ -456,7 +456,7 @@ namespace remoted::enrollment
             }
         }
 
-        // authd's verdict on a re-enrollment bearer (issue #38993). remoted forwarded that bearer
+        // authd's verdict on a re-enrollment bearer. remoted forwarded that bearer
         // UNVERIFIED (the secret it is signed with is the master's alone), so these three codes are
         // AUTHENTICATION failures, not business rejections: they take the 401 every credential
         // failure on this server gets -- through authErrorResponse(), so they land in the
@@ -516,7 +516,7 @@ namespace remoted::enrollment
                 j["name"] = result.name;
                 j["ip"] = result.ip;
                 j["key"] = result.key;
-                // Verbatim from authd like the four fields above (issue #38993): the credential the agent
+                // Verbatim from authd like the four fields above: the credential the agent
                 // will re-enroll with. Omitted, not empty, when authd sent none.
                 if (!result.reenrollSecret.empty())
                 {

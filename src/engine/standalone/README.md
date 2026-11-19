@@ -51,7 +51,8 @@ The package and `run_engine.sh` provide the following directory structure:
 - **bin/**: Contains the engine (`bin/wazuh-engine`)
     - **bin/lib**: Contains the shared libraries used by the engine
 - **data/**: Contains the data files used by the engine in runtime, this directory should
-    not be modified manually
+    not be modified manually. It is also the IOC input directory (`WAZUH_KVDB_IOC_INPUT_PATH`): the only
+    place `POST /content/ioc/update` accepts an ndjson file from
     - **data/store**: The engine's internal store (`WAZUH_STORE_PATH`): schemas, enrichment and GeoIP
       documents seeded by the package
     - **data/kvdb-ioc**: The IOC key-value databases (`WAZUH_KVDB_IOC_PATH`), created by the engine

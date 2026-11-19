@@ -63,7 +63,7 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         {
             // One-shot 401 retry: a 401 can be a just-expired/edge timestamp,
             // a clock-skewed agent, or a dead key -- the manager deliberately
-            // answers all three identically (#37828). Correct for
+            // answers all three identically. Correct for
             // measurable skew (if the response carried the manager's Date)
             // and mint a fresh token (attemptOnce re-mints); only
             // a second 401 -- now on a timestamp already skew-corrected --
@@ -141,7 +141,7 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     {
         // A 401 that survived the one-shot fresh-timestamp retry and, for `unknown_agent`, the
         // gate's window. Which of the three answers it deserves is the manager's to name, not ours
-        // to guess (#39064): only `unknown_agent` means the identity itself is gone, and only that
+        // to guess: only `unknown_agent` means the identity itself is gone, and only that
         // pauses traffic and asks for re-enrollment. Every other class -- including
         // Unclassified, the fail-safe reading -- is returned to the caller unescalated; the streams
         // already keep the batch and retry on the next tick (statelessStream.cpp), so nothing storms
@@ -152,7 +152,7 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         {
             if (m_authGate != nullptr && escalate)
             {
-                m_authGate->reportAuthFailure(); // Once per incident. #37828.
+                m_authGate->reportAuthFailure(); // Once per incident.
             }
         }
         else
@@ -307,7 +307,7 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
 
-    // #38492/#38491: fold the configured endpoint into the target -- the
+    // Fold the configured endpoint into the target -- the
     // manager routes on the literal wire request-target (prefix included);
     // CurlPerformer later appends this already-prefixed string to
     // ModuleConfig::baseUrl(). Authentication does not look at it.

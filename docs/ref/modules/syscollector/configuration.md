@@ -148,7 +148,7 @@ Collect Windows updates and hotfixes.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Windows only - includes KB updates and patches
+- **Note:** Windows only - includes KB updates and patches. On any other platform the option is ignored and logs the warning `The 'hotfixes' option is only available on Windows systems. Ignoring it.`, so leave it out of Linux, macOS and Unix configurations
 
 ---
 
@@ -216,7 +216,7 @@ Standard configuration for most deployments:
     <groups>yes</groups>
     <services>yes</services>
     <browser_extensions>yes</browser_extensions>
-    <hotfixes>yes</hotfixes>
+    <hotfixes>yes</hotfixes> <!-- Windows only: elsewhere it logs a warning and is ignored -->
 
     <!-- Rate limiting -->
     <max_eps>50</max_eps>
@@ -254,7 +254,7 @@ Reduce resource usage by disabling resource-intensive scans:
     <groups>no</groups>
     <services>no</services>
     <browser_extensions>no</browser_extensions>
-    <hotfixes>no</hotfixes>
+    <hotfixes>no</hotfixes> <!-- Windows only -->
 
     <synchronization>
         <enabled>yes</enabled>
@@ -280,7 +280,7 @@ Emphasize security-relevant inventory data:
     <users>yes</users>
     <groups>yes</groups>
     <services>yes</services>
-    <hotfixes>yes</hotfixes>
+    <hotfixes>yes</hotfixes> <!-- Windows only -->
 
     <!-- Optional categories -->
     <network>no</network>
@@ -316,7 +316,7 @@ For environments with frequent inventory changes:
     <users>no</users>
     <groups>no</groups>
     <browser_extensions>no</browser_extensions>
-    <hotfixes>no</hotfixes>
+    <hotfixes>no</hotfixes> <!-- Windows only -->
 
     <!-- Increased throughput -->
     <max_eps>100</max_eps>
@@ -350,7 +350,7 @@ Optimized for large-scale deployments with fast networks:
     <groups>yes</groups>
     <services>yes</services>
     <browser_extensions>yes</browser_extensions>
-    <hotfixes>yes</hotfixes>
+    <hotfixes>yes</hotfixes> <!-- Windows only -->
 
     <max_eps>200</max_eps>
     <notify_first_scan>no</notify_first_scan>
@@ -411,15 +411,14 @@ Synchronization messages are not limited by this option.
 
 ### Validate Configuration
 
-Test configuration syntax before applying:
+Test the configuration before applying it with the daemon that reads the `<wodle name="syscollector">` block, `wazuh-modulesd` (`wazuh-agentd -t` does not read the wodle and exits `0` whatever it contains):
 
 ```bash
 # Linux/Unix
-/var/ossec/bin/wazuh-agentd -t
-
-# Windows
-"C:\Program Files (x86)\ossec-agent\wazuh-agent.exe" -t
+/var/ossec/bin/wazuh-modulesd -t
 ```
+
+It exits non-zero when the block is refused, for example `Invalid interval at module 'syscollector'` or `Invalid content for tag '<tag>' at module 'syscollector'.` A value that is only warned about (an unknown element, `<hotfixes>` outside Windows) does not fail the test. The Windows agent has no configuration test option: it reads the block when it starts and logs the same messages to `ossec.log`.
 
 ### Monitor Syscollector Activity
 

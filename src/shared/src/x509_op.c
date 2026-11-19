@@ -99,7 +99,7 @@ X509 **w_x509_load_all_pem(const char *path, size_t *count)
     }
 
     /* The only clean way out of the loop is end of input; anything else means a block we could not
-     * decode, and then the whole file is refused (issue #39078, H01) */
+     * decode, and then the whole file is refused */
     well_formed = (ERR_GET_REASON(ERR_peek_last_error()) == PEM_R_NO_START_LINE);
     ERR_clear_error();
     BIO_free(bio);

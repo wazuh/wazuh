@@ -11,7 +11,7 @@
  */
 
 /// @file jwtRequestTokenSigner.hpp
-/// Emits `wazuh-agent+jwt` tokens (issue #38582, profile in jwtProfileV1.hpp). Typed API: it takes an
+/// Emits `wazuh-agent+jwt` tokens (profile in jwtProfileV1.hpp). Typed API: it takes an
 /// agent id, a key and a clock reading and always produces exactly the profile -- no claim map, no
 /// algorithm choice, nothing an unwary caller could widen. Serialisation is by hand (the profile is
 /// six fixed claims), compact and alphabetically ordered, which is byte-identical to what a

@@ -9,7 +9,7 @@
 
 /**
  * @file syscollector_identity_tests.cpp
- * @brief Decision procedure for #38601's identity resync, and the lane it resends on.
+ * @brief Decision procedure for the identity resync, and the lane it resends on.
  *
  * The routing is the part worth pinning down: a recovered VD index has to be cleared and
  * re-sent on the VD protocol, because the manager routes a VD session through the scan lane

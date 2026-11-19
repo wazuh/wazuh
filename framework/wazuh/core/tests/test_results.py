@@ -377,7 +377,7 @@ def test_node_attribution_survives_the_success_wins_reconciliation():
     `__or__` lets a success override a failure for the same item, which is right for the stale-view
     case it exists for and wrong for a node-local fact: an agent whose upgrade task was created on
     two nodes and not on a third merges to a clean success, leaving the operator with no way to
-    learn which node could not serve it (#39428).
+    learn which node could not serve it.
 
     Attribution is recorded per node BEFORE the merge and unioned, so it survives that.
     """
@@ -494,7 +494,7 @@ def test_uninformative_failure_survives_in_the_per_node_breakdown():
     """Dropping the placeholder from the merge must not erase it from `nodes`.
 
     That breakdown is each node's own answer, and there "this node has no information about the
-    agent" is the point: it names the node that could not serve the agent (#39428).
+    agent" is the point: it names the node that could not serve the agent.
     """
     master = _node_result(affected=['001'])
     master.attribute_to_node('master')

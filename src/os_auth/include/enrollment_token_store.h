@@ -46,7 +46,7 @@
 /* Most tokens the store will hold. A mint that would cross it purges the dead entries first and is
  * only refused when that many tokens are still alive. Sized against the file remoted will accept:
  * an entry measures ~240 bytes, or ~1.4 KB when the operator embeds the CA, so 5000 of the widest
- * kind stay under W_ETOKEN_STORE_MAX_BYTES with room to spare (issue #38994) */
+ * kind stay under W_ETOKEN_STORE_MAX_BYTES with room to spare */
 #define ETOKEN_MAX_TOKENS 5000
 
 /* What etoken_store_purge() removes */
@@ -60,7 +60,7 @@ typedef enum {
 #define ETOKEN_CREATE_TOOBIG (-3)  /**< The store would cross W_ETOKEN_STORE_MAX_BYTES */
 
 /**
- * @brief One enrollment token as authd keeps it (issue #38993).
+ * @brief One enrollment token as authd keeps it.
  *
  * The master mints, revokes and consumes; the workers hold a read-only replica of the file the
  * cluster synchronises. Exactly one anchor is set: the SPKI pin of the CA (@a has_pin) or the PEM
@@ -184,7 +184,7 @@ cJSON *etoken_store_list(void);
  * Idempotent on a token that is already revoked **and already written**: that answers 0 without
  * rewriting the file. A revocation that could not be persisted is remembered instead, so this
  * authd stops honouring the token at once and every later call -- this one included -- retries the
- * write until it lands. Success therefore always means "the file says so" (issue #39078, H04).
+ * write until it lands. Success therefore always means "the file says so".
  *
  * @return 0 on success, -1 when the id is unknown, ETOKEN_STORE_FAILED when it is revoked in
  *         memory but the file could not be written.

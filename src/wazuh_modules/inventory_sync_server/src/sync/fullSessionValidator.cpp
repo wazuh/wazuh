@@ -35,7 +35,7 @@ namespace
         return value ? value->string_view() : std::string_view {};
     }
 
-    /// The mode x payload matrix (design doc 02 §2). Any combination outside it is a 400.
+    /// The mode x payload matrix. Any combination outside it is a 400.
     bool modeAcceptsPayload(fb::Mode mode, fb::SessionPayload payload)
     {
         switch (mode)

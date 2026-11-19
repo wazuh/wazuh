@@ -13,7 +13,7 @@
 
 /**
  * @file tlsInventory.hpp
- * @brief What `GET /tls` on the admin socket answers with (issue #39320): the certificate the
+ * @brief What `GET /tls` on the admin socket answers with: the certificate the
  *        listener is serving, as loaded, and the CA bundle as read for this very request -- one
  *        struct the transport fills (IHttpServer::tlsInventory()) and one function that renders it.
  *

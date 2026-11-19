@@ -92,8 +92,8 @@ protected:
         std::filesystem::create_directories(m_scratchDir);
         std::filesystem::current_path(m_scratchDir);
 
-        // The facade binds a fixed relative path and the library creates no parent directories
-        // (RF-9), so the test provides the installed manager's queue/sockets/ layout under cwd.
+        // The facade binds a fixed relative path and the library creates no parent directories,
+        // so the test provides the installed manager's queue/sockets/ layout under cwd.
         std::filesystem::create_directories("queue/sockets");
         std::error_code ec;
         std::filesystem::remove(kAdminSocketPath, ec);
@@ -246,9 +246,9 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
         << "the admin server's default sizing must not trip the library's reservation clamp";
 }
 
-// GET /metrics dumps the module's whole registry: the E6a families (remoted.control.*,
+// GET /metrics dumps the module's whole registry: the families (remoted.control.*,
 // remoted.scanvd.*) exist from facade construction -- no traffic needed -- the admin
-// server's own transport diagnostics ride along as remoted.admin.server.* pulls (U10), and the
+// server's own transport diagnostics ride along as remoted.admin.server.* pulls, and the
 // PUBLIC transport's backpressure state as remoted.server.budget.* / remoted.forwarder.deferred.*
 // pulls, live-wired: the deferred capacity must read the actual configured cap, not a quiesced 0.
 TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
@@ -344,7 +344,7 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     EXPECT_EQ(wrongVerbTls->get_header_value("Allow"), "GET");
 }
 
-// GET /tls (issue #39320): the served certificate and the CA bundle, as the issue's document. The
+// GET /tls: the served certificate and the CA bundle. The
 // exact shape is tlsInventory_test.cpp's; over the socket this pins that the route serves the
 // listener the facade started (its configured paths, a self-consistent clock) and the bundle
 // /cacerts would hand out, with no threshold verdicts anywhere.

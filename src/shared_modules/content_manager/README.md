@@ -22,8 +22,10 @@ This README covers the library's interface and internals.
   `ContentRegister` and the module's start/stop act on the same library instance.
 - A consumer creates a `ContentRegister(topicName, parameters, fileProcessingCallback, updateCallbacks)`
   ([contentRegister.hpp](include/contentRegister.hpp)). Destroying it unregisters the topic.
-  - `interval` present: a scheduler thread runs the update **immediately**, then every `interval` seconds
-    (`changeSchedulerInterval()` changes it). A run that finds one already in progress is skipped.
+  - `interval` present: a scheduler thread runs the update **immediately**, then `interval` seconds after
+    each scheduled run returns, so the period is counted from the end of a run
+    (`startActionScheduler()` in [action.hpp](src/action.hpp); `changeSchedulerInterval()` changes it).
+    A run that finds one already in progress is skipped.
   - `ondemand: true`: the topic is registered with the on-demand lane (see [On demand](#on-demand)).
 - `getCurrentOffset()` returns the cursor stored in the topic's RocksDB database (0 when none).
 

@@ -6,7 +6,7 @@
 ' Foundation.
 '
 ' Drives config() in ../InstallerScripts.vbs against a throwaway install directory, so the
-' refusal rules of #39063 are asserted on Windows rather than read next to the Linux ones.
+' enrollment-token refusal rules are asserted on Windows rather than read next to the Linux ones.
 ' Mirrors src/init/tests/test_enrollment_token.sh case for case; the two must agree, because
 ' "the same rules on every platform" is a claim a reader cannot check by eye.
 '

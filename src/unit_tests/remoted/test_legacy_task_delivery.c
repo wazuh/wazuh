@@ -65,7 +65,7 @@ static void drain_acks(void) {
 
 /* A minimal but STRUCTURALLY VALID PEM: legacy_task_ca_read() requires both the BEGIN and the END
  * marker on whatever the module's export hands it, so a fixture missing either is rejected before
- * any wire step. ONE certificate, which is the whole contract of that export (issue #39319): the
+ * any wire step. ONE certificate, which is the whole contract of that export: the
  * agent-side installer refuses a drop-in carrying more than one. */
 #define TEST_CA_PEM "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n-----END CERTIFICATE-----\n"
 
@@ -170,7 +170,7 @@ static cJSON *build_payload_versioned(const char *wpk_file, const char *sha1, co
     return payload;
 }
 
-/* Queues the manager-side answer for the CA to deliver. Since issue #39319 legacy_task_ca_read()
+/* Queues the manager-side answer for the CA to deliver. legacy_task_ca_read()
  * does not open the file at all: it asks the C++ module, which resolves
  * remote.https.ca_certificate itself and hands back the ONE certificate of that bundle which signs
  * the served leaf, re-serialised. So what a test stages here is that answer -- the PEM and its
@@ -825,7 +825,7 @@ static void test_ca_sent_when_target_version_unparseable(void **state) {
 }
 
 /* An operator-set remote.https.ca_certificate is honoured over the built-in default. Since the read
- * moved into the C++ module (issue #39319) the path is no longer observable through an open(); what
+ * moved into the C++ module the path is no longer observable through an open(); what
  * this manager still owns is naming it, so the assertion moved to the log line -- an exact match,
  * not expect_any, or this case would no longer pin anything its name claims. */
 static void test_ca_reads_the_configured_path(void **state) {
@@ -870,10 +870,10 @@ static void test_ca_reads_the_configured_path(void **state) {
 
 /* No CA to deliver: logged as an error, no wire step attempted, upgrade proceeds.
  *
- * The MECHANISM changed with issue #39319 -- the export answers 0 instead of wfopen() answering
+ * The MECHANISM changed with the move -- the export answers 0 instead of wfopen() answering
  * NULL -- and with it what "nothing to deliver" covers: a missing or unreadable bundle, one that
  * carries no certificate, AND a bundle none of whose CAs signs the certificate this manager serves.
- * That last one is why the generic merror names it too: this return is what the CA-18 case reaches,
+ * That last one is why the generic merror names it too: this return is what that case reaches,
  * before the explicit remoted_module_tls_ca_matches_leaf() guard is ever consulted. The outcome
  * being pinned here is unchanged: one error, no wire step, the upgrade goes ahead. */
 static void test_ca_file_missing_continues_the_upgrade(void **state) {
@@ -949,7 +949,7 @@ static void test_ca_file_without_certificate_block_is_refused(void **state) {
 /* A PEM with a BEGIN line but no END line -- what a truncation leaves behind. Refused here rather
  * than shipped, because nothing re-validates these bytes between the agent's disk and the installer
  * that pins them: an anchor with no END line is worse than no anchor at all. (GET /cacerts does not
- * look at markers at all -- it parses with PEM_read_bio_X509 since issue #39318 -- so this check is
+ * look at markers at all -- it parses with PEM_read_bio_X509 -- so this check is
  * this path's own, not a stricter version of that route's.) */
 static void test_ca_file_truncated_pem_is_refused(void **state) {
     (void) state;
@@ -1527,7 +1527,7 @@ static void test_poll_cycle_string_payload_logged_and_dropped(void **state) {
     os_free(keyentries);
 }
 
-/* R15 (previously missing): an eligible (<v5.0.0) agent whose get_pending_tasks response has zero
+/* Previously missing: an eligible (<v5.0.0) agent whose get_pending_tasks response has zero
  * pending tasks. Must not crash, must not log anything spurious, and the cycle must move on to
  * completion cleanly (nothing left in any mock queue at the end). */
 static void test_poll_cycle_eligible_agent_zero_pending_tasks(void **state) {

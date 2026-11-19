@@ -47,8 +47,8 @@ GHCR_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 | Variable        | Value          | Description |
 |-----------------|----------------|-------------|
 | `WAZUH_BRANCH`  | `<branch>`     | Branch to clone from GitHub inside the container instead of copying the local repository. When unset, the local repository is copied and left unmodified. |
-| `BUILD_CPYTHON` | `true/false`   | Builds CPython from the sources of the version in `framework/.python-version`, with the module setup in `custom/`. Default `false`. |
-| `BUILD_DEPS`    | `true/false`   | Downloads the wheels in `framework/requirements.txt`. Default `false`; also done whenever `BUILD_CPYTHON=true`. |
+| `BUILD_CPYTHON` | `true/false`   | Builds CPython from the release tarball of the `cpython` entry in `packages/externals/dependencies.json` (checked against its `upstream_sha256`), with the module setup in `custom/`. Default `false`. |
+| `BUILD_DEPS`    | `true/false`   | Downloads the wheels in `framework/requirements.txt` for the Python version in `framework/.python-version`. Default `false`; also done whenever `BUILD_CPYTHON=true`. |
 
 Example:
 
@@ -71,8 +71,8 @@ BUILD_CPYTHON=[true/false] BUILD_DEPS=[true/false] WAZUH_BRANCH=[wazuh-branch] .
 The script will:
 
 1. Validate the required environment variables
-2. Detect the host architecture
-3. Log in to GitHub Container Registry
+2. Log in to GitHub Container Registry
+3. Detect the host architecture
 4. Pull the builder image
 5. Run the compilation (`make deps`, the optional CPython build and wheel download, then an install of the
    interpreter and its dependencies under `/var/wazuh-manager` inside the container)

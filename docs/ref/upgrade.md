@@ -85,8 +85,6 @@ WARNING: could not generate /etc/wazuh-manager/wazuh-manager.conf.new. The curre
 
 The `ERROR:` line does not fail the upgrade: the live configuration is preserved either way.
 
-Note also the indexer connector's trust anchor: a fresh installation names `/etc/wazuh-manager/certs/indexer-ca.pem` in `<indexer><ssl><certificate_authorities>`, while a configuration preserved from an earlier 5.0 build still names `certs/root-ca.pem`, which is now the agents' CA bundle only. Change that `<ca>` to `/etc/wazuh-manager/certs/indexer-ca.pem` in the live configuration (see [Indexer trust](getting-started/credentials.md#indexer-trust)).
-
 Note in particular `remote.https.global_prefix`: its schema default, `/wazuh-manager/`, is applied to every configuration the manager loads, preserved or not. A preserved `wazuh-manager.conf` with no `<global_prefix>` element therefore serves routes under `/wazuh-manager/`, exactly like a fresh install. Agents use the same prefix by default; only an agent whose `<manager><endpoint>` ends in a bare `/` expects unprefixed routes (see [Client configuration](modules/client/configuration.md#endpoint)). To keep such agents working, add `<global_prefix>/</global_prefix>` to the live configuration (and, on DEB, to `wazuh-manager.conf.new` before adopting it), then move them to the prefixed path as a coordinated agent-side change.
 
 **If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
@@ -478,7 +476,6 @@ sudo ls -l /etc/wazuh-manager/client.keys
 sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 
 # Verify network connectivity
-ping <master_node_ip>
 bash -c '</dev/tcp/<master_node_ip>/1516' && echo open   # telnet and nc are not installed by default
 
 # Check the cluster daemon (a Python process, listed by status)
@@ -536,8 +533,10 @@ sudo tail -50 /var/ossec/logs/ossec.log
 # Verify client.keys exists
 sudo ls -l /var/ossec/etc/client.keys
 
-# Check permissions
-sudo chown -R root:wazuh /var/ossec/etc
+# Check permissions: the top-level files are root:wazuh 0640. Fix only those; never chown -R
+# etc/, whose shared/ and certs/ (the trust anchor the agent owns) have owners of their own
+sudo ls -l /var/ossec/etc/client.keys /var/ossec/etc/ossec.conf
+sudo chown root:wazuh /var/ossec/etc/client.keys /var/ossec/etc/ossec.conf
 ```
 
 **Issue: Agent not connecting after upgrade**

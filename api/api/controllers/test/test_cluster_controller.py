@@ -308,7 +308,7 @@ async def test_get_remoted_tls_node(mock_exc, mock_dapi, mock_remove, mock_dfunc
 @pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
 async def test_get_remoted_tls_node_does_not_require_remoted(mock_request):
     """The endpoint reports on remoted, so remoted being down is a state it must describe: the daemons it
-    declares to the DAPI leave it out, and the status check over them does not raise 1017 (PR #39410 review)."""
+    declares to the DAPI leave it out, and the status check over them does not raise 1017."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()), \
             patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems()), \
             patch('api.controllers.cluster_controller.remove_nones_to_dict'), \

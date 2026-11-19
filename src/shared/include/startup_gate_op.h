@@ -16,8 +16,8 @@
  *
  * A caller MUST check this before running its module's actual start routine:
  * STARTUP_GATE_SHUTDOWN_REQUESTED means a shutdown is already in progress, and
- * the module must abort its startup cleanly instead of starting (issue 38428
- * - previously the gate released on shutdown exactly as if it had opened
+ * the module must abort its startup cleanly instead of starting
+ * (previously the gate released on shutdown exactly as if it had opened
  * normally, with no way for the caller to tell the two apart).
  */
 typedef enum startup_gate_wait_result {

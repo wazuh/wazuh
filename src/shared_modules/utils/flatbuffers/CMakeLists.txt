@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(flatbuffer_tool)
 
+# C++17: flatbuffer_tool needs nothing newer, and CI also configures this directory standalone,
+# outside the tree whose default is C++20.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

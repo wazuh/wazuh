@@ -340,7 +340,7 @@ TEST(ManagerCertsCheck, NoCaSignsLeafExitsNonZeroNamingTheGuard)
 }
 
 // RF-12 / 02-diseno.md §2.6: check() runs its per-certificate guards (isCa, validity window) BEFORE
-// vouch() (commands.hpp). Since the leaf-signing guard verifies the chain (C33), vouch() would refuse
+// vouch() (commands.hpp). Since the leaf-signing guard verifies the chain (ca_bundle D-8), vouch() would refuse
 // these bundles too, as "no CA signs the served leaf"; these two cases pin that check() reports the
 // per-certificate reason, naming the certificate, instead.
 

@@ -26,8 +26,8 @@
  * can carry TlsCertificateSnapshot without leaking the OpenSSL API into every endpoint -- a
  * property ca_bundle/ca_bundle.hpp keeps as well.
  *
- * Reading, hashing and vouching for the CA bundle itself is shared_modules/ca_bundle's (issue
- * #39319): X509Ptr, serializeCertificates() and leafChainsToAnyCa() live there now and are
+ * Reading, hashing and vouching for the CA bundle itself is shared_modules/ca_bundle's:
+ * X509Ptr, serializeCertificates() and leafChainsToAnyCa() live there now and are
  * re-exported below, so every user of this header keeps its spelling.
  */
 
@@ -58,7 +58,7 @@ namespace remoted::http
     // when the parsing moved out. The bundle READER is ca_bundle's parseBundle(), which returns the
     // publication block too, so it is called by its own name.
     //
-    // leafChainsToAnyCa() was anyCaSignsLeaf() until C33: what decides the 503 and the published
+    // leafChainsToAnyCa() was formerly anyCaSignsLeaf(): what decides the 503 and the published
     // generation is a real chain validation now, not a signature check, so the name says so.
     using ca_bundle::leafChainsToAnyCa;
     using ca_bundle::serializeCertificates;
@@ -101,7 +101,7 @@ namespace remoted::http
      * signed the leaf as well as a private self-signed CA. Evaluated against @p at when given, else
      * the current time: the verdict has a date term, so whoever caches it must re-evaluate it.
      *
-     * Not what decides the 503: ca_bundle's leafChainsToAnyCa() is, and since C33 that is a chain
+     * Not what decides the 503: ca_bundle's leafChainsToAnyCa() is, and that is a chain
      * validation as well -- with OpenSSL's DEFAULT flags, so its anchor must be self-signed and this
      * verdict is the MORE permissive of the two on that axis. It stays a separate, operator-facing
      * line because it adds the server PURPOSE the guard does not check: a leaf that chains to the
@@ -163,7 +163,7 @@ namespace remoted::http
     {
         std::optional<int> expiryDays;            ///< Days until the served leaf expires; see daysUntilExpiry().
         std::optional<bool> caMatchesLeaf;        ///< Whether the served leaf CHAINS to the CA file
-                                                  ///< (ca_bundle::leafChainsToAnyCa(), C33): true/false when the
+                                                  ///< (ca_bundle::leafChainsToAnyCa()): true/false when the
                                                   ///< file was readable and carried at least one certificate,
                                                   ///< nullopt when it was not (a missing CA is "unknown", never
                                                   ///< "mismatch").
@@ -183,7 +183,7 @@ namespace remoted::http
         // CaRecordEvent the source posts to its mailbox (caRecordEvents.hpp), built from the
         // CaCertificateSnapshot that noticed it, and what an agent is told travels in
         // CaCertificateSource::CaDescriptor. This status is the leaf's evaluation plus the CA
-        // verdict the metrics publish, and that is all it carries (issue #39319, D23).
+        // verdict the metrics publish, and that is all it carries.
     };
 
     /**
@@ -192,7 +192,7 @@ namespace remoted::http
      * The module's canonical shape for a recurring task (Keystore's watcher, the merged.mg watcher):
      * a thread parked on a condition_variable's wait_for, so stop() wakes it immediately instead
      * of waiting out the interval. Not an io_context timer on purpose -- RESTinio's run_async()
-     * owns its io_context privately (D45).
+     * owns its io_context privately.
      *
      * record() lets the caller store the start-time evaluation BEFORE the thread exists, so the
      * status is already valid when the listener starts accepting. stop() is idempotent and joins;
@@ -223,7 +223,7 @@ namespace remoted::http
          *
          * @p recheck, when given, also runs every @p recheckInterval between two evaluations, on
          * the same thread, and records nothing: it is the cheap half of a tick, for what has to be
-         * noticed without a caller and without repeating the evaluation's log lines (issue #39519).
+         * noticed without a caller and without repeating the evaluation's log lines.
          * An evaluation restarts its countdown. A non-positive @p recheckInterval, or one no shorter
          * than @p interval, disables it.
          */

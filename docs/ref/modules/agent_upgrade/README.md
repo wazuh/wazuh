@@ -77,7 +77,8 @@ Upgrade tasks created for 1 agent(s).
 Note: Agents will execute upgrades autonomously. Use agent logs to track progress.
 ```
 
-Agents that cannot be upgraded are listed first, as `Agent <ID> upgrade failed. Status: <error>`. The
+Agents that cannot be upgraded are listed first, under `Agents that cannot be upgraded:`, one line per
+error: `Agent <ID>[, <ID>…] upgrade failed. Status: <error>`. The
 version rules and per-agent errors are in [Agent upgrades](../task_manager/agent-upgrades.md#version-constraints);
 building and signing a custom WPK is described in `tools/agent-upgrade/README.md`.
 

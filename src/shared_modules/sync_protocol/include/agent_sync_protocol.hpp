@@ -195,7 +195,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///
         /// A bulk write to the indexer may not be visible yet when the manager checks it,
         /// which used to make the manager retry internally against the indexer up to 5
-        /// times before answering. That loop moved here (2026-08-04, #38117/#38128) so the
+        /// times before answering. That loop moved here (2026-08-04) so the
         /// manager stops holding the connection for the whole retry budget: on a 409 the
         /// agent itself re-sends the same integrity check, spaced by CHECKSUM_RETRY_DELAY,
         /// and only reports a real mismatch once every attempt in this budget agrees.

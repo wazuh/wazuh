@@ -174,7 +174,7 @@ namespace remoted::enrollment
             return remoted::auth::AuthError::TokenUnknown;
         }
 
-        // Lookup, then the P35b mitigation: a token minted on the master moments ago may not have
+        // Lookup, then the cluster-sync mitigation: a token minted on the master moments ago may not have
         // reached this node's copy of the store yet, so an unknown `kid` forces ONE re-read (rate-
         // limited inside TokenKeySource) before the request is refused.
         auto entry = m_tokenSource->lookup(kid);

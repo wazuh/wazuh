@@ -1,5 +1,5 @@
 // Package enrollhttps enrolls a brand-new agent over POST /enroll with an
-// enrollment-token bearer (issue #38993): the HTTPS self-enrollment a 5.x agent
+// enrollment-token bearer: the HTTPS self-enrollment a 5.x agent
 // performs when the operator handed it a token minted with
 // `wazuh-manager-authd --create-enrollment-token` instead of the shared
 // password (docu/16-enroll-https.md).
@@ -7,7 +7,7 @@
 // It serves two callers. As the `enroll_https` STEP it measures the path --
 // remoted verifying the bearer against its replica of authd's token store,
 // forwarding the token id to authd, authd consuming a use and minting the agent
-// -- and as the fleet's BOOTSTRAP (`--bootstrap enroll-token`, issue #39054) it
+// -- and as the fleet's BOOTSTRAP (`--bootstrap enroll-token`) it
 // is how every simulated agent obtains the identity it then runs under, which is
 // what lets the harness run against a manager whose <use_password> is the
 // installed default. Every call enrolls a NEW name (authd answers 409 to a

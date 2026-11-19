@@ -341,7 +341,8 @@ Install()
         fi
         # Only --install issues the CA, the bundle and the server pairs, and an unsafe or invalid
         # entry may have stopped the run before it did; anything else it reports missing (the
-        # indexer password, CA and client pair) the start completes once it is supplied.
+        # indexer password and CA, and a client pair when the configuration names one) the start
+        # completes once it is supplied.
         if [ "${CREDENTIALS_STATUS}" -ne 0 ] || printf '%s\n' "${CREDENTIALS_ERR}" \
             | grep -q -E "^(INVALID|UNSAFE) |^MISSING $(InstalledEtcDir)/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
             CREDENTIALS_NEEDS_INSTALL="yes"

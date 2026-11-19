@@ -8,7 +8,7 @@ from api.models.base_model_ import Body
 
 
 class EnrollmentTokenCreateModel(Body):
-    """Body of POST /agents/enrollment-tokens (issue #38993): what `wazuh-manager-authd
+    """Body of POST /agents/enrollment-tokens: what `wazuh-manager-authd
     --create-enrollment-token` takes on the command line, as JSON."""
 
     def __init__(self, address=None, port=None, prefix=None, ttl=None, max_uses=None, description=None,

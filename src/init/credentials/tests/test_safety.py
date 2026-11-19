@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""The safe file-system primitives (rules 1-3 of #40339) and the specification of <CONF>: root's, the service
+"""The safe file-system primitives (rules 1-3) and the specification of <CONF>: root's, the service
 group's, never world-writable."""
 
 import os

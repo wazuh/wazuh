@@ -39,7 +39,8 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 - **Schema as the single source of truth** (`schema/wazuh-manager.schema.json`): types, ranges, enums, defaults and
   descriptions of the 70 leaf options (the count `managerConfig_test.cpp`'s leaf guard pins) — byte-identical to the
   YAML PoC's schema, so the 5.1 XML→YAML conversion is a backend swap. Draft-04 because it is what rapidjson's
-  validator implements and what the Python framework uses (`jsonschema.Draft4Validator`). Definitions (`duration`,
+  validator implements and what `tests/parity.py` checks it with (`jsonschema.Draft4Validator`); the Python
+  framework validates nothing itself (it runs the CLI) and reads the schema only to list the section names. Definitions (`duration`,
   `size`, `port`…) are reused through `allOf: [{$ref}]`.
 - **Schema-driven typing** over the pugixml DOM: the target type of every element decides the conversion, so
   `<disabled>no</disabled>` is the boolean `false`, `<port>1514</port>` is an integer, `<protocol>tcp,udp</protocol>`
@@ -222,8 +223,9 @@ installer text-handling suite and the three suites plus a
 coverage report (uploaded, not gated) and an ASAN/UBSAN job that runs the GTest only — the CLI suite
 asserts exact exit codes and an empty stderr, which a sanitizer's reports would break.
 
-`parity.py` carries its own strict ElementTree-based XML→dict loader with the same schema-driven typing:
-it is the reference for the Python framework and the seed of the 5.0→5.1 conversion tool.
+`parity.py` carries its own strict ElementTree-based XML→dict loader with the same schema-driven typing: an
+independent second reading of the language, run only as a test (the framework consumes the CLI instead,
+`framework/wazuh/core/manager_conf.py`).
 
 ## Errors
 

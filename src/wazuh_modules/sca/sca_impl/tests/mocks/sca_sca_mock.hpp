@@ -109,7 +109,7 @@ class SCAMock : public SecurityConfigurationAssessment
             return performRecovery();
         }
 
-        /// @brief Whether a scan has ever completed (issue 38428's persisted
+        /// @brief Whether a scan has ever completed (the persisted
         /// "first scan owed" tracking) -- exposed for tests.
         bool getFirstScanCompletedForTest() const
         {

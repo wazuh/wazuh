@@ -15,7 +15,7 @@
 #include "mconf_hook.h"
 #include "manager_config/manager_config_c.h"
 
-/* One document per process (RF-7): loaded by the daemon's *Config() entry point, read by every
+/* One document per process: loaded by the daemon's *Config() entry point, read by every
  * section reader and by the getconfig handlers. No lock on purpose: the load happens before the
  * daemon spawns threads, and a loaded mconf_t is immutable (see manager_config_c.h), so the later
  * concurrent w_mconf_section() calls (modulesd worker threads) only ever read a stable pointer. */
@@ -42,7 +42,7 @@ int w_mconf_load(const char *cfgfile) {
     /* home = NULL: relative paths resolve against the current working directory, which the daemons
      * have already changed to the manager home. check_files = 0: start-up does not require the
      * certificate files to exist (the installer generates them after writing the configuration, and the
-     * XML readers never checked them either); `-t` does, through w_mconf_validate() (P44). */
+     * XML readers never checked them either); `-t` does, through w_mconf_validate(). */
     if (mconf_load_ex(cfgfile, NULL, 0, &g_mconf, err, sizeof(err)) != 0) {
         merror(CONFIG_INVALID, cfgfile, err);
         g_mconf = NULL;

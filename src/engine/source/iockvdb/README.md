@@ -187,7 +187,7 @@ Namespace `ioc::kvdb::details`:
 
 - **Constructor**: Takes `filesystem::path rootDir` + `shared_ptr<store::IStore>`. Creates root directory, loads persisted state from store if available.
 - **Registry**: `unordered_map<string, shared_ptr<DbHandle>>` protected by `shared_mutex`. Read operations use shared locks; structural operations use unique locks.
-- **`add()`**: Creates a new `DbHandle` and `DbInstance` with a fresh RocksDB at a timestamped path. RAII rollback guard removes the handle if creation fails.
+- **`add()`**: Creates a new `DbHandle` and `DbInstance` with a fresh RocksDB at a new random-suffix path (`makeNextInstancePath()`, below). RAII rollback guard removes the handle if creation fails.
 - **`hotSwap(source, target)`**: Rejects a swap onto itself or from a source without an instance. Locks both structural mutexes atomically (deadlock-free via `std::lock`). Transfers the instance pointer from source to target (zero-copy: the target now serves from the source's directory), enqueues the old target instance for retirement, removes source from registry.
 - **Path generation**: `makeNextInstancePath()` creates `rootDir/dbName/<8 random hex chars>` (`base::utils::generators::randomHexString(8)`; a timestamp-derived suffix collided under rapid `add()`/`hotSwap()` cycles).
 - **RocksDB tuning**: `applyIocStoreTuning()` sets `write_buffer_size` to 8 MiB and `manifest_preallocation_size` to 64 KiB for every instance, so each store does not preallocate a ~70 MB WAL and a 4 MiB manifest.

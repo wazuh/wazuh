@@ -24,7 +24,7 @@ namespace invsync::endpoints::delete_agent
 {
 
     /**
-     * @brief Whole-agent state deletion: `POST /_internal/agents/delete` (design doc 04).
+     * @brief Whole-agent state deletion: `POST /_internal/agents/delete`.
      *
      * UDS-local only (D15) and manager-internal: the sole caller is the Task Manager's dispatcher,
      * executing a durable `agent_delete_indexer` row that authd created after removing the agent

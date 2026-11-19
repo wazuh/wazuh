@@ -23,6 +23,8 @@ remoted_module/
 │   ├── auth/                       # ns remoted::auth — framework-agnostic JWT bearer auth (see below)
 │   │   ├── authTypes.hpp/.cpp          # shared contract: AuthenticatedRequest/Payload/AuthError/AuthConfig
 │   │   ├── authMiddleware.hpp/.cpp     # AuthMiddleware::authenticate() + publicErrorFor() (the 401 classes)
+│   │   ├── credentialRejection.hpp     # isCredentialRejection(): which AuthErrors the throttled
+│   │   │                               #   credential-rejection WARNs count (see Diagnostics)
 │   │   ├── iAgentKeystore.hpp          # key-lookup interface
 │   │   ├── keystore.hpp/.cpp           # client.keys reader + hot-reload watcher
 │   │   ├── addressRule.hpp/.cpp        # the client.keys ip column as an address rule
@@ -128,7 +130,7 @@ src/http_server/
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
 
-- **TLS handshake guard (`guardedTlsSocket.hpp`, `handshakeLedger.hpp`; issue #6883):** RESTinio
+- **TLS handshake guard (`guardedTlsSocket.hpp`, `handshakeLedger.hpp`):** RESTinio
   0.7.x takes one of `max_parallel_connections`' slots when it accepts a socket, but arms the
   connection's first timer only in the handshake's *success* callback
   (`connection_t::init()` → `prepare_connection_and_start_read()`). `read_next_http_message_timelimit`
@@ -182,7 +184,7 @@ src/http_server/
   (negative once expired) and whether it **chains** to `HttpServerConfig::caCertificatePath` (the CA
   `GET /cacerts` hands out; any `CERTIFICATE` block of the file is offered as a trust anchor, so a
   bundle works), which is [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s
-  `leafChainsToAnyCa()` — a real `X509_verify_cert()` with OpenSSL's default flags since C33, so an
+  `leafChainsToAnyCa()` — a real `X509_verify_cert()` with OpenSSL's default flags, so an
   expired CA, one without `CA:TRUE` and one that merely signs the leaf under another subject all
   read `false` — logs the
   result (ERROR expired / leaf does not chain to the CA, WARN < 30 days / CA unreadable, WARN/INFO
@@ -191,14 +193,14 @@ src/http_server/
   one) and records it
   **before** `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
   thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
-  RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
+  RESTinio's `run_async()` keeps its `io_context` private, so no timer there) re-evaluates and
   re-logs every `HttpServerConfig::certificateStatusInterval` (24 h; tests inject 1 s — it is not a
   configuration option) and is stopped in `stopAccepting()` before the worker-pool join. Between two
   evaluations the same thread runs a recheck every `HttpServerConfig::caBundleRecheckInterval` (60 s,
   not a configuration option either; 0 disables it): `CaCertificateSource::snapshot()` and a
   delivery of the record events, no status recorded and no evaluation line repeated. It exists
   because a CA that expires in place makes verifying agents fail their handshake, so no request is
-  left to notice it (issue #39519). The leaf
+  left to notice it. The leaf
   compared is the one in the `SSL_CTX` (constant until restart); the CA is re-read from disk at every
   tick. `certificateStatus()` is a default `{}` on the interface, so the test fakes need nothing.
 
@@ -326,7 +328,8 @@ src/http_server/
        What this layer does **not** bound is downstream work remoted has given up on. At
        `downstream_stateful_response_timeout` remoted answers the agent `503` and frees its slot, but
        inventory-sync keeps the admitted session queued. So inventory-sync keeps its own per-agent
-       count of pending sessions (its D28) rather than relying on this one. That `503` carries
+       count of pending sessions (D28 of [its README](../../wazuh_modules/inventory_sync_server/README.md#design-decisions-d1d31))
+       rather than relying on this one. That `503` carries
        `Retry-After` (`downstream_stateful_retry_after`, 20 s): the agent re-sends the same session
        on it, and without the delay the copy lands while the first one is still being applied, the
        two race on the same documents and the loser is answered `503 indexer contention`.
@@ -385,7 +388,9 @@ src/http_server/
        `max_deferred_requests` (default 128),
        `max_requests_per_agent` (default 6) and `max_inflight_bytes_per_agent` (default 0, meaning
        half of `max_inflight_bytes`; the facade raises any share below `auth_max_decoded_body_size`
-       to it, with a WARN) -- populated from the `remoted.max_inflight_bytes`/
+       to it (with a WARN when the share was set explicitly) and WARNs when the resulting share is
+       not below `max_inflight_bytes`, in `RemotedModuleFacade::startHttpServer()`) -- populated
+       from the `remoted.max_inflight_bytes`/
        `remoted.max_parallel_connections`/`remoted.max_handshakes_per_source`/`remoted.max_deferred_requests`/
        `remoted.max_requests_per_agent`/`remoted.max_inflight_bytes_per_agent` internal options in
        `secure.c` (same pattern as group 1).
@@ -408,7 +413,8 @@ src/http_server/
     5. Everything else is consumed by one subsystem and documented with it: `worker_node`,
        `cluster_name` and `keystore_refresh_interval` (the `client.keys` watcher, see
        *Hot-reload*); the `/control` block (`manager_version`, `allow_higher_versions`,
-       `limits_json` and the `control_*` tunables, see the /control *Configuration*);
+       `limits_json` and the tunables fed by the `remoted.control_*` internal options, see the /control
+       *Configuration*);
        `vd_scan_read_timeout_sec`/`vd_scan_write_timeout_sec` (`/scan/vd`); and the enrollment
        block (`enrollment_enabled`, `enroll_*`, `authd_*`, see the /enroll *Configuration*).
   Every `remoted.*` option, with its default and range, is documented once in the operator
@@ -508,19 +514,19 @@ src/endpoints/
   and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
   byte, under the source's own mutex). The fourth parameter, `deliverCaRecordEvents`, drains and logs
   the CA record event mailbox once, right before the handler answers (empty is a no-op — see the
-  mailbox discussion below, issue #39319, C26); the parsed certificates and their reserialised PEM are
+  mailbox discussion below); the parsed certificates and their reserialised PEM are
   cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement is still reparsed. The
   leaf-match verdict, the chain verdict and the publication verdict are NOT cached: they have a date
   term, so `snapshot()` judges them against the clock on every call from the parsed certificates, and a
   CA that expires (or becomes valid) with the file untouched flips them on the next call, with one
-  `chain_lost_on_clock` / `chain_regained_on_clock` line through the mailbox (issue #39519). The chain
+  `chain_lost_on_clock` / `chain_regained_on_clock` line through the mailbox. The chain
   is verified once per call: `ca_bundle::vouchGivenChain()` takes that answer instead of verifying
   again.
   `certificates == 0 || pem.empty()` ⇒
   `404 {"error":"not_found"}`; a read
   failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
   served and records the cause instead of clearing it — only a readable file with nothing in it
-  clears the snapshot; `matchesLeaf == false` (the served leaf does not CHAIN to any certificate of the CA file — `ca_bundle::leafChainsToAnyCa()`, a real validation since C33, so a CA that merely signs it, an expired one and one without `CA:TRUE` all read false) ⇒
+  clears the snapshot; `matchesLeaf == false` (the served leaf does not CHAIN to any certificate of the CA file — `ca_bundle::leafChainsToAnyCa()`, a real validation, so a CA that merely signs it, an expired one and one without `CA:TRUE` all read false) ⇒
   `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every verifying agent
   fail against this very listener; `true` **or `nullopt`** (no leaf to check against: a server
   that has not started) ⇒ `200 Content-Type: application/x-pem-file`, the snapshot's PEM (certificates this
@@ -533,7 +539,7 @@ src/endpoints/
   `chainValid`/`chainError` from `chainValidates()` (the same validation with `PARTIAL_CHAIN` and the
   SSL-server purpose added, so it can differ from `matchesLeaf` in both directions), which play no
   part in this response and which the transport logs (`WARN`/`INFO`) in `logCertificateStatus()`.
-  Neither does the publication verdict the same read produces (issue #39319):
+  Neither does the publication verdict the same read produces:
   [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `vouchGivenChain()` is called on every
   judgement, with the chain verdict just computed, and `publication`/`vouchFailure`/`block`/`serializedBytes`/`fileSha256` travel
   with the snapshot — an unvouched bundle is served exactly as a vouched one, and the difference is
@@ -544,7 +550,7 @@ src/endpoints/
   **failed** read inside `descriptor()` still consumes that window (`caCertificateSource.cpp`, `descriptor()`):
   it updates `m_lastDescriptorRead` whether or not the revalidation actually read anything new, so a
   permission fixed a moment after a failed revalidation can take up to a second to show up in
-  `ca_generation` — deliberate (D18): the alternative is a read on every single notify the moment
+  `ca_generation` — deliberate: the alternative is a read on every single notify the moment
   anything looks wrong, which is exactly the storm `kDescriptorRefresh` exists to prevent.
   Every `200` this endpoint answers also carries the `Wazuh-CA-Generation` header
   (`endpoints/cacertsEndpoint.cpp`, shared constant `CA_GENERATION_HEADER`): the same generation the
@@ -575,12 +581,12 @@ src/endpoints/
   bundle's own event) · `chain_lost_on_clock` / `chain_regained_on_clock` (WARN / INFO: the leaf
   stopped or started chaining to an UNCHANGED bundle because a validity window closed or opened.
   The WARN names, from their dates, the certificates on the leaf's path that are out of their
-  window; issue #39519) — posted to a
+  window) — posted to a
   bounded `CaRecordEventMailbox` the source only fills. Neither
   `CaPublicationRecord` nor `caRecordEvents.hpp` logs anything (`describeRecordEvent()` is pure, so
   it links into the test binary without pulling the module's logger along); every consumer goes
-  through `CaRecordEventMailbox::deliver()` instead of draining and logging as two separate steps
-  (issue #39319, C26), which serialises the drain and the emission under its own mutex so two
+  through `CaRecordEventMailbox::deliver()` instead of draining and logging as two separate steps,
+  which serialises the drain and the emission under its own mutex so two
   consumers can never publish an older generation after a newer one. **Five** callers own one: the
   transport at start, its 24 h monitor tick and the 60 s recheck between ticks, this handler right
   before it answers, and the `/control` notify path's `ca_generation` provider — which, alone among
@@ -868,10 +874,10 @@ sequenceDiagram
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — the last known-good value
      while VD is unreachable, and 0 only if no value was ever obtained; **omitted** while VD's
-     `/offset` answer says `"enabled": false` (#41101: a disabled VD refuses every scan, and the
+     `/offset` answer says `"enabled": false` (a disabled VD refuses every scan, and the
      agent requests one only off an advertised offset)
-   - Reads the CA bundle's published generation through `Config::caGenerationProvider` (issue
-     #39319, RF-3) and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
+   - Reads the CA bundle's published generation through `Config::caGenerationProvider`
+     and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
      `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
      second across every agent on this node (`IHttpServer::caDescriptor()` →
      `CaCertificateSource::descriptor()`, `kDescriptorRefresh`), never a read per notify. Four
@@ -994,7 +1000,7 @@ write-then-rename), and runs its own thread around a `select()` on that single f
 only bounds the wait with a 1-second timeout so the loop can observe the stop flag; it does not
 provide a second, independent way of detecting changes. If `inotify_init1` fails at construction, the
 watcher does not start — the process keeps running without change detection
-(`mergedMgWatcher.cpp:39-54,105-119`). When a watched `.mg` file changes, it calls back to invalidate
+(`mergedMgWatcher.cpp`: the `Impl` constructor and `watchLoop()`). When a watched `.mg` file changes, it calls back to invalidate
 that path's entry in `HashCache` (`invalidateConfigHash()`), which marks agents in that group for
 config invalidation on their next lookup.
 
@@ -1026,13 +1032,13 @@ extracts the agent ID from the authenticated request, and dispatches to the appr
   (from `notify`: a host field over its bound, or — flagged by the parser in
   `NotifyData::hostMalformed` — `host`/`host.os` not an object or a host field not a string; absent
   and `null` mean "not reported"); `invalid_version` (malformed `startup` version)
+- `409` — `invalid_version` (a `startup` version higher than policy allows)
+- `503` — `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (group membership unreadable)
+- `200` — success + JSON response body
 
 Every version written to wazuh-db goes through `canonicalVersion()` (`controlTypes.hpp`), so
 `5.0.0`, `v5.0.0` and `V5.0.0` are all stored as `v5.0.0` — the framework compares stored versions
 as strings, and two spellings of one version split its listings.
-- `409` — `invalid_version` (a `startup` version higher than policy allows)
-- `503` — `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (group membership unreadable)
-- `200` — success + JSON response body
 
 Uses `LogThrottle` for error conditions (invalid body/JSON/agent ID, unknown type) to avoid log
 flooding from malformed agent requests.
@@ -1041,25 +1047,27 @@ flooding from malformed agent requests.
 
 Via `remoted::control::Config` (`controlConfig.hpp/.cpp`), populated by `buildControlConfig()`
 from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed by
-`remoted.control_*` internal options (`secure.c`, `remoted_module_control_config()`):
+`remoted.control_*` internal options (`secure.c`, `remoted_module_control_config()`). The option
+ranges, and what each one sizes, are in the operator reference:
+[Remoted configuration — Internal Options](../../../docs/ref/modules/remoted/configuration.md#internal-options).
 
 | `Config` field | Default | Internal option (`wazuh-manager-internal-options.conf`) |
 |---|---|---|
 | `managerVersion` | `__wazuh_version` | — (manager's own version, for comparison) |
 | `allowHigherVersions` | from XML | `<remote><agents><allow_higher_versions>` |
 | `isWorkerNode` | from cluster config | — |
-| `groupsRefreshIntervalSec` | 1 s | `remoted.control_groups_refresh_interval` (1–3600) |
-| `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
-| `wdbRoundtripDeadlineMs` | 5000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
-| `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` (100–1000000) |
-| `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
-| `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
-| `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
+| `groupsRefreshIntervalSec` | 1 s | `remoted.control_groups_refresh_interval` |
+| `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` |
+| `wdbRoundtripDeadlineMs` | 5000 ms | `remoted.control_wdb_roundtrip_deadline` |
+| `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` |
+| `tmConcurrency` | 4 | `remoted.control_tm_concurrency` |
+| `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` |
+| `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` |
 | `wdbSocketPath` | `queue/sockets/wdb.sock` (`remoted::paths::kWdbSocket`, relative to the installation directory) | — (fixed) |
 | `taskSocketPath` | `queue/sockets/task-http.sock` (`remoted::paths::kTaskSocket`, relative to the installation directory) | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
-| `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
+| `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` |
 
 ### Metrics
 
@@ -1267,7 +1275,7 @@ legacy 4.x agents that never speak HTTPS. **`/enroll` is the intended long-term 
 1515 stays alive only for that backward-compatibility window, not as a permanent second design.
 
 The same route also serves an agent that already has an identity and wants to keep it
-(**re-enrollment**, issue #38993): the bearer then names the agent, and authd on the master rotates
+(**re-enrollment**): the bearer then names the agent, and authd on the master rotates
 that agent's key and re-enrollment secret in place — same id, no removal, no purge.
 
 ```mermaid
@@ -1323,8 +1331,8 @@ The bearer itself comes in **three forms**, told apart by the JOSE header's `kid
 | Header `kid` | Credential | Key (`shared_modules/utils/jwt/enrollKeyDerivation.hpp`) | Verified by | When |
 |---|---|---|---|---|
 | none | the shared enrollment password | HKDF of `/etc/wazuh-manager/authd.pass` (`PasswordKeySource`, `info` label `WAZUH-ENROLL-JWT-KEY`) | remoted | required when `requirePassword` (authd's `use_password`) is set; **ignored** otherwise |
-| 22 canonical base64url chars = a 16-byte **enrollment token id** (issue #38993) | an enrollment token minted by the operator (authd) | HKDF of that token's 16-byte secret (`TokenKeySource`'s replica of `/etc/wazuh-manager/enrollment_tokens.json`, label `WAZUH-ENROLL-TOKEN-KEY`) | remoted, **always, in every mode** — a presented credential is never ignored — in this order: lookup → signature → expiry → revocation; then `token_id` travels to authd, which consumes one use | whenever presented |
-| the canonical **agent id** (`001`) | **re-enrollment** (issue #38993): the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`): remoted does NOT verify it and forwards it verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028 | whenever presented, in every mode |
+| 22 canonical base64url chars = a 16-byte **enrollment token id** | an enrollment token minted by the operator (authd) | HKDF of that token's 16-byte secret (`TokenKeySource`'s replica of `/etc/wazuh-manager/enrollment_tokens.json`, label `WAZUH-ENROLL-TOKEN-KEY`) | remoted, **always, in every mode** — a presented credential is never ignored — in this order: lookup → signature → expiry → revocation; then `token_id` travels to authd, which consumes one use | whenever presented |
+| the canonical **agent id** (`001`) | **re-enrollment**: the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`): remoted does NOT verify it and forwards it verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028 | whenever presented, in every mode |
 
 The two `kid` shapes are disjoint (a 22-character base64url string is never a canonical digit
 string), so classification is unambiguous. A bearer whose header names a `kid` of neither shape (or
@@ -1565,7 +1573,7 @@ side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
 Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"source":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`.
 `source` is the connection's peer address (`HttpRequest::remoteIp`), sent whatever `ip` resolved to:
 authd only logs it (`Agent key generated for agent 'N' (requested by <source>)`), and a worker
-forwards it to the master. The last two are optional and never sent together (issue #38993): `token_id` is the verified
+forwards it to the master. The last two are optional and never sent together: `token_id` is the verified
 enrollment token id, exactly as the bearer's `kid` spelled it, so authd consumes one use of that
 token (`etoken_store_consume()`, answering 9022/9023/9024 when it disagrees with remoted's replica
 about the token's state); `reenroll` is the re-enrollment bearer and the agent id it named, both
@@ -1588,9 +1596,11 @@ seconds on a flaky cluster link: `w_request_agent_add_clustered` → `w_send_clu
 up to `CLUSTER_SEND_MESSAGE_ATTEMPTS = 10` times with a 1 s sleep between failures
 (`shared/src/agent_op.c`). If `AuthdClient`'s response timeout were shorter than that, a worker-node
 enrollment authd is legitimately still retrying would be cut off early as a spurious `503`. It reads
-the same `isWorkerNode` flag already plumbed into `ControlConfig` and uses a longer default (~15 s,
-covering the worst-case retry budget) on workers versus a short default (~5 s, matching
-`WazuhDBClient`/`TaskClient`, since there's no cluster hop on the master).
+the same `isWorkerNode` flag already plumbed into `ControlConfig` and, while
+`remoted.authd_response_timeout` is `0` (its default), uses a longer default on workers
+(`kWorkerDefaultResponseTimeoutMs`, 15 s, covering the worst-case retry budget) than on the master
+(`kMasterDefaultResponseTimeoutMs`, 5 s, matching `WazuhDBClient`, since there is no cluster hop
+there) — `AuthdClient::resolveResponseTimeoutMs()`.
 
 **Fixed: this retry no longer serializes behind authd's local-socket dispatch.** `run_local_server`
 (`os_auth/src/local-server.c`) used to be a plain accept→recv→dispatch→send→close loop with no
@@ -1660,11 +1670,11 @@ re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` a
 | authd code | meaning | HTTP |
 |---|---|---|
 | 9001 / 9002 / 9009 | internal / JSON-parse / key-generation failure | 500 |
-| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 (new) / 9019 / 9020 | bad function/args/name/ip/groups, invalid caller-supplied key/id (the last two unreachable from `/enroll`, which never sends either) | 400 |
+| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 / 9019 / 9020 | bad function/args/name/ip/groups, invalid caller-supplied key/id (the last two unreachable from `/enroll`, which never sends either) | 400 |
 | 9007 / 9008 / 9012 / 9030 | duplicate ip/name/id; a re-enrollment rotation for that agent already accepted and not yet persisted | 409 |
 | 9013 | `max_agents` reached | 503 |
 | 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
-| 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
+| 9016 | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | 9031 | authd could not journal the credential it was about to hand out, so it handed out none | 503 |
 | any other code (`default:` in `httpStatusForAuthdError()`) | an authd answer this table does not name | 500 |
 | 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
@@ -1736,7 +1746,7 @@ fixing authd once.
 
 Three flags in the existing `<auth>` config block, in order of precedence:
 
-| `disabled` | `remote_enrollment` | `legacy_enrollment` (new) | Port 1515 | `/enroll` |
+| `disabled` | `remote_enrollment` | `legacy_enrollment` | Port 1515 | `/enroll` |
 |---|---|---|---|---|
 | yes | – | – | off | off |
 | no | no | – | off | off |
@@ -1843,7 +1853,7 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
   `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
   shutdown), and `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
   rate-limit gate the handler charges after authentication, and in none of the other outcome counters).
-- **The enrollment-token subset** (issue #38993), by what happened to the TOKEN —
+- **The enrollment-token subset**, by what happened to the TOKEN —
   `remoted.enroll.token.accepted` (a `200` obtained with a token), `.rejected_unknown`,
   `.rejected_expired`, `.rejected_revoked` (decided by remoted's replica, `countTokenRejection()`, and
   also bumped when authd's 9022/9023 disagreed with a replica that lagged, `countTokenOutcome()`),
@@ -2248,7 +2258,7 @@ the **deferred limiter** bounds *the wait for the downstream*.
 ## Agent<->manager auth middleware (`src/auth/`)
 
 Framework-agnostic implementation of the agent<->manager request authentication protocol: the
-`wazuh-agent+jwt` bearer (issue #38582). The token itself — compact grammar, exact header/claim
+`wazuh-agent+jwt` bearer. The token itself — compact grammar, exact header/claim
 sets, HS256, time rules, identity — is verified by the shared `JwtRequestTokenVerifier` in
 `shared_modules/utils/jwt/` (header-only over jwt-cpp's base64url, rapidjson SAX for a strict
 pre-parse and OpenSSL's `EVP_Q_mac`; the same library the agent signs with and the fake managers
@@ -2279,7 +2289,7 @@ class except for `invalid_request` (`error="invalid_request"` alone) and `enroll
 
 ### 401 classes
 
-Issue #38993 (T10 of its plan): a credential failure is still a `401` with the same generic message,
+A credential failure is still a `401` with the same generic message,
 but the wire names its **class** — as the body's `code` (a string, where every other status
 keeps the numeric status) and, for the classes that have one, as the RFC 6750 challenge's
 `error_description`. `PublicError`
@@ -2306,7 +2316,7 @@ for them.
 
 The 5.x agent corrects its clock from the `Date` header (`correctClockFromServerDate()`,
 `client-agent/https_client/src/clockSkew.hpp`)
-and acts on the class (issue #39064): `client-agent/https_client/src/authFailureClass.cpp` parses it,
+and acts on the class: `client-agent/https_client/src/authFailureClass.cpp` parses it,
 only `unknown_agent` latches the agent into its credential-dead state or makes enrollment drop the
 stored re-enrollment secret (`client-agent/src/enrollment.c`), and every other class keeps the
 credential and retries.
@@ -2411,11 +2421,31 @@ lookup argument are numeric.
 ```c
 void remoted_module_start(full_log_fnc_t callbackLog, const remoted_module_config_t* configuration);
 void remoted_module_stop(void);
+int  remoted_module_tls_ca_matches_leaf(void);
+int  remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
+int  remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
+int  remoted_module_init_tls_library(void);
 ```
 
-- `start()` launches the worker thread and returns immediately; the module owns the thread.
+- `start()` brings the HTTPS listener up **synchronously** (`RemotedModuleFacade::start()` →
+  `startHttpServer()`), then the admin socket (a failure there is only a WARN), and only once the
+  listener is up launches the worker thread the module owns; it returns once that thread exists. A `NULL` configuration means module defaults.
 - `stop()` signals the worker (atomic flag + condition_variable) and joins it. Safe to call
   when never started.
+- `remoted_module_tls_ca_matches_leaf()` (`1` chains, `0` does not, `-1` unknown — which the
+  caller treats as *proceed*) and `remoted_module_tls_leaf_signer_pem()` (the one CA certificate
+  of the bundle the served leaf chains to, re-serialised; `0` nothing to deliver, `-1` error) read
+  the same `CaCertificateSource` snapshot `GET /cacerts` answers from. Their one caller is
+  remoted's legacy task poller (`src/remoted/src/legacy_task_delivery.c`), which hands that CA to a
+  pre-5.0 agent ahead of a WPK upgrade.
+- `remoted_module_validate_tls()` loads the certificate, key and (in the verification modes) the
+  client CA the way `start()` would, without starting anything; remoted's `-t`
+  (`w_remoted_validate_module_config()`, `secure.c`) calls it so a file that exists but does not
+  load is refused by `wazuh-manager-control check` instead of at the next start.
+- `remoted_module_init_tls_library()` initialises OpenSSL and reads its configuration file while
+  remoted is still root (see group 2 of the *Configuration* bullet above).
+- Every function except `remoted_module_start()` catches everything at the boundary; the accessors
+  answer `-1` on any exception, silently (they are polled per upgrade).
 - `remoted_module_stop()` catches everything at the `extern "C"` boundary — `std::exception`
   **and** `(...)`: a non-`std::exception` crossing into remoted's C code would hit no handler at all
   and `std::terminate` the daemon. `remoted_module_start()` deliberately does **not**:
@@ -2439,7 +2469,16 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
 - **Client-fault 4xx → `LOGFN_DEBUG2`, unthrottled.** Malformed/unauthenticated requests. An
   unauthenticated peer controls how many of these it triggers, so logging them at WARN would be a
   log-amplification vector against `wazuh-manager.log` — and a bad MAC from an internet scanner is noise.
-  Visible with `remoted.debug=2` when someone is actually diagnosing a client.
+  Visible with `remoted.debug=2` when someone is actually diagnosing a client. On top of that
+  per-request line, a failed or missing **credential** (`isCredentialRejection()`,
+  `auth/credentialRejection.hpp`: no or malformed `Authorization`, an unknown agent, a bad token or
+  signature, an unknown/expired/revoked enrollment token) feeds one throttled summary WARN — the
+  count since the last line plus the latest source address and class — so a peer that keeps failing
+  is visible without a debug level. Two independent throttles, one for every bearer route
+  (`endpoints/authGateway.cpp`) and one for `POST /enroll` (`enrollment/enrollmentEndpoint.cpp`),
+  so neither line hides the other. Malformed requests, manager-side faults (`MissingKey`),
+  `AddressNotAllowed` (its own INFO) and rejections after the signature verified (`StaleToken`,
+  `IdentityMismatch`) are not counted; `credentialRejection_test.cpp` classifies every `AuthError`.
 - **`LogThrottle`** (`src/common/logThrottle.hpp`) enforces one line per 90 s per condition —
   matching remoted's own C throttles — and folds the suppressed count into the emitted line, so
   nothing is silently lost. One instance **per condition**, never shared: a permanently-failing
@@ -2466,7 +2505,8 @@ like `tools/send_stateless.py --all` — not "the manager is broken" in the sens
 already surfaced distinctly by our own cert/key pre-check and `RemotedModuleFacade::start()`, which
 logs and rethrows on failure (there is no retry: remoted must not start without HTTPS up), so
 demoting RESTinio's own duplicate report of it costs nothing. The throttle matters even at DEBUG1:
-`Log::isDebugEnabled()` filters nothing today (`Log::GLOBAL_LOG_LEVEL` is `0` fixed), so the message
+`Log::isDebugEnabled()` filters nothing today (`Log::GLOBAL_LOG_LEVEL` stays `0`: nothing in remoted
+calls `Log::setLogLevel()`), so the message
 builder — an allocation — runs unconditionally per call unless bounded; the real `dbg_flag` filter
 is further downstream. `trace`/`info` are left as `constexpr {}` no-ops for a different reason: with
 a real logger type RESTinio selects a generic logging overload that materializes a closure and a
@@ -2507,7 +2547,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
-| `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
+| `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()`; `open` reads the transport's `HandshakeLedger` (counted from the start of the TLS handshake to the close) |
@@ -2521,24 +2561,17 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
 | `remoted.admin.server.*` (11 pulls) | the admin transport dogfooding itself: 7 levels plus the 4 `rejected.*` shed counters | `IUdsHttpServer::diagnostics()` |
 
-**Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
-the transport I/O thread BEFORE any route runs — it appears ONLY in
-`remoted.server.budget.rejected.total`, never in a `responses.*` cell. The converse holds too:
-an *admitted* compressed request whose decode does not fit the budget is answered `413` and
-counted only in `remoted.auth.reject.body_too_large` — never as a budget shed. A deferred-limiter shed
-is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
-`remoted.forwarder.deferred.rejected.total`; a rate-limit refusal sits with that second group, not
-the first — the route's work never ran (on `/cacerts` the gate sits in front of the handler; on
-`/enroll` the handler charges it before decoding or before calling authd), yet it counts BOTH as `responses.429` and in
-`remoted.<endpoint>.rate_limited`, and in none of that endpoint's outcome cells (nothing was
-decoded, verified or forwarded for it to have an outcome about). Auth-gateway rejections happen before any handler
-and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
-payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
-`remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
-the benchmark collector (`tools/devContainer/scripts/bench_collect.py`, which `monitor.py` runs)
-scrapes `GET /metrics`, `tools/devContainer/scripts/bench_samples.py` derives rates by diffing
-counters per interval, and its
-`REMOTED_MODULE_SCALARS`/`REMOTED_MODULE_HISTOGRAMS` tables derive its short-named CSV columns.
+**Accounting boundary** (what sums to what — a budget shed only in `budget.rejected.total`, a
+deferred-limiter or rate-limit refusal in both the endpoint's `responses.*` and its own counter, a
+gateway rejection only in `remoted.auth.reject.*`): the rules are operator-facing and live once, in
+[Metrics — Accounting boundaries](../../../docs/ref/modules/remoted/metrics.md#accounting-boundaries).
+A change to where a metric is counted moves that section with it.
+
+EPS/rates are deliberately NOT computed in-process: the benchmark collector
+(`tools/devContainer/scripts/bench_collect.py`, run by `tools/devContainer/scripts/monitor.py` —
+not this module's `tools/monitor.py`, which reads `/proc` only) scrapes `GET /metrics`,
+`tools/devContainer/scripts/bench_samples.py` derives rates by diffing counters per interval, and
+its `REMOTED_MODULE_SCALARS`/`REMOTED_MODULE_HISTOGRAMS` tables derive its short-named CSV columns.
 
 ## Local admin socket — `queue/sockets/remote-admin-http.sock`
 
@@ -2616,7 +2649,7 @@ warn-and-continue policy below).
 ### `GET /tls`: the served certificate and the CA bundle
 
 What an operator — or `GET /cluster/{node_id}/daemons/remoted/tls` — reads to see certificate
-validity without shelling into the node (issue #39320): the leaf the HTTPS listener is serving and
+validity without shelling into the node: the leaf the HTTPS listener is serving and
 every certificate of the CA bundle `GET /cacerts` hands out, with their dates, identities and which
 CA signs the leaf. **No thresholds, no `warning`/`critical` verdicts**: the consumer decides what
 "soon" means; the daily `TlsCertificateMonitor` keeps logging expiry as before, unchanged.
@@ -2684,7 +2717,7 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   content-hash cache, and against the last good bundle while the file is unreadable — so a CA that
   expires with the file untouched flips them on the next request, with one `chain_lost_on_clock`
   line within a minute (the listener's 60 s recheck says it if no request does); only the parse is
-  cached, never a verdict (issue #39519).
+  cached, never a verdict.
 - **`last_read_failure`** (present only while the bundle cannot be read): the CA fields then describe
   the **last good read** — the certificates, hash and sizes of the file as it was — next to `cause`
   (the `describeReadFailure()` fragment, e.g. `"cannot be opened (No such file or directory)"`),
@@ -2703,7 +2736,7 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   `ca_bundle::kMaxSerializedBytes`, whichever binds first. Nothing here enforces them (the file is the operator's,
   and the rotation tool refuses to publish past them); they sit next to `certificates_count` and
   `serialized_bytes` so the room left before adding a CA is visible.
-- **`publication` / `publication_vouched`** follow the wire contract of `ca_generation` (#39319):
+- **`publication` / `publication_vouched`** follow the wire contract of `ca_generation`:
   `publication` is `null` when there is no servable bundle, `0` when one is served but no guard
   vouches for it (`vouchFailure != none`), else the vouched timestamp of the bundle's `##` block;
   `publication_vouched` is that guard's verdict.
@@ -2723,7 +2756,7 @@ Contract points:
   server keeps the opposite policy: its failure is fatal.)
 - **Local-only by construction**: agents can never reach it — no route on the public HTTPS
   endpoint exposes it (that endpoint is agent-facing, not an admin plane), and the C-side stats
-  served by remcom's legacy `getstats` are untouched (decision U6).
+  served by remcom's legacy `getstats` are untouched.
 - **Dogfooding**: the admin server's own `TransportDiagnostics` are published on the same
   registry as `remoted.admin.server.*` pull metrics (weak_ptr target behind its own mutex,
   registered once per process — pulls cannot be unregistered), so `GET /metrics` also reports
@@ -2747,6 +2780,9 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
   `HandleSecure()` (in `src/remoted/src/secure.c`) copies it, adds the `/control` block and the
   cluster name, calls `remoted_module_start(mtLoggingFunctionsWrapper, &rm_config)`, and registers
   `remoted_module_stop` with `atexit`.
+- Configuration test: remoted's `-t` (`src/remoted/src/main.c`) calls
+  `w_remoted_validate_module_config()` (`secure.c`), which builds the same struct and runs
+  `remoted_module_validate_tls()` on it.
 
 ## Tests
 
@@ -2820,7 +2856,8 @@ decoding past the decoded cap → 413 with the handler untouched, an agent over 
 before the decoder, a body over the agent's remaining byte share → 503, a per-route decoder used for
 that route only, and every early answer giving the agent's slot back), plus the auth
 core `jwtVerify_test.cpp`/`jwtEnrollSignVerify_test.cpp`, `authMiddleware_test.cpp` (incl. a non-canonical
-`kid` → `InvalidToken`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
+`kid` → `InvalidToken`), `credentialRejection_test.cpp` (every `AuthError` classified as a
+credential rejection or not, the table the throttled WARNs of *Diagnostics* count), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
 skipped without blocking the rest of the file), and the three primitives underneath them:
 `jwtHmacSha256_test.cpp` (RFC 4231 case 2 plus the frozen profile signature, and the recorded
 *negative* token produced when the ASCII hex text is used as the key instead of the decoded bytes),
@@ -2879,7 +2916,7 @@ mailbox: events drained once, in order, and the oldest dropped past 32 with the 
 `GET /cacerts`'s answers, an event drained by the handler is never seen again by a simulated tick
 (and vice versa), and a `stop()`/`start()` cycle hands out a genuinely new, empty mailbox. What the
 previous mailbox still held pending is neither replayed into the new one nor left sitting there:
-`stop()`'s own close-time delivery (issue #39319, C26) drains and says it before the mailbox is
+`stop()`'s own close-time delivery drains and says it before the mailbox is
 replaced, so draining the OLD mailbox directly afterwards finds it empty too.
 
 Also in that group: `installPaths_test.cpp` (every socket and data path is relative to the
@@ -3143,8 +3180,9 @@ python3 tools/send_download.py --url https://127.0.0.1:1517 --all               
                                                         #   unknown group -> 403, another agent's
                                                         #   selector -> 403
 python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
-# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --selectors,
-#          --unknown-group, --other-group, --agent-id, --global-prefix
+# options: --url (default https://127.0.0.1:1517), --agent-id (default 001), --manager-home,
+#          --resource-type {config,wpk}, --resource-id, --all, --wpk, --simulate N, --repeat N,
+#          --selectors, --watch-rss, --unknown-group, --other-group, --global-prefix
 ```
 
 `--wpk` selects the successful WPK case in `--all` only; a single WPK request requires
@@ -3190,6 +3228,22 @@ python3 tools/send_enroll.py --all                             # every scenario 
 `--all` always runs the body-validation scenarios; the bearer and timing scenarios additionally
 require a password to be supplied, since only then can the tool mint a credential the manager will
 judge.
+
+### Manual / end-to-end (`tools/auth_class_matrix.py`)
+
+Every class of the [401 classes](#401-classes) table against a **real** manager, through
+`POST /enroll`: for each case it asserts the status, the nested `error.code` and the
+`WWW-Authenticate` challenge. Self-contained (standard library + `requests`). Run it on the manager,
+as root: it reads the password file and authd's local socket, mints real enrollment tokens there
+(left in the store expired or revoked) and moves the password file aside for one request, restoring
+it afterwards. Unlike the senders above, `--global-prefix` defaults to `/wazuh-manager` instead of
+being read from the configuration.
+
+```bash
+sudo python3 tools/auth_class_matrix.py
+# options: --url (default https://127.0.0.1:1517), --global-prefix (default /wazuh-manager),
+#          --auth-sock, --password-file, --mint-address (must be a SAN of the listener certificate)
+```
 
 ### Load balancer / reverse proxy lab (`tools/load_balancer/`)
 

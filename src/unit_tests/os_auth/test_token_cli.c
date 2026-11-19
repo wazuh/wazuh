@@ -7,10 +7,10 @@
  * Foundation.
  */
 
-// The enrollment token utility mode of wazuh-manager-authd (token_cli.c, issue #38993): the option
+// The enrollment token utility mode of wazuh-manager-authd (token_cli.c): the option
 // table main() hands to getopt_long(), the requests the four actions send over auth.sock (the
 // socket is wrapped, so the JSON that leaves the CLI and the answer it gets are both under test)
-// and what reaches stdout and stderr. --show-token runs the real codec over the frozen E4 token.
+// and what reaches stdout and stderr. --show-token runs the real codec over the frozen token.
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -34,7 +34,7 @@
 #define AUTHD_SHORT_OPTS "Vdhtfu:g:D:p:c:v:sx:k:P"
 #define FAKE_SOCK 1000
 #define TOKEN_ID "AAECAwQFBgcICQoLDA0ODw"
-// test_vectors::enroll_token::kTokenWithKey (E4): adr siem.example.local, pin 6091dc36..0aa2, id 00..0f, secret 10..1f.
+// test_vectors::enroll_token::kTokenWithKey: adr siem.example.local, pin 6091dc36..0aa2, id 00..0f, secret 10..1f.
 #define FROZEN_TOKEN "eyJ2ZXIiOjEsImFkciI6InNpZW0uZXhhbXBsZS5sb2NhbCIsInBpbiI6IllKSGNObVh0WG9NOGpaUmZrLXVfRkxOd0lNenVkek5PUkplc0x2TlpDcUkiLCJrZXkiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R4QVJFaE1VRlJZWEdCa2FHeHdkSGg4In0"
 #define FROZEN_PIN_HEX "6091dc3665ed5e833c8d945f93ebbf14b37020ccee77334e4497ac2ef3590aa2"
 #define FROZEN_SECRET_B64 "EBESExQVFhcYGRobHB0eHw"
@@ -366,7 +366,7 @@ static void test_revoke_ok_and_unknown(void **state) {
     assert_non_null(strstr(s.err_buf, "ERROR 9022: Enrollment token not found or revoked\n"));
     streams_free(&s);
 
-    // A storage failure is its own answer (issue #39078, H04): the token exists and authd already
+    // A storage failure is its own answer: the token exists and authd already
     // refuses it, so the operator has to retry the write, not go looking for the id.
     streams_open(&s);
     assert_int_equal(parse_argv(&opts, s.err, 3, argv), 1);

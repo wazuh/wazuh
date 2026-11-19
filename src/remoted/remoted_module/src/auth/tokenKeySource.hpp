@@ -33,7 +33,7 @@ namespace remoted::auth
      * @brief Read-only, in-memory replica of authd's enrollment token store
      *        (/etc/wazuh-manager/enrollment_tokens.json), keyed by token id, with the `wazuh-enroll+jwt` HS256 key of
      *        every credential-bearing token already derived. Backs the enrollment-token path of
-     *        EnrollmentAuthenticator (issue #38993): a bearer whose `kid` names a token id is verified
+     *        EnrollmentAuthenticator: a bearer whose `kid` names a token id is verified
      *        against the key cached here, and its status (expired / revoked) is answered from here too.
      *
      * Same operational shape as PasswordKeySource, and deliberately the same discipline: authd's
@@ -60,7 +60,7 @@ namespace remoted::auth
      * corruption or an outside edit, and dropping every token because of it would let a bad edit
      * revoke a fleet's enrollment); a torn read is retried a few times like PasswordKeySource does.
      *
-     * reloadIfMissing() is the cluster-sync mitigation of the design (P35b): a token minted on the
+     * reloadIfMissing() is the cluster-sync mitigation of the design: a token minted on the
      * master a moment ago may not have reached this worker's file yet when the agent enrolls
      * through it, so an unknown `kid` forces one re-read before the request is rejected --
      * rate-limited (kMissingKidReloadMinIntervalMs) so a peer probing random ids cannot turn the
@@ -142,7 +142,7 @@ namespace remoted::auth
         std::optional<TokenEntry> lookup(std::string_view kid) const;
 
         /**
-         * @brief The P35b mitigation: force one re-read because @p kid was not found.
+         * @brief The cluster-sync mitigation: force one re-read because @p kid was not found.
          *
          * @return true when a re-read was actually performed (the caller should lookup() again);
          *         false when the rate limit suppressed it -- another unknown `kid` forced a re-read

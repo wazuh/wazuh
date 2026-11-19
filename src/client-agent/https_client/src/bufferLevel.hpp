@@ -16,8 +16,7 @@
 #include <cstdint>
 
 /**
- * @brief The four-level client-buffer ladder, re-based on byte occupancy
- *        (#37835).
+ * @brief The four-level client-buffer ladder, re-based on byte occupancy.
  *
  * A port of the legacy leaky bucket's state machine (client-agent/src/buffer.c)
  * so the manager-side flood rules keep seeing the same transitions once

@@ -250,7 +250,7 @@ namespace remoted::http
         judgeLocked(/*announceFlips=*/false);
         // Only the reads that CHANGED the file reach the record: a cache hit above returned long
         // ago, which is what keeps an event from being re-derived (and re-posted) for bytes that
-        // were already accounted for. O(1) and I/O-free, so it costs the hot path nothing (C22).
+        // were already accounted for. O(1) and I/O-free, so it costs the hot path nothing.
         applyRecord(hash, m_snapshot);
         m_hash = std::move(hash);
         ++m_parses;
@@ -268,7 +268,7 @@ namespace remoted::http
         // route, a daily monitor, a metrics scrape and the legacy poller, so serialising them costs
         // nothing measurable -- and it is what makes publication monotonic: with the read outside,
         // the caller that read the OLDER bytes could take the lock last and publish them over the
-        // newer ones (issue #39318).
+        // newer ones.
         std::lock_guard<std::mutex> lock {m_mutex};
         return snapshotLocked();
     }
@@ -284,7 +284,7 @@ namespace remoted::http
             return {};
         }
 
-        // Same mutex as snapshot() (RNF-2): the generation this hands out is one a read produced,
+        // Same mutex as snapshot(): the generation this hands out is one a read produced,
         // never a half-updated one.
         std::lock_guard<std::mutex> lock {m_mutex};
 
@@ -293,7 +293,7 @@ namespace remoted::http
         {
             // Inside the window the last verdict stands; past it the file is read again, which is
             // what makes a rotation visible within the second without a notify storm becoming a
-            // read storm (CA-15).
+            // read storm.
             (void)snapshotLocked();
             m_lastDescriptorRead = now;
             m_hasDescriptor = true;
@@ -345,10 +345,10 @@ namespace remoted::http
             // The question is asked of ONE certificate at a time -- a store holding only this
             // candidate -- because what a 4.x agent gets is a single-certificate root-ca.pem: what
             // matters is not that the bundle chains, but WHICH of its certificates the leaf chains
-            // to (C33). A signature is not enough and never was: a certificate carrying the CA's
+            // to. A signature is not enough and never was: a certificate carrying the CA's
             // key under another subject signs the leaf without being its issuer, and an installer
             // that accepted it would leave the agent trusting an anchor its TLS then rejects --
-            // the same defect the publication guard closes, through the back door (objection 8).
+            // the same defect the publication guard closes, through the back door.
             std::vector<X509Ptr> candidateAnchor;
             candidateAnchor.push_back(retain(certificate.get()));
             if (!ca_bundle::leafChainsToAnyCa(m_leaf.get(), candidateAnchor))
@@ -438,13 +438,13 @@ namespace remoted::http
 
         const auto at = m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt;
 
-        // A real chain validation since C33, with OpenSSL's default flags: a certificate that merely
+        // A real chain validation, with OpenSSL's default flags: a certificate that merely
         // signs the leaf is not one an agent can build a chain to, and this verdict is what the 503
         // and the announced generation are decided from. Asked once: the vouch's chain guard is the
         // same question about the same certificates at the same instant.
         const bool chains = m_leaf && leafChainsToAnyCa(m_leaf.get(), m_parsed.certificates, at);
 
-        // The one vouch there is (D15): every caller -- the endpoint, the log lines, the notify
+        // The one vouch there is: every caller -- the endpoint, the log lines, the notify
         // descriptor -- reads this verdict instead of re-deciding it. What is measured is what would
         // be handed out: the PEM we serialised, not the file.
         const auto vouch = ca_bundle::vouchGivenChain(m_parsed, chains, m_snapshot.serializedBytes);
@@ -511,7 +511,7 @@ namespace remoted::http
             // Not servable (an emptied file, a PEM we could not parse, a serialisation failure):
             // GET /cacerts already answers 404 and warns about it, and a file nobody can be served
             // from is not evidence that a publication changed. The record keeps what it held and no
-            // event is posted (C23, objection 4).
+            // event is posted.
             return;
         }
 
@@ -535,7 +535,7 @@ namespace remoted::http
             case ca_bundle::GuardFailure::none:
                 // Vouched: the publication is the block's, whether it is higher or LOWER than the
                 // recorded one -- the tool is the only writer and what it last wrote is the truth,
-                // so this is never max(record, block) (objection 2).
+                // so this is never max(record, block).
                 publication = built.publication;
                 if (!hadAntecedent || m_recordEffective.publication != publication)
                 {
@@ -552,8 +552,8 @@ namespace remoted::http
                 }
                 else if (m_recordEffective.fileSha256 == hash)
                 {
-                    // These are the bytes the record already describes: a restart, not a change
-                    // (CA-14). Nothing to say and nothing to write.
+                    // These are the bytes the record already describes: a restart, not a change.
+                    // Nothing to say and nothing to write.
                     return;
                 }
                 else
@@ -585,7 +585,7 @@ namespace remoted::http
             case ca_bundle::GuardFailure::too_many_certificates:
             case ca_bundle::GuardFailure::too_many_bytes:
                 // A block is there and a guard refused it: one event carrying WHICH guard and the
-                // value it measured (C25), and the bundle counts as unpublished from now on.
+                // value it measured, and the bundle counts as unpublished from now on.
                 event.kind = RecordEvent::guard_failed;
                 event.guard = built.vouchFailure;
                 event.observed =
@@ -616,7 +616,7 @@ namespace remoted::http
         if (m_mailbox && event.kind != RecordEvent::none)
         {
             // O(1), under this source's mutex, into the mailbox's own: the only lock ordering there
-            // is (C21b). Nothing here can block on a disk or a logger.
+            // is. Nothing here can block on a disk or a logger.
             m_mailbox->post(std::move(event));
         }
     }
@@ -642,7 +642,7 @@ namespace remoted::http
 
         // One writer at a time, and no queue behind it: a second caller (a request while the
         // monitor tick is writing) leaves rather than waits, and its entry is written by whoever
-        // comes next -- the pending entry is not consumed until a write succeeds (objection 7).
+        // comes next -- the pending entry is not consumed until a write succeeds.
         std::unique_lock<std::mutex> writer {m_writerMutex, std::try_to_lock};
         if (!writer.owns_lock())
         {
@@ -661,7 +661,7 @@ namespace remoted::http
         }
 
         // The I/O happens here: no m_mutex held, so every reader on the hot path is untouched by
-        // however long this takes (RNF-2, C22).
+        // however long this takes.
         const bool stored = m_record->store(*pending);
         const int error = m_record->lastError();
 
@@ -680,7 +680,7 @@ namespace remoted::http
             if (error != 0 && m_mailbox)
             {
                 // Written, and renamed into place, but the directory could not be flushed: the
-                // record is right, its survival across a power loss is not (objection 15).
+                // record is right, its survival across a power loss is not.
                 CaRecordEvent event;
                 event.kind = RecordEvent::record_unwritable;
                 event.bundlePath = m_path;
@@ -695,8 +695,8 @@ namespace remoted::http
 
         if (m_recordFailurePending)
         {
-            // Same streak: one line per streak (C19), and the entry stays pending so the next call
-            // tries again even if the bundle never changes again (C19b).
+            // Same streak: one line per streak, and the entry stays pending so the next call
+            // tries again even if the bundle never changes again.
             return;
         }
 
@@ -728,7 +728,7 @@ namespace remoted::http
         source.flushPendingRecord();
 
         // Again, because the write itself posts: a record_unwritable produced right now comes out
-        // in THIS call instead of waiting for the next drain (objection 3).
+        // in THIS call instead of waiting for the next drain.
         mailbox.deliver(emit);
     }
 

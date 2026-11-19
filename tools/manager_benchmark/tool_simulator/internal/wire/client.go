@@ -65,7 +65,7 @@ func NewAgentClient(id Identity, host string, port int, timeout time.Duration, r
 
 // NewEnrollClient builds an HTTPS client for an agent that has no identity yet:
 // POST /enroll with an enrollment-token bearer the caller supplies per request
-// (DoWithHeaders; issue #38993). Same TLS stance as NewAgentClient (the test
+// (DoWithHeaders). Same TLS stance as NewAgentClient (the test
 // manager is self-signed, so verification is skipped) and the same global-prefix
 // rule; no agent id and no key, because there is nothing to sign with yet.
 func NewEnrollClient(host string, port int, timeout time.Duration, reuse bool, globalPrefix string) *Client {

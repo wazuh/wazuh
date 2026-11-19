@@ -309,7 +309,7 @@ extern "C"
      *
      * @return 1 the served certificate chains to a CA of that file, 0 it explicitly does not (a CA
      *         that merely signs it does not count -- the chain, its validity windows and the CA
-     *         bits are all validated, issue #39319 C33), -1 unknown (the
+     *         bits are all validated), -1 unknown (the
      *         listener is down, no evaluation has run yet, or the CA file was unreadable at the
      *         last one).
      *
@@ -331,7 +331,7 @@ extern "C"
      * is on disk would leave every upgrading agent with no anchor at all. What comes out of here is
      * therefore a single certificate, written back out by this process from the parsed X.509 object:
      * the first one of the bundle the served leaf builds a valid chain to -- not merely one whose
-     * signature is on it -- with no block and nothing else around it (issue #39319, C33).
+     * signature is on it -- with no block and nothing else around it.
      *
      * Read off the same snapshot `GET /cacerts` answers from, so a rotation is seen here too and
      * the two paths can never hand out certificates from different reads of the same file.

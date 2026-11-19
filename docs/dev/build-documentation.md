@@ -14,6 +14,7 @@ The following specific versions are required for compatibility with the global d
 | `mdbook-mermaid` | `0.13.0` |
 | Python 3 with `PyYAML` | `PyYAML` `6.0.3` in CI |
 | Node.js and `npm` (optional — only needed for Mermaid diagram validation) | Node.js `20` in CI |
+| `openapi-spec-validator` (optional — only for the OpenAPI check below) | `0.7.1` in CI |
 
 Python 3 is needed even for a bare `mdbook build` or `mdbook serve`: `book.toml` runs the `readme-links`
 preprocessor (`python3 tools/readme-links.py`), which rewrites links to `README.md` chapters to the `index.html`
@@ -102,6 +103,26 @@ python3 docs/tools/check-docs.py --book docs/book docs/dev docs/ref/modules/remo
 Besides the book, the checker reads every tracked `.md` under `src/`, `framework/`, `api/` and `tools/` (links
 and anchors in the developer READMEs, checked as GitHub renders them), so an edit to a README can fail the
 documentation build. It sees only files tracked by Git: `git add` a new page before trusting a local run.
+
+### What else the CI job checks
+
+`.github/workflows/5_testbuild_docs.yml` runs two more steps around `build.sh`:
+
+- **OpenAPI validation**, before the build: `openapi-spec-validator` 0.7.1 validates the hand-maintained
+  OpenAPI documents (`docs/ref/modules/engine/public-api.yaml`, `private-api.yaml`, `spec-events.yaml`,
+  `docs/ref/modules/remoted/agent-api.yaml`) and the Server API contract `api/api/spec/spec.yaml`. Nothing
+  else in the docs build parses them (`check-docs.py` validates only fenced YAML blocks). A new OpenAPI document joins that
+  step's list. To reproduce it, from the repository root:
+
+  ```bash
+  python3 -m pip install openapi-spec-validator==0.7.1
+  openapi-spec-validator docs/ref/modules/engine/public-api.yaml docs/ref/modules/engine/private-api.yaml \
+    docs/ref/modules/engine/spec-events.yaml docs/ref/modules/remoted/agent-api.yaml api/api/spec/spec.yaml
+  ```
+
+- **No-Node fallback**, after the build: the checker runs again with `node` and `npm` stripped from `PATH`
+  and the step greps its output for `check-docs: node not found on PATH, skipping Mermaid validation`
+  verbatim, and for the absence of a Python traceback. Rewording that notice fails the job.
 
 ## Troubleshooting
 

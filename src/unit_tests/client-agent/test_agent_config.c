@@ -42,7 +42,7 @@ static int setup_agent(void **state)
     test_agt.config_report.enabled = 1;
     test_agt.config_report.interval = 3600;
 
-    /* #38465: <agent><enrollment> is a by-value struct now, always present
+    /* <agent><enrollment> is a by-value struct now, always present
      * (like <ssl>/<batch>) -- no more enrollment_cfg pointer to leave null. */
     test_agt.enrollment.enabled = true;
     test_agt.enrollment.delay_after_enrollment = 20;
@@ -263,7 +263,7 @@ static void test_reports_enrollment_without_optional_fields(void **state)
     cJSON_Delete(root);
 }
 
-/* <agent><enrollment> is a by-value struct (#38465, like <ssl>/<batch>): it can
+/* <agent><enrollment> is a by-value struct (like <ssl>/<batch>): it can
  * never be "unset" the way a null enrollment_cfg pointer used to be -- an
  * agent that never configured anything beyond ClientConf()'s own defaults
  * still reports the section, with the optional fields simply absent. */

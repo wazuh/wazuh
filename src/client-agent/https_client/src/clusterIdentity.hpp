@@ -16,7 +16,7 @@
 #include <utility>
 
 /**
- * @brief The manager-authoritative cluster name (#37733, 2026-07-21).
+ * @brief The manager-authoritative cluster name.
  *
  * Overwritten from every /control startup response (including with an
  * empty/unknown value, so a stale local value never lingers). Read by the

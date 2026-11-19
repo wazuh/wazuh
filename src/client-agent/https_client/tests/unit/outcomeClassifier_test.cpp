@@ -64,7 +64,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Transport errors: retryable AND the confirmed-disconnect class that
         // arms the producer pause. TlsFail is deliberately in here too: no HTTP
         // status arrived, so the manager did not answer -- including a TlsFail
-        // CurlPerformer's verify_mode=system fallback (#39123) already decided was
+        // CurlPerformer's verify_mode=system fallback already decided was
         // not eligible (a classified hostname/date failure, or no fallback path
         // configured) or had already exhausted; CurlPerformer resolves the
         // retry-eligible case before a response ever gets here.
@@ -76,8 +76,8 @@ INSTANTIATE_TEST_SUITE_P(
         // non-contract intermediary code it is transient, so events are kept.
         ClassifierCase {TransportStatus::Ok, 401, OutcomeClass::AuthFail},
         ClassifierCase {TransportStatus::Ok, 403, OutcomeClass::ServerError},
-        // Version rejection: 409 Conflict per the #37733 /control contract.
-        // 426 was the superseded #37732 proposal; now a transient intermediary
+        // Version rejection: 409 Conflict per the /control contract.
+        // 426 was the superseded proposal; now a transient intermediary
         // code rather than a batch-dropping Permanent.
         ClassifierCase {TransportStatus::Ok, 409, OutcomeClass::VersionRejected},
         ClassifierCase {TransportStatus::Ok, 426, OutcomeClass::ServerError},
@@ -89,7 +89,7 @@ INSTANTIATE_TEST_SUITE_P(
         ClassifierCase {TransportStatus::Ok, 500, OutcomeClass::ServerError},
         ClassifierCase {TransportStatus::Ok, 502, OutcomeClass::ServerError},
         ClassifierCase {TransportStatus::Ok, 504, OutcomeClass::ServerError},
-        // 413: the /stateless split-and-resend class (#37835), distinct from
+        // 413: the /stateless split-and-resend class, distinct from
         // the generic permanent drop.
         ClassifierCase {TransportStatus::Ok, 413, OutcomeClass::PayloadTooLarge},
         // 415: the manager rejects Content-Encoding: zstd --
@@ -104,7 +104,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
 {
     // Even with a 2xx already received, an aborted transfer must surface as
-    // Interrupted (H3: interruption is never a silent success).
+    // Interrupted (interruption is never a silent success).
     EXPECT_EQ(OutcomeClass::Interrupted, classifyOutcome(makeResponse(TransportStatus::Aborted, 200)));
     EXPECT_EQ(OutcomeClass::Interrupted, classifyOutcome(makeResponse(TransportStatus::Aborted, 0)));
 }
@@ -170,7 +170,7 @@ TEST(OutcomeClassifierTest, HcResultMapping)
 {
     EXPECT_EQ(HC_RESULT_OK, toHcResult(OutcomeClass::Ok));
     // Both halves of the former Retryable class still cross the ABI as
-    // RETRYABLE: the split is internal to the module (#38010).
+    // RETRYABLE: the split is internal to the module.
     EXPECT_EQ(HC_RESULT_RETRYABLE, toHcResult(OutcomeClass::Unreachable));
     EXPECT_EQ(HC_RESULT_RETRYABLE, toHcResult(OutcomeClass::ServerError));
     EXPECT_EQ(HC_RESULT_BACKPRESSURE, toHcResult(OutcomeClass::BackPressure));

@@ -9,7 +9,7 @@
  */
 
 // Unit tests of TokenKeySource: the read-only replica of authd's enrollment token store that backs
-// the enrollment-token path of /enroll (issue #38993). What is pinned here: the file authd writes
+// the enrollment-token path of /enroll. What is pinned here: the file authd writes
 // (enrollment_token_store.c) is what this reader accepts, the HKDF key it caches matches the frozen
 // vector, credential-less tokens are not replicated, a malformed file never drops the previous
 // replica, the unknown-`kid` forced re-read is rate-limited, and the watcher notices authd's
@@ -85,7 +85,7 @@ namespace
     }
 
     // A record with a well-formed id and a `expires` no reader accepts: what a lifetime near LONG_MAX
-    // used to persist, before the mint bounded it (issue #39133).
+    // used to persist, before the mint bounded it.
     std::string poisonedRecord(std::string_view id)
     {
         std::string out = R"({"id":")";
@@ -285,7 +285,7 @@ namespace
         // The failure this is about: a token minted with an unbounded lifetime persisted a negative
         // `expires`, and refusing the whole file over it froze this replica at whatever it held --
         // for good, on every worker the cluster synchronised the file to, so NO token enrolled
-        // anybody any more. One unreadable record now costs exactly that record (issue #39133).
+        // anybody any more. One unreadable record now costs exactly that record.
         writeFile(store(poisonedRecord(kOtherId) + "," + vectorRecord()));
         TokenKeySource source(m_path);
 

@@ -85,7 +85,7 @@ namespace
         return response;
     }
 
-    /// A rate limiter's answer: 429 plus the Retry-After it wants honoured (#39280 bounds
+    /// A rate limiter's answer: 429 plus the Retry-After it wants honoured (the manager bounds
     /// /cacerts to 50 req/s per node, so a rotating fleet meets this for real).
     HttpResponse rateLimited(long retryAfterSeconds)
     {

@@ -112,7 +112,7 @@ def test_get_status_wdb_running_but_unable_is_not_ready(mock_status, mock_engine
                                                         mock_remoted_cls, mock_wdb_cls):
     """A running wazuh-db that cannot serve must make the node unready.
 
-    This is the state a PID check cannot see and the one issue #39429 reports: the process is up,
+    This is the state a PID check cannot see and the one this check exists for: the process is up,
     its socket answers, and it still cannot query global.db -- so remoted's POST /control fails for
     every agent while events keep flowing.
     """

@@ -8,7 +8,7 @@
  */
 
 /*
- * Component test for the VD feed offset IPC round-trip (issue #38204).
+ * Component test for the VD feed offset IPC round-trip.
  * Modeled directly on test_task_registry_ipc_component.cpp -- see that
  * file's banner for the general rationale; this one calls out only what
  * differs.
@@ -258,7 +258,7 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcPersistsOffsetAndMarksPending
     EXPECT_EQ(100u, pendingOffset);
 }
 
-// #39543: agentd's control thread processes the very first Notify (config_hash, then
+// agentd's control thread processes the very first Notify (config_hash, then
 // vd_feed_offset) before modulesd's own startup_gate has necessarily let it open
 // WM_LOCAL_SOCK yet -- a single connect attempt used to find nobody listening and silently
 // drop the one Notify carrying a real offset. Simulates that ordering directly: nothing is
@@ -337,7 +337,7 @@ TEST_F(VdOffsetIpcComponentTest, MonotonicOffsetOverRealIpc)
     }
 }
 
-// A10: a pending re-scan request must survive a real module-side restart --
+// A pending re-scan request must survive a real module-side restart --
 // the durable file is what makes it still pending, not any in-memory state.
 TEST_F(VdOffsetIpcComponentTest, PendingRescanSurvivesARealRestartOfTheRegistry)
 {

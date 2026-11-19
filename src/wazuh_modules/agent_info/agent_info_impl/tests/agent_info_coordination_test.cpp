@@ -1580,8 +1580,8 @@ TEST_F(AgentInfoCoordinationTest, ParseResponseBufferWithoutSyncProtocol)
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Issue #36358: deferral while FIM first sync is in progress (Option C, Part 1).
-// These tests are independent from PR #36736's extend-budget tests.
+// Deferral while FIM first sync is in progress (Option C, Part 1).
+// These tests are independent from the extend-budget tests.
 // ───────────────────────────────────────────────────────────────────────────
 
 namespace
@@ -1896,7 +1896,7 @@ TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenFimFirstSyncNotCompleted)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Successfully coordinated")));
 }
 
-// Extends the #36358/#36762 FIM guard to SCA: FIM first sync is done, SCA reports
+// Extends the FIM guard to SCA: FIM first sync is done, SCA reports
 // first_sync_completed=0 via get_first_sync_completed -> coordination defers on SCA.
 TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenScaFirstSyncNotCompleted)
 {
@@ -2119,7 +2119,7 @@ TEST_F(AgentInfoCoordinationTest, ScaDeferralLogsInfoOnceAcrossCycles)
 
 // FIM is probed first, so a deferral pauses and resumes only FIM and never touches
 // SCA/Syscollector. FIM accepted the pause request but is not yet in pausedModules
-// at the deferral point, so it must still be resumed (guards R2).
+// at the deferral point, so it must still be resumed.
 TEST_F(AgentInfoCoordinationTest, DeferralResumesFimOnlyAndSkipsOtherModulePauses)
 {
     int selectRowsCalls = 0;
@@ -2372,7 +2372,7 @@ TEST_F(AgentInfoCoordinationTest, ShutdownDuringPausePollAbortsCleanly)
 // no attempt cap, so without a working abort it would spin on a never-completing module;
 // on macOS the module thread is joined without a timeout, so the back-off would otherwise
 // stall modulesd shutdown, leak its PID file and prevent the next start from bringing
-// modulesd back up (issue #37017). Flush-phase sibling of ShutdownDuringPausePollAbortsCleanly.
+// modulesd back up. Flush-phase sibling of ShutdownDuringPausePollAbortsCleanly.
 TEST_F(AgentInfoCoordinationTest, ShutdownDuringFlushPollAbortsCleanly)
 {
     int selectRowsCalls = 0;
@@ -2447,7 +2447,7 @@ TEST_F(AgentInfoCoordinationTest, ShutdownDuringFlushPollAbortsCleanly)
 // immediately instead of sleeping COORDINATION_RETRY_DELAY_MS before each remaining
 // attempt. On macOS the module thread is joined without a timeout, so this back-off
 // would otherwise stall modulesd shutdown, leak its PID file and prevent the next
-// start from bringing modulesd back up (issue #37017).
+// start from bringing modulesd back up.
 TEST_F(AgentInfoCoordinationTest, QueryRetryAbortsOnStopDuringCoordination)
 {
     int selectRowsCalls = 0;
@@ -2524,7 +2524,7 @@ TEST_F(AgentInfoCoordinationTest, QueryRetryAbortsOnStopDuringCoordination)
 }
 
 // A legacy FIM response WITHOUT the first_sync_completed field must be treated as
-// completed (steady-state), never as a permanent deferral (guards R1).
+// completed (steady-state), never as a permanent deferral.
 TEST_F(AgentInfoCoordinationTest, MissingFirstSyncFieldTreatedAsCompleted)
 {
     int selectRowsCalls = 0;

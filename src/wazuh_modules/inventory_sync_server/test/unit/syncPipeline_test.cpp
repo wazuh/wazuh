@@ -516,7 +516,7 @@ TEST(SyncPipelineTest, SameAgentSessionsKeepTheirOrderWithManyWorkers)
     }
 }
 
-// --- DeleteAgent items (design doc 04) ---------------------------------------------------------
+// --- DeleteAgent items -------------------------------------------------------------------------
 
 namespace
 {
@@ -590,7 +590,7 @@ TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
 
 TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
 {
-    // The legacy path lost this silently (doc 04 §1's key improvement): a connector throw must
+    // The legacy path lost this silently (the key improvement): a connector throw must
     // surface as a retriable status, mapped by availability like every other failure.
     PipelineUnderTest fixture;
     fixture.events->m_syncThrowOn = "deleteByQuery";

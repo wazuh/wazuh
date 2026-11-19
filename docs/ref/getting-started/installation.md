@@ -71,7 +71,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 > [!NOTE]
 > When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before the generated configuration is put in place. (On RPM no `wazuh-manager.conf` exists until then; on DEB the default `wazuh-manager.conf` the package ships stays in place, unused, while the package is half-configured, and is replaced once a configure succeeds.) A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
 >
-> An aborted package installation leaves the package's files in place but unconfigured. On DEB, `dpkg -l wazuh-manager` shows it half-configured (state `iF`); finish it by configuring it again with a valid value, or with the variable unset to take the default: `sudo WAZUH_REMOTE_HTTPS_PORT='1517' dpkg --configure wazuh-manager`. On RPM the transaction reports that the `%post` scriptlet failed; remove the package with `sudo rpm -e wazuh-manager` and install it again with valid values.
+> An aborted package installation leaves the package's files in place but unconfigured. On DEB, `dpkg -l wazuh-manager` shows it half-configured (state `iF`); finish it by configuring it again with a valid value, or with the variable unset to take the default: `sudo WAZUH_REMOTE_HTTPS_PORT='1517' dpkg --configure wazuh-manager`. On RPM the failure is only a warning after the error line (`warning: %post(wazuh-manager-<version>-<release>.<arch>) scriptlet failed, exit status 1`): `rpm` itself exits `0` and records the package as installed, so a script that checks only the exit code sees success while `/etc/wazuh-manager/wazuh-manager.conf` does not exist and the manager cannot start. Look for that warning (or for the missing file), remove the package with `sudo rpm -e wazuh-manager` and install it again with valid values.
 >
 > The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
 
@@ -255,18 +255,15 @@ the installation directory `/var/wazuh-manager`, and the credential check refuse
 ### Start the manager
 
 On a fresh installation neither the packages nor `install.sh` start or enable the service: you start
-it when the deployment is ready. (An upgrade restarts a manager that was running before it.) An
+it when the deployment is ready. (A package upgrade restarts a manager that was running before it; an
+`install.sh` update always starts it.) An
 enablement you made earlier does not carry over a purge (`dpkg --purge`, `rpm -e`): it is removed with the
 package, so a later installation starts disabled; `dpkg --remove` keeps it. Set
 `USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway. A fresh package
-install ends by printing where the Server API passwords are (only when it published them: a resolver run
-stopped by an unsafe or invalid entry writes nothing), whether the credential
-resolution is incomplete and what completes it — the command
-`/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (run as root) when
-the CA, the agents' bundle or a server pair is missing or an entry is invalid or unsafe; when the CA was staged in
-`/etc/wazuh-manager/ca` without its key, staging that key as `/etc/wazuh-manager/ca/root-ca.key` (owned by root,
-mode `0400` or `0600`) before that command, or staging the missing server pairs in `/etc/wazuh-manager/certs` and
-starting the manager; otherwise the start itself once the indexer's password and files are supplied — and the command to start the service (and to enable it at boot, when systemd is running).
+install ends with its next steps: where the Server API passwords are (only when it published them), whether the
+credential resolution is incomplete and what completes it, and the command that starts the service (and enables
+it at boot, when systemd is running). Every line is listed in
+[The resolver and its modes](credentials.md#the-resolver-and-its-modes).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;
@@ -285,14 +282,16 @@ sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
 `wazuh-manager-control status` prints one `<daemon> is running...` line per daemon and exits `1` when
-any of them is down. `wazuh-manager-apid` is listed only on a master node, and
-`wazuh-manager-authd` only when `auth.disabled` is not set.
+any of them is down (`<daemon> not running...`, or `<daemon> refused its configuration...` and
+`<daemon> failed to start...` after a refused or failed start). `wazuh-manager-apid` is listed only on a master
+node, and `wazuh-manager-authd` only when `auth.disabled` is not `yes`.
 
 If it refuses to start, `wazuh-manager-control` (and so the journal) prints one line ending in `Exiting`:
 `wazuh-manager.conf: Configuration error.` or `<daemon>: Configuration error.` for the configuration, or
 `Unsafe credentials.`, `Invalid credentials.`, `Unresolved credentials.` or `Cannot check the credentials.` for the
 credentials. `/var/wazuh-manager/logs/wazuh-manager.log` records the reason: the `(1244)` verdict naming the
-option or file, or `wazuh-manager-control: ERROR: unresolved credentials` (or `unsafe`, `invalid`) followed by
+option or file, or `wazuh-manager-control: ERROR: unresolved credentials` (or `unsafe credentials`, `invalid credentials`,
+`cannot check the credentials`) followed by
 the resolver's lines naming the file or key and what to do. Fix it and start the service again; no reinstall is
 needed. See [When the manager does not start](credentials.md#when-the-manager-does-not-start).
 
@@ -330,12 +329,20 @@ and `wazuh-internal-client` has ID `2` (`GET /security/users`). Change `wazuh-in
 password invalidates every token that user holds, so once `wazuh`'s own password changes the token
 obtained below stops working.
 
+No password goes on a command line, where `ps` shows it to every user of the host: `curl` prompts for
+`wazuh`'s current one, and the new ones reach it as the request body on its standard input (`printf` and
+`read` are shell builtins). In a script, hand the current one over the same way, as a `curl` config on
+standard input: `printf 'user = "wazuh:%s"\n' "$CURRENT" | curl -K - …`.
+
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
-curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_MANAGER_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
-curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_MANAGER_API_PASSWORD>"}' "https://localhost:55000/security/users/1"
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+read -rs -p 'New wazuh-internal-client password: ' NEW_WUI; echo
+printf '{"password":"%s"}' "$NEW_WUI" | curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" --data @- "https://localhost:55000/security/users/2"
+read -rs -p 'New wazuh password: ' NEW_API; echo
+printf '{"password":"%s"}' "$NEW_API" | curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" --data @- "https://localhost:55000/security/users/1"
+unset NEW_WUI NEW_API
 ```
 
 See [Default users](../modules/server-api/authentication.md#default-users) for the `allow_run_as` semantics, the endpoint rules that apply to these reserved users, and [what a password change does and does not do](../modules/server-api/authentication.md#what-a-password-change-does-and-does-not-do).
@@ -602,10 +609,10 @@ The agent keeps running without module verification. To enable it, install the r
 
 ### Verifying the agent connected
 
-Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise). `<WAZUH_MANAGER_API_PASSWORD>` is the current password of the `wazuh` user. Until you change it, that is the `WAZUH_MANAGER_API_PASSWORD` line of `/etc/wazuh-manager/export/credentials.env` on the master (see [The published passwords](credentials.md#the-published-passwords)); the file keeps the install-time value, so after a change use the new password:
+Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise). `curl` prompts for the current password of the `wazuh` user (so it never reaches the process list). Until you change it, that is the `WAZUH_MANAGER_API_PASSWORD` line of `/etc/wazuh-manager/export/credentials.env` on the master (see [The published passwords](credentials.md#the-published-passwords)); the file keeps the install-time value, so after a change use the new password:
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X GET "https://localhost:55000/agents?name=web-server-01&select=id,name,status,ip&pretty=true" \
     -H "Authorization: Bearer $TOKEN"
 ```

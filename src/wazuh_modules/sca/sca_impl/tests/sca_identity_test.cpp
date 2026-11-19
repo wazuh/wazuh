@@ -8,7 +8,7 @@
  * Foundation.
  */
 
-// #38601: an agent deleted on the manager re-enrolls under a new id while its local database --
+// An agent deleted on the manager re-enrolls under a new id while its local database --
 // first_sync_completed included -- survives untouched, so every later cycle sends a delta against
 // a baseline the manager no longer has for this identity. These cases pin the decision procedure
 // that repairs it, and in particular the two ways it must NOT fire: an unknown id, and a database

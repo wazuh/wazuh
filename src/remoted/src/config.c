@@ -126,7 +126,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     disk_storage = getDefine_Int_default("remoted", "disk_storage", 0, 1, 0);
     _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id", 0, 1, 0);
     /* The message-counter options belong to OS_StartCounter() (msgs.c), which runs only once remoted has
-     * daemonized. Read them here, on the path `wazuh-remoted -t` also runs, so an out-of-range value
+     * daemonized. Read them here, on the path `wazuh-manager-remoted -t` also runs, so an out-of-range value
      * (getDefine_Int_default() exits on one) fails the config test, and so `wazuh-manager-control check`
      * and the start, instead of stopping remoted after the start was reported as successful.
      * OS_StartCounter() keeps a counter that is already set, so remoted runs with these very values;

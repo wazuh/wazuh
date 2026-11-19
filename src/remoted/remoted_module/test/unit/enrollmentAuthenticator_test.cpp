@@ -13,7 +13,7 @@
 // (the token grammar itself is the shared verifier's job -- jwtEnrollSignVerify_test.cpp -- so
 // here the negatives are the ones the authenticator's own wiring can get wrong: scheme, key
 // availability, time policy, hot-reloaded password, cross-profile token), and the enrollment-token
-// path (issue #38993): a `kid` naming a token id resolves its key from TokenKeySource, is verified
+// path: a `kid` naming a token id resolves its key from TokenKeySource, is verified
 // in EVERY mode, and answers the token's own state after the signature.
 
 #include <chrono>
@@ -129,7 +129,7 @@ namespace
         }
     };
 
-    // ---- enrollment tokens (issue #38993): a TokenKeySource over a store holding the vector token.
+    // ---- enrollment tokens: a TokenKeySource over a store holding the vector token.
 
     constexpr std::int64_t kFarFuture = 4102444800;
     // Another canonical 22-char token id (16 zero bytes): well-formed, never minted.
@@ -261,7 +261,7 @@ TEST_F(PasswordFixture, AnAgentProfileTokenIsRejected)
 TEST_F(PasswordFixture, KidNamingAnAgentIsAReenrollmentNotAPasswordBearer)
 {
     // Correct password key and signature, but the header carries `kid` = "001": that is the
-    // re-enrollment form (issue #38993), so it is NOT accepted as a password bearer (the shared-key
+    // re-enrollment form, so it is NOT accepted as a password bearer (the shared-key
     // verifier keeps refusing the extra header -- jwtEnrollSignVerify_test pins that) and not rejected
     // here either: it goes to authd unverified, and authd, holding the agent's secret, refuses it (9027).
     const auto decision =
@@ -460,7 +460,7 @@ TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheBearerIsChecke
 }
 
 // -----------------------------------------------------------------------------
-// Enrollment tokens (issue #38993): `kid` = token id. Verified in EVERY mode -- a presented
+// Enrollment tokens: `kid` = token id. Verified in EVERY mode -- a presented
 // credential is never ignored -- against the key TokenKeySource derived from the store; then the
 // token's own state, in the order lookup -> signature -> expiry -> revocation.
 // -----------------------------------------------------------------------------
@@ -562,7 +562,7 @@ TEST(EnrollmentAuthenticatorTokenTest, RevokedTokenIsTokenRevoked)
 }
 
 // -----------------------------------------------------------------------------
-// Re-enrollment (issue #38993): `kid` = canonical agent id. Recognised by shape and handed back
+// Re-enrollment: `kid` = canonical agent id. Recognised by shape and handed back
 // UNVERIFIED in every mode -- the secret that signs it is the master's alone, so authd verifies it
 // (its 9026/9027/9028 become the endpoint's uniform 401). Nothing here looks at the signature: the
 // frozen vector (iat 1700000000) is accepted at any `now`, and so is a bearer signed with garbage.
@@ -622,7 +622,7 @@ TEST_F(TokenFixture, NoTokenSourceRejectsTokensAsUnknown)
 
 TEST_F(TokenFixture, UnknownKidForcesOneReReadOfTheStore)
 {
-    // P35b: the token was minted after this node last read the store (the file is rewritten under
+    // The token was minted after this node last read the store (the file is rewritten under
     // a source whose poll would not notice it for an hour, and whose inotify watch was never armed
     // because the file did not exist at construction) -- the first request for it must still succeed.
     const std::string path = "/tmp/enrollmentAuthenticator_test_" + std::to_string(getpid()) + "_late.tokens.json";

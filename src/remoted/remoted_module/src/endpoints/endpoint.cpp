@@ -251,8 +251,8 @@ namespace remoted::endpoints
     {
         const auto pe = remoted::auth::publicErrorFor(err);
 
-        // Log AND count the FINE reason. The wire names the public class publicErrorFor() maps it to
-        // (issue #38993) -- coarser on purpose: several reasons share `invalid_signature` -- so the
+        // Log AND count the FINE reason. The wire names the public class publicErrorFor() maps it to --
+        // coarser on purpose: several reasons share `invalid_signature` -- so the
         // full distinction only exists for the operator, here. This is the single funnel every
         // client-visible auth rejection passes through, so one call covers all of them.
         logRejection(err, pe.status, agentContext);
@@ -278,8 +278,8 @@ namespace remoted::endpoints
         auto response = remoted::http::HttpResponse::json(pe.status, std::move(body));
         if (pe.challenge != nullptr)
         {
-            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge, and since
-            // #38993 the challenge names the class (`error="invalid_token", error_description=...`,
+            // RFC 6750 §3: a 401 to a bearer-protected resource carries the challenge, and the
+            // challenge names the class (`error="invalid_token", error_description=...`,
             // or `error="invalid_request"` when no usable credential was presented). Absent from the
             // non-credential 400/413/415, which are not authentication failures.
             response.headers.emplace_back("WWW-Authenticate", pe.challenge);

@@ -10,4 +10,6 @@ In 4.x, decoders formed a shallow tree: a decoder could have children, but those
 
 In 5.x, a decoder declares its position in the tree with a `parents` list, which can name **one or more** parent decoders, so the tree can be any depth. The flow is more vertical than horizontal, but it is in general the same process.
 
+In 4.x the same daemon that decoded an event also matched it against the XML rules and CDB lists. The 5.x Engine has no rules: its content is decoders, filters, outputs, integrations and KVDBs, and detection rules are evaluated by the Wazuh Indexer against the events the Engine indexes (see [Migrating rules from 4.x to 5.x](rules-4x-to-5x.md)). The lookups that 4.x rules made in CDB lists move into decoders, as KVDB helpers (see [Migrating CDB lists to KVDB lists](cdb-to-kvdb-migration.md)).
+
 Some 4.x decoder options, such as `<use_own_name>`, have no 5.x counterpart: every asset has a unique name, so the option has nothing left to do. For the 5.x asset format and the decoder tree, see the [Engine reference](../../ref/modules/engine/README.md); for converting decoders, see [Migrating decoders from XML to YAML](xml-decoders-migration.md).

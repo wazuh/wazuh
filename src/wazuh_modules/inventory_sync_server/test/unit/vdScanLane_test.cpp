@@ -581,7 +581,7 @@ TEST(VdScanLaneTest, VdSessionWithMismatchedFeedOffsetIsRejectedWith409BeforeSca
 // A node that runs no scanner at all (vulnerability detection disabled, or failed to start) has
 // no version to disagree about, so the gate must not fire even for a session built against an
 // offset the agent kept from before. The session reaches the scanner, which legitimately skips
-// it, and the agent's inventory is indexed unscanned instead of being rejected forever (#38599).
+// it, and the agent's inventory is indexed unscanned instead of being rejected forever.
 // A feed that is merely still loading never gets here: D17 answers those 503 + Retry-After
 // before the gate.
 TEST(VdScanLaneTest, VdSessionWithAnyFeedOffsetIsAcceptedWhenTheNodeRunsNoScanner)
@@ -710,7 +710,7 @@ TEST(VdScanLaneTest, EachScanOutcomeMapsToTheStatusTheDispatcherNeeds)
 }
 
 /**
- * THE interlock (§7.2). A client-side timeout does not cancel server-side work: the dispatcher
+ * THE interlock. A client-side timeout does not cancel server-side work: the dispatcher
  * gives up at its own deadline and re-posts while the first scan is still running. Without this,
  * the second request either parks until the transport's backstop fires or starts a concurrent scan
  * of the same agent.

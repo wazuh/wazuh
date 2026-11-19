@@ -1,7 +1,7 @@
 # WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
 
 # These users carry no password. A password shipped in a packaged file is a password every
-# installation shares, which is the defect https://github.com/wazuh/wazuh/issues/39554 closes:
+# installation shares, which is the defect 5.x closes:
 # the value is supplied at seeding time by the credential resolver, or generated per
 # installation when nothing supplies one. See insert_default_resources() in ../../orm.py.
 

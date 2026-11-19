@@ -74,7 +74,7 @@ static void free_authd_strings(authd_config_t *c) {
 
 static void test_Read_Authd_JSON_effective_defaults(void **state) {
     authd_config_t local_config = {0};
-    /* What the loader returns for the generated manager file (E1b vector) */
+    /* What the loader returns for the generated manager file */
     cJSON *auth = cJSON_Parse(
         "{\"disabled\":false,\"port\":1515,\"ipv6\":false,\"use_source_ip\":false,\"purge\":true,\"use_password\":true,"
         "\"ciphers\":\"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\","

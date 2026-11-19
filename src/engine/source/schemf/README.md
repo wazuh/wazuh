@@ -195,8 +195,8 @@ When a compatible type requires additional validation (e.g., `LONG` → `INTEGER
 
 ```
 validateTargetField("host.name")
+  ├── Root target (".")? → TargetFieldKind::TEMPORARY
   ├── Field exists in schema? → TargetFieldKind::SCHEMA
-  ├── Root is "." (root target)? → TargetFieldKind::TEMPORARY  
   ├── Root starts with '_'? → TargetFieldKind::TEMPORARY
   └── Otherwise → Error: "Field '<name>' is not defined in WCS schema and is not a temporary field (root must start with '_')"
 ```

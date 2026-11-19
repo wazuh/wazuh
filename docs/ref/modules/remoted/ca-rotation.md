@@ -5,8 +5,12 @@ How to rotate the CA that signs `wazuh-manager-remoted`'s HTTPS listener without
 what the manager tells you along the way. For every command, flag, guard and exit code named here,
 `wazuh-manager-certs`'s developer README (`src/shared_modules/manager_certs/README.md` in the source
 tree) is the authoritative reference; this page does not repeat its command table or examples. The
-tool is installed as `/var/wazuh-manager/bin/wazuh-manager-certs` (`root:wazuh-manager 0750`), runs
-as root only, and serializes its writes on a lock file next to the bundle (`<bundle>.lock`).
+tool is installed as `/var/wazuh-manager/bin/wazuh-manager-certs` (`root:wazuh-manager 0750`), so root
+and the `wazuh-manager` account can run it. The commands that write — `add`, `remove`,
+`prune-expired`, `stamp` and `--from-master` — must run as root (otherwise exit `2`); the read-only
+`inspect` and `check` also run as the `wazuh-manager` account (for example
+`sudo -u wazuh-manager /var/wazuh-manager/bin/wazuh-manager-certs check`). Writes are serialized on a
+lock file next to the bundle (`<bundle>.lock`).
 
 Two things rotate on different clocks, and the whole procedure exists to keep that difference safe:
 
@@ -273,8 +277,9 @@ means the token is stale, not that the manager is being impersonated; see
   placed by hand — is served as it is and announced as `0` with an INFO line; nothing changes until an
   operator runs `stamp` (or `add`) on the master for the first time.
 - **4.x agents mid-upgrade** receive, over the legacy WPK channel, only the single CA that the
-  currently served leaf chains to, re-serialized — the same anchor they would have received before
-  this feature, regardless of how many CAs the bundle carries.
+  currently served leaf chains to, re-serialized, regardless of how many CAs the bundle carries —
+  unless [`legacy.ca_delivery`](configuration.md#legacyca_delivery) is off, in which case they
+  receive none.
 - **The `##` publication block** is PEM explanatory text (RFC 7468 §2): remoted and
   `wazuh-manager-certs` read it, and any other PEM consumer (OpenSSL, an agent's trust store) ignores
   it, so a stamped bundle stays an ordinary CA file. `GET /cacerts` serves only the re-serialised

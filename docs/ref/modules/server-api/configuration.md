@@ -436,7 +436,8 @@ Page large result sets with `offset` and `limit` (500 by default, at most 100,00
 Verify the API is running and responsive (every endpoint but the login ones needs a token):
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+# curl prompts for the password of `wazuh`, so it does not reach the process list
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -k -X GET "https://localhost:55000/" -H "Authorization: Bearer $TOKEN"
 ```
 

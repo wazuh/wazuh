@@ -198,7 +198,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     const auto result = m_sender.send(spec, waiter, m_config.statefulMaxAttempts);
 
     // The /stateful contract is interpreted from the raw HTTP status code and body by
-    // agent_sync_protocol, not from the shared D9 OutcomeClass (see SendResult::httpCode).
+    // agent_sync_protocol, not from the shared OutcomeClass (see SendResult::httpCode).
     // result.response.httpCode is 0 when no HTTP response was received (m_sender's retry
     // loop already exhausted its attempts via the OutcomeClass-driven retry decision).
     // A transfer cut after the status line (response cap, timeout) keeps the code but

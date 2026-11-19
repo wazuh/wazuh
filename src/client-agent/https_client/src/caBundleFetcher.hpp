@@ -26,8 +26,7 @@
 #include <string>
 
 /**
- * @brief Fetches a published CA bundle and hands it to the consumer to install (#39321 rules
- *        5-7).
+ * @brief Fetches a published CA bundle and hands it to the consumer to install.
  *
  * Driven from the control thread, one call per iteration, in the manner of ReporterStream's
  * cadence rather than ConfigFetcher's inline download: a refresh is due at a moment, not on an

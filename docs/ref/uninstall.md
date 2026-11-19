@@ -32,10 +32,10 @@ sudo dpkg --remove wazuh-manager
 `data/`, `framework/` and the API directory, and keeps `/etc/wazuh-manager` with every file renamed
 to `<name>.save`, the agent groups under `shared/` included (the `default` group's `agent.conf` is kept as
 `shared/default/agent.conf.save`; only a file whose name contains `shared` keeps its name); `api.yaml` is
-kept as `api/configuration/api.yaml.save`. The database backups under `/var/wazuh-manager/backup/db` are kept
-too. The CA's private key
-`ca/root-ca.key.save` and `local.env.save` are among them. The manager never reads a `.save` file; delete those
-two when you no longer need them. The user and the group are left untouched.
+kept as `api/configuration/api.yaml.save`. The CA's private key `ca/root-ca.key.save` and `local.env.save`
+are among the kept files; the manager never reads a `.save` file, so delete those two when you no longer need
+them. The database backups under `/var/wazuh-manager/backup/db` are kept too. The user and the group are left
+untouched.
 
 Only the latest `.save` set survives. Each removal first deletes every `.save` file already in
 `/etc/wazuh-manager` and `/var/wazuh-manager/api`, then renames the current files. If you reinstall from

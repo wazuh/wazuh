@@ -74,7 +74,7 @@ class EXPORTED ComHelper : public IComHelper
 // Bounds ComHelper::ConnectToWmiServer's IWbemLocator::ConnectServer() call, which has
 // no timeout parameter of its own and can block indefinitely if Winmgmt is unresponsive
 // -- the same failure mode as the enumeration loop below, just one step earlier in the
-// same call chain (issue #38370). Enforced via WMI's own WBEM_FLAG_CONNECT_USE_MAX_WAIT
+// same call chain. Enforced via WMI's own WBEM_FLAG_CONNECT_USE_MAX_WAIT
 // + an IWbemContext __MAX_WAIT property, not a detached watchdog thread.
 // This value has only been exercised against a healthy-and-fast WMI connect, not a
 // legitimately slow-but-not-hung one (e.g. shortly after a Winmgmt/CIM repository
@@ -83,7 +83,7 @@ constexpr long WMI_CONNECT_MAX_WAIT_MS = 3000;
 
 // Per-call timeout passed to IEnumWbemClassObject::Next() (milliseconds) -- replaces
 // the previous WBEM_INFINITE, which let a slow/unresponsive Winmgmt block the
-// syscollector worker thread forever (issue #38370).
+// syscollector worker thread forever.
 constexpr long WMI_HOTFIX_NEXT_TIMEOUT_MS = 5000;
 
 // Cumulative ceiling (milliseconds) across the whole enumeration loop, enforced as an
@@ -94,7 +94,7 @@ constexpr long WMI_HOTFIX_NEXT_TIMEOUT_MS = 5000;
 // chain to at most 12000 ms total. CreateWmiLocator, SetProxyBlanket, and
 // ExecuteWmiQuery remain fully unbounded (tracked as follow-up work) and can, on their
 // own, still consume all of stop_wmodules()'s 20 s join budget (src/win32/win_utils.c,
-// MODULE_JOIN_BUDGET_MS) -- this narrows issue #38370's reproduction window rather than
+// MODULE_JOIN_BUDGET_MS) -- this narrows the hang's reproduction window rather than
 // closing it.
 // This ceiling has only been exercised against a healthy-and-fast enumeration (a
 // handful of hotfixes, no load); a host with a large hotfix count or under load could

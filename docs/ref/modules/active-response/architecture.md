@@ -104,13 +104,13 @@ from an in-process queue and the agent's main thread runs the timeout check ever
    [Manager-side ingestion](#manager-side-ingestion)).
 3. **Task creation**: clusterd creates one Task Manager task per target agent: type
    `active_response`, the merged payload, and a task id derived from the document `_id`, so every
-   cluster node creates the same task.
+   cluster node creates a task with the same id in its own Task Manager (see [The cluster](#the-cluster)).
 4. **Delivery**: on the agent's next `POST /control`, remoted asks the Task Manager for the agent's
    pending tasks (`POST /v1/tasks/pending`), which marks them `delivered` as it returns them. There
    is no acknowledgment after execution: the task is fire-and-forget.
 5. **Forwarding**: `wazuh-agentd` hands the payload unchanged to `wazuh-execd`. A payload that is not
    JSON or has no top-level `wazuh` key is dropped with an ERROR; when execd's queue is not available (Active
-   Response disabled on the agent) the task is dropped at debug level. On Linux and macOS the payload travels as
+   Response disabled on the agent) the task is dropped at debug level. On Unix (Linux, the BSDs, macOS) the payload travels as
    one datagram, which `wazuh-execd` reads whole only up to 65,535 bytes: a larger one (in practice, a long
    `extra_arguments`, since the payload also carries the merged event) is dropped with an ERROR naming the task
    and its size (`its document is N bytes, larger than the 65535 bytes wazuh-execd can receive`). Windows has no
@@ -256,9 +256,14 @@ unreachable indexer is not this line: it is the `WARNING` `Cannot connect to Waz
 
 Every node runs the same poller against the same stream with its own bookmark. Nothing is owned:
 with stateless HTTPS an agent may talk to any node, so there is no agent-to-node assignment to
-filter by and no leader. The N tasks the N nodes create for one document collapse into one row
-because the Task Manager derives the task id from `source_id` (the document's `_id`), the agent,
-the type and `create_time`; see [Task Manager](../task_manager/README.md). The corollary is that
+filter by and no leader. Each node creates the task in its own Task Manager, so one document gives
+one task row per node, not one row: the rows only share the same task id, because the Task Manager
+derives it from `source_id` (the document's `_id`), the agent, the type and `create_time`; see
+[Task Manager](../task_manager/README.md). An agent that polls more than one node therefore receives
+the task once per node, and the deduplication happens on the agent: `wazuh-agentd` records every task
+id it dispatches (24 hours by default, in its agent-info registry) and drops a repeated one at debug
+level 2 (`Dropping /control task <id>: already seen (or its durable record could not be confirmed).`),
+so `wazuh-execd` runs the response once. The corollary is that
 every node reads every document: a document that stalls a cycle stalls it fleet-wide, at once.
 
 ### Settings
@@ -375,8 +380,9 @@ Everything else the event carries (`user.name`, `file.path`, …) travels along 
 
 execd reads nothing else. `extra_arguments`, `location` and `agent_id` reach the executable but no
 shipped executable uses them; a custom executable can read `wazuh.active_response.extra_arguments`
-from its input. The payload must fit in 64 KiB (`OS_MAXSTR`): agentd sends it to execd as one
-datagram, and the shipped executables read one line of at most that size.
+from its input. On Unix the payload must be at most 65,535 bytes: agentd sends it to execd as one
+datagram and refuses a larger one (see step 5 of the [Enable flow](#enable-flow)). Windows has no
+such limit, but the shipped executables read a line of at most 65,535 bytes on every platform.
 
 ### What the executable receives
 
@@ -419,10 +425,15 @@ run once and never reverted (`Active response won't be added to timeout list. Me
 with alert keys from script '<path>'` at debug level).
 
 Each entry is identified by a key built from the executable's file name followed by `-<key>` for
-each string in `parameters.keys`, e.g. `block-ip-192.168.1.100` (at most 4095 characters; longer
-keys are truncated with a WARNING). A line that is not a `check_keys` message, or one with an empty
-`keys` array, leaves the key as the file name alone: every stateful response of that executable is
-then treated as the same action. For a stateful response:
+each string in `parameters.keys`, e.g. `block-ip-192.168.1.100`. The `-<key>` parts are appended in
+order while they fit in 4,095 characters: the first one that does not fit is dropped **silently**, with
+every key after it (no log line at any level). A single key longer than about 4 KB therefore leaves
+nothing to append. The file name plus the kept keys are then capped at 4,095 characters, and only that
+cap logs the WARNING `Active response key exceeds maximum size (4096). Truncating keys.`. A line that is not a
+`check_keys` message, one with an empty `keys` array, or one whose keys were all dropped leaves the key
+as the file name alone: every such stateful response of that executable is then treated as the same
+action, so one of them pending makes execd answer `abort` to the next even when it targets something
+else. For a stateful response:
 
 - **Key not in the list**: execd stores the message with `command` set to `disable`, the timeout and
   the current time, and answers `continue`.
@@ -433,7 +444,8 @@ then treated as the same action. For a stateful response:
 A stateless response is always answered `continue` and leaves nothing behind.
 
 `<repeated_offenders>` in the agent's `ossec.conf` changes the timeout of a stateful response whose
-key execd has seen before, counted for as long as execd runs: the n-th repetition uses the n-th
+key execd has seen before, counted in memory until execd restarts or longer than the largest value of the
+list passes after the key's last reversal was due: the n-th repetition uses the n-th
 value of the list, in minutes, and the last value once the list is exhausted (see
 [Configuration](configuration.md#repeated_offenders)).
 
@@ -538,7 +550,8 @@ Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.
 | WARNING | `Active response command '<path>' reported failure (exit code <n>).` | the executable exited non-zero |
 | WARNING | `Active response command '<path>' terminated abnormally.` | the executable was killed by a signal |
 | WARNING | `Could not determine exit status of active response command '<path>'.` | execd could not wait for the executable (Unix) |
-| WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the keys do not fit in the entry key |
+| WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the executable's file name plus the kept keys exceed 4,095 characters; keys that do not fit in 4,095 characters on their own are dropped before this check without any message (see [Deduplication and timeouts](#deduplication-and-timeouts)) |
+| WARNING | `(1308): Tracking the maximum of 10000 repeated offenders. New offenders get the base timeout until older entries expire.` | the `repeated_offenders` table is full; at most once a minute |
 | INFO | `(1350): Active response disabled.` | `<disabled>yes</disabled>`; nothing is executed |
 | INFO | `Adding offenders timeout: <n> (for #<k>)` | one `repeated_offenders` value read at start |
 | INFO | `(1314): Shutdown received. Deleting responses.` | execd is stopping and reverts every pending entry |
@@ -550,7 +563,9 @@ Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.
 | DEBUG | `Executing command '<path> <message>' after a timeout of '<n>s'` | a reversion is starting |
 | ERROR | `https_client: active_response task <id> has a malformed payload; dropping.` | agentd: the payload is not JSON or has no top-level `wazuh` key |
 | DEBUG | `https_client: active_response task <id> dropped: execd queue not available.` | agentd: Active Response is disabled, or execd is not running |
-| DEBUG | `https_client: active_response task <id>: error communicating with execd.` | agentd: the message could not be sent to execd (for example, larger than 64 KiB) |
+| ERROR | `https_client: active_response task <id> dropped: its document is <n> bytes, larger than the 65535 bytes wazuh-execd can receive. Shorten the response's extra_arguments.` | agentd (Unix): the payload does not fit in one execd datagram |
+| ERROR | `https_client: active_response task <id> could not be serialized; dropping.` | agentd: the payload could not be re-serialized for execd |
+| DEBUG | `https_client: active_response task <id>: error communicating with execd.` | agentd (Unix): the datagram could not be sent to execd's queue |
 
 ## Platform-Specific Considerations
 

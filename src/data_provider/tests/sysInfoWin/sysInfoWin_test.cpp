@@ -220,7 +220,7 @@ TEST_F(SysInfoWinTest, WmiExecuteQuery)
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
 }
 
-// Regression test for issue #38370: a Winmgmt that never signals end-of-enumeration
+// Regression test: a Winmgmt that never signals end-of-enumeration
 // (previously: Next(WBEM_INFINITE, ...) blocking the syscollector worker thread forever)
 // must make QueryWMIHotFixes give up and throw once the overall ceiling is exceeded,
 // not hang. Tiny timeouts keep this test fast instead of waiting on the multi-second

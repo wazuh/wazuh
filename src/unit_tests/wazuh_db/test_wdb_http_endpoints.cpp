@@ -411,7 +411,7 @@ TEST_F(WdbHttpEndpointsTest, PostAgentsSummaryEmptyBodyEmptyDbReturnsEmptyObject
 
 // GET /v1/status is the readiness answer remoted needs before it asks for an agent's groups:
 // liveness says the process is up, this says the database behind /control can actually be
-// queried (issue #39429). It reads sqlite_master rather than agent data, so it stays cheap
+// queried. It reads sqlite_master rather than agent data, so it stays cheap
 // enough for a load balancer to poll.
 TEST_F(WdbHttpEndpointsTest, GetStatusWithTheExpectedSchemaReturns200)
 {

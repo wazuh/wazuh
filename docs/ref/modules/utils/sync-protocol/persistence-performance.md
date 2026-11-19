@@ -135,6 +135,10 @@ PRAGMA synchronous = OFF;  // Never fsync(), not even at checkpoints
 PRAGMA journal_mode = WAL; // Write-Ahead Logging mode
 ```
 
+`PRAGMA wal_autocheckpoint = <pages>` is set as well, but only when the instance was created with a
+`walAutocheckpointPages` override (`asp_create()`'s `wal_autocheckpoint_pages`; FIM passes its configured
+value); otherwise SQLite's default of 1000 pages applies.
+
 ### Configuration Rationale
 
 - **synchronous = OFF**:

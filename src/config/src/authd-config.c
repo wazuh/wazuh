@@ -112,8 +112,7 @@ int get_time_interval(char *source, time_t *interval) {
     /* The unit multiplies a number that came from a configuration file or a command line. Left
      * unchecked the product wraps -- signed overflow, and in practice a NEGATIVE interval that
      * every caller downstream then has to recognise as "too large", which none of them can: by then
-     * the number no longer says what was written. "999999999999999d" is refused here instead
-     * (issue #39133) */
+     * the number no longer says what was written. "999999999999999d" is refused here instead */
     if (value > max_interval / factor) {
         return OS_INVALID;
     }

@@ -108,7 +108,7 @@ def _wdb_status(running: bool) -> dict:
     A PID check cannot answer this one: wazuh-manager-db can be running, accepting connections on
     its socket, and still unable to query `global.db`. In that state `remoted`'s POST /control
     answers `503` for every agent it serves while events keep flowing, and nothing else reports the
-    node as degraded (issue #39429). This is what makes that visible here.
+    node as degraded. This is what makes that visible here.
 
     Unlike remoted's admin plane, this socket is not optional: it is the same daemon answering, so
     being unable to reach it while the process runs is a real unready state, not an unreachable

@@ -8,7 +8,7 @@
  * Foundation.
  */
 
-// Unit-tests the POST /_internal/agents/delete route policy (design doc 04): body validation, the
+// Unit-tests the POST /_internal/agents/delete route policy: body validation, the
 // up-front availability gate, and the deferred execution on the target agent's pipeline shard --
 // with a REAL SyncPipeline over the fake connector, so what runs here is what runs in production.
 //

@@ -45,7 +45,7 @@ namespace
     /// function-local statics on its first call, so nothing running afterwards -- a fixture SetUp(),
     /// a SetUpTestSuite() -- can change what the cache holds for the rest of the binary.
     ///
-    /// Seeding is required at all because since #39554 an unset credential makes that function throw
+    /// Seeding is required at all because an unset credential makes that function throw
     /// instead of falling back to a built-in "wazuh-manager"/"wazuh-manager" pair. The refusal itself
     /// therefore cannot be asserted in this binary: it would need the cache to be empty, which is the
     /// opposite of what every other test here needs.

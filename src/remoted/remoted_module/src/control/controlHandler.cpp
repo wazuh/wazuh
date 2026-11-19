@@ -553,14 +553,14 @@ namespace remoted::control
                     response["agent"]["config_token"] = makeConfigToken(groupsCsv);
                     response["settings_hash"] = m_hashCache->getSettingsHash();
 
-                    // The generation the served CA bundle is published under (RF-3), so a 5.x agent
+                    // The generation the served CA bundle is published under, so a 5.x agent
                     // learns about a rotation on the notify it was already making: a timestamp when
                     // a guard vouched for the bundle, 0 when there is one and none did, `null` when
                     // there is no servable bundle at all. The facade always installs the provider,
                     // so on a running manager the member is always present (one of those three
                     // states); the guard only covers a handler built without one (unit tests).
                     // Costs no read here: the provider goes to a cache the source revalidates at
-                    // most once a second (C8/C18).
+                    // most once a second.
                     if (m_config.caGenerationProvider)
                     {
                         const auto generation = m_config.caGenerationProvider();
@@ -577,7 +577,7 @@ namespace remoted::control
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
-                    // Omitted while VD is disabled on this node (#41101): the agent requests a
+                    // Omitted while VD is disabled on this node: the agent requests a
                     // re-scan only off an advertised offset and leaves a missing one alone, and a
                     // disabled VD refuses every scan -- advertising its 0 would have the agents
                     // retry a request that can never succeed for as long as they run.

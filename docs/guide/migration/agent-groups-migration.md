@@ -152,7 +152,7 @@ You can also check the group assignment for a specific agent using the Wazuh API
 > [!NOTE]
 > The API requires an authentication token. Request one from the manager with your API credentials (default user `wazuh`), then reuse it in the calls below. The token can expire, so request a new one if it stops working:
 > ```bash
-> TOKEN=$(curl -u <user>:<password> -k -X POST \
+> TOKEN=$(curl -u <user> -k -X POST \
 >     "https://<manager-ip>:55000/security/user/authenticate?raw=true")
 > ```
 
@@ -192,6 +192,17 @@ wazuh-agentd: ERROR: Enrollment rejected by the manager: invalid request. Invali
 ```
 
 A 4.x agent, which enrolls on `1515`, logs `ERROR: Invalid group: <group>. Unable to add agent (from manager)` instead.
+
+**When the agent reaches a worker**, the worker forwards the enrollment to the master, which refuses it and
+logs `Invalid group: <group>` as above. The worker relays only the master's code and generic message, so
+the group's name appears on neither the worker nor the agent: the worker's log shows
+
+```
+wazuh-manager-authd: WARNING: Error 9014: Invalid Group(s) Name(s).
+```
+
+throttled like the master's line, and a 4.x agent is told `Invalid Group(s) Name(s)` rather than
+`Invalid group: <group>`. Look for the group in the master's log.
 
 To resolve it, do one of the following:
 
@@ -329,7 +340,7 @@ total 8
 drwx------ 1 wazuh-manager wazuh-manager  38 Jun  2 19:31 .
 drwxrwx--- 1 root          wazuh-manager  78 Jun  2 19:31 ..
 -rw-rw---- 1 wazuh-manager wazuh-manager 215 Jun  2 18:39 agent.conf
--rw-r--r-- 1 wazuh-manager wazuh-manager 246 Jun  2 19:31 merged.mg
+-rw-rw---- 1 wazuh-manager wazuh-manager 246 Jun  2 19:31 merged.mg
 ```
 
 The groups are now visible from the dashboard in **Agents management -> Groups**.

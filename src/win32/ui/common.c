@@ -357,7 +357,7 @@ int get_ossec_server()
     char *str = NULL;
     int success = 0;
 
-    /* Definitions. <endpoint> is the canonical 5.x spelling (#38624) and is checked
+    /* Definitions. <endpoint> is the canonical 5.x spelling and is checked
      * first to mirror Read_Agent_Manager()'s precedence (client-config.c): it carries
      * the whole host[:port][/prefix] target and wins over the deprecated <address>
      * pair whenever both are present. <agent><manager> is the 5.x block; <client>

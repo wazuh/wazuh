@@ -321,7 +321,7 @@ function get_conf_value($block, $sub, $tag) {
         # equivalent to <tag></tag> (see test_simple_nodes3, src/unit_tests/os_xml),
         # so report it as present-but-empty ("") rather than absent ($null). Callers
         # that only test IsNullOrEmpty are unaffected; the one caller that needs the
-        # distinction is <endpoint>'s opt-out (#38492).
+        # distinction is <endpoint>'s opt-out.
         if ([regex]::IsMatch($sub_match.Groups[1].Value, "<$tag\s*/>")) {
             return ""
         }
@@ -455,7 +455,7 @@ if (-Not $incoming_item) {
         $ca_reject_reason = "is empty or larger than the 64 KiB a CA certificate should ever need"
     }
 
-    # A trust store is legitimately a BUNDLE since #39321: the agent adopts up to
+    # A trust store is legitimately a BUNDLE: the agent adopts up to
     # ca_bundle::kMaxCertificates from a manager publication, and during a rotation
     # overlap two or more roots are trusted at once. So every certificate in the
     # delivery is validated below, rather than the file being refused for holding
@@ -629,9 +629,9 @@ function probe_tcp($server, $port) {
 }
 
 # Check the manager is up: GET /<endpoint>/ is remoted's health endpoint and answers 200 -- the
-# request must include the manager's reverse-proxy prefix (#38492/#38491) or it 404s. A TLS
+# request must include the manager's reverse-proxy prefix or it 404s. A TLS
 # handshake failure falls back to a TCP-only check, since older hosts can't negotiate the
-# manager's TLS 1.3 minimum (#38607); any non-TLS error is a real "not reachable".
+# manager's TLS 1.3 minimum; any non-TLS error is a real "not reachable".
 function probe_server($server, $port, $endpoint) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
@@ -703,16 +703,16 @@ function probe_server_verified($server, $port, $endpoint) {
 }
 
 # Defaults for the components an <endpoint> value leaves out, matching the agent's own
-# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix, #38491).
+# (DEFAULT_HTTPS_REMOTE_PORT and the manager's default global_prefix).
 $MEP_DEFAULT_PORT = "1517"
 $MEP_DEFAULT_ENDPOINT = "wazuh-manager"
 
-# Split a combined <endpoint> value (#38624) into $MEP_HOST / $MEP_PORT / $MEP_ENDPOINT:
+# Split a combined <endpoint> value into $MEP_HOST / $MEP_PORT / $MEP_ENDPOINT:
 #
 #   [https://] host [:port] [/[prefix]]
 #
 # Only the host is mandatory. "No '/' at all" means the default prefix; "a trailing '/'
-# with nothing after it" is the operator's deliberate opt-out (#38614) and yields "".
+# with nothing after it" is the operator's deliberate opt-out and yields "".
 #
 # Same logic as parse_manager_endpoint() in src/init/pkg_installer.sh; duplicated because
 # this script ships inside the WPK and runs standalone, with nothing to import.
@@ -793,7 +793,7 @@ function ParseManagerEndpoint($raw) {
 }
 
 # A WPK upgrade never rewrites ossec.conf, so this script meets two config shapes and has
-# to read both (#38624):
+# to read both:
 #
 #   current  <agent><manager><endpoint>  carrying host[:port][/prefix] in one value
 #   upgraded the deprecated <agent><manager><address>/<port>, or a 4.x

@@ -18,7 +18,7 @@
 #include <string>
 
 /**
- * @brief The /stateless byte-budget accumulator (D6), pure and thread-safe.
+ * @brief The /stateless byte-budget accumulator, pure and thread-safe.
  *
  * Events are stored as "E <frame>\n" lines with embedded newlines escaped by
  * one leading space (the H/E continuation rule). The buffer is bounded at

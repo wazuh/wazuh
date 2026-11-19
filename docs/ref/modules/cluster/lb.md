@@ -64,7 +64,7 @@ operation that creates or changes identity.
 |---|---|---|---|
 | `1517` | HTTPS agent API (5.x) | **every node** | The only channel a 5.x agent uses |
 | `1514` | Legacy agent traffic (4.x) | **every node** | Only when a `<remote><legacy>` block is present and not `<enabled>no` |
-| `1515` | Legacy enrollment (4.x) | **every node** | Only when `auth.legacy_enrollment` (which follows the legacy listener when unset) and `auth.remote_enrollment` are on; workers forward to the master |
+| `1515` | Legacy enrollment (4.x) | **every node** | Only when `wazuh-manager-authd` runs (`auth.disabled` off) and `auth.legacy_enrollment` (which follows the legacy listener when unset) and `auth.remote_enrollment` are on; workers forward to the master |
 | `1516` | Cluster transport | not balanced | Node to node; never exposed to agents |
 | `55000` | Server API | not covered here | Runs on the master only; different API and authentication model |
 | `9200` | Indexer | not balanced by this front end | — |
@@ -268,7 +268,7 @@ Measured on a three-node cluster:
 |---|---|---|---|
 | `/etc/wazuh-manager/client.keys` | 0.04 s | 8.4 – 13.0 s | `401`, code `unknown_agent` |
 | `/etc/wazuh-manager/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
-| `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | up to ~13 s | `401`, code `token_unknown` |
+| `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | up to ~15 s (14.0 s measured) | `401`, code `token_unknown` |
 
 **The agent recovers on its own**, in every case, without intervention.
 
@@ -398,7 +398,9 @@ balancer and validates whichever node answered.
 When each node's installation issues its own pair from a shared CA staged in `/etc/wazuh-manager/ca/`, put
 the agent-facing address in the node's listener certificate by setting
 `WAZUH_MANAGER_REMOTED_CERT_SANS` in `/etc/wazuh-manager/local.env` before installing. An explicit
-value **replaces** address discovery, so list the node's own names and addresses as well:
+value **replaces** address discovery, so list the node's own names and addresses as well (the
+resolver still appends the loopback names `DNS:localhost`, `IP:127.0.0.1` and `IP:::1` to any list,
+explicit or discovered, dropping duplicates):
 
 ```bash
 WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:<AGENT_FACING_NAME>,DNS:manager-1,IP:10.0.0.21'
@@ -413,6 +415,12 @@ balancer's own certificate (termination) is not issued by the manager. See
 `wazuh-certs-tool` has one option for each TLS model. Which one you need follows directly from
 [§5](#5-tls-choose-a-model-before-issuing-certificates): whoever terminates the agent's TLS session
 is who needs a certificate carrying the agent-facing address.
+
+The `--agent-san` option and the `load_balancer` section belong to the installation assistant's
+`wazuh-certs-tool.sh`. The copy in this repository, `tools/devContainer/scripts/wazuh-certs-tool.sh`,
+is a test PKI helper and has neither. Use the tool published with the manager version
+you install and check that `./wazuh-certs-tool.sh -h` lists `--agent-san` before relying on either;
+with a build that lacks them, issue the certificates yourself with the SANs described above.
 
 ##### Passthrough: `--agent-san`
 
@@ -742,6 +750,12 @@ The configurations below balance the **legacy** channel only. They apply to a cl
 4.x agents. For 5.x agents use the HTTPS guides linked at the top of this page.
 
 ### NGINX
+
+The `stream` block goes at the top level of `nginx.conf`, never inside `http`. It needs NGINX's stream
+module: where the distribution ships it as a dynamic module (Ubuntu/Debian `libnginx-mod-stream`, RHEL family
+`nginx-mod-stream`) and your `nginx.conf` does not keep the stock `modules-enabled/` include, load it first with
+`load_module modules/ngx_stream_module.so;` at the top of the file — otherwise `nginx -t` fails with
+`unknown directive "stream"`. See the [NGINX guide](../remoted/load-balancers/nginx.md#2-complete-configuration).
 
 ```nginx
 stream {

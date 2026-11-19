@@ -38,7 +38,9 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
   verifies that the key matches the certificate.
 - **TLS file paths:** `/etc/wazuh-manager/certs/remoted.pem`,
   `/etc/wazuh-manager/certs/remoted-key.pem`, and `/etc/wazuh-manager/certs/root-ca.pem` by default
-  (absolute; a relative path written in the configuration resolves against `/var/wazuh-manager`). These paths are opened by the module itself,
+  (the certificate, the key and `ca_certificate` must be absolute paths directly in
+  `/etc/wazuh-manager/certs`: the start's credential check refuses any other location, a relative
+  path included; a relative `remote.https.ca` resolves against `/var/wazuh-manager`). These paths are opened by the module itself,
   **after** `remoted` has already dropped root privileges (`Privsep_SetUser()`), so the private
   key (and the CA bundle, when `verification_mode` requires one) must be readable by the
   `wazuh-manager` user `remoted` runs as. The pair is provisioned by the operator (see
@@ -102,18 +104,23 @@ Without a usable pair the manager **fails closed**, in four layers, from the out
    (`INVALID /etc/wazuh-manager/certs/remoted-key.pem: half a pair (remoted.pem is missing)`), a file
    that is not `root:wazuh-manager` mode `0640`
    (`UNSAFE /etc/wazuh-manager/certs/remoted-key.pem: group is root, not wazuh-manager`), and a pair
-   or bundle that is not valid (key mismatch, issuer, validity window). A pair missing altogether is
-   left to the next layer. See [Credentials](../../getting-started/credentials.md).
-2. **`wazuh-manager-control start`** runs `wazuh-manager-conf validate` before any daemon; it
-   checks that every file the listeners reference exists — `remote.https.certificate`, `key`, `ca`,
-   `ca_certificate` and authd's `ssl_manager_cert`, `ssl_manager_key`, `ssl_agent_ca` (empty values
-   are skipped) — and refuses to start on the first missing one with, on the console and in
-   `logs/wazuh-manager.log`:
-   `(1244): Invalid configuration at '/remote/https/certificate': file not found:
-   /etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or
-   provisioned externally, e.g. with wazuh-certs-tool).`
+   or bundle that is not valid (key mismatch, issuer, validity window) — `Invalid credentials` or
+   `Unsafe credentials`, error 22 in `-j` output. A pair or a `ca_certificate` bundle missing
+   altogether is reported as `MISSING <path>` and refuses the start as `Unresolved credentials`
+   (error 21). The verdict is printed on the console and logged to `logs/wazuh-manager.log`; see
+   [Credentials](../../getting-started/credentials.md).
+2. **The configuration test** that `wazuh-manager-control start` runs next, before any daemon
+   (`wazuh-manager-conf validate` with file checks and every daemon's `-t`), checks that every file
+   the listeners reference exists — `remote.https.certificate`, `key`, `ca`, `ca_certificate` and
+   authd's `ssl_manager_cert`, `ssl_manager_key`, `ssl_agent_ca` (empty values are skipped) — and
+   loads the listener's TLS material with remoted's own code. For the files layer 1 follows, a
+   missing one has already been refused there; what this layer adds is `remote.https.ca` and
+   authd's `ssl_agent_ca`, which the resolver does not follow, refused with error 20 and, for
+   example, `(1244): Invalid configuration at '/remote/https/ca': file not found: …`. The same
+   `(1244) … file not found` verdict is what `wazuh-manager-remoted -t` prints for a missing
+   certificate or key when it is run on its own.
 3. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
-   (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
+   (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits after logging, at **CRITICAL** level (`wazuh-manager-remoted: CRITICAL: Cannot start the HTTPS agent listener: …`), exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
    or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
    service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
@@ -122,18 +129,20 @@ Without a usable pair the manager **fails closed**, in four layers, from the out
    which the resolver does not follow, and any other way the service user is denied a file that root
    can read, since the validator runs as root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
    setup failed (certificate '…', key '…'). authd reuses the HTTPS agent listener's pair, …`).
-4. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
+4. **The listener's own loader** refuses a pair that exists but is unusable (corrupt PEM,
    key/certificate mismatch): the error names the file it could not load, followed by OpenSSL's
    reason (`Cannot start the HTTPS agent listener: The configured TLS certificate '<c>' cannot be
-   loaded (use_certificate_chain_file: no start line (PEM routines))`, and the same with `TLS private key
+   loaded (use_certificate_chain_file: no start line (PEM routines)).`, and the same with `TLS private key
    '<k>'`, where a key that does not belong to the certificate reads `key values mismatch …`; the
-   parenthesised OpenSSL library name at the end varies with the failure) and, as with
-   every other startup failure, `remoted` does not start.
+   parenthesised OpenSSL library name at the end varies with the failure). `wazuh-manager-remoted -t`
+   runs this loader, so under `wazuh-manager-control start` the configuration test of layer 2 refuses
+   such a pair before any daemon starts; a `remoted` started by other means fails the same load at
+   start and does not come up.
 
 `remote.https.ca_certificate` must be readable at start, since 5.x agents bootstrap their trust from
 `GET /cacerts`: the credential resolver's check (step 1) refuses it when it is not
 `root:wazuh-manager` mode `0640` or does not contain the CA that issued the listener's certificate,
-the validator (step 2) refuses a missing one with the same `(1244) … file not found` verdict, and
+the same check refuses a missing one (`MISSING …`, `Unresolved credentials`, error 21), and
 remoted's probe (step 3) exits when the service user still cannot read it. Only if
 it becomes unreadable or disappears after the start does remoted keep running: `GET /cacerts` then
 answers `404` (or keeps serving the last bundle it read).
@@ -267,8 +276,8 @@ Notes:
 
   This is the classic listener's behavior, kept identical on purpose: `OS_IsValidIP()` strips the `!`
   before storing the address, so `OS_IPFound()`'s negation branch can never fire, and `!IP` has always
-  meant positive `IP`. A `client.keys` carried over from 4.x therefore authorizes exactly the same
-  agents here — a line that worked before an upgrade does not start being rejected after it.
+  meant positive `IP`. A `client.keys` migrated from a 4.x manager therefore authorizes exactly the
+  same agents here — a line the 4.x listener accepted is not rejected by this one.
 
   `authd` never writes such a value anyway: enrolling with `IP:'!10.0.0.5'` stores `10.0.0.5`, so the
   form only survives in a hand-edited file.
@@ -346,7 +355,11 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 
 On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
 few seconds earlier (on the master, or forwarded by any node), until the new `client.keys` reaches
-that worker through the cluster's integrity sync — typically 10 to 35 seconds (20-35 seconds observed on a two-node cluster). An agent
+that worker through the cluster's integrity sync — typically between about 8 and 35 seconds (8.4–13 s
+measured on a three-node cluster, 20–35 s on a two-node one; see
+[Load-balanced deployment](../cluster/lb.md)). A token minted on the master reaches the workers'
+replicas the same way, so on a worker `POST /enroll` can answer `token_unknown` for a fresh token
+for up to about 15 seconds (14.0 s measured). An agent
 that lands on such a worker right after enrolling (for example behind a round-robin load balancer)
 recovers on its own once the key has arrived — by retrying, or, where it took the answer for the loss
 of its identity, by enrolling again; nothing has to be done on the manager.
@@ -474,7 +487,11 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
-  return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on
+  return the errors above. Each E line must carry `<queue>:<location>:<message>` (a one-byte queue
+  identifier, e.g. `E 1:/var/log/syslog:hello`; see [Event Line (E)](event-protocol.md#event-line-e)):
+  the engine parses the lines only after enqueueing the batch, so a line without that prefix still
+  gets `202` and is then dropped (`router.events.malformed`, WARNING
+  `Dropped a malformed event: <reason>`). Note the agent sends **no `Content-Type`** on this route — nothing on
   the manager side reads one, and the `application/x-ndjson` label exists only on the downstream hop
   to the engine. Do not configure an intermediary to require or rewrite it.
 - **`POST /control`** — authenticated agent lifecycle and control messages. Once the signature is
@@ -649,8 +666,10 @@ Seven more that are not about tuning:
   rejection since the previous line, and the address is the one of the rejection that triggered this
   line, not of every peer in `N`; a burst is reported in full only when a later rejection arrives.
   Behind a load balancer the address is the balancer's own. It points at a problem; it is not a
-  per-source record (the manager keeps none). `wazuh-manager-authd` logs `Invalid password provided by
-  <address>` for each failure on `1515`.
+  per-source record (the manager keeps none). `wazuh-manager-authd` logs a wrong password on `1515` as
+  `Invalid password provided by <address>. Closing connection.` at **INFO** level, throttled the same
+  way: the first one is logged, the rest within 90 seconds go to debug level, and the next one logged
+  after that window carries the count (`… Closing connection (and N more like it in the last T s)`).
 - **`Rejected N agent request(s) with an invalid or missing bearer credential <period> (latest from
   <address>: <class>).`** (WARNING) is the same line for every bearer route (`/stateless`, `/stateful`,
   `/stats`, `/config`, `/control`, `/download`, `/scan/vd`), on its own throttle: no or a malformed
@@ -667,11 +686,13 @@ Seven more that are not about tuning:
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
   distinct from an unreadable or invalid password file (see above).
 - **`Cannot start the HTTPS agent listener: the TLS certificate '…' / private key '…' is missing
-  or unreadable by the service user.`** (ERROR, then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`, and in every mode `the CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.`) is remoted's own preflight,
+  or unreadable by the service user.`** (CRITICAL — `wazuh-manager-remoted: CRITICAL: Cannot start the HTTPS agent listener: …` — then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`, and in every mode `the CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.`) is remoted's own preflight,
   run after it has dropped privileges and before remoted writes its PID file. A missing file rarely
-  gets this far — `wazuh-manager-control start` refuses first with the validator's `(1244) … file
-  not found` verdict — so this almost always means an ownership/mode mismatch against the
-  `wazuh-manager` user (the validator runs as root and cannot tell). Nothing reissues the pair at
+  gets this far — `wazuh-manager-control start` refuses first, with the credential check's
+  `MISSING …` (`Unresolved credentials`, error 21) for the certificate, key and `ca_certificate`, or
+  the configuration test's `(1244) … file not found` for `remote.https.ca` — so this almost always
+  means an ownership/mode mismatch against the `wazuh-manager` user (those checks run as root and
+  cannot tell). Nothing reissues the pair at
   start; the message ends with the provisioning hint. There is no retry: remoted must not
   start without the HTTPS transport up, so this is fatal to the whole daemon, not just this module.
   A pair that passes the preflight but cannot be loaded (corrupt PEM, key/certificate mismatch)
@@ -694,7 +715,8 @@ HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged
 oversized URL, header or header count, a request carrying both `Content-Length` and
 `Transfer-Encoding`, or a bare-LF line ending closes the connection with no `400` or `431`. They are
 not surfaced by default because these are per-connection events driven overwhelmingly by
-client behavior — a portscanner, or negative-test traffic like `tools/send_stateless.py --all` — not
+client behavior — a portscanner, or negative-test traffic like
+`src/remoted/remoted_module/tools/send_stateless.py --all` — not
 a manager-side problem, so they are not logged unthrottled at warning/error level the way
 `max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
 exception, the HTTPS server failing to bind, is already covered above.
@@ -769,8 +791,11 @@ deliberately skips the check to keep the hot path fast. A rejection also writes
 | Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored with a `v` prefix (`5.1.0` as `v5.1.0`) |
 
 Whatever spelling the agent sends — `5.0.0`, `v5.0.0` or `V5.0.0`, all accepted — the manager writes
-the version to wazuh-db as `v5.0.0`, on `startup` and on `notify` alike, so one version never
-appears under two spellings in the agent listing.
+the version to wazuh-db as `v5.0.0`, so one version never appears under two spellings in the agent
+listing. `startup` always writes it; a `notify` writes it only when it carries a `host` block (the
+full metadata update, itself throttled by the keep-alive interval except for the first host-carrying
+notify). A `notify` without `host` updates only the keep-alive and status, so the version it carries
+is not stored.
 
 The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
 re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
@@ -874,14 +899,15 @@ update), which had no equivalent once agent-manager connections became stateless
 }
 ```
 
-Every field above is **always present**, `tasks` included — it is an empty array when the manager has
+Every field above except `vd_feed_offset` (omitted while Vulnerability Detection is disabled, see
+above) is **always present**, `tasks` included — it is an empty array when the manager has
 no work to hand over, never an absent key. `config_hash` is likewise always a string: when the agent's
 selector resolves to no `merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"`
 rather than omitting the field or sending an empty string. `config_token` is always a **non-empty**
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
-**`ca_generation` (issue #39319, RF-3) is present too, but it is the one field whose value may be
+**`ca_generation` is present too, but it is the one field whose value may be
 `null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
 [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
 this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
@@ -966,7 +992,7 @@ every 300 seconds.
 
 ### Error handling
 
-Authentication (`401`) and transport rejections (`413`, `429`, `503` when shed) follow the same
+Authentication (`401`) and transport rejections (`413`, `415`, `503` when shed) follow the same
 pattern as `/stateless` (see [Error responses](#error-responses) above). The endpoint's own
 rejections below do **not**: their body is `{"error":"<code>"}` alone, with no numeric `code` member,
 and the `503` adds the dependency that is not answering —
@@ -1285,8 +1311,8 @@ agent's re-enrollment credential. The agent must keep it next to the key and nev
 input of the `WAZUH-REENROLL-KEY` derivation above, the only thing that lets the agent re-enroll
 later **keeping the same `id`** (after losing its key, or to rotate it) instead of appearing as a new
 agent. It is handed out exactly once per enrollment; each successful re-enrollment replaces both
-`key` and `reenroll_secret` with a new pair under the same `id`. The field is absent only when the
-master node's `authd` predates it.
+`key` and `reenroll_secret` with a new pair under the same `id`. The field is omitted, never sent
+empty, when `authd`'s answer carries none.
 
 ### Error handling
 
@@ -1612,9 +1638,7 @@ its sole trust store), which means:
   so a bundle carrying only a (non-self-signed) intermediate is refused even though that
   intermediate signed the leaf.
 
-None of these could serve a verifying agent, which is why they are refused rather than served
-(issue #39319; before this the check was a bare signature and such a bundle was served and even
-announced as published).
+None of these could serve a verifying agent, which is why they are refused rather than served.
 
 The manager separately validates the same chain with the server **purpose** added and the anchor
 rule relaxed (an anchor need not be self-signed), and logs the result at startup and on every daily
@@ -1642,9 +1666,13 @@ listener certificate together and restart remoted to load the new leaf. Replace 
 atomically (write a sibling, then rename it over the path): a file caught half-written is readable,
 and a readable file with no certificate answers `404` at once.
 
-**Trust on first use.** The channel the CA travels over is, by definition, not yet verified. An
-agent that already holds a CA MUST NOT replace it from this route, and a deployment that can
-distribute the CA out of band SHOULD.
+**Trust on first use.** On a bootstrap the channel the CA travels over is, by definition, not yet
+verified: the agent installs only the one certificate that satisfies its enrollment token's pin,
+never the bundle as served, and a deployment that can distribute the CA out of band SHOULD. An agent
+that already holds a CA replaces it from this route only on a **refresh**: over a connection TLS
+already validated against the CA it holds, after a `notify` advertised a higher `ca_generation`, and
+only when the response's `Wazuh-CA-Generation` carries that same generation (the full rules are in
+the route's description in [`agent-api.yaml`](agent-api.yaml)).
 
 **Observability.** `remoted.cacerts.{served,not_found,ca_mismatch,rate_limited}` count the outcomes,
 `remoted.http.cacerts.responses.*` the statuses, and the two `remoted.server.tls.*` pulls publish the
@@ -1677,6 +1705,10 @@ python3 send_stateless.py --agent-id 1001 --tamper
 # unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
+# --body replaces the whole request body: keep the H line naming --agent-id and the
+# "E <queue>:<location>:<message>" event shape, e.g.
+#   --body $'H {"wazuh":{"agent":{"id":"1001"}}}\nE 1:/var/log/syslog:hello'
+# (any other E line is still answered 202, then dropped by the engine)
 ```
 
 `src/remoted/remoted_module/tools/send_control.py` does the same for `POST /control`:

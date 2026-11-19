@@ -149,7 +149,7 @@ void dropToUser(uid_t uid, const ProcessSysCalls& sys = {});
  * @brief Resolves the manager home directory.
  *
  * Steps 2 and 3 follow the home lookup of the C daemons (src/shared/src/file_op.c) on Linux, with /proc/self/exe
- * only and none of its other fallbacks; step 1 is the engine's own override.
+ * only and none of its other fallbacks; step 1 matches w_homedir()'s forced home on the manager.
  *
  * 1. WAZUH_MANAGER_FORCE_HOME defined (even empty or not a directory): returned as is, never checked.
  * 2. Otherwise WAZUH_MANAGER_HOME, when not empty, as is (not cut at "/bin").

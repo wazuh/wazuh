@@ -23,7 +23,7 @@ namespace invsync::sync
 {
 
     /**
-     * @brief How a worker must schedule a session (design doc 03 §7, "group commit").
+     * @brief How a worker must schedule a session ("group commit").
      *
      * BulkData sessions only STAGE into the worker's connector; their durability -- and their
      * response -- arrives with the batch flush. Immediate sessions execute their own I/O and
@@ -100,7 +100,7 @@ namespace invsync::sync
 
         /// @brief Deletes @p agentId's documents across AGENT_DELETION_SCOPE_BY_QUERY (this
         ///        cluster's `wazuh-states-*`) and flushes -- the SYNC half of the whole-agent
-        ///        deletion behind POST /_internal/agents/delete (design doc 04). The other half, the two
+        ///        deletion behind POST /_internal/agents/delete. The other half, the two
         ///        AGENT_DELETION_SCOPE_BY_ID documents, is queued by the endpoint on the async
         ///        connector that writes them; it does not pass through here. Immediate-style: the
         ///        caller must have cut the batch first. An index that does not exist counts as

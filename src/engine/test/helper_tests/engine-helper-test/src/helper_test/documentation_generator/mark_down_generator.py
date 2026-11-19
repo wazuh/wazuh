@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-from helper_test.documentation_generator.types import Documentation, Example
+from helper_test.documentation_generator.types import Documentation, Example, NO_TARGET_FIELD
 from helper_test.documentation_generator.exporter import *
 from helper_test.runner import get_helper_test_kvdb_resource
 from helper_test.test_cases_generator.parser import HELPER_GROUPS
@@ -272,7 +272,9 @@ class MarkdownGenerator(IExporter):
                     if isinstance(arg, dict) and "source" in arg:
                         if arg["source"] == "reference":
                             args_values.append(f"${key}")
-                            event_data[key] = arg.get("value")
+                            # The test runner leaves a null reference out of the event: the field is absent.
+                            if arg.get("value") is not None:
+                                event_data[key] = arg.get("value")
                         else:
                             args_values.append(self._format_call_arg(arg.get("value")))
                     else:
@@ -289,7 +291,9 @@ class MarkdownGenerator(IExporter):
                             args_values.append(self._format_call_arg(arg))
 
             target_field_name = self._target_field_name(doc)
-            if getattr(example, "target_field", None) is not None:
+            # An explicit `target_field: null` is a present null field (the runner maps the literal null);
+            # only a test that sets no target field leaves it out of the event.
+            if getattr(example, "target_field", NO_TARGET_FIELD) is not NO_TARGET_FIELD:
                 event_data[target_field_name] = example.target_field
 
             call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"

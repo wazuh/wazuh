@@ -70,7 +70,8 @@ check and every daemon's own `-t`, which is everything a start checks). Construc
   a comment is rejected.
 - **No `<var>` definitions** (they had no effect on the manager's own configuration in 4.x).
 - **Unknown options are fatal**, reported with their JSON pointer
-  (`/remote/connection: unknown option`), as are duplicated elements the schema declares unique.
+  (`(1244): Invalid configuration at '/remote/connection': unknown option (does not satisfy 'additionalProperties') [...]`),
+  as are duplicated elements the schema declares unique (`duplicate element <name>`).
 - **Booleans are `yes`/`no`**, checked strictly; numbers must be digits; every option is typed by the
   schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
 - **Durations and sizes are bounded.** A size is at least one byte in any unit (`0K` is refused), a
@@ -234,8 +235,9 @@ The following 4.x sections must be removed. The 5.0 schema admits only the secti
 `logging`, `remote`, `auth`, `wdb`, `vulnerability-detection`, `indexer`, `task-manager` and
 `cluster`, so leaving any of these in place is a **startup error**:
 `(1244): Invalid configuration at '/<section>': unknown option (does not satisfy 'additionalProperties') [...]`
-(or `duplicate element <section>` when the block is repeated, as `<localfile>` and `<wodle>` usually
-are), and `wazuh-manager-control start` starts nothing.
+— one such line per section, also when the block is repeated, as `<localfile>` and `<wodle>` usually are
+(`duplicate element` is reported only for an option the schema knows) — and `wazuh-manager-control start`
+starts nothing.
 
 | Section | Notes |
 |---------|-------|
@@ -282,7 +284,8 @@ The `<vulnerability-detection>` section is preserved in 5.0 but the `<index-stat
 ```
 
 Remove the `<index-status>` element from your configuration: left in place it is an unknown option and
-the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged, except that an interval of zero (in any unit) is now rejected.
+the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged, except that an interval of zero (in any unit) and the `w` (weeks) unit are now rejected:
+write the interval in `s`, `m`, `h` or `d`.
 
 ### `<indexer>` section
 

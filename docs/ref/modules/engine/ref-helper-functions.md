@@ -871,7 +871,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": null
+}
 ```
 
 *The check was performed with errors*
@@ -1458,7 +1460,9 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": null
+}
 ```
 
 *The check was successful*
@@ -4452,9 +4456,7 @@ normalize:
 #### Input Event
 
 ```json
-{
-  "value": null
-}
+{}
 ```
 
 #### Outcome Event
@@ -4671,7 +4673,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": "hello"
 }
 ```
@@ -4680,7 +4681,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": "hello",
   "target_field": "hello"
 }
@@ -4703,9 +4703,7 @@ normalize:
 #### Input Event
 
 ```json
-{
-  "value": null
-}
+{}
 ```
 
 #### Outcome Event
@@ -4731,10 +4729,7 @@ normalize:
 #### Input Event
 
 ```json
-{
-  "value": null,
-  "value_1": null
-}
+{}
 ```
 
 #### Outcome Event
@@ -7303,7 +7298,6 @@ normalize:
 
 ```json
 {
-  "input": null,
   "target_field": [
     "old"
   ]
@@ -7314,7 +7308,6 @@ normalize:
 
 ```json
 {
-  "input": null,
   "target_field": [
     "old"
   ]
@@ -8473,7 +8466,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "target_field": [
     1,
     2,
@@ -8487,7 +8479,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "target_field": [
     1,
     2,
@@ -8872,7 +8863,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": 6,
   "target_field": [
     1,
@@ -8887,7 +8877,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": 6,
   "target_field": [
     1,
@@ -8917,7 +8906,6 @@ normalize:
 
 ```json
 {
-  "value_1": null,
   "target_field": [
     1,
     2,
@@ -8931,7 +8919,6 @@ normalize:
 
 ```json
 {
-  "value_1": null,
   "target_field": [
     1,
     2,
@@ -8960,8 +8947,6 @@ normalize:
 
 ```json
 {
-  "value": null,
-  "value_1": null,
   "target_field": [
     1,
     2,
@@ -8975,8 +8960,6 @@ normalize:
 
 ```json
 {
-  "value": null,
-  "value_1": null,
   "target_field": [
     1,
     2,
@@ -9159,7 +9142,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "target_field": [
     1,
     2
@@ -9171,7 +9153,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "target_field": [
     1,
     2
@@ -9511,7 +9492,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": 6,
   "target_field": [
     1,
@@ -9527,7 +9507,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": 6,
   "target_field": [
     1,
@@ -9557,7 +9536,6 @@ normalize:
 
 ```json
 {
-  "value_1": null,
   "target_field": [
     1,
     2,
@@ -9571,7 +9549,6 @@ normalize:
 
 ```json
 {
-  "value_1": null,
   "target_field": [
     1,
     2,
@@ -9600,7 +9577,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": 6,
   "target_field": [
     1,
@@ -9615,7 +9591,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "value_1": 6,
   "target_field": [
     1,
@@ -9750,7 +9725,6 @@ check:
 
 ```json
 {
-  "element_1": null,
   "target_field": [
     "dracut",
     "lvm2"
@@ -10040,7 +10014,6 @@ check:
 
 ```json
 {
-  "element_1": null,
   "target_field": [
     "dracut",
     "lvm2"
@@ -10065,7 +10038,6 @@ check:
 
 ```json
 {
-  "element": null,
   "target_field": [
     "dracut",
     "lvm2"
@@ -10345,7 +10317,6 @@ check:
 
 ```json
 {
-  "element_1": null,
   "target_field": [
     "dracut",
     "lvm2"
@@ -11190,9 +11161,7 @@ normalize:
 #### Input Event
 
 ```json
-{
-  "source_array": null
-}
+{}
 ```
 
 #### Outcome Event
@@ -11547,9 +11516,7 @@ normalize:
 #### Input Event
 
 ```json
-{
-  "source_array": null
-}
+{}
 ```
 
 #### Outcome Event
@@ -11632,7 +11599,6 @@ check:
 
 ```json
 {
-  "values": null,
   "target_field": 10
 }
 ```
@@ -12335,7 +12301,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "target_field": {
     "a": "keep",
     "b": 1
@@ -12347,7 +12312,6 @@ normalize:
 
 ```json
 {
-  "value": null,
   "target_field": {
     "a": "keep",
     "b": 1
@@ -12467,7 +12431,6 @@ check:
 
 ```json
 {
-  "keys": null,
   "target_field": {
     "ts": "2021-01-03T01:19:32.488179Z"
   }
@@ -12705,7 +12668,6 @@ check:
 
 ```json
 {
-  "object": null,
   "target_field": "key"
 }
 ```
@@ -19755,7 +19717,6 @@ normalize:
 {
   "source_ip": "192.168.0.1",
   "destination_ip": "10.0.0.5",
-  "source_port": null,
   "destination_port": 80
 }
 ```
@@ -19766,7 +19727,6 @@ normalize:
 {
   "source_ip": "192.168.0.1",
   "destination_ip": "10.0.0.5",
-  "source_port": null,
   "destination_port": 80
 }
 ```
@@ -22607,6 +22567,11 @@ Notes:
 - During shallow asset validation (dependencies not loaded) the check is a no-op that always passes.
 - `is_key_of` is the same check against a JSON object.
 - `not_in_kvdb` is not the negation of this helper: both are false for a missing or non-string target.
+- The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+  loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+  name ships with the manager, so the results shown hold only for that test content.
+- An example described as rejected at build time processes no event: its asset does not build, and the
+  result shown is that build failure (an Outcome Event only repeats the input).
 
 
 ## Fails when
@@ -22843,12 +22808,20 @@ Build errors:
   values of one type.
 - `db` or `table` is not a literal string, or `mask` is not a reference.
 - A number of arguments other than 3.
-- The target field is a schema field whose elements are not strings.
+- The target field is a schema field whose elements are not strings, or `mask` is a schema field that
+  is not a string.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB and the table are not read, so the
+  table errors above are not reported and the operation is a no-op.
 - A mask with no decodable bit (a mask of `0` included) makes the operation fail and leaves the target
   unchanged.
 - `kvdb_lookup_append` appends the values of a list of keys instead of the values of the set bits.
+- The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+  loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+  name ships with the manager, so the results shown hold only for that test content.
+- An example described as rejected at build time processes no event: its asset does not build, and the
+  result shown is that build failure (an Outcome Event only repeats the input).
 
 
 ## Fails when
@@ -23248,9 +23221,16 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+  no-op.
 - A key that is not in the KVDB makes the operation fail and leaves the event unchanged; the following
   operations of the map block still run.
 - `kvdb_lookup_merge` merges the value into the target and `kvdb_lookup_append` appends one value per key.
+- The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+  loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+  name ships with the manager, so the results shown hold only for that test content.
+- An example described as rejected at build time processes no event: its asset does not build, and the
+  result shown is that build failure (an Outcome Event only repeats the input).
 
 
 ## Fails when
@@ -23634,7 +23614,14 @@ Build errors:
 - A number of arguments other than 2.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+  no-op.
 - Unlike `array_append`, a target that is not an array is replaced instead of failing the operation.
+- The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+  loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+  name ships with the manager, so the results shown hold only for that test content.
+- An example described as rejected at build time processes no event: its asset does not build, and the
+  result shown is that build failure (an Outcome Event only repeats the input).
 
 
 ## Fails when
@@ -24119,9 +24106,16 @@ Build errors:
 - The target field is not a schema field and does not start with `_`.
 
 Notes:
+- During shallow asset validation (dependencies not loaded) the KVDB is not read and the operation is a
+  no-op.
 - In `deep` mode an object or array in the KVDB value whose counterpart in the target has another type
   fails the operation; the target is left untouched.
 - `lookup_merge` does the same merge with a value taken from an object.
+- The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+  loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+  name ships with the manager, so the results shown hold only for that test content.
+- An example described as rejected at build time processes no event: its asset does not build, and the
+  result shown is that build failure (an Outcome Event only repeats the input).
 
 
 ## Fails when
@@ -24680,6 +24674,11 @@ Build errors:
 
 Notes:
 - During shallow asset validation (dependencies not loaded) the check is a no-op that always passes.
+- The examples run against `windows_kerberos_status_code_to_code_name`, the KVDB the helper test suite
+  loads (its content is listed under *Test KVDB* at the end of this helper's section). No KVDB of that
+  name ships with the manager, so the results shown hold only for that test content.
+- An example described as rejected at build time processes no event: its asset does not build, and the
+  result shown is that build failure (an Outcome Event only repeats the input).
 
 
 ## Fails when

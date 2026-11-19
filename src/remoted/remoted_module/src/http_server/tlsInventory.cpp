@@ -70,7 +70,7 @@ namespace remoted::http
         const CaCertificateSnapshot& ca = inventory.ca;
         Json bundle;
         bundle["path"] = inventory.caCertificatePath;
-        // The publication contract is the one `ca_generation` follows on the wire (#39319): null when
+        // The publication contract is the one `ca_generation` follows on the wire: null when
         // there is no servable bundle, 0 when one is served but no guard vouches for it, else the
         // vouched timestamp. `publication_vouched` is that guard's verdict.
         const bool servable = ca.certificates != 0;

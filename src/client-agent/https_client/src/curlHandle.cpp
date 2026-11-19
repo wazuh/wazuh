@@ -100,7 +100,7 @@ namespace
         std::string notBefore;
         std::string notAfter;
 
-        /// #39123 follow-up: whether the callback observed a chain-trust rejection at some
+        /// Whether the callback observed a chain-trust rejection at some
         /// depth ABOVE the leaf (an intermediate or root certificate) -- see
         /// isChainBuildingTrustFailure() below for which specific errors qualify. OpenSSL's
         /// build_chain()/verify_chain() can reject an untrusted intermediate/root and stop
@@ -279,7 +279,7 @@ namespace
                 // Deliberately permissive: every date/hostname cause is already classified
                 // and excluded upstream (classifyTlsVerifyFailure()), and every genuine
                 // chain/CA-trust X509_V_ERR_* (untrusted issuer, self-signed root, path
-                // length, signature failure, ...) must keep reaching the #39123 fallback --
+                // length, signature failure, ...) must keep reaching the local-anchor fallback --
                 // an unenumerated one here must fail open into "still eligible", never
                 // silently excluded.
                 return true;
@@ -330,9 +330,9 @@ namespace
 
             // CURLE_SSL_CACERT is libcurl's older name for CURLE_PEER_FAILED_VERIFICATION
             // (an alias since 7.62.0), so it is not a separate case here. perform() below
-            // narrows this bucket further via classifyTlsVerifyFailure() (#39062) into
+            // narrows this bucket further via classifyTlsVerifyFailure() into
             // HttpResponse::tlsFailure -- verify_mode=system's local-anchor fallback
-            // (curlPerformer.cpp, #39123) acts only when that classification is still
+            // (curlPerformer.cpp) acts only when that classification is still
             // None, since a hostname mismatch or a certificate-date problem is never
             // fixed by trying a different trust anchor.
             case CURLE_PEER_FAILED_VERIFICATION:
@@ -530,12 +530,12 @@ namespace
                     // Populated regardless of kind: sawDepth0/depth0VerificationFailed are
                     // meaningful precisely when kind stays None (see TlsFailureDetail's own
                     // doc comments), which is also the one case verify_mode=system's
-                    // local-anchor fallback (curlPerformer.cpp, #39123) acts on -- and only
+                    // local-anchor fallback (curlPerformer.cpp) acts on -- and only
                     // when the depth-0 certificate's OWN verification actually failed, not
                     // merely whenever one was inspected (a certificate can verify cleanly and
                     // the attempt still end in TlsFail for an unrelated reason). The
                     // date/hostname detail fields, and the log line, stay conditional -- both
-                    // are only ever shown for the two classified kinds, unchanged from #39062.
+                    // are only ever shown for the two classified kinds, unchanged.
                     m_tlsFailureDetail.kind = kind;
                     m_tlsFailureDetail.sawDepth0 = m_tlsCapture.sawDepth0;
                     m_tlsFailureDetail.depth0VerificationFailed =
@@ -648,8 +648,7 @@ namespace
             /// decision. Defined after the class body, same reason as above.
             static int tlsVerifyCaptureTrampoline(int preverifyOk, X509_STORE_CTX* storeCtx);
 
-            /// Builds and emits the normal-level log line for a classified TlsFail (issue #39062,
-            /// objective requirement 6 and its notBefore/notAfter counterpart) -- pulled out of
+            /// Builds and emits the normal-level log line for a classified TlsFail -- pulled out of
             /// perform() only because the two message shapes (hostname vs. date) are each a few
             /// lines on their own.
             static void logTlsFailure(TlsFailureKind kind, const std::string& dialedUrl,
@@ -721,7 +720,7 @@ namespace
 
         if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
         {
-            // #39123 follow-up: captured here, above the leaf, since this is the only place a
+            // Captured here, above the leaf, since this is the only place a
             // chain-build rejection at this depth is ever observed -- internal_verify() can
             // stop right here and never reach depth 0 at all (see
             // TlsVerifyCapture::chainTrustRejectedAboveDepth0's own doc comment). Everything

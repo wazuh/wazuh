@@ -11,7 +11,7 @@
  */
 
 /// @file jwtEnrollProfileV1.hpp
-/// Constants of the closed `wazuh-enroll+jwt` profile (issue #38582): the bearer an agent that has
+/// Constants of the closed `wazuh-enroll+jwt` profile: the bearer an agent that has
 /// no client.keys entry yet presents to POST /enroll when the manager requires the enrollment
 /// password. Same core as `wazuh-agent+jwt` (jwtProfileV1.hpp: HS256, 32-byte key, compact grammar,
 /// TimePolicy, kLifetimeSec, 4096-byte cap, jti), different domain:
@@ -19,7 +19,7 @@
 ///   claims  exactly {exp, iat, jti, nbf}                        -- no `iss`/`sub`: no identity to assert
 ///   key     without `kid` (the only form up to 5.0, unchanged): the one shared key,
 ///             HKDF-SHA256(IKM = password, salt = 32 x 0x00, info = "WAZUH-ENROLL-JWT-KEY" || 0x01, L = 32)
-///           with `kid` (issue #38993): the `kid` names the key. Two forms, disjoint by shape:
+///           with `kid`: the `kid` names the key. Two forms, disjoint by shape:
 ///             - enrollment token: `kid` = the 16-byte token id as 22 canonical base64url chars,
 ///               key = HKDF-SHA256(IKM = 16-byte token secret, same salt, info = "WAZUH-ENROLL-TOKEN-KEY" || 0x01)
 ///             - re-enrollment:    `kid` = the canonical agent id ("001", canonicalAgentId.hpp),
@@ -46,7 +46,7 @@ namespace jwt_profile::v1::enroll
     /// is relied upon.
     constexpr std::size_t kHkdfSaltBytes = 32;
 
-    /// `kid` = enrollment token (issue #38993): HKDF `info` label of the key derived from the token secret.
+    /// `kid` = enrollment token: HKDF `info` label of the key derived from the token secret.
     constexpr std::string_view kHkdfTokenInfoLabel = "WAZUH-ENROLL-TOKEN-KEY";
     /// `kid` = re-enrolling agent: HKDF `info` label of the key derived from its reenroll_secret.
     constexpr std::string_view kHkdfReenrollInfoLabel = "WAZUH-REENROLL-KEY";

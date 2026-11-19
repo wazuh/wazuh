@@ -18,7 +18,7 @@ For module overview and architecture, see [Agent Info Module](README.md).
 
 **Internal Options:** `agent_info.max_entries`, `agent_info.ttl` (see [Internal Options](#internal-options))
 
-The `<agent-info>` block is only parsed on agent builds. If it is present in a manager's `ossec.conf`, the manager silently ignores it (it is not read or applied in any way) and logs a debug-level message noting that the module is not supported on managers.
+The `<agent-info>` block exists only on agents. A manager has no `ossec.conf`: its configuration is `/etc/wazuh-manager/wazuh-manager.conf`, which has no `agent-info` section, so an `<agent-info>` block there is an unknown option and the manager refuses the file (error `1244`) at validation and at start.
 
 ### interval
 
@@ -191,7 +191,8 @@ tail -f /var/ossec/logs/ossec.log | grep agent-info
 **On manager (query agent info through the Server API, master node):**
 ```bash
 # View agent system information
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+# curl prompts for the password of `wazuh`, so it does not reach the process list
+TOKEN=$(curl -s -k -u wazuh -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X GET "https://localhost:55000/agents?agents_list=001&pretty=true" \
     -H "Authorization: Bearer $TOKEN"
 ```
@@ -217,9 +218,14 @@ The module performs the following validation at startup:
 
 - **`interval`:** Must be an integer from 60 to 86400
 - **`integrity_interval`:** Must be an integer from 60 to 604800
-- **Unknown elements:** Logged as a warning and ignored
+- **Unknown elements:** Logged as a warning (`(1230): Invalid element in the configuration: '<name>'.`) and ignored
 
-A value that is out of range or not a number is logged as a warning and the default is kept. An empty element name is a configuration error.
+A value that is empty, out of range or not a number is logged as a warning and ignored: the value the option already had is kept (the default, or an earlier valid occurrence of the same element in the block). The warnings are:
+
+- `Invalid interval time at module 'agent-info'. Value must be between 60 and 86400.`
+- `Invalid integrity_interval time at module 'agent-info'. Value must be between 60 (1 minute) and 604800 (7 days).`
+
+None of these stops the agent: the block always loads, so `wazuh-modulesd -t` exits `0` with them.
 
 ---
 

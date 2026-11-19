@@ -408,7 +408,7 @@ static void expect_valid_ip(const char *ip) {
 
 static void test_Read_Remote_JSON_effective_defaults(void **state) {
     test_state *ts = *state;
-    /* What the loader returns for tests/vectors/valid/generated-manager.conf (E1a) */
+    /* What the loader returns for tests/vectors/valid/generated-manager.conf */
     cJSON *remote = json_or_fail(
         "{\"legacy\":{\"enabled\":true,\"ca_delivery\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,"
         "\"local_ip\":\"0.0.0.0\",\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
@@ -521,7 +521,7 @@ static void test_Read_Remote_JSON_legacy_disabled_clears_listener(void **state) 
 
 static void test_Read_Remote_JSON_protocol_list_and_ipv6_without_local_ip(void **state) {
     test_state *ts = *state;
-    /* No local_ip and an IPv6 listener: the reader must not fall back to 0.0.0.0 (P61) */
+    /* No local_ip and an IPv6 listener: the reader must not fall back to 0.0.0.0 */
     cJSON *remote = json_or_fail("{\"legacy\":{\"enabled\":true,\"protocol\":[\"tcp\",\"udp\"],\"ipv6\":true}}");
 
     assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);

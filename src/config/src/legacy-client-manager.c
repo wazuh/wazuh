@@ -72,7 +72,7 @@ static int w_set_legacy_target(agent *logr, const w_legacy_target_t *target)
     return 0;
 }
 
-/* 5.x connects to a single manager (#37702), so a 4.x failover list loses all but one. The
+/* 5.x connects to a single manager, so a 4.x failover list loses all but one. The
  * dropped ones are named as written, so they can be found in the file. `chosen` is the
  * legacy target in use, NULL when <agent> set the manager and every target is dropped. */
 static void w_warn_legacy_dropped(const w_legacy_targets_t *targets, const char *chosen,

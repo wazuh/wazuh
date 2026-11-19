@@ -29,7 +29,7 @@ const (
 )
 
 // EnrollmentToken is the token an operator mints with `wazuh-manager-authd
-// --create-enrollment-token` and pastes into an agent (issue #38993), decoded: the text is
+// --create-enrollment-token` and pastes into an agent, decoded: the text is
 // base64url (unpadded) of the compact JSON {"ver":1,"adr":"host[:port][/prefix]","pin"|"ca":...
 // [,"key":...]}. `adr` says where the manager is and `pin`/`ca` how to trust it; neither is used
 // here (the sender targets --manager/--port and skips TLS verification like every other route,
