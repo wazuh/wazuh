@@ -30025,7 +30025,13 @@ Behavior:
 - Each element becomes a member named after it: its text goes to `#text`, each attribute to `@<name>`,
   an element with neither text nor attributes becomes `{}`, and repeated sibling elements become an
   array of objects, one per sibling, each with its own text, attributes and child elements. Every value
-  is a string; a document nested deeper than 256 levels fails.
+  is a string.
+- An element is indexed only when it repeats: `<r><i><n>1</n></i></r>` gives `r.i.n`, while two `i`
+  siblings give `r.i.0.n` and `r.i.1.n`. A decoder that must read both shapes checks the element with
+  `is_array` first. Up to 5.0.0-rc2 the repeated siblings that had child elements were lost but the last
+  one, whose children were at `r.i.n`; they are now at `r.i.<index>.n`.
+- The result nests at most 256 objects and arrays: the object returned is the first, each element adds
+  one and a repeated sibling two (the array and its element). A deeper document fails.
 - With the `windows` mode (Windows Event Log XML): the `Event` element is skipped and its children are
   placed at its level, `<Data Name="X">v</Data>` becomes the member `X` of its parent, and a `Data`
   element without `Name` is appended to a string array in its parent.
@@ -30044,7 +30050,7 @@ Notes:
 
 - The input field does not exist or is not a string.
 - The input is not a well-formed XML document.
-- The document is nested deeper than 256 levels.
+- The resulting object would nest more than 256 objects and arrays.
 
 ## Examples
 

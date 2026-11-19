@@ -2025,9 +2025,10 @@ Windows event logs which often contain complex and repetitive tag structures.
 - In `windows` mode only: the root `Event` element (and its attributes) is omitted, and each `Data` element with a
   `Name` attribute is stored as a string member named after that attribute, instead of a `Data` object.
 - Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
-  Depth is counted in nested XML elements: 256 nested elements parse, the 257th fails; text and CDATA are leaves
-  (`#text`) and add no level. In `windows` mode the root `Event`, although omitted from the output, is level 1. The
-  limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
+  Depth is counted in objects and arrays of the result: the result itself is level 1, each element adds one and a
+  repeated sibling two (the array and its element), so 255 nested elements parse and the 256th fails; text and CDATA
+  are leaves (`#text`) and add no level. In `windows` mode the omitted `Event` and the `Data` elements add no level.
+  The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
 - End token is required: the parser takes the text up to the next literal, or to the end of the input when it is the
   last token, and fails if that text is not well-formed XML.
 
