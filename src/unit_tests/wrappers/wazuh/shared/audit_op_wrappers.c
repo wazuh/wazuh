@@ -27,6 +27,16 @@ int __wrap_audit_restart() {
     return mock();
 }
 
+int __wrap_audit_stop() {
+    function_called();
+    return mock();
+}
+
+int __wrap_audit_start() {
+    function_called();
+    return mock();
+}
+
 int __wrap_audit_set_db_consistency() {
     return 1;
 }

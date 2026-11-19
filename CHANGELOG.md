@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the agent package uninstall leaving the service enabled for a later reinstall. ([#41323](https://github.com/wazuh/wazuh/pull/41323))
 - Hardened the FIM database search for the entries stored under a removed path. ([#41248](https://github.com/wazuh/wazuh/pull/41248))
+- Fixed FIM who-data permanently falling back to real-time when audit 4.0.4 or later leaves a stale socket behind. ([#41617](https://github.com/wazuh/wazuh/pull/41617))
 - Hardened how rootcheck reads files during the system scan. ([#41414](https://github.com/wazuh/wazuh/pull/41414))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
 - Hardened how FIM updates the directories expanded from wildcard `<directories>` entries. ([#41572](https://github.com/wazuh/wazuh/pull/41572))

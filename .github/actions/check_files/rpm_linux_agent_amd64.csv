@@ -83,7 +83,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/agentless/ssh_nopass.exp,root,wazuh,750,file,-rwxr-x---,1616,0.1
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3199,0.1
 /var/ossec/bin/agent-auth,root,root,750,file,-rwxr-x---,227296,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,953104,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,985872,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,784920,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,846528,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,10640,0.1
@@ -138,11 +138,11 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,30552,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,26456,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,26456,0.1
-/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,1890,0.1
+/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,1949,0.1
 /var/ossec/active-response/bin/pf,root,wazuh,750,file,-rwxr-x---,30552,0.1
 /var/ossec/active-response/bin/npf,root,wazuh,750,file,-rwxr-x---,26456,0.1
 /var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,26456,0.1
-/var/ossec/active-response/bin/kaspersky.py,root,wazuh,750,file,-rwxr-x---,14491,0.1
+/var/ossec/active-response/bin/kaspersky.py,root,wazuh,750,file,-rwxr-x---,15273,0.1
 /var/ossec/active-response/bin/route-null,root,wazuh,750,file,-rwxr-x---,26456,0.1
 /var/ossec/logs/active-responses.log,wazuh,wazuh,660,file,-rw-rw----,0,0.1
 /var/ossec/logs/ossec.log,root,wazuh,660,file,-rw-rw----,0,0.1

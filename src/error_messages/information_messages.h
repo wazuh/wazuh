@@ -72,6 +72,7 @@
 #define FIM_EBPF_LSM_DPATH_FALLBACK         "(6053): BPF LSM load failed with the bpf_d_path-based variants; retrying with the manual path walker (some kernels, e.g. Amazon Linux 2/2023, disallow bpf_d_path for these hooks)."
 #define FIM_EBPF_LSM_KPROBE_FALLBACK        "(6054): BPF LSM hooks failed to load or attach on this kernel; falling back to kprobe hooks."
 #define FIM_AUDIT_PLUGIN_REMOVED            "(6055): Removed the Audit plugin configuration file '%s': who-data via Audit is not enabled. Auditd will apply it on its next restart."
+#define FIM_AUDIT_STALE_SOCKET              "(6056): Audit socket '%s' has no listener. Removing it and restarting Auditd service."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
