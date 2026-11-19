@@ -538,6 +538,7 @@ def test_get_cluster_items():
             "communication": {
                 "timeout_cluster_request": 20,
                 "timeout_dapi_request": 200,
+                "timeout_sendsync_request": 600,
                 "timeout_receiving_file": 120,
                 "min_zip_size": 31457280,
                 "max_zip_size": 1073741824,
