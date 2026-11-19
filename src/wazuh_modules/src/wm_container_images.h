@@ -11,6 +11,8 @@
 #ifndef WM_CONTAINER_IMAGES_H
 #define WM_CONTAINER_IMAGES_H
 
+#include <stdbool.h>
+
 #include "wmodules_def.h"
 #include "os_xml.h"
 
@@ -51,5 +53,10 @@ typedef struct wm_container_images_t {
 
 // Parse XML configuration
 int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+
+// Handle a <container_security> child that is not <images>. Where runtime security reads the block
+// (runtime_supported) the child is its own and is stepped over without validation; elsewhere it is
+// reported and ignored, and the agent keeps running.
+void wm_container_images_skip_security_tag(const char *element, bool runtime_supported);
 
 #endif // WM_CONTAINER_IMAGES_H

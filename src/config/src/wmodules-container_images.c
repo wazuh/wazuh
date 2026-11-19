@@ -45,6 +45,9 @@ static const char *XML_CI_REGION = "region";
 // machine that built the package, not necessarily one that exists on this host.
 static const char *XML_CI_CA_BUNDLE = "ca_bundle";
 
+// Children of <container_security> that belong to runtime security, which only Linux agents run.
+static const char *RUNTIME_SECURITY_TAGS[] = {"container_instances", "syscheck", "syscollector", "docker", "kubernetes", NULL};
+
 #ifdef WAZUH_UNIT_TESTING
 #define static
 #endif
@@ -564,4 +567,19 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
     }
 
     return 0;
+}
+
+void wm_container_images_skip_security_tag(const char *element, bool runtime_supported) {
+    if (runtime_supported) {
+        return;
+    }
+
+    for (int i = 0; RUNTIME_SECURITY_TAGS[i]; i++) {
+        if (!strcmp(element, RUNTIME_SECURITY_TAGS[i])) {
+            mwarn("The '%s' tag inside 'container_security' is only supported on Linux agents, ignoring it.", element);
+            return;
+        }
+    }
+
+    mwarn("No such tag '%s' inside 'container_security', ignoring it.", element);
 }

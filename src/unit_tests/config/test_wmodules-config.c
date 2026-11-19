@@ -170,6 +170,41 @@ static void test_Test_WModule_sca_error_uses_program_tag(void **state) {
     assert_int_equal(ret, -1);
 }
 
+/* The manager validates the <images> section of <container_security> in a shared agent.conf, so a
+ * wrong value is reported there instead of by every agent that receives it. */
+static void test_Test_WModule_container_security_images_valid_content_is_accepted(void **state) {
+    if (write_conf("<agent_config>"
+                    "<container_security>"
+                    "<docker><enabled>yes</enabled></docker>"
+                    "<images>"
+                    "<enabled>yes</enabled>"
+                    "<references><archive>/var/tmp/images/app.tar</archive></references>"
+                    "</images>"
+                    "</container_security>"
+                    "</agent_config>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(Test_WModule(TEST_CONF_PATH), 0);
+}
+
+static void test_Test_WModule_container_security_images_invalid_content_is_reported(void **state) {
+    if (write_conf("<agent_config>"
+                    "<container_security>"
+                    "<images><enabled>maybe</enabled></images>"
+                    "</container_security>"
+                    "</agent_config>") != 0) {
+        fail();
+    }
+
+    expect_any(__wrap__mterror, tag);
+    expect_string(__wrap__mterror, formatted_msg, "Invalid content for tag 'enabled' at module 'container_images'.");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_wmodules-config.conf'.");
+    expect_string(__wrap__merror, formatted_msg, "(1207): WModule remote configuration in 'test_wmodules-config.conf' is corrupted.");
+
+    assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
+}
+
 /* When the manager parses its own configuration (agent_cfg = 0), the warning
  * must still be raised: syscollector genuinely does not belong there. */
 static void test_Read_WModule_syscollector_warns_without_agent_cfg(void **state) {
@@ -206,6 +241,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_Test_WModule_sca_valid_content_is_accepted, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_error_uses_program_tag, teardown_conf_file),
+        cmocka_unit_test_teardown(test_Test_WModule_container_security_images_valid_content_is_accepted, teardown_conf_file),
+        cmocka_unit_test_teardown(test_Test_WModule_container_security_images_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test(test_Read_WModule_syscollector_warns_without_agent_cfg),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

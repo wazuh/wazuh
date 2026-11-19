@@ -304,17 +304,25 @@ def reset_module_database() -> None:
         stored.unlink(missing_ok=True)
 
 
+def _images_elements(test_configuration: dict):
+    """Yield the child elements of every ``<images>`` section inside ``<container_security>``."""
+    for section in test_configuration.get('sections', []):
+        if section.get('section') != 'container_security':
+            continue
+
+        for element in section.get('elements', []):
+            if 'images' in element:
+                yield element['images'].get('elements', [])
+
+
 def point_configuration_at(test_configuration: dict, path: str) -> None:
     """Point the configured ``<archive>`` reference at the image the fixture just wrote.
 
     The test cases carry a placeholder path, while the images are written under a fresh
     per-run directory, so the reference is completed here instead of in the case file.
     """
-    for section in test_configuration.get('sections', []):
-        if section.get('section') != 'container_images':
-            continue
-
-        for element in section.get('elements', []):
+    for images in _images_elements(test_configuration):
+        for element in images:
             for reference in element.get('references', {}).get('elements', []):
                 for entry in reference.values():
                     entry['value'] = path
@@ -582,8 +590,8 @@ def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_con
 
 def _point_ca_bundle_at(test_configuration: dict, path: str) -> None:
     """Replace the ca_bundle placeholder with the generated authority's path."""
-    for section in test_configuration.get('sections', []):
-        for element in section.get('elements', []):
+    for images in _images_elements(test_configuration):
+        for element in images:
             if 'ca_bundle' in element:
                 element['ca_bundle']['value'] = path
 

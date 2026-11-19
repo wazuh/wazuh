@@ -38,7 +38,7 @@ test_container_images/
 │   ├── patterns.py               # log anchors the monitors wait on
 │   ├── db.py                     # reads the module's SQLite tables
 │   └── registry.py               # a TLS registry served locally, answering as ghcr.io
-├── test_configuration/           # parsing of the <container_images> block
+├── test_configuration/           # parsing of the <container_security><images> section
 │   ├── test_container_images_configuration.py
 │   └── data/{configuration_templates,test_cases}/
 ├── test_inventory/               # scan -> store -> update detection
@@ -59,11 +59,12 @@ two framework files are part of this change set and must be installed with `wazu
 | # | Scenario | Configuration | Expected result |
 |---|----------|---------------|-----------------|
 | C1 | Module disabled | `enabled=no` | **PASS** when `Module is disabled.` is logged and no scan starts. |
-| C2 | Default values | empty `<container_images>` block | **PASS** when the module logs `Module initialized.` (it came up on defaults). |
+| C2 | Default values | empty `<images>` section inside `<container_security>` | **PASS** when the module logs `Module initialized.` (it came up on defaults). |
 | C3a | Invalid `enabled` | `enabled=''` and `enabled=maybe` | **PASS** when `Invalid content for tag 'enabled'` is logged; the block is rejected. |
 | C3b | Invalid `scan_on_start` | `scan_on_start=''` | **PASS** when `Invalid content for tag 'scan_on_start'` is logged. |
 | C3c | Invalid `interval` | `interval=''` and `interval=1y` | **PASS** when `Invalid interval` is logged. |
 | C3d | Empty `<archive>` reference | `<archive></archive>` | **PASS** when `Empty 'archive' reference` is logged. |
+| C4 | Retired top-level block | `<container_images>` at the top level | **PASS** when the `'container_images' is no longer supported` warning naming `<container_security><images>` is logged by `wazuh-modulesd`. Each daemon that reads the configuration logs it once. |
 
 Failure of any of these means the parser accepted a value it should reject, or did not emit the
 expected message (e.g. a wording change in the module that the pattern must be updated for).

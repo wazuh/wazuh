@@ -1,10 +1,12 @@
 # Configuration
 
-The Container Images module is configured in the agent `ossec.conf` file using the `<container_images>` section. The configuration is agent-only: the block is parsed in agent builds and ignored by the server/manager.
+The Container Images module is configured in the agent `ossec.conf` file, in the `<images>` section of the `<container_security>` block. The settings are agent-only: a manager reads them only to validate a shared `agent.conf`.
 
 Synchronization options are not available in this stage. State synchronization and manager-side cleanup are planned for later development stages; this stage stores the inventory locally on the agent.
 
-The block is optional. When the block is present, all settings have defaults and the module can be disabled with `<enabled>no</enabled>`.
+The section is optional. Without `<images>` the module is not started. When the section is present, all settings have defaults and the module can be disabled with `<enabled>no</enabled>`.
+
+All the options on this page go inside `<images>`, which goes inside `<container_security>`. The examples below show the `<images>` section; the fragments for `<registry_auth>` and `<references>` are written inside it.
 
 > **Note:** Images are read from two kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`) and Amazon Elastic Container Registry (public and private). The `<local>` entry type is accepted by the parser and reported as unimplemented.
 
@@ -15,12 +17,14 @@ The block is optional. When the block is present, all settings have defaults and
 ### Minimal Configuration
 
 ```xml
-<container_images>
-  <enabled>yes</enabled>
-  <references>
-    <archive>/var/tmp/images/myapp.tar</archive>
-  </references>
-</container_images>
+<container_security>
+  <images>
+    <enabled>yes</enabled>
+    <references>
+      <archive>/var/tmp/images/myapp.tar</archive>
+    </references>
+  </images>
+</container_security>
 ```
 
 This enables the module with default settings:
@@ -32,16 +36,37 @@ This enables the module with default settings:
 ### Full Configuration Example
 
 ```xml
-<container_images>
-  <enabled>yes</enabled>
-  <scan_on_start>yes</scan_on_start>
-  <interval>1h</interval>
-  <references>
-    <archive>/var/tmp/images/myapp.tar</archive>
-    <archive>/var/tmp/images/myapp-oci-layout</archive>
-  </references>
-</container_images>
+<container_security>
+  <images>
+    <enabled>yes</enabled>
+    <scan_on_start>yes</scan_on_start>
+    <interval>1h</interval>
+    <references>
+      <archive>/var/tmp/images/myapp.tar</archive>
+      <archive>/var/tmp/images/myapp-oci-layout</archive>
+    </references>
+  </images>
+</container_security>
 ```
+
+### The `<container_security>` Block
+
+`<container_security>` is shared with container runtime security, which reads its own children (`<container_instances>`, `<syscheck>`, `<syscollector>` and the engine sections). The images module reads only `<images>`.
+
+| Platform | `<images>` | Other children of `<container_security>` |
+|----------|------------|------------------------------------------|
+| Linux | Read. | Left to runtime security. They are stepped over here, not validated by the images module, and not reported. |
+| macOS and Windows | Read. | Runtime security is not available. Each runtime child is reported once with `The '<tag>' tag inside 'container_security' is only supported on Linux agents, ignoring it.`, any other child with `No such tag '<tag>' inside 'container_security', ignoring it.`, and the agent keeps running. |
+
+A block that holds only `<images>` is valid. Settings can be split across `ossec.conf` and a shared `agent.conf`, and across several `<container_security>` blocks: every `<images>` section configures the same module. References and registry entries add up, and every other option keeps the last value read.
+
+The top-level `<container_images>` block no longer exists. It is ignored, and each daemon that reads the configuration logs this line once, like any other obsolete setting:
+
+```sql
+wazuh-modulesd: WARNING: (1223): 'container_images' is no longer supported and will be ignored. Image scanning is configured in <container_security><images>.
+```
+
+Move its children, unchanged, into `<container_security><images>`.
 
 ---
 
@@ -452,7 +477,7 @@ The Container Images module validates configuration at startup:
 
 An invalid module setting, meaning `enabled`, `scan_on_start` or `interval`, causes a configuration error and rejects the module block.
 
-Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<container_images>` are also logged with a warning and ignored.
+Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<images>` are also logged with a warning and ignored.
 
 The same holds inside `<registry_auth>`: an entry naming no host, an entry whose host is not a bare host name (it carries a scheme, a path or whitespace), an entry naming no keystore key, and an unrecognised element are each reported and skipped, and the rest of the block is still applied. A second entry for a host already configured is reported and ignored, and the first is used, whatever tags either one uses. The host is read in lower case before any rule below looks at it. For an Amazon ECR entry the rules are:
 

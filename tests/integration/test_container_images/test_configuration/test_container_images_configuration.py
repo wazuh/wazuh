@@ -9,8 +9,9 @@ type: integration
 
 brief: The container_images module inventories the packages found inside container images and keeps
        that inventory in a local database, synchronizing the changes with the manager. These tests
-       check the parsing of the `<container_images>` configuration block: enabling and disabling the
-       module, the default values, and the rejection of invalid values.
+       check the parsing of the `<images>` section of `<container_security>`: enabling and disabling the
+       module, the default values, the rejection of invalid values, and the report of the retired
+       top-level `<container_images>` block.
 
 components:
     - modulesd
@@ -51,6 +52,7 @@ local_internal_options = {MODULESD_DEBUG: '2'}
 
 config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_container_images.yaml')
 no_tags_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_container_images_no_tags.yaml')
+obsolete_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_container_images_obsolete.yaml')
 
 # T1: module disabled -> it does not start.
 t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_deactivation.yaml')
@@ -66,6 +68,11 @@ t2_configurations = configuration.load_configuration_template(no_tags_config_pat
 t3_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_invalid_configurations.yaml')
 t3_params, t3_metadata, t3_ids = configuration.get_test_cases_data(t3_cases_path)
 t3_configurations = configuration.load_configuration_template(config_path, t3_params, t3_metadata)
+
+# T4: the retired top-level block -> reported as obsolete, naming the new location.
+t4_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_obsolete_block.yaml')
+t4_params, t4_metadata, t4_ids = configuration.get_test_cases_data(t4_cases_path)
+t4_configurations = configuration.load_configuration_template(obsolete_config_path, t4_params, t4_metadata)
 
 
 # Tests
@@ -136,3 +143,21 @@ def test_container_images_invalid_configuration(test_configuration, test_metadat
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(callback=callbacks.generate_callback(pattern), timeout=30)
     assert log_monitor.callback_result, f'Expected configuration error for invalid {field} was not logged.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t4_configurations, t4_metadata), ids=t4_ids)
+def test_container_images_obsolete_block(test_configuration, test_metadata, set_wazuh_configuration,
+                                         configure_local_internal_options, truncate_monitored_files,
+                                         daemons_handler):
+    '''
+    description: Check that the retired top-level <container_images> block is reported as obsolete.
+
+    assertions:
+        - A single warning names <container_security><images> as the new location.
+
+    expected_result: PASS when the obsolete-setting warning is logged.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_OBSOLETE_BLOCK), timeout=30)
+    assert log_monitor.callback_result, 'The obsolete <container_images> block was not reported.'

@@ -39,6 +39,11 @@ CB_INVENTORY_DELETED = fr'{PREFIX}DEBUG: Inventory deleted in {{0}}:.*'
 # Synchronization.
 CB_SYNC_PROTOCOL_INITIALIZED = fr'{PREFIX}DEBUG: Sync protocol initialized with database.*'
 
+# The top-level <container_images> block is retired. The line comes from the configuration reader,
+# so it carries the daemon's own tag and not the module's.
+CB_OBSOLETE_BLOCK = (r".*wazuh-modulesd.*WARNING: \(1223\): 'container_images' is no longer supported and will be "
+                     r"ignored\. Image scanning is configured in <container_security><images>\.")
+
 # Configuration-parser errors (emitted with the wmodules prefix).
 CB_INVALID_INTERVAL = fr"{WMODULES_PREFIX}ERROR: Invalid interval at module 'container_images'."
 CB_INVALID_BOOL = fr"{WMODULES_PREFIX}ERROR: Invalid content for tag '{{0}}' at module 'container_images'."

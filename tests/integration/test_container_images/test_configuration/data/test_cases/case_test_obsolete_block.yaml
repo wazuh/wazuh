@@ -1,0 +1,6 @@
+- name: check_obsolete_block
+  description: Verify that the retired top-level block is reported as obsolete, naming the new location
+  configuration_parameters:
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    block: container_images

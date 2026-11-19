@@ -10,7 +10,7 @@ The **Container Images** module uses the same C and C++ split used by other Wazu
 
 ### **Configuration Parser**
 
-The configuration parser reads the `<container_images>` block from `ossec.conf` and stores it in a `wm_container_images_t` structure.
+The configuration parser reads the `<images>` section of the `<container_security>` block from `ossec.conf` and stores it in a `wm_container_images_t` structure. The rest of the block belongs to container runtime security and is not read here.
 
 The parser handles:
 
@@ -277,7 +277,7 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 
 - `src/wazuh_modules/container_images/CMakeLists.txt` builds `libcontainer_images.so`.
 - `src/wazuh_modules/container_images/container_images_impl/CMakeLists.txt` builds the implementation library and tests.
-- `src/wazuh_modules/CMakeLists.txt` builds the shared library for agent targets only. The C glue is compiled on every target, so the manager can parse and validate a `<container_images>` block.
+- `src/wazuh_modules/CMakeLists.txt` builds the shared library for agent targets only. The C glue is compiled on every target, so the manager can parse and validate the `<images>` section of a shared `agent.conf`.
 - `src/init/inst-functions.sh` installs the shared library into the agent library directory.
 
 ### **Test Coverage**

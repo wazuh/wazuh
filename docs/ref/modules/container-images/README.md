@@ -28,7 +28,7 @@ Container Images scans configured image sources, stores what it finds in a local
 
 ### How It Works
 
-1. **Configuration**: The agent parses the `<container_images>` block in `ossec.conf`.
+1. **Configuration**: The agent parses the `<images>` section of the `<container_security>` block in `ossec.conf`.
 2. **Startup**: `wazuh-modulesd` loads `libcontainer_images.so` and initializes the C++ implementation.
 3. **Scanning**: The module scans on start when configured, then waits for the next interval.
 4. **Discovery**: Each configured reference is read, and the images it holds are enumerated from the image metadata.
@@ -70,17 +70,19 @@ gzip, zstd and none are the compressions the OCI image specification defines for
 
 ### Basic Configuration
 
-Add a `<container_images>` block to the agent `ossec.conf` file:
+Add an `<images>` section inside a `<container_security>` block in the agent `ossec.conf` file:
 
 ```xml
-<container_images>
-  <enabled>yes</enabled>
-  <scan_on_start>yes</scan_on_start>
-  <interval>1h</interval>
-  <references>
-    <archive>/var/tmp/images/myapp.tar</archive>
-  </references>
-</container_images>
+<container_security>
+  <images>
+    <enabled>yes</enabled>
+    <scan_on_start>yes</scan_on_start>
+    <interval>1h</interval>
+    <references>
+      <archive>/var/tmp/images/myapp.tar</archive>
+    </references>
+  </images>
+</container_security>
 ```
 
 ### Verify Operation
