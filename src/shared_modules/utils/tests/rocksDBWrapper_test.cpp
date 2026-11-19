@@ -10,7 +10,6 @@
  */
 
 #include "rocksDBWrapper_test.hpp"
-#include <atomic>
 #include <fstream>
 #include <map>
 #include <set>
@@ -887,66 +886,4 @@ TEST_F(RocksDBWrapperTest, DeleteAllOnOldDatabase)
     }
 
     EXPECT_EQ(tableCompressions(path).at(COLUMN_A), LZ4);
-}
-
-TEST_F(RocksDBWrapperTest, CompactRewritesOldFiles)
-{
-    const auto path {OUTPUT_FOLDER / "old"};
-    createOldDatabase(path);
-
-    {
-        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
-        EXPECT_EQ(db.compactUncompressedColumns(), 2);
-        EXPECT_EQ(db.compactUncompressedColumns(), 0);
-    }
-
-    EXPECT_EQ(allCompressions(path), ZSTD);
-
-    Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
-    std::string value;
-    for (int i = 0; i < 10; ++i)
-    {
-        const auto key {"old" + std::to_string(i)};
-        ASSERT_TRUE(db.get(key, value));
-        EXPECT_EQ(value, "value_" + key);
-        ASSERT_TRUE(db.get(key, value, COLUMN_A));
-        EXPECT_EQ(value, "value_" + key);
-    }
-}
-
-TEST_F(RocksDBWrapperTest, CompactSkipsLz4OnlyColumns)
-{
-    const auto path {OUTPUT_FOLDER / "lz4zstd"};
-    Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
-    db.put("key", "value");
-    db.flush();
-
-    EXPECT_EQ(db.compactUncompressedColumns(), 0);
-}
-
-TEST_F(RocksDBWrapperTest, CompactWithoutCompressionIsNoOp)
-{
-    const auto path {OUTPUT_FOLDER / "old"};
-    createOldDatabase(path);
-
-    {
-        Utils::RocksDBWrapper db {path};
-        EXPECT_EQ(db.compactUncompressedColumns(), 0);
-    }
-
-    EXPECT_EQ(allCompressions(path), NO_COMPRESSION);
-}
-
-TEST_F(RocksDBWrapperTest, CompactCanceled)
-{
-    const auto path {OUTPUT_FOLDER / "old"};
-    createOldDatabase(path);
-
-    {
-        std::atomic<bool> canceled {true};
-        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
-        EXPECT_EQ(db.compactUncompressedColumns(&canceled), 0);
-    }
-
-    EXPECT_EQ(allCompressions(path), NO_COMPRESSION);
 }

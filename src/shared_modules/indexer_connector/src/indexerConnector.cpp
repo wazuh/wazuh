@@ -1077,7 +1077,8 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 void IndexerConnector::preInitialization(
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
-    const nlohmann::json& config)
+    const nlohmann::json& config,
+    const Utils::RocksDBCompression compression)
 {
     if (logFunction)
     {
@@ -1093,29 +1094,7 @@ void IndexerConnector::preInitialization(
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(
-        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true, Utils::RocksDBCompression::LZ4_ZSTD);
-}
-
-void IndexerConnector::startCompaction()
-{
-    m_compactionThread = std::thread(
-        [this]()
-        {
-            try
-            {
-                if (m_db->compactUncompressedColumns(&m_compactionCanceled) > 0 && !m_compactionCanceled.load())
-                {
-                    logInfo(IC_NAME,
-                            "Local database for index '%s' was compacted to apply compression.",
-                            m_indexName.c_str());
-                }
-            }
-            catch (const std::exception& e)
-            {
-                logWarn(
-                    IC_NAME, "Unable to compact the local database for index '%s': %s", m_indexName.c_str(), e.what());
-            }
-        });
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true, compression);
 }
 
 IndexerConnector::IndexerConnector(
@@ -1125,10 +1104,11 @@ IndexerConnector::IndexerConnector(
     const bool useSeekDelete,
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
-    const uint32_t& timeout)
+    const uint32_t& timeout,
+    const Utils::RocksDBCompression compression)
     : m_useSeekDelete(useSeekDelete)
 {
-    preInitialization(logFunction, config);
+    preInitialization(logFunction, config, compression);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -1443,7 +1423,10 @@ IndexerConnector::IndexerConnector(
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
         UNLIMITED_QUEUE_SIZE,
-        true);
+        true,
+        std::function<void(const std::string&)> {},
+        compression,
+        compression != Utils::RocksDBCompression::NONE);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
@@ -1546,18 +1529,17 @@ IndexerConnector::IndexerConnector(
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [this]() { return m_stopping.load(); }));
         });
-
-    startCompaction();
 }
 
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const bool useSeekDelete,
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
+        logFunction,
+    const Utils::RocksDBCompression compression)
     : m_useSeekDelete(useSeekDelete)
 {
-    preInitialization(logFunction, config);
+    preInitialization(logFunction, config, compression);
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this](std::queue<std::string>& dataQueue)
@@ -1626,7 +1608,10 @@ IndexerConnector::IndexerConnector(
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
         UNLIMITED_QUEUE_SIZE,
-        true);
+        true,
+        std::function<void(const std::string&)> {},
+        compression,
+        compression != Utils::RocksDBCompression::NONE);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         [](const std::string& agentId)
@@ -1641,22 +1626,14 @@ IndexerConnector::IndexerConnector(
         {
             // We don't initialize when the indexer is disabled
         });
-
-    startCompaction();
 }
 
 IndexerConnector::~IndexerConnector()
 {
     m_stopping.store(true);
-    m_compactionCanceled.store(true);
     m_cv.notify_all();
 
     m_dispatcher->cancel();
-
-    if (m_compactionThread.joinable())
-    {
-        m_compactionThread.join();
-    }
 
     if (m_initializeThread.joinable())
     {
