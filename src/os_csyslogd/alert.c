@@ -120,33 +120,36 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
                  al_data->rule, al_data->comment,
                  al_data->location
                 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " classification: %s;", al_data->group );
-        field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " classification: %s;", al_data->group, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip, NULL );
 #ifdef LIBGEOIP_ENABLED
-        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->srcgeoip );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dstcity: %s;", al_data->dstgeoip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->srcgeoip, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dstcity: %s;", al_data->dstgeoip, NULL );
 #endif
-        field_add_string(syslog_msg, OS_SIZE_2048, " dstip: %s;", al_data->dstip );
-        field_add_string(syslog_msg, OS_SIZE_2048, " user: %s;", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s;", al_data->old_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s;", al_data->new_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s;", al_data->old_sha1 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s;", al_data->new_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dstip: %s;", al_data->dstip, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " user: %s;", al_data->user, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s;", al_data->old_md5, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s;", al_data->new_md5, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s;", al_data->old_sha1, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s;", al_data->new_sha1, NULL );
         if(al_data->old_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA256: %s;", al_data->old_sha256 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA256: %s;", al_data->old_sha256, NULL );
         }
         if(al_data->new_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA256: %s;", al_data->new_sha256 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA256: %s;", al_data->new_sha256, NULL );
         }
      /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-        field_add_string(syslog_msg, OS_SIZE_2048, " Size changed: from %s;", al_data->file_size );
-        field_add_string(syslog_msg, OS_SIZE_2048, " User ownership: was %s;", al_data->owner_chg );
-        field_add_string(syslog_msg, OS_SIZE_2048, " Group ownership: was %s;", al_data->group_chg );
-        field_add_string(syslog_msg, OS_SIZE_2048, " Permissions changed: from %s;", al_data->perm_chg );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Size changed: from %s;", al_data->file_size, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " User ownership: was %s;", al_data->owner_chg, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Group ownership: was %s;", al_data->group_chg, NULL );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Permissions changed: from %s;", al_data->perm_chg, NULL );
      /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
-        field_add_truncated(syslog_msg, OS_SIZE_61440, " %s", al_data->log[0], 2 );
+        field_add_truncated(syslog_msg, OS_SIZE_61440, " %s", al_data->log[0], 2, NULL );
     } else if (syslog_config->format == CEF_CSYSLOG) {
-        snprintf(syslog_msg, OS_SIZE_2048,
+        char *comment = field_escape(al_data->comment, CEF_HEADER_ESCAPE);
+        char *location = field_escape(al_data->location, CEF_EXT_ESCAPE);
+
+        if (snprintf(syslog_msg, OS_SIZE_2048,
                  "<%u>%s CEF:0|%s|%s|%s|%u|%s|%u|dvc=%s cs1=%s cs1Label=Location",
                  syslog_config->priority,
                  tstamp,
@@ -154,31 +157,55 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
                  __ossec_name,
                  __ossec_version,
                  al_data->rule,
-                 al_data->comment,
+                 comment,
                  (al_data->level > 10) ? 10 : al_data->level,
-                 hostname, al_data->location);
-        field_add_string(syslog_msg, OS_SIZE_2048, " cat=%s", al_data->group );
-        field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
+                 hostname, location) >= OS_SIZE_2048 &&
+            snprintf(syslog_msg, OS_SIZE_2048,
+                     "<%u>%s CEF:0|%s|%s|%s|%u||%u|dvc=%s cs1=%s cs1Label=Location",
+                     syslog_config->priority,
+                     tstamp,
+                     __author,
+                     __ossec_name,
+                     __ossec_version,
+                     al_data->rule,
+                     (al_data->level > 10) ? 10 : al_data->level,
+                     hostname, location) >= OS_SIZE_2048) {
+            /* Leave the values out rather than cut the header inside a field */
+            snprintf(syslog_msg, OS_SIZE_2048,
+                     "<%u>%s CEF:0|%s|%s|%s|%u||%u|dvc=%s",
+                     syslog_config->priority,
+                     tstamp,
+                     __author,
+                     __ossec_name,
+                     __ossec_version,
+                     al_data->rule,
+                     (al_data->level > 10) ? 10 : al_data->level,
+                     hostname);
+        }
+        os_free(comment);
+        os_free(location);
+        field_add_string(syslog_msg, OS_SIZE_2048, " cat=%s", al_data->group, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip, CEF_EXT_ESCAPE );
         field_add_int(syslog_msg, OS_SIZE_2048, " dpt=%d", al_data->dstport );
         field_add_int(syslog_msg, OS_SIZE_2048, " spt=%d", al_data->srcport );
-        field_add_string(syslog_msg, OS_SIZE_2048, " fname=%s", al_data->filename );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dhost=%s", al_data->dstip );
-        field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip );
-        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " fname=%s", al_data->filename, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dhost=%s", al_data->dstip, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip, CEF_EXT_ESCAPE );
 #ifdef LIBGEOIP_ENABLED
-        field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=SrcCity cs4=%s", al_data->srcgeoip );
-        field_add_string(syslog_msg, OS_SIZE_2048, " cs5Label=DstCity cs5=%s", al_data->dstgeoip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=SrcCity cs4=%s", al_data->srcgeoip, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " cs5Label=DstCity cs5=%s", al_data->dstgeoip, CEF_EXT_ESCAPE );
 #endif
-        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
-        field_add_truncated(syslog_msg, OS_SIZE_61440, " msg=%s", al_data->log[0], 2 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user, CEF_EXT_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip, CEF_EXT_ESCAPE );
+        field_add_truncated(syslog_msg, OS_SIZE_61440, " msg=%s", al_data->log[0], 2, CEF_EXT_ESCAPE );
         if (al_data->new_md5 && al_data->new_sha1) {
-            field_add_string(syslog_msg, OS_SIZE_2048, " cs2Label=OldMD5 cs2=%s", al_data->old_md5);
-            field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=NewMD5 cs3=%s", al_data->new_md5);
-            field_add_string(syslog_msg, OS_SIZE_2048, " oldFileHash=%s", al_data->old_sha1 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " fhash=%s", al_data->new_sha1 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " fileHash=%s", al_data->new_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " cs2Label=OldMD5 cs2=%s", al_data->old_md5, CEF_EXT_ESCAPE);
+            field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=NewMD5 cs3=%s", al_data->new_md5, CEF_EXT_ESCAPE);
+            field_add_string(syslog_msg, OS_SIZE_2048, " oldFileHash=%s", al_data->old_sha1, CEF_EXT_ESCAPE );
+            field_add_string(syslog_msg, OS_SIZE_2048, " fhash=%s", al_data->new_sha1, CEF_EXT_ESCAPE );
+            field_add_string(syslog_msg, OS_SIZE_2048, " fileHash=%s", al_data->new_sha1, CEF_EXT_ESCAPE );
         }
     } else if (syslog_config->format == JSON_CSYSLOG) {
         /* Build a JSON Object for logging */
@@ -267,47 +294,57 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
         free(json_string);
         cJSON_Delete(root);
     } else if (syslog_config->format == SPLUNK_CSYSLOG) {
+        char *comment = field_escape(al_data->comment, SPLUNK_ESCAPE);
+        char *location = field_escape(al_data->location, SPLUNK_ESCAPE);
+
         /* Build a Splunk Style Key/Value string for logging */
-        snprintf(syslog_msg, OS_SIZE_2048,
+        if (snprintf(syslog_msg, OS_SIZE_2048,
                  "<%u>%s %s ossec: crit=%u id=%u description=\"%s\" component=\"%s\",",
 
                  /* syslog header */
                  syslog_config->priority, tstamp, hostname,
 
                  /* OSSEC metadata */
-                 al_data->level, al_data->rule, al_data->comment,
-                 al_data->location
-                );
+                 al_data->level, al_data->rule, comment,
+                 location
+                ) >= OS_SIZE_2048) {
+            /* Leave the values out rather than cut the header with a quote open */
+            snprintf(syslog_msg, OS_SIZE_2048, "<%u>%s %s ossec: crit=%u id=%u",
+                     syslog_config->priority, tstamp, hostname,
+                     al_data->level, al_data->rule);
+        }
+        os_free(comment);
+        os_free(location);
         /* Event specifics */
-        field_add_string(syslog_msg, OS_SIZE_2048, " classification=\"%s\",", al_data->group );
+        field_add_string(syslog_msg, OS_SIZE_2048, " classification=\"%s\",", al_data->group, SPLUNK_ESCAPE );
 
-        if ( field_add_string(syslog_msg, OS_SIZE_2048, " src_ip=\"%s\",", al_data->srcip ) > 0 ) {
+        if ( field_add_string(syslog_msg, OS_SIZE_2048, " src_ip=\"%s\",", al_data->srcip, SPLUNK_ESCAPE ) > 0 ) {
             field_add_int(syslog_msg, OS_SIZE_2048, " src_port=%d,", al_data->srcport );
         }
 
 #ifdef LIBGEOIP_ENABLED
-        field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->srcgeoip );
-        field_add_string(syslog_msg, OS_SIZE_2048, " dst_city=\"%s\",", al_data->dstgeoip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->srcgeoip, SPLUNK_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst_city=\"%s\",", al_data->dstgeoip, SPLUNK_ESCAPE );
 #endif
 
-        if ( field_add_string(syslog_msg, OS_SIZE_2048, " dst_ip=\"%s\",", al_data->dstip ) > 0 ) {
+        if ( field_add_string(syslog_msg, OS_SIZE_2048, " dst_ip=\"%s\",", al_data->dstip, SPLUNK_ESCAPE ) > 0 ) {
             field_add_int(syslog_msg, OS_SIZE_2048, " dst_port=%d,", al_data->dstport );
         }
 
-        field_add_string(syslog_msg, OS_SIZE_2048, " file=\"%s\",", al_data->filename );
-        field_add_string(syslog_msg, OS_SIZE_2048, " acct=\"%s\",", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " md5_old=\"%s\",", al_data->old_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " file=\"%s\",", al_data->filename, SPLUNK_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " acct=\"%s\",", al_data->user, SPLUNK_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " md5_old=\"%s\",", al_data->old_md5, SPLUNK_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5, SPLUNK_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1, SPLUNK_ESCAPE );
+        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1, SPLUNK_ESCAPE );
         if(al_data->old_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_old=\"%s\",", al_data->old_sha256 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_old=\"%s\",", al_data->old_sha256, SPLUNK_ESCAPE );
         }
         if(al_data->new_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_new=\"%s\",", al_data->new_sha256 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_new=\"%s\",", al_data->new_sha256, SPLUNK_ESCAPE );
         }
         /* Message */
-        field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2 );
+        field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2, SPLUNK_ESCAPE );
     }
 
     if (OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg) != 0) {
