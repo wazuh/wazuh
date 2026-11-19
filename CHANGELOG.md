@@ -7,9 +7,11 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed `wazuh-integratord` writing integration credentials to `ossec.log`. The configured hook URL, its path and the API key are masked in the output of an integration script, the errors for a script that cannot be executed or exits abnormally no longer include its arguments, and a script that fails without output no longer logs the output of the previous integration. ([#41499](https://github.com/wazuh/wazuh/pull/41499))
 - Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41201](https://github.com/wazuh/wazuh/pull/41201))
 - Fixed `wazuh-remoted` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41297](https://github.com/wazuh/wazuh/pull/41297))
 - Fixed `wazuh-remoted` not releasing the agent version it replaced on each agent startup message and using the stored version after an agent shutdown message released it. The stored version is now bounded. ([#41400](https://github.com/wazuh/wazuh/pull/41400))
+- Fixed `wazuh-csyslogd` forwarding alert fields to the `splunk` and `cef` outputs without neutralizing the characters that delimit fields in those formats. A `splunk` value that ends in an odd number of backslashes is now sent with one more, which a receiver using the default `KV_MODE=auto` keeps in the value. ([#41235](https://github.com/wazuh/wazuh/pull/41235))
 - Fixed `wazuh-analysisd` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41298](https://github.com/wazuh/wazuh/pull/41298))
 - Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41261](https://github.com/wazuh/wazuh/pull/41261))
 - Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41176](https://github.com/wazuh/wazuh/pull/41176))
@@ -17,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41265](https://github.com/wazuh/wazuh/pull/41265))
 - Fixed the typo "Succsessful" in the description of the Amazon Security Lake rule for successful Route 53 DNS requests (99080). ([#41519](https://github.com/wazuh/wazuh/pull/41519))
 - Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#41406](https://github.com/wazuh/wazuh/pull/41406))
+- Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states as warnings or errors: after a `409`, `413` or `429` answer from the indexer, and when the queue stops. A `409` or `429` that persists for a minute is still reported, with the reason given by the indexer. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
 
 #### Changed
 
@@ -31,13 +34,26 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM who-data permanently falling back to real-time when audit 4.0.4 or later leaves a stale socket behind. ([#41617](https://github.com/wazuh/wazuh/pull/41617))
 - Hardened how rootcheck reads files during the system scan. ([#41414](https://github.com/wazuh/wazuh/pull/41414))
 - Hardened how `wazuh-logcollector` writes its state file. ([#41300](https://github.com/wazuh/wazuh/pull/41300))
+- Hardened how FIM updates the directories expanded from wildcard `<directories>` entries. ([#41572](https://github.com/wazuh/wazuh/pull/41572))
 - Fixed FIM on Windows skipping the files under any drive-root folder whose name starts with `$Recycle.Bin`, not only the recycle bin itself. ([#41216](https://github.com/wazuh/wazuh/pull/41216))
+- Fixed Syscollector logging a false warning when stopped during a long scan. ([#41514](https://github.com/wazuh/wazuh/pull/41514))
 - Fixed `wazuh-logcollector` keeping the leading tab and indentation of the continuation lines of a multi-line `postgresql_log` message. ([#41307](https://github.com/wazuh/wazuh/pull/41307))
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed `wazuh-logcollector` silently discarding, in `mysql_log`, the MySQL 5.7+ general log, the MariaDB error log, the MySQL 5.x and MariaDB lines written before 10:00, and the general log lines that share their second with the previous one. ([#41333](https://github.com/wazuh/wazuh/pull/41333))
 - Fixed the CIS-CAT module on Linux and Unix stopping its evaluations until `wazuh-modulesd` was restarted. ([#41531](https://github.com/wazuh/wazuh/pull/41531))
 - Fixed the CPU name being reported empty on arm64 and POWER Linux agents. ([#41569](https://github.com/wazuh/wazuh/pull/41569))
+- Fixed high CPU and memory usage of the Linux network inventory on hosts with a large IPv4 routing table. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
+- Fixed the agent listing every network interface about once a minute to resolve the host IP when no log output format uses `$(host_ip)`. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
+- Fixed 32-bit Linux agents reporting no network inventory when a route's gateway ends in 128 or higher. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
+- Fixed the MS Graph module applying `only_future_events` only to the first tenant it scanned after a start, and the MS Graph and Office 365 modules sending the same events again at every scan while the API returned a URL out of the configured host. ([#41564](https://github.com/wazuh/wazuh/pull/41564))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed SCA checks that failed compliant hosts or passed non-compliant ones: `compare =<` evaluated as equality in the CentOS 8, 9 and 10 and Oracle Linux 9 and 10 policies, the mail transfer agent local-only check inverted in 10 RHEL-family policies, the bootloader `audit=1` and `audit_backlog_limit` checks reading `/etc/default/grub` in the Debian 12, Debian 13 and Ubuntu 22.04 policies, and the sudo authentication timeout check failing compliant values in the Debian 12 and 13 policies. ([#41589](https://github.com/wazuh/wazuh/pull/41589))
+- Fixed the "Ensure sudo is installed." check passing when sudo is not installed and failing on aarch64 in the AlmaLinux 8, 9 and 10, Amazon Linux 2023, CentOS 8, 9 and 10, and Oracle Linux 9 and 10 SCA policies. The check now queries the local rpm database instead of `dnf`. ([#41169](https://github.com/wazuh/wazuh/pull/41169))
 
 ### Other
 

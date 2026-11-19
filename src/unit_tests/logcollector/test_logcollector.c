@@ -42,6 +42,7 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 void free_files_status_data(os_file_status_t *data);
+bool host_ip_in_formats();
 
 // Auxiliar structs
 typedef struct test_logcollector_s {
@@ -3317,6 +3318,90 @@ void check_ignore_and_restrict_restricted(void ** state) {
     assert_true(ret);
 }
 
+/* host_ip_in_formats */
+
+static logreader * host_ip_logff_bak;
+static logreader_glob * host_ip_globs_bak;
+
+static int setup_host_ip_formats(void ** state) {
+    host_ip_logff_bak = logff;
+    host_ip_globs_bak = globs;
+    logff = NULL;
+    globs = NULL;
+    return 0;
+}
+
+static int teardown_host_ip_formats(void ** state) {
+    logff = host_ip_logff_bak;
+    globs = host_ip_globs_bak;
+    return 0;
+}
+
+void test_host_ip_in_formats_no_localfiles(void ** state) {
+    assert_false(host_ip_in_formats());
+}
+
+void test_host_ip_in_formats_not_used(void ** state) {
+    outformat plain = { .target = NULL, .format = "$(hostname) $(location): $(log)" };
+    outformat * formats[] = { &plain, NULL };
+    logreader gfiles[] = { { .file = NULL, .logformat = "syslog", .out_format = formats } };
+    logreader files[] = {
+        { .file = "/var/log/a.log", .logformat = "syslog" },
+        { .file = "/var/log/b.log", .logformat = "syslog", .out_format = formats },
+        { .logformat = NULL }
+    };
+    logreader_glob glob_list[] = { { .gpath = "/var/log/*.txt", .gfiles = gfiles }, { .gpath = NULL } };
+
+    logff = files;
+    globs = glob_list;
+
+    assert_false(host_ip_in_formats());
+}
+
+void test_host_ip_in_formats_file(void ** state) {
+    outformat plain = { .target = NULL, .format = "$(log)" };
+    outformat with_ip = { .target = "custom", .format = "$(host_ip) $(log)" };
+    outformat * formats[] = { &plain, &with_ip, NULL };
+    logreader files[] = {
+        { .file = "/var/log/a.log", .logformat = "syslog" },
+        { .file = "/var/log/b.log", .logformat = "syslog", .out_format = formats },
+        { .logformat = NULL }
+    };
+
+    logff = files;
+
+    assert_true(host_ip_in_formats());
+}
+
+// LogCollectorStart() clears the file of command entries before the formats are checked.
+void test_host_ip_in_formats_after_command(void ** state) {
+    outformat with_ip = { .target = NULL, .format = "$(host_ip) $(log)" };
+    outformat * formats[] = { &with_ip, NULL };
+    logreader files[] = {
+        { .file = NULL, .logformat = "command", .command = "df -P" },
+        { .file = NULL, .logformat = "full_command", .command = "last -n 20" },
+        { .file = "/var/log/b.log", .logformat = "syslog", .out_format = formats },
+        { .logformat = NULL }
+    };
+
+    logff = files;
+
+    assert_true(host_ip_in_formats());
+}
+
+void test_host_ip_in_formats_glob(void ** state) {
+    outformat with_ip = { .target = NULL, .format = "ip: $(host_ip)" };
+    outformat * formats[] = { &with_ip, NULL };
+    logreader gfiles[] = { { .file = NULL, .logformat = "syslog", .out_format = formats } };
+    logreader files[] = { { .file = "/var/log/a.log", .logformat = "syslog" }, { .logformat = NULL } };
+    logreader_glob glob_list[] = { { .gpath = "/var/log/*.txt", .gfiles = gfiles }, { .gpath = NULL } };
+
+    logff = files;
+    globs = glob_list;
+
+    assert_true(host_ip_in_formats());
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -3441,7 +3526,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_not_ignored, setup_regex, teardown_regex),
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_ignored, setup_regex, teardown_regex),
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_not_restricted, setup_regex, teardown_regex),
-        cmocka_unit_test_setup_teardown(check_ignore_and_restrict_restricted, setup_regex, teardown_regex)
+        cmocka_unit_test_setup_teardown(check_ignore_and_restrict_restricted, setup_regex, teardown_regex),
+
+        // Test host_ip_in_formats
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_no_localfiles, setup_host_ip_formats, teardown_host_ip_formats),
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_not_used, setup_host_ip_formats, teardown_host_ip_formats),
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_file, setup_host_ip_formats, teardown_host_ip_formats),
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_after_command, setup_host_ip_formats, teardown_host_ip_formats),
+        cmocka_unit_test_setup_teardown(test_host_ip_in_formats_glob, setup_host_ip_formats, teardown_host_ip_formats)
 
     };
 

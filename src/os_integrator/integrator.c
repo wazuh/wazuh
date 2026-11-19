@@ -14,6 +14,34 @@
 #include "os_net/os_net.h"
 
 
+/* Return a copy of a line of script output with the API key, the hook URL and its path or query (what requests prints on errors) masked */
+static char *mask_secrets(const char *line, const IntegratorConfig *config)
+{
+    const char *secrets[3] = { config->hookurl, NULL, config->apikey };
+    const char *scheme;
+    char *masked;
+    char *previous;
+    int i;
+
+    if (config->hookurl) {
+        scheme = strstr(config->hookurl, "://");
+        secrets[1] = strpbrk(scheme ? scheme + 3 : config->hookurl, "/?");
+    }
+
+    os_strdup(line, masked);
+
+    for (i = 0; i < 3; i++) {
+        /* Single-character values would mask unrelated text and wstr_replace() never ends on empty ones */
+        if (secrets[i] && strlen(secrets[i]) > 1) {
+            previous = masked;
+            masked = wstr_replace(previous, secrets[i], "*****");
+            os_free(previous);
+        }
+    }
+
+    return masked;
+}
+
 void OS_IntegratorD(IntegratorConfig **integrator_config)
 {
     int s = 0;
@@ -446,26 +474,33 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if (cmd) {
                 wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
                 if (wfd) {
-                    char buffer[4096];
-                    while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
-                        mdebug2("%s", buffer);
+                    char *line = NULL;
+                    char *output = NULL;
+                    size_t line_size = 0;
+                    /* Whole lines, so that a secret is never split between two reads and left unmasked */
+                    while (getline(&line, &line_size, wfd->file_out) != -1) {
+                        os_free(output);
+                        output = mask_secrets(line, integrator_config[s]);
+                        mdebug2("%s", output);
                     }
+                    os_free(line);
                     int wp_closefd = wpclose(wfd);
                     if ( WIFEXITED(wp_closefd) ) {
                         int wstatus = WEXITSTATUS(wp_closefd);
                         if (wstatus == 127) {
                             // 127 means error in exec
-                            merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
+                            merror("Couldn't execute command (%s). Check file and permissions.", integrator_config[s]->path);
                         } else if(wstatus != 0){
                             merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, INTEGRATORDIR);
-                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, INTEGRATORDIR, buffer);
+                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, INTEGRATORDIR, output ? output : "");
                             merror("Exit status was: %d", wstatus);
                         } else {
                             mdebug1("Command ran successfully.");
                         }
                     } else {
-                        merror("Command (%s) execution exited abnormally.", exec_full_cmd);
+                        merror("Command (%s) execution exited abnormally.", integrator_config[s]->path);
                     }
+                    os_free(output);
 
                 } else {
                     merror("Could not launch command %s (%d)", strerror(errno), errno);

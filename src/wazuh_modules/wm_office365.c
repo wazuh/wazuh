@@ -427,8 +427,9 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                             cJSON *content = cJSON_GetObjectItem(blob, "contentUri");
 
                             if (content && (content->type == cJSON_String) && !wm_url_is_allowed(content->valuestring, current_auth->management_fqdn)) {
-                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring content URI out of '%s'.", current_auth->management_fqdn);
-                                fail = 1;
+                                // Not a failure: a later scan would get the same URI and only send this window again
+                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring content URI out of '%s'. Skipping a content blob of tenant '%s' and subscription '%s' between '%s' and '%s'.",
+                                    current_auth->management_fqdn, current_auth->tenant_id, current_subscription->subscription_name, start_time_str, end_time_str);
                             } else if (content && (content->type == cJSON_String)) {
                                 cJSON *logs_array = NULL;
 
@@ -474,10 +475,11 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                             if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                 scan_finished = 1;
                             } else if (!wm_url_is_allowed(next_page, current_auth->management_fqdn)) {
-                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring next page URL out of '%s'.", current_auth->management_fqdn);
+                                // Not a failure, as for a content URI out of the host
+                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring next page URL out of '%s'. Skipping the remaining content blobs of tenant '%s' and subscription '%s' between '%s' and '%s'.",
+                                    current_auth->management_fqdn, current_auth->tenant_id, current_subscription->subscription_name, start_time_str, end_time_str);
                                 os_free(next_page);
                                 scan_finished = 1;
-                                fail = 1;
                             } else {
                                 snprintf(url, sizeof(url), "%s", next_page);
                                 os_free(next_page);
