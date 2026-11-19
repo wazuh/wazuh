@@ -333,8 +333,8 @@ Restart it, and it connects with the key it holds.
 
 A new agent installed during the window costs you something too, even on a first migration: it
 enrolls legitimately and takes the next free id, which is one the bundle is about to restore. The
-import then fails on that agent with the manager's error `1708`, and you have two identities to
-reconcile by hand.
+import then refuses to start, because the target already holds an agent, and with `--force` it fails
+on that agent with the manager's error `1708`. Either way you have two identities to reconcile by hand.
 
 Both are avoided the same way, by closing the window rather than racing it. Install with the agent
 listeners pointed away from the fleet, which the installation variables already support:
