@@ -19,6 +19,7 @@ for the deterministic "Scan ended." log line through a FileMonitor and only then
 database. That log line is emitted exactly once per scan, so the wait is bounded and
 race-free.
 """
+import base64
 import gzip
 import hashlib
 import io
@@ -54,10 +55,12 @@ DEBIAN_OS_RELEASE = (
     'VERSION_CODENAME=bookworm\n'
     'ID=debian\n'
 )
-# The Berkeley DB format rpm used before 4.16, which the module recognizes but does not read.
+# The Berkeley DB format rpm used before 4.16.
 RPM_BDB_PATH = 'var/lib/rpm/Packages'
 # A distroless image keeps one dpkg status file per package in this directory, with no `status` file.
 DPKG_STATUS_D_PATH = 'var/lib/dpkg/status.d'
+# A package format the module recognizes but does not read.
+PACMAN_DB_PATH = 'var/lib/pacman/local/app-1.0/desc'
 
 
 def dpkg_status(packages: list) -> str:
@@ -231,6 +234,21 @@ def rpm_ndb_db(packages: list) -> bytes:
     header += b'\x00' * (32 - len(header))
 
     return header + slots + b'\x00' * (PAGE - 32 - len(slots)) + payloads
+
+
+# A Berkeley DB hash database as rpm 4.11 leaves it: rpm's bookkeeping record, then one header
+# blob per package, here bash 4.2.46-35.el7_9, glibc 0:2.17-326.el7_9 and openssl-libs
+# 1:1.0.2k-25.el7_9. Written once with libdb (hash, 4096-byte pages), then compressed to fit here.
+RPM_BDB_PACKAGES = gzip.decompress(base64.b64decode(
+    'H4sIAAAAAAACA+2awUobURSGzyQ22tokXZhFF4X4AHPVSUwsuBCLBBG6CbbQRSUZRzMYkzBjsfQButOVK7d9h+77CK67EVe2'
+    'dqEIUiiI92ZOmuREQna6+D+4zP3vPffM8O9+7hARWRRRySTomZm80GMiWovRIEu747Sk94+/fV35fhZVWD19DGN6nBzUPsp1'
+    'AAAAAAAAAAAAPAyD2f1HipL/0jfpq7SeAQAAAAAAAAAAjyO8TuqxTxQ/189Edz3+i3WC9W+eT7K+oOiiOsP6j34+1eMl60ve'
+    'z7O+Yr3A+pr7LbL+y+dLrG95vxzpsSnWH4zervtVlxw1V6ScU1Bevbjxuv3lYa0Z7GU3vdAN/Nae32xkm1vZqNorm0+YoPeV'
+    'L59q2dWGq2i9EbY819/yvU36vFDYKOSpXWubzvb/zioMXBW0dsmKddK+1WthrC//HyVN/j9N/Uzp2QCj3P8bcP8PAAAAAAAA'
+    'AKNF2sMhkTYpIu2UiLSvRKSdFpH2jYi0JRFp10SkfScibVVEWt/oZstrhGHd1vkzpDk1q5wdcua70da6N9r2nRot4fYesaMX'
+    '2Z0XdZNunL00/7QHQ7x8Irx8LrzLCO9mhHc54V1ReLcsvHsrvFs3uloJa5RXjsoXKNfx7F6/2pWj+WRK7aipnRvwx3hzB4Ve'
+    'MhAAMAAA'
+))
 
 
 def write_oci_layout(path: str, layers: list, seed: str = 'v1', ref_name: str = 'debian:12') -> None:
@@ -439,8 +457,8 @@ def prepare_whiteout_image(request: pytest.FixtureRequest, test_configuration: d
 @pytest.fixture()
 def prepare_unsupported_image(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down an OCI layout whose only package database is one that is not parsed yet."""
-    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm')
-    write_oci_layout(layout_path, [{RPM_BDB_PATH: 'a Berkeley DB hash file'}], ref_name='centos:7')
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-pacman')
+    write_oci_layout(layout_path, [{PACMAN_DB_PATH: 'a pacman package description'}], ref_name='archlinux:latest')
 
     reset_module_database()
     point_configuration_at(test_configuration, layout_path)
@@ -471,6 +489,20 @@ def prepare_rpm_ndb_image(request: pytest.FixtureRequest, test_configuration: di
     layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-ndb')
     database = rpm_ndb_db([('aaa_base', '84.87', '150300.10.20.1', None)])
     write_oci_layout(layout_path, [{RPM_NDB_DB_PATH: database}], ref_name='opensuse/leap:15.5')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_rpm_bdb_image(request: pytest.FixtureRequest, test_configuration: dict):
+    """Lay down an OCI layout whose package database is an rpm Berkeley DB one."""
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-bdb')
+    write_oci_layout(layout_path, [{RPM_BDB_PATH: RPM_BDB_PACKAGES}], ref_name='centos:7')
 
     reset_module_database()
     point_configuration_at(test_configuration, layout_path)

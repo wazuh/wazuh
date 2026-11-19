@@ -61,7 +61,7 @@ namespace containerimages
         switch (reference.type)
         {
             case ReferenceType::Archive:
-                return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest);
+                return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest, context.stopRequested);
 
             case ReferenceType::Registry:
                 return std::make_unique<RegistryImageReader>(reference.location, knownConfigDigest, context);

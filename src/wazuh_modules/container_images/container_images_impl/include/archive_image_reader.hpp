@@ -13,6 +13,7 @@
 
 #include "iimage_reader.hpp"
 
+#include <atomic>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -41,7 +42,11 @@ namespace containerimages
             ///                             image at the location still reports that digest
             ///                             its layers are not read again, because its
             ///                             contents cannot have changed.
-            explicit ArchiveImageReader(std::string location, std::string knownConfigDigest = {});
+            /// @param stopRequested        Set when the module is asked to stop. Not owned.
+            ///                             Cancels a package database read that is running.
+            explicit ArchiveImageReader(std::string location,
+                                        std::string knownConfigDigest = {},
+                                        const std::atomic<bool>* stopRequested = nullptr);
 
             ImageReadResult discover() override;
             std::string sourceType() const override;
@@ -55,6 +60,7 @@ namespace containerimages
 
             std::string m_location;
             std::string m_knownConfigDigest;
+            const std::atomic<bool>* m_stopRequested;
     };
 } // namespace containerimages
 

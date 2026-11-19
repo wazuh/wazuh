@@ -11,6 +11,7 @@ include_directories(
   ${SRC_FOLDER}/external/sqlite/
   ${SRC_FOLDER}/external/curl/include/
   ${SRC_FOLDER}/data_provider/src/packages/
+  ${SRC_FOLDER}/external/libdb/build_unix/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/src)

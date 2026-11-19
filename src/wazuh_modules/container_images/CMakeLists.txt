@@ -66,7 +66,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                LINK_FLAGS "-Wl,--add-stdcall-alias"
                POSITION_INDEPENDENT_CODE 0)
 elseif(UNIX AND NOT APPLE)
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
+  # libdb is linked statically for the rpm Berkeley DB reader. Its symbols stay private to this
+  # library, so they never replace the copy libsysinfo carries.
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN -Wl,--exclude-libs,libdb.a")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 find_library(

@@ -15,6 +15,7 @@
 #include "packageDbParser.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <iterator>
 #include <string>
 #include <utility>
@@ -80,17 +81,28 @@ namespace
 
     const std::vector<UnsupportedPackageDb>& unsupportedPackageDatabases()
     {
-        static const std::vector<UnsupportedPackageDb> DATABASES
+        static const std::vector<UnsupportedPackageDb> DATABASES = []
         {
-            // The Berkeley DB format rpm used before 4.16. Named by file, not by directory,
-            // so the sqlite and ndb databases in the same directory stay parsable.
-            {"var/lib/rpm/Packages", false, "rpm"},
-            {"usr/lib/sysimage/rpm/Packages", false, "rpm"},
-            {"var/lib/pacman/local/", true, "pacman"},
-            {"var/db/pkg/", true, "portage"},
-            {"var/db/xbps/", true, "xbps"},
-            {"usr/share/clear/bundles/", true, "swupd"},
-        };
+            std::vector<UnsupportedPackageDb> databases
+            {
+                {"var/lib/pacman/local/", true, "pacman"},
+                {"var/db/pkg/", true, "portage"},
+                {"var/db/xbps/", true, "xbps"},
+                {"usr/share/clear/bundles/", true, "swupd"},
+            };
+
+            // The Berkeley DB format rpm used before 4.16 needs libdb, which is only read
+            // on Linux. Named by file, not by directory, so the sqlite and ndb databases in
+            // the same directory stay parsable.
+            if (!PackageDb::BERKELEY_DB_SUPPORTED)
+            {
+                const std::string format {"rpm Berkeley DB (not supported on this platform)"};
+                databases.push_back({"var/lib/rpm/Packages", false, format});
+                databases.push_back({"usr/lib/sysimage/rpm/Packages", false, format});
+            }
+
+            return databases;
+        }();
 
         return DATABASES;
     }
@@ -335,9 +347,20 @@ namespace containerimages
         return {};
     }
 
-    std::vector<ImagePackageRecord> LayerComposer::packages() const
+    std::vector<ImagePackageRecord> LayerComposer::packages(const std::string& image, const std::atomic<bool>* stop) const
     {
-        auto read {PackageDb::read(m_databases)};
+        PackageDb::BerkeleyDbOptions options;
+
+        if (stop != nullptr)
+        {
+            options.stop = [stop]
+            {
+                return stop->load();
+            };
+        }
+
+        auto read {PackageDb::read(m_databases, options)};
+        const auto where {image.empty() ? std::string {} : "Image '" + image + "': "};
 
         for (const auto& database : read.databases)
         {
@@ -346,8 +369,23 @@ namespace containerimages
                 logDebug("Skipping '" + database.path +
                          "': another location for the same package database was already used.");
             }
+            else if (!database.error.empty())
+            {
+                // A read cut short by a shutdown is not a fault of the database.
+                (stop != nullptr && stop->load() ? logDebug : logWarn)(where + "package database '" + database.path +
+                                                                       "' could not be read: " + database.error + ".");
+            }
             else
             {
+                // A limit that cannot be set is a fact about this process, the same for every database
+                // and every image, so it is said once.
+                static std::atomic<bool> limitWarned {false};
+
+                if (!database.warning.empty() && !limitWarned.exchange(true))
+                {
+                    logWarn("Package databases of images are read without the memory limit: " + database.warning + ".");
+                }
+
                 logDebug("Parsed " + std::to_string(database.packages) + " packages from '" + database.path + "'.");
             }
         }

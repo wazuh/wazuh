@@ -99,10 +99,15 @@ t9_params, t9_metadata, t9_ids = configuration.get_test_cases_data(t9_cases_path
 t9_configurations = configuration.load_configuration_template(config_path, t9_params, t9_metadata)
 
 
-# T10: the dpkg status.d directory of a distroless image is inventoried.
-t10_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_dpkg_distroless.yaml')
+# T10: an rpm Berkeley DB database is inventoried.
+t10_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_rpm_bdb.yaml')
 t10_params, t10_metadata, t10_ids = configuration.get_test_cases_data(t10_cases_path)
 t10_configurations = configuration.load_configuration_template(config_path, t10_params, t10_metadata)
+
+# T11: the dpkg status.d directory of a distroless image is inventoried.
+t11_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_dpkg_distroless.yaml')
+t11_params, t11_metadata, t11_ids = configuration.get_test_cases_data(t11_cases_path)
+t11_configurations = configuration.load_configuration_template(config_path, t11_params, t11_metadata)
 
 
 def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60) -> None:
@@ -376,6 +381,37 @@ def test_container_images_rpm_ndb_database(test_configuration, test_metadata, pr
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t10_configurations, t10_metadata), ids=t10_ids)
+def test_container_images_rpm_berkeley_db_database(test_configuration, test_metadata, prepare_rpm_bdb_image,
+                                                   set_wazuh_configuration, configure_local_internal_options,
+                                                   truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that an image whose package database is an rpm Berkeley DB one, the format
+                 rpm used before 4.16, is inventoried with its packages.
+
+    test_phases:
+        - setup: write an OCI layout holding an rpm Berkeley DB database, configure it, restart daemons.
+        - test: wait for "Scan ended.", then confirm the packages are stored.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference is stored.
+        - The packages of the rpm database are stored with the versions the database holds.
+        - A version carrying an epoch, an explicit zero included, is stored with the epoch preserved.
+
+    expected_result: PASS when the rpm Berkeley DB database is inventoried.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    assert query_table(REFERENCES_TABLE), 'The references table is empty after the scan.'
+
+    packages = _stored_packages()
+    assert packages.get('bash') == '4.2.46-35.el7_9', f'bash is missing or has the wrong version: {packages}.'
+    assert packages.get('glibc') == '0:2.17-326.el7_9', f'An explicit zero epoch was not preserved: {packages}.'
+    assert packages.get('openssl-libs') == '1:1.0.2k-25.el7_9', f'The epoch was not preserved: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t11_configurations, t11_metadata), ids=t11_ids)
 def test_container_images_dpkg_status_directory(test_configuration, test_metadata, prepare_dpkg_distroless_image,
                                                 set_wazuh_configuration, configure_local_internal_options,
                                                 truncate_monitored_files, daemons_handler):

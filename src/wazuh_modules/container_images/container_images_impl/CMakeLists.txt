@@ -69,6 +69,12 @@ add_library(
 
 set_target_properties(ContainerImagesImpl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# rpm Berkeley DB databases are read through libdb, which the agent only builds for Linux.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_include_directories(ContainerImagesImpl PRIVATE ${SRC_FOLDER}/external/libdb/build_unix/)
+  target_link_libraries(ContainerImagesImpl PRIVATE ${SRC_FOLDER}/external/libdb/build_unix/libdb.a)
+endif()
+
 target_include_directories(
   ContainerImagesImpl
   PUBLIC include)

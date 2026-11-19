@@ -1136,7 +1136,7 @@ namespace containerimages
                     " package database, which is recognized but not supported yet.");
         }
 
-        record.packages = composer.packages();
+        record.packages = composer.packages(m_location, m_context.stopRequested);
         record.operatingSystem = composer.operatingSystem();
 
         if (record.operatingSystem.empty())

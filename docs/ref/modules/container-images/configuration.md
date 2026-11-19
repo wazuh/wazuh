@@ -422,7 +422,7 @@ The packages of an image come from the package database its layers carry:
 | apk | `lib/apk/db/installed`, `usr/lib/apk/db/installed` | Parsed. The second path is used by Wolfi and Chainguard images. |
 | rpm, sqlite | `var/lib/rpm/rpmdb.sqlite`, `usr/lib/sysimage/rpm/rpmdb.sqlite` | Parsed. The format rpm 4.16 and later use, so the current Red Hat, Fedora and Amazon Linux families. |
 | rpm, ndb | `var/lib/rpm/Packages.db`, `usr/lib/sysimage/rpm/Packages.db` | Parsed. The format the SUSE family uses. |
-| rpm, Berkeley DB | `var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages` | Recognized, not parsed. The format rpm used before 4.16. |
+| rpm, Berkeley DB | `var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages` | Parsed on Linux agents. The format rpm used before 4.16, so Red Hat and CentOS 7, Amazon Linux 2. A Berkeley DB file left next to a sqlite or ndb database is ignored. A damaged file is reported with a warning and costs only that database. On other platforms it is recognized, not parsed, and reported. |
 | pacman | `var/lib/pacman/local/` | Recognized, not parsed yet. |
 | portage | `var/db/pkg/` | Recognized, not parsed yet. |
 | xbps | `var/db/xbps/` | Recognized, not parsed yet. |
@@ -437,7 +437,7 @@ Package versions are stored the way the distribution expresses them, `version-re
 An image whose package format is recognized but not parsed is still inventoried, with zero packages and one warning:
 
 ```sql
-wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: image at '/var/tmp/images/centos.tar' uses the package format(s) rpm, which are recognized but not supported yet. Reporting zero packages.
+wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: image at '/var/tmp/images/archlinux.tar' uses the package format(s) pacman, which are recognized but not supported yet. Reporting zero packages.
 ```
 
 ### Layer Compression
