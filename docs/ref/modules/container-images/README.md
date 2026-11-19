@@ -4,7 +4,7 @@ The **Container Images** module introduces agent-side support for collecting inv
 
 The module is implemented as an **agent-only** `wazuh-modulesd` module. It follows the same module layout used by other inventory components: a C glue layer handles configuration and lifecycle, while a C++ shared library contains the scan logic.
 
-> **Note:** This stage covers image discovery from saved archives, OCI image layouts and GitHub Container Registry references, package extraction for the `dpkg`, `apk` and `rpm` (sqlite and ndb) formats, and local persistence of the inventory. Berkeley DB `rpm` databases, change events, manager synchronization, indexing, Vulnerability Detector integration, the container engine reader and registries other than GitHub Container Registry are not implemented yet.
+> **Note:** This stage covers image discovery from saved archives, OCI image layouts and GitHub Container Registry references, package extraction for the `dpkg`, `apk` and `rpm` (sqlite, ndb and Berkeley DB) formats, and local persistence of the inventory. Change events, manager synchronization, indexing, Vulnerability Detector integration, the container engine reader and registries other than GitHub Container Registry are not implemented yet.
 
 ## Overview
 
@@ -52,7 +52,7 @@ Container Images scans configured image sources, stores what it finds in a local
 | dpkg (`var/lib/dpkg/status`, or `var/lib/dpkg/status.d/` when there is no `status` file) | Parsed. Installed packages only. |
 | apk (`lib/apk/db/installed`, `usr/lib/apk/db/installed`) | Parsed. |
 | rpm, sqlite and ndb databases (`var/lib/rpm/`, `usr/lib/sysimage/rpm/`) | Parsed. |
-| rpm, Berkeley DB database (`var/lib/rpm/Packages`) | Recognized. The image is inventoried with zero packages and a warning. |
+| rpm, Berkeley DB database (`var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages`) | Parsed on Linux agents. On other platforms the image is inventoried with zero packages and a warning. |
 | pacman, portage, xbps, swupd | Recognized. The image is inventoried with zero packages and a warning. |
 
 ## Supported Layer Compressions
@@ -102,7 +102,7 @@ wazuh-modulesd:container_images: INFO: Scan ended. 1 references, 132 packages.
 
 ## Current Limitations
 
-- Berkeley DB `rpm` databases are not read; an image carrying only one is inventoried with zero packages and a warning.
+- Berkeley DB `rpm` databases are read on Linux agents only; on other platforms an image carrying only one is inventoried with zero packages and a warning.
 - Agent Sync Protocol synchronization is not implemented, so the stored inventory stays on the agent.
 - Vulnerability Detector integration is not implemented.
 - Remote images are read from GitHub Container Registry and Amazon ECR. Other registries, the container engine, Windows registry support, and Kubernetes integrations are not implemented.

@@ -162,7 +162,7 @@ Only the tracked package database paths are kept: the image filesystem is never 
 
 ### **Package Database Parsers**
 
-The package databases are read by `PackageDb::read` (`src/data_provider/src/packages/packageDbParser.hpp`), the one parser shared with container runtime security, so both report the same packages for the same files. The composer hands it the composed files by in-image path. `dpkg` reports the stanzas whose status is `ok installed`, from `status`, or from the files of `status.d` when there is no `status`; `apk` is read from the first of its two locations present; `rpm` is read from the first database present (sqlite, then ndb). The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
+The package databases are read by `PackageDb::read` (`src/data_provider/src/packages/packageDbParser.hpp`), the one parser shared with container runtime security, so both report the same packages for the same files. The composer hands it the composed files by in-image path. `dpkg` reports the stanzas whose status is `ok installed`, from `status`, or from the files of `status.d` when there is no `status`; `apk` is read from the first of its two locations present; `rpm` is read from the first database present (sqlite, then ndb, then Berkeley DB). A Berkeley DB database is read in a child process with a 30 second limit and a memory limit, cancelled at once by a shutdown, because libdb can hang or crash on a damaged file: such a file costs its own database, reported with one warning naming the image and the reason, and the scan goes on. The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
 
 ---
 

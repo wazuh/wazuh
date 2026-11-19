@@ -13,9 +13,29 @@
 #include "packages/packageDbParser.hpp"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <thread>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <map>
+#include <random>
+#include <sstream>
 #include <string>
 #include <vector>
+
+#if defined(__linux__)
+#include "db.h"
+#include <cerrno>
+#include <csignal>
+#include <fcntl.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 void SysInfoPackageDbParserTest::SetUp() {};
 void SysInfoPackageDbParserTest::TearDown() {};
@@ -245,6 +265,160 @@ namespace
 
         return report == result.databases.end() ? nullptr : &*report;
     }
+
+#if defined(__linux__)
+    /// @brief Build a Berkeley DB `Packages` file with libdb: a hash database keyed by the header number.
+    ///
+    /// The first record is rpm's own bookkeeping (the next header number), not a header blob.
+    std::string berkeleyDatabase(const std::vector<std::string>& blobs)
+    {
+        std::random_device device;
+        const auto directory { std::filesystem::temp_directory_path() / ("package_db_fixture_" + std::to_string(device())) };
+        std::filesystem::create_directories(directory);
+        const auto file { directory / "Packages" };
+
+        DB* database { nullptr };
+        EXPECT_EQ(db_create(&database, nullptr, 0), 0);
+        database->set_lorder(database, 1234);
+
+        const auto put = [database](uint32_t number, const std::string & value)
+        {
+            DBT key;
+            DBT data;
+            std::memset(&key, 0, sizeof(key));
+            std::memset(&data, 0, sizeof(data));
+            key.data = &number;
+            key.size = sizeof(number);
+            data.data = const_cast<char*>(value.data());
+            data.size = static_cast<uint32_t>(value.size());
+            return database->put(database, nullptr, &key, &data, 0);
+        };
+
+        int status { database->open(database, nullptr, file.c_str(), nullptr, DB_HASH, DB_CREATE, 0644) };
+
+        if (status == 0)
+        {
+            status = put(0, std::string(4, '\0'));
+        }
+
+        for (size_t package = 0; status == 0 && package < blobs.size(); ++package)
+        {
+            status = put(static_cast<uint32_t>(package + 1), blobs[package]);
+        }
+
+        database->close(database, 0);
+        EXPECT_EQ(status, 0);
+
+        std::ifstream input { file, std::ios::binary };
+        std::string content { std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+        std::filesystem::remove_all(directory);
+
+        return content;
+    }
+
+    /// @brief Number of entries named like the directories the parser creates, under @p root.
+    size_t leftoverDirectories(const std::filesystem::path& root)
+    {
+        size_t count { 0 };
+
+        for (const auto& entry : std::filesystem::directory_iterator { root })
+        {
+            if (entry.path().filename().string().rfind("wazuh_package_db_", 0) == 0)
+            {
+                ++count;
+            }
+        }
+
+        return count;
+    }
+
+
+    std::string fixture(const std::string& name)
+    {
+        std::ifstream input { std::string { PACKAGE_DB_FIXTURES_DIR } + "/" + name, std::ios::binary };
+        return { std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+    }
+
+    /// @brief True when no child of this process is left, running or waiting to be reaped.
+    bool noChildLeft()
+    {
+        errno = 0;
+        return waitpid(-1, nullptr, WNOHANG) == -1 && errno == ECHILD;
+    }
+
+    /// @brief A child entry point that cannot be ended by the alarm the child sets for itself, so that
+    /// what ends it, in a test that expects a timeout, is the parent's kill.
+    std::function<std::string(const std::string&, const std::string&)> withoutAlarm(
+        const std::function<std::string(const std::string&, const std::string&)>& work)
+    {
+        return [work](const std::string & file, const std::string & dbPath)
+        {
+            sigset_t alarm;
+            sigemptyset(&alarm);
+            sigaddset(&alarm, SIGALRM);
+            pthread_sigmask(SIG_BLOCK, &alarm, nullptr);
+            return work(file, dbPath);
+        };
+    }
+
+    PackageDb::BerkeleyDbOptions childThat(const std::function<std::string(const std::string&, const std::string&)>& work,
+                                           std::chrono::milliseconds deadline = std::chrono::seconds { 10 })
+    {
+        PackageDb::BerkeleyDbOptions options;
+        options.deadline = deadline;
+        options.child = work;
+        return options;
+    }
+
+    /// @brief Points the temporary directory at a fresh folder for the length of a test.
+    class ScopedTempDirectory
+    {
+        public:
+            ScopedTempDirectory()
+            {
+                std::random_device device;
+                m_root = std::filesystem::temp_directory_path() / ("package_db_root_" + std::to_string(device()));
+                std::filesystem::create_directories(m_root);
+
+                const auto* previous { std::getenv("TMPDIR") };
+                m_hadPrevious = previous != nullptr;
+
+                if (m_hadPrevious)
+                {
+                    m_previous = previous;
+                }
+
+                setenv("TMPDIR", m_root.c_str(), 1);
+            }
+
+            ~ScopedTempDirectory()
+            {
+                if (m_hadPrevious)
+                {
+                    setenv("TMPDIR", m_previous.c_str(), 1);
+                }
+                else
+                {
+                    unsetenv("TMPDIR");
+                }
+
+                std::filesystem::remove_all(m_root);
+            }
+
+            ScopedTempDirectory(const ScopedTempDirectory&) = delete;
+            ScopedTempDirectory& operator=(const ScopedTempDirectory&) = delete;
+
+            const std::filesystem::path& path() const
+            {
+                return m_root;
+            }
+
+        private:
+            std::filesystem::path m_root;
+            std::string m_previous;
+            bool m_hadPrevious { false };
+    };
+#endif
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -540,6 +714,819 @@ TEST_F(SysInfoPackageDbParserTest, RpmSkipsABlobItCannotRead)
 }
 
 // ---------------------------------------------------------------------------
+// rpm, Berkeley DB.
+// ---------------------------------------------------------------------------
+
+#if defined(__linux__)
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbPackagesAreRead)
+{
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46", "35.el7_9"), rpmBlob("glibc", "2.17", "326.el7_9", 0)}), RPM_BDB, error) };
+
+    EXPECT_TRUE(error.empty()) << error;
+    EXPECT_EQ(names(packages), std::vector<std::string>({"bash", "glibc"}));
+
+    for (const auto& package : packages)
+    {
+        EXPECT_EQ(package.type, "rpm");
+        EXPECT_EQ(package.packageDbPath, RPM_BDB);
+
+        if (package.name == "bash")
+        {
+            EXPECT_EQ(package.version, "4.2.46-35.el7_9");
+            EXPECT_EQ(package.architecture, "x86_64");
+            EXPECT_EQ(package.source, "bash-4.2.46.src.rpm");
+            EXPECT_EQ(package.size, 7802001);
+        }
+        else
+        {
+            EXPECT_EQ(package.version, "0:2.17-326.el7_9");
+        }
+    }
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbReadsADatabaseWithManyPackages)
+{
+    std::vector<std::string> blobs;
+    std::vector<std::string> expected;
+
+    for (int i = 0; i < 300; ++i)
+    {
+        const auto name { "package-" + std::to_string(1000 + i) };
+        blobs.push_back(rpmBlob(name, "1.0"));
+        expected.push_back(name);
+    }
+
+    std::sort(expected.begin(), expected.end());
+
+    std::string error;
+    EXPECT_EQ(names(PackageDb::parseRpmBerkeleyDb(berkeleyDatabase(blobs), RPM_BDB, error)), expected);
+    EXPECT_TRUE(error.empty()) << error;
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbWithNoPackagesIsEmptyWithoutAnError)
+{
+    std::string error;
+
+    EXPECT_TRUE(PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({}), RPM_BDB, error).empty());
+    EXPECT_TRUE(error.empty()) << error;
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbSkipsABlobItCannotRead)
+{
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({std::string("\xff\xff\xff\xff\x00\x00\x00\x10", 8), rpmBlob("bash", "4.2.46")}), RPM_BDB, error) };
+
+    EXPECT_EQ(names(packages), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbThatIsNotAHashDatabaseIsReported)
+{
+    std::string error;
+
+    EXPECT_TRUE(PackageDb::parseRpmBerkeleyDb("a Berkeley DB hash file", RPM_BDB, error).empty());
+    EXPECT_FALSE(error.empty());
+
+    EXPECT_TRUE(PackageDb::parseRpmBerkeleyDb("", RPM_BDB, error).empty());
+    EXPECT_FALSE(error.empty());
+
+    // A sqlite file under the Berkeley DB name is not read as one.
+    EXPECT_TRUE(PackageDb::parseRpmBerkeleyDb(sqliteDatabase({rpmBlob("bash", "5.1.8")}), RPM_BDB, error).empty());
+    EXPECT_FALSE(error.empty());
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbSurvivesTruncation)
+{
+    std::vector<std::string> blobs;
+
+    for (int i = 0; i < 40; ++i)
+    {
+        blobs.push_back(rpmBlob("package-" + std::to_string(i), "1.0"));
+    }
+
+    const auto database { berkeleyDatabase(blobs) };
+    std::string error;
+
+    // Whole pages read as a shorter database. Anything else is refused by libdb.
+    const std::vector<size_t> cuts { size_t { 16 }, size_t { 4096 }, database.size() / 2, database.size() - 1 };
+
+    for (const auto cut : cuts)
+    {
+        EXPECT_NO_THROW(PackageDb::parseRpmBerkeleyDb(database.substr(0, cut), RPM_BDB, error)) << cut;
+    }
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbOfTwoHundredPackagesIsRead)
+{
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(fixture("bdb_valid_200_packages.bin"), RPM_BDB, error) };
+
+    EXPECT_TRUE(error.empty()) << error;
+    EXPECT_EQ(packages.size(), 200U);
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbThatHangsLibdbIsKilledAtTheDeadline)
+{
+    ScopedTempDirectory root;
+    const auto database { fixture("bdb_damaged_hang.bin") };
+    ASSERT_EQ(database.size(), 40960U);
+
+    std::string error;
+    const auto start { std::chrono::steady_clock::now() };
+    const auto packages { PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error, childThat(withoutAlarm(PackageDb::detail::readBerkeleyDbFile), std::chrono::milliseconds { 500 })) };
+    const auto elapsed { std::chrono::steady_clock::now() - start };
+
+    EXPECT_TRUE(packages.empty());
+    EXPECT_EQ(error, "the read timed out after 500 ms");
+    EXPECT_LT(elapsed, std::chrono::milliseconds { 1500 });
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbThatCrashesLibdbUnderASanitizerIsContained)
+{
+    // This file sends libdb into a wild read when it runs under AddressSanitizer, and reads as damaged
+    // or not at all in a plain build. Either way the read returns, in time, and leaves nothing behind.
+    ScopedTempDirectory root;
+    std::string error;
+
+    EXPECT_NO_THROW(PackageDb::parseRpmBerkeleyDb(fixture("bdb_damaged_crash.bin"), RPM_BDB, error, childThat(nullptr, std::chrono::seconds { 5 })));
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AChildThatCrashesCostsOneDatabaseAndTheScanContinues)
+{
+    ScopedTempDirectory root;
+
+    for (const auto signalNumber :
+            {
+                SIGSEGV, SIGABRT, SIGBUS
+            })
+    {
+        std::string error;
+        const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat([signalNumber](const std::string&, const std::string&) -> std::string
+            {
+                std::signal(signalNumber, SIG_DFL);
+                std::raise(signalNumber);
+                return {};
+            })) };
+
+        EXPECT_TRUE(packages.empty());
+        EXPECT_EQ(error, "the read crashed with signal " + std::to_string(signalNumber));
+        EXPECT_TRUE(noChildLeft());
+        EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+    }
+
+    // The next database is read as usual.
+    std::string error;
+    EXPECT_EQ(PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error).size(), 1U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AChildThatNeverEndsIsKilledAndReaped)
+{
+    ScopedTempDirectory root;
+    std::string error;
+
+    const auto start { std::chrono::steady_clock::now() };
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat(withoutAlarm([](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        }), std::chrono::milliseconds { 200 })) };
+    const auto elapsed { std::chrono::steady_clock::now() - start };
+
+    EXPECT_TRUE(packages.empty());
+    EXPECT_EQ(error, "the read timed out after 200 ms");
+    EXPECT_LT(elapsed, std::chrono::milliseconds { 1200 });
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AChildDoesNotOutliveItsParent)
+{
+    ScopedTempDirectory root;
+    const auto pidFile { (root.path() / "child.pid").string() };
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+
+    const auto parent { fork() };
+    ASSERT_GE(parent, 0);
+
+    if (parent == 0)
+    {
+        // The parent of the read: it starts one that never ends, then is killed before its deadline.
+        std::string error;
+        PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error, childThat([&pidFile](const std::string&, const std::string&) -> std::string
+        {
+            std::ofstream { pidFile } << getpid() << std::endl;
+
+            while (true)
+            {
+                pause();
+            }
+        }, std::chrono::seconds { 60 }));
+        _exit(0);
+    }
+
+    pid_t child { 0 };
+
+    for (int attempt = 0; attempt < 200 && child == 0; ++attempt)
+    {
+        std::ifstream { pidFile } >> child;
+        std::this_thread::sleep_for(std::chrono::milliseconds { 10 });
+    }
+
+    ASSERT_GT(child, 0);
+    kill(parent, SIGKILL);
+    waitpid(parent, nullptr, 0);
+
+    bool gone { false };
+
+    for (int attempt = 0; attempt < 300 && !gone; ++attempt)
+    {
+        gone = kill(child, 0) == -1 && errno == ESRCH;
+        std::this_thread::sleep_for(std::chrono::milliseconds { 10 });
+    }
+
+    EXPECT_TRUE(gone);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AChildThatIgnoresTerminationStillDies)
+{
+    std::string error;
+
+    PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat(withoutAlarm([](const std::string&, const std::string&) -> std::string
+    {
+        std::signal(SIGTERM, SIG_IGN);
+
+        while (true)
+        {
+            pause();
+        }
+    }), std::chrono::milliseconds { 200 }));
+
+    EXPECT_EQ(error, "the read timed out after 200 ms");
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, AChildThatExitsAbnormallyOrAnswersNonsenseIsReported)
+{
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    std::string error;
+
+    PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error, childThat([](const std::string&, const std::string&) -> std::string
+    {
+        _exit(5);
+    }));
+    EXPECT_EQ(error, "the read exited with status 5");
+
+    PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error, childThat([](const std::string&, const std::string&) -> std::string
+    {
+        throw std::runtime_error { "unexpected" };
+    }));
+    EXPECT_EQ(error, "the read exited with status 2");
+
+    const std::vector<std::string> nonsense { std::string {}, "?", "P", "Pabcd", "E", std::string { "E\0\0\0\0", 5 } };
+
+    for (const auto& reply : nonsense)
+    {
+        PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error, childThat([&reply](const std::string&, const std::string&)
+        {
+            return reply;
+        }));
+        EXPECT_EQ(error, "the reply of the read was malformed") << reply;
+    }
+
+    PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error, childThat([](const std::string&, const std::string&)
+    {
+        return PackageDb::detail::serializeError("libdb said no");
+    }));
+    EXPECT_EQ(error, "libdb said no");
+
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, AReplyWithMorePackagesThanItHoldsOrTrailingBytesIsMalformed)
+{
+    std::vector<PackageDb::Package> packages(2);
+    packages[0].name = "a";
+    packages[1].name = "b";
+    const auto reply { PackageDb::detail::serializePackages(packages) };
+
+    std::vector<PackageDb::Package> read;
+    std::string reported;
+
+    EXPECT_TRUE(PackageDb::detail::parseReply(reply, read, reported));
+    EXPECT_EQ(read.size(), 2U);
+
+    EXPECT_FALSE(PackageDb::detail::parseReply(reply + "x", read, reported));
+    EXPECT_FALSE(PackageDb::detail::parseReply(reply.substr(0, reply.size() - 1), read, reported));
+
+    auto lying { reply };
+    lying[1] = '\xff';
+    EXPECT_FALSE(PackageDb::detail::parseReply(lying, read, reported));
+
+    // A field that declares more bytes than the reply has left.
+    auto oversized { reply };
+    oversized[5] = '\x7f';
+    EXPECT_FALSE(PackageDb::detail::parseReply(oversized, read, reported));
+}
+
+TEST_F(SysInfoPackageDbParserTest, AReplyLargerThanTheLimitIsRefused)
+{
+    std::string error;
+
+    PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat([](const std::string&, const std::string&)
+    {
+        return std::string(PackageDb::detail::BERKELEY_REPLY_LIMIT + 1, 'x');
+    }, std::chrono::seconds { 20 }));
+
+    EXPECT_EQ(error, "the reply was larger than the supported size");
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheChildInheritsNoDescriptorOfTheParent)
+{
+    const int descriptor { ::open("/proc/self/exe", O_RDONLY) };
+    ASSERT_GE(descriptor, 3);
+
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat([descriptor](const std::string&, const std::string&)
+    {
+        std::vector<PackageDb::Package> seen(1);
+        seen[0].name = fcntl(descriptor, F_GETFD) == -1 && errno == EBADF ? "closed" : "inherited";
+        seen[0].version = write(STDOUT_FILENO, "x", 1) == 1 ? "stdout-open" : "stdout-closed";
+        return PackageDb::detail::serializePackages(seen);
+    })) };
+
+    close(descriptor);
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().name, "closed");
+    // Standard output goes to the null device, so the child never writes into the parent's.
+    EXPECT_EQ(packages.front().version, "stdout-open");
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, SeveralThreadsReadBerkeleyDatabasesAtTheSameTime)
+{
+    const auto database { fixture("bdb_valid_200_packages.bin") };
+    std::vector<size_t> counts(6, 0);
+    std::atomic<bool> busy { true };
+
+    // A thread that keeps the allocator and the standard streams in use while the others fork.
+    std::thread noise([&busy]()
+    {
+        while (busy)
+        {
+            std::vector<std::string> strings(200, std::string(1000, 'x'));
+            std::ostringstream stream;
+            stream << strings.size();
+        }
+    });
+
+    std::vector<std::thread> threads;
+
+    for (size_t index = 0; index < counts.size(); ++index)
+    {
+        threads.emplace_back([&database, &counts, index]()
+        {
+            for (int round = 0; round < 4; ++round)
+            {
+                std::string error;
+                counts[index] += PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error).size();
+            }
+        });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    busy = false;
+    noise.join();
+
+    for (const auto count : counts)
+    {
+        EXPECT_EQ(count, 800U);
+    }
+
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadReportsAHungBerkeleyDbAndStillReadsTheOthers)
+{
+    const PackageDb::Files files
+    {
+        {DPKG_STATUS, dpkgStanza("curl", "7.0")},
+        {RPM_BDB, fixture("bdb_damaged_hang.bin")}
+    };
+
+    const auto result { PackageDb::read(files, childThat(withoutAlarm(PackageDb::detail::readBerkeleyDbFile), std::chrono::milliseconds { 300 })) };
+
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"curl"}));
+    ASSERT_NE(reportFor(result, RPM_BDB), nullptr);
+    EXPECT_EQ(reportFor(result, RPM_BDB)->error, "the read timed out after 300 ms");
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheChildMemoryLimitIsRelativeToTheSizeOfTheParent)
+{
+    const auto before { PackageDb::detail::processSize() };
+    ASSERT_GT(before, 0U);
+
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat([](const std::string&, const std::string&)
+    {
+        rlimit limit;
+        getrlimit(RLIMIT_AS, &limit);
+
+        std::vector<PackageDb::Package> seen(1);
+        seen[0].name = "limit";
+        seen[0].version = std::to_string(limit.rlim_cur);
+        return PackageDb::detail::serializePackages(seen);
+    })) };
+
+    const auto after { PackageDb::detail::processSize() };
+
+    ASSERT_EQ(packages.size(), 1U) << error;
+
+    constexpr std::size_t SLACK { 64UL * 1024 * 1024 };
+    const auto limit { std::stoull(packages.front().version) };
+
+    EXPECT_GE(limit, before + PackageDb::detail::CHILD_MEMORY_HEADROOM - SLACK);
+    EXPECT_LE(limit, after + PackageDb::detail::CHILD_MEMORY_HEADROOM + SLACK);
+
+    // The parent keeps whatever limit it had.
+    rlimit own;
+    ASSERT_EQ(getrlimit(RLIMIT_AS, &own), 0);
+    EXPECT_NE(own.rlim_cur, static_cast<rlim_t>(limit));
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheChildMemoryLimitSaturatesInsteadOfOverflowing)
+{
+    constexpr std::size_t headroom { PackageDb::detail::CHILD_MEMORY_HEADROOM };
+    const auto largest { static_cast<std::size_t>(~0UL) };
+
+    EXPECT_EQ(PackageDb::detail::limitFor(0), 0U);
+    EXPECT_EQ(PackageDb::detail::limitFor(1000), 1000 + headroom);
+    EXPECT_EQ(PackageDb::detail::limitFor(largest - headroom), largest);
+    EXPECT_EQ(PackageDb::detail::limitFor(largest - headroom + 1), largest);
+    EXPECT_EQ(PackageDb::detail::limitFor(largest), largest);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AChildThatAllocatesPastItsLimitIsReportedAndTheParentLivesOn)
+{
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat([](const std::string&, const std::string&) -> std::string
+        {
+            std::vector<char> big(2UL * 1024 * 1024 * 1024, 1);
+            return std::string(1, big.back());
+        })) };
+
+    EXPECT_TRUE(packages.empty());
+    EXPECT_EQ(error, "the read exited with status 2");
+    EXPECT_TRUE(noChildLeft());
+
+    // The next database is read as usual, in the same process.
+    EXPECT_EQ(PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error).size(), 1U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AMemoryLimitThatCannotBeSetIsReportedAndTheReadGoesOn)
+{
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    const auto parent { fork() };
+    ASSERT_GE(parent, 0);
+
+    if (parent == 0)
+    {
+        // A process whose hard limit is below what the read would ask for, so setting it fails.
+        const rlimit hard { PackageDb::detail::processSize() + (256UL << 20), PackageDb::detail::processSize() + (256UL << 20) };
+
+        if (setrlimit(RLIMIT_AS, &hard) != 0)
+        {
+            _exit(10);
+        }
+
+        // A process allowed to raise its hard limit, as root is, can always set the limit.
+        const rlimit higher { hard.rlim_cur + (1UL << 30), hard.rlim_max + (1UL << 30) };
+
+        if (setrlimit(RLIMIT_AS, &higher) == 0)
+        {
+            _exit(12);
+        }
+
+        const auto result { PackageDb::readRpmBerkeleyDb(database, RPM_BDB) };
+
+        _exit(result.error.empty() && result.packages.size() == 1 &&
+              result.warning == "the memory limit of the read could not be set" ? 0 : 11);
+    }
+
+    int status { 0 };
+    ASSERT_EQ(waitpid(parent, &status, 0), parent);
+    ASSERT_TRUE(WIFEXITED(status));
+
+    if (WEXITSTATUS(status) == 12)
+    {
+        GTEST_SKIP() << "This process may raise its hard address space limit (root, or CAP_SYS_RESOURCE), so the limit can always be set.";
+    }
+
+    EXPECT_EQ(WEXITSTATUS(status), 0);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AStopRequestCancelsARunningChildAtOnce)
+{
+    ScopedTempDirectory root;
+    std::atomic<bool> stop { false };
+    std::thread requester([&stop]()
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds { 150 });
+        stop = true;
+    });
+
+    auto options { childThat(withoutAlarm([](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        }), std::chrono::seconds { 30 }) };
+    options.stop = [&stop]()
+    {
+        return stop.load();
+    };
+
+    const auto start { std::chrono::steady_clock::now() };
+    const auto result { PackageDb::readRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, options) };
+    const auto elapsed { std::chrono::steady_clock::now() - start };
+    requester.join();
+
+    EXPECT_TRUE(result.packages.empty());
+    EXPECT_EQ(result.error, "the read was cancelled by a stop request");
+    EXPECT_LT(elapsed, std::chrono::seconds { 2 });
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, AStopRequestMadeBeforeTheReadStartsCancelsIt)
+{
+    auto options { childThat(withoutAlarm([](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        }), std::chrono::seconds { 30 }) };
+    options.stop = []()
+    {
+        return true;
+    };
+
+    const auto result { PackageDb::readRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, options) };
+
+    EXPECT_EQ(result.error, "the read was cancelled by a stop request");
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, AnExceptionWhileWaitingStillKillsAndReapsTheChild)
+{
+    ScopedTempDirectory root;
+    auto options { childThat(withoutAlarm([](const std::string&, const std::string&) -> std::string
+        {
+            while (true)
+            {
+                pause();
+            }
+        }), std::chrono::seconds { 30 }) };
+    options.stop = []() -> bool
+    {
+        throw std::runtime_error { "stop failed" };
+    };
+
+    const auto result { PackageDb::readRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, options) };
+
+    EXPECT_EQ(result.error, "stop failed");
+    EXPECT_TRUE(noChildLeft());
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheGuardOfAChildKillsAndReapsItWhenTheScopeIsLeft)
+{
+    const auto child { fork() };
+    ASSERT_GE(child, 0);
+
+    if (child == 0)
+    {
+        while (true)
+        {
+            pause();
+        }
+    }
+
+    try
+    {
+        PackageDb::detail::ChildGuard guard { child };
+        throw std::runtime_error { "leaving" };
+    }
+    catch (const std::runtime_error&)
+    {
+    }
+
+    EXPECT_EQ(kill(child, 0), -1);
+    EXPECT_EQ(errno, ESRCH);
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheChildRunsWithDefaultSignalHandlersAndNothingBlocked)
+{
+    struct sigaction ignore {};
+    ignore.sa_handler = SIG_IGN;
+    struct sigaction handler {};
+    handler.sa_handler = [](int) {};
+    struct sigaction previousHup {};
+    struct sigaction previousUsr1 {};
+    struct sigaction previousTerm {};
+    struct sigaction previousInt {};
+
+    sigaction(SIGHUP, &ignore, &previousHup);
+    sigaction(SIGUSR1, &handler, &previousUsr1);
+    sigaction(SIGTERM, &handler, &previousTerm);
+    sigaction(SIGINT, &handler, &previousInt);
+
+    sigset_t usr2;
+    sigset_t before;
+    sigemptyset(&usr2);
+    sigaddset(&usr2, SIGUSR2);
+    pthread_sigmask(SIG_BLOCK, &usr2, &before);
+
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error, childThat([](const std::string&, const std::string&)
+    {
+        std::vector<PackageDb::Package> seen(1);
+
+        for (const auto signalNumber :
+                {
+                    SIGHUP, SIGUSR1, SIGTERM, SIGINT
+                })
+        {
+            struct sigaction current {};
+            sigaction(signalNumber, nullptr, &current);
+            seen[0].version += current.sa_handler == SIG_DFL ? "default," : "changed,";
+        }
+
+        sigset_t blocked;
+        pthread_sigmask(SIG_BLOCK, nullptr, &blocked);
+        seen[0].name = sigismember(&blocked, SIGUSR2) == 0 ? "unblocked" : "blocked";
+        return PackageDb::detail::serializePackages(seen);
+    })) };
+
+    pthread_sigmask(SIG_SETMASK, &before, nullptr);
+    sigaction(SIGHUP, &previousHup, nullptr);
+    sigaction(SIGUSR1, &previousUsr1, nullptr);
+    sigaction(SIGTERM, &previousTerm, nullptr);
+    sigaction(SIGINT, &previousInt, nullptr);
+
+    ASSERT_EQ(packages.size(), 1U) << error;
+    EXPECT_EQ(packages.front().version, "default,default,default,default,");
+    EXPECT_EQ(packages.front().name, "unblocked");
+}
+
+TEST_F(SysInfoPackageDbParserTest, DescriptorsBelowThreeAreMovedAboveTheStandardOnes)
+{
+    const auto savedInput { dup(STDIN_FILENO) };
+    ASSERT_GE(savedInput, 3);
+
+    close(STDIN_FILENO);
+    int low { open("/dev/null", O_RDONLY) };
+    ASSERT_EQ(low, STDIN_FILENO);
+
+    EXPECT_TRUE(PackageDb::detail::moveAboveStandard(low));
+    EXPECT_GT(low, STDERR_FILENO);
+    close(low);
+
+    dup2(savedInput, STDIN_FILENO);
+    close(savedInput);
+}
+
+TEST_F(SysInfoPackageDbParserTest, ABerkeleyDbIsReadWhileTwoStandardDescriptorsAreClosed)
+{
+    // With descriptors 0 and 1 closed, the pipe is created on them: the write end is descriptor 1, which the
+    // child redirects to the null device. It only survives because both ends are moved above 2 first.
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    const auto savedInput { dup(STDIN_FILENO) };
+    const auto savedOutput { dup(STDOUT_FILENO) };
+    ASSERT_GE(savedInput, 3);
+    ASSERT_GE(savedOutput, 3);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+
+    int lowest[2];
+    const auto created { pipe(lowest) };
+    const auto writeEnd { created == 0 ? lowest[1] : -1 };
+
+    if (created == 0)
+    {
+        close(lowest[0]);
+        close(lowest[1]);
+    }
+
+    std::string error;
+    const auto packages { PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error) };
+
+    dup2(savedInput, STDIN_FILENO);
+    dup2(savedOutput, STDOUT_FILENO);
+    close(savedInput);
+    close(savedOutput);
+
+    // The precondition: the pipe really would have landed on the standard descriptors.
+    EXPECT_EQ(writeEnd, STDOUT_FILENO);
+    EXPECT_EQ(names(packages), std::vector<std::string>({"bash"})) << error;
+    EXPECT_TRUE(noChildLeft());
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbLeavesNothingInTheTemporaryDirectory)
+{
+    ScopedTempDirectory root;
+    std::string error;
+
+    EXPECT_EQ(names(PackageDb::parseRpmBerkeleyDb(berkeleyDatabase({rpmBlob("bash", "4.2.46")}), RPM_BDB, error)),
+              std::vector<std::string>({"bash"}));
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+
+    // A read that fails after the directory exists leaves nothing either.
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    PackageDb::parseRpmBerkeleyDb(database.substr(0, 20), RPM_BDB, error);
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+
+    PackageDb::parseRpmBerkeleyDb("not a database", RPM_BDB, error);
+    EXPECT_EQ(leftoverDirectories(root.path()), 0U);
+}
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbIsReportedWhenTheTemporaryDirectoryCannotBeUsed)
+{
+    ScopedTempDirectory root;
+    const auto database { berkeleyDatabase({rpmBlob("bash", "4.2.46")}) };
+    std::string error;
+
+    // A directory the current user cannot create anything in.
+    std::filesystem::permissions(root.path(), std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec);
+
+    if (::access(root.path().c_str(), W_OK) == 0)
+    {
+        GTEST_SKIP() << "The user can write to a read-only directory, as root does.";
+    }
+
+    EXPECT_TRUE(PackageDb::parseRpmBerkeleyDb(database, RPM_BDB, error).empty());
+    EXPECT_FALSE(error.empty());
+
+    std::filesystem::permissions(root.path(), std::filesystem::perms::owner_all);
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheTemporaryDirectoryIsPrivateAndRemovedWithItsOwner)
+{
+    std::filesystem::path path;
+
+    {
+        PackageDb::detail::PrivateDirectory directory;
+        path = directory.path();
+
+        ASSERT_TRUE(std::filesystem::is_directory(path));
+
+        struct stat status;
+        ASSERT_EQ(::stat(path.c_str(), &status), 0);
+        EXPECT_EQ(status.st_mode & 0777, static_cast<mode_t>(0700));
+    }
+
+    EXPECT_FALSE(std::filesystem::exists(path));
+}
+
+TEST_F(SysInfoPackageDbParserTest, TheTemporaryDirectoryNamesDoNotRepeat)
+{
+    PackageDb::detail::PrivateDirectory first;
+    PackageDb::detail::PrivateDirectory second;
+
+    EXPECT_NE(first.path(), second.path());
+}
+
+#else
+
+TEST_F(SysInfoPackageDbParserTest, BerkeleyDbIsReportedAsNotSupportedOnThisPlatform)
+{
+    std::string error;
+
+    EXPECT_TRUE(PackageDb::parseRpmBerkeleyDb("a Berkeley DB hash file", RPM_BDB, error).empty());
+    EXPECT_EQ(error, "rpm Berkeley DB not supported on this platform");
+    EXPECT_FALSE(PackageDb::BERKELEY_DB_SUPPORTED);
+}
+
+#endif
+
+// ---------------------------------------------------------------------------
 // Choosing the databases of a filesystem.
 // ---------------------------------------------------------------------------
 
@@ -557,9 +1544,9 @@ TEST_F(SysInfoPackageDbParserTest, EveryDatabaseLocationIsATrackedPath)
     EXPECT_FALSE(PackageDb::isDatabasePath("etc/os-release"));
     EXPECT_FALSE(PackageDb::isDatabasePath("/var/lib/dpkg/status"));
 
-    // The Berkeley DB files are not read, so a caller does not keep them.
-    EXPECT_FALSE(PackageDb::isDatabasePath(RPM_BDB));
-    EXPECT_FALSE(PackageDb::isDatabasePath(RPM_BDB_USR));
+    // Only a platform that can read a Berkeley DB file keeps it.
+    EXPECT_EQ(PackageDb::isDatabasePath(RPM_BDB), PackageDb::BERKELEY_DB_SUPPORTED);
+    EXPECT_EQ(PackageDb::isDatabasePath(RPM_BDB_USR), PackageDb::BERKELEY_DB_SUPPORTED);
 }
 
 TEST_F(SysInfoPackageDbParserTest, ReadReportsNothingForNoFiles)
@@ -667,10 +1654,43 @@ TEST_F(SysInfoPackageDbParserTest, ReadReportsAnEmptyDatabaseWithoutAnError)
 
     EXPECT_TRUE(result.packages.empty());
     ASSERT_EQ(result.databases.size(), 1U);
+    EXPECT_TRUE(result.databases.front().error.empty());
     EXPECT_FALSE(result.databases.front().skipped);
 }
 
-TEST_F(SysInfoPackageDbParserTest, ReadDoesNotReadABerkeleyDbFile)
+#if defined(__linux__)
+
+TEST_F(SysInfoPackageDbParserTest, ReadPrefersSqliteAndNdbOverAStaleBerkeleyDb)
+{
+    const PackageDb::Files files
+    {
+        {RPM_BDB, berkeleyDatabase({rpmBlob("stale", "1")})},
+        {RPM_SQLITE, sqliteDatabase({rpmBlob("bash", "5.1.8")})}
+    };
+
+    auto result { PackageDb::read(files) };
+
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"bash"}));
+    EXPECT_TRUE(reportFor(result, RPM_BDB)->skipped);
+
+    result = PackageDb::read({{RPM_BDB, berkeleyDatabase({rpmBlob("stale", "1")})}, {RPM_NDB, ndbDatabase({rpmBlob("ndb", "1")})}});
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"ndb"}));
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadReadsBerkeleyDbAtEitherLocation)
+{
+    auto result { PackageDb::read({{RPM_BDB, berkeleyDatabase({rpmBlob("bash", "4.2.46")})}}) };
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"bash"}));
+
+    result = PackageDb::read({{RPM_BDB_USR, berkeleyDatabase({rpmBlob("vim", "9.0")})}});
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"vim"}));
+
+    result = PackageDb::read({{RPM_BDB, berkeleyDatabase({rpmBlob("bash", "4.2.46")})}, {RPM_BDB_USR, berkeleyDatabase({rpmBlob("vim", "9.0")})}});
+    EXPECT_EQ(names(result.packages), std::vector<std::string>({"bash"}));
+    EXPECT_TRUE(reportFor(result, RPM_BDB_USR)->skipped);
+}
+
+TEST_F(SysInfoPackageDbParserTest, ReadReportsAnUnreadableBerkeleyDbAndStillReadsTheOthers)
 {
     const PackageDb::Files files
     {
@@ -681,5 +1701,9 @@ TEST_F(SysInfoPackageDbParserTest, ReadDoesNotReadABerkeleyDbFile)
     const auto result { PackageDb::read(files) };
 
     EXPECT_EQ(names(result.packages), std::vector<std::string>({"curl"}));
-    EXPECT_EQ(result.databases.size(), 1U);
+    ASSERT_NE(reportFor(result, RPM_BDB), nullptr);
+    EXPECT_FALSE(reportFor(result, RPM_BDB)->error.empty());
+    EXPECT_TRUE(reportFor(result, DPKG_STATUS)->error.empty());
 }
+
+#endif

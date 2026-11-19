@@ -16,9 +16,18 @@
 
 #include "sqlite3.h"
 
+#if defined(__linux__)
+#include "db.h"
+#endif
+
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -431,6 +440,69 @@ namespace imagefixtures
 
         return database;
     }
+
+#if defined(__linux__)
+    /// @brief Build a Berkeley DB `Packages` file holding the given header blobs.
+    ///
+    /// Written through libdb itself, as a hash database keyed by the header number, and
+    /// read back as bytes. The first record is rpm's own bookkeeping (the next header
+    /// number), which is not a header blob, so the fixture has the shape rpm leaves.
+    inline std::string rpmBerkeleyDatabase(const std::vector<std::string>& blobs)
+    {
+        std::random_device device;
+        const auto directory {std::filesystem::temp_directory_path() / ("container_images_bdb_" + std::to_string(device()))};
+        std::filesystem::create_directories(directory);
+        const auto file {directory / "Packages"};
+
+        DB* database {nullptr};
+
+        if (db_create(&database, nullptr, 0) != 0)
+        {
+            throw std::runtime_error {"could not create the Berkeley DB fixture"};
+        }
+
+        database->set_lorder(database, 1234);
+
+        const auto put = [database](std::uint32_t number, const std::string & value)
+        {
+            DBT key;
+            DBT data;
+            std::memset(&key, 0, sizeof(key));
+            std::memset(&data, 0, sizeof(data));
+            key.data = &number;
+            key.size = sizeof(number);
+            data.data = const_cast<char*>(value.data());
+            data.size = static_cast<std::uint32_t>(value.size());
+            return database->put(database, nullptr, &key, &data, 0);
+        };
+
+        int status {database->open(database, nullptr, file.c_str(), nullptr, DB_HASH, DB_CREATE, 0644)};
+
+        if (status == 0)
+        {
+            status = put(0, std::string(4, '\0'));
+        }
+
+        for (std::size_t package = 0; status == 0 && package < blobs.size(); ++package)
+        {
+            status = put(static_cast<std::uint32_t>(package + 1), blobs[package]);
+        }
+
+        database->close(database, 0);
+
+        if (status != 0)
+        {
+            std::filesystem::remove_all(directory);
+            throw std::runtime_error {"could not fill the Berkeley DB fixture"};
+        }
+
+        std::ifstream input {file, std::ios::binary};
+        std::string content {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+        std::filesystem::remove_all(directory);
+
+        return content;
+    }
+#endif
 } // namespace imagefixtures
 
 #endif // _IMAGE_FIXTURES_HPP

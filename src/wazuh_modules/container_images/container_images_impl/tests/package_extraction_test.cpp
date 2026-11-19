@@ -41,7 +41,11 @@ namespace
     const std::string RPM_NDB_PATH {"var/lib/rpm/Packages.db"};
     const std::string RPM_NDB_USR_PATH {"usr/lib/sysimage/rpm/Packages.db"};
     const std::string RPM_BDB_PATH {"var/lib/rpm/Packages"};
+    const std::string RPM_BDB_USR_PATH {"usr/lib/sysimage/rpm/Packages"};
     const std::string DPKG_STATUS_D_PATH {"var/lib/dpkg/status.d/"};
+    const std::string PACMAN_PATH {"var/lib/pacman/local/desc"};
+    /// What the module reports for a Berkeley DB database on a platform that cannot read it.
+    const std::string RPM_BDB_UNSUPPORTED_FORMAT {"rpm Berkeley DB (not supported on this platform)"};
     constexpr char TYPE_HARDLINK {'1'};
     constexpr char TYPE_SYMLINK {'2'};
     const std::string OS_RELEASE_PATH {"etc/os-release"};
@@ -741,12 +745,12 @@ TEST_F(PackageExtractionTest, ComposerAppliesTheOwnFilesOfALayerAfterItsMarkers)
 TEST_F(PackageExtractionTest, ComposerRecordsTheFormatsThatAreNotImplementedYet)
 {
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "not parsed") +
-                              tarMember("var/lib/pacman/local/desc", "not parsed") +
+    composer.apply(snapshotOf(tarMember("var/db/pkg/app-1.0/CONTENTS", "not parsed") +
+                              tarMember(PACMAN_PATH, "not parsed") +
                               tarEnd()));
 
     EXPECT_TRUE(composer.packages().empty());
-    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm", "pacman"}));
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"portage", "pacman"}));
 }
 
 TEST_F(PackageExtractionTest, ComposerReportsBothDatabasesOfAMixedImage)
@@ -786,14 +790,14 @@ TEST_F(PackageExtractionTest, ComposerIgnoresABareWhiteoutEntry)
 TEST_F(PackageExtractionTest, ComposerRetractsAnUnsupportedFormatWarningOnceItsPathIsRemoved)
 {
     // The unsupported-format warning is tied to the path it was seen at, so it is
-    // retracted the same way a tracked database is: an image whose rpm directory is
-    // removed in a later layer should not keep reporting rpm once nothing rpm-shaped
+    // retracted the same way a tracked database is: an image whose pacman directory is
+    // removed in a later layer should not keep reporting pacman once nothing pacman-shaped
     // survives composition.
     LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "not parsed") + tarEnd()));
-    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm"}));
+    composer.apply(snapshotOf(tarMember(PACMAN_PATH, "not parsed") + tarEnd()));
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"pacman"}));
 
-    composer.apply(snapshotOf(tarMember("var/lib/.wh.rpm", "") + tarEnd()));
+    composer.apply(snapshotOf(tarMember("var/lib/.wh.pacman", "") + tarEnd()));
 
     EXPECT_TRUE(composer.unsupportedFormats().empty());
 }
@@ -1027,18 +1031,6 @@ TEST_F(PackageExtractionTest, RpmDatabaseIsNotReportedAsAnUnsupportedFormat)
     EXPECT_TRUE(composer.unsupportedFormats().empty());
 }
 
-TEST_F(PackageExtractionTest, BerkeleyDbImageIsReportedAsAnUnsupportedFormat)
-{
-    // Reading it needs libdb pointed at the whole directory, so an image still carrying
-    // the pre-4.16 format is reported rather than parsed.
-    LayerComposer composer;
-    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
-                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
-
-    EXPECT_TRUE(composer.packages().empty());
-    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({"rpm"}));
-}
-
 TEST_F(PackageExtractionTest, ComposerDoesNotReportBothRpmLocationsOfTheSameImage)
 {
     RpmPackage bash;
@@ -1149,6 +1141,165 @@ TEST_F(PackageExtractionTest, TheDpkgStatusDirectoryIsKeptOnlyForItsDirectChildr
     EXPECT_EQ(snapshot.databases.count(DPKG_STATUS_D_PATH + "base-files"), 1U);
 }
 
+#if defined(__linux__)
+TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsInventoried)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+    bash.release = "35.el7_9";
+
+    RpmPackage glibc;
+    glibc.name = "glibc";
+    glibc.version = "2.17";
+    glibc.hasEpoch = true;
+    glibc.epoch = 0;
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)})) +
+                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
+
+    const auto packages {composer.packages()};
+
+    ASSERT_EQ(packageNames(packages), std::vector<std::string>({"bash", "glibc"}));
+
+    for (const auto& package : packages)
+    {
+        EXPECT_EQ(package.version, package.name == "bash" ? "4.2.46-35.el7_9" : "0:2.17-1.el9");
+        EXPECT_EQ(package.packageDbPath, RPM_BDB_PATH);
+    }
+
+    EXPECT_TRUE(composer.unsupportedFormats().empty());
+}
+
+TEST_F(PackageExtractionTest, RpmBerkeleyDbUnderUsrIsInventoried)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_USR_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, AStaleRpmBerkeleyDbNextToASqliteOneIsNotReported)
+{
+    // rpm 4.16 and later can leave the old file behind when it converts the database.
+    RpmPackage stale;
+    stale.name = "stale";
+    stale.version = "1";
+
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "5.1.8";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(stale)})) +
+                              tarMember(RPM_SQLITE_PATH, rpmSqliteDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"bash"}));
+}
+
+TEST_F(PackageExtractionTest, AFileThatIsNoBerkeleyDbIsReportedAndCostsNoOtherDatabase)
+{
+    std::vector<std::string> warnings;
+    LoggingHelper::setLogCallback([&warnings](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(message);
+        }
+    });
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
+                              tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"curl"}));
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_NE(warnings.front().find("'" + RPM_BDB_PATH + "' could not be read"), std::string::npos);
+
+    LoggingHelper::setLogCallback({});
+}
+
+TEST_F(PackageExtractionTest, ATruncatedRpmBerkeleyDbDoesNotStopTheScan)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    const auto database {rpmBerkeleyDatabase({rpmHeaderBlob(bash)})};
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, database.substr(0, database.size() / 2)) + tarEnd()));
+
+    EXPECT_NO_THROW(composer.packages());
+}
+
+TEST_F(PackageExtractionTest, ARunningBerkeleyDbReadIsCancelledByAStopRequest)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd()));
+
+    std::vector<std::string> debug;
+    LoggingHelper::setLogCallback([&debug](const modules_log_level_t level, const char* message)
+    {
+        if (level == LOG_DEBUG || level == LOG_WARNING)
+        {
+            debug.push_back(std::to_string(level) + message);
+        }
+    });
+
+    const std::atomic<bool> stop {true};
+
+    EXPECT_TRUE(composer.packages("image", &stop).empty());
+    EXPECT_TRUE(std::any_of(debug.begin(), debug.end(), [](const std::string & line)
+    {
+        return line.find("cancelled by a stop request") != std::string::npos;
+    }));
+
+    // A read cut short by a shutdown is not reported as a fault of the database.
+    EXPECT_FALSE(std::any_of(debug.begin(), debug.end(), [](const std::string & line)
+    {
+        return line.rfind(std::to_string(LOG_WARNING), 0) == 0;
+    }));
+
+    LoggingHelper::setLogCallback({});
+}
+
+TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsStoredWithItsPackages)
+{
+    RpmPackage bash;
+    bash.name = "bash";
+    bash.version = "4.2.46";
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(RPM_BDB_PATH, rpmBerkeleyDatabase({rpmHeaderBlob(bash)})) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout()};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(packageNames(references.front().packages), std::vector<std::string>({"bash"}));
+}
+#else
+TEST_F(PackageExtractionTest, RpmBerkeleyDbImageIsReportedAsNotSupportedOnThisPlatform)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(RPM_BDB_PATH, "a Berkeley DB hash file") +
+                              tarMember("var/lib/rpm/__db.001", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.packages().empty());
+    EXPECT_EQ(composer.unsupportedFormats(), std::set<std::string>({RPM_BDB_UNSUPPORTED_FORMAT}));
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Reader: end to end over the supported inputs.
 // ---------------------------------------------------------------------------
@@ -1240,7 +1391,7 @@ TEST_F(PackageExtractionTest, PackageRemovedInALaterLayerIsNotReported)
 TEST_F(PackageExtractionTest, ImageWithNoSupportedDatabaseIsInventoriedWithZeroPackages)
 {
     ImageBuilder builder;
-    builder.addLayer(tarMember(RPM_BDB_PATH, "a Berkeley DB this module does not read") + tarEnd());
+    builder.addLayer(tarMember(PACMAN_PATH, "a package format this module does not read") + tarEnd());
 
     ArchiveImageReader reader {builder.writeOciLayout()};
     const auto references {reader.discover().records};

@@ -26,7 +26,13 @@ target_link_libraries(
   gmock_main
   pthread
   sqlite3
+  db
   dl)
+
+# Databases for the Berkeley DB read: a valid one, and two damaged ones that hang and crash libdb.
+target_compile_definitions(
+  sysInfoPackageDbParser_unit_test
+  PRIVATE PACKAGE_DB_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 add_test(NAME sysInfoPackageDbParser_unit_test
          COMMAND sysInfoPackageDbParser_unit_test)

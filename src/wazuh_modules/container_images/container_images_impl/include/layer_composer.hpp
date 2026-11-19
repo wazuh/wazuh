@@ -14,6 +14,7 @@
 #include "byte_stream.hpp"
 #include "image_inventory_types.hpp"
 
+#include <atomic>
 #include <map>
 #include <set>
 #include <string>
@@ -70,7 +71,10 @@ namespace containerimages
             std::set<std::string> unsupportedFormats() const;
 
             /// @brief Parse every composed database into package records.
-            std::vector<ImagePackageRecord> packages() const;
+            /// @param image Where the image comes from, named in the warning when a database cannot be read.
+            /// @param stop Polled while a database is read in a child process; true cancels the read.
+            std::vector<ImagePackageRecord> packages(const std::string& image = {},
+                                                     const std::atomic<bool>* stop = nullptr) const;
 
             /// @brief The operating system the composed image states in its `os-release`.
             ///

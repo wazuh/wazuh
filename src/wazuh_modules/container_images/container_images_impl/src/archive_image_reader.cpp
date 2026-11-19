@@ -603,7 +603,8 @@ namespace
     std::vector<containerimages::ImageReferenceRecord> buildRecords(const std::vector<ImageDescriptor>& descriptors,
                                                                     const LayerFetch& layers,
                                                                     const std::string& sourceType,
-                                                                    const std::string& location)
+                                                                    const std::string& location,
+                                                                    const std::atomic<bool>* stopRequested)
     {
         std::vector<containerimages::ImageReferenceRecord> records;
 
@@ -625,7 +626,7 @@ namespace
                 composer.apply(layers(key));
             }
 
-            record.packages = composer.packages();
+            record.packages = composer.packages(location, stopRequested);
             record.operatingSystem = composer.operatingSystem();
 
             if (record.operatingSystem.empty())
@@ -730,9 +731,12 @@ namespace
 
 namespace containerimages
 {
-    ArchiveImageReader::ArchiveImageReader(std::string location, std::string knownConfigDigest)
+    ArchiveImageReader::ArchiveImageReader(std::string location,
+                                           std::string knownConfigDigest,
+                                           const std::atomic<bool>* stopRequested)
         : m_location {std::move(location)}
         , m_knownConfigDigest {std::move(knownConfigDigest)}
+        , m_stopRequested {stopRequested}
     {
     }
 
@@ -872,7 +876,7 @@ namespace containerimages
             return snapshot == snapshots.end() ? LayerSnapshot {} : snapshot->second;
         }};
 
-        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location));
+        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
     }
 
     ImageReadResult ArchiveImageReader::readSavedArchive(const std::filesystem::path& path)
@@ -1016,6 +1020,6 @@ namespace containerimages
             return snapshot == snapshots.end() ? LayerSnapshot {} : snapshot->second;
         }};
 
-        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location));
+        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
     }
 } // namespace containerimages
