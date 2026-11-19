@@ -53,8 +53,8 @@ on:
       - ".github/actions/reinstall_cmake/**"
       - "tools/devContainer/reinstall-cmake.sh"
       - ".github/actions/setup-sccache/**"
-      # Not compiled into utils_utest: the benchmark is a separate target (benchmark/CMakeLists.txt,
-      # label `utils`, not selected here), and no source of utils_utest includes, even transitively,
+      # Not compiled into utils_utest: the benchmark is a separate, manual target (benchmark/CMakeLists.txt,
+      # label `utils_benchmark`, not selected here), and no source of utils_utest includes, even transitively,
       # a header of jwt/ or mocks/ (tests/mocks/ is another directory and stays in).
       - "!src/shared_modules/utils/benchmark/**"
       - "!src/shared_modules/utils/jwt/**"
@@ -95,7 +95,7 @@ jobs:
 
       - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4
@@ -153,7 +153,7 @@ jobs:
 
       - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4

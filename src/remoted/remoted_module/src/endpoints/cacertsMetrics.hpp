@@ -40,6 +40,11 @@ namespace remoted::endpoints::cacerts
     // Refused by the endpoint's rate limit (endpoints/rateLimitGate.hpp) before the handler ran,
     // so it is in none of the three outcomes above -- the CA snapshot was never even read.
     constexpr auto METRIC_CACERTS_RATE_LIMITED {"remoted.cacerts.rate_limited"};
+    // The route's rate-limit bucket, read as pulls by the facade (registerRateLimitDiagnostics()).
+    // Spelled whole, one constant per name: the set is closed and no name is ever formatted.
+    constexpr auto METRIC_CACERTS_RATE_LIMIT_LIMIT {"remoted.cacerts.rate_limit.limit"};
+    constexpr auto METRIC_CACERTS_RATE_LIMIT_BURST {"remoted.cacerts.rate_limit.burst"};
+    constexpr auto METRIC_CACERTS_RATE_LIMIT_AVAILABLE {"remoted.cacerts.rate_limit.available"};
 
     // The remoted.server.tls.* pulls (registered by the facade, read from the transport).
     constexpr auto METRIC_TLS_CERT_EXPIRY_DAYS {"remoted.server.tls.cert_expiry_days"};

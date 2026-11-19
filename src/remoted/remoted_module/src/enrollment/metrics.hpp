@@ -24,7 +24,7 @@ namespace remoted::enrollment
     constexpr auto METRIC_DISABLED {"remoted.enroll.disabled"};
     constexpr auto METRIC_AUTHD_ERROR {"remoted.enroll.authd_error"};
     constexpr auto METRIC_AUTHD_UNAVAILABLE {"remoted.enroll.authd_unavailable"};
-    // The enrollment-token outcomes (issue #38993): the subset of the requests above that presented
+    // The enrollment-token outcomes: the subset of the requests above that presented
     // an enrollment-token bearer, by what happened to the TOKEN. `accepted` is a 200 obtained with a
     // token; the four rejections are the token's state -- unknown/expired/revoked decided by remoted's
     // replica of the store (and confirmed by authd's 9022/9023 when the replica lagged), exhausted
@@ -34,7 +34,7 @@ namespace remoted::enrollment
     constexpr auto METRIC_TOKEN_REJECTED_EXPIRED {"remoted.enroll.token.rejected_expired"};
     constexpr auto METRIC_TOKEN_REJECTED_REVOKED {"remoted.enroll.token.rejected_revoked"};
     constexpr auto METRIC_TOKEN_REJECTED_EXHAUSTED {"remoted.enroll.token.rejected_exhausted"};
-    // The re-enrollment outcomes (issue #38993): the subset of the requests above whose bearer named an
+    // The re-enrollment outcomes: the subset of the requests above whose bearer named an
     // agent (`kid` = agent id). remoted forwards that bearer unverified, so every one of these is authd's
     // verdict on the master: `accepted` is a 200 that rotated the agent's credentials, the three rejections
     // are its 9026 (unknown agent / no secret on record), 9027 (bad signature or malformed) and 9028
@@ -50,6 +50,26 @@ namespace remoted::enrollment
     // therefore in none of the outcome families above -- those describe requests that were actually
     // processed -- and only here and in remoted.http.enroll.responses.429.
     constexpr auto METRIC_RATE_LIMITED {"remoted.enroll.rate_limited"};
+
+    // The pulls the facade registers over the enrollment plane's collaborators -- levels and totals
+    // owned elsewhere, so they have no handle in EnrollmentMetrics below.
+    // AuthdClient::queueDiagnostics() (registerAuthdQueueDiagnostics()).
+    constexpr auto METRIC_AUTHD_QUEUE_DEPTH {"remoted.enroll.authd.queue.depth"};
+    constexpr auto METRIC_AUTHD_QUEUE_CAPACITY {"remoted.enroll.authd.queue.capacity"};
+    constexpr auto METRIC_AUTHD_QUEUE_REJECTED_TOTAL {"remoted.enroll.authd.queue.rejected.total"};
+    // TokenKeySource::diagnostics() (registerTokenKeySourceDiagnostics()).
+    constexpr auto METRIC_TOKEN_STORE_TOKENS {"remoted.enroll.token_store.tokens"};
+    constexpr auto METRIC_TOKEN_STORE_RELOADS_TOTAL {"remoted.enroll.token_store.reloads.total"};
+    constexpr auto METRIC_TOKEN_STORE_RELOAD_FAILURES_TOTAL {"remoted.enroll.token_store.reload_failures.total"};
+    // The two POST /enroll rate-limit buckets (registerRateLimitDiagnostics()): verified credentials, and
+    // the unverified bearers (re-enrollment, Open mode, spent tokens). Spelled whole, one constant per name:
+    // the set is closed and no name is ever formatted.
+    constexpr auto METRIC_RATE_LIMIT_LIMIT {"remoted.enroll.rate_limit.limit"};
+    constexpr auto METRIC_RATE_LIMIT_BURST {"remoted.enroll.rate_limit.burst"};
+    constexpr auto METRIC_RATE_LIMIT_AVAILABLE {"remoted.enroll.rate_limit.available"};
+    constexpr auto METRIC_UNVERIFIED_RATE_LIMIT_LIMIT {"remoted.enroll.unverified.rate_limit.limit"};
+    constexpr auto METRIC_UNVERIFIED_RATE_LIMIT_BURST {"remoted.enroll.unverified.rate_limit.burst"};
+    constexpr auto METRIC_UNVERIFIED_RATE_LIMIT_AVAILABLE {"remoted.enroll.unverified.rate_limit.available"};
 
     struct EnrollmentMetrics
     {

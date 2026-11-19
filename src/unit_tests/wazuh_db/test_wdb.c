@@ -38,6 +38,12 @@ int wdb_select_from_temp_table(wdb_t * wdb);
 int wdb_get_last_vacuum_data(wdb_t * wdb, int *last_vacuum_time, int *last_vacuum_value);
 int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
 
+/* wdb_step is wrapped for the other tests; these reach the real one. */
+int __real_wdb_step(sqlite3_stmt *stmt);
+
+/* MAX_ATTEMPTS (src/wazuh_db/src/wdb.c) retries after the first attempt. */
+#define WDB_TEST_BUSY_CALLS (1000 + 1)
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -706,6 +712,49 @@ void test_wdb_exec_stmt_send_statement_invalid(void **state) {
     int result = wdb_exec_stmt_send(NULL, peer);
 
     assert_int_equal(result, OS_INVALID);
+}
+
+/* Tests wdb_prepare and wdb_step: SQLITE_BUSY is retried (w_time_delay is wrapped, so the pause
+ * between attempts costs the test nothing) and given up on after MAX_ATTEMPTS retries. */
+
+void test_wdb_prepare_busy_then_ok(void **state) {
+    sqlite3_stmt *stmt = NULL;
+
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_BUSY);
+    will_return(__wrap_sqlite3_prepare_v2, NULL);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_BUSY);
+    will_return(__wrap_sqlite3_prepare_v2, (sqlite3_stmt *)1);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    assert_int_equal(wdb_prepare((sqlite3 *)1, "SELECT 1;", -1, &stmt, NULL), SQLITE_OK);
+    assert_ptr_equal(stmt, (sqlite3_stmt *)1);
+}
+
+void test_wdb_prepare_busy_max_attempts(void **state) {
+    sqlite3_stmt *stmt = NULL;
+
+    for (int i = 0; i < WDB_TEST_BUSY_CALLS; i++) {
+        will_return(__wrap_sqlite3_prepare_v2, NULL);
+        will_return(__wrap_sqlite3_prepare_v2, SQLITE_BUSY);
+    }
+    expect_string(__wrap__mdebug1, formatted_msg, "Maximum attempts exceeded for sqlite3_prepare_v2()");
+
+    assert_int_equal(wdb_prepare((sqlite3 *)1, "SELECT 1;", -1, &stmt, NULL), -1);
+}
+
+void test_wdb_step_busy_then_row(void **state) {
+    expect_sqlite3_step_count(SQLITE_BUSY, 2);
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    assert_int_equal(__real_wdb_step((sqlite3_stmt *)1), SQLITE_ROW);
+}
+
+void test_wdb_step_busy_max_attempts(void **state) {
+    expect_sqlite3_step_count(SQLITE_BUSY, WDB_TEST_BUSY_CALLS);
+    expect_string(__wrap__mdebug1, formatted_msg, "Maximum attempts exceeded for sqlite3_step()");
+
+    assert_int_equal(__real_wdb_step((sqlite3_stmt *)1), -1);
 }
 
 /* Tests wdb_init_stmt_in_cache */
@@ -3076,6 +3125,11 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_timeout_set_err, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_statement_invalid, setup_wdb, teardown_wdb),
         // wdb_init_stmt_in_cache
+        // wdb_prepare / wdb_step
+        cmocka_unit_test(test_wdb_prepare_busy_then_ok),
+        cmocka_unit_test(test_wdb_prepare_busy_max_attempts),
+        cmocka_unit_test(test_wdb_step_busy_then_row),
+        cmocka_unit_test(test_wdb_step_busy_max_attempts),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_transaction, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_statement, setup_wdb, teardown_wdb),

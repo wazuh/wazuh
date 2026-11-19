@@ -63,7 +63,7 @@ Header: [include/base/process.hpp](include/base/process.hpp). Implementation: [s
 | `lookupUid` / `lookupGid` | Reentrant lookups. The buffer starts at the `sysconf` hint (1024 when undefined, capped at 64 KiB) and doubles up to 64 KiB. |
 | `dropToGroup` | `setgroups` + `setgid`. Call it before `dropToUser`. |
 | `dropToUser` | `setuid` + `seteuid`. Irreversible when leaving root. |
-| `resolveManagerHome` | Order: `WAZUH_MANAGER_FORCE_HOME` as is, then a non-empty `WAZUH_MANAGER_HOME`, then the dirname of `/proc/self/exe` cut at the first `"/bin"`. When the result of the 2nd or 3rd is not a directory it writes a CRITICAL 1108 line to stderr and exits with status 1. |
+| `resolveManagerHome` | Order (as the C daemons' `w_homedir()`, which adds fallbacks after the 3rd): `WAZUH_MANAGER_FORCE_HOME` as is, then a non-empty `WAZUH_MANAGER_HOME`, then the dirname of `/proc/self/exe` cut at the first `"/bin"`. When the result of the 2nd or 3rd is not a directory it writes a CRITICAL 1108 line to stderr and exits with status 1. |
 | `setManagerMode` / `getWazuhHome` | Manager mode is process-wide and irreversible. Outside it, `getWazuhHome()` returns the current working directory. |
 
 Injection: `ProcessSysCalls` groups 13 system calls (`fork`, `setsid`, `umask`, `open`, `dup2`, `close`, `fchmod`, `write`, `setgroups`, `setgid`, `setuid`, `seteuid`, `sysconf`); an empty member is the real call. Outside the seam is `_exit` (checked by `GoDaemonFunctionalTest.ParentsSkipExitHandlers`); `umask` is injectable, but a test that leaves it empty gets the real `umask(027)` applied to itself. `UserLookup` and `GroupLookup` are injectable as well.

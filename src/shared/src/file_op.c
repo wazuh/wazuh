@@ -6526,9 +6526,12 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 /**
  * @brief Get the Wazuh installation directory
  *
- * The target-specific env var (`WAZUH_MANAGER_HOME` or `WAZUH_AGENT_HOME`,
- * picked at build time via `WAZUH_HOME_ENV`) wins if set. Otherwise the path
- * is auto-detected from /proc, then argv[0].
+ * On the manager, `WAZUH_MANAGER_FORCE_HOME` comes first: when defined (even
+ * empty) it is returned as is and never checked, like the engine's
+ * resolveManagerHome() (engine/source/base/src/process.cpp). Otherwise the
+ * target-specific env var (`WAZUH_MANAGER_HOME` or `WAZUH_AGENT_HOME`, picked
+ * at build time via `WAZUH_HOME_ENV`) wins if set. Otherwise the path is
+ * auto-detected from /proc, then argv[0].
  *
  * @param arg ARGV0 - Program name
  * @return Pointer to the Wazuh installation path on success
@@ -6537,6 +6540,18 @@ char *w_homedir(char *arg) {
     char *buff = NULL;
     struct stat buff_stat;
     char * delim = "/bin";
+
+#ifndef CLIENT
+    // Forced home (manager only): returned as is, without any check, so one variable relocates every daemon.
+    const char * forced_home = getenv(WAZUH_MANAGER_FORCE_HOME_ENV);
+    if (forced_home) {
+        // PATH_MAX like every other return of this function: callers write into the buffer (authd's -D).
+        os_calloc(PATH_MAX, sizeof(char), buff);
+        snprintf(buff, PATH_MAX, "%s", forced_home);
+        return buff;
+    }
+#endif
+
     os_calloc(PATH_MAX, sizeof(char), buff);
 
     // Target-specific home env var wins if set.

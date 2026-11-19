@@ -6,8 +6,11 @@ import json
 import logging
 import os
 import re
-import subprocess
+import selectors
+import signal
+import subprocess  # nosec B404 - runs the fixed verify-agent-conf binary with a list argv, never a shell
 import tempfile
+import time
 from configparser import NoOptionError, RawConfigParser
 from io import StringIO
 from os import path as os_path
@@ -776,6 +779,109 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
 XML_DECLARATION_REGEX = re.compile(r'\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>')
 # verify-agent-conf's "<reader> remote configuration in '<file>' is corrupted." (RCONFIG_ERROR).
 REMOTE_CONFIG_CORRUPTED_CODE = '1207'
+# verify-agent-conf parses a few kilobytes in milliseconds. The bound stays below the API's default request_timeout
+# (10 s) so the caller gets a 1115 rather than a 3021, and a verifier that never returns cannot hold an API worker.
+VERIFY_AGENT_CONF_TIMEOUT = 5
+# The error lines come first and the tool stops at the first failing reader, so only the head of its output is kept;
+# the rest is read and discarded so a chatty verifier never blocks on a full pipe nor grows the worker's memory.
+VERIFY_AGENT_CONF_OUTPUT_LIMIT = 64 * 1024
+
+
+def _kill_process_group(process: subprocess.Popen):
+    """Kill a child started with start_new_session=True together with everything it spawned, then reap it."""
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    try:
+        process.kill()
+    except OSError:
+        pass
+    process.wait()
+
+
+def _run_bounded(command: list, timeout: float, output_limit: int) -> tuple:
+    """Run a validator with a hard deadline and a bounded copy of its output.
+
+    stdout and stderr are merged. The child runs in its own session, so on timeout (or any error while waiting) its
+    whole process group is killed and reaped before returning.
+
+    Parameters
+    ----------
+    command : list
+        argv of the program (never run through a shell).
+    timeout : float
+        Seconds the program may run, output included.
+    output_limit : int
+        Bytes of output kept (the head); the rest is drained and dropped.
+
+    Raises
+    ------
+    subprocess.TimeoutExpired
+        The program did not finish in time; it has been killed. `output` holds the kept head.
+    OSError
+        The program could not be started.
+
+    Returns
+    -------
+    tuple
+        (exit code, kept output as bytes, whether the output was truncated).
+    """
+    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,  # nosec B603
+                               stderr=subprocess.STDOUT, start_new_session=True)
+    output = bytearray()
+    truncated = False
+    deadline = time.monotonic() + timeout
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(command, timeout, output=bytes(output))
+                if not selector.select(remaining):
+                    continue
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                room = output_limit - len(output)
+                if len(chunk) > room:
+                    truncated = True
+                if room > 0:
+                    output += chunk[:room]
+        try:
+            returncode = process.wait(timeout=max(deadline - time.monotonic(), 0))
+        except subprocess.TimeoutExpired as e:
+            e.output = bytes(output)
+            raise
+    except BaseException:
+        _kill_process_group(process)
+        raise
+    finally:
+        process.stdout.close()
+    return returncode, bytes(output), truncated
+
+
+def _run_verify_agent_conf(conf_path: str) -> tuple:
+    """Run bin/verify-agent-conf on a file, bounded in time and output.
+
+    Raises
+    ------
+    WazuhError(1115)
+        The verifier did not finish within VERIFY_AGENT_CONF_TIMEOUT seconds (it has been killed).
+
+    Returns
+    -------
+    tuple
+        (exit code, head of the merged output as bytes, whether the output was truncated).
+    """
+    command = [os_path.join(common.WAZUH_PATH, 'bin', 'verify-agent-conf'), '-f', conf_path]
+    try:
+        return _run_bounded(command, VERIFY_AGENT_CONF_TIMEOUT, VERIFY_AGENT_CONF_OUTPUT_LIMIT)
+    except subprocess.TimeoutExpired:
+        logger.error(f"verify-agent-conf did not finish within {VERIFY_AGENT_CONF_TIMEOUT} seconds and was killed")
+        raise WazuhError(1115, extra_message=f'the configuration could not be verified within '
+                                             f'{VERIFY_AGENT_CONF_TIMEOUT} seconds; it was not applied')
 
 
 def upload_group_configuration(group_id: str, file_content: str) -> str:
@@ -799,7 +905,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     WazuhError(1114)
         Wazuh syntax error.
     WazuhError(1115)
-        Error executing verify-agent-conf.
+        verify-agent-conf failed without a parsable reason, or did not finish within VERIFY_AGENT_CONF_TIMEOUT seconds.
     WazuhInternalError(1743)
         Error running Wazuh syntax validator.
     WazuhInternalError(1016)
@@ -864,9 +970,12 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
         # check Wazuh xml format
         try:
-            subprocess.check_output([os_path.join(common.WAZUH_PATH, "bin", "verify-agent-conf"), '-f', tmp_file_path],
-                                    stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
+            returncode, raw_output, truncated = _run_verify_agent_conf(tmp_file_path)
+        except WazuhError:
+            raise
+        except Exception as e:
+            raise WazuhInternalError(1743, str(e))
+        if returncode != 0:
             # extract error message from output.
             # Example of raw output
             # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
@@ -880,7 +989,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             # The tool runs its readers in turn and the first one to fail adds a (1207) line naming itself, whatever
             # the cause: an unknown section is reported by the Syscheck reader. That line says nothing the others do
             # not, so it is kept only when it is the only one. The temporary file is reported as the group's file.
-            output = e.output.decode().replace(tmp_file_path, f"{group_id}/agent.conf")
+            output = raw_output.decode(errors='replace').replace(tmp_file_path, f"{group_id}/agent.conf")
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\((\d+)\): ([\w \/ \_ \- \. ' :]+)", string=output)
             messages = [message for code, message in output_regex if code != REMOTE_CONFIG_CORRUPTED_CODE] or \
@@ -888,9 +997,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             if messages:
                 raise WazuhError(1114, ' '.join(messages))
             else:
-                raise WazuhError(1115, output)
-        except Exception as e:
-            raise WazuhInternalError(1743, str(e))
+                raise WazuhError(1115, output + (' [output truncated]' if truncated else ''))
 
         # move temporary file to group folder
         try:

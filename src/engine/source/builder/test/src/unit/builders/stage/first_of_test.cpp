@@ -75,6 +75,9 @@ INSTANTIATE_TEST_SUITE_P(
             FAILURE()),
         // Incorrect order
         StageT(R"([{"then": [], "check": [{"file": []}]}])", firstOfBuilder, FAILURE()),
+        StageT(R"([{"then": [{"file": []}], "check": []}])", firstOfBuilder, FAILURE()),
+        // Repeated key instead of 'then'
+        StageT(R"([{"check": [], "check": []}])", firstOfBuilder, FAILURE()),
         // Output builder throws exception
         StageT(R"([{"check": [], "then": [{"file": []}]}])",
                firstOfBuilder,

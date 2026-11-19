@@ -17,7 +17,7 @@
 
 namespace Utils
 {
-    std::filesystem::path findHomeDirectory()
+    inline std::filesystem::path findHomeDirectory()
     {
         std::filesystem::path homeDir;
         std::error_code ec;

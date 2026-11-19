@@ -55,8 +55,10 @@ echo $! > "${dir}/var/run/${name}-$!.pid"
 exit 0
 '
 
-# validate succeeds; get answers the two keys the control script reads.
+# validate succeeds; get answers the two keys the control script reads. A conf-invalid file makes it fail every
+# command with no output, as the real CLI does on a configuration its validator refuses.
 CONF_STUB='#!/bin/sh
+[ -f "$(cd "$(dirname "$0")/.." && pwd)/conf-invalid" ] && exit 1
 for arg in "$@"; do
     case "${last}" in
         get)
@@ -288,6 +290,34 @@ control status_killed_restart status > /dev/null
 check "status drops the marker of a killed restart" "no" "$(marker status_killed_restart)"
 check "status drops the start markers of a killed restart" "no" \
     "$([ -e "${WORK}/status_killed_restart/var/run/wazuh-manager-db.start" ] && echo yes || echo no)"
+
+# A configuration whose role cannot be read: status says so and still lists apid from its pid.
+new_tree status_no_role
+control status_no_role start > /dev/null
+touch "${WORK}/status_no_role/conf-invalid"
+check "status with an unreadable role exits 0 while every daemon runs" "0" "$(control status_no_role status)"
+check "status says the role cannot be read" "yes" \
+    "$(grep -q '^Cannot read cluster.node_type, check the /etc/wazuh-manager/wazuh-manager.conf file.$' \
+        "${WORK}/status_no_role/out" && echo yes || echo no)"
+check "status still lists a running apid" "yes" \
+    "$(grep -qx 'wazuh-manager-apid is running...' "${WORK}/status_no_role/out" && echo yes || echo no)"
+check "status -j with an unreadable role exits 0" "0" "$(control status_no_role -j status)"
+check "status -j lists apid in its document" "yes" \
+    "$(grep -q '{"daemon":"wazuh-manager-apid","status":"running"}' "${WORK}/status_no_role/out" && echo yes || echo no)"
+check "status -j says the role cannot be read on stderr" "yes" \
+    "$(grep -q '^Cannot read cluster.node_type' "${WORK}/status_no_role/err" && echo yes || echo no)"
+crash status_no_role wazuh-manager-apid
+check "a stopped apid does not fail status when the role cannot be read" "0" "$(control status_no_role status)"
+check "the stopped apid is still listed" "yes" \
+    "$(grep -qx 'wazuh-manager-apid not running...' "${WORK}/status_no_role/out" && echo yes || echo no)"
+crash status_no_role wazuh-manager-db
+check "another stopped daemon still fails status" "1" "$(control status_no_role status)"
+
+# With a readable master role, a stopped apid fails status as any other daemon does.
+new_tree status_master
+control status_master start > /dev/null
+crash status_master wazuh-manager-apid
+check "a stopped apid fails status on a master" "1" "$(control status_master status)"
 
 # A restart waiting for the lock has not written its marker yet, so a stop holding the lock can't drop it.
 new_tree queued_restart

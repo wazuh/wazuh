@@ -1,7 +1,8 @@
 # How to create and install custom WPK packages
 
 A WPK is what a remote agent upgrade installs: a signed, gzip-compressed bundle of files plus an
-installer. This directory holds `wpkpack.py`, which builds one. How upgrades are requested and
+installer. [packages/wpk/wpkpack.py](../../packages/wpk/wpkpack.py) builds one — the same script the WPK package
+build uses. How upgrades are requested and
 delivered is described in [Agent Upgrade](../../docs/ref/modules/agent_upgrade/README.md) (agent side
 and the `agent_upgrade` CLI) and [Agent upgrades](../../docs/ref/modules/task_manager/agent-upgrades.md)
 (manager side).
@@ -79,7 +80,7 @@ cd <package_dir>
 4. Compile the WPK package. You need your SSL certificate and key:
 
 ```
-<repository>/tools/agent-upgrade/wpkpack.py output/myagent.wpk path/to/wpkcert.pem path/to/wpkcert.key *
+<repository>/packages/wpk/wpkpack.py output/myagent.wpk path/to/wpkcert.pem path/to/wpkcert.key *
 ```
 
 The syntax is `wpkpack.py <pack> <cert> <key> <content> [<content> ...]`:

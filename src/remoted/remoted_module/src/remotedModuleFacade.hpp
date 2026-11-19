@@ -26,8 +26,10 @@
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "auth/keystoreMetrics.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
+#include "common/adminServerMetrics.hpp"
 #include "common/installPaths.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
@@ -47,6 +49,7 @@
 #include "downstream/forwarderMetrics.hpp"
 #include "endpoints/authGateway.hpp"
 #include "endpoints/cacertsEndpoint.hpp"
+#include "endpoints/cacertsMetrics.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
@@ -65,6 +68,7 @@
 #include "http_server/handshakeMetrics.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "http_server/transportMetrics.hpp"
 #include "loggerHelper.h"
 #include "remoted_module.h"
 #include "scanvd/scanVdHandler.hpp"
@@ -97,8 +101,8 @@ inline const LogFn& cacertsRecordLogFn()
     return instance;
 }
 
-/// Tag for the same events when the CONTROL notify path is the one that drains them (issue #39319,
-/// C26): in steady state a manager sees nothing but notifies, so that path is the only consumer
+/// Tag for the same events when the CONTROL notify path is the one that drains them: in
+/// steady state a manager sees nothing but notifies, so that path is the only consumer
 /// that will ever say them -- under the route that did, not under /cacerts'.
 inline const LogFn& controlRecordLogFn()
 {
@@ -108,7 +112,7 @@ inline const LogFn& controlRecordLogFn()
 
 /// Turns a CA publication event into a log line under @p logFn's tag. Handed to
 /// CaRecordEventMailbox::deliver(), which owns the ordering (it serialises the drain with the
-/// emission, C26); this only maps the level. @p logFn must outlive the emitter -- every caller
+/// emission); this only maps the level. @p logFn must outlive the emitter -- every caller
 /// passes a function-local static above.
 inline remoted::http::CaRecordEventMailbox::Emit caRecordEmitter(const LogFn& logFn)
 {
@@ -272,7 +276,7 @@ public:
      * writes these bytes to a pre-v5.0.0 agent's `etc/certs/root-ca.pem` ahead of the upgrade, and
      * that agent's installer refuses a file with more than one certificate in it. So what leaves
      * here is ONE certificate, re-serialised by this process, with no publication block -- whatever
-     * the bundle around it holds while a rotation overlaps (issue #39319, C7).
+     * the bundle around it holds while a rotation overlaps.
      *
      * @return Bytes written (> 0); 0 when the leaf chains to nothing in it, there is no servable bundle or
      *         the listener is down; -1 when @p capacity is too small. The caller delivers nothing
@@ -428,7 +432,7 @@ private:
         // (HttpServerConfig::onCaRecordReady, fired inside start() before anything is accepted).
         // Handles rather than the objects themselves because the route below is registered BEFORE
         // the server is started, so the handler captures the box and finds whatever start() put in
-        // it -- including on a later restart, which replaces both with a fresh pair (C21b). Owned
+        // it -- including on a later restart, which replaces both with a fresh pair. Owned
         // by the facade, exactly like m_cacertsMetrics: no weak_ptr to the server is involved.
         auto caSourceHandle = std::make_shared<std::shared_ptr<remoted::http::CaCertificateSource>>();
         auto caMailboxHandle = std::make_shared<std::shared_ptr<remoted::http::CaRecordEventMailbox>>();
@@ -571,7 +575,7 @@ private:
             /*countAgainstBudget=*/false);
 
         // /cacerts: the CA that signs this listener's certificate (remote.https.ca_certificate),
-        // published so an agent can bootstrap trust in the manager (RF-27). No auth (the caller has
+        // published so an agent can bootstrap trust in the manager. No auth (the caller has
         // no key yet), no body, no gateway; budget-exempt like the probe above, because a trust
         // bootstrap must not be shed under memory pressure. The transport hands over the CA file's
         // current state -- the certificates it re-serialised and whether they sign the served leaf,
@@ -595,7 +599,7 @@ private:
         // Whatever the read a /cacerts request does notices about the bundle's PUBLICATION: said
         // once (delivering REMOVES the events, so the daily tick will not repeat them), in the
         // mailbox's own order and with the pending record persisted outside every lock, before the
-        // answer goes out (issue #39319, C21b, C22, C26). A plain std::function, owned by the
+        // answer goes out. A plain std::function, owned by the
         // handler: the source and the mailbox arrive through the handles above, so nothing here
         // holds the server alive.
         auto deliverCaRecordEvents = [caSourceHandle, caMailboxHandle, emit = caRecordEmitter(cacertsRecordLogFn())]
@@ -608,8 +612,7 @@ private:
             if (const auto& source = *caSourceHandle)
             {
                 // Deliver, flush, deliver: a record this request's own flush could not write is
-                // said in this request instead of waiting up to a day for the next drain
-                // (objection 3).
+                // said in this request instead of waiting up to a day for the next drain.
                 remoted::http::deliverAndPersistRecordEvents(*source, *mailbox, emit);
             }
             else
@@ -673,7 +676,7 @@ private:
         // download is served only when it equals the selector this agent's own groups produce --
         // the same string /control handed it as config_token -- and anything else is 403. The
         // groups come from the registry /control already maintains, so there is no wazuh-db round
-        // trip on this path. An agent with no registry entry is DENIED, not served (#38683).
+        // trip on this path. An agent with no registry entry is DENIED, not served.
         // WPK requests are NOT authorized here: their authority is the pending upgrade task, which
         // /control does not carry. What contains those remains the resource-id grammars plus
         // O_NOFOLLOW, and the packages are signature-verified by the agent against wpk_root.pem.
@@ -754,11 +757,11 @@ private:
         // carry over too -- desirable for observability.
         auto controlConfig = remoted::control::buildControlConfig(m_config);
 
-        // The CA generation an agent is told about on every notify (RF-3). Same weak server pointer
+        // The CA generation an agent is told about on every notify. Same weak server pointer
         // as /cacerts above, for the same two reasons: the handler must not keep the listener alive,
         // and after stop() resets m_httpServer the provider answers "no servable bundle" instead of
         // touching a dead source. Resolved per call, never captured as a shared_ptr. The cost is the
-        // source's to bound -- caDescriptor() revalidates at most once a second (C8/C18) -- so this
+        // source's to bound -- caDescriptor() revalidates at most once a second -- so this
         // adds no file read to /control.
         controlConfig.caGenerationProvider =
             [weak = std::weak_ptr<remoted::http::IHttpServer>(m_httpServer),
@@ -778,9 +781,9 @@ private:
             // And then it is said. In steady state a manager sees nothing but notifies -- no
             // /cacerts request, no tick for up to 24 h -- so without this the WARN about a bundle
             // that stopped being publishable waited a day and, past the mailbox's 32 events, was
-            // dropped unread (issue #39319, C26, objection 2). Deliberately deliver() and NOT
+            // dropped unread. Deliberately deliver() and NOT
             // deliverAndPersistRecordEvents(): the keepalive path says things, it never waits for a
-            // disk (RNF-2, C22). The record is persisted by the tick, by the next /cacerts request
+            // disk. The record is persisted by the tick, by the next /cacerts request
             // or at close -- and nothing is lost meanwhile, because the source keeps the entry
             // pending until a write succeeds.
             if (const auto& mailbox = *caMailboxHandle)
@@ -1051,17 +1054,17 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.enroll.authd.queue.depth",
+            remoted::enrollment::METRIC_AUTHD_QUEUE_DEPTH,
             [snapshot] { return static_cast<uint64_t>(snapshot().depth); },
             "Enrollment requests waiting for an authd worker",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.enroll.authd.queue.capacity",
+            remoted::enrollment::METRIC_AUTHD_QUEUE_CAPACITY,
             [snapshot] { return static_cast<uint64_t>(snapshot().capacity); },
             "Configured depth of the authd request queue ('remoted.authd_max_queue_size')",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.enroll.authd.queue.rejected.total",
+            remoted::enrollment::METRIC_AUTHD_QUEUE_REJECTED_TOTAL,
             [snapshot] { return snapshot().rejectedTotal; },
             "Enrollment requests refused because the authd queue was full (the saturation share of "
             "remoted.enroll.authd_unavailable)",
@@ -1102,35 +1105,53 @@ private:
             return limiter ? limiter->diagnostics() : remoted::http::EndpointRateLimiter::Diagnostics {};
         };
 
-        const auto registerFor = [this, snapshot](LimiterMember enrollment, const char* endpoint, const char* route)
+        // One bucket's three names, each a whole catalog constant (never formatted from the endpoint).
+        struct RateLimitNames
         {
-            const std::string prefix = std::string {"remoted."} + endpoint + ".rate_limit.";
+            const char* limit;
+            const char* burst;
+            const char* available;
+        };
+
+        const auto registerFor =
+            [this, snapshot](LimiterMember enrollment, const RateLimitNames& names, const char* route)
+        {
             const std::string routeName {route};
 
             m_metricsManager->registerPullMetric(
-                prefix + "limit",
+                names.limit,
                 [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).limitPerSecond); },
                 routeName + " requests per second THIS NODE is willing to serve on the route "
                             "(0 when the limit is disabled)",
                 "requests_per_second");
             m_metricsManager->registerPullMetric(
-                prefix + "burst",
+                names.burst,
                 [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).burst); },
                 routeName + " requests servable back to back before the rate paces them",
                 "requests");
             m_metricsManager->registerPullMetric(
-                prefix + "available",
+                names.available,
                 [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).available); },
                 routeName + " allowance left unspent right now: near zero means the route is at its "
                             "ceiling and further requests are being refused with 429",
                 "requests");
         };
 
-        registerFor(&RemotedModuleFacade::m_enrollRateLimiter, "enroll", "POST /enroll (verified credential)");
+        registerFor(&RemotedModuleFacade::m_enrollRateLimiter,
+                    {remoted::enrollment::METRIC_RATE_LIMIT_LIMIT,
+                     remoted::enrollment::METRIC_RATE_LIMIT_BURST,
+                     remoted::enrollment::METRIC_RATE_LIMIT_AVAILABLE},
+                    "POST /enroll (verified credential)");
         registerFor(&RemotedModuleFacade::m_enrollUnverifiedRateLimiter,
-                    "enroll.unverified",
+                    {remoted::enrollment::METRIC_UNVERIFIED_RATE_LIMIT_LIMIT,
+                     remoted::enrollment::METRIC_UNVERIFIED_RATE_LIMIT_BURST,
+                     remoted::enrollment::METRIC_UNVERIFIED_RATE_LIMIT_AVAILABLE},
                     "POST /enroll (unverified: re-enrollment, no credential or spent token)");
-        registerFor(&RemotedModuleFacade::m_cacertsRateLimiter, "cacerts", "GET /cacerts");
+        registerFor(&RemotedModuleFacade::m_cacertsRateLimiter,
+                    {remoted::endpoints::cacerts::METRIC_CACERTS_RATE_LIMIT_LIMIT,
+                     remoted::endpoints::cacerts::METRIC_CACERTS_RATE_LIMIT_BURST,
+                     remoted::endpoints::cacerts::METRIC_CACERTS_RATE_LIMIT_AVAILABLE},
+                    "GET /cacerts");
     }
 
     void registerKeystoreDiagnostics(const std::shared_ptr<remoted::auth::Keystore>& keystore)
@@ -1152,7 +1173,7 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.agents",
+            remoted::auth::METRIC_KEYSTORE_AGENTS,
             [target]
             {
                 const auto keystore = target();
@@ -1161,7 +1182,7 @@ private:
             "Agents with a usable key after the last successful client.keys load",
             "agents");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.entries_skipped",
+            remoted::auth::METRIC_KEYSTORE_ENTRIES_SKIPPED,
             [target]
             {
                 const auto keystore = target();
@@ -1171,7 +1192,7 @@ private:
             "unparseable ip column, or undecodable key); comments and removed entries excluded",
             "entries");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.reloads.total",
+            remoted::auth::METRIC_KEYSTORE_RELOADS_TOTAL,
             [target]
             {
                 const auto keystore = target();
@@ -1180,7 +1201,7 @@ private:
             "Successful client.keys loads (startup load included)",
             "count");
         m_metricsManager->registerPullMetric(
-            "remoted.auth.keystore.reload_failures.total",
+            remoted::auth::METRIC_KEYSTORE_RELOAD_FAILURES_TOTAL,
             [target]
             {
                 const auto keystore = target();
@@ -1237,17 +1258,17 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.enroll.token_store.tokens",
+            remoted::enrollment::METRIC_TOKEN_STORE_TOKENS,
             [snapshot] { return static_cast<uint64_t>(snapshot().tokens); },
             "Enrollment tokens with a credential currently replicated from /etc/wazuh-manager/enrollment_tokens.json",
             "tokens");
         m_metricsManager->registerPullMetric(
-            "remoted.enroll.token_store.reloads.total",
+            remoted::enrollment::METRIC_TOKEN_STORE_RELOADS_TOTAL,
             [snapshot] { return snapshot().reloads; },
             "Successful loads of the enrollment token store (the initial one included)",
             "count");
         m_metricsManager->registerPullMetric(
-            "remoted.enroll.token_store.reload_failures.total",
+            remoted::enrollment::METRIC_TOKEN_STORE_RELOAD_FAILURES_TOTAL,
             [snapshot] { return snapshot().reloadFailures; },
             "Loads of the enrollment token store that kept the previous replica (malformed or torn file)",
             "count");
@@ -1282,7 +1303,7 @@ private:
         m_controlPullsRegistered = true;
 
         m_metricsManager->registerPullMetric(
-            "remoted.control.registry.agents",
+            remoted::control::METRIC_REGISTRY_AGENTS,
             [this]
             {
                 std::lock_guard<std::mutex> lock {m_controlDiagMutex};
@@ -1436,7 +1457,7 @@ private:
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
             // GET /tls: the served certificate and the CA bundle as `GET /cacerts` would hand it out
-            // right now (issue #39320) -- see http_server/tlsInventory.hpp for the document. ONE
+            // right now -- see http_server/tlsInventory.hpp for the document. ONE
             // tlsInventory() call per request: it is the one place the leaf and the CA verdict come
             // from the same instant, and the CA half costs a bounded read of a few KB under the
             // source's own mutex (regular files only, O_NONBLOCK), which is why this stays a Liveness
@@ -1500,7 +1521,7 @@ private:
     /**
      * @brief Publish the admin server's bounded resources as pull metrics (remoted.admin.server.*).
      *
-     * Same wiring as inventory sync's registerTransportDiagnostics() (U10): the weak target is
+     * Same wiring as inventory sync's registerTransportDiagnostics(): the weak target is
      * repointed at the new server after every successful start, while the pulls themselves are
      * registered exactly once -- IManager has no unregister. After stop() resets m_adminServer
      * the weak_ptr expires and every metric reads 0, the documented quiesced value, so a dump
@@ -1533,27 +1554,27 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.budget.available.bytes",
+            remoted::metrics::METRIC_ADMIN_BUDGET_AVAILABLE_BYTES,
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetAvailableBytes); },
             "Bytes the admin server's in-flight payload budget can still admit",
             "bytes");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.budget.inflight.bytes",
+            remoted::metrics::METRIC_ADMIN_BUDGET_INFLIGHT_BYTES,
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
             "Bytes currently reserved by admitted admin requests",
             "bytes");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.budget.inflight.requests",
+            remoted::metrics::METRIC_ADMIN_BUDGET_INFLIGHT_REQUESTS,
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
             "Admin requests currently holding a budget reservation",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.sessions.live",
+            remoted::metrics::METRIC_ADMIN_SESSIONS_LIVE,
             [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
             "Open admin socket connections, deferred replies included",
             "connections");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.sessions.data",
+            remoted::metrics::METRIC_ADMIN_SESSIONS_DATA,
             [snapshot]
             {
                 return static_cast<uint64_t>(
@@ -1562,7 +1583,7 @@ private:
             "Admin sessions classified on data-class routes",
             "connections");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.sessions.control",
+            remoted::metrics::METRIC_ADMIN_SESSIONS_CONTROL,
             [snapshot]
             {
                 return static_cast<uint64_t>(
@@ -1571,7 +1592,7 @@ private:
             "Admin sessions classified on control-class routes",
             "connections");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.sessions.liveness",
+            remoted::metrics::METRIC_ADMIN_SESSIONS_LIVENESS,
             [snapshot]
             {
                 return static_cast<uint64_t>(
@@ -1582,22 +1603,22 @@ private:
 
         // Why these cannot be derived from the endpoint families: TransportDiagnostics's own comment.
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.rejected.budget",
+            remoted::metrics::METRIC_ADMIN_REJECTED_BUDGET,
             [snapshot] { return static_cast<uint64_t>(snapshot().rejectedBudgetExhausted); },
             "Admin requests answered 503 because the in-flight payload budget was exhausted",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.rejected.session_cap",
+            remoted::metrics::METRIC_ADMIN_REJECTED_SESSION_CAP,
             [snapshot] { return static_cast<uint64_t>(snapshot().rejectedSessionCap); },
             "Admin requests answered 503 because their class session cap was reached",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.rejected.shutdown",
+            remoted::metrics::METRIC_ADMIN_REJECTED_SHUTDOWN,
             [snapshot] { return static_cast<uint64_t>(snapshot().rejectedShutdown); },
             "Admin requests answered 503 because the server was already stopping",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.admin.server.rejected.no_response",
+            remoted::metrics::METRIC_ADMIN_REJECTED_NO_RESPONSE,
             [snapshot] { return static_cast<uint64_t>(snapshot().rejectedNoResponse); },
             "Admin requests answered 503 because their handler produced no response",
             "requests");
@@ -1653,22 +1674,22 @@ private:
         };
 
         m_metricsManager->registerPullMetric(
-            "remoted.server.budget.available.bytes",
+            remoted::http::metrics::METRIC_BUDGET_AVAILABLE_BYTES,
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetAvailableBytes); },
             "Bytes the public server's in-flight payload budget can still admit",
             "bytes");
         m_metricsManager->registerPullMetric(
-            "remoted.server.budget.inflight.bytes",
+            remoted::http::metrics::METRIC_BUDGET_INFLIGHT_BYTES,
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
             "Bytes currently reserved by admitted public requests (payloads plus zstd decode scratch)",
             "bytes");
         m_metricsManager->registerPullMetric(
-            "remoted.server.budget.inflight.requests",
+            remoted::http::metrics::METRIC_BUDGET_INFLIGHT_REQUESTS,
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
             "Admitted public requests currently resident (one per request, compressed or not)",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.server.budget.rejected.total",
+            remoted::http::metrics::METRIC_BUDGET_REJECTED_TOTAL,
             [snapshot] { return snapshot().budgetRejectedTotal; },
             "Requests the byte budget refused to admit (503, before any route ran)",
             "requests");
@@ -1684,12 +1705,12 @@ private:
         // POST /download, the whole transfer, which is what makes downloads the usual reason this
         // level climbs.
         m_metricsManager->registerPullMetric(
-            "remoted.server.connections.open",
+            remoted::http::metrics::METRIC_CONNECTIONS_OPEN,
             [snapshot] { return static_cast<uint64_t>(snapshot().connectionsOpen); },
             "Connections currently open on the public HTTPS listener",
             "connections");
         m_metricsManager->registerPullMetric(
-            "remoted.server.connections.max",
+            remoted::http::metrics::METRIC_CONNECTIONS_MAX,
             [snapshot] { return static_cast<uint64_t>(snapshot().connectionsMax); },
             "Connections the listener accepts at once ('remoted.max_parallel_connections'); over it "
             "new connections wait in the backlog instead of being refused",
@@ -1697,7 +1718,7 @@ private:
 
         // A connection holds its slot from accept, BEFORE the TLS handshake, so peers that connect
         // and never speak TLS fill the ceiling above without a single request -- invisible to every
-        // request-level metric (issue #6883). These three show it: the level, and what the two
+        // request-level metric. These three show it: the level, and what the two
         // guards (the handshake deadline, the per-source cap) closed.
         m_metricsManager->registerPullMetric(
             remoted::http::metrics::METRIC_CONNECTIONS_HANDSHAKING,
@@ -1720,7 +1741,7 @@ private:
         // The served certificate's health, read from the same weak target. Expiry is the
         // monitor's: evaluated by the transport at start and every certificateStatusInterval
         // (24 h). The CA half comes from the same CaCertificateSource GET /cacerts answers from,
-        // re-read on every scrape, so it never lags the endpoint (issue #39078, H06). Double, not
+        // re-read on every scrape, so it never lags the endpoint. Double, not
         // uint64: the day count is NEGATIVE once expired, the whole point of alerting on it. Both
         // read 0 while the listener is down (the documented quiescent value), so a flat 0 on
         // ca_matches_leaf with the listener up is the mismatch signal.
@@ -1744,7 +1765,7 @@ private:
             "1 when the served certificate chains to remote.https.ca_certificate",
             "flag");
         m_metricsManager->registerPullMetric(
-            "remoted.forwarder.deferred.inflight",
+            remoted::downstream::METRIC_FWD_DEFERRED_INFLIGHT,
             [limiter]
             {
                 const auto l = limiter();
@@ -1753,7 +1774,7 @@ private:
             "Requests currently parked awaiting a downstream service",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.forwarder.deferred.capacity",
+            remoted::downstream::METRIC_FWD_DEFERRED_CAPACITY,
             [limiter]
             {
                 const auto l = limiter();
@@ -1763,7 +1784,7 @@ private:
             "stopped)",
             "requests");
         m_metricsManager->registerPullMetric(
-            "remoted.forwarder.deferred.rejected.total",
+            remoted::downstream::METRIC_FWD_DEFERRED_REJECTED_TOTAL,
             [limiter]
             {
                 const auto l = limiter();

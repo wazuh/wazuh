@@ -193,7 +193,7 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
-| `-D <dir>` | Accepted, but does not change the working directory: the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
+| `-D <dir>` | Accepted but ignored (`-h`: `Accepted but ignored: the daemon always runs from /var/wazuh-manager.`): the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
 | `-p <port>` | Listening port. Overrides [`port`](configuration.md#port). Not range-checked: `0` or a non-numeric value is rejected (`Invalid port: <value>`), but a value above `65535` wraps. | `1515` |
 | `-P` | Require the shared enrollment password. Overrides [`use_password`](configuration.md#use_password), but can only turn it on. | off |
 | `-c <suites>` | TLS 1.3 cipher suites. Overrides [`ciphers`](configuration.md#ciphers); validated the same way. | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |

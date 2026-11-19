@@ -54,14 +54,18 @@ printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f inde
 | `-k <key>` | Key name. Required |
 | `-v <value>` | Value (inline) |
 | `-vp <path>` | Value read from the first line of a file (opened before the tool switches user, so a root-only file works) |
-| (stdin) | When neither `-v` nor `-vp` is given, the value is the first line of standard input; an empty line is an error |
-| `-g` | Print the stored value instead of writing one; exits 1 when the key is not set or empty. Cannot be combined with `-v`/`-vp` |
-| `-h` | Print the usage |
+| (stdin) | When neither `-v` nor `-vp` is given, the value is the first line of standard input; an empty line is an error (`Error reading from stdin.`) |
+| `-g` | Print the stored value instead of writing one; exits 1 when the key is not set or empty. Cannot be combined with `-v`/`-vp` (`-g does not take a value.`) |
+| `-h` | Print the usage and exit 0 |
 
-The tool exits 0 on success and 1 otherwise. An error is printed to standard error (and, for an
-argument error, and also for an error reading the value from a file or from standard input (`Error opening file.`, `Error reading file.`, `Error reading from stdin.`), the usage to standard output); any argument not in the table is refused as
-`Unknown option: <argument>` before the keystore is opened. The one silent exit 1 is `-g` on a key that is not
-set or is empty: that is an answer, not an error, so nothing is printed. There is no delete
+A missing `-f` or `-k` is refused as `Switch value: <option> not found.`, an empty value (`-v ''`) as
+`Switch value: <option> is empty.`, and both `-v` and `-vp` as `Invalid arguments.`. The value after `-f`, `-k`, `-v` or `-vp` is
+always taken as that value, so a value may start with `-`. The tool exits 0 on success
+and 1 otherwise. An error is printed to standard error; an argument error, or an error reading the
+value (`Error opening file.`, `Error reading file.`, `Error reading from stdin.`), also prints the usage
+to standard output. Any argument not in the table is refused as `Unknown option: <argument>` before the
+keystore is opened. The one silent exit 1 is `-g` on a key that is not set or is empty: that is an
+answer, not an error, so nothing is printed. There is no delete
 operation; the resolver's `--clear` mode empties the whole `queue/keystore/` directory instead.
 
 The C++ components read the credentials once per process (`wazuh-manager-modulesd`,

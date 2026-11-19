@@ -143,7 +143,7 @@ typedef enum wdb_backup_db {
 } wdb_backup_db ;
 #include "wdb_pool.h"
 
-extern char *schema_global_sql;
+extern const char *schema_global_sql;
 
 /**
  * @brief pointer to function for any transaction
@@ -474,7 +474,7 @@ int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the set-agent-credentials request (re-enrollment, issue #38993):
+ * @brief Function to parse the set-agent-credentials request (re-enrollment):
  *        {"id":N,"name":"...","register_ip":"...","internal_key":"...","reenroll_secret":"..."},
  *        the five fields mandatory.
  *
@@ -848,7 +848,7 @@ int wdb_enable_foreign_keys(sqlite3 *db);
  * @param [in] ip The agent IP address
  * @param [in] register_ip The agent registration IP address
  * @param [in] internal_key The agent key
- * @param [in] reenroll_secret The agent's re-enrollment secret (64 hex chars, issue #38993), or NULL when
+ * @param [in] reenroll_secret The agent's re-enrollment secret (64 hex chars), or NULL when
  *             the record comes from a path that has none (client.keys mirroring, legacy 1515).
  * @param [in] group The agent group
  * @param [in] date_add The agent addition date.
@@ -900,7 +900,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char *sync_status);
 
 /**
- * @brief Function to rotate an agent's credentials in place (re-enrollment, issue #38993): its name,
+ * @brief Function to rotate an agent's credentials in place (re-enrollment): its name,
  *        registration IP, key and re-enrollment secret are replaced; the row -- and with it the id,
  *        date_add and every other column -- stays. The counterpart of insert-agent for an agent that
  *        already exists.
@@ -1415,14 +1415,15 @@ void wdbcom_dispatch(char* request, char* output);
 /**
  * @brief Set the synchronous mode of the SQLite database session to NORMAL.
  *
- * Used by global.db, and the mode it has always run in. That database takes a commit per agent
- * keepalive, so the fsync FULL performs on each one is the dominant write cost; NORMAL skips it.
+ * Used by global.db, and the mode it has always run in. Keepalive writes keep its deferred
+ * transaction committing every commit_time_min/max, so the fsync FULL performs on each commit is
+ * the dominant write cost; NORMAL skips it.
  *
  * The trade is real rather than free: global.db uses SQLite's default rollback journal, NOT WAL,
  * and SQLite documents a small chance of corruption on power loss at this setting. It is accepted
- * here because the contents are reconstructible -- agents re-report their state on reconnect --
- * which is not true of every database, so this is not a default to copy without asking whether
- * that holds.
+ * here because most of the contents are reconstructible -- agents re-report their state on
+ * reconnect -- though not all (reenroll_secret is stored only here), and that is not true of every
+ * database, so this is not a default to copy without asking whether it holds.
  *
  * @param[in] wdb The database structure.
  * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.

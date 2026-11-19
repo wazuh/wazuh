@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <chrono>
 #include <memory>
 
 #include "builders/baseBuilders_test.hpp"
@@ -490,6 +491,131 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     auto result = operation(event);
     ASSERT_TRUE(result.success());
     ASSERT_EQ(*result.payload(), *event);
+}
+
+// A placeholder whose field is missing (or not a string) fails the operation with the documented trace; the index
+// name is never used as a format string (a '${field}' in it used to throw "argument not found").
+TEST_F(IndexerOutputOperationTest, missing_field_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.missing}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+
+    for (const auto* messageStr : {R"({"wazuh":{"integration":{"category":"applications"}}})",
+                                   R"({"wazuh":{"integration":{"category":"applications"},"missing":1}})"})
+    {
+        auto event = std::make_shared<json::Json>(messageStr);
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success());
+        EXPECT_EQ(result.trace(),
+                  "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.integration.category}-${wazuh.missing}) -> "
+                  "Couldn't get field ${wazuh.missing} from event");
+    }
+}
+
+TEST_F(IndexerOutputOperationTest, too_long_index_name_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.name}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    // 16 (prefix) + 239 = 255 characters: indexed
+    const std::string longest(239, 'a');
+    auto event = std::make_shared<json::Json>("{}");
+    event->setString(longest, "/wazuh/name");
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-" + longest, ::testing::_));
+    EXPECT_TRUE(operation(event).success());
+
+    // 256 characters: not indexed
+    const std::string tooLongName = "wazuh-events-v5-" + longest + "b";
+    event->setString(longest + "b", "/wazuh/name");
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    base::result::Result<base::Event> result;
+    ASSERT_NO_THROW(result = operation(event));
+    EXPECT_FALSE(result.success());
+    EXPECT_EQ(result.trace(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Index name '" + tooLongName
+                  + "' exceeds 255 characters limit");
+}
+
+// Outside test mode the failure carries no trace and nothing throws, however many events fail
+TEST_F(IndexerOutputOperationTest, missing_field_fails_without_trace_outside_test_mode)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.missing}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    for (int i = 0; i < 3; ++i)
+    {
+        auto event = std::make_shared<json::Json>(messageStr.c_str());
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success());
+        EXPECT_TRUE(result.trace().empty());
+    }
+}
+
+// The warning of one output: the first failure is reported, the following ones only once per window, and each
+// report carries how many were suppressed since the previous one.
+TEST(NotIndexedLogThrottleTest, reports_first_then_once_per_window_with_suppressed_count)
+{
+    NotIndexedLogThrottle throttle;
+    const auto start = NotIndexedLogThrottle::Clock::now();
+    const auto window = NotIndexedLogThrottle::WINDOW;
+
+    // First occurrence: reported, nothing suppressed before it
+    auto reported = throttle.record(start);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 0U);
+
+    // Inside the window: suppressed, up to its last instant
+    EXPECT_FALSE(throttle.record(start).has_value());
+    EXPECT_FALSE(throttle.record(start + std::chrono::seconds(1)).has_value());
+    EXPECT_FALSE(throttle.record(start + window - std::chrono::milliseconds(1)).has_value());
+
+    // Window elapsed: reported with the three suppressed ones
+    reported = throttle.record(start + window);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 3U);
+
+    // The count restarts, and the window is measured from the last report
+    EXPECT_FALSE(throttle.record(start + window + std::chrono::seconds(1)).has_value());
+    reported = throttle.record(start + window + window);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 1U);
+
+    // A quiet window reports no suppressed events
+    reported = throttle.record(start + window * 4);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 0U);
+}
+
+// Each output has its own throttle: one being silenced does not silence another
+TEST(NotIndexedLogThrottleTest, instances_are_independent)
+{
+    NotIndexedLogThrottle first;
+    NotIndexedLogThrottle second;
+    const auto now = NotIndexedLogThrottle::Clock::now();
+
+    EXPECT_TRUE(first.record(now).has_value());
+    EXPECT_FALSE(first.record(now).has_value());
+    EXPECT_TRUE(second.record(now).has_value());
 }
 
 } // namespace indexeroutputtest

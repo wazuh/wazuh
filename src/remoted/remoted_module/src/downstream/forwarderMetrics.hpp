@@ -49,6 +49,10 @@ namespace remoted::downstream
     constexpr auto METRIC_FWD_ERROR_TRANSPORT {"remoted.forwarder.error.transport"};
     constexpr auto METRIC_FWD_ERROR_PROTOCOL {"remoted.forwarder.error.protocol"};
     constexpr auto METRIC_FWD_ERROR_RESPONSE_TOO_LARGE {"remoted.forwarder.error.response_too_large"};
+    // The DeferredWorkLimiter pulls, registered by the facade (registerPublicTransportDiagnostics()).
+    constexpr auto METRIC_FWD_DEFERRED_INFLIGHT {"remoted.forwarder.deferred.inflight"};
+    constexpr auto METRIC_FWD_DEFERRED_CAPACITY {"remoted.forwarder.deferred.capacity"};
+    constexpr auto METRIC_FWD_DEFERRED_REJECTED_TOTAL {"remoted.forwarder.deferred.rejected.total"};
 
     /// Number of DownstreamError enumerators (None included) -- sizes the indexed counter array.
     constexpr std::size_t kDownstreamErrorCount = static_cast<std::size_t>(DownstreamError::ResponseTooLarge) + 1;

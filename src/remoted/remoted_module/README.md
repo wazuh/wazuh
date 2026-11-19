@@ -25,6 +25,7 @@ remoted_module/
 │   │   ├── authMiddleware.hpp/.cpp     # AuthMiddleware::authenticate() + publicErrorFor() (the 401 classes)
 │   │   ├── iAgentKeystore.hpp          # key-lookup interface
 │   │   ├── keystore.hpp/.cpp           # client.keys reader + hot-reload watcher
+│   │   ├── keystoreMetrics.hpp         # remoted.auth.keystore.* name catalog (pulls the facade registers)
 │   │   ├── addressRule.hpp/.cpp        # the client.keys ip column as an address rule
 │   │   ├── passwordKeySource.hpp/.cpp  # /etc/wazuh-manager/authd.pass -> HKDF key of the shared-key wazuh-enroll+jwt, see Agent enrollment below
 │   │   └── tokenKeySource.hpp/.cpp     # /etc/wazuh-manager/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
@@ -32,6 +33,7 @@ remoted_module/
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
 │   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency),
+│   │                               #   adminServerMetrics.hpp (remoted.admin.server.* name catalog),
 │   │                               #   installPaths.hpp (socket and data paths, relative to the home;
 │   │                               #   the shared group directory, absolute under /etc/wazuh-manager)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
@@ -46,8 +48,8 @@ remoted_module/
 │   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint;
 │   │                               #   the full file list is in the sub-layer's own tree below
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway + one file
-│   │                               #   pair per route (full tree under "Endpoints" below); endpoint.hpp
-│   │                               #   also carries the remoted.auth.reject.* catalog
+│   │                               #   pair per route (full tree under "Endpoints" below);
+│   │                               #   authRejectMetrics.hpp = remoted.auth.reject.* catalog
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
 │   │                               #   metrics.hpp = remoted.control.* catalog
 │   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd,
@@ -121,6 +123,8 @@ src/http_server/
 │                            #   per-source handshake cap (RESTinio-free, unit-tested without a socket)
 ├── handshakeMetrics.hpp     # names of the handshake-guard pulls (remoted.server.connections.handshaking,
 │                            #   remoted.server.handshake.*)
+├── transportMetrics.hpp     # names of the backpressure pulls (remoted.server.budget.*,
+│                            #   remoted.server.connections.{open,max})
 ├── connectionIdSource.hpp   # atomic ids for the listener's connections (RESTinio-free); handed to RESTinio
 │                            #   by the connection_factory_t specialization in RestinioHttpServer.cpp
 ├── guardedTlsSocket.hpp     # PRIVATE to the .cpp: RESTinio's TLS socket + a deadline on the handshake
@@ -430,8 +434,9 @@ src/endpoints/
 ├── endpoint.hpp/.cpp        # shared contract: type aliases (Method/HttpResponse/IHttpResponder/
 │                            #   AuthenticatedRequest) + the async AuthenticatedHandler typedef,
 │                            #   errorResponseFor(AuthError, agentContext) (the {"error","code"} shape;
-│                            #   logs and counts every rejection) and the remoted.auth.reject.* catalog
-│                            #   (AuthRejectMetrics, makeAuthRejectMetrics(), installAuthRejectMetrics())
+│                            #   logs and counts every rejection) and installAuthRejectMetrics(); includes
+│                            #   authRejectMetrics.hpp, so every endpoint still reaches the catalog
+├── authRejectMetrics.hpp    # remoted.auth.reject.* name catalog (AuthRejectMetrics, makeAuthRejectMetrics())
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
 │                            #   to the endpoint handler. Authentication only — body decoding is an
 │                            #   injected IBodyDecoder it knows nothing about
@@ -2263,8 +2268,8 @@ token. The JSON pre-parse (`StrictJsonObject`) is ASCII-only and length-bounded 
 it keeps rapidjson's UTF-8 validation — which consumes continuation bytes without checking for the end
 of a C string — from ever running over a decoded segment (the ASAN CI finding on the fuzz test).
 Metrics: every client-visible rejection is counted with its pre-collapse cause as
-`remoted.auth.reject.*` (catalog in `endpoints/endpoint.hpp`, counted at `errorResponseFor()`),
-and the keystore's health as the `remoted.auth.keystore.*` pulls — see the
+`remoted.auth.reject.*` (catalog in `endpoints/authRejectMetrics.hpp`, counted at `errorResponseFor()`),
+and the keystore's health as the `remoted.auth.keystore.*` pulls (names in `auth/keystoreMetrics.hpp`) — see the
 [Metrics catalog](#metrics-catalog). `authTypes.hpp` holds the shared contract
 (`AuthenticatedRequest`/`Payload`/`AuthError`/`toAuthError`/`publicErrorFor`/`AuthConfig`) and
 `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`, `keystore`, `addressRule` are the
@@ -2490,6 +2495,30 @@ into structs, selected by `switch` — the hot path never formats a name); updat
 relaxed atomic op (histogram `observe()` ≈ 2×, and never on a transport I/O thread); a
 default-constructed struct is a null object that counts nothing; pull metrics read weak
 targets repointed per start and quiesce to 0 after teardown (`IManager` has no unregister).
+
+**Where the names live.** Every name below is a `constexpr` literal in its family's catalog header —
+never spelled, and never formatted, at a call site. That includes the pulls the facade registers
+(`register*Diagnostics()` in `remotedModuleFacade.hpp`), which reference the constants:
+
+| Header | Names |
+|---|---|
+| `control/metrics.hpp` | `remoted.control.*`, `remoted.control.registry.agents` |
+| `scanvd/scanVdMetrics.hpp` | `remoted.scanvd.*` |
+| `endpoints/authRejectMetrics.hpp` | `remoted.auth.reject.*` |
+| `auth/keystoreMetrics.hpp` | `remoted.auth.keystore.*` |
+| `downstream/forwarderMetrics.hpp` | `remoted.forwarder.*`, `remoted.forwarder.deferred.*` |
+| `endpoints/downloadMetrics.hpp` | `remoted.download.*` |
+| `endpoints/cacertsMetrics.hpp` | `remoted.cacerts.*`, `remoted.cacerts.rate_limit.*`, `remoted.server.tls.*` |
+| `enrollment/metrics.hpp` | `remoted.enroll.*` and its `token.*`, `reenroll.*`, `token_store.*`, `authd.queue.*`, `rate_limit.*`, `unverified.rate_limit.*` subsets |
+| `http_server/transportMetrics.hpp` | `remoted.server.budget.*`, `remoted.server.connections.{open,max}` |
+| `http_server/handshakeMetrics.hpp` | `remoted.server.connections.handshaking`, `remoted.server.handshake.*` |
+| `common/adminServerMetrics.hpp` | `remoted.admin.server.*` |
+| `common/requestOutcomeMetrics.hpp` | `remoted.http.<endpoint>.*` — the one family built from pieces (`HTTP_METRIC_PREFIX` + endpoint + cell), formatted once per endpoint inside `make()` at start, never per request |
+
+The three rate-limit buckets are a closed set, so each of their nine names is its own constant and
+`registerRateLimitDiagnostics()` passes them whole; a new bucket owes three new constants, not a new
+endpoint string. A rename here is a rename everywhere downstream (the stats projection above, the
+operator page, the benchmark scrapers), so keep the literals byte-identical when moving one.
 
 The operator-facing reference — every metric with the configuration setting it helps size,
 linked into the settings' own documentation — is the official docs page:

@@ -317,6 +317,13 @@ set_target_properties(
 
 # Add compile definitions
 target_compile_definitions(wazuh PRIVATE ARGV0="wazuh")
+# debug_op.c gives a log file it creates as root to GROUPGLOBAL: the service group of the product this
+# tree builds (the defs.h fallback is the agent's).
+if(IS_AGENT)
+  target_compile_definitions(wazuh PRIVATE GROUPGLOBAL="wazuh")
+else()
+  target_compile_definitions(wazuh PRIVATE GROUPGLOBAL="wazuh-manager")
+endif()
 
 if(OS_BIG_ENDIAN)
   add_definitions(-DOS_BIG_ENDIAN)

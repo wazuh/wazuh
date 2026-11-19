@@ -21,6 +21,10 @@
 #define STATIC static
 #endif
 
+/* SQLITE_BUSY retry in wdb_prepare()/wdb_step(): up to MAX_ATTEMPTS retries, BUSY_SLEEP milliseconds
+ * apart, so a database another connection keeps locked is given up on after about one second
+ * (MAX_ATTEMPTS * BUSY_SLEEP ms) instead of after a burst of back-to-back retries. The caller holds
+ * the handle's mutex for that whole wait, so keep the product small. */
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
@@ -177,8 +181,9 @@ wdb_t * wdb_open_global() {
         wdb_enable_foreign_keys(wdb->db);
 
         // NORMAL rather than SQLite's FULL default, which is what this database has always used:
-        // a commit per agent keepalive makes FULL's fsync the dominant write cost, and the state
-        // it protects is re-reported by the agents on reconnect. See wdb_set_synchronous_normal()
+        // keepalives keep the deferred transaction committing every commit_time_min/max, which
+        // makes FULL's fsync the dominant write cost; most of the state it protects is re-reported
+        // by the agents on reconnect (not all: reenroll_secret lives only here). See wdb_set_synchronous_normal()
         // for what that trade actually costs -- this database is not in WAL.
         wdb_set_synchronous_normal(wdb);
     }
@@ -221,6 +226,7 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
             mdebug1("Maximum attempts exceeded for sqlite3_prepare_v2()");
             return -1;
         }
+        w_time_delay(BUSY_SLEEP);
     }
 
     return result;
@@ -236,6 +242,7 @@ int wdb_step(sqlite3_stmt *stmt) {
             mdebug1("Maximum attempts exceeded for sqlite3_step()");
             return -1;
         }
+        w_time_delay(BUSY_SLEEP);
     }
 
     return result;
@@ -535,7 +542,7 @@ void wdb_commit_old() {
             wdb_commit2(node);
             gettime(&ts_end);
 
-            mdebug2("Agent '%s' database commited. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
+            mdebug2("Database '%s' committed. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
         }
 
         wdb_pool_leave(node);

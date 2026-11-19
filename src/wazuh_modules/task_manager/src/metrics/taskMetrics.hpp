@@ -15,12 +15,13 @@
 
 #include <wazuh_metrics/iManager.hpp>
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
+#include <vector>
 
 namespace task_manager::metrics
 {
@@ -34,20 +35,32 @@ namespace task_manager::metrics
      * queue.
      *
      * Resolving a metric costs a shared lock and a hash lookup, so everything is resolved in the
-     * constructor and on first use per task type, never in a worker loop.
+     * constructor and no name is ever formatted per event. The per-type families -- created,
+     * retired and handler outcome -- are pre-created for the closed set: every registered type plus
+     * the one `unknown` bucket, times every member of the enum each family is keyed on. The maps
+     * holding them are filled in the constructor and never modified, so they are read without a
+     * lock.
      */
     class TaskMetrics
     {
     public:
-        explicit TaskMetrics(std::shared_ptr<wazuh::metrics::IManager> manager);
+        /**
+         * @param manager The module's metrics manager.
+         * @param registeredTypes Every type the registry knows; any other type is counted under
+         *        `unknown` by every per-type family.
+         * @throws std::invalid_argument if a registered type is named like the `unknown` bucket.
+         */
+        TaskMetrics(std::shared_ptr<wazuh::metrics::IManager> manager, const std::vector<std::string>& registeredTypes);
 
-        /// @brief A manager task reached a terminal state.
+        /// @brief A manager task reached a terminal state. A non-terminal status is not counted:
+        ///        no metric exists for it.
         void taskRetired(const std::string& taskType, TaskStatus status);
 
         /// @brief A manager task was claimed and its handler ran, taking `micros`.
         void handlerRan(const std::string& taskType, Outcome outcome, std::uint64_t micros);
 
-        /// @brief A manager task row was created, coalesced, collided or refused.
+        /// @brief A manager task row was created, coalesced, collided or refused. A type that was not
+        ///        registered at construction is counted under the `unknown` bucket.
         void taskCreated(const std::string& taskType, CreateResult result);
 
         /// @brief An agent task was created / handed out.
@@ -73,16 +86,26 @@ namespace task_manager::metrics
         }
 
     private:
-        /// @brief Counters are per (task type, outcome), so they cannot all be resolved up front:
-        ///        the type set is known at construction but the cross product is large and mostly
-        ///        unused. Resolved on first use and cached behind this mutex, which is never taken
-        ///        on a path that matters -- one lookup per (type, outcome) pair, ever.
-        std::shared_ptr<wazuh::metrics::ICounter> counterFor(const std::string& name);
+        using CounterPtr = std::shared_ptr<wazuh::metrics::ICounter>;
+
+        /// @brief Every per-type counter of one task type, each array indexed by its enum.
+        struct TypeCounters
+        {
+            std::array<CounterPtr, 4> created; ///< By CreateResult.
+            std::array<CounterPtr, 4> retired; ///< By terminal TaskStatus, in TERMINAL_STATUSES order.
+            std::array<CounterPtr, 7> outcome; ///< By Outcome.
+        };
+
+        TypeCounters createTypeCounters(std::string_view taskType);
+
+        /// @brief The type's counters, or the `unknown` bucket's for a type not registered.
+        const TypeCounters& countersFor(std::string_view taskType) const;
 
         std::shared_ptr<wazuh::metrics::IManager> m_manager;
 
-        std::mutex m_mutex;
-        std::map<std::string, std::shared_ptr<wazuh::metrics::ICounter>, std::less<>> m_counters;
+        /// @brief Filled in the constructor and never modified afterwards, so read without a lock.
+        std::map<std::string, TypeCounters, std::less<>> m_byType;
+        TypeCounters m_unknownType;
 
         std::shared_ptr<wazuh::metrics::IHistogram> m_handlerDuration;
         std::shared_ptr<wazuh::metrics::IGaugeInt> m_busyWorkers;
