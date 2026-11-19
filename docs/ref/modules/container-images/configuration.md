@@ -172,8 +172,8 @@ A public repository needs no credential. A private one is read with a user name 
 The values are deposited beforehand, with the value read from standard input so it does not appear in the shell history or in the process list:
 
 ```
-echo "owner" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ghcr_user
-echo "$GHCR_TOKEN" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ghcr_token
+echo "owner" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ghcr_user
+echo "$GHCR_TOKEN" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ghcr_token
 ```
 
 The paths above are those of a Linux agent. On a macOS agent the installation directory is `/Library/Ossec`. In both cases the tool locates the installation from its own path, and `WAZUH_AGENT_HOME` overrides it.
@@ -229,11 +229,11 @@ A private ECR repository is read with an AWS access key. The module uses the key
 The values are deposited beforehand with the agent keystore, reading them from standard input so they do not appear in the shell history or in the process list:
 
 ```
-echo "$AWS_ACCESS_KEY_ID" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ecr_key_id
-echo "$AWS_SECRET_ACCESS_KEY" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ecr_secret
+echo "$AWS_ACCESS_KEY_ID" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ecr_key_id
+echo "$AWS_SECRET_ACCESS_KEY" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ecr_secret
 ```
 
-The command is `wazuh-agent-keystore`, and the family is always `container_images`. Do not pass the value with `-v`: an argument is visible in the shell history and in the process list while the command runs.
+The command is `wazuh-agent-keystore`, and the family is always `container_security`. Do not pass the value with `-v`: an argument is visible in the shell history and in the process list while the command runs.
 
 **Region.** A private host names its own region (`us-east-1` in the example above), and that is used when `<region>` is absent. When `<region>` is configured it overrides the host's: the token is requested from the configured region and one debug line names both regions when they differ. A configured region that is not a valid AWS region skips the entry with a warning. A `<region>` inside an entry for a host that is not an Amazon one, `ghcr.io` for instance, is reported and ignored, and the entry is otherwise applied. When the registry then refuses the token, the warning says so plainly and no second token is requested, because one from the same region would be refused the same way:
 

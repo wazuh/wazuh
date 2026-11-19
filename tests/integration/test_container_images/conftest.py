@@ -576,7 +576,7 @@ def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_con
         hosts.write_text(original_hosts)
 
         for key in stored:
-            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                             '-k', key, '-d'], capture_output=True)
 
 
@@ -600,7 +600,7 @@ def _store_case_credential(kind: str, stored: list) -> None:
     passkey = 'a-secret-token' if kind == 'valid' else 'not-the-token'
 
     for key, value in (('ghcr_user', 'an-owner'), ('ghcr_token', passkey)):
-        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                         '-k', key], input=value, text=True, check=True, capture_output=True)
         stored.append(key)
 
@@ -645,7 +645,7 @@ def _store_ecr_credential(kind: str, stored: list) -> None:
         return
 
     for key, value in zip(ECR_KEYS, pairs[kind]):
-        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                         '-k', key], input=value, text=True, check=True, capture_output=True)
         stored.append(key)
 
@@ -701,7 +701,7 @@ def local_ecr_registry(request: pytest.FixtureRequest, test_metadata: dict, test
         hosts.write_text(original_hosts)
 
         for key in stored:
-            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                             '-k', key, '-d'], capture_output=True)
 
         shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)

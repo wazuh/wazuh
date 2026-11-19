@@ -28,7 +28,7 @@ using namespace containerimages;
 
 namespace
 {
-    constexpr auto FAMILY {"container_images"};
+    constexpr auto FAMILY {"container_security"};
     constexpr auto USER_KEY {"ghcr_user"};
     constexpr auto TOKEN_KEY {"ghcr_token"};
     constexpr auto TOKEN_VALUE {"ghp_averysecrettokenvalue0123456789"};
@@ -273,10 +273,10 @@ TEST_F(CredentialStoreTest, ForeignShapesInTheStoreAreTolerated)
     const AgentCredentialStore store {m_path.string()};
 
     // A family that is not an object, and a key that is not a string. Neither may throw.
-    writeRaw(m_path, R"({"container_images": "not-an-object"})");
+    writeRaw(m_path, R"({"container_security": "not-an-object"})");
     EXPECT_FALSE(store.get(FAMILY, TOKEN_KEY).has_value());
 
-    writeRaw(m_path, R"({"container_images": {"ghcr_token": 42}})");
+    writeRaw(m_path, R"({"container_security": {"ghcr_token": 42}})");
     EXPECT_FALSE(store.get(FAMILY, TOKEN_KEY).has_value());
 }
 
@@ -284,14 +284,14 @@ TEST_F(CredentialStoreTest, NonHexAndTruncatedValuesYieldNoCredential)
 {
     const AgentCredentialStore store {m_path.string()};
 
-    writeRaw(m_path, R"({"container_images": {"ghcr_token": "not hex at all"}})");
+    writeRaw(m_path, R"({"container_security": {"ghcr_token": "not hex at all"}})");
     EXPECT_FALSE(store.get(FAMILY, TOKEN_KEY).has_value());
 
-    writeRaw(m_path, R"({"container_images": {"ghcr_token": "abc"}})");
+    writeRaw(m_path, R"({"container_security": {"ghcr_token": "abc"}})");
     EXPECT_FALSE(store.get(FAMILY, TOKEN_KEY).has_value());
 
     // Well-formed hex, but far too short to hold a key, an IV and a block.
-    writeRaw(m_path, R"({"container_images": {"ghcr_token": "aabbccdd"}})");
+    writeRaw(m_path, R"({"container_security": {"ghcr_token": "aabbccdd"}})");
     EXPECT_FALSE(store.get(FAMILY, TOKEN_KEY).has_value());
 }
 
