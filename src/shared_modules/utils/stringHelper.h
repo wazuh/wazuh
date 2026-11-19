@@ -606,6 +606,29 @@ namespace Utils
 
         return !str.empty() && it == str.end();
     }
+
+    /**
+     * @brief Returns true when the string is a pure dotted-numeric version, such as "157.0" or "16.0.35907.0.0".
+     *
+     * @param s String to check.
+     * @return true If the string has only digits and dots, starts with a digit and doesn't end with a dot.
+     * @return false Otherwise.
+     */
+    static bool isMultipartNumeric(std::string_view s)
+    {
+        if (s.empty() || !std::isdigit(static_cast<unsigned char>(s[0])) || s.back() == '.')
+        {
+            return false;
+        }
+        for (unsigned char c : s)
+        {
+            if (!std::isdigit(c) && c != '.')
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 #endif
 
 } // namespace Utils
