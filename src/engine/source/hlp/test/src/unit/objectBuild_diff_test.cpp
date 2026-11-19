@@ -439,15 +439,26 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
     {"windows", xmlWinModule},
 };
 
+/// A JSON container that xmlToJson writes into, for the nesting cap.
+struct Container
+{
+    std::size_t depth {1};  ///< Containers open at this one, itself included: 1 for the root of the document.
+    std::size_t height {1}; ///< Depth of the deepest container written inside it, itself included.
+    /// Height of the first element written under each name: a second sibling moves it one level down, into the array.
+    std::unordered_map<std::string_view, std::size_t> firstSiblings {};
+};
+
 /**
  * @brief Converts the element children of @p docXml into @p docJson, recursing into their children.
  *
- * @param depth Nesting level of the elements it walks: 1 for the children of the document. Every element counts,
- * the Event skipped by the windows module included.
- * @return false, leaving @p docJson partially converted, if an element is nested deeper than json::Json::MAX_DEPTH.
+ * @param container The JSON container at @p path. An element adds its own container and a repeated sibling two (the
+ * array and its element); the children of an element the module processes (the windows Event and Data) are written
+ * into @p container.
+ * @return false, leaving @p docJson partially converted, if the document would nest more than json::Json::MAX_DEPTH
+ * containers.
  */
 bool xmlToJson(
-    pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod, const std::string& path, std::size_t depth)
+    pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod, const std::string& path, Container& container)
 {
     // TODO: add array support
     // Iterate over the xml generating the corresponding json
@@ -459,11 +470,6 @@ bool xmlToJson(
             continue;
         }
 
-        if (depth > json::Json::MAX_DEPTH)
-        {
-            return false;
-        }
-
         std::string localPath {path};
 
         // Check if we have special rules and if are applied
@@ -473,15 +479,38 @@ bool xmlToJson(
             processed = mod(node, docJson, localPath);
         }
 
+        // The container the children are written into: the element's own, or the current one if the module processed it
+        Container element {};
+        auto* childContainer = &container;
+
         if (!processed)
         {
             localPath += "/" + std::string {node.name()};
 
-            // Check if the element already exists
-            if (docJson.exists(localPath))
+            // An element that already exists is a repeated sibling: it is written as an element of an array
+            const bool isElementOfArray = docJson.exists(localPath);
+            element.depth = container.depth + (isElementOfArray ? 2 : 1);
+            element.height = element.depth;
+            if (element.depth > json::Json::MAX_DEPTH)
+            {
+                return false;
+            }
+            childContainer = &element;
+
+            if (isElementOfArray)
             {
                 if (docJson.isObject(localPath))
                 {
+                    // The first sibling, already written, moves one level down into the array
+                    const auto first = container.firstSiblings.find(node.name());
+                    const auto moved =
+                        (first != container.firstSiblings.end() ? first->second : container.depth + 1) + 1;
+                    if (moved > json::Json::MAX_DEPTH)
+                    {
+                        return false;
+                    }
+                    container.height = std::max(container.height, moved);
+
                     json::Json tmp = docJson.getJson(localPath).value();
                     docJson.setArray(localPath);
                     docJson.appendJson(tmp, localPath);
@@ -510,10 +539,16 @@ bool xmlToJson(
             }
         }
 
-        // Process children
-        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, localPath, depth + 1))
+        // Process children: localPath is the element itself, for a repeated sibling its own element of the array
+        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, localPath, *childContainer))
         {
             return false;
+        }
+
+        if (!processed)
+        {
+            container.height = std::max(container.height, element.height);
+            container.firstSiblings.try_emplace(node.name(), element.height);
         }
     }
 
@@ -545,7 +580,8 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
             }
             return base::Error {};
         }
-        if (!xmlToJson(xmlDoc, jParsed, moduleFn, "", 1))
+        Container root {};
+        if (!xmlToJson(xmlDoc, jParsed, moduleFn, "", root))
         {
             if (enableTrace)
             {
@@ -1319,15 +1355,17 @@ TEST(ObjectBuildDiff, XmlDepthLimit)
         bool fails;
     };
     const std::vector<Row> rows {
-        {"MAX_DEPTH", chainXml(maxDepth), {}, false},
-        {"MAX_DEPTH + 1", chainXml(maxDepth + 1), {}, true},
-        {"MAX_DEPTH after wide siblings", wide + chainXml(maxDepth), {}, false},
-        {"MAX_DEPTH + 1 after wide siblings", wide + chainXml(maxDepth + 1), {}, true},
-        {"MAX_DEPTH, windows", chainXml(maxDepth), WINDOWS, false},
-        {"MAX_DEPTH + 1, windows", chainXml(maxDepth + 1), WINDOWS, true},
+        // The root of the document is the first container: MAX_DEPTH - 1 nested elements fill the cap
+        {"MAX_DEPTH - 1", chainXml(maxDepth - 1), {}, false},
+        {"MAX_DEPTH", chainXml(maxDepth), {}, true},
+        {"MAX_DEPTH - 1 after wide siblings", wide + chainXml(maxDepth - 1), {}, false},
+        {"MAX_DEPTH after wide siblings", wide + chainXml(maxDepth), {}, true},
+        {"MAX_DEPTH - 1, windows", chainXml(maxDepth - 1), WINDOWS, false},
+        {"MAX_DEPTH, windows", chainXml(maxDepth), WINDOWS, true},
+        // The Event skipped by windows writes nothing, so it adds no container
         {"MAX_DEPTH - 1 inside Event, windows", "<Event>" + chainXml(maxDepth - 1) + "</Event>", WINDOWS, false},
         {"MAX_DEPTH inside Event, windows", "<Event>" + chainXml(maxDepth) + "</Event>", WINDOWS, true},
-        {"MAX_DEPTH + 1 after wide siblings, windows", wide + chainXml(maxDepth + 1), WINDOWS, true},
+        {"MAX_DEPTH after wide siblings, windows", wide + chainXml(maxDepth), WINDOWS, true},
     };
 
     Tally tally;

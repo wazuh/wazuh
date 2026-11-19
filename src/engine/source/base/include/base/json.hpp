@@ -304,7 +304,8 @@ public:
      *
      * Depth 1 is the root container: a text with MAX_DEPTH nested containers parses, one with
      * MAX_DEPTH + 1 is a parse error. It is the single engine-wide nesting limit: parsers that build
-     * structure from untrusted text without rapidjson (XML element depth, paths from event keys) use it too.
+     * structure from untrusted text without rapidjson (the containers built from an XML document, paths
+     * from event keys) use it too.
      */
     static constexpr std::size_t MAX_DEPTH = 256;
 

@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -380,13 +381,16 @@ Name='IpAddress'>::1</Data><Data Name='IpPort'>0</Data></EventData>)",
                20,
                getXMLParser,
                {NAME, TARGET, {""}, {"windows"}}),
-        // One element nested deeper than json::Json::MAX_DEPTH (256); the Event skipped by windows counts
-        deepFailure(deepXml(257, "text"), {}),
-        deepFailure(deepXml(257, "text"), {"windows"}),
+        // A document nested deeper than json::Json::MAX_DEPTH (256) containers: the root of the document is the first,
+        // each element adds one, so 256 nested elements need 257; the Event skipped by windows adds none
+        deepFailure(deepXml(256, "text"), {}),
+        deepFailure(deepXml(256, "text"), {"windows"}),
         deepFailure("<Event>" + deepXml(256, "text") + "</Event>", {"windows"}),
-        // D16: an EMPTY leaf at level 257 is rejected too (the guard is on the element, not the leaf's content)
-        deepFailure(deepXml(257, "empty"), {}),
-        // D16: a windows named Data at level 257 (256 wrappers + the Data element) exceeds the limit as its own row
+        // an EMPTY leaf is rejected too (the guard is on the element, not the leaf's content)
+        deepFailure(deepXml(256, "empty"), {}),
+        // a repeated leaf costs two containers (the array and its element)
+        deepFailure(deepXml(255, "siblings"), {}),
+        // a windows named Data adds no container: below 256 elements the elements alone exceed the limit
         deepFailure(wrapXml(256, R"(<Data Name="n">v</Data>)"), {"windows"})));
 
 namespace
@@ -404,7 +408,8 @@ json::Json parseXmlEvent(const std::string& xml, const hlp::Options& options)
 
 TEST(XmlParserDepth, MaxDepthParses)
 {
-    const auto depth = json::Json::MAX_DEPTH;
+    // the root of the document is the first container, so MAX_DEPTH - 1 nested elements fill the cap
+    const auto depth = json::Json::MAX_DEPTH - 1;
     const auto leaf = TARGET + elementsPath(depth);
     const auto parent = TARGET + elementsPath(depth - 1);
     for (const hlp::Options& options : {hlp::Options {}, hlp::Options {"windows"}})
@@ -425,20 +430,131 @@ TEST(XmlParserDepth, MaxDepthParses)
         event = parseXmlEvent(deepXml(depth, "attr"), options);
         EXPECT_TRUE(event.equalsString(leaf + "/@k", "v"));
 
-        event = parseXmlEvent(deepXml(depth, "siblings"), options);
-        ASSERT_TRUE(event.isArray(leaf));
-        EXPECT_EQ(event.size(leaf), 2u);
-        EXPECT_TRUE(event.equalsString(leaf + "/0/#text", "t"));
-        EXPECT_TRUE(event.equalsString(leaf + "/1/#text", "u"));
+        // a repeated leaf costs two containers (the array and its element), so it fits one level higher
+        event = parseXmlEvent(deepXml(depth - 1, "siblings"), options);
+        ASSERT_TRUE(event.isArray(parent));
+        EXPECT_EQ(event.size(parent), 2u);
+        EXPECT_TRUE(event.equalsString(parent + "/0/#text", "t"));
+        EXPECT_TRUE(event.equalsString(parent + "/1/#text", "u"));
     }
 
-    // windows: the skipped Event is level 1, so 255 elements fit below it; a Data at level 256 is still mapped
-    auto event = parseXmlEvent("<Event>" + deepXml(depth - 1, "text") + "</Event>", {"windows"});
-    EXPECT_TRUE(event.equalsString(parent + "/#text", "t"));
+    // windows: the skipped Event writes nothing and adds no container, and neither does a named Data
+    auto event = parseXmlEvent("<Event>" + deepXml(depth, "text") + "</Event>", {"windows"});
+    EXPECT_TRUE(event.equalsString(leaf + "/#text", "t"));
     EXPECT_FALSE(event.exists(TARGET + "/Event"));
 
-    event = parseXmlEvent(wrapXml(depth - 1, R"(<Data Name="n">v</Data>)"), {"windows"});
-    EXPECT_TRUE(event.equalsString(parent + "/n", "v"));
+    event = parseXmlEvent(wrapXml(depth, R"(<Data Name="n">v</Data>)"), {"windows"});
+    EXPECT_TRUE(event.equalsString(leaf + "/n", "v"));
+}
+
+namespace
+{
+/// Containers of the deepest nesting in a serialized JSON document.
+std::size_t jsonNesting(std::string_view text)
+{
+    std::size_t depth = 0;
+    std::size_t deepest = 0;
+    bool inString = false;
+    bool escaped = false;
+    for (const char c : text)
+    {
+        if (inString)
+        {
+            if (escaped)
+            {
+                escaped = false;
+            }
+            else if (c == '\\')
+            {
+                escaped = true;
+            }
+            else if (c == '"')
+            {
+                inString = false;
+            }
+            continue;
+        }
+        if (c == '"')
+        {
+            inString = true;
+        }
+        else if (c == '{' || c == '[')
+        {
+            deepest = std::max(deepest, ++depth);
+        }
+        else if (c == '}' || c == ']')
+        {
+            --depth;
+        }
+    }
+    return deepest;
+}
+
+/// Parses @p xml, expecting a document of exactly MAX_DEPTH containers that the bounded JSON parser reads back.
+void expectFillsDepth(const std::string& xml, const hlp::Options& options)
+{
+    const auto event = parseXmlEvent(xml, options);
+    const auto parsed = event.getJson(TARGET);
+    ASSERT_TRUE(parsed.has_value());
+    const auto text = parsed->str();
+    EXPECT_EQ(jsonNesting(text), json::Json::MAX_DEPTH);
+    EXPECT_NO_THROW(json::Json {text.c_str()});
+}
+
+/// Expects the parser to reject @p xml with the depth error.
+void expectDepthError(const std::string& xml, const hlp::Options& options)
+{
+    const auto parser = getXMLParser({NAME, TARGET, {""}, options});
+    auto event = json::Json {};
+    event.setObject();
+    const auto error = hlp::parser::run(parser, xml, event, true);
+    ASSERT_TRUE(error.has_value());
+    EXPECT_NE(error->message.find(json::Json::DEPTH_ERROR_MSG), std::string::npos) << error->message;
+    EXPECT_FALSE(event.exists(TARGET));
+}
+
+/// @p levels nested levels, each one a repeated element whose second sibling holds the next level; the innermost
+/// level holds text. Each level costs two containers (the array and its element).
+std::string repeatedLevelsXml(std::size_t levels)
+{
+    std::string xml;
+    for (std::size_t level = 1; level <= levels; ++level)
+    {
+        xml += fmt::format("<e{0}/><e{0}>", level);
+    }
+    xml += "x";
+    for (auto level = levels; level > 0; --level)
+    {
+        xml += fmt::format("</e{}>", level);
+    }
+    return xml;
+}
+} // namespace
+
+// The cap counts the containers of the document built, not the XML elements read: repeated siblings at every level
+// and a first sibling moved into its array when the second one appears.
+TEST(XmlParserDepth, RepeatedSiblingsCountTheirArray)
+{
+    const auto maxDepth = json::Json::MAX_DEPTH;
+    // root + w + two containers per repeated level
+    const auto levels = (maxDepth - 2) / 2;
+    // root + r + a + the chain below the first a: the second a moves the first one level down, into the array
+    const auto chain = maxDepth - 3;
+    for (const hlp::Options& options : {hlp::Options {}, hlp::Options {"windows"}})
+    {
+        SCOPED_TRACE(options.empty() ? "default" : options[0]);
+
+        expectFillsDepth("<w>" + repeatedLevelsXml(levels) + "</w>", options);
+        expectDepthError("<w>" + repeatedLevelsXml(levels + 1) + "</w>", options);
+
+        expectFillsDepth("<r><a>" + wrapXml(chain - 1, "x") + "</a><a/></r>", options);
+        expectDepthError("<r><a>" + wrapXml(chain, "x") + "</a><a/></r>", options);
+    }
+
+    // windows: the children of the skipped Event and its siblings share one object, so a sibling after the Event
+    // moves the element written inside it
+    expectFillsDepth("<Event><a>" + wrapXml(maxDepth - 3, "x") + "</a></Event><a/>", {"windows"});
+    expectDepthError("<Event><a>" + wrapXml(maxDepth - 2, "x") + "</a></Event><a/>", {"windows"});
 }
 
 TEST(XmlParserDepth, TraceNamesLimit)
@@ -684,6 +800,28 @@ TEST(XmlParserSiblings, WindowsElementsWithChildren)
          R"({"UserData":{"Item":[{"Name":{"#text":"a"}},{"Name":{"#text":"b"}}]}})"},
         {R"(<Event><UserData><Item><Data Name="n">1</Data><Sub>x</Sub></Item><Item><Data Name="n">2</Data></Item></UserData></Event>)",
          R"({"UserData":{"Item":[{"n":"1","Sub":{"#text":"x"}},{"n":"2"}]}})"},
+    };
+    for (const auto& row : rows)
+    {
+        expectParsed(row, {"windows"});
+    }
+}
+
+// A Data without Name turns its parent into an array of strings, which a later sibling of that parent takes for the
+// array of the repeated siblings: the strings of the first sibling stay flat in the array and each later sibling is one
+// element of it, a nested array of strings or an object.
+TEST(XmlParserSiblings, WindowsUnnamedDataInRepeatedElements)
+{
+    const std::vector<SiblingsCase> rows {
+        {R"(<Event><EventData><Data>a</Data><Data>b</Data></EventData><EventData><Data>c</Data></EventData></Event>)",
+         R"({"EventData":["a","b",["c"]]})"},
+        {R"(<X><Data>1</Data></X><X><Data>2</Data></X>)", R"({"X":["1",["2"]]})"},
+        // named Data first, unnamed second
+        {R"(<Event><EventData><Data Name="k">v</Data></EventData><EventData><Data>a</Data></EventData></Event>)",
+         R"({"EventData":[{"k":"v"},["a"]]})"},
+        // unnamed Data first, named second
+        {R"(<Event><EventData><Data>a</Data></EventData><EventData><Data Name="k">v</Data></EventData></Event>)",
+         R"({"EventData":["a",{"k":"v"}]})"},
     };
     for (const auto& row : rows)
     {

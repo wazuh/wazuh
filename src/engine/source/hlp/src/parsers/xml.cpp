@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include <base/jsonPathWriter.hpp>
 #include <fmt/format.h>
@@ -62,16 +64,30 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
     {"windows", xmlWinModule},
 };
 
+/// A JSON container that xmlToJson writes into, for the nesting cap.
+struct Container
+{
+    std::size_t depth {1};  ///< Containers open at this one, itself included: 1 for the root of the document.
+    std::size_t height {1}; ///< Depth of the deepest container written inside it, itself included.
+    /// Height of the first element written under each name: a second sibling moves it one level down, into the array.
+    std::unordered_map<std::string_view, std::size_t> firstSiblings {};
+};
+
 /**
  * @brief Converts the element children of @p docXml into @p docJson, recursing into their children.
  *
  * @param docJson Writer over the document being built; one writer for the whole document.
- * @param depth Nesting level of the elements it walks: 1 for the children of the document. Every element counts,
- * the Event skipped by the windows module included.
- * @return false, leaving @p docJson partially converted, if an element is nested deeper than json::Json::MAX_DEPTH.
+ * @param container The JSON container at @p path. An element adds its own container and a repeated sibling two (the
+ * array and its element); the children of an element the module processes (the windows Event and Data) are written
+ * into @p container.
+ * @return false, leaving @p docJson partially converted, if the document would nest more than json::Json::MAX_DEPTH
+ * containers.
  */
-bool xmlToJson(
-    pugi::xml_node& docXml, json::PathWriter& docJson, const xmlModule& mod, const std::string& path, std::size_t depth)
+bool xmlToJson(pugi::xml_node& docXml,
+               json::PathWriter& docJson,
+               const xmlModule& mod,
+               const std::string& path,
+               Container& container)
 {
     // Iterate over the xml generating the corresponding json
     for (auto node : docXml.children())
@@ -80,11 +96,6 @@ bool xmlToJson(
         if (node.type() != pugi::node_element)
         {
             continue;
-        }
-
-        if (depth > json::Json::MAX_DEPTH)
-        {
-            return false;
         }
 
         std::string localPath {path};
@@ -96,15 +107,38 @@ bool xmlToJson(
             processed = mod(node, docJson, localPath);
         }
 
+        // The container the children are written into: the element's own, or the current one if the module processed it
+        Container element {};
+        auto* childContainer = &container;
+
         if (!processed)
         {
             localPath += "/" + std::string {node.name()};
 
-            // Check if the element already exists
-            if (docJson.exists(localPath))
+            // An element that already exists is a repeated sibling: it is written as an element of an array
+            const bool isElementOfArray = docJson.exists(localPath);
+            element.depth = container.depth + (isElementOfArray ? 2 : 1);
+            element.height = element.depth;
+            if (element.depth > json::Json::MAX_DEPTH)
+            {
+                return false;
+            }
+            childContainer = &element;
+
+            if (isElementOfArray)
             {
                 if (docJson.isObject(localPath))
                 {
+                    // The first sibling, already written, moves one level down into the array
+                    const auto first = container.firstSiblings.find(node.name());
+                    const auto moved =
+                        (first != container.firstSiblings.end() ? first->second : container.depth + 1) + 1;
+                    if (moved > json::Json::MAX_DEPTH)
+                    {
+                        return false;
+                    }
+                    container.height = std::max(container.height, moved);
+
                     json::Json tmp = docJson.getJson(localPath).value();
                     docJson.setArray(localPath);
                     docJson.appendJson(tmp, localPath);
@@ -138,9 +172,15 @@ bool xmlToJson(
         }
 
         // Process children: localPath is the element itself, for a repeated sibling its own element of the array
-        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, localPath, depth + 1))
+        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, localPath, *childContainer))
         {
             return false;
+        }
+
+        if (!processed)
+        {
+            container.height = std::max(container.height, element.height);
+            container.firstSiblings.try_emplace(node.name(), element.height);
         }
     }
 
@@ -173,7 +213,8 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
             }
             return base::Error {};
         }
-        if (!xmlToJson(xmlDoc, writer, moduleFn, "", 1))
+        Container root {};
+        if (!xmlToJson(xmlDoc, writer, moduleFn, "", root))
         {
             if (enableTrace)
             {
