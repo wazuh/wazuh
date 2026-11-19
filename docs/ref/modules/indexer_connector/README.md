@@ -167,7 +167,10 @@ achieve leaves documents nothing will ever overwrite:
 ### Searches and points in time
 
 Point-in-time (PIT) creation and searches are reads the caller takes as the whole answer: the engine
-builds a content space from them, the vulnerability feed advances its cursor past them. By default
+builds a content space from them, the vulnerability feed advances its cursor past them, the
+vulnerability scanner reads an agent's inventory and stored findings, `inventory_sync_server`
+computes a checksum over an agent's documents, and the feed downloader polls for its consumer
+status and the feed's global-map documents. By default
 the indexer answers them even when some shards cannot take part, for example while the node that
 holds them is stopping: it replies `200`, leaves those shards' documents out and reports a smaller
 `hits.total`. Both connectors therefore ask the indexer to refuse instead:
@@ -180,15 +183,23 @@ holds them is stopping: it replies `200`, leaves those shards' documents out and
 - **Both connectors' PIT searches send `allow_partial_search_results=false`.** `IndexerConnectorAsync`
   also sends it when searching an index or alias. A search that loses a shard, for instance on a PIT
   opened before the node stopped, then fails with `500` (`search_phase_execution_exception`) instead of
-  returning the other shards' documents. The synchronous `executeSearchQuery()` and
-  `executeSearchQueryWithPagination()` methods do not set this parameter and are outside this
-  guarantee.
-- **HTTP errors keep their status.** A failed PIT creation or search carries the indexer's status in
-  `statusCode()`, so a `404` still means a missing index or document and a refusal is reported as the
-  `503`/`500` it is.
+  returning the other shards' documents.
+- **The synchronous searches without a PIT send it too.** `IndexerConnectorSync::executeSearchQuery()`
+  and `executeSearchQueryWithPagination()` send `allow_partial_search_results=false` on every request,
+  so each page is complete or the call throws. With the node that holds a shard already stopped, the
+  indexer answers `503`. A paginated walk that is refused on a later page throws from that page: the
+  callback has already run for the earlier ones, and the walk must be treated as incomplete.
+- **HTTP errors keep their status.** A failed PIT creation or search, with or without a PIT, carries
+  the indexer's status in `statusCode()`, so a `404` still means a missing index or document and a
+  refusal is reported as the `503`/`500` it is.
 - **Nothing is retried here except a `429`.** `IndexerConnectorSync` repeats a search answered `429`
-  within its retry budget; every other failure, a refusal included, goes to the caller, which repeats
-  the whole read (the engine's content sync, the vulnerability feed's page retry).
+  within its retry budget; every other failure, a refusal included, goes to the caller without a
+  retry. The PIT callers repeat the whole read (the engine's content sync, the vulnerability feed's
+  page retry). What each caller of the synchronous searches does with a refusal: the vulnerability scanner fails the scan (a feed-update
+  rescan marks the agent's scan as incomplete; the baseline's probe of the indices a scan reads takes it as "cannot be read" and does
+  not count that pass against the agents); the `inventory_sync_server` checksum answers a generic `503` without `Retry-After`
+  when the indexer answered `5xx`; the feed downloader's polls count the refusal as a failed query and keep waiting, with no
+  limit.
 - **A red cluster gets no request at all.** The health monitor takes a node whose cluster reports
   `red` out of rotation, so the call fails earlier with `No available server`. A refusal is only
   possible between a node leaving and the next health check (`monitoring_interval_seconds`).

@@ -11,7 +11,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 - **One request = one session** (`FullSession`): delta data, cleans, integrity checksums, and
   metadata/group reconciliation, all answered synchronously with the contract's status codes
   (`200` ok/noop, `400`, `403` identity mismatch, `409` checksum mismatch (or `version_mismatch`
-  for a VDFirst/VDSync session whose `feed_offset` is stale), `413` over budget, `500` failed and the session must be sent again (the indexer rejected items of the batch, or a vulnerability scan failed), `503` + optional `Retry-After`).
+  for a VDFirst/VDSync session whose `feed_offset` is stale), `413` over budget, `500` failed and the session must be sent again (the indexer rejected items of the batch, or a vulnerability scan failed), `503` + optional `Retry-After`; no `Retry-After` when the indexer answered `5xx` to a checksum read).
 - **Per-agent ordering by construction**: sessions are applied by workers sharded on the agent id
   (one indexer connector per worker, group-commit bulk flushes), so two requests of the same agent
   can never be reordered.
@@ -86,7 +86,13 @@ agent's documents). The situations an operator will recognize:
   compression exists for).
 - **Steady state**: small periodic deltas per module.
 - **Checksum reconciliation**: the agent periodically sends a checksum-of-checksums
-  (`ModuleCheck`); a `409` answer tells it to full-resync that module.
+  (`ModuleCheck`). A `409` answer is one mismatch observation: the agent repeats the check, and a
+  mismatch confirmed on every attempt makes it full-resync that module. A third result: if the
+  indexer answered `5xx` to the checksum read, the session is answered `503` (no `Retry-After`,
+  never `409`) and the check ends there without a verdict, also when it follows a `409`: no
+  resync happens. The agent's sender retries the same request within its attempt budget first, so
+  one refused check is answered `503` more than once; the check ends when the last of those
+  answers reaches the agent's sync protocol, and the agent tries again at its next periodic check.
 - **Full resync**: two ordinary requests — clean the module's indices, then re-send the full
   dataset. Their order is guaranteed by the per-agent worker shard.
 - **Agent deletion**: when an agent is removed, authd records a deletion task and the Task Manager's
@@ -102,13 +108,15 @@ agent's documents). The situations an operator will recognize:
   sessions, the pipeline's admission queue, and the VD lane's capacity — see the
   [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
-- **What does `Retry-After` mean?** Only one `503` carries it: the CVE feed is still downloading,
-  or the vulnerability scanner is enabled here but still starting up, so vulnerability-detection
-  sessions are rejected *without processing* and the agent re-sends the same session after the
-  given seconds. No other `503` schedules the retry for the agent.
-- **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
-  manager-side checksum of that module's documents did not match the agent's. The resync is the
-  repair, not the problem.
+- **What does `Retry-After` mean?** Two `503`s carry it. One is the CVE feed still downloading, or
+  the vulnerability scanner enabled here but still starting up: vulnerability-detection sessions
+  are rejected *without processing* and the agent re-sends the same session after the given
+  seconds. The other is a by-query that ran out of its version-conflict allowance against a
+  competing writer. No other `503` carries it, including the one for a checksum read the indexer
+  answered `5xx`: the agent's own backoff schedules that retry.
+- **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` on every
+  attempt of the check — the manager-side checksum of that module's documents did not match the
+  agent's. The resync is the repair, not the problem.
 - **I deleted an agent and its documents are still in the indexer.** The purge is a durable
   `agent_delete_indexer` task that authd records and the [Task Manager](../task_manager/README.md)
   runs no earlier than `authd.purge_delay` (120 s by default) after the removal, then retries with no
