@@ -114,6 +114,14 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
 
                 /* We must always have the open and the close */
                 while ((*prts_str)[i][j] && (*prts_str)[i][j + 1]) {
+                    if ((*prts_str)[i][j + 1] < (*prts_str)[i][j]) {
+                        /* A capture can't end before it starts */
+                        w_FreeArray(*sub_strings);
+                        if (!external_context) {
+                            w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                        }
+                        return (NULL);
+                    }
                     size_t length = (size_t) ((*prts_str)[i][j + 1] - (*prts_str)[i][j]);
                     if (*sub_strings == NULL) {
                         if (!external_context) {
@@ -188,6 +196,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
     int _regex_matched = 0;
 
     int prts_int;
+    bool prts_set = false; /* a parenthesis position was recorded in this attempt */
 
     const char *st = str;
     const char *st_error = NULL;
@@ -215,6 +224,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
                     while (prts_closure[prts_int]) {
                         if (prts_closure[prts_int] == pt) {
                             prts_str[prts_int] = st;
+                            prts_set = true;
                             break;
                         }
                         prts_int++;
@@ -309,6 +319,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
                                     } else {
                                         prts_str[prts_int] = st;
                                     }
+                                    prts_set = true;
                                     break;
                                 }
                                 prts_int++;
@@ -357,6 +368,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
                                 } else {
                                     prts_str[prts_int] = st;
                                 }
+                                prts_set = true;
                                 break;
                             }
                             prts_int++;
@@ -441,6 +453,15 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
             st = st_error;
             st_error = NULL;
         }
+
+        /* The attempt was abandoned: forget the parenthesis positions it recorded */
+        if (prts_set) {
+            for (prts_int = 0; prts_closure[prts_int]; prts_int++) {
+                prts_str[prts_int] = NULL;
+            }
+            prts_set = false;
+        }
+
         pt = pattern;
         r_code = NULL;
 
