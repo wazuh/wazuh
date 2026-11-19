@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed SCA checks that failed compliant hosts or passed non-compliant ones: `compare =<` evaluated as equality in the CentOS 8, 9 and 10 and Oracle Linux 9 and 10 policies, the mail transfer agent local-only check inverted in 10 RHEL-family policies, the bootloader `audit=1` and `audit_backlog_limit` checks reading `/etc/default/grub` in the Debian 12, Debian 13 and Ubuntu 22.04 policies, and the sudo authentication timeout check failing compliant values in the Debian 12 and 13 policies. ([#41589](https://github.com/wazuh/wazuh/pull/41589))
+- Fixed the "Ensure sudo is installed." check passing when sudo is not installed and failing on aarch64 in the AlmaLinux 8, 9 and 10, Amazon Linux 2023, CentOS 8, 9 and 10, and Oracle Linux 9 and 10 SCA policies. The check now queries the local rpm database instead of `dnf`. ([#41169](https://github.com/wazuh/wazuh/pull/41169))
 
 ### Other
 
