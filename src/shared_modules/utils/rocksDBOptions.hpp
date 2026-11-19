@@ -12,11 +12,14 @@
 #ifndef _ROCKS_DB_OPTIONS_HPP
 #define _ROCKS_DB_OPTIONS_HPP
 
+#include "loggerHelper.h"
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
+#include <string>
 
 namespace Utils
 {
@@ -27,6 +30,7 @@ namespace Utils
     constexpr auto ROCKSDB_NUM_LEVELS = 4;
     constexpr auto ROCKSDB_BLOCK_CACHE_SIZE = 16 * 1024 * 1024;
     constexpr auto ROCKSDB_ZSTD_COMPRESSION_LEVEL = 3;
+    constexpr uint64_t ROCKSDB_QUEUE_RECLAIM_MIN_BYTES = 64 * 1024 * 1024; // One queue write buffer.
 
     /// Compression applied to the SST files a database writes.
     enum class RocksDBCompression
@@ -78,6 +82,49 @@ namespace Utils
         }
 
         /**
+         * @brief Returns the compression a database can use: the requested one, or NONE with a warning when the
+         * loaded RocksDB library does not support it.
+         * @param compression Requested compression.
+         * @param path Database path, for the warning.
+         * @return RocksDBCompression Effective compression.
+         */
+        static RocksDBCompression effectiveCompression(const RocksDBCompression compression, const std::string& path)
+        {
+            if (isCompressionSupported(compression))
+            {
+                return compression;
+            }
+
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "RocksDB was built without lz4 or zstd support. Database '%s' is stored without compression.",
+                    path.c_str());
+            return RocksDBCompression::NONE;
+        }
+
+        /**
+         * @brief Sets the compression of the SST files written from now on. NONE leaves the options untouched.
+         * @param options Options to update; rocksdb::Options can be passed too.
+         * @param compression Compression to apply.
+         */
+        static void applyCompression(rocksdb::ColumnFamilyOptions& options, const RocksDBCompression compression)
+        {
+            if (compression == RocksDBCompression::ZSTD)
+            {
+                options.compression = rocksdb::kZSTD;
+                options.compression_opts.level = ROCKSDB_ZSTD_COMPRESSION_LEVEL;
+            }
+            else if (compression == RocksDBCompression::LZ4_ZSTD)
+            {
+                // Both are needed: column families that never leave L0 would otherwise stay uncompressed.
+                options.compression = rocksdb::kLZ4Compression;
+                options.bottommost_compression = rocksdb::kZSTD;
+                options.bottommost_compression_opts.level = ROCKSDB_ZSTD_COMPRESSION_LEVEL;
+                // Without this flag RocksDB ignores the bottommost options and uses compression_opts.
+                options.bottommost_compression_opts.enabled = true;
+            }
+        }
+
+        /**
          * @brief Builds the column family options for the RocksDB instance.
          * @param readCache Block cache shared by the column families.
          * @param compression Compression of the SST files written from now on.
@@ -97,21 +144,7 @@ namespace Utils
             columnFamilyOptions.num_levels = ROCKSDB_NUM_LEVELS;
             // The size of the LRU cache used to prevent cold reads.
             columnFamilyOptions.table_factory.reset(rocksdb::NewBlockBasedTableFactory(buildTableOptions(readCache)));
-
-            if (compression == RocksDBCompression::ZSTD)
-            {
-                columnFamilyOptions.compression = rocksdb::kZSTD;
-                columnFamilyOptions.compression_opts.level = ROCKSDB_ZSTD_COMPRESSION_LEVEL;
-            }
-            else if (compression == RocksDBCompression::LZ4_ZSTD)
-            {
-                // Both are needed: column families that never leave L0 would otherwise stay uncompressed.
-                columnFamilyOptions.compression = rocksdb::kLZ4Compression;
-                columnFamilyOptions.bottommost_compression = rocksdb::kZSTD;
-                columnFamilyOptions.bottommost_compression_opts.level = ROCKSDB_ZSTD_COMPRESSION_LEVEL;
-                // Without this flag RocksDB ignores the bottommost options and uses compression_opts.
-                columnFamilyOptions.bottommost_compression_opts.enabled = true;
-            }
+            applyCompression(columnFamilyOptions, compression);
 
             return columnFamilyOptions;
         }

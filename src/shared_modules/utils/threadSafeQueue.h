@@ -152,6 +152,26 @@ namespace Utils
             return m_queue.empty();
         }
 
+        // Gives back the space of the underlying queue if it is empty. Only the emptiness check takes the lock, so
+        // pushes are never blocked by the reclaim. Needs a queue type with reclaimSpace(), such as RocksDBQueue.
+        void reclaimSpaceIfEmpty()
+        {
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                if (!m_queue.empty())
+                {
+                    return;
+                }
+            }
+            m_queue.reclaimSpace();
+        }
+
+        // Stops a running reclaimSpaceIfEmpty() and makes later calls return at once.
+        void cancelReclaim()
+        {
+            m_queue.cancelReclaim();
+        }
+
         size_t size() const
         {
             std::lock_guard<std::mutex> lock {m_mutex};

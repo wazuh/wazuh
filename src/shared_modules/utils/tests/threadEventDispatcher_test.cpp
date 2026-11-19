@@ -10,10 +10,14 @@
  */
 
 #include "threadEventDispatcher_test.hpp"
+#include "rocksDBQueueTestHelpers.hpp"
 #include "threadEventDispatcher.hpp"
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <mutex>
+#include <random>
+#include <string_view>
 #include <vector>
 
 void ThreadEventDispatcherTest::SetUp() {
@@ -256,4 +260,114 @@ TEST_F(ThreadEventDispatcherTest, NoDiscardReportWhenQueueNeverOverflows)
 
     EXPECT_EQ(consumed, 50);
     EXPECT_EQ(calls, 0);
+}
+
+namespace
+{
+    using ReclaimDispatcher = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
+
+    template<typename Condition>
+    bool waitFor(Condition&& condition, const std::chrono::seconds timeout)
+    {
+        const auto deadline {std::chrono::steady_clock::now() + timeout};
+        while (!condition())
+        {
+            if (std::chrono::steady_clock::now() > deadline)
+            {
+                return false;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        return true;
+    }
+
+    // Pushes enough random elements for the queue files to exceed the reclaim threshold.
+    void pushReclaimElements(ReclaimDispatcher& dispatcher)
+    {
+        std::mt19937_64 generator {42};
+        for (size_t i = 0; i < RocksDBQueueTestHelpers::RECLAIM_ELEMENTS; ++i)
+        {
+            dispatcher.push(RocksDBQueueTestHelpers::randomValue(generator));
+        }
+    }
+} // namespace
+
+TEST_F(ThreadEventDispatcherTest, DispatcherReclaimsAfterDrain)
+{
+    using namespace RocksDBQueueTestHelpers;
+    constexpr auto DB_PATH {"test_reclaim.db"};
+    std::filesystem::remove_all(DB_PATH);
+
+    std::atomic<size_t> processed {0};
+    std::promise<void> release;
+    const auto released {release.get_future().share()};
+    {
+        ReclaimDispatcher dispatcher(
+            [&processed, released](std::queue<std::string>& data)
+            {
+                released.wait();
+                processed += data.size();
+            },
+            DB_PATH,
+            1,
+            UNLIMITED_QUEUE_SIZE,
+            false,
+            {},
+            Utils::RocksDBCompression::LZ4_ZSTD,
+            true);
+
+        // The handler holds the first element until every element is queued, so the queue empties only once.
+        pushReclaimElements(dispatcher);
+        ASSERT_TRUE(waitFor([DB_PATH]() { return sstBytes(DB_PATH) >= Utils::ROCKSDB_QUEUE_RECLAIM_MIN_BYTES; },
+                            std::chrono::seconds(30)));
+        release.set_value();
+
+        ASSERT_TRUE(waitFor([&processed]() { return processed == RECLAIM_ELEMENTS; }, std::chrono::seconds(60)));
+        EXPECT_TRUE(waitFor([DB_PATH]() { return sstBytes(DB_PATH) < RECLAIMED_MAX_BYTES; }, std::chrono::seconds(30)));
+
+        dispatcher.push("after");
+        EXPECT_TRUE(waitFor([&processed]() { return processed == RECLAIM_ELEMENTS + 1; }, std::chrono::seconds(10)));
+    }
+    std::filesystem::remove_all(DB_PATH);
+}
+
+TEST_F(ThreadEventDispatcherTest, DispatcherCancelStopsRunningReclaim)
+{
+    constexpr auto DB_PATH {"test_reclaim_cancel.db"};
+    std::filesystem::remove_all(DB_PATH);
+
+    std::promise<void> started;
+    std::atomic<bool> startedSet {false};
+    Log::deassignLogFunction();
+    Log::assignLogFunction(
+        [&started,
+         &startedSet](const int, const char*, const char*, const int, const char*, const char* message, va_list)
+        {
+            if (std::string_view {message}.find("is empty, compacting") != std::string_view::npos &&
+                !startedSet.exchange(true))
+            {
+                started.set_value();
+            }
+        });
+
+    std::promise<void> release;
+    const auto released {release.get_future().share()};
+    auto dispatcher {std::make_unique<ReclaimDispatcher>([released](std::queue<std::string>&) { released.wait(); },
+                                                         DB_PATH,
+                                                         RocksDBQueueTestHelpers::RECLAIM_ELEMENTS,
+                                                         UNLIMITED_QUEUE_SIZE,
+                                                         false,
+                                                         std::function<void(const std::string&)> {},
+                                                         Utils::RocksDBCompression::LZ4_ZSTD,
+                                                         true)};
+    pushReclaimElements(*dispatcher);
+    release.set_value();
+
+    ASSERT_EQ(started.get_future().wait_for(std::chrono::seconds(60)), std::future_status::ready);
+    const auto start {std::chrono::steady_clock::now()};
+    dispatcher.reset();
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(5));
+    Log::deassignLogFunction();
+
+    std::filesystem::remove_all(DB_PATH);
 }

@@ -13,12 +13,15 @@
 #define _ROCKSDB_QUEUE_HPP
 
 #include "loggerHelper.h"
+#include "rocksDBOptions.hpp"
 #include "rocksDBSharedBuffers.hpp"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
 #include "stringHelper.h"
+#include <atomic>
 #include <filesystem>
+#include <memory>
 #include <queue>
 #include <stdexcept>
 #include <string>
@@ -30,8 +33,19 @@ template<typename T, typename U = T>
 class RocksDBQueue final
 {
 public:
-    explicit RocksDBQueue(const std::string& connectorName, bool useSharedBuffers = false)
-        : m_legacyKeyMode {false}
+    /**
+     * @brief Opens the queue, creating it if it does not exist.
+     * @param connectorName Path of the queue database.
+     * @param useSharedBuffers Whether to use the process-wide read cache and write buffer manager.
+     * @param compression Compression of the SST files written from now on. Falls back to NONE, with a warning, when the
+     *                    loaded RocksDB library does not support it.
+     * @param reclaimWhenEmpty Whether reclaimSpace() compacts the queue to give back the space of dequeued elements.
+     */
+    explicit RocksDBQueue(const std::string& connectorName,
+                          bool useSharedBuffers = false,
+                          Utils::RocksDBCompression compression = Utils::RocksDBCompression::NONE,
+                          bool reclaimWhenEmpty = false)
+        : m_path {connectorName}, m_reclaimWhenEmpty {reclaimWhenEmpty}, m_legacyKeyMode {false}
     {
         // RocksDB initialization using shared buffers.
         // Get shared buffers to reduce memory usage across multiple instances
@@ -66,6 +80,8 @@ public:
         options.write_buffer_size = 64 * 1024 * 1024;
         options.max_write_buffer_number = 4;
         options.max_background_jobs = 8;
+        Utils::RocksDBOptions::applyCompression(
+            options, Utils::RocksDBOptions::effectiveCompression(compression, connectorName));
 
         rocksdb::DB* db;
 
@@ -279,6 +295,53 @@ public:
         return value;
     }
 
+    /**
+     * @brief Gives back the disk space of dequeued elements: compacts the queue when its files plus its memtables reach
+     * ROCKSDB_QUEUE_RECLAIM_MIN_BYTES. The memtables count because a flush can still be running right after a fast
+     * drain. Call it right after the queue was found empty. It only uses the RocksDB handle, so it can run without the
+     * queue lock while elements are pushed.
+     */
+    void reclaimSpace() noexcept
+    {
+        if (!m_reclaimWhenEmpty || m_reclaimCanceled->load())
+        {
+            return;
+        }
+
+        uint64_t liveSstBytes {0};
+        uint64_t memTableBytes {0};
+        if (!m_db->GetIntProperty(rocksdb::DB::Properties::kLiveSstFilesSize, &liveSstBytes) ||
+            !m_db->GetIntProperty(rocksdb::DB::Properties::kCurSizeAllMemTables, &memTableBytes) ||
+            liveSstBytes + memTableBytes < Utils::ROCKSDB_QUEUE_RECLAIM_MIN_BYTES)
+        {
+            return;
+        }
+
+        logDebug1(LOGGER_DEFAULT_TAG,
+                  "Queue '%s' is empty, compacting %llu MB of files and memtables to give back their space.",
+                  m_path.c_str(),
+                  static_cast<unsigned long long>((liveSstBytes + memTableBytes) / (1024 * 1024)));
+
+        // Flushes the memtable and compacts down to the bottommost level, where the deleted elements are dropped.
+        rocksdb::CompactRangeOptions options;
+        options.canceled = m_reclaimCanceled.get();
+        if (const auto status {m_db->CompactRange(options, nullptr, nullptr)}; !status.ok() && !status.IsIncomplete())
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Unable to give back the space of queue '%s': %s",
+                    m_path.c_str(),
+                    status.ToString().c_str());
+        }
+    }
+
+    /**
+     * @brief Stops a running reclaimSpace() and makes later calls return at once.
+     */
+    void cancelReclaim() noexcept
+    {
+        m_reclaimCanceled->store(true);
+    }
+
     U at(const uint64_t index) const
     {
         U value;
@@ -294,6 +357,10 @@ public:
     }
 
 private:
+    std::string m_path;
+    bool m_reclaimWhenEmpty = false;
+    // Held by pointer so the queue stays movable; RocksDB reads it while a reclaim runs.
+    std::unique_ptr<std::atomic<bool>> m_reclaimCanceled {std::make_unique<std::atomic<bool>>(false)};
     std::unique_ptr<rocksdb::DB> m_db;
     std::shared_ptr<rocksdb::Cache> m_readCache;
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;

@@ -31,17 +31,25 @@ template<typename T,
 class TThreadEventDispatcher
 {
 public:
+    /**
+     * @brief Creates the queue and starts the thread that dispatches its elements.
+     * @param compression Compression of the queue files. Only applies to a RocksDBQueue.
+     * @param reclaimWhenEmpty Give back the space of dispatched elements each time the queue becomes empty. Only
+     *                         applies to a RocksDBQueue.
+     */
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     bool useSharedBuffers = false,
-                                    std::function<void(const std::string&)> onDiscard = {})
+                                    std::function<void(const std::string&)> onDiscard = {},
+                                    Utils::RocksDBCompression compression = Utils::RocksDBCompression::NONE,
+                                    bool reclaimWhenEmpty = false)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_onDiscard {std::move(onDiscard)}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
+        , m_queue {std::make_unique<TSafeQueueType>(makeQueue(dbPath, useSharedBuffers, compression, reclaimWhenEmpty))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }
@@ -140,6 +148,10 @@ public:
     {
         m_running = false;
         m_queue->cancel();
+        if constexpr (IS_ROCKSDB_QUEUE)
+        {
+            m_queue->cancelReclaim();
+        }
         joinThread();
     }
 
@@ -200,6 +212,26 @@ public:
     }
 
 private:
+    static constexpr bool IS_ROCKSDB_QUEUE {
+        std::is_same_v<RocksDBQueue<T, U>, TQueueType> &&
+        std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>};
+
+    // Compression and reclaim are RocksDBQueue options; any other queue type is built as before.
+    static TQueueType makeQueue(const std::string& dbPath,
+                                const bool useSharedBuffers,
+                                const Utils::RocksDBCompression compression,
+                                const bool reclaimWhenEmpty)
+    {
+        if constexpr (IS_ROCKSDB_QUEUE)
+        {
+            return TQueueType(dbPath, useSharedBuffers, compression, reclaimWhenEmpty);
+        }
+        else
+        {
+            return TQueueType(dbPath, useSharedBuffers);
+        }
+    }
+
     void dispatch()
     {
         while (m_running)
@@ -215,6 +247,7 @@ private:
                     {
                         m_functor(data);
                         m_queue->popBulk(size);
+                        m_queue->reclaimSpaceIfEmpty();
                     }
                 }
                 else if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
