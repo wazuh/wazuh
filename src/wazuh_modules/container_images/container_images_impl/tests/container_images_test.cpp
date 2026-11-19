@@ -19,6 +19,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -187,7 +188,8 @@ TEST_F(ContainerImagesTest, ArchiveReaderReadsSingleReference)
     EXPECT_EQ(reference.os, "linux");
     EXPECT_EQ(reference.architecture, "amd64");
     EXPECT_EQ(reference.variant, "v8");
-    EXPECT_EQ(reference.tag, "alpine:latest");
+    EXPECT_EQ(reference.name, "docker.io/library/alpine");
+    EXPECT_EQ(reference.tags, std::vector<std::string>({"latest"}));
     EXPECT_EQ(reference.source.sourceType, "archive");
     EXPECT_EQ(reference.source.location, fixture->path());
 }
@@ -335,7 +337,8 @@ TEST_F(ContainerImagesTest, ArchiveReaderKeepsOnlyOneImageOfAMultiManifestIndex)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "debian:12");
+    EXPECT_EQ(references.front().name, "docker.io/library/debian");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"12"}));
 }
 
 TEST_F(ContainerImagesTest, ArchiveReaderKeepsTheManifestAndConfigDigestsOfASingleImage)
@@ -479,7 +482,8 @@ TEST_F(ContainerImagesTest, ArchiveReaderSkipsAttestationManifestEntries)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "alpine:latest");
+    EXPECT_EQ(references.front().name, "docker.io/library/alpine");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
 }
 
 TEST_F(ContainerImagesTest, ArchiveReaderBoundsAFanOutIndexInsteadOfRunningForSeconds)
@@ -547,7 +551,8 @@ namespace
     {
         ImageReferenceRecord reference;
         reference.source = {"local", value};
-        reference.tag = "latest";
+        reference.name = "docker.io/library/app";
+        reference.tags = {"latest"};
         reference.configDigest = "sha256:cfg-" + value;
         reference.os = "linux";
         reference.architecture = "amd64";
@@ -694,7 +699,8 @@ TEST_F(ContainerImagesDBTest, AReferenceWithNoTagsRoundTripsAsEmpty)
 {
     ContainerImagesDB db(m_dbPath);
 
-    const auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    auto reference {makeReference("debian:12", {makePackage("apt", "2.6.1")})};
+    reference.tags.clear();
 
     DeltaTally tally;
     db.syncReferences({reference}, tally.callback());
@@ -703,6 +709,52 @@ TEST_F(ContainerImagesDBTest, AReferenceWithNoTagsRoundTripsAsEmpty)
 
     ASSERT_TRUE(stored.has_value());
     EXPECT_TRUE(stored->tags.empty());
+}
+
+TEST_F(ContainerImagesDBTest, TheImageIdentityFieldsRoundTripUnderTheSharedNames)
+{
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("ghcr.io/o/r:2", {makePackage("apt", "2.6.1")})};
+    reference.source.sourceType = "ref";
+    reference.name = "ghcr.io/o/r";
+    reference.tags = {"2", "stable"};
+    reference.configDigest = "sha256:config-aaaa";
+    reference.manifestDigest = "sha256:manifest-aaaa";
+    reference.digests = {"sha256:index-aaaa", "sha256:manifest-aaaa", "sha256:config-aaaa"};
+
+    DeltaTally tally;
+    db.syncReferences({reference}, tally.callback());
+
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"image_id", "image_hash_all", "image_name", "image_tag"})};
+
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("image_id"), "sha256:config-aaaa");
+    EXPECT_EQ(rows.front().at("image_hash_all"), R"(["sha256:index-aaaa","sha256:manifest-aaaa","sha256:config-aaaa"])");
+    EXPECT_EQ(rows.front().at("image_name"), "ghcr.io/o/r");
+    EXPECT_EQ(rows.front().at("image_tag"), R"(["2","stable"])");
+
+    const auto stored {db.loadStored("ref", "ghcr.io/o/r:2")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->name, reference.name);
+    EXPECT_EQ(stored->tags, reference.tags);
+    EXPECT_EQ(stored->configDigest, reference.configDigest);
+    EXPECT_EQ(stored->digests, reference.digests);
+}
+
+TEST_F(ContainerImagesDBTest, TheImagePackagesIndexIsOutsideTheHostPackagesPattern)
+{
+    // The host template is a `<prefix>*` glob, so an index belongs to it exactly when it starts with
+    // the prefix. A module writing there would replace the host collector's state.
+    const std::string pattern {"wazuh-states-inventory-packages*"};
+    const std::string index {IMAGE_PACKAGES_INDEX};
+
+    EXPECT_NE(index.rfind(pattern.substr(0, pattern.size() - 1), 0), 0U) << index << " matches " << pattern;
+    EXPECT_EQ(index.rfind("wazuh-states-inventory-", 0), 0U) << index << " is not an inventory state index";
+
+    // The rule the check above relies on: a name under the host prefix does match.
+    EXPECT_EQ(std::string {"wazuh-states-inventory-packages-image"}.rfind(pattern.substr(0, pattern.size() - 1), 0), 0U);
 }
 
 TEST_F(ContainerImagesDBTest, ReSyncingAStoredRecordDoesNotDropItsTags)
@@ -903,23 +955,23 @@ TEST_F(ContainerImagesDBTest, ADistributionChangeIsReportedAsAModification)
     EXPECT_EQ(second.modified, 1);
 }
 
-TEST_F(ContainerImagesDBTest, ARowStoredUnderABareTagIsRenamedInPlace)
+TEST_F(ContainerImagesDBTest, ARowWhoseNameChangesIsModifiedInPlace)
 {
-    // A row written before remote images were stored under their whole reference holds the
-    // bare tag. The row key is the configured reference, which has not changed, so the new
-    // name replaces the old one: one row, modified, never a second row and never a failure.
+    // The row key is the configured reference, which has not changed, so a new name or tag
+    // list replaces the stored one: one row, modified, never a second row and never a failure.
     ContainerImagesDB db(m_dbPath);
 
     auto reference {makeReference("ghcr.io/owner/app:1.0", {makePackage("apt", "2.6.1")})};
     reference.source.sourceType = "ref";
-    reference.tag = "1.0";
+    reference.name = "ghcr.io/owner/old";
+    reference.tags = {"0.9"};
 
     DeltaTally first;
     db.syncReferences({reference}, first.callback());
     ASSERT_EQ(first.created, 1);
 
-    reference.tag = "ghcr.io/owner/app:1.0";
-    reference.tags = {"ghcr.io/owner/app:1.0"};
+    reference.name = "ghcr.io/owner/app";
+    reference.tags = {"1.0"};
 
     DeltaTally second;
     db.syncReferences({reference}, second.callback());
@@ -931,8 +983,8 @@ TEST_F(ContainerImagesDBTest, ARowStoredUnderABareTagIsRenamedInPlace)
     const auto stored {db.loadStored("ref", "ghcr.io/owner/app:1.0")};
 
     ASSERT_TRUE(stored.has_value());
-    EXPECT_EQ(stored->tag, "ghcr.io/owner/app:1.0");
-    EXPECT_EQ(stored->tags, std::vector<std::string>({"ghcr.io/owner/app:1.0"}));
+    EXPECT_EQ(stored->name, "ghcr.io/owner/app");
+    EXPECT_EQ(stored->tags, std::vector<std::string>({"1.0"}));
 }
 
 TEST_F(ContainerImagesDBTest, FirstSyncReportsAllRowsAsCreated)
@@ -1130,7 +1182,8 @@ namespace
     {
         ImageReferenceRecord reference;
         reference.source = {"archive", location};
-        reference.tag = "debian:12";
+        reference.name = "docker.io/library/debian";
+        reference.tags = {"12"};
         reference.configDigest = "sha256:config-aaaa";
         reference.manifestDigest = "sha256:manifest-aaaa";
         reference.os = "linux";
@@ -1297,9 +1350,9 @@ TEST_F(ContainerImagesDBTest, AnUnchangedReferenceHasItsStoredDigestsRefreshed)
 
     EXPECT_EQ(storedPackages(m_dbPath), 5U) << "the packages are not extracted again";
 
-    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"digests"})};
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"image_hash_all"})};
     ASSERT_EQ(rows.size(), 1U);
-    EXPECT_EQ(rows.front().at("digests"), R"(["sha256:new-index","sha256:manifest","sha256:config-aaaa"])");
+    EXPECT_EQ(rows.front().at("image_hash_all"), R"(["sha256:new-index","sha256:manifest","sha256:config-aaaa"])");
 
     const auto versions {storedRows(m_dbPath, REFERENCES_TABLE, {"version"})};
     EXPECT_EQ(versions.front().at("version"), "2") << "one modification of the reference row";
@@ -1351,13 +1404,121 @@ TEST_F(ContainerImagesDBTest, AnUnchangedReferenceWithTheSameOrNoDigestsIsNotRew
     impl.scanOnce();
     EXPECT_EQ(refreshes, 0);
 
-    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"digests", "version"})};
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"image_hash_all", "version"})};
     ASSERT_EQ(rows.size(), 1U);
-    EXPECT_EQ(rows.front().at("digests"), R"(["sha256:index","sha256:manifest","sha256:config-aaaa"])");
+    EXPECT_EQ(rows.front().at("image_hash_all"), R"(["sha256:index","sha256:manifest","sha256:config-aaaa"])");
     EXPECT_EQ(rows.front().at("version"), "1");
 
     // A different list is the one case that writes, once.
     reported = {"sha256:other", "sha256:manifest", "sha256:config-aaaa"};
+    impl.scanOnce();
+    EXPECT_EQ(refreshes, 1);
+
+    LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
+}
+
+TEST_F(ContainerImagesDBTest, AnUnchangedReferenceHasItsStoredNameAndTagsRefreshed)
+{
+    // Same configuration digest, so no layer is read, but the image was retagged. The stored
+    // name and tags follow it, as one modification of the reference row.
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/images/a"}};
+
+    bool firstScan {true};
+    ImageNames reported {"docker.io/library/x", {"1", "2"}};
+
+    const auto factory = [&](const ConfiguredReference & reference,
+                             const std::string&,
+                             const ReaderContext&) -> std::unique_ptr<IImageReader>
+    {
+        if (firstScan)
+        {
+            auto record {recordAt(reference.location, 5)};
+            record.name = "docker.io/library/x";
+            record.tags = {"1"};
+            return std::make_unique<OutcomeReader>(ImageReadResult::success({record}));
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::unchanged({}, reported));
+    };
+
+    ContainerImagesImpl impl(config, factory, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    impl.scanOnce();
+    firstScan = false;
+    impl.scanOnce();
+
+    EXPECT_EQ(storedPackages(m_dbPath), 5U) << "the packages are not extracted again";
+
+    auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"image_name", "image_tag", "version"})};
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("image_name"), "docker.io/library/x");
+    EXPECT_EQ(rows.front().at("image_tag"), R"(["1","2"])");
+    EXPECT_EQ(rows.front().at("version"), "2") << "one modification of the reference row";
+
+    // Moved to another repository and dropped to no tag at all.
+    reported = {"ghcr.io/o/y", {}};
+    impl.scanOnce();
+
+    rows = storedRows(m_dbPath, REFERENCES_TABLE, {"image_name", "image_tag", "version"});
+    EXPECT_EQ(rows.front().at("image_name"), "ghcr.io/o/y");
+    EXPECT_EQ(rows.front().at("image_tag"), "[]");
+    EXPECT_EQ(rows.front().at("version"), "3");
+}
+
+TEST_F(ContainerImagesDBTest, AnUnchangedReferenceWithTheSameOrNoNamesIsNotRewritten)
+{
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/images/a"}};
+
+    std::optional<ImageNames> reported {ImageNames {"docker.io/library/x", {"1", "2"}}};
+    bool firstScan {true};
+
+    const auto factory = [&](const ConfiguredReference & reference,
+                             const std::string&,
+                             const ReaderContext&) -> std::unique_ptr<IImageReader>
+    {
+        if (firstScan)
+        {
+            auto record {recordAt(reference.location, 5)};
+            record.name = "docker.io/library/x";
+            record.tags = {"1", "2"};
+            return std::make_unique<OutcomeReader>(ImageReadResult::success({record}));
+        }
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::unchanged({}, reported));
+    };
+
+    int refreshes {0};
+    LoggingHelper::setLogCallback([&refreshes](const modules_log_level_t, const char* message)
+    {
+        if (std::string {message}.find("name and tags were refreshed") != std::string::npos)
+        {
+            ++refreshes;
+        }
+    });
+
+    ContainerImagesImpl impl(config, factory, std::make_shared<ContainerImagesDB>(m_dbPath));
+
+    impl.scanOnce();
+    firstScan = false;
+
+    // The same name and tags: the stored row is handed back as it is.
+    impl.scanOnce();
+    EXPECT_EQ(refreshes, 0) << "unchanged names are not written again";
+
+    // A reader that reports no names leaves the stored ones alone.
+    reported.reset();
+    impl.scanOnce();
+    EXPECT_EQ(refreshes, 0);
+
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"image_tag", "version"})};
+    ASSERT_EQ(rows.size(), 1U);
+    EXPECT_EQ(rows.front().at("image_tag"), R"(["1","2"])");
+    EXPECT_EQ(rows.front().at("version"), "1");
+
+    // A different list writes once.
+    reported = ImageNames {"docker.io/library/x", {"2"}};
     impl.scanOnce();
     EXPECT_EQ(refreshes, 1);
 
@@ -1476,12 +1637,12 @@ TEST_F(ContainerImagesDBTest, ScanOnceStoresTheReferenceFoundOnDisk)
         ASSERT_EQ(impl.scanOnce(), 1U);
     }
 
-    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value", "image_config_digest"})};
+    const auto rows {storedRows(m_dbPath, REFERENCES_TABLE, {"reference_type", "reference_value", "image_id"})};
 
     ASSERT_EQ(rows.size(), 1U);
     EXPECT_EQ(rows.front().at("reference_type"), "archive");
     EXPECT_EQ(rows.front().at("reference_value"), fixture->path());
-    EXPECT_EQ(rows.front().at("image_config_digest"), "sha256:" + CONFIG_DIGEST);
+    EXPECT_EQ(rows.front().at("image_id"), "sha256:" + CONFIG_DIGEST);
 }
 
 TEST_F(ContainerImagesDBTest, ScanOncePersistsThePackagesFoundInTheImage)
@@ -1800,8 +1961,8 @@ TEST_F(ContainerImagesDBTest, CreatedTablesCarryTheDocumentedColumns)
     // asserts the created tables, not the string the module holds.
     const auto storedReferences {storedRows(m_dbPath, REFERENCES_TABLE,
     {
-        "reference_type", "reference_value", "image_config_digest", "manifest_digest", "digests",
-        "image_name", "tag", "tags", "platform_os", "platform_architecture", "platform_variant",
+        "reference_type", "reference_value", "image_id", "manifest_digest", "image_hash_all",
+        "image_name", "image_tag", "platform_os", "platform_architecture", "platform_variant",
         "platform_os_version", "os_name", "os_version", "os_id", "os_family", "os_codename",
         "os_pretty_name", "checksum", "version", "sync"
     })};
@@ -1851,7 +2012,7 @@ TEST_F(ContainerImagesDBTest, CreatedTablesEnforceTheDocumentedPrimaryKeys)
 
     reference.configDigest = "sha256:rebuilt";
     db.syncReferences({reference}, DeltaTally().callback());
-    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_value", "image_config_digest"}).size(), 1U);
+    EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_value", "image_id"}).size(), 1U);
 
     db.syncReferences({reference, makeReference("ubuntu:24.04", {})}, DeltaTally().callback());
     EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_value"}).size(), 2U);

@@ -1320,16 +1320,19 @@ namespace containerimages
                 // small metadata requests have been made and no layer has been touched.
                 logDebug("Reference '" + m_location + "' still reports " + configDigest +
                          ", so no image contents were retrieved.");
-                return ImageReadResult::unchanged(digests);
+                return ImageReadResult::unchanged(
+                           digests, ImageNames {m_reference.name(),
+                                                m_reference.tag.empty() ? std::vector<std::string> {}
+                                                : std::vector<std::string> {m_reference.tag}});
             }
 
             ImageReferenceRecord record;
             record.source = {sourceType(), m_location};
-            record.tag = m_reference.fullName();
+            record.name = m_reference.name();
 
             if (!m_reference.tag.empty())
             {
-                record.tags.push_back(m_reference.taggedName());
+                record.tags.push_back(m_reference.tag);
             }
 
             record.configDigest = configDigest;

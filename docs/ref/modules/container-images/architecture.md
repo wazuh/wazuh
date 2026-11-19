@@ -257,8 +257,8 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 |-------|-------------|
 | `source.sourceType` | Reference type, `archive` at this stage. |
 | `source.location` | Source location, such as the configured path. |
-| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. A remote reference is named `registry/repository[:tag][@digest]`, with the tag kept when a digest follows it. |
-| `configDigest` | Image configuration blob digest. |
+| `name` | Full normalised name, `registry/repository` with neither tag nor digest (`nginx` is `docker.io/library/nginx`). Empty when the source gives the image no name. See [persistence.md](persistence.md) for where each source takes it from. |
+| `configDigest` | Image configuration blob digest: the image identity in the shared container block (`image_id`). |
 | `manifestDigest` | Manifest digest. |
 | `digests` | Every digest the image is known by, from the outside in: the indexes it was reached through (outermost first), the manifest, then the configuration. |
 | `os` | Operating system from the image configuration. |
@@ -266,7 +266,7 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 | `variant` | Architecture variant, when present. |
 | `osVersion` | Operating system version, when present. |
 | `operatingSystem` | Distribution read from the image's `os-release` (`name`, `version`, `id`, `family`, `codename`, `prettyName`). Every field is empty for an image that has none. |
-| `tags` | Every tag the image is known by, when the source lists more than one. A remote reference with a tag lists `registry/repository:tag`. |
+| `tags` | Every tag of that name the image is known by. |
 | `packages` | The packages found in the image layers. |
 
 ---

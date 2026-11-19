@@ -174,7 +174,7 @@ def test_container_images_update_detected_on_next_scan(test_configuration, test_
     _wait_for_scan_ended(log_monitor)
     before = query_table(REFERENCES_TABLE)
     assert before, 'The references table is empty after the first scan.'
-    digest_before = before[0].get('image_config_digest')
+    digest_before = before[0].get('image_id')
 
     # Rebuild the image (new config digest) and wait for the module to MODIFY the reference.
     update_image(seed='v2')
@@ -186,7 +186,7 @@ def test_container_images_update_detected_on_next_scan(test_configuration, test_
 
     after = query_table(REFERENCES_TABLE)
     assert after, 'The references table is empty after the update scan.'
-    digest_after = after[0].get('image_config_digest')
+    digest_after = after[0].get('image_id')
 
     assert digest_after != digest_before, \
         f'The stored config digest did not change after the rebuild ({digest_before!r}).'

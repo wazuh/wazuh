@@ -28,27 +28,41 @@ and FIM use up to the point where they hand deltas to the sync protocol.
 ## Data model
 
 Reference-based, two tables. Packages belong to the image **reference** they were found
-under; the image content digest is metadata, not identity.
+under. The image configuration digest names the image in the shared container block (`image_id`), but the
+row key stays the reference.
 
 ### `dbsync_container_image_references`
 
-Primary key `(reference_type, reference_value)`. Columns: the key, `image_config_digest`,
-`manifest_digest`, `digests`, `image_name`, `tag`, `tags`, `platform_os`, `platform_architecture`,
+Primary key `(reference_type, reference_value)`. Columns: the key, `image_id`,
+`manifest_digest`, `image_hash_all`, `image_name`, `image_tag`, `platform_os`, `platform_architecture`,
 `platform_variant`, `platform_os_version`, `os_name`, `os_version`, `os_id`, `os_family`,
 `os_codename`, `os_pretty_name`, plus `checksum`, `version`, `sync`.
 
 `manifest_digest` is metadata only. A reference resolved through an index holds the digest of the selected index entry. A reference that named a manifest directly holds the digest the registry reported for it in `Docker-Content-Digest`, else the digest the reference is pinned to, else the sha256 of the manifest as served.
 
-`digests` is every digest the image is known by, serialized as a JSON array and ordered from the outside in: the indexes the image was reached through (outermost first), then the manifest, then the configuration. A tag that resolves to a multi-platform index holds three or more, and an image reached through a manifest holds two. A saved image in the `docker save` layout names only its configuration file, so it holds one. They are metadata only, like `manifest_digest`, and the reference stays the primary key. The unchanged-image check compares `image_config_digest` and nothing else, and no layer is read for an unchanged image. A registry reference that takes that short cut still reports the digests it resolved this scan, and the stored `digests` list is rewritten only when it differs, so a tag whose index moved while the platform configuration did not is kept current at the cost of one row update.
+`image_hash_all` is every digest the image is known by, serialized as a JSON array and ordered from the outside in: the indexes the image was reached through (outermost first), then the manifest, then the configuration. A tag that resolves to a multi-platform index holds three or more, and an image reached through a manifest holds two. A saved image in the `docker save` layout names only its configuration file, so it holds one. They are metadata only, like `manifest_digest`, and the reference stays the primary key. The unchanged-image check compares `image_id` and nothing else, and no layer is read for an unchanged image. A registry reference that takes that short cut still reports the digests it resolved this scan, and the stored `image_hash_all` list is rewritten only when it differs, so a tag whose index moved while the platform configuration did not is kept current at the cost of one row update. The name and tags are refreshed the same way, in the same update: an archive saved again under other tags, or a registry reference, reports the names it has now, so a retagged image keeps its stored `image_name` and `image_tag` current without its layers being read.
 
 `platform_*` columns describe the image configuration: the `os` and `architecture` it was built for. The `os_*` columns describe the distribution the image is built on, read from its `os-release` file: `etc/os-release`, else `usr/lib/os-release`, taken from the composed layers so a file a later layer deletes is not read. `os_name` is `NAME`, `os_version` is `VERSION_ID`, `os_id` is `ID`, `os_family` is the first word of `ID_LIKE`, `os_codename` is `VERSION_CODENAME` and `os_pretty_name` is `PRETTY_NAME`. An image with no `os-release` (a scratch or static distroless image) is not an error: its `os_*` columns are empty, and the scan logs once at info level that the image has no operating system.
 
-`image_name` and `tag` hold the same display name: the whole reference the image is known by, so the
-same image is named alike whichever source read it. An archive carries it as `io.containerd.image.name`
-(for example `ghcr.io/owner/app:1.0`), and a remote reference as `registry/repository[:tag][@digest]`,
-with the tag kept when a digest follows it and the repository always present, so the same tag in two
-repositories is two names. `tags` holds every tag the image answers to, serialized as a JSON array: the
-names an archive lists, or `registry/repository:tag` for a remote reference that carries a tag.
+### Image identity columns
+
+Four columns carry the fields of the shared container block, named after `container.image.*` with the dots
+written as underscores, so the image side and the runtime side describe an image alike:
+
+| Column | Shared field | Holds |
+|--------|--------------|-------|
+| `image_id` | `container.image.id` | The configuration digest. It is what a Docker engine reports as the image id of a running container. |
+| `image_hash_all` | `container.image.hash.all` | Every digest the image is known by (see above). A running container joins an image when the digest its engine reports is the `image_id` or any entry of this list: Docker reports the configuration digest, Kubernetes the digest of the repository entry (index or manifest) the image was pulled by, when the pod reports one. |
+| `image_name` | `container.image.name` | The full normalised name, `registry/repository` with neither tag nor digest. Docker Hub is made explicit, so `nginx` and `library/nginx:1` are both `docker.io/library/nginx`. Empty when the source gives the image no name. |
+| `image_tag` | `container.image.tag` | The tags of that name, serialized as a JSON array (`["1.4","latest"]`). |
+
+Where the name comes from depends on the source:
+
+- A remote reference: the registry and repository of the configured `<ref>`, and its tag when it carries one (`latest` when it names neither tag nor digest). A reference pinned only by digest has no tag.
+- A saved image in the `docker save` layout: the `RepoTags` it lists, normalised. The first one fixes the name and every tag of that name is listed once. A name on another repository than the first is not reported, and an entry that is not a reference (`<none>:<none>`) is skipped; both are logged at debug with the reason. Only the first 64 names of an image are read, and one debug line says when the rest is dropped.
+- An OCI image layout: the `io.containerd.image.name` annotation, normalised, and the `org.opencontainers.image.ref.name` annotation, which is read as a whole reference when it holds a `:`, `/` or `@` and as a tag otherwise. A layout that carries only a bare tag has a tag and no name: a repository is never guessed from a tag.
+
+The reference stays the key, so two references of one repository (`app:1.0`, `app:2.0`) are two rows that share an `image_name`.
 
 ### `dbsync_container_image_packages`
 
@@ -147,7 +161,13 @@ Issue #37529's scope asks for that metadata in the package state; this model ans
 reference rather than by duplication, and the choice needs confirming on the objective before
 the sync layer is built.
 
----
+### 8. State index
+
+Nothing synchronizes yet. The name below is proposed, pending agreement with the runtime team, and is recorded so the
+synchronization layer and the manager can settle on it (`IMAGE_PACKAGES_INDEX` in `container_images_db.hpp`):
+
+| Table | Index |
+|---
 
 ## Component layout
 
@@ -182,6 +202,6 @@ its own callback.
 ## Open items
 
 - Add RPM package extraction, which needs the header parsing that lives in shared agent code. Until it lands, an RPM-based image is stored with zero packages.
-- Manager synchronization: index names and indexer templates, ECS field mapping for the event
+- Manager synchronization: the indexer templates for the indices above, ECS field mapping for the event
   payload, and whether a document limit / promotion is needed. The `sync` column already
   exists so a limit can be layered on without a migration.

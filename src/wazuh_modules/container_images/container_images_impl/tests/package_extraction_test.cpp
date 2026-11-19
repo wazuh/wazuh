@@ -170,7 +170,8 @@ namespace
             }
 
             /// @brief Write a saved image archive with the `docker save` layout.
-            std::string writeDockerArchive()
+            /// @param repoTags Raw `RepoTags` list of the manifest entry.
+            std::string writeDockerArchive(const std::string& repoTags = R"(["example:latest"])")
             {
                 std::string archive;
                 std::string layerNames;
@@ -185,7 +186,7 @@ namespace
 
                 archive += tarMember(CONFIG_DIGEST + ".json", CONFIG_BLOB);
                 archive += tarMember("manifest.json",
-                                     R"([{"Config":")" + CONFIG_DIGEST + R"(.json","RepoTags":["example:latest"],"Layers":[)" +
+                                     R"([{"Config":")" + CONFIG_DIGEST + R"(.json","RepoTags":)" + repoTags + R"(,"Layers":[)" +
                                      layerNames + "]}]");
                 archive += tarEnd();
 
@@ -1385,7 +1386,8 @@ TEST_F(PackageExtractionTest, OciLayoutDirectoryIsInventoried)
 
     ASSERT_EQ(references.size(), 1U);
     EXPECT_EQ(references.front().source.sourceType, "archive");
-    EXPECT_EQ(references.front().tag, "example:latest");
+    EXPECT_EQ(references.front().name, "docker.io/library/example");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
     EXPECT_EQ(references.front().os, "linux");
     EXPECT_EQ(packageNames(references.front().packages), std::vector<std::string>({"curl", "tar"}));
 }
@@ -1411,7 +1413,8 @@ TEST_F(PackageExtractionTest, SavedArchiveIsInventoried)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "example:latest");
+    EXPECT_EQ(references.front().name, "docker.io/library/example");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
     EXPECT_EQ(packageNames(references.front().packages), std::vector<std::string>({"curl"}));
 }
 
@@ -1587,6 +1590,67 @@ TEST_F(PackageExtractionTest, AnUnchangedSavedArchiveReportsTheDigestsItsMetadat
     EXPECT_EQ(oci.digests, std::vector<std::string>({"sha256:" + ImageBuilder::MANIFEST_DIGEST, known}));
 }
 
+TEST_F(PackageExtractionTest, AnUnchangedArchiveReportsTheNameAndTagsItHasNow)
+{
+    // Saved again under other tags, the image keeps its configuration digest, so nothing is read
+    // again, but the names it carries now are handed back with the unchanged result.
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto known {"sha256:" + ImageBuilder::CONFIG_DIGEST};
+
+    const auto docker {ArchiveImageReader(builder.writeDockerArchive(R"(["a:1","a:2"])"), known).discover()};
+    ASSERT_EQ(docker.status, ReadStatus::Unchanged);
+    ASSERT_TRUE(docker.names.has_value());
+    EXPECT_EQ(docker.names->name, "docker.io/library/a");
+    EXPECT_EQ(docker.names->tags, std::vector<std::string>({"1", "2"}));
+
+    const auto oci {ArchiveImageReader(builder.writeOciLayout(R"({"org.opencontainers.image.ref.name":"b:3"})"),
+                                       known).discover()};
+    ASSERT_EQ(oci.status, ReadStatus::Unchanged);
+    ASSERT_TRUE(oci.names.has_value());
+    EXPECT_EQ(oci.names->name, "docker.io/library/b");
+    EXPECT_EQ(oci.names->tags, std::vector<std::string>({"3"}));
+}
+
+TEST_F(PackageExtractionTest, AnImageListingMoreNamesThanTheLimitKeepsTheFirstOnes)
+{
+    // The manifest is bounded by its size, not by what it lists, and every tag is compared to
+    // the ones already kept.
+    std::string repoTags {"["};
+
+    for (int tag = 0; tag < 500; ++tag)
+    {
+        repoTags += std::string {tag == 0 ? "" : ","} + "\"x:" + std::to_string(tag) + "\"";
+    }
+
+    repoTags += "]";
+
+    int capLines {0};
+    LoggingHelper::setLogCallback([&capLines](const modules_log_level_t, const char* message)
+    {
+        if (std::string {message}.find("names, the ones past that are not reported") != std::string::npos)
+        {
+            ++capLines;
+        }
+    });
+
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeDockerArchive(repoTags)};
+    const auto references {reader.discover().records};
+
+    LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "docker.io/library/x");
+    ASSERT_EQ(references.front().tags.size(), 64U);
+    EXPECT_EQ(references.front().tags.front(), "0");
+    EXPECT_EQ(references.front().tags.back(), "63");
+    EXPECT_EQ(capLines, 1) << "the dropped names are reported once";
+}
+
 TEST_F(PackageExtractionTest, RpmImageIsInventoried)
 {
     RpmPackage bash;
@@ -1744,10 +1808,10 @@ TEST_F(PackageExtractionTest, ARegistryReaderRejectsAnUnsupportedRegistryWithout
     EXPECT_EQ(reader->discover().status, ReadStatus::Failed);
 }
 
-TEST_F(PackageExtractionTest, WholeImageNameIsPreferredOverTheTagOnlyAnnotation)
+TEST_F(PackageExtractionTest, TheContainerdAnnotationNamesTheImageAndTheTagOnlyOneAddsNothingNew)
 {
     // A saved image carries the whole reference in the containerd annotation and only the tag
-    // in the OCI one, so the display name comes from the first and both are reported.
+    // in the OCI one: one name, and the tag once.
     ImageBuilder builder;
     builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
 
@@ -1756,11 +1820,11 @@ TEST_F(PackageExtractionTest, WholeImageNameIsPreferredOverTheTagOnlyAnnotation)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "docker.io/library/debian:12");
-    EXPECT_EQ(references.front().tags, std::vector<std::string>({"docker.io/library/debian:12", "12"}));
+    EXPECT_EQ(references.front().name, "docker.io/library/debian");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"12"}));
 }
 
-TEST_F(PackageExtractionTest, TagOnlyAnnotationIsUsedWhenItIsTheOnlyOne)
+TEST_F(PackageExtractionTest, AWholeReferenceInTheOciAnnotationIsNormalised)
 {
     ImageBuilder builder;
     builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
@@ -1769,6 +1833,74 @@ TEST_F(PackageExtractionTest, TagOnlyAnnotationIsUsedWhenItIsTheOnlyOne)
     const auto references {reader.discover().records};
 
     ASSERT_EQ(references.size(), 1U);
-    EXPECT_EQ(references.front().tag, "example:latest");
-    EXPECT_EQ(references.front().tags, std::vector<std::string>({"example:latest"}));
+    EXPECT_EQ(references.front().name, "docker.io/library/example");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"latest"}));
+}
+
+TEST_F(PackageExtractionTest, ABareTagInTheOciAnnotationIsATagWithNoName)
+{
+    // Layout writers record only the tag there; guessing a repository from it would invent a name.
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout(R"({"org.opencontainers.image.ref.name":"1.4"})")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().name.empty());
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"1.4"}));
+}
+
+TEST_F(PackageExtractionTest, AnOciEntryWithNoAnnotationsHasNoNameAndNoTags)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayout("{}")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().name.empty());
+    EXPECT_TRUE(references.front().tags.empty());
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveTagsOfOneRepositoryAreListedUnderOneNormalisedName)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeDockerArchive(R"(["nginx:1","library/nginx:latest","nginx:1"])")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "docker.io/library/nginx");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"1", "latest"}));
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveNamesOnAnotherRepositoryAreNotReportedAsTags)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto archive {builder.writeDockerArchive(R"(["ghcr.io/o/r:2","ghcr.io/o/other:3","localhost:5000/r:4"])")};
+
+    ArchiveImageReader reader {archive};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "ghcr.io/o/r");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"2"}));
+}
+
+TEST_F(PackageExtractionTest, SavedArchiveWithNoUsableRepoTagHasNoNameAndNoTags)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeDockerArchive(R"(["<none>:<none>"])")};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_TRUE(references.front().name.empty());
+    EXPECT_TRUE(references.front().tags.empty());
 }

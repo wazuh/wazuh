@@ -27,6 +27,13 @@ namespace containerimages
     constexpr auto REFERENCES_TABLE {"dbsync_container_image_references"};
     constexpr auto PACKAGES_TABLE {"dbsync_container_image_packages"};
 
+    /// @brief Name of the state index the packages table is meant for, once it is synchronized.
+    ///
+    /// Proposed, pending agreement with the runtime team. It sits outside the pattern of the host
+    /// packages template (`wazuh-states-inventory-packages*`), so this module never writes the
+    /// index the host collector owns for the same agent. Nothing writes to it yet.
+    constexpr auto IMAGE_PACKAGES_INDEX {"wazuh-states-inventory-image-packages"};
+
     /// @brief Delta reported for a single row, with everything already extracted.
     ///
     /// The row JSON is unwrapped, the document id computed and the payload serialized inside

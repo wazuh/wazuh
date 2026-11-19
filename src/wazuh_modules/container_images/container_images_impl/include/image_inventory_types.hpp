@@ -73,17 +73,22 @@ namespace containerimages
     ///
     /// The image reference is the owner of the inventory: in the reference-based
     /// model packages belong to the reference they were found under. Each discovered
-    /// reference produces one record. The config digest is kept as metadata only, it
-    /// is not an identity key.
+    /// reference produces one record. The config digest names the image in the shared
+    /// container block but is not the key of the record, which stays the reference.
     struct ImageReferenceRecord
     {
         ImageReferenceSource source;    ///< The reference: source type + location (the owner).
-        std::string tag;                ///< Name the reference is known by.
-        std::vector<std::string> tags;  ///< Every tag the image is known by, when the source lists more than one.
-        std::string configDigest;    ///< Config blob digest, kept as metadata only.
+        /// Full normalised name, `registry/repository` with neither tag nor digest (`nginx` is
+        /// `docker.io/library/nginx`). Empty when the source gives the image no name.
+        std::string name;
+        std::vector<std::string> tags;  ///< Every tag of that name the image is known by.
+        /// Config blob digest: the image's identity, what a container engine reports as the image
+        /// id. Not the key of the record, which stays the reference.
+        std::string configDigest;
         std::string manifestDigest;  ///< Manifest digest, kept as metadata only.
         /// Every digest the image is known by: the indexes it was resolved through (outermost
-        /// first), then the manifest, then the configuration. Metadata only, like the two above.
+        /// first), then the manifest, then the configuration. A running container reports one of
+        /// them, whichever its engine uses, so it is the list a container is joined to the image on.
         std::vector<std::string> digests;
         std::string os;
         std::string architecture;

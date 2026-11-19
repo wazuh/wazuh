@@ -541,6 +541,11 @@ TEST_F(RegistryReaderTest, AnUnchangedDigestRetrievesNoImageContents)
     EXPECT_EQ(result.status, ReadStatus::Unchanged);
     EXPECT_TRUE(result.records.empty());
 
+    // The name and tag the reference gives the image are handed back with it.
+    ASSERT_TRUE(result.names.has_value());
+    EXPECT_EQ(result.names->name, "ghcr.io/owner/app");
+    EXPECT_EQ(result.names->tags, std::vector<std::string>({"1.0"}));
+
     // The acceptance criterion, asserted rather than inferred: the manifests are read to
     // learn the digest, and no blob is requested at all.
     EXPECT_EQ(m_transport->countMatching("/blobs/"), 0u);
@@ -716,21 +721,21 @@ class RegistryImageNameTest : public RegistryReaderTest
         }
 };
 
-TEST_F(RegistryImageNameTest, ATaggedReferenceIsNamedByItsRepositoryAndTag)
+TEST_F(RegistryImageNameTest, ATaggedReferenceIsNamedByItsRepositoryAndTagsByItsTag)
 {
     const auto record {discovered("ghcr.io/owner/app:1.0")};
 
-    EXPECT_EQ(record.tag, "ghcr.io/owner/app:1.0");
-    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:1.0"}));
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"1.0"}));
 }
 
 TEST_F(RegistryImageNameTest, ARepositoryAndATagThatAreNotWrittenOutAreStillNamed)
 {
-    // No tag written, so latest is assumed, and it is the name the image is stored under.
+    // No tag written, so latest is assumed.
     const auto record {discovered("ghcr.io/owner/app")};
 
-    EXPECT_EQ(record.tag, "ghcr.io/owner/app:latest");
-    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:latest"}));
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"latest"}));
 }
 
 TEST_F(RegistryImageNameTest, TheSameTagInTwoRepositoriesIsTwoNames)
@@ -740,24 +745,24 @@ TEST_F(RegistryImageNameTest, TheSameTagInTwoRepositoriesIsTwoNames)
     m_transport = new ScriptedTransport();
     const auto second {discovered("ghcr.io/other/tool:latest")};
 
-    EXPECT_NE(first.tag, second.tag);
-    EXPECT_EQ(first.tag, "ghcr.io/owner/app:latest");
-    EXPECT_EQ(second.tag, "ghcr.io/other/tool:latest");
+    EXPECT_NE(first.name, second.name);
+    EXPECT_EQ(first.name, "ghcr.io/owner/app");
+    EXPECT_EQ(second.name, "ghcr.io/other/tool");
 }
 
-TEST_F(RegistryImageNameTest, ATagBesideADigestIsKeptInTheName)
+TEST_F(RegistryImageNameTest, ATagBesideADigestIsKeptAsATagAndTheDigestLeavesTheName)
 {
     const auto record {discovered(std::string {"ghcr.io/owner/app:1.4@"} + DIGEST)};
 
-    EXPECT_EQ(record.tag, std::string {"ghcr.io/owner/app:1.4@"} + DIGEST);
-    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:1.4"}));
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"1.4"}));
 }
 
-TEST_F(RegistryImageNameTest, ADigestOnItsOwnIsNamedByItsRepositoryAndDigest)
+TEST_F(RegistryImageNameTest, ADigestOnItsOwnIsNamedByItsRepositoryAndHasNoTag)
 {
     const auto record {discovered(std::string {"ghcr.io/owner/app@"} + DIGEST)};
 
-    EXPECT_EQ(record.tag, std::string {"ghcr.io/owner/app@"} + DIGEST);
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
     EXPECT_TRUE(record.tags.empty());
 }
 
@@ -3709,7 +3714,7 @@ TEST_F(EcrReaderTest, ACallThatMayClearUpIsRetriedUpToTheAttempts)
 }
 
 // What is stored for an ECR image is what is stored for a GHCR one.
-TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageName)
+TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageNameWithoutItsTag)
 {
     scriptResolution(*m_transport);
 
@@ -3717,9 +3722,9 @@ TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageName)
 
     ASSERT_EQ(result.status, ReadStatus::Success);
     ASSERT_EQ(result.records.size(), 1u);
-    EXPECT_EQ(result.records.front().tag, std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().name, std::string {ECR_HOST} + "/my-backend");
     ASSERT_EQ(result.records.front().tags.size(), 1u);
-    EXPECT_EQ(result.records.front().tags.front(), std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().tags.front(), "1.0");
     EXPECT_EQ(result.records.front().source.location, ECR_REFERENCE);
 }
 
@@ -3737,9 +3742,9 @@ TEST_F(EcrReaderTest, ATagFollowedByADigestPullsTheDigestAndKeepsTheTag)
     ASSERT_EQ(result.status, ReadStatus::Success);
     ASSERT_EQ(result.records.size(), 1u);
     EXPECT_EQ(transport->countMatching("/manifests/1.0"), 0u) << "the tag was pulled instead of the digest";
-    EXPECT_EQ(result.records.front().tag, std::string {ECR_HOST} + "/my-backend:1.0@" + digest);
+    EXPECT_EQ(result.records.front().name, std::string {ECR_HOST} + "/my-backend");
     ASSERT_EQ(result.records.front().tags.size(), 1u);
-    EXPECT_EQ(result.records.front().tags.front(), std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().tags.front(), "1.0");
 }
 
 // The layer path is the shared one: nothing ECR-specific reads, bounds or retries a layer.

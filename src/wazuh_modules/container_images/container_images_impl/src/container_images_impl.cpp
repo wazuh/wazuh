@@ -174,13 +174,30 @@ namespace containerimages
 
                 if (stored)
                 {
-                    // The configuration is the same, but the index above it may not be. Only a
-                    // list that differs is written back, so an unchanged image costs nothing.
-                    if (!result.digests.empty() && result.digests != stored->digests)
+                    // The configuration is the same, but the index above it and the names and tags
+                    // pointing at it may not be. Only what differs is written back, so an unchanged
+                    // image costs nothing.
+                    const bool digestsChanged = !result.digests.empty() && result.digests != stored->digests;
+                    const bool namesChanged = result.names.has_value() &&
+                                              (result.names->name != stored->name || result.names->tags != stored->tags);
+
+                    if (digestsChanged)
                     {
                         stored->digests = std::move(result.digests);
+                    }
+
+                    if (namesChanged)
+                    {
+                        stored->name = std::move(result.names->name);
+                        stored->tags = std::move(result.names->tags);
+                    }
+
+                    if (digestsChanged || namesChanged)
+                    {
                         logDebug("Reference '" + configured.location +
-                                 "' still holds the stored image, its digests were refreshed.");
+                                 "' still holds the stored image, its " +
+                                 (digestsChanged ? (namesChanged ? "digests, name and tags" : "digests") : "name and tags") +
+                                 " were refreshed.");
                     }
 
                     references.push_back(std::move(*stored));

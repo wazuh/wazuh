@@ -24,19 +24,20 @@ namespace
 {
     constexpr unsigned int DBSYNC_QUEUE_SIZE {4096};
 
-    // Reference table: PK is (reference_type, reference_value). The config digest is a
-    // change signal and is carried as a column, not as part of the identity.
+    // Reference table: PK is (reference_type, reference_value). The image columns carry the
+    // shared container block's `container.image.*` fields: image_id is the config digest (the
+    // change signal too), image_hash_all every digest, image_name the normalised full name and
+    // image_tag its tags. None of them is part of the key.
     constexpr auto REFERENCES_SQL
     {
         R"(CREATE TABLE IF NOT EXISTS dbsync_container_image_references (
         reference_type TEXT,
         reference_value TEXT,
-        image_config_digest TEXT,
+        image_id TEXT,
         manifest_digest TEXT,
-        digests TEXT,
+        image_hash_all TEXT,
         image_name TEXT,
-        tag TEXT,
-        tags TEXT,
+        image_tag TEXT,
         platform_os TEXT,
         platform_architecture TEXT,
         platform_variant TEXT,
@@ -140,15 +141,13 @@ namespace
         nlohmann::json row;
         row["reference_type"] = reference.source.sourceType;
         row["reference_value"] = reference.source.location;
-        row["image_config_digest"] = reference.configDigest;
+        row["image_id"] = reference.configDigest;
         row["manifest_digest"] = reference.manifestDigest;
         // Every digest the image is known by, serialized as a JSON array like the tags.
-        row["digests"] = nlohmann::json(reference.digests).dump();
-        row["image_name"] = reference.tag; // display name; refined when real readers land
-        row["tag"] = reference.tag;
-        // Every tag the image answers to, serialized as a JSON array. One reference can be
-        // reachable under several tags; the single `tag` above stays the display name.
-        row["tags"] = nlohmann::json(reference.tags).dump();
+        row["image_hash_all"] = nlohmann::json(reference.digests).dump();
+        row["image_name"] = reference.name;
+        // Every tag of that name the image answers to, serialized as a JSON array.
+        row["image_tag"] = nlohmann::json(reference.tags).dump();
         row["platform_os"] = reference.os;
         row["platform_architecture"] = reference.architecture;
         row["platform_variant"] = reference.variant;
@@ -328,16 +327,16 @@ namespace containerimages
         {
             found = true;
             record.source = {stringOf(row, "reference_type"), stringOf(row, "reference_value")};
-            record.configDigest = stringOf(row, "image_config_digest");
+            record.configDigest = stringOf(row, "image_id");
             record.manifestDigest = stringOf(row, "manifest_digest");
-            record.tag = stringOf(row, "tag");
+            record.name = stringOf(row, "image_name");
             record.os = stringOf(row, "platform_os");
             record.architecture = stringOf(row, "platform_architecture");
             record.variant = stringOf(row, "platform_variant");
             record.osVersion = stringOf(row, "platform_os_version");
 
-            record.tags = stringListOf(row, "tags");
-            record.digests = stringListOf(row, "digests");
+            record.tags = stringListOf(row, "image_tag");
+            record.digests = stringListOf(row, "image_hash_all");
 
             record.operatingSystem.name = stringOf(row, "os_name");
             record.operatingSystem.version = stringOf(row, "os_version");
@@ -349,8 +348,8 @@ namespace containerimages
 
         auto referenceQuery = SelectQuery::builder()
                               .table(REFERENCES_TABLE)
-                              .columnList({"reference_type", "reference_value", "image_config_digest",
-                                           "manifest_digest", "digests", "image_name", "tag", "tags",
+                              .columnList({"reference_type", "reference_value", "image_id",
+                                           "manifest_digest", "image_hash_all", "image_name", "image_tag",
                                            "platform_os", "platform_architecture", "platform_variant",
                                            "platform_os_version", "os_name", "os_version", "os_id",
                                            "os_family", "os_codename", "os_pretty_name"})

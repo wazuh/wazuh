@@ -74,7 +74,7 @@ expected message (e.g. a wording change in the module that the pattern must be u
 | # | Scenario | Input | Expected result |
 |---|----------|-------|-----------------|
 | I1 | Scan on start stores the inventory | `scan_on_start=yes`, one `<archive>` OCI layout with a dpkg database | **PASS** when `Scan ended.` is logged, the references table has ≥1 row, and `curl` and `tar` are stored with the versions the database holds. |
-| I2 | Image update detected on next scan | `interval=5s`, one `<archive>` OCI layout | **PASS** when, after the image is rebuilt between scans, the next scan logs a reference *modification* and the stored `image_config_digest` changes. |
+| I2 | Image update detected on next scan | `interval=5s`, one `<archive>` OCI layout | **PASS** when, after the image is rebuilt between scans, the next scan logs a reference *modification* and the stored `image_id` changes. |
 | I3 | Saved archive is inventoried | one `<archive>` saved image archive with an apk database | **PASS** when the reference is stored with type `archive` and its apk packages are stored. |
 | I4 | The later layer wins | an image whose second layer upgrades a package | **PASS** when the upgraded package is stored once, with the version of the last layer, and the untouched package is still stored. |
 | I5 | A deleted database contributes nothing | an image whose second layer deletes the dpkg database and adds an apk one | **PASS** when the package of the deleted database is absent and the apk package is stored. |

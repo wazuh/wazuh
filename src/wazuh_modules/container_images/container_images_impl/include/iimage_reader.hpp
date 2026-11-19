@@ -13,6 +13,7 @@
 
 #include "image_inventory_types.hpp"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,13 @@ namespace containerimages
         Unchanged, ///< The source holds the image already stored, so it was not read again.
     };
 
+    /// @brief The name and tags an image is known by.
+    struct ImageNames
+    {
+        std::string name;
+        std::vector<std::string> tags;
+    };
+
     /// @brief The outcome of reading one source.
     struct ImageReadResult
     {
@@ -35,6 +43,10 @@ namespace containerimages
         /// For an unchanged source: the digests the image is known by now, when the reader
         /// has them. The index above an image can change while its configuration does not.
         std::vector<std::string> digests {};
+        /// For an unchanged source: the name and tags the image is known by now, when the reader
+        /// has them. An image can be retagged while its configuration does not change. Unlike the
+        /// digests, an empty name and list are a value here (the image lost its names).
+        std::optional<ImageNames> names {};
 
         /// @brief A successful read of @p records.
         static ImageReadResult success(std::vector<ImageReferenceRecord> records)
@@ -51,9 +63,11 @@ namespace containerimages
         /// @brief The source still holds the image the caller already has stored.
         /// @param digests The digests the image is known by now, so the caller can refresh
         ///                its stored list without reading the image again.
-        static ImageReadResult unchanged(std::vector<std::string> digests = {})
+        /// @param names   The name and tags it is known by now, for the same purpose.
+        static ImageReadResult unchanged(std::vector<std::string> digests = {},
+                                         std::optional<ImageNames> names = std::nullopt)
         {
-            return {ReadStatus::Unchanged, {}, std::move(digests)};
+            return {ReadStatus::Unchanged, {}, std::move(digests), std::move(names)};
         }
     };
 
