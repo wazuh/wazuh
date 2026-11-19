@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the typo "Succsessful" in the description of the Amazon Security Lake rule for successful Route 53 DNS requests (99080). ([#41519](https://github.com/wazuh/wazuh/pull/41519))
 - Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#41406](https://github.com/wazuh/wazuh/pull/41406))
 - Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states as warnings or errors: after a `409`, `413` or `429` answer from the indexer, and when the queue stops. A `409` or `429` that persists for a minute is still reported, with the reason given by the indexer. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
+- Fixed the vulnerability scanner ordering a Windows, macOS, PKG or Snap package version below the same version with trailing zero parts, such as Firefox `157.0` below `157.0.0`, which reported fixed releases as vulnerable and missed releases at the start of a range. Pure dotted-numeric versions are now compared with PEP440, as in 5.0.0. ([#41632](https://github.com/wazuh/wazuh/pull/41632))
 
 #### Changed
 
