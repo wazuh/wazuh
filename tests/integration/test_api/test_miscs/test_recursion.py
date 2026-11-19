@@ -73,8 +73,8 @@ def generate_nested_json(depth: int) -> dict:
     "depth, expected_status",
     [
         (100, 200),
-        (500, 400),  # remove_nones_to_dict recursion check
-        (1100, 400),  # json.load recursion check
+        (500, 200),  # Below Python's default recursion limit (~1000)
+        (1100, 400),  # Exceeds recursion limit - triggers RecursionError
     ],
 )
 def test_json_nesting_depth(

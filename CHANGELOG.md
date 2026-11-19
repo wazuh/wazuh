@@ -3,12 +3,33 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.13]
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-db` not escaping map keys in its HTTP responses, which let the operating system platform reported by an agent alter or break the counts of `GET /agents/summary`. ([#41545](https://github.com/wazuh/wazuh/pull/41545))
+- Fixed `wazuh-clusterd` accepting divided messages from a peer that had not proven the cluster key, and copying the whole accumulated message on every received chunk, which let a connection without the key make the master hold hundreds of MiB and stop serving workers and `cluster_control` for tens of seconds. The connection is now closed at the header of a divided message received before the peer proves the key, or of a chunk larger than 10 MiB, and the chunks are accumulated in place. ([#41594](https://github.com/wazuh/wazuh/pull/41594))
+- Fixed `wazuh-integratord` writing the alert location, rule ID and rule description unfiltered to the alert file of integrations that do not use the JSON alert format. These fields now get the same character filtering as the alert log. ([#41599](https://github.com/wazuh/wazuh/pull/41599))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed the CIS Oracle Linux 10 SCA check 38531 (bootloader password is set) failing on every host, including those with a GRUB2 password, because of a stray quote at the end of its rule. ([#41539](https://github.com/wazuh/wazuh/pull/41539))
+
+### Other
+
+#### Changed
+
+- Updated embedded Python from 3.10.21 to 3.12.16, as the 3.10 series has reached end of life. Updated the dependencies without Python 3.12 support for the oldest supported systems (`google-crc32c`, `grpcio-status` and `yarl`, which now requires `propcache`), and replaced the calls removed or deprecated in Python 3.12 in the framework and API. ([#41529](https://github.com/wazuh/wazuh/pull/41529))
+
 ## [v4.14.12]
 
 ### Manager
 
 #### Fixed
 
+- Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41201](https://github.com/wazuh/wazuh/pull/41201))
 - Fixed `wazuh-remoted` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41297](https://github.com/wazuh/wazuh/pull/41297))
 - Fixed `wazuh-analysisd` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41298](https://github.com/wazuh/wazuh/pull/41298))
 - Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41261](https://github.com/wazuh/wazuh/pull/41261))
@@ -31,6 +52,12 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-logcollector` keeping the leading tab and indentation of the continuation lines of a multi-line `postgresql_log` message. ([#41307](https://github.com/wazuh/wazuh/pull/41307))
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
+
+### Other
+
+#### Changed
+
+- Updated the embedded Python dependencies `anyio`, `certifi`, `multidict`, `pyasn1`, `PyJWT`, `setuptools`, `urllib3` and `Werkzeug`.
 
 ## [v4.14.11]
 

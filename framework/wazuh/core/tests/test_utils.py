@@ -2535,7 +2535,7 @@ def test_get_utc_now():
     """Test if the result is the expected date."""
 
     date = utils.get_utc_now()
-    assert date == datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    assert date == datetime.datetime.now(datetime.timezone.utc)
 
 @pytest.mark.parametrize('is_at_utc', [True, False])
 @patch('wazuh.core.utils.get_localtime')

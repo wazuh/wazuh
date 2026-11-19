@@ -1318,7 +1318,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 56
+DEPS_VERSION = 58
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -2411,11 +2411,15 @@ build_benchmark:
 WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
 WPYTHON_TAR=cpython.tar.gz
-WLIBPYTHON=libpython3.10.so.1.0
+WLIBPYTHON=libpython3.12.so.1.0
 
 ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
+
+# Python 3.12 configure adds "-lssl -lcrypto" to the built-in _ssl and _hashlib modules, which
+# the linker resolves to the system OpenSSL. Link them against libwazuhext, which bundles it.
+CPYTHON_OPENSSL_FLAGS=MODULE__SSL_LDFLAGS="-L${ROUTE_PATH} -lwazuhext" MODULE__HASHLIB_LDFLAGS="-L${ROUTE_PATH} -lwazuhext"
 
 wpython: install_dependencies install_framework install_api install_mitre
 
@@ -2425,14 +2429,23 @@ ifeq (,${INSTALLDIR})
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && export ac_cv_header_crypt_h=no && export ac_cv_search_crypt=no && export ac_cv_search_crypt_r=no && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -L${ROUTE_PATH}/${EXTERNAL_SQLITE} -L${ROUTE_PATH}/${EXTERNAL_LIBFFI}${TARGET}/.libs -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include -I${ROUTE_PATH}/${EXTERNAL_SQLITE} -I${ROUTE_PATH}/${EXTERNAL_LIBFFI}include" LIBS="-lwazuhext" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && \
+	export SOURCE_PATH=${ROUTE_PATH} && \
+	export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && \
+	export LD_LIBRARY_PATH=${ROUTE_PATH} && \
+	export ac_cv_header_crypt_h=no && export ac_cv_search_crypt=no && export ac_cv_search_crypt_r=no && \
+	export LIBSQLITE3_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_SQLITE}" && \
+	export LIBSQLITE3_LIBS="-L${ROUTE_PATH} -lwazuhext" && \
+	export LIBFFI_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_LIBFFI}include" && \
+	export LIBFFI_LIBS="-L${ROUTE_PATH} -lwazuhext" && \
+	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -L${ROUTE_PATH}/${EXTERNAL_SQLITE} -L${ROUTE_PATH}/${EXTERNAL_LIBFFI}${TARGET}/.libs -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include -I${ROUTE_PATH}/${EXTERNAL_SQLITE} -I${ROUTE_PATH}/${EXTERNAL_LIBFFI}include" LIBS="-lwazuhext" $(CPYTHON_FLAGS) && ${MAKE} ${CPYTHON_OPENSSL_FLAGS}
 endif
 
 build_python: $(WAZUHEXT_LIB)
 
 install_python:
 ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
-	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${INSTALLDIR}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${INSTALLDIR}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install TEST_MODULES=no ${CPYTHON_OPENSSL_FLAGS}
 else
 	mkdir -p ${WPYTHON_DIR}
 	cp external/${WPYTHON_TAR} ${WPYTHON_DIR}/${WPYTHON_TAR} && ${TAR} ${WPYTHON_DIR}/${WPYTHON_TAR} -C ${WPYTHON_DIR} && rm -rf ${WPYTHON_DIR}/${WPYTHON_TAR}

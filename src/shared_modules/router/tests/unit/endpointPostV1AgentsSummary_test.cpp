@@ -12,6 +12,7 @@
 #include "shared_modules/router/src/wazuh-db/endpointPostV1AgentsSummary.hpp"
 #include "shared_modules/utils/mocks/sqlite3WrapperMock.hpp"
 
+#include <external/nlohmann/json.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -243,6 +244,77 @@ TEST_F(EndpointPostV1AgentsSummaryTest, Filtered_ShouldIgnoreNullAndEmptyOsPlatf
 
     // Verify that the response body is correct, containing only the valid OS platforms for the requested agents
     EXPECT_EQ(res.body, R"({"agents_by_os":{"linux":1,"windows":1}})");
+}
+
+TEST_F(EndpointPostV1AgentsSummaryTest, NoFilter_ShouldEscapeOsPlatformKeys)
+{
+    constexpr auto INJECTED_PLATFORM = R"(x":1,"ubuntu":0,"y)";
+
+    Sequence s;
+    EXPECT_CALL(*stmt, step())
+        .InSequence(s)
+        // status - Doesn't matter for this test
+        .WillOnce(Return(SQLITE_DONE))
+        // groups - Doesn't matter for this test
+        .WillOnce(Return(SQLITE_DONE))
+        // os - The important part
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_DONE));
+
+    EXPECT_CALL(*stmt, valueInt64(0)).WillOnce(Return(2)).WillOnce(Return(1));
+    EXPECT_CALL(*stmt, valueString(1)).WillOnce(Return("ubuntu")).WillOnce(Return(INJECTED_PLATFORM));
+
+    MockSQLiteConnection db;
+    httplib::Request req;
+    httplib::Response res;
+
+    TEndpointPostV1AgentsSummary<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
+
+    EXPECT_EQ(res.body, R"({"agents_by_os":{"ubuntu":2,"x\":1,\"ubuntu\":0,\"y":1}})");
+
+    nlohmann::json parsed;
+    ASSERT_NO_THROW(parsed = nlohmann::json::parse(res.body)) << res.body;
+    const auto& agentsByOs = parsed.at("agents_by_os");
+    EXPECT_EQ(agentsByOs.size(), 2);
+    EXPECT_EQ(agentsByOs.at("ubuntu"), 2);
+    EXPECT_EQ(agentsByOs.at(INJECTED_PLATFORM), 1);
+}
+
+TEST_F(EndpointPostV1AgentsSummaryTest, Filtered_ShouldEscapeOsPlatformKeys)
+{
+    constexpr auto INVALID_JSON_PLATFORM = R"(x"":" ")";
+
+    Sequence s;
+    EXPECT_CALL(*stmt, step())
+        .InSequence(s)
+        // connections - Doesn't matter for this test
+        .WillOnce(Return(SQLITE_DONE))
+        // groups - Doesn't matter for this test
+        .WillOnce(Return(SQLITE_DONE))
+        // os - The important part
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_ROW))
+        .WillOnce(Return(SQLITE_DONE));
+
+    EXPECT_CALL(*stmt, valueInt64(0)).WillOnce(Return(1)).WillOnce(Return(2));
+    EXPECT_CALL(*stmt, valueString(1)).WillOnce(Return("ubuntu")).WillOnce(Return(INVALID_JSON_PLATFORM));
+
+    MockSQLiteConnection db;
+    httplib::Request req;
+    httplib::Response res;
+    req.body = "1,2";
+
+    TEndpointPostV1AgentsSummary<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
+
+    EXPECT_EQ(res.body, R"({"agents_by_os":{"ubuntu":1,"x\"\":\" \"":1}})");
+
+    nlohmann::json parsed;
+    ASSERT_NO_THROW(parsed = nlohmann::json::parse(res.body)) << res.body;
+    const auto& agentsByOs = parsed.at("agents_by_os");
+    EXPECT_EQ(agentsByOs.size(), 2);
+    EXPECT_EQ(agentsByOs.at("ubuntu"), 1);
+    EXPECT_EQ(agentsByOs.at(INVALID_JSON_PLATFORM), 1);
 }
 
 TEST_F(EndpointPostV1AgentsSummaryTest, FilteredHappyCase)

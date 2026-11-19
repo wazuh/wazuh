@@ -2493,7 +2493,7 @@ def get_date_from_timestamp(timestamp: float) -> datetime:
     date: datetime
         The default date.
     """
-    return datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def get_localtime() -> tzinfo:
@@ -2520,7 +2520,7 @@ def get_utc_now() -> datetime:
     date: datetime
         The current date.
     """
-    return datetime.utcnow().replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
 
 
 def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = True) -> datetime:
