@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the typo "Succsessful" in the description of the Amazon Security Lake rule for successful Route 53 DNS requests (99080). ([#41519](https://github.com/wazuh/wazuh/pull/41519))
 - Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#41406](https://github.com/wazuh/wazuh/pull/41406))
 - Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states as warnings or errors: after a `409`, `413` or `429` answer from the indexer, and when the queue stops. A `409` or `429` that persists for a minute is still reported, with the reason given by the indexer. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
+- Hardened how the vulnerability scanner processes syscollector deltas. ([#41388](https://github.com/wazuh/wazuh/pull/41388))
 
 #### Changed
 
