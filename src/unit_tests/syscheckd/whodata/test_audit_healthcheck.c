@@ -156,9 +156,11 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 
     prepare_audit_healthcheck_thread();
 
-    expect_string_count(__wrap_wfopen, path, AUDIT_HEALTHCHECK_FILE, 10);
-    expect_string_count(__wrap_wfopen, mode, "w", 10);
-    will_return_count(__wrap_wfopen, 0, 10);
+    for (int i = 0; i < 10; i++) {
+        expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
+        will_return(__wrap_unlink, -1);
+        expect_w_fopen_nofollow_errno(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_NAME, "wx", NULL, EEXIST);
+    }
 
     expect_string_count(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_FILE, 10);
 
@@ -196,9 +198,11 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 
     prepare_audit_healthcheck_thread();
 
-    expect_string_count(__wrap_wfopen, path, AUDIT_HEALTHCHECK_FILE, 10);
-    expect_string_count(__wrap_wfopen, mode, "w", 10);
-    will_return_count(__wrap_wfopen, 1, 10);
+    for (int i = 0; i < 10; i++) {
+        expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
+        will_return(__wrap_unlink, 0);
+        expect_w_fopen_nofollow(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_NAME, "wx", (FILE *)1);
+    }
 
     expect_value_count(__wrap_fclose, _File, 1, 10);
     will_return_count(__wrap_fclose, 0, 10);
@@ -239,9 +243,9 @@ void test_audit_health_check_success(void **state) {
 
     prepare_audit_healthcheck_thread();
 
-    expect_string(__wrap_wfopen, path, AUDIT_HEALTHCHECK_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
+    will_return(__wrap_unlink, -1);
+    expect_w_fopen_nofollow(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_NAME, "wx", (FILE *)1);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
@@ -281,9 +285,9 @@ void test_audit_health_check_thread_wait_loop(void **state) {
 
     prepare_audit_healthcheck_thread();
 
-    expect_string(__wrap_wfopen, path, AUDIT_HEALTHCHECK_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
+    will_return(__wrap_unlink, -1);
+    expect_w_fopen_nofollow(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_NAME, "wx", (FILE *)1);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);

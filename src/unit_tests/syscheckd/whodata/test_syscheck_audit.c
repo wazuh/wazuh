@@ -1093,9 +1093,9 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -1155,9 +1155,10 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    // No staging file left from an earlier run
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, -1);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -1176,6 +1177,7 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     will_return(__wrap_audit_restart, 99);
 
     int ret;
+    errno = ENOENT;
     ret = set_auditd_config();
 
     assert_int_equal(ret, 99);
@@ -1216,13 +1218,61 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 0);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow_errno(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", NULL, EEXIST);
 
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'tmp/af_wazuh.conf' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'tmp/af_wazuh.conf' due to [(17)-(File exists)].");
 
     errno = 0;
+
+    int ret;
+    ret = set_auditd_config();
+
+    assert_int_equal(ret, -1);
+}
+
+
+void test_set_auditd_config_audit_plugin_not_created_staging_unlink_error(void **state) {
+    // Audit 3
+    expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
+    will_return(__wrap_IsDir, 0);
+
+    // get_audit_version_code
+    const char *payload = "auditctl version 4.0.0\n";
+    FILE * fp = tmpfile_with_content(payload);
+    expect_popen("auditctl -v 2>/dev/null", "r", fp);
+    expect_string(__wrap__mdebug2, formatted_msg, "Audit version detected: 4.0.0");
+
+    expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
+
+    // Plugin not created
+    const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
+
+    expect_string(__wrap_unlink, file, audit3_socket);
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    will_return(__wrap_unlink, 0);
+
+    expect_abspath(AUDIT_SOCKET, 1);
+    expect_abspath(AUDIT_CONF_FILE, 1);
+
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+
+    expect_string(__wrap_OS_SHA1_File, fname, audit3_socket);
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
+    will_return(__wrap_OS_SHA1_File, 0);
+
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1123): Unable to delete file: 'tmp/af_wazuh.conf' due to [(13)-(Permission denied)].");
+
+    errno = EACCES;
 
     int ret;
     ret = set_auditd_config();
@@ -1265,9 +1315,9 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -1319,9 +1369,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink(void **st
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -1379,9 +1429,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart(v
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -1440,9 +1490,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_error(voi
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -1497,9 +1547,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_unlink_er
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_wfopen, path, "tmp/af_wazuh.conf");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 1);
+    expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    will_return(__wrap_unlink, 0);
+    expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
 
@@ -2441,6 +2491,7 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_audit_plugin_tampered_configuration),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fopen_error),
+        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_staging_unlink_error),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fclose_error),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart),
