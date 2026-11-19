@@ -18,8 +18,8 @@
  *
  * The bundle's publication is noticed by the reader (CaCertificateSource) and it has to be SAID by
  * whoever owns a log function: the transport at start and on the daily tick, and the `GET /cacerts`
- * handler before it answers. Handing the verdict around inside the snapshot did not work (issue
- * #39319): a cached snapshot repeats its own event on every read, clearing it on read loses it for
+ * handler before it answers. Handing the verdict around inside the snapshot did not work:
+ * a cached snapshot repeats its own event on every read, clearing it on read loses it for
  * the next caller, and a counter of "the last one logged" drops events generated out of order and
  * survives a stop()/start() that legitimately starts a new source.
  *
@@ -30,7 +30,7 @@
  * it; nobody else will see it again. A guard that starts failing halfway through a day is
  * therefore visible in the very next request instead of at the next tick.
  *
- * Draining and logging as two steps was not enough (C26, objection 4): with several consumers --
+ * Draining and logging as two steps was not enough: with several consumers --
  * the daily tick, a `GET /cacerts` request and the notify provider all drain this mailbox -- one of
  * them can take generation N, be descheduled, and log it after another logged N+1, so the LAST line
  * an operator reads describes an earlier publication. deliver() is therefore the one production
@@ -64,9 +64,9 @@ namespace remoted::http
      *        two things the clock alone can do to it.
      *
      * The four guards of ca_bundle::GuardFailure travel as DATA inside `guard_failed` rather than
-     * as four kinds of their own (C25): to an operator they are one question -- why is this bundle
+     * as four kinds of their own: to an operator they are one question -- why is this bundle
      * not published -- and to the log they are one line. The two `*_on_clock` kinds are the
-     * verdict moving with no byte of the file changing (issue #39519): a validity window closed or
+     * verdict moving with no byte of the file changing: a validity window closed or
      * opened, so whether the leaf chains -- the 503 and the vouch -- flipped between two reads.
      */
     enum class RecordEvent
@@ -132,7 +132,7 @@ namespace remoted::http
      * drain AND the emission, and by nothing else: two consumers of the same mailbox (the daily
      * tick, a `GET /cacerts` request, the notify provider) therefore cannot publish generation N
      * after generation N+1, which draining and logging as two steps allowed -- A takes N, is
-     * descheduled, B takes and logs N+1, A logs N (issue #39319, C26, objection 4).
+     * descheduled, B takes and logs N+1, A logs N.
      *
      * Bounded to kCapacity because a mailbox nobody drains must not grow without limit; past it the
      * OLDEST event is dropped (the newest state of the bundle is the one worth saying) and the drop
@@ -173,7 +173,7 @@ namespace remoted::http
          *
          * Touches no disk: persisting the record is the source's job and its caller's decision
          * (deliverAndPersistRecordEvents()), which is what lets the notify path drain and log
-         * without an fsync in the keepalive (C26).
+         * without an fsync in the keepalive.
          *
          * Also reports events the bound dropped, at most once per throttle window, so an operator
          * reading only the log can tell a quiet mailbox from an overflowing one.

@@ -25,7 +25,7 @@ namespace task_manager::taskId
      *   randomness  is for creators that can be called twice meaning TWO DIFFERENT things.
      *
      * Both recipes below must stay byte-identical to their C counterparts in
-     * shared/src/manager_task_op.c and the retired wm_task_manager_tasks.c. Changing either
+     * shared/src/manager_task_op.c. Changing either
      * silently breaks idempotency: the spawn loop's crash safety is a primary-key collision, and
      * authd treats a collision as "already recorded".
      *

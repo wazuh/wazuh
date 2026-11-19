@@ -100,7 +100,7 @@ int wdb_insert_agent(int id,
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
             // Never the query: its payload carries internal_key and reenroll_secret, and this log is
-            // readable through GET /cluster/<node>/logs with ordinary read permission (issue #39078, H05).
+            // readable through GET /cluster/<node>/logs with ordinary read permission.
             mdebug2("Global DB SQL query: global insert-agent for agent '%03d'", id);
             break;
         default:
@@ -318,7 +318,7 @@ int wdb_set_agent_credentials(int id, const char *name, const char *register_ip,
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
-            // Same rule as insert-agent: the payload is the agent's whole credential set (issue #39078, H05).
+            // Same rule as insert-agent: the payload is the agent's whole credential set.
             mdebug2("Global DB SQL query: global set-agent-credentials for agent '%03d'", id);
             break;
         default:
@@ -331,7 +331,7 @@ int wdb_set_agent_credentials(int id, const char *name, const char *register_ip,
         wdbc_close(&aux_sock);
     }
 
-    // The key and the secret went through these buffers: wiped, not just freed (issue #38993).
+    // The key and the secret went through these buffers: wiped, not just freed.
     OPENSSL_cleanse(wdbquery, WDBQUERY_SIZE);
     if (data_in_str) {
         OPENSSL_cleanse(data_in_str, strlen(data_in_str));

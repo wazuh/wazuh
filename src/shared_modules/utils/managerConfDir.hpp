@@ -23,7 +23,7 @@ namespace Utils
      *
      * Defined once per language and kept identical in all of them: here, WAZUH_MANAGER_CONF_DIR in
      * src/shared/include/defs.h, MANAGER_CONF_DIR in the engine's base/managerConfig.hpp,
-     * framework/wazuh/core/common.py (CONF_PATH) and src/init/shared.sh (CONF_DIR).
+     * framework/wazuh/core/common.py (MANAGER_CONF_DIR) and src/init/shared.sh (CONF_DIR).
      */
     inline constexpr std::string_view MANAGER_CONF_DIR {"/etc/wazuh-manager"};
 

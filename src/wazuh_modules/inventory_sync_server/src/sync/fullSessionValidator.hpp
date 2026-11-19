@@ -90,7 +90,7 @@ namespace invsync::sync
     /**
      * @brief Runs every request-level validation, in order, CPU-only (safe on an I/O strand).
      *
-     * Order (design doc 02 §4): FlatBuffers verifier -> root/content type must be FullSession ->
+     * Order: FlatBuffers verifier -> root/content type must be FullSession ->
      * shape (start present, module non-empty) -> identity (header a canonical agent id, the claimed
      * agent id byte-equal to it, cluster byte-equal to the manager's) -> mode x payload matrix ->
      * per-payload rules (SyncData needs values >= 1; Cleans needs items >= 1; ChecksumModule needs

@@ -21,7 +21,7 @@
 constexpr std::int64_t CA_PUBLICATION_UNKNOWN = -1;
 
 /**
- * @brief Rule 3 of #39321: what a notify's advertised publication means for the agent.
+ * @brief Rule 3 of the CA-rotation contract: what a notify's advertised publication means for the agent.
  *
  * Pure, and deliberately so -- this is the whole of the adoption policy, it runs at the
  * keepalive cadence, and every interesting case is a pair of integers.

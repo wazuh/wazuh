@@ -40,7 +40,7 @@ class CurlPerformer final : public IHttpPerformer
         CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory, const IFsProbe& fsProbe);
 
         /// @param clock Bounds the verify_mode=system fallback's second network attempt
-        ///        (#39123 follow-up) to what remains of spec.timeoutMs once the first attempt
+        ///        to what remains of spec.timeoutMs once the first attempt
         ///        is done, instead of letting it silently double a caller's timeout budget --
         ///        ControlStream::sendShutdown's single-attempt drain_timeout_ms is deliberately
         ///        sized so an unreachable manager cannot stall shutdown, and a hidden second
@@ -66,7 +66,7 @@ class CurlPerformer final : public IHttpPerformer
         /// @return false as soon as one option is rejected; the caller must not
         ///         perform the request, because a TLS option that did not apply
         ///         silently weakens the connection.
-        /// @param useFallbackAnchor verify_mode=system's local-anchor fallback (#39123):
+        /// @param useFallbackAnchor verify_mode=system's local-anchor fallback:
         ///        which trust anchor THIS attempt dials. Decided once by perform() before the
         ///        attempt starts and threaded through explicitly, rather than read here from
         ///        m_usingSystemFallbackAnchor -- another thread can flip that flag while this
@@ -84,7 +84,7 @@ class CurlPerformer final : public IHttpPerformer
         bool setMandatoryOption(ICurlHandle& handle, CurlOption option, const std::string& value) const;
 
         /// One attempt against a fresh handle: everything perform() does for its first try,
-        /// factored out so the verify_mode=system fallback (#39123) can run it a second time
+        /// factored out so the verify_mode=system fallback can run it a second time
         /// without duplicating the body/response-sink/request wiring.
         /// @param useFallbackAnchor see applyTls() -- decided by the caller, not re-derived here.
         HttpResponse attemptOnce(const HttpRequestSpec& spec, bool useFallbackAnchor);

@@ -14,9 +14,9 @@
 #include <string_view>
 
 /**
- * @brief The authentication failure class the manager names on a 401 (issue #39064).
+ * @brief The authentication failure class the manager names on a 401.
  *
- * Up to #39040 every 401 was one undifferentiated fact and the agent's only possible answer was
+ * Previously every 401 was one undifferentiated fact and the agent's only possible answer was
  * "my credential is dead, re-enroll". The manager now names the class in the body's `code` (a
  * string, unlike every other status where `code` is the numeric status) and in the RFC 6750
  * `WWW-Authenticate` challenge, so the agent can finally tell the three actions apart:
@@ -57,7 +57,7 @@ const char* authFailClassName(AuthFailClass authClass);
  * 401), an unknown string, a `code` nested anywhere else, a non-JSON or empty body -- all of them
  * are Unclassified, which every caller must treat as "retry, and do not touch the identity".
  *
- * Ambiguity must never cost an identity: §2.9's rule 3. A manager that cannot tell us why it
+ * Ambiguity must never cost an identity. A manager that cannot tell us why it
  * refused us has not told us to throw away our key, and a proxy that replaced the body certainly
  * has not either.
  *

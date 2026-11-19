@@ -398,7 +398,7 @@ static int setup_client_conf(void** state)
 static int teardown_client_conf(void** state)
 {
     (void)state;
-    /* agt->enrollment is a by-value struct (#38465); Free_Agent() now frees
+    /* agt->enrollment is a by-value struct; Free_Agent() now frees
      * its heap fields directly, unlike the old malloc'd enrollment context
      * this teardown used to have to tear down by hand. */
     Free_Agent(agt);
@@ -415,7 +415,7 @@ static void expect_valid_server_ip(void)
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 
-    /* #38624: every config_report fixture still spells the manager as the deprecated
+    /* Every config_report fixture still spells the manager as the deprecated
      * <address>/<port> pair, so ClientConf() also logs the single <endpoint> that
      * replaces it. Asserting the text here pins the suggestion these fixtures produce. */
     expect_string(__wrap__minfo, formatted_msg,

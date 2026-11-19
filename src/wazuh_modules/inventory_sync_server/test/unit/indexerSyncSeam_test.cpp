@@ -27,7 +27,7 @@
 #include <vector>
 
 /*
- * Pins the expanded IIndexerConnectorSync seam: every method the sync pipeline will use (F2) is
+ * Pins the expanded IIndexerConnectorSync seam: every method the sync pipeline will use is
  * callable through the interface and observable on the fake's shared event record, because the
  * pipeline tests are built on top of both.
  *

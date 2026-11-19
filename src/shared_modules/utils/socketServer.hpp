@@ -1,5 +1,5 @@
 /*
- * Wazuh Utils - Singleton template
+ * Wazuh Utils - Socket server
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it

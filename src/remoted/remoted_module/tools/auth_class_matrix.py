@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""#39064 DoD: all eight 401 authentication classes exercised against a REAL manager.
+"""All eight 401 authentication classes exercised against a REAL manager.
 
 Runs on the manager itself (the listener certificate's SAN is 127.0.0.1, and minting requires
 an address in that SAN). Asserts, for every case, the three things the agent actually reads:

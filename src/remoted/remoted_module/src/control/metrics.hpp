@@ -41,6 +41,8 @@ namespace remoted::control
     constexpr auto METRIC_TASK_FETCH_ERROR {"remoted.control.task_fetch_error"};
     constexpr auto METRIC_REJECTED {"remoted.control.rejected"};
     constexpr auto METRIC_WDB_LATENCY {"remoted.control.wdb.latency"};
+    // Pull over AgentRegistry::size(), registered by the facade (registerControlRegistryDiagnostics()).
+    constexpr auto METRIC_REGISTRY_AGENTS {"remoted.control.registry.agents"};
 
     /**
      * @brief The /control counter set, pre-resolved from one manager.

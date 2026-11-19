@@ -66,7 +66,7 @@ namespace
     /**
      * @brief Process-wide owner of the shared memory segment
      *
-     * Has no destructor on purpose (#38766): one would be registered after agentd's
+     * Has no destructor on purpose: one would be registered after agentd's
      * atexit(w_https_client_stop) and so would run before it, unmapping the segment
      * while the shutdown drain still reads it. Staying trivially destructible also
      * keeps the instance below out of the exit-time teardown entirely. The kernel
@@ -88,12 +88,12 @@ namespace
             {
                 // Serializes this process's own writers (populateAgentMetadata()'s full update()
                 // vs. observeVdFeedOffset()'s narrow updateVdFeedOffset(), which can run
-                // concurrently on different threads within wazuh-modulesd/agentd) -- #39543 review
-                // follow-up. beginWrite()/endWrite() below are the reader-facing seqlock (a reader
+                // concurrently on different threads within wazuh-modulesd/agentd).
+                // beginWrite()/endWrite() below are the reader-facing seqlock (a reader
                 // discards a copy a write overlapped); they do nothing to stop two writers from
                 // interleaving, which could let a stale read-then-write clobber a fresher value.
                 // Static, not an instance member: a std::mutex has a non-trivial destructor, and
-                // the class itself must stay trivially destructible (#38766, see the static_assert
+                // the class itself must stay trivially destructible (see the static_assert
                 // below) -- a static class member lives in its own storage and is not torn down by
                 // ~SharedMemoryProvider(), so it does not affect that guarantee. It only
                 // synchronizes writers within this process; it is not shared across processes
@@ -444,7 +444,7 @@ namespace
                 // (e.g. SCA's command rules through wm_exec()) -- an inherited fd here is
                 // exactly what an SELinux policy denies once the child transitions into a
                 // restricted domain (e.g. passwd_t), producing a false-positive AVC even though
-                // the child never touches the file (issue #38813).
+                // the child never touches the file.
                 m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
 
                 if (m_shm_fd == -1 && errno == EACCES)
@@ -474,7 +474,7 @@ namespace
                     return;
                 }
 
-                // Deliberately never munmap()'d -- see the static_assert below and #38766:
+                // Deliberately never munmap()'d -- see the static_assert below:
                 // agentd's shutdown drain still reads this segment at exit, so a destructor
                 // would tear it down too early. The mapping lives for the process lifetime.
                 // coverity[ctor_dtor_leak]
@@ -525,7 +525,7 @@ namespace
     std::mutex SharedMemoryProvider::s_writeMutex;
 
     // Guards the invariant above: anything that makes this destructible again brings back
-    // the exit-time unmap that #38766 was. A static data member is not part of an instance's
+    // the exit-time unmap crash. A static data member is not part of an instance's
     // layout/teardown (it has its own storage duration, independent of ~SharedMemoryProvider()),
     // so s_writeMutex above does not affect this.
     static_assert(std::is_trivially_destructible<SharedMemoryProvider>::value,

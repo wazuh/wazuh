@@ -1947,7 +1947,7 @@ def test_check_uninstall_permission():
     assert result == expected
 
 
-# Enrollment tokens (issue #38993): the API's view of authd's token verbs. The core module is mocked
+# Enrollment tokens: the API's view of authd's token verbs. The core module is mocked
 # here (framework/wazuh/core/tests/test_enrollment_token.py drives the socket protocol).
 
 TOKEN_ID = 'AAECAwQFBgcICQoLDA0ODw'

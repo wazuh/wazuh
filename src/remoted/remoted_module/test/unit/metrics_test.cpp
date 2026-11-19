@@ -328,7 +328,7 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
 }
 
 // makeEnrollmentMetrics() registers the whole remoted.enroll.* family at zero, the enrollment-token
-// outcomes (issue #38993) included -- same member<->name guard as the families above.
+// outcomes included -- same member<->name guard as the families above.
 TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
 {
     wazuh::metrics::Manager manager;
@@ -380,7 +380,7 @@ TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
     EXPECT_EQ(m.tokenRejectedExhausted->get(), 5U);
     EXPECT_EQ(m.accepted->get(), 0U); // the plain family is untouched by the token helpers
 
-    // Same guard for the re-enrollment helpers (issue #38993): each touches exactly its own cell.
+    // Same guard for the re-enrollment helpers: each touches exactly its own cell.
     remoted::enrollment::incReenrollAccepted(m);
     remoted::enrollment::incReenrollRejectedUnknown(m);
     remoted::enrollment::incReenrollRejectedUnknown(m);
@@ -396,7 +396,7 @@ TEST(EnrollmentMetricsTest, MakeRegistersFamilyAtZero)
     EXPECT_EQ(m.reenrollRejectedSignature->get(), 3U);
     EXPECT_EQ(m.reenrollRejectedStale->get(), 4U);
 
-    // 9030: a rotation already in flight (issue #39078, H02)
+    // 9030: a rotation already in flight
     remoted::enrollment::incReenrollRejectedInProgress(m);
     EXPECT_EQ(m.reenrollRejectedInProgress->get(), 1U);
     EXPECT_EQ(m.tokenAccepted->get(), 1U); // and the token cells are untouched by them

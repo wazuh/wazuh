@@ -688,7 +688,7 @@ static void test_a_missing_file_is_not_an_error(void **state) {
     assert_false(purge_is_pending_locally("001"));
 }
 
-/* --- Rotations in flight (issue #39078, H02) --------------------------------------------------- */
+/* --- Rotations in flight ---------------------------------------------------------------------- */
 
 static void test_a_rotation_reservation_excludes_a_second_one(void **state) {
     (void)state;
@@ -743,7 +743,7 @@ static void test_a_refused_rotation_leaves_no_slot_behind(void **state) {
     /* What anyone who reaches POST /enroll can do: a bearer per invented id, every one of them
      * refused before the agent is even looked up. The registry must come back to where it was --
      * otherwise the memory never returns and every legitimate rotation after it pays a longer
-     * search under the same mutex (issue #39078, review round). */
+     * search under the same mutex. */
     for (i = 0; i < 200; i++) {
         snprintf(id, sizeof(id), "9%06d", i);
         assert_true(w_reenroll_reserve(id, NULL));

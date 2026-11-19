@@ -20,7 +20,7 @@
 /* Name this daemon reports itself under in the /config document. */
 #define SYSCOM_MODULE_NAME "fim"
 
-/* The whole-daemon config request (#37843). */
+/* The whole-daemon config request. */
 #define SYSCOM_GETALLCONFIG "getallconfig"
 
 #ifdef WAZUH_UNIT_TESTING

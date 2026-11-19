@@ -2090,7 +2090,7 @@ void test_wdb_global_insert_agent_bind6_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    // The re-enrollment secret (#38993) is bound sixth, as text, right after the key.
+    // The re-enrollment secret is bound sixth, as text, right after the key.
     expect_value(__wrap_sqlite3_bind_text, pos, 6);
     expect_value(__wrap_sqlite3_bind_text, buffer, reenroll_secret);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
@@ -3380,7 +3380,7 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
-/* Tests wdb_global_set_agent_credentials (re-enrollment, #38993) */
+/* Tests wdb_global_set_agent_credentials (re-enrollment) */
 
 #define SAC_NAME   "agent1"
 #define SAC_IP     "any"
@@ -6359,6 +6359,10 @@ void test_wdb_global_restore_backup_success(void **state) {
     os_calloc(1,sizeof(wdb_t),wdb);
     os_strdup("global",wdb->id);
     os_calloc(1,sizeof(sqlite3 *),wdb->db);
+    os_sha1 hash = "0123456789abcdef0123456789abcdef01234567";
+
+    // A hash cached from the database being replaced must not survive the restore
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, hash);
 
     expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "backup/db/global.db-backup-TIMESTAMP.gz");
     expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "queue/db/global.db.back");
@@ -6375,6 +6379,7 @@ void test_wdb_global_restore_backup_success(void **state) {
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hash), OS_INVALID);
     os_free(wdb->id);
     os_free(wdb);
 }

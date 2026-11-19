@@ -404,7 +404,7 @@ static void test_fim_recovery_check_if_full_sync_required_null_checksum(void **s
     assert_string_not_equal(result.failure_reason, "");
 }
 
-// Test (#36134): Persist and resync skips rows whose path is no longer in the configuration.
+// Test: Persist and resync skips rows whose path is no longer in the configuration.
 // Two items are returned by the DB; the first is "orphaned" (config lookup returns NULL) and
 // must be skipped silently; the second still has a config and must follow the normal path.
 static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void **state) {
@@ -614,7 +614,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
 #endif // WIN32
 
 
-// #38601: an agent deleted on the manager re-enrolls under a new id while fim.db -- the
+// An agent deleted on the manager re-enrolls under a new id while fim.db -- the
 // first-sync marker in it included -- survives untouched, so every later cycle sends a delta
 // against a baseline the manager no longer has for this identity. These cases pin the decision
 // procedure that repairs it, and above all the two ways it must NOT fire.

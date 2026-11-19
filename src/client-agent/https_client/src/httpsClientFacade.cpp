@@ -319,7 +319,7 @@ void HttpsClientFacade::controlLoop()
         else if (const auto backoff = m_control.unescalatedAuthFailBackoff())
         {
             // A 401 the AuthGate did not latch (not unknown_agent): back off instead of
-            // retrying on the plain notify cadence forever (#39601).
+            // retrying on the plain notify cadence forever.
             interval = *backoff;
         }
         else
@@ -495,7 +495,7 @@ bool HttpsClientFacade::setAgentIdentity(const char* agentId, const char* keyHex
 {
     // Callback-safe (no lifecycle lock): the natural flow is to call this from
     // inside on_reenroll_required. It swaps the signing key and id together (a
-    // re-enroll response, #38465, can hand back a new numeric id along with
+    // re-enroll response can hand back a new numeric id along with
     // the new key -- the two must move as one, or subsequent tokens would
     // name an id the manager no longer associates with this key),
     // clears the auth pause, and (via the gate's wake) drives the control

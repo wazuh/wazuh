@@ -21,7 +21,7 @@
 
 #ifdef TEST_WINAGENT
 
-/* --- CheckServiceRunning(): issue 38428 defect #6 ------------------------
+/* --- CheckServiceRunning() ----------------------------------------------
  *
  * Before the fix, this returned 1 only for SERVICE_RUNNING, so the
  * service-restart wait loop in win_agent.c gave up the instant the SCM

@@ -92,8 +92,8 @@ namespace remoted::http
             return false;
         }
 
-        // Fail-closed (C23): if these two resolve to one file, the record would be written OVER the
-        // bundle. Nothing this feature does may modify that file (RF-8, CA-19), so neither call
+        // Fail-closed: if these two resolve to one file, the record would be written OVER the
+        // bundle. Nothing this feature does may modify that file, so neither call
         // proceeds -- and a configuration that makes this true is refused on every attempt, not
         // fixed up silently.
         return resolved(m_path) == resolved(bundlePath);
@@ -160,8 +160,7 @@ namespace remoted::http
         const auto publication = document.find("publication");
 
         // Every field's TYPE is checked, not just its presence: a hand-edited record with a string
-        // where a number belongs is malformed, never a publication of 0 attributed to this bundle
-        // (objection 3).
+        // where a number belongs is malformed, never a publication of 0 attributed to this bundle.
         if (version == document.end() || !version->is_number_integer() || version->get<int>() != kVersion ||
             bundle == document.end() || !bundle->is_string() || digest == document.end() || !digest->is_string() ||
             publication == document.end() || !publication->is_number_integer())
@@ -184,8 +183,7 @@ namespace remoted::http
         if (resolved(entry.bundlePath) != resolved(bundlePath))
         {
             // A record about another file lends nothing to this one: treated as an absence by the
-            // caller, so a publication is never attributed to a bundle it does not describe
-            // (objection 1).
+            // caller, so a publication is never attributed to a bundle it does not describe.
             outcome.status = LoadOutcome::Status::foreign_path;
             return outcome;
         }
@@ -275,7 +273,7 @@ namespace remoted::http
 
         // Explicit mode instead of whatever the umask left on the temporary: the record is the
         // service's own file (0640, owned by the user remoted dropped to), and both a restrictive
-        // and a permissive umask have to end at the same mode (objection 14).
+        // and a permissive umask have to end at the same mode.
         if (::fchmod(fd, 0640) != 0)
         {
             return fail(errno);
@@ -300,7 +298,7 @@ namespace remoted::http
         // The rename is visible now; making it SURVIVE a power loss needs the directory flushed
         // too. If only this fails the record on the path is already the right one, so the write
         // counts as done and the cause stays in lastError() for the caller to say that durability
-        // is uncertain (objection 15).
+        // is uncertain.
         m_lastError = 0;
 
         const int directory = ::open(directoryOf(m_path).c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
@@ -346,8 +344,8 @@ namespace remoted::http
         {
             // mkdir(2) subtracts the umask, which is not ours to assume, so the mode we mean is set
             // explicitly -- and only on the directory we have just created: one that was already
-            // there may have had its mode changed on purpose (a write failure injected for a test,
-            // C24), and that must not be undone from here.
+            // there may have had its mode changed on purpose (a write failure injected for a test),
+            // and that must not be undone from here.
             (void)::chmod(directory.c_str(), 0750);
             return true;
         }

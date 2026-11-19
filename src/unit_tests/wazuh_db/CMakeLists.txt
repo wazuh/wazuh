@@ -62,7 +62,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state -Wl,--wrap,wdb_finalize_all_statements \
                              -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage -Wl,--wrap,wdb_global_get_distinct_agent_groups \
                              -Wl,--wrap,w_inc_global_agent_get_distinct_groups -Wl,--wrap,w_inc_global_agent_get_distinct_groups_time \
-                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time -Wl,--wrap,wdb_pool_leave \
+                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time -Wl,--wrap,wdb_pool_leave -Wl,--wrap,wdb_begin2 \
                              -Wl,--wrap,w_inc_global_agent_recalculate_agent_group_hashes \ -Wl,--wrap,w_inc_global_agent_recalculate_agent_group_hashes_time \
                              -Wl,--wrap,wdb_global_recalculate_all_agent_groups_hash -Wl,--wrap,wdb_global_get_all_agents_context ${DEBUG_OP_WRAPPERS}")
 
@@ -87,7 +87,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,w_mconf_section -Wl,--wrap,_mdebug2 -Wl,
                              -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,rwlock_lock_write \
                              -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock -Wl,--wrap,wdb_pool_get -Wl,--wrap,wdb_pool_get_or_create \
                              -Wl,--wrap,wdb_pool_leave -Wl,--wrap,wdb_pool_keys -Wl,--wrap,wdb_pool_clean -Wl,--wrap,getuid -Wl,--wrap,chmod \
-                             -Wl,--wrap,stat -Wl,--wrap,sqlite3_exec -Wl,--wrap,sqlite3_free ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,stat -Wl,--wrap,sqlite3_exec -Wl,--wrap,sqlite3_free -Wl,--wrap,w_time_delay ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_user_version_get \

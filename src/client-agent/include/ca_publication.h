@@ -32,9 +32,9 @@
  * text before the first encapsulation boundary, so both w_x509_load_all_pem() and libcurl's
  * CURLOPT_CAINFO read such a file exactly as they read a bare bundle.
  *
- * This shape is the agent's own business: #39321 fixes what travels on the wire (the notify
+ * This shape is the agent's own business: the CA-rotation contract fixes what travels on the wire (the notify
  * field and the response header) and leaves the local store to the agent. Reusing the block the
- * manager writes in #39319 would be tidy but is not required by anything.
+ * manager writes would be tidy but is not required by anything.
  */
 #ifndef CA_PUBLICATION_H
 #define CA_PUBLICATION_H

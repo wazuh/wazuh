@@ -24,7 +24,7 @@
 /* Two functions, one subject: what the agent decides to do about TLS.
  *
  * w_agent_resolve_ssl_posture() settles the mode from <ssl> plus whether a trust anchor is
- * on disk, and defaults <certificate_authorities> to that anchor (#39025).
+ * on disk, and defaults <certificate_authorities> to that anchor.
  * w_agent_validate_ssl_ca() then decides whether the agent may start with what came out.
  * They share one wrapped w_is_file(), so a test that drives both queues two expectations --
  * and on the rows where the anchor was injected, both carry the same path.
@@ -321,7 +321,7 @@ static void test_full_with_unparseable_ca_fails(void **state)
     assert_false(w_agent_validate_ssl_ca(&cfg));
 }
 
-/* A rotation hands the agent two anchors in one file. Before #39321 the check stopped at the
+/* A rotation hands the agent two anchors in one file. Previously the check stopped at the
  * first certificate, so this passed for the wrong reason -- it never looked at the second. */
 static void test_full_with_a_two_certificate_bundle_starts(void **state)
 {
@@ -417,7 +417,7 @@ static void test_system_without_ca_starts_when_bundle_found(void **state)
     agent cfg = make_config(AGENT_VERIFY_SYSTEM, NULL);
 
     expect_os_find_ca_bundle("/etc/ssl/certs/ca-certificates.crt");
-    /* #39123: the anchor is probed (and, if present, parsed) whenever <verification_mode> is
+    /* The anchor is probed (and, if present, parsed) whenever <verification_mode> is
      * 'system', regardless of whether an OS bundle was found -- the runtime fallback
      * (curlPerformer.cpp) can still reach it even when the OS bundle exists but simply does
      * not vouch for this particular manager. */
@@ -455,7 +455,7 @@ static void test_system_fails_when_anchor_is_unparseable(void **state)
     expect_string(__wrap__merror, formatted_msg,
                   "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '"
                   AGENT_ANCHOR_CA "' is readable but holds no certificate this agent can parse. "
-                  "The https_client module's fallback (#39123) would never verify against it, "
+                  "The https_client module's local-anchor fallback would never verify against it, "
                   "so the start is refused here rather than at the first handshake that reaches it.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
@@ -475,7 +475,7 @@ static void test_system_without_ca_fails_when_no_bundle_and_no_anchor(void **sta
     assert_false(w_agent_validate_ssl_ca(&cfg));
 }
 
-/* #39123: no OS bundle alone no longer refuses to start -- the https_client module tries the
+/* No OS bundle alone no longer refuses to start -- the https_client module tries the
  * OS store first regardless and only falls back to AGENT_ANCHOR_CA if that store turns out
  * not to vouch for this specific manager (curlPerformer.cpp), so refusing here would never
  * give that fallback a chance to run. */
@@ -819,7 +819,7 @@ static void test_full_without_ca_without_anchor_refuses_to_start(void **state)
     free_config(&cfg);
 }
 
-/* #39123: an anchor now IS enough to start 'system' without an OS bundle -- the
+/* An anchor now IS enough to start 'system' without an OS bundle -- the
  * https_client module tries the OS store first regardless (curlPerformer.cpp) and only
  * falls back to AGENT_ANCHOR_CA if that store turns out not to vouch for this manager;
  * refusing to start here would never give that fallback a chance to run. Still just the

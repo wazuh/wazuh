@@ -4,7 +4,7 @@
 
 #include <globHelper.h>
 
-#include <array>
+#include <stdexcept>
 
 namespace file_system
 {
@@ -16,90 +16,74 @@ namespace file_system
     // NOLINTNEXTLINE(misc-no-recursion)
     void FileSystemUtils::expand_absolute_path(const std::string& path, std::deque<std::string>& output) const
     {
+        constexpr auto SEPARATOR {std::filesystem::path::preferred_separator};
+
         // Find the first * or ? from path.
-        const std::array<char, 2> wildcards {'*', '?'};
-        size_t wildcardPos = std::string::npos;
+        const auto wildcardPos {path.find_first_of("*?")};
 
-        for (const auto& wildcard : wildcards)
+        // A path without wildcards is a literal: it is a result only if it exists, like every path the
+        // expansion below produces.
+        if (wildcardPos == std::string::npos)
         {
-            // Find the first wildcard.
-            const auto pos = path.find_first_of(wildcard);
-
-            // If the wildcard is found and it is before the current wildcard, then update the wildcard position.
-            if (pos != std::string::npos && (wildcardPos == std::string::npos || pos < wildcardPos))
+            if (m_fsWrapper->exists(path))
             {
-                wildcardPos = pos;
+                output.push_back(path);
             }
+
+            return;
         }
 
-        if (wildcardPos != std::string::npos)
+        // The pattern must be absolute: a separator has to come before the first wildcard, so a path
+        // that starts with a wildcard (or has no separator before it) is refused.
+        const auto parentDirectoryPos {path.find_last_of(SEPARATOR, wildcardPos)};
+
+        if (parentDirectoryPos == std::string::npos)
         {
-            const auto parentDirectoryPos {path.find_last_of(std::filesystem::path::preferred_separator, wildcardPos)};
-
-            // The parent directory is the part of the path before the first wildcard.
-            // If the wildcard is the first character, then the parent directory is the root directory.
-            const auto nextDirectoryPos
-            {
-                wildcardPos == 0 ? 0 : path.find_first_of(std::filesystem::path::preferred_separator, wildcardPos)};
-
-            if (parentDirectoryPos == std::string::npos)
-            {
-                throw std::runtime_error {"Invalid path: " + path};
-            }
-
-            // The base directory is the part of the path before the first wildcard.
-            // If there is no wildcard, then the base directory is the whole path.
-            // If the wildcard is the first character, then the base directory is the root directory.
-            std::string baseDir;
-
-            if (wildcardPos == 0)
-            {
-                baseDir = "";
-            }
-            else
-            {
-                baseDir = path.substr(0, parentDirectoryPos);
-            }
-
-            // The pattern is the part of the path after the first wildcard.
-            // If the wildcard is the last character, then the pattern is the rest of the string.
-            // If the wildcard is the first character, then the pattern is the rest of the string, minus the next '\'.
-            // If there is no next '\', then the pattern is the rest of the string.
-            const auto pattern
-            {
-                path.substr(parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1,
-                            nextDirectoryPos == std::string::npos
-                            ? std::string::npos
-                            : nextDirectoryPos - (parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1))};
-
-            if (m_fsWrapper->exists(baseDir))
-            {
-                if (m_fsWrapper->is_directory(baseDir))
-                {
-                    for (const auto& entry : m_fsWrapper->list_directory(baseDir))
-                    {
-                        const auto entryName {entry.filename().string()};
-
-                        if (Utils::patternMatch(entryName, pattern))
-                        {
-                            std::string nextPath {baseDir};
-                            nextPath += std::filesystem::path::preferred_separator;
-                            nextPath += entryName;
-                            nextPath += nextDirectoryPos == std::string::npos ? "" : path.substr(nextDirectoryPos);
-
-                            expand_absolute_path(nextPath, output);
-                        }
-                    }
-                }
-                else if (Utils::patternMatch(baseDir, pattern))
-                {
-                    output.push_back(std::move(baseDir));
-                }
-            }
+            throw std::runtime_error {"Invalid path: " + path};
         }
-        else
+
+        // The base directory is the part of the path before the component holding the first wildcard.
+        // When that component sits right under the root ("/x*" or "C:\x*"), the base directory keeps its
+        // separator: an empty string is not a directory, and "C:" names the drive's current directory.
+        std::string baseDir {path.substr(0, parentDirectoryPos)};
+
+        if (baseDir.empty() || baseDir.back() == ':')
         {
-            output.push_back(path);
+            baseDir += SEPARATOR;
+        }
+
+        // The pattern is the component holding the first wildcard; the rest of the path (from its next
+        // separator on, if any) is appended to every match and expanded in turn.
+        const auto nextDirectoryPos {path.find_first_of(SEPARATOR, wildcardPos)};
+        const auto patternPos {parentDirectoryPos + 1};
+        const auto pattern {path.substr(patternPos,
+                                        nextDirectoryPos == std::string::npos ? std::string::npos
+                                        : nextDirectoryPos - patternPos)};
+
+        // Only a directory has entries to match; a file or a missing path in its place matches nothing.
+        if (!m_fsWrapper->exists(baseDir) || !m_fsWrapper->is_directory(baseDir))
+        {
+            return;
+        }
+
+        for (const auto& entry : m_fsWrapper->list_directory(baseDir))
+        {
+            const auto entryName {entry.filename().string()};
+
+            if (Utils::patternMatch(entryName, pattern))
+            {
+                std::string nextPath {baseDir};
+
+                if (nextPath.back() != SEPARATOR)
+                {
+                    nextPath += SEPARATOR;
+                }
+
+                nextPath += entryName;
+                nextPath += nextDirectoryPos == std::string::npos ? "" : path.substr(nextDirectoryPos);
+
+                expand_absolute_path(nextPath, output);
+            }
         }
     }
 } // namespace file_system

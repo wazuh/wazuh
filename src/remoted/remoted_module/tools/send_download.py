@@ -332,7 +332,7 @@ class ProcWatcher:
 # 400 but with distinct messages; anything that does not resolve to a readable regular
 # file is 404.
 #
-# Authorization (#38683): a `config` request is served only when resource_id equals the
+# Authorization: a `config` request is served only when resource_id equals the
 # selector /control handed THIS agent as config_token. Anything else is 403, decided before
 # the path is resolved -- so a group the agent is not in answers the same whether or not it
 # exists on the manager, which is the property the two denial scenarios below pin together.
@@ -371,7 +371,7 @@ def build_scenarios(group, unknown_group, other_group, wpk_name):
     # Only pinned when the group REALLY exists on the manager. Denial is decided before the path is
     # resolved, so a non-existent --other-group answers 403 for the wrong reason and becomes a
     # silent duplicate of the scenario above -- a green sheet that never tested "exists, but not
-    # mine", which is the actual defect from #38683. main() passes None (after an explicit WARNING)
+    # mine", which is the actual defect. main() passes None (after an explicit WARNING)
     # rather than let that pad the count.
     if other_group:
         scenarios.append(

@@ -11,7 +11,7 @@
  */
 
 /// @file jwtProfileV1.hpp
-/// Constants and time policy of the closed `wazuh-agent+jwt` profile (issue #38582): the bearer
+/// Constants and time policy of the closed `wazuh-agent+jwt` profile: the bearer
 /// token an agent self-signs with its client.keys secret (HS256) to authenticate to remoted over
 /// TLS. Shared by the manager (verifier), the agent (signer) and every test. Nothing here is
 /// negotiable on the wire: a token is either exactly this profile or it is rejected.

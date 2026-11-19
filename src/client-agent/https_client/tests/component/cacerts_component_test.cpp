@@ -103,7 +103,7 @@ TEST(CacertsComponentTest, NullArgumentsAreRejectedWithoutTouchingTheNetwork)
 // it is not in namespace std).
 //
 // The pin-compare-then-reconnect-verified flow itself, and its three negative
-// tests, are #39026; this only proves the hand-off is wired correctly.
+// tests, are out of scope here; this only proves the hand-off is wired correctly.
 TEST(CacertsComponentTest, TheFetchedBodyPinsToTheCertificateTheRouteServed)
 {
     constexpr uint16_t port = 24882;

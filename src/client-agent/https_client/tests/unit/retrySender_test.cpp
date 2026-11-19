@@ -55,7 +55,7 @@ namespace
         return value;
     }
 
-    /// A 401 carrying a failure class, spelled as remoted renders it (#39064). Since only
+    /// A 401 carrying a failure class, spelled as remoted renders it. Since only
     /// `unknown_agent` escalates to the AuthGate, a test about escalation has to say which 401 it
     /// means -- a classless 401 is deliberately not one of them.
     HttpResponse authFail(const std::string& code)
@@ -835,7 +835,7 @@ TEST_F(RetrySenderUnknownAgentTest, ABoundThatEndsOnAnotherClassReturnsItUnescal
     EXPECT_FALSE(m_gate.paused());
 }
 
-/// #39064's whole point: a surviving 401 that is not `unknown_agent` keeps the identity. The
+/// The whole point of naming the failure class: a surviving 401 that is not `unknown_agent` keeps the identity. The
 /// outcome still reaches the caller as AuthFail (the request did fail to authenticate, and the
 /// streams keep the batch for the next tick), but nothing pauses and nothing re-enrolls.
 TEST_F(RetrySenderTest, OnlyUnknownAgentEscalatesToTheAuthGate)
@@ -867,7 +867,7 @@ TEST_F(RetrySenderTest, OnlyUnknownAgentEscalatesToTheAuthGate)
     }
 }
 
-/// The fail-safe reading (D3): a 401 the agent cannot classify -- no body, a numeric `code`, an
+/// The fail-safe reading: a 401 the agent cannot classify -- no body, a numeric `code`, an
 /// intermediary's error page -- must retry and never discard the identity. An ambiguous answer
 /// must not cost an agent its key.
 TEST_F(RetrySenderTest, AnUnclassifiedAuthFailureNeverReenrolls)
@@ -1343,7 +1343,7 @@ TEST_F(RetrySenderTest, FileBackedSenderSkipsCompressionOnceTheSharedGateIsAlrea
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
 }
 
-// #38492/#38491: the configured endpoint is folded into the wire target. The
+// The configured endpoint is folded into the wire target. The
 // manager routes on the literal request-target (prefix included); the bearer
 // token binds the agent's identity only, so the same token is valid for the
 // bare and the prefixed target alike -- a prefix mismatch is a 404, never a 401.

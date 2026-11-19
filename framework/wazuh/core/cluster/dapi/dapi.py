@@ -635,7 +635,7 @@ class DistributedAPI:
         # that are genuinely per node -- var/upgrade/ is not replicated, verification_mode is per
         # node -- and the merge resolves those disagreements in favour of the success, which is
         # right for the item's outcome and wrong for the operator, who is left without the one
-        # thing they need: which node could not serve it (#39428).
+        # thing they need: which node could not serve it.
         #
         # Exceptions are skipped: they already carry dapi_errors, which is the same information on
         # the error path and is rendered by the API's own handler.

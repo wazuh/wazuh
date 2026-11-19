@@ -10,7 +10,7 @@
 
 /**
  * @file certificateDescriptor_test.cpp
- * @brief What `GET /tls` says about one certificate (issue #39320): names, validity, the
+ * @brief What `GET /tls` says about one certificate: names, validity, the
  *        `x509-sha256:` identity and the bundle hash, all from certificates built in memory.
  */
 

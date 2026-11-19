@@ -18,7 +18,7 @@
 
 /// zstd-compresses an in-memory body at the module's fixed level (matches the
 /// manager's own test-only fixture compressor, zstdTestHelper.hpp). Extracted
-/// out of RetrySender::attemptOnce() (#37835) so EnrollClient (#38465) can
+/// out of RetrySender::attemptOnce() so EnrollClient can
 /// share the exact same recipe instead of a second implementation.
 /// @return nullopt on failure; the caller falls back to the original,
 ///         uncompressed body (a one-shot ZSTD_compress() into a

@@ -111,8 +111,8 @@ def test_revoke_token(mock_socket):
      "address 'evil' is not in the listener certificate"),
     (9004, 'No such argument', WazuhError, 1768, 'the address is required'),
     (9015, 'Cannot execute this request on a worker node', WazuhError, 1769, None),
-    # A storage failure is the manager's problem, not the caller's: internal, and worth retrying
-    # (issue #39078, H04). Told apart from 9022 on purpose -- the token does exist.
+    # A storage failure is the manager's problem, not the caller's: internal, and worth retrying.
+    # Told apart from 9022 on purpose -- the token does exist.
     (9029, 'Enrollment token store write failed', WazuhInternalError, 1771, None),
     # An authd-native code nobody mapped yet, and not one of _AUTHD_FRAMEWORK_FAULT_CODES: still the
     # caller's problem, a 1773 carrying authd's own code and message, instead of the bare exception

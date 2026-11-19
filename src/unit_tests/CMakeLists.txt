@@ -104,7 +104,7 @@ elseif(${TARGET} STREQUAL "manager")
   # working directory (WAZUH_DEFINES, defs.h) or it aborts the whole test binary.
   # It also unconditionally reaches wm_agent_upgrade_read_ca_verification_old()
   # (legacy <active-response><ca_verification> migration, pre-dates and is
-  # unrelated to #38684), which reads the hardcoded WAZUHCONF path
+  # unrelated to this suite), which reads the hardcoded WAZUHCONF path
   # ("etc/ossec.conf") regardless of the file ClientConf() itself was given --
   # a trivial empty one satisfies it without affecting what's under test.
   configure_file("config_files/test_internal_options.conf"

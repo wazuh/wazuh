@@ -893,7 +893,7 @@ rejections count into the same request family, and `vd.retry_after.total` is inc
 feed gates (the sync endpoint's strand-side check and the lane's dispatch-time re-check),
 resolved through the single `makeVdRetryAfterCounter()` helper so its metadata has one source.
 The facade additionally registers eleven `server.*` PULL metrics over
-`IUdsHttpServer::diagnostics()`: the seven transport budget/session levels (U10) plus the four
+`IUdsHttpServer::diagnostics()`: the seven transport budget/session levels plus the four
 cumulative `server.rejected.*` shed counters — registered once per process, behind a weak target
 that quiesces to 0 after `stop()`. Constructors take the
 manager as an optional trailing parameter; a null falls back to a private disconnected manager,

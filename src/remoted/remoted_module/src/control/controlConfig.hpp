@@ -71,9 +71,9 @@ namespace remoted::control
         uint32_t keepaliveThrottleSec = kKeepaliveThrottleSec;
         uint32_t registryEvictionTtlSec = kRegistryEvictionTtlSec;
 
-        /// Where the CA bundle's published generation comes from on the notify path (RF-3): the
+        /// Where the CA bundle's published generation comes from on the notify path: the
         /// facade binds it to the HTTPS listener's CaCertificateSource through
-        /// IHttpServer::caDescriptor(), which revalidates at most once a second (C8/C18), so a
+        /// IHttpServer::caDescriptor(), which revalidates at most once a second, so a
         /// notify storm never turns into a read storm. `nullopt` means there is no servable bundle
         /// at all (`ca_generation: null` on the wire), 0 means there is one and no guard vouched
         /// for it. An EMPTY function is "this manager has no such provider": the response then

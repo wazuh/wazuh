@@ -656,8 +656,7 @@ void * wm_sca_main(wm_sca_t * data) {
             // Never reached wm_sca_start()/Run(): if scan_on_start was
             // configured, that scan is still owed. Persisting the "not yet
             // completed" state is Run()'s job (it never got a chance to run
-            // this time); this is just the observability half -- not silent
-            // (issue 38428).
+            // this time); this is just the observability half -- not silent.
             if (data->scan_on_start) {
                 mdebug1("SCA exiting before Run() due to shutdown while waiting for agentd; "
                         "scan_on_start scan will retry automatically on the next opportunity.");
@@ -1110,7 +1109,7 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
         return 0;
     }
 
-    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the SCA
+    // Mirrors FIM: when synchronization is disabled the sync worker never runs, so the SCA
     // first-sync marker is never set. Report it as completed so agent-info coordination is not blocked
     // deferring on a first sync that will never happen. The startup priming path calls sca_query_ptr
     // directly and is unaffected by this handler-level short-circuit.

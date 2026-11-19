@@ -209,7 +209,7 @@ class SecurityConfigurationAssessment
         /// @brief Cached first-scan completion state, persisted independent of
         /// first_sync_completed. Its absence means a scan_on_start scan is still
         /// owed -- e.g. an earlier Run() got interrupted before completing one
-        /// (issue 38428) -- so the next opportunity retries it immediately
+        /// -- so the next opportunity retries it immediately
         /// instead of waiting a full m_scanInterval.
         std::atomic<bool> m_firstScanCompleted {false};
 
@@ -335,7 +335,7 @@ class SecurityConfigurationAssessment
         /// @p genericFailureLevel) otherwise. Shared by syncModule(), performRecovery() and
         /// executeFlushSync() so all three apply the same tolerance policy to any failure a
         /// sync/recovery/flush attempt returns, including one from synchronizeDatabaseSnapshot()'s
-        /// DataClean step. (#38579)
+        /// DataClean step.
         /// @param result The failed result (caller must not call this when result.success is true).
         /// @param operationLabel Noun used in the log message, e.g. "synchronization" or "recovery".
         /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated

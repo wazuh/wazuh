@@ -77,7 +77,7 @@ typedef enum hc_buffer_level_t
     HC_BUFFER_FLOOD
 } hc_buffer_level_t;
 
-/* Outcome classes of a request/submission (D9 classification), part of the
+/* Outcome classes of a request/submission, part of the
  * stable ABI surface. on_sync_response no longer carries this type (see its
  * own doc comment): the /stateful contract needs the real HTTP status code,
  * not this coarser classification, so retry/backoff decisions inside the
@@ -104,7 +104,7 @@ typedef enum hc_result_t
 #define HC_MAX_CIPHERS 256
 #define HC_MAX_VERSION 64
 #define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
-#define HC_MAX_ENDPOINT 256 /* #38492: reverse-proxy path segment, normalized (no leading/trailing '/'). */
+#define HC_MAX_ENDPOINT 256 /* Reverse-proxy path segment, normalized (no leading/trailing '/'). */
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -119,10 +119,10 @@ typedef struct hc_config_t
     char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2): IPv4,
     ///< hostname, or a bare, unbracketed IPv6 literal, which baseUrl() brackets for the wire.
     uint16_t server_port;          ///< Manager HTTPS port.
-    uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint> (#38624), appended
+    uint32_t server_scope_id;      ///< IPv6 zone id resolved from <endpoint>, appended
     ///< to the bracketed host as "%25<id>" so libcurl scopes the connection;
     ///< 0 -> no zone, which is every IPv4 and non-link-local address.
-    char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment (#38492),
+    char server_endpoint[HC_MAX_ENDPOINT]; ///< Optional reverse-proxy path segment,
     ///< prepended to every request target (e.g. "/endpoint/stateless");
     ///< empty -> unprefixed, today's behavior. A routing matter only: the
     ///< manager routes on the literal wire request-target, prefix included,
@@ -133,11 +133,11 @@ typedef struct hc_config_t
     ///< `wazuh-agent+jwt` bearer token is signed with.
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
     char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
-    char system_fallback_ca_path[HC_MAX_PATH]; ///< verify_mode=system only (#39123): the
+    char system_fallback_ca_path[HC_MAX_PATH]; ///< verify_mode=system only: the
     ///< agent's own trust anchor, tried only once the OS trust store has actually
     ///< failed to verify the manager. Empty -> the fallback never engages (today's
     ///< behavior). Ignored for every other verify_mode.
-    char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
+    char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate.
     char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
     char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
 
@@ -178,7 +178,7 @@ typedef struct hc_config_t
 
     int64_t ca_publication;       ///< Publication recorded with the installed CA bundle, or -1
     ///< when it carries none (a fresh install, a store placed
-    ///< out of band, or one written before #39321). Compared
+    ///< out of band, or one written before CA rotation). Compared
     ///< against the manager-reported ca_generation on every
     ///< Notify; a higher one triggers a verified /cacerts
     ///< refresh. The seed only: the module tracks it from
@@ -215,7 +215,7 @@ typedef struct hc_config_t
     /// the 64 KB DGRAM event queue). Empty -> the intake is not started.
     char sync_socket_path[HC_MAX_PATH];
 
-    /// Periodic reporters (#37843), both OFF by default. When on, the module
+    /// Periodic reporters, both OFF by default. When on, the module
     /// collects the corresponding snapshot on its interval, stamps agent_id +
     /// the manager-authoritative cluster, signs and POSTs to /stats resp.
     /// /config.
@@ -386,7 +386,7 @@ typedef struct hc_callbacks_t
                              size_t body_len, void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
     void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
-    /// Periodic collectors for the /stats and /config reporters (#37843).
+    /// Periodic collectors for the /stats and /config reporters.
     /// Unlike every other callback these run on the module's REPORTER thread
     /// (not the dispatcher): they must return promptly and must NOT call hc_*
     /// functions. Return either NULL (skip this cycle) or a NUL-terminated
@@ -530,7 +530,7 @@ HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
 
 /**
  * @brief Swap the agent id and signing key at runtime (key: 64 hex chars =
- *        32 bytes) after a re-enrollment (#38465's POST /enroll
+ *        32 bytes) after a re-enrollment (the POST /enroll
  *        response can hand back a different numeric id along with the new
  *        key -- the two are set together so no request is ever signed with
  *        one half stale). Like hc_set_config_hash this is callback-safe (it
@@ -544,7 +544,7 @@ HC_EXPORTED bool hc_set_agent_identity(hc_handle* handle, const char* agent_id, 
 /** @brief Current connection state (hc_conn_state_t). NULL -> STOPPED. */
 HC_EXPORTED int hc_get_state(const hc_handle* handle);
 
-/* ---- enrollment (#38465) ---- */
+/* ---- enrollment ---- */
 
 #define HC_MAX_ENROLL_BODY 4096
 #define HC_MAX_ENROLL_PASSWORD 256
@@ -554,7 +554,7 @@ HC_EXPORTED int hc_get_state(const hc_handle* handle);
 #define HC_MAX_TRANSPORT_ERROR 512
 
 /**
- * @brief One /enroll request (#38438's contract), built entirely by the C
+ * @brief One /enroll request, built entirely by the C
  *        caller (client-agent/src/enrollment.c): the module treats body_json
  *        as opaque bytes and never inspects its fields.
  */

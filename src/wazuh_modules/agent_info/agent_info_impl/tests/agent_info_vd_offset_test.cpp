@@ -15,8 +15,8 @@
 /**
  * @brief Tests for the durable VD feed offset + pending-rescan state
  * (AgentInfoImpl::observeVdFeedOffset/clearVdRescanPending/getVdFeedState),
- * backed by the `vd_feed_state` table, and its VDFirst-done gate (issue
- * #38204: agent-driven VD re-scan coordination).
+ * backed by the `vd_feed_state` table, and its VDFirst-done gate (agent-driven
+ * VD re-scan coordination).
  *
  * DBSync is mocked, same as agent_info_dbsync_test.cpp: selectRows() is
  * intercepted to simulate what the `vd_feed_state` row would contain, and
@@ -214,7 +214,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstDoneMarksPending)
     EXPECT_THAT(m_queryModuleCalls[0], ::testing::HasSubstr("syscollector"));
 }
 
-// Q5: VDFirst has not completed yet -> the offset is persisted (changed=true) but NO
+// VDFirst has not completed yet -> the offset is persisted (changed=true) but NO
 // re-scan is requested, since VDFirst's own full scan will cover it via Start.feed_offset.
 TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstNotDoneDoesNotMarkPending)
 {
@@ -232,7 +232,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstNotDoneDoesNotMarkPendi
     ASSERT_EQ(1u, m_queryModuleCalls.size());
 }
 
-// N3: an offset not newer than the stored one is a no-op, and does not even query
+// An offset not newer than the stored one is a no-op, and does not even query
 // VDFirst status (no need to -- nothing changed).
 TEST_F(AgentInfoVdOffsetTest, ObserveOlderOffsetIsNoOp)
 {
@@ -249,7 +249,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveOlderOffsetIsNoOp)
     EXPECT_TRUE(m_queryModuleCalls.empty());
 }
 
-// #39543: observeVdFeedOffset() must publish the fresh offset straight to metadata_provider
+// observeVdFeedOffset() must publish the fresh offset straight to metadata_provider
 // (metadata_provider_update_vd_feed_offset()), not only to its own durable vd_feed_state table
 // -- real, unmocked metadata_provider, since this call bypasses DBSync entirely.
 TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetPublishesToMetadataProviderWhenSnapshotExists)
@@ -307,7 +307,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveEqualOffsetIsNoOp)
     EXPECT_TRUE(m_queryModuleCalls.empty());
 }
 
-// R10: a legitimate offset of 0 (e.g. VD disabled on the node that answered) must not
+// A legitimate offset of 0 (e.g. VD disabled on the node that answered) must not
 // thrash -- observing 0 again is a no-op, not a spurious "advance".
 TEST_F(AgentInfoVdOffsetTest, ObserveZeroTwiceIsIdempotent)
 {

@@ -102,6 +102,29 @@ void test_wdb_global_pre_counts_total_and_global(void **state)
     assert_null(ctx);
 }
 
+/* A failed BEGIN must release the pool entry: wdb_global_post() receives no context on that path. */
+void test_wdb_global_pre_begin_fail_leaves_pool(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    void *ctx = NULL;
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+
+    data->wdb->transaction = 0;
+    will_return(__wrap_wdb_begin2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    assert_null(wdb_global_pre(&ctx));
+    assert_null(ctx);
+}
+
 void test_wdb_parse_global_no_space(void **state)
 {
     int ret = 0;
@@ -246,6 +269,99 @@ void test_wdb_parse_global_sql_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+/* A successful `global sql`: the expectations every statement below shares. */
+static void expect_global_sql_success(test_struct_t *data, const char *logged, const char *sql)
+{
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, logged);
+    will_return(__wrap_wdb_exec, cJSON_CreateArray());
+    expect_string(__wrap_wdb_exec, sql, sql);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_sql);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_sql_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+}
+
+static os_sha1 cached_group_hash = "0123456789abcdef0123456789abcdef01234567";
+
+/* A plain SELECT cannot change agent.group_hash, so the cached global group hash survives it. */
+void test_wdb_parse_global_sql_select_keeps_group_hash_cache(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sql  \tselect group_hash FROM agent";
+    os_sha1 hash = {0};
+
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, cached_group_hash);
+    expect_global_sql_success(data, "Global query: sql  \tselect group_hash FROM agent", " \tselect group_hash FROM agent");
+
+    assert_int_equal(wdb_parse(query, data->output, 0), OS_SUCCESS);
+    assert_string_equal(data->output, "ok []");
+    assert_int_equal(wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hash), OS_SUCCESS);
+    assert_string_equal(hash, cached_group_hash);
+
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+}
+
+/* Any other statement may have changed the groups: the cache is dropped. */
+void test_wdb_parse_global_sql_write_clears_group_hash_cache(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sql UPDATE agent SET group_hash = NULL WHERE id = 1";
+    os_sha1 hash = {0};
+
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, cached_group_hash);
+    expect_global_sql_success(data, "Global query: sql UPDATE agent SET group_hash = NULL WHERE id = 1", "UPDATE agent SET group_hash = NULL WHERE id = 1");
+
+    assert_int_equal(wdb_parse(query, data->output, 0), OS_SUCCESS);
+    assert_string_equal(data->output, "ok []");
+    assert_int_equal(wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hash), OS_INVALID);
+}
+
+/* A failed write is no proof that nothing changed (UPDATE OR FAIL keeps its earlier rows). */
+void test_wdb_parse_global_sql_failed_write_clears_group_hash_cache(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sql DELETE FROM belongs";
+    os_sha1 hash = {0};
+
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, cached_group_hash);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap_wdb_exec, sql, "DELETE FROM belongs");
+    will_return(__wrap_wdb_exec, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sql DELETE FROM belongs");
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: DELETE FROM belongs");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_sql);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_sql_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    assert_int_equal(wdb_parse(query, data->output, 0), OS_INVALID);
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hash), OS_INVALID);
+}
+
 void test_wdb_parse_global_actor_fail(void **state)
 {
     int ret = 0;
@@ -301,7 +417,7 @@ void test_wdb_parse_global_insert_agent_invalid_json(void **state)
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when inserting agent.");
-    // The offset, never the tail of the payload: it carries the key and the secret (issue #39078, H05).
+    // The offset, never the tail of the payload: it carries the key and the secret.
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON syntax error at offset 2 when inserting agent.");
 
     expect_function_call(__wrap_w_inc_queries_total);
@@ -437,7 +553,7 @@ void test_wdb_parse_global_insert_agent_success_with_reenroll_secret(void **stat
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    // The record authd's writer sends for an agent enrolled through the local socket (#38993): the
+    // The record authd's writer sends for an agent enrolled through the local socket: the
     // re-enrollment secret rides next to the key and lands in its own column.
     char query[OS_BUFFER_SIZE] = "global insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":123,\
     \"ip\":\"0.0.0.0\",\"register_ip\":\"1.1.1.1\",\"internal_key\":\"test_key\",\
@@ -853,7 +969,7 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_parse_global_set_agent_credentials (re-enrollment, #38993) */
+/* Tests wdb_parse_global_set_agent_credentials (re-enrollment) */
 
 #define SAC_QUERY_JSON "{\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"k\",\"reenroll_secret\":\"s\"}"
 
@@ -905,7 +1021,7 @@ void test_wdb_parse_global_set_agent_credentials_invalid_json(void **state)
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-credentials (arguments not logged: they carry credentials)");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when setting agent credentials.");
-    // Same rule: offset only (issue #39078, H05).
+    // Same rule: offset only.
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON syntax error at offset 2 when setting agent credentials.");
 
     expect_set_agent_credentials_accounting(true);
@@ -3798,7 +3914,7 @@ void test_wdb_parse_global_restore_backup_success_pre_restore_missing(void **sta
 
 /* wdb_parse_global_vacuum */
 
-/* The `commit` verb (issue #39078, H03): authd needs to know when a write is durable, and
+/* The `commit` verb: authd needs to know when a write is durable, and
  * wazuh-db's `ok` is not that -- it comes from inside a deferred transaction. */
 void test_wdb_parse_global_commit_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -4102,11 +4218,15 @@ int main()
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_open_global_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_pre_counts_total_and_global, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_pre_begin_fail_leaves_pool, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_no_space, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_substr_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_select_keeps_group_hash_cache, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_write_clears_group_hash_cache, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_failed_write_clears_group_hash_cache, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_actor_fail, test_setup, test_teardown),
         /* Tests wdb_parse_global_insert_agent */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_syntax_error, test_setup, test_teardown),

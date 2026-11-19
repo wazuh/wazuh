@@ -36,7 +36,7 @@
  *
  * The 409 (offset mismatch) case is handled here, not by the shared
  * classifier: classifyOutcome() maps 409 to OutcomeClass::VersionRejected
- * globally (the /control meaning, #37733), so RetrySender stops retrying
+ * globally (the /control meaning), so RetrySender stops retrying
  * after one attempt -- this class inspects the 409 body itself
  * (current_version) and decides whether to advance the offset and retry with
  * a fresh request, bounded to a few rounds so a pathological manager

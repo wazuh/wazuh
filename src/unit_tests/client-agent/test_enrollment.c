@@ -205,7 +205,7 @@ static void expect_invalid_ip(const char *ip) {
 /* w_enrollment_build_request */
 
 /* w_enrollment_build_request() announces the identity it is about to present before it picks a
- * credential (#38678, merged from 5.0.0), so it is the first minfo() any test that reaches it sees.
+ * credential, so it is the first minfo() any test that reaches it sees.
  * Declared once here rather than repeated literally: what these tests assert is the credential
  * choice that follows, and this line is only in the way of it. */
 #define expect_enrolling_as_line() \
@@ -421,8 +421,8 @@ static void test_process_response_400_is_invalid_request(void **state) {
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_INVALID_REQUEST);
 }
 
-/* A 401 with no readable class is the fail-safe case: retry, never touch the credential
- * (design §2.9 rule 3). This is also what an older manager sends. */
+/* A 401 with no readable class is the fail-safe case: retry, never touch the credential.
+ * This is also what an older manager sends. */
 static void test_process_response_401_without_a_class_is_retryable(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -435,7 +435,7 @@ static void test_process_response_401_without_a_class_is_retryable(void **state)
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_AUTH_RETRY);
 }
 
-/* #39064: /enroll nests its error envelope, so the class is at error.code -- NOT the top-level
+/* /enroll nests its error envelope, so the class is at error.code -- NOT the top-level
  * `code` every other route uses. A parser that read the flat shape here would find nothing and
  * treat every classified 401 as unclassified. */
 static void test_process_response_401_reads_the_class_from_the_nested_envelope(void **state) {
@@ -470,7 +470,7 @@ static void test_process_response_401_unknown_agent_is_identity_gone(void **stat
 }
 
 /* invalid_signature never re-enrolls -- a new identity fixes none of what it reports -- but it is
- * still a 401, and #39064 splits retry from stop by STATUS: "surface 403 to operators with token
+ * still a 401, and the policy splits retry from stop by STATUS: "surface 403 to operators with token
  * ID; retry 401". The fix for this one lives on the manager (its authd.pass corrected to match
  * this endpoint's, or a re-enrollment secret restored), and an agent that stopped would never
  * notice it arriving. */
@@ -638,7 +638,7 @@ static void test_process_response_403_with_an_authd_code_is_fatal(void **state) 
     }
 }
 
-/* "Surface 403 to operators with token ID" (#39064). Without the id an operator cannot tell which
+/* "Surface 403 to operators with token ID". Without the id an operator cannot tell which
  * token to mint a replacement for, which is the only action this message exists to prompt -- and a
  * fleet mid-rollout may be enrolling with several. */
 static void test_process_response_403_names_the_refused_token(void **state) {
@@ -700,7 +700,7 @@ static void test_process_response_403_is_disabled_not_an_error(void **state) {
     set_error_body(&result, 403, "0", "Enrollment is disabled on this manager");
 
     /* Administratively disabled: logged at INFO, not ERROR -- the caller must
-     * be able to tell this apart from a transport hiccup (#38465 R12). */
+     * be able to tell this apart from a transport hiccup. */
     expect_string(__wrap__minfo, formatted_msg, "Enrollment is disabled on the manager.");
 
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DISABLED);
@@ -1368,7 +1368,7 @@ static void test_process_response_200_missing_field_is_server_error(void **state
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 }
 
-/* ---- the 200 path: client.keys and the re-enrollment secret (#39064) ----
+/* ---- the 200 path: client.keys and the re-enrollment secret ----
  *
  * KEYS_FILE and AGENT_REENROLL_SECRET are relative paths, so these run the real writers against
  * real files under etc/, the same way test_token_bootstrap.c does. The write ORDER is the point of
@@ -1441,7 +1441,7 @@ static char *read_file_line(const char *path) {
     return buffer;
 }
 
-/* ---- build_request: the credential it chooses (#39064) ---- */
+/* ---- build_request: the credential it chooses ---- */
 
 /* The agent's own secret beats the fleet-wide password. Both are on disk here, and the request
  * must carry the keyed credential and no password at all -- signing with both would misreport to
@@ -1635,9 +1635,9 @@ static void test_process_response_200_rotates_the_stored_secret(void **state) {
     assert_string_equal(secret, rotated);
 }
 
-/* ---- the fleet password is NOT the agent's to remove (#39064) ---- */
+/* ---- the fleet password is NOT the agent's to remove ---- */
 
-/* #39064 puts the removal in the package upgrade (DEB postinst, RPM %post, macOS postinstall, the
+/* The removal lives in the package upgrade (DEB postinst, RPM %post, macOS postinstall, the
  * MSI's RemoveFleetEnrollmentPassword), explicitly "not the agent binary", so it happens once at
  * upgrade rather than on a condition that may never occur. An earlier revision of this branch had
  * the agent shred the file on the first enrollment that stored a secret; this test is what keeps
@@ -1662,7 +1662,7 @@ static void test_process_response_200_leaves_the_fleet_password_alone(void **sta
     unlink(AUTHD_PASS);
 }
 
-/* ---- w_enrollment_apply_policy: the decision itself (#39064) ---- */
+/* ---- w_enrollment_apply_policy: the decision itself ---- */
 
 /* Everything that is or may be transient keeps the loop going. DISABLED is in this list on
  * purpose: an operator can re-enable enrollment, so waiting is the right answer. FORBIDDEN too:
@@ -1679,7 +1679,7 @@ static void test_policy_retries_every_transient_status(void **state) {
     }
 }
 
-/* A credential the manager judged and refused: stop. This is the lab loop #39064 removes -- the
+/* A credential the manager judged and refused: stop. This is the lab loop the policy removes -- the
  * old code retried this for ever at the top of the ramp. */
 static void test_policy_stops_on_a_fatal_rejection(void **state) {
     (void)state;
@@ -1729,7 +1729,7 @@ static void test_policy_falls_back_to_an_unconsumed_enrollment_token(void **stat
 
 /* Nothing configured to enroll with: retry anyway. Shredding the dead secret has already turned the
  * next attempt into a different request -- a credential-less one, which is exactly how an
- * open-enrolment agent got its identity in the first place -- so this is not the loop #39064
+ * open-enrolment agent got its identity in the first place -- so this is not the loop the policy
  * removed. Stopping here would strand a whole fleet whose manager was rebuilt, on a manager that
  * would re-enrol every one of them. The refusal that does stop the agent is a 403
  * (W_ENROLL_ERR_AUTH_FATAL), tested above. */

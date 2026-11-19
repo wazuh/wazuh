@@ -14,7 +14,7 @@ type Meta struct {
 	Port         int    `json:"port"`
 	RegPort      int    `json:"reg_port"`
 	// How the fleet was enrolled: "enroll-token" | "1515" in agent mode, "" in
-	// uds mode, which enrolls nothing (issue #39054).
+	// uds mode, which enrolls nothing.
 	Bootstrap         string  `json:"bootstrap"`
 	Target            string  `json:"target"`
 	GlobalPrefix      string  `json:"global_prefix"`

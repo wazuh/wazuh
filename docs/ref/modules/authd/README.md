@@ -264,7 +264,7 @@ a token for one worker's own address is refused unless the master's certificate 
 `--max-uses` to unlimited.
 
 **What a mint refuses about the request itself**, before any certificate is read, and identically from
-the CLI and the API (issue #39133):
+the CLI and the API:
 
 | Rule | Why |
 |------|-----|

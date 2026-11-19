@@ -61,7 +61,7 @@ namespace invsync::test
         /// What the async fake reports from isAvailable(). Lets a test drive the endpoints' 503 gate
         /// without an unreachable host, since the fake never touches a network.
         std::atomic<bool> m_asyncAvailable {true};
-        /// Same flag for the sync fake, for the pipeline's own availability gate (F2).
+        /// Same flag for the sync fake, for the pipeline's own availability gate.
         std::atomic<bool> m_syncAvailable {true};
         /// Writes seen by the async fake: (id, index, data).
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;

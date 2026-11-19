@@ -52,7 +52,7 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     will_return(__wrap_getDefine_Int_default, 120);   // authd.purge_delay
     will_return(__wrap_getDefine_Int_default, 10);    // authd.wdb_timeout
     will_return(__wrap_getDefine_Int_default, 20000); // wazuh_modules.manager_task_max_pending_deletes
-    will_return(__wrap_getDefine_Int_default, 60);    // remoted.jwt_max_age (the re-enrollment bearer's window, #38993)
+    will_return(__wrap_getDefine_Int_default, 60);    // remoted.jwt_max_age (the re-enrollment bearer's window)
     will_return(__wrap_getDefine_Int_default, 30);    // remoted.jwt_clock_skew
 
     assert_int_equal(authd_read_config(WAZUHCONF), 0);

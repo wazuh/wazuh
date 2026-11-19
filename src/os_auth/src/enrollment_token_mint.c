@@ -77,7 +77,7 @@ static void etoken_detail(char *detail, size_t detail_size, const char *fmt, ...
  * indistinguishable from a real mint, which defeats the only reason that line exists. Nothing else
  * on either path stops it -- the API's `alphanumeric_symbols` format allows `\s`, which matches a
  * newline, and the command line applies no format at all -- so the check belongs here, where the
- * socket and the CLI have already met (issue #39133).
+ * socket and the CLI have already met.
  *
  * `address` obeys the same rule for the same reason: a refused mint is logged with the address it
  * was asked for, and an address carrying a newline is refused (no certificate names it) -- so
@@ -288,7 +288,7 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
      * mint then answers SUCCESS while persisting an entry that the store's own loader refuses.
      * Since a load drops what it cannot read, one such record is a token lost on the master's next
      * restart and on every worker the file reaches. Nothing above ETOKEN_MAX_TTL is useful and all
-     * of it is dangerous, so it is refused with a reason (issue #39133). */
+     * of it is dangerous, so it is refused with a reason. */
     if (req->ttl < 0 || req->ttl > ETOKEN_MAX_TTL) {
         etoken_detail(detail, detail_size, "ttl must be between 1 and %ld seconds (%ld days); 0 takes the default",
                       ETOKEN_MAX_TTL, ETOKEN_MAX_TTL / 86400);
@@ -351,7 +351,7 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
 
     /* Every certificate of the file, once: the signer may be the second of a bundle, and the same
      * objects are what gets pinned and (with --embed-ca) published -- so nothing can change between
-     * validating the file and publishing from it (issue #39078, H01) */
+     * validating the file and publishing from it */
     if (cas = w_x509_load_all_pem(ca_certificate, &ca_count), cas == NULL) {
         etoken_detail(detail, detail_size, "no ca_certificate: cannot read '%s'", ca_certificate);
         ret = -1;

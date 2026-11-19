@@ -21,7 +21,7 @@
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
  * on_reenroll_required is wired to the HTTPS /enroll flow (try_enroll_to_server,
- * start_agent.c; #38465) and hc_set_agent_identity(); on_state_change feeds the .state file
+ * start_agent.c) and hc_set_agent_identity(); on_state_change feeds the .state file
  * (client-agent/include/state.h) and, since WAIT_FILE/os_setwait() had no HTTPS
  * release path either, also clears a stale producer lock on REGISTERED.
  * on_producer_pause arms and releases that same lock while running, so a
@@ -29,7 +29,7 @@
  * drop. on_startup_result applies module limits and cluster-name authority, and
  * on_config_downloaded writes/applies merged.mg and releases the startup_gate.
  *
- * Since #38030 this is the agent's only transport, so every manager-visible
+ * This is the agent's only transport, so every manager-visible
  * message the C side still produces goes into its /stateless accumulator.
  */
 
@@ -202,8 +202,8 @@ void *bridge_reenroll_thread(void *arg)
         enroll_result = try_enroll_to_server();
 
         if (enroll_result != W_ENROLL_OK) {
-            /* #39064: this loop used to run for ever on any failure, which is exactly the
-             * behaviour the issue exists to remove -- an agent whose credential the manager has
+            /* This loop used to run for ever on any failure, which is exactly the
+             * behaviour the failure classes exist to remove -- an agent whose credential the manager has
              * definitively refused would re-ask at the top of the ramp until someone noticed.
              * Same policy function as the initial-enrollment loop, so the two answer identically;
              * it also shreds a dead re-enrollment secret, which is what lets the next attempt fall
@@ -243,7 +243,7 @@ void *bridge_reenroll_thread(void *arg)
     }
 
     minfo("https_client: re-enrollment succeeded; reloading the signing identity.");
-    /* #38465: /enroll can hand back a different numeric id along with the new
+    /* /enroll can hand back a different numeric id along with the new
      * key (the manager is expected to preserve it for an already-known
      * identity, but the module must not assume that -- signing with a stale
      * id after the key changed would desync from whatever id the manager
@@ -1005,7 +1005,7 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
      * user this process runs as. Unlinking first turns the write into a fresh file creation --
      * which only needs write permission on the directory, not on whatever pre-existing file may
      * already be sitting at this path -- instead of an open-for-write on a file this process may
-     * not own (#38833). */
+     * not own. */
     if (unlink(dest_path) < 0 && errno != ENOENT) {
         merror("https_client: remote_upgrade task %s: could not remove stale WPK at '%s': %s (%d); aborting.",
                task_id, dest_path, strerror(errno), errno);
@@ -1023,7 +1023,7 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
 
     /* Not w_copy_file()/fopen(dst, "wb"): a symlink left under INCOMING_DIR would be followed and
      * its target overwritten with the WPK contents. Mirrors the hardening already applied to the
-     * legacy path's WCOM uncompress() (os_execd/src/wcom.c, #38200). */
+     * legacy path's WCOM uncompress() (os_execd/src/wcom.c). */
     FILE *fdst = w_fopen_nofollow(INCOMING_DIR, wpk_file, "wb");
     if (!fdst) {
         const int open_errno = errno;
@@ -1185,7 +1185,7 @@ static bool bridge_ca_path_is_the_agent_anchor(const char *ca_path) {
 }
 
 /**
- * @brief Installs a CA bundle the module fetched and vetted (#39321).
+ * @brief Installs a CA bundle the module fetched and vetted.
  *
  * The module established that the connection was verified against the CA the agent already
  * trusts, that the answer was a complete 200, and that the node vouched for the publication
@@ -2098,7 +2098,7 @@ static bool bridge_key_is_valid(const char *raw_key)
 
 /* Fills the transport-only fields of a hc_config_t from the parsed
  * <manager>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
- * needs (#38465) and nothing more: no identity (agent_id/agent_key, which an
+ * needs and nothing more: no identity (agent_id/agent_key, which an
  * enrolling agent has neither yet) and none of the full-client-only fields
  * (batch/stats/buffer ladder/sync_socket_path/config_checksum) bridge_build_
  * config() also sets below. Shared by bridge_build_config() and
@@ -2111,11 +2111,11 @@ static void bridge_build_transport_config(hc_config_t *config)
     if (agt->server && agt->server[0].rip) {
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
-        /* #38624: the IPv6 zone id, already resolved to a numeric scope by the config
+        /* The IPv6 zone id, already resolved to a numeric scope by the config
          * parser, so a link-local manager address is dialed on the right interface. */
         config->server_scope_id = agt->server[0].scope_id;
 
-        /* #38492: shared with w_https_client_enroll() via this same function,
+        /* Shared with w_https_client_enroll() via this same function,
          * so the /enroll request target gets the configured <endpoint> path
          * segment exactly like every other request. */
         if (agt->server[0].endpoint) {
@@ -2128,7 +2128,7 @@ static void bridge_build_transport_config(hc_config_t *config)
         strncpy(config->ca_path, agt->ssl.certificate_authorities, sizeof(config->ca_path) - 1);
     }
 
-    /* verify_mode=system's local-anchor fallback (#39123): handed over unconditionally on
+    /* verify_mode=system's local-anchor fallback: handed over unconditionally on
      * openability, exactly like w_agent_resolve_ssl_posture() treats the same file for the
      * full/certificate anchor default -- deeper validation is the same job CurlPerformer
      * already does at the actual handshake, not this bridge's. Left empty for every other
@@ -2203,7 +2203,7 @@ static bool bridge_build_config(hc_config_t *config)
     config->batch_size_bytes = (uint64_t)agt->batch.size;
     config->batch_interval_ms = (uint32_t)(agt->batch.interval * 1000);
 
-    /* <client><stats_report>/<config_report>: the two periodic pushes (#37843),
+    /* <client><stats_report>/<config_report>: the two periodic pushes,
      * independent of each other. <stats_report> is off unless configured;
      * <config_report> is on by default. Both intervals also default to their
      * effective value (60 s / 3600 s) in ClientConf(), so this copy is never
@@ -2214,7 +2214,7 @@ static bool bridge_build_config(hc_config_t *config)
     config->config_report_enabled = agt->config_report.enabled;
     config->config_report_interval_s = (uint32_t)agt->config_report.interval;
 
-    /* Connection timing contract (#38284). Every value below used to be a
+    /* Connection timing contract. Every value below used to be a
      * compile-time constant the bridge never populated, so the agreed
      * agent<->manager defaults could only be changed by rebuilding. They are
      * internal options now; getDefine_Int_default() keeps the module's own
@@ -2297,7 +2297,7 @@ static bool bridge_build_config(hc_config_t *config)
      * previous one has to be picked up.
      *
      * W_CA_PUBLICATION_UNKNOWN for a store carrying none -- a bootstrapped anchor, one placed
-     * out of band, or one written before #39321 -- which is what makes the agent re-anchor on
+     * out of band, or one written before CA rotation -- which is what makes the agent re-anchor on
      * the first publication the manager advertises instead of never updating again. */
     config->ca_publication = w_ca_publication_read(config->ca_path);
 
@@ -2517,7 +2517,7 @@ int w_https_client_submit_event(const char *frame, size_t length)
     return retval;
 }
 
-/* Handle-less by design (#38465): does not take g_https_client_lock and does
+/* Handle-less by design: does not take g_https_client_lock and does
  * not touch it, because it never reads or writes that handle. Safe to call
  * whether the full client is running (re-enroll, from bridge_reenroll_thread())
  * or does not exist yet (first boot, from start_agent.c, before
@@ -2539,7 +2539,7 @@ bool w_https_client_enroll(const char *body_json, const char *password, const ch
     }
 
     /* Both or neither: the module mints the keyed bearer only when it has a `kid` AND a key, and
-     * half a credential would silently fall through to the password instead (#39064). */
+     * half a credential would silently fall through to the password instead. */
     if (enroll_kid && enroll_key_hex) {
         strncpy(request.enroll_kid, enroll_kid, sizeof(request.enroll_kid) - 1);
         strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);

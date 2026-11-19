@@ -2,7 +2,7 @@
 # Wazuh agent HTTPS client — demo mock manager.
 # Copyright (C) Wazuh Inc.
 #
-# A tiny TLS "manager" that speaks the proposed #37732/#37733 contract just
+# A tiny TLS "manager" that speaks the proposed contract just
 # enough to watch the REAL https_client module communicate: it verifies the
 # wazuh-agent+jwt bearer token of every request (HS256 with the standard
 # library, so it is an independent implementation), then answers /control,
@@ -93,18 +93,18 @@ class Handler(BaseHTTPRequestHandler):
     SETTINGS_FLIP_AT = 5
 
     # /stateless payload cap: a bigger body gets 413, so the client must split
-    # and resend smaller (#37835). Small here so the burst in sustained mode
+    # and resend smaller. Small here so the burst in sustained mode
     # triggers it visibly.
     STATELESS_MAX_BODY = 2048
 
-    # Credential rotation (#37828): after this notify the mock verifies ONLY
+    # Credential rotation: after this notify the mock verifies ONLY
     # against ROTATED_KEY, so the agent's old key starts getting 401 and must
     # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_identity.
     ROTATE_KEY_AT = 7
 
-    # key_hash (#38465) exists precisely so a re-enrolling agent that already
+    # key_hash exists precisely so a re-enrolling agent that already
     # has an entry is recognized as the SAME identity, not reassigned a new
-    # one: hc_set_agent_identity() (the module's #37828 credential-rotation path)
+    # one: hc_set_agent_identity() (the module's credential-rotation path)
     # only ever refreshes the key material on a live handle, by design --
     # there is no ABI to also change its cached agent_id. A mock (or a real
     # manager) that mints a fresh id on every /enroll regardless of key_hash
@@ -112,7 +112,7 @@ class Handler(BaseHTTPRequestHandler):
     KEY_HASH_TO_ID = {}
     ROTATED_KEY = "0f0e0d0c0b0a090807060504030201001f1e1d1c1b1a19181716151413121110"
 
-    # #38465: empty (default) -> /enroll accepts any request carrying
+    # Empty (default) -> /enroll accepts any request carrying
     # protocol-version, no signature required (open mode). Non-empty ->
     # /enroll additionally requires Authorization: Bearer <wazuh-enroll+jwt>
     # verified against the HKDF key of this password. ENROLL_STATUS != 0 forces
@@ -124,7 +124,7 @@ class Handler(BaseHTTPRequestHandler):
     ENROLL_NEXT_ID = 100
 
     # Exact startup-response bytes, kept verbatim: settings_hash is the SHA256
-    # of precisely what goes on the wire (#37733 5.1.1).
+    # of precisely what goes on the wire.
     #
     # Every field the bridge's parser marks required has to be here: it takes
     # the limits all-or-nothing, and a partial block is silently discarded.
@@ -178,7 +178,7 @@ class Handler(BaseHTTPRequestHandler):
         This is the observable half of <ssl><certificate>/<key>: the agent's config
         is only proven to have a runtime effect if the manager can see the client
         cert it presented. The negotiated suite is logged alongside it so the TLS
-        version in use is visible, not because this demo restricts it (#38163).
+        version in use is visible, not because this demo restricts it.
         """
         if getattr(self, "_tls_logged", False):
             return
@@ -249,7 +249,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _reply_chunked(self, blob, content_type="application/octet-stream"):
-        # Hand-rolled chunked transfer (#37733 5.2.3): size line in hex, the
+        # Hand-rolled chunked transfer: size line in hex, the
         # chunk, CRLF; a zero-size chunk terminates.
         self.send_response(200)
         self.send_header("Content-Type", content_type)
@@ -349,7 +349,7 @@ class Handler(BaseHTTPRequestHandler):
                               "config_hash": hashlib.sha256(blob).hexdigest()},
                     "settings_hash": hashlib.sha256(startup).hexdigest()}
         if n == 2:
-            # Deliberately shuffled 4-type batch (#37733: all fire-and-forget):
+            # Deliberately shuffled 4-type batch (all fire-and-forget):
             # the client dispatches AR then upgrade; restart and reload are
             # covered by the upgrade and dropped with a log line.
             response["tasks"] = [
@@ -401,11 +401,11 @@ class Handler(BaseHTTPRequestHandler):
                 f"{Handler.STATELESS_MAX_BODY} B cap; client halves + resends)")
             return
         events = body.count(b"\nE ") + (1 if b"\nE " not in body and b"E " in body else 0)
-        self._reply(200)  # 200 with an empty body per #37732
+        self._reply(200)  # 200 with an empty body per the contract
         log(f"     /stateless  -> 200  ({len(body)} B, ~{events} events accepted)")
 
     def _handle_report(self, target, body):
-        # /stats and /config (#37843): the agent pushes a full snapshot the
+        # /stats and /config: the agent pushes a full snapshot the
         # module stamped with agent_id + cluster; the manager stores it.
         try:
             doc = json.loads(body.decode())
@@ -416,7 +416,7 @@ class Handler(BaseHTTPRequestHandler):
         log(f"     {target:<11} -> 200  stored: agent_id={doc.get('agent_id')} "
             f"cluster={cluster.get('name')} keys={sorted(doc.keys())}")
         # The whole document, for the field-contract comparison against the
-        # manager side (#38136). The preview in do_POST() truncates at 70 bytes,
+        # manager side. The preview in do_POST() truncates at 70 bytes,
         # which is not enough to see the per-module bodies.
         log(f"     {target} FULL BODY: {json.dumps(doc, sort_keys=True)}")
 
@@ -477,8 +477,8 @@ class Handler(BaseHTTPRequestHandler):
             log(f"     /enroll     -> {Handler.ENROLL_STATUS}  (forced by --enroll-status)")
             return
 
-        # The token does not cover the wire bytes (compressed or not, #38465
-        # D7) -- verify against the raw body exactly as received, same as
+        # The token does not cover the wire bytes (compressed or
+        # not) -- verify against the raw body exactly as received, same as
         # every other endpoint. Only the JSON parsing below needs the
         # decompressed content.
         err = self._verify_enroll(body)
@@ -590,18 +590,18 @@ def main():
     parser.add_argument("--cert", required=True)
     parser.add_argument("--key", required=True)
     parser.add_argument("--key-hex", default="000102030405060708090a0b0c0d0e0f")
-    # Exists for the connection/config validation (#38163): the agent's
+    # Exists for the connection/config validation: the agent's
     # <ssl><certificate>/<key> can only be shown to have a runtime effect against a
     # manager that actually demands a client certificate.
     parser.add_argument("--client-ca",
                         help="Require a client certificate and verify it against this CA "
                              "(mutual TLS). Without it, client certs are not requested.")
     parser.add_argument("--enroll-password", default="",
-                        help="#38465/#38582: require this password on POST /enroll (Authorization: "
+                        help="Require this password on POST /enroll (Authorization: "
                              "Bearer <wazuh-enroll+jwt>, verified with the HKDF key of the password). "
                              "Empty (default): open mode, no credential required.")
     parser.add_argument("--enroll-status", type=int, default=0,
-                        help="#38465: force every POST /enroll response to this HTTP status "
+                        help="Force every POST /enroll response to this HTTP status "
                              "(e.g. 403/409/500/503), to demo the agent-side error mapping "
                              "instead of the real enroll flow.")
     args = parser.parse_args()

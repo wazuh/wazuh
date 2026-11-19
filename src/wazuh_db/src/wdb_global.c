@@ -94,7 +94,7 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
         return OS_INVALID;
     }
     /* NULL for every agent not enrolled through authd's local `add` (client.keys mirroring, legacy
-     * 1515, older records): the column is read by the re-enrollment path only (#38993). */
+     * 1515, older records): the column is read by the re-enrollment path only. */
     if (sqlite3_bind_text(stmt, 6, reenroll_secret, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -2006,6 +2006,11 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 
             wdb_close(*wdb, true);
             unlink(global_path);
+
+            // The cached global group hash describes the database just removed: drop it whether
+            // or not the rename below succeeds, so the next request recalculates it from the file
+            // that is actually opened next.
+            wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
 
             if (rename(global_tmp_path, global_path) != OS_SUCCESS) {
                 merror("Renaming %s to %s: %s", global_tmp_path, global_path, strerror(errno));

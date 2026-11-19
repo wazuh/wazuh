@@ -12,7 +12,7 @@ Shipped defaults are 5 MiB and 10 MiB respectively; both are configurable, so th
 reports what it observes rather than asserting a fixed boundary.
 
 A proxy configured below either of those changes the answer the agent gets: instead of the
-413 it knows how to act on (it splits the batch and retries, #37835), it sees the proxy's
+413 it knows how to act on (it splits the batch and retries), it sees the proxy's
 own error, or a closed connection it cannot tell from a network fault.
 
 So this sends the same bodies straight to a node and through every front end, and compares.

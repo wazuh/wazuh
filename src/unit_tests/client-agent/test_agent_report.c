@@ -41,7 +41,7 @@ static size_t g_answer_count = 0;
 static const char* g_connected_target = NULL;
 static int g_connect_calls = 0;
 
-/* report_query() gates every component query on this (#37843 follow-up). Wrapped
+/* report_query() gates every component query on this. Wrapped
  * (not touched via extern) because agent_report.c/startup_gate.c are each compiled
  * twice for TARGET=winagent -- once into agentd_lib, once into wazuh-agentd (see
  * client-agent/CMakeLists.txt) -- so a global this test pokes directly is not

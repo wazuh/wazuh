@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-/// One task as parsed from a Notify response (#37733 5.1.2).
+/// One task as parsed from a Notify response.
 struct NotifyTask
 {
     std::string id;
@@ -34,7 +34,7 @@ struct TaskBatchPlan
 
 namespace taskBatchDetail
 {
-    /// Dispatch rank over the four contract types (#37733 §2: all
+    /// Dispatch rank over the four contract types (all
     /// fire-and-forget). Terminal tasks (upgrade/restart end the process)
     /// rank last so quick work is never lost behind them; unknown types
     /// (including the removed agent_reconnect/info_request, tolerated from
@@ -75,12 +75,12 @@ namespace taskBatchDetail
     ///    two different actions (block 10.0.0.1 and block 10.0.0.2). Folding
     ///    them together would silently discard real work.
     ///  - for remote_upgrade, which of two differing payloads should win is a
-    ///    contract question (#37733), not something this planner can decide.
+    ///    contract question, not something this planner can decide.
     ///
     /// The manager is the trusted source of the batch and assigns
-    /// deterministic task ids (#37944), so a batch carrying two upgrades is a
+    /// deterministic task ids, so a batch carrying two upgrades is a
     /// manager-side defect. Worth knowing that it would dispatch twice, which
-    /// once #37834 wires execution means two installer runs.
+    /// once execution is wired means two installer runs.
     inline std::string subsumerOf(const std::string& type, bool hasUpgrade, bool hasRestart)
     {
         if (type == "agent_restart" && hasUpgrade)

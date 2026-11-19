@@ -51,21 +51,9 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    // Define current working directory
-    char * home_path = w_homedir(argv[0]);
-
-    /* Isolated-test override: honor the same environment variable the Engine uses
-     * (WAZUH_MANAGER_FORCE_HOME, see engine/source/base/src/process.cpp getWazuhHome()),
-     * so one variable relocates both daemons into the same sandboxed tree.
-     * Takes precedence over WAZUH_MANAGER_HOME (already resolved by w_homedir());
+    /* Define current working directory: w_homedir() honours WAZUH_MANAGER_FORCE_HOME, then WAZUH_MANAGER_HOME;
      * an explicit -D on the command line below still wins over both. */
-    {
-        const char *forced_home = getenv("WAZUH_MANAGER_FORCE_HOME");
-        if (forced_home && *forced_home) {
-            os_free(home_path);
-            os_strdup(forced_home, home_path);
-        }
-    }
+    char * home_path = w_homedir(argv[0]);
 
     const char *cfg = WAZUHCONF;
     const char *user = USER;

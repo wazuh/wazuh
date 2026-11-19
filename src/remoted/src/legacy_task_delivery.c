@@ -661,7 +661,7 @@ STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version) {
  * reasoning through an out-parameter: every failure log below names this path, and _merror()
  * carries __attribute__((nonnull)) over its variadic arguments.
  *
- * No longer feeds the read itself (issue #39319): legacy_task_ca_read() asks the C++ module for the
+ * No longer feeds the read itself: legacy_task_ca_read() asks the C++ module for the
  * certificate instead of opening this file, and the module resolves the very same setting. What is
  * left is the operator-facing half -- naming the file the certificate came from, or should have
  * come from, in every log line below.
@@ -677,9 +677,9 @@ STATIC const char *legacy_task_ca_path(void) {
 /**
  * @brief Get the CA certificate to send, and confirm it is something an agent could actually trust.
  *
- * Does NOT read the file (issue #39319). The bytes come from the C++ module, which hands back the
+ * Does NOT read the file. The bytes come from the C++ module, which hands back the
  * ONE certificate of `remote.https.ca_certificate` that what the HTTPS listener serves CHAINS to
- * (C33: a certificate that merely signs it is not one the agent's TLS could use),
+ * (a certificate that merely signs it is not one the agent's TLS could use),
  * re-serialised and with no publication block. That is the whole point: during the overlap of a CA
  * rotation the bundle on disk legitimately holds two certificates (plus the `##` block the
  * `wazuh-manager-certs` tool stamps), and the agent-side installer -- src/init/pkg_installer.sh --
@@ -707,9 +707,9 @@ STATIC char *legacy_task_ca_read(unsigned int *out_length) {
 
     if (written <= 0) {
         // 0: the served certificate chains to nothing in the bundle, the certificate it chains to
-        // is not an installable anchor (not a CA, or outside its validity window -- issue #39319,
-        // C26: a rotation's overlap is exactly where an expired re-issue of the same key still
-        // signs the served leaf, and C33: another subject over the same key signs it without being
+        // is not an installable anchor (not a CA, or outside its validity window -- a
+        // rotation's overlap is exactly where an expired re-issue of the same key still
+        // signs the served leaf, and another subject over the same key signs it without being
         // its issuer), there is no servable bundle, or the listener is down. -1: the
         // certificate does not even fit the offered capacity, or the module failed. Nothing to
         // deliver either way, and the caller continues the upgrade without a CA. Never a truncated
@@ -759,7 +759,7 @@ STATIC char *legacy_task_ca_read(unsigned int *out_length) {
  *
  * Best-effort by construction. If the agent is unreachable, these two steps fail too; but then the
  * partial file cannot have been written by a reachable agent either, and the agent-side reader
- * treats a file with no certificate block as absent regardless (see #39071).
+ * treats a file with no certificate block as absent regardless.
  */
 STATIC void legacy_task_ca_truncate(const char *agent_id) {
     cJSON *open_params = cJSON_CreateObject();
@@ -920,12 +920,12 @@ STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, co
     char *pem = legacy_task_ca_read(&ca_length);
 
     if (!pem) {
-        // "no certificate the manager's own certificate chains to" is in this list because, since
-        // #39319, it is the case that lands HERE: the module answers 0 for a bundle the served leaf
+        // "no certificate the manager's own certificate chains to" is in this list because
+        // it is the case that lands HERE: the module answers 0 for a bundle the served leaf
         // cannot build a chain to, so legacy_task_ca_read() returns NULL before the explicit guard
         // below is ever consulted. Its own, more specific message would otherwise be unreachable in
-        // the one situation CA-18 is about, leaving the reason unsaid. The same is true of "not a CA
-        // within its validity period" (C26, C33): the module only picks an anchor the leaf CHAINS to
+        // the one situation it is about, leaving the reason unsaid. The same is true of "not a CA
+        // within its validity period": the module only picks an anchor the leaf CHAINS to
         // and that is ALSO a CA and currently valid, so a bundle whose only signer is an expired
         // re-issue of the same key -- exactly what a rotation's overlap can leave behind -- or one
         // holding that key under another subject answers 0 here too, with no more specific guard
@@ -940,7 +940,7 @@ STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, co
     }
 
     // Kept although the export above already refuses to produce a certificate the served one does
-    // not chain to, so this is redundant by design (02-diseno.md §2.5): it is the guard that
+    // not chain to, so this is redundant by design: it is the guard that
     // states the rule, and it keeps stating it if the export's contract is ever loosened. Only an
     // explicit "does not chain" refuses -- unknown (-1: the listener is down, or the file was
     // unreadable at the last evaluation) proceeds, exactly as GET /cacerts does. Refusing on

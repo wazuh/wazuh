@@ -28,7 +28,7 @@ namespace
         metadata_provider_free_metadata(&metadata);
     }
 
-    // Child half of ReadFromAtexitAfterProviderTeardownDoesNotCrash (#38766). Needs a
+    // Child half of ReadFromAtexitAfterProviderTeardownDoesNotCrash. Needs a
     // freshly executed process: by the time a test body runs, the fixture's SetUp() has
     // already constructed the singleton and the ordering no longer exists.
     int runAtexitChild()

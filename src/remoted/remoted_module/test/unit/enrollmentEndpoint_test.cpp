@@ -718,7 +718,7 @@ TEST(EnrollmentEndpointTest, RequestNeverIncludesForceIdOrKey)
     EXPECT_FALSE(j["arguments"].contains("id"));
     EXPECT_FALSE(j["arguments"].contains("key"));
     // And no enrollment token was used, so no token_id either: the Open/password request stays
-    // byte-identical to what authd received before tokens existed (issue #38993). Nor a re-enrollment.
+    // byte-identical to what authd received before tokens existed. Nor a re-enrollment.
     EXPECT_FALSE(j["arguments"].contains("token_id"));
     EXPECT_FALSE(j["arguments"].contains("reenroll"));
 }
@@ -744,7 +744,7 @@ TEST(EnrollmentEndpointTest, SuccessReturns200WithAgentData)
 
 TEST(EnrollmentEndpointTest, SuccessCarriesTheReenrollSecretWhenAuthdSendsIt)
 {
-    // The fifth field of a 200 (issue #38993): authd's re-enrollment secret, verbatim like the other
+    // The fifth field of a 200: authd's re-enrollment secret, verbatim like the other
     // four -- the agent stores it and re-enrolls with it later.
     auto stub = fixedAuthdServer(
         R"({"error":0,"data":{"id":"003","name":"agent1","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",)"
@@ -804,10 +804,10 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9015, 503},
                                            AuthdErrorCase {9016, 503},
                                            // The credential could not be journaled, so none was
-                                           // handed out (issue #39078, H03): a "come back", like
+                                           // handed out: a "come back", like
                                            // the two above, not a fault of the request.
                                            AuthdErrorCase {9031, 503},
-                                           AuthdErrorCase {9022, 403},   // enrollment token unknown/revoked (#38993)
+                                           AuthdErrorCase {9022, 403},   // enrollment token unknown/revoked
                                            AuthdErrorCase {9023, 403},   // enrollment token expired
                                            AuthdErrorCase {9024, 403},   // enrollment token exhausted
                                            AuthdErrorCase {9999, 500})); // unknown code -> safe default
@@ -841,7 +841,7 @@ TEST(EnrollmentEndpointTest, AuthdOutcomeUnknownMapsTo503WithADistinctCode)
 }
 
 // -----------------------------------------------------------------------------
-// Enrollment tokens (issue #38993): the id of a verified token travels to authd as `token_id`,
+// Enrollment tokens: the id of a verified token travels to authd as `token_id`,
 // authd's refusals of it are 403, and both outcomes count in remoted.enroll.token.*.
 // -----------------------------------------------------------------------------
 
@@ -972,7 +972,7 @@ TEST(EnrollmentEndpointTest, RevokedTokenIs401AndCountsItsClassWithoutReachingAu
     EXPECT_EQ(run.enrollValue(METRIC_REJECTED_AUTH), 1U);
     EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_REVOKED), 1U);
     EXPECT_EQ(run.enrollValue(METRIC_TOKEN_REJECTED_UNKNOWN), 0U);
-    // The class-naming bearer challenge, like every credential 401 on this server (issue #38993), and
+    // The class-naming bearer challenge, like every credential 401 on this server, and
     // the same class as the body's `code`.
     const auto challenge = std::find_if(run.response.headers.begin(),
                                         run.response.headers.end(),
@@ -1006,7 +1006,7 @@ TEST(EnrollmentEndpointTest, UnknownTokenIs401AndCountsRejectedUnknown)
 }
 
 // -----------------------------------------------------------------------------
-// Re-enrollment (issue #38993): the bearer whose `kid` names an agent travels to authd UNVERIFIED as
+// Re-enrollment: the bearer whose `kid` names an agent travels to authd UNVERIFIED as
 // `arguments.reenroll` (the secret that signs it is the master's alone); authd's 9026/9027/9028 are
 // authentication failures -- the uniform 401 + WWW-Authenticate, never authd's code on the wire --
 // and every outcome counts in remoted.enroll.reenroll.*.
@@ -1096,7 +1096,7 @@ struct ReenrollRejectionCase
 {
     int authdCode;
     const char* metric;
-    const char* publicClass; // what the wire names (issue #38993, T10)
+    const char* publicClass; // what the wire names
 };
 
 class EnrollmentEndpointReenrollRejectionTest : public ::testing::TestWithParam<ReenrollRejectionCase>
@@ -1144,7 +1144,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(EnrollmentEndpointTest, ReenrollmentAlreadyInProgressIsA409WithItsOwnCounter)
 {
-    // A rotation for that agent is accepted and not yet persisted (9030, issue #39078 H02). The
+    // A rotation for that agent is accepted and not yet persisted (9030). The
     // bearer was fine, so this is not an authentication failure to fold into the 401: it is the
     // same "that state is taken" 409 a duplicate name gets, and the agent retries rather than
     // re-signing. Its own counter, because a 409 alone does not say which rule refused.

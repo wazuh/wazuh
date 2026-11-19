@@ -62,19 +62,31 @@ jobs:
         with:
           node-version: 20
 
+      # The OpenAPI documents the book embeds (the ReDoc pages load them at runtime) and the Server API
+      # contract. Nothing generates them, so a hand edit that breaks the schema is caught only here.
+      - name: Validate the OpenAPI documents
+        run: |
+          python3 -m pip install --break-system-packages openapi-spec-validator==0.7.1
+          openapi-spec-validator \
+            docs/ref/modules/engine/public-api.yaml \
+            docs/ref/modules/engine/private-api.yaml \
+            docs/ref/modules/engine/spec-events.yaml \
+            docs/ref/modules/remoted/agent-api.yaml \
+            api/api/spec/spec.yaml
+
       - name: Build docs
         env:
           WAZUH_DOCS_NODE_DIR: ${{ runner.temp }}/wazuh-docs-tools
         run: cd docs && sh build.sh
 
-      - name: "Verify check-docs.py degrades gracefully without Node/npm (regression for #39955)"
+      - name: "Verify check-docs.py degrades gracefully without Node/npm"
         run: |
           GREP=$(command -v grep); CAT=$(command -v cat); PY=$(command -v python3)
           STRIPPED_PATH=""
           IFS=':' read -ra DIRS <<< "$PATH"
           # Strip every PATH dir with node/npm, not just one: ubuntu-24.04 ships Node preinstalled
           # via the n version manager in addition to whatever actions/setup-node adds, so a single
-          # directory is not enough (see the #39955 review history for the runner image evidence).
+          # directory is not enough.
           for d in "${DIRS[@]}"; do
             [ -x "$d/node" ] || [ -x "$d/npm" ] && continue
             STRIPPED_PATH="${STRIPPED_PATH:+$STRIPPED_PATH:}$d"

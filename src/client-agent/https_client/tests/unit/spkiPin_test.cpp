@@ -629,7 +629,7 @@ TEST(SpkiPinTest, FailurePathsLeaveTheOpensslErrorQueueClean)
 // reports "Total found: 2" without the NUL and "Total found: 1" with it, from
 // a file, where the length is not in question.
 //
-// Consequence for the bootstrap (#39026): a legitimate PEM never contains a
+// Consequence for the bootstrap: a legitimate PEM never contains a
 // NUL, so the fetch layer should treat one in the body as corruption rather
 // than pin whatever happened to parse first. Silently pinning a truncated
 // bundle is exactly the "succeeds while being wrong" failure this issue exists

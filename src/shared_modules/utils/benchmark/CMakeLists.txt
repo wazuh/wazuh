@@ -36,6 +36,9 @@ else()
   add_dependencies(utils_benchmark_test benchmark_external)
 endif()
 
-add_test(NAME utils_benchmark_test COMMAND utils_benchmark_test)
+# Manual tool, run by no CI lane (see the utils README). Registered with ctest only as a smoke run:
+# a minimal per-benchmark time keeps a plain `ctest` cheap, and its own label keeps it out of the
+# `-L utils_utest` selection. For real numbers run bin/utils_benchmark_test directly.
+add_test(NAME utils_benchmark_test COMMAND utils_benchmark_test --benchmark_min_time=0.01)
 
-set_tests_properties(utils_benchmark_test PROPERTIES LABELS "utils")
+set_tests_properties(utils_benchmark_test PROPERTIES LABELS "utils_benchmark")

@@ -640,8 +640,9 @@ exist or refuses the connection, the node runs `bin/wazuh-manager-service-contro
 (the helper modulesd would run) and logs a `WARNING` naming the socket error. The node waits up to 5
 seconds for the helper to accept, then up to 4 more for the configuration and credentials check it runs
 before handing the action to systemd. A refusal in either is a failed item `1904` (*The manager
-service-control helper refused the restart request*, with its exit code and reason, such as `the manager
-configuration or credentials check failed; the manager was not restarted`), and the manager keeps running; a
+service-control helper refused the restart request*, or *the reload request*, with its exit code and reason,
+such as `the manager configuration or credentials check failed; the manager was not restarted`, or `… was not
+reloaded` for a reload), and the manager keeps running; a
 helper that cannot be run is `1903`. A failure the node no longer waits for (a longer check, or `systemctl`
 itself) is logged as an `ERROR` in `api.log` (`cluster.log` on a worker): `The manager restart run by
 wazuh-manager-service-control failed (exit code 1): …`. While modulesd runs, the request goes through its

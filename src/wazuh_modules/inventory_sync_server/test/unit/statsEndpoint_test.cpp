@@ -36,7 +36,7 @@ namespace
      * @brief A report shaped exactly like the agent's, for the tests that are not about the payload.
      *
      * Both modules come in clean and already named the way the index declares them: this is the wire
-     * format agreed with the agent side (#37843), which is also what the document stores.
+     * format agreed with the agent side, which is also what the document stores.
      *
      * It also claims an identity three ways -- the reporter's own `agent_id`/`cluster` at the root,
      * plus a `wazuh.agent.id` and `wazuh.cluster` spelled exactly like the authoritative ones. None

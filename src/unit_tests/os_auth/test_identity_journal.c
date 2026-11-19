@@ -9,7 +9,7 @@
 
 /* The identity transition journal: queue/authd/pending-identities, and the three questions it
  * answers -- may this transition be performed at all, what is still owed to the database, and what
- * does a line left by a dead process mean now (issue #39078, H03).
+ * does a line left by a dead process mean now.
  *
  * Real files in a temporary directory, like the token store's cases and for the same reason: the
  * file IS the contract. Its mode, the fact that an append never rewrites it, and what a torn line
@@ -405,7 +405,7 @@ static void test_reconciliation_keeps_a_rotation_client_keys_never_received(void
 
 /* Replaces an earlier case that asserted the opposite: that an entry whose key differs from
  * client.keys is superseded. That rule discarded the live credentials of a rotation the writer had
- * not got to yet (issue #39078, review round), so what supersedes an entry is now a LATER entry for
+ * not got to yet, so what supersedes an entry is now a LATER entry for
  * the same agent -- which is what this case fixes. */
 static void test_reconciliation_keeps_only_the_newest_entry_of_an_agent(void **state) {
     (void)state;

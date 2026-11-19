@@ -9,7 +9,7 @@
 
 /**
  * @file reenroll_secret.h
- * @brief The agent's own re-enrollment credential, at rest (issue #39064).
+ * @brief The agent's own re-enrollment credential, at rest.
  *
  * `POST /enroll` answers with a fifth field, `reenroll_secret`: 32 CSPRNG bytes as 64 lowercase
  * hex characters, the IKM of the HKDF (label WAZUH-REENROLL-KEY) that derives the
@@ -24,7 +24,7 @@
  *
  * ## Why client.keys's protection and not the trust anchor's
  *
- * #39060 gives AGENT_ANCHOR_CA ownership the `wazuh` user cannot replace, and #39064's task list
+ * AGENT_ANCHOR_CA has ownership the `wazuh` user cannot replace, and the re-enrollment design
  * asks for "the same ownership treatment" here. That is not reachable, and it would buy nothing:
  *
  *   - Not reachable: the secret is rotated by every successful enrollment, and rotation happens

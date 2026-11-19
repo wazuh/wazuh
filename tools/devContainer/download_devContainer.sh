@@ -79,7 +79,8 @@ Options:
     -d    Destination directory for devContainer (default: ./devContainer)
     -b    Git branch to download from (default: ${DEFAULT_BRANCH})
     -c    Claude Code setup exported with the claude-portable skill (claude-portable.sh export);
-          it is copied into the devContainer and the command to import it is printed
+          it is copied into the devContainer and the command to import it is printed. The skill
+          is not part of this repository: the package carries it
     -h    Show this help message
 
 Environment:

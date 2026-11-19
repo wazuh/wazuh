@@ -593,7 +593,7 @@ namespace
 } // namespace
 
 // RFC 6750 §3: every 401 carries a `WWW-Authenticate: Bearer` challenge that names the failure CLASS
-// (issue #38993: `error="invalid_request"` when no usable credential was presented,
+// (`error="invalid_request"` when no usable credential was presented,
 // `error="invalid_token", error_description="<class>"` when one was judged and failed), with the same
 // class as the body's `code`; the non-credential rejections (400/413/415) carry no challenge at all.
 TEST(AuthGatewayTest, Every401CarriesItsClassInTheChallengeAndNothingElseDoes)
@@ -658,7 +658,7 @@ TEST(AuthGatewayTest, Every401CarriesItsClassInTheChallengeAndNothingElseDoes)
     EXPECT_FALSE(headerOf(response, "WWW-Authenticate").has_value());
 }
 
-// The two classes the agent acts on differently (issue #38993, §2.10 of the document): an id the
+// The two classes the agent acts on differently: an id the
 // keystore does not know tells it to re-enroll; a token outside the accepted window tells it to fix
 // its clock and retry. Both were the same anonymous 401 before.
 TEST(AuthGatewayTest, UnknownAgentAndStaleTokenAreDistinguishableOnTheWire)

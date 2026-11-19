@@ -19,7 +19,7 @@
 
 #include "agentd.h"
 
-/* Covers ClientConf()'s own resolution step -- the part of #38684's fix, and of #39025's
+/* Covers ClientConf()'s own resolution step -- the part of the SSL resolution fix, and of the
  * trust-anchor latch on top of it, that only exercises correctly when the whole function
  * runs end to end against a real file (Read_Agent_SSL() alone, tested elsewhere, cannot see
  * it: it only sets fields when a tag is present, never resolves what "absent" should
@@ -189,7 +189,7 @@ static void test_explicit_system_with_no_ca_is_kept(void **state) {
     assert_null(agt->ssl.certificate_authorities);
 }
 
-/* --- with a trust anchor on disk (#39025) --- */
+/* --- with a trust anchor on disk --- */
 
 static void test_no_ssl_block_with_anchor_resolves_to_full(void **state) {
     (void) state;

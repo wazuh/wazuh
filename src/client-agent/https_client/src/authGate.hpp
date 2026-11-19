@@ -20,7 +20,7 @@
 #include <mutex>
 
 /**
- * @brief The 401 -> re-enrollment latch (#37828). Any endpoint that gets a
+ * @brief The 401 -> re-enrollment latch. Any endpoint that gets a
  *        401 has a dead credential, so it reports here: all outbound traffic
  *        pauses and, once per incident, the consumer is asked to re-enroll
  *        (on_reenroll_required). hc_set_agent_identity() -> release() swaps
@@ -81,7 +81,7 @@ class AuthGate final
 
         /// How many incidents have latched the gate so far. A key renewed from inside
         /// on_reenroll_required can release the gate before a reader polls paused(); the count
-        /// still tells that reader an incident happened (#38329). Read it after paused().
+        /// still tells that reader an incident happened. Read it after paused().
         uint64_t incidents() const
         {
             return m_incidents.load(std::memory_order_acquire);

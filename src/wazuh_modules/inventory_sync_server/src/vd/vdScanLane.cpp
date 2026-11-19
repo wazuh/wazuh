@@ -425,7 +425,7 @@ namespace invsync::vd
             // session is admitted and takes the legitimate-skip path below, which indexes the
             // agent's inventory without scanning it. Rejecting it instead would leave agents that
             // hold an offset from before the module was disabled unable to index their packages
-            // at all (#38599).
+            // at all.
             //
             // Gated on the scanner, not on the offset reading 0: a running scanner reports 0 too
             // while the content manager's offset store is not answering yet (a window on every

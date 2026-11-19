@@ -73,7 +73,7 @@ void test_fs_magic(void **state)
     assert_int_equal(compare(&statfs), 1);
 }
 
-// Regression tests for https://github.com/wazuh/wazuh/issues/38693:
+// Regression tests:
 // skipFS()/IsNFS() must actually evaluate the "#if defined(__linux__)" branch
 // instead of silently short-circuiting to 0. __wrap_statfs() (stat_wrappers.c) only exists
 // on Linux (struct statfs itself is only declared there), so these are too.

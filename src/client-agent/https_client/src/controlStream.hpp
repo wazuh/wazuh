@@ -97,10 +97,10 @@ class ControlStream final
         /// Non-empty only right after a /control attempt whose 401 was NOT escalated (the
         /// AuthGate stayed open: any class but unknown_agent -- that already gets
         /// useSlowCadence()/rejectedRetryIntervalS through AuthError instead). RetrySender
-        /// deliberately returns such a 401 unescalated on every call (#39064), so nothing else
+        /// deliberately returns such a 401 unescalated on every call, so nothing else
         /// slows the Notify/Startup cadence: mutates the Backoff this stream's RetrySender
         /// already resets on success, growing the interval instead of retrying on the plain
-        /// notify cadence forever (#39601).
+        /// notify cadence forever.
         std::optional<std::chrono::milliseconds> unescalatedAuthFailBackoff()
         {
             if (m_lastOutcome == OutcomeClass::AuthFail && !useSlowCadence())
@@ -142,7 +142,7 @@ class ControlStream final
         void maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
-        /// Rule 3 of #39321 applied to one notify: arms a refresh when the advertised
+        /// Rule 3 of the CA-rotation contract applied to one notify: arms a refresh when the advertised
         /// publication is one this agent should adopt. std::nullopt means the field was absent.
         void maybeAdoptCaPublication(std::optional<std::int64_t> advertised);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);

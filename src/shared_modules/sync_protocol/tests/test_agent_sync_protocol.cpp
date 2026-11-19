@@ -541,7 +541,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
                               );
 
     EXPECT_TRUE(result.success);
-    // #38601: an empty queue is a success -- a routine "nothing changed" cycle is not a failure,
+    // An empty queue is a success -- a routine "nothing changed" cycle is not a failure,
     // and every module's log ladder and failure streak depend on that staying true. What it must
     // NOT do is look like a cycle that reached the manager, because durable markers gated on a
     // sync result would then record data the manager never received.
@@ -754,7 +754,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStoppedDoesNotCountTowardsStreak)
 }
 
 // A new manager answers every VD session this way for as long as its feed loads, several sync
-// cycles (#40683). The first session after the load is then answered 409, because the agent still
+// cycles. The first session after the load is then answered 409, because the agent still
 // carries the feed offset it had before. If the not-ready answers counted, that 409 would already be
 // past SYNC_MANAGER_NOT_READY_TOLERANCE and reported as "failed N times in a row" at WARNING. They
 // leave the streak where it was, as a stop does.
@@ -899,7 +899,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendSessionFails)
 
 // runSession() gives up after SYNC_HANDOFF_RETRIES failed hand-offs to the transport
 // without ever setting lastSyncResult, so the caller used to get an empty
-// failureReason (issue #38939: bare "synchronization failed" warning, no reason).
+// failureReason (a bare "synchronization failed" warning, no reason).
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleHandoffExhaustedHasReason)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -1453,7 +1453,7 @@ TEST_F(AgentSyncProtocolTest, ConcurrentCallReportsThatItRanNoSession)
 // heard (0 until the manager tells it otherwise) and the manager decides what that session is
 // worth -- 503 while its feed loads, accepted and indexed unscanned when its scanner is not
 // running. Gating here instead left agents on a manager with vulnerability detection disabled
-// with their packages never indexed at all (#38599).
+// with their packages never indexed at all.
 TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
 {
     agent_metadata_t metadata = {};
@@ -2006,7 +2006,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 
     syncThread.join();
 
-    // Transient manager-reported failures must be debug, not error (issue #36724).
+    // Transient manager-reported failures must be debug, not error.
     logCapture.expectDebugNotError("Manager reported a protocol error (500)");
     logCapture.expectDebugNotError("Synchronization failed: Manager reported an error status.");
 }
@@ -2049,7 +2049,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 
     syncThread.join();
 
-    // Offline EndAck is the same transient class: debug, not error (issue #36724).
+    // Offline EndAck is the same transient class: debug, not error.
     logCapture.expectDebugNotError("Manager reported not ready (503)");
 }
 
@@ -2195,7 +2195,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
 }
 
 // A single 409 no longer means "full sync required" -- the manager's old internal
-// retry-against-indexer loop moved to the agent (2026-08-04, #38117/#38128), so this
+// retry-against-indexer loop moved to the agent (2026-08-04), so this
 // now takes CHECKSUM_MISMATCH_MAX_ATTEMPTS (5) consecutive 409s before the agent
 // trusts the mismatch as genuine.
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
@@ -3060,7 +3060,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanStartAckTimeout)
 // notifyDataClean() reports the same manager-not-ready detail synchronizeModule() does, so a
 // caller can tell a transient post-restart hiccup apart from a real failure instead of only getting
 // a bare bool. Passing trackConsecutiveFailures=true feeds the same streak synchronizeModule() uses
-// for its own tolerance window. (#38579)
+// for its own tolerance window.
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultReportsManagerNotReadyOnStartAckTimeout)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -3082,7 +3082,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultReportsManagerNotReadyOnStart
 
 // Without opting in, a notifyDataClean() failure must NOT touch the streak
 // synchronizeModule() relies on: an ad hoc DataClean call (e.g. policy-removal cleanup) is not
-// part of the periodic sync cycle and must not skew its tolerance window. (#38579)
+// part of the periodic sync cycle and must not skew its tolerance window.
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackFailuresByDefault)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -3112,7 +3112,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackFailuresByDefault
 // synchronizeMetadataOrGroups() (always a periodic-cycle call), notifyDataClean() also has ad hoc
 // callers, so growing this streak requires the same trackConsecutiveFailures opt-in the manager-facing
 // streak already needed -- an ad hoc caller's transport failures must not pump up the same shared
-// counter a periodic cycle relies on for its own tolerance decision. (#38579)
+// counter a periodic cycle relies on for its own tolerance decision.
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultTransportFailureReportsLocalTransportUnavailable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -3135,7 +3135,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultTransportFailureReportsLocalT
 
 // Without opting in, a transport-failure streak must NOT grow either -- same requirement as
 // NotifyDataCleanResultDoesNotTrackFailuresByDefault, but for the local-transport streak instead of
-// the manager-facing one. (#38579, review follow-up: trackLocalTransportFailure() was still called
+// the manager-facing one. (trackLocalTransportFailure() was still called
 // unconditionally here, so an untracked call could inflate the shared streak a periodic cycle relies
 // on for its own tolerance decision.)
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackLocalTransportFailuresByDefault)
@@ -3165,7 +3165,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultDoesNotTrackLocalTransportFai
 // the default) success call: unlike the increment, the reset is never gated by that flag, because
 // checkStatus() succeeding is an objective fact about the instance -- true regardless of which
 // caller happened to observe it -- not something that should depend on whether that particular
-// caller opted into the periodic-cycle streak. (#38579)
+// caller opted into the periodic-cycle streak.
 TEST_F(AgentSyncProtocolTest, NotifyDataCleanResultResetsLocalTransportStreakOnceReachable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -3630,7 +3630,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithPayloadTooLarge)
 // failureReason empty -- determineSyncFailureReasonBasedOnSyncResult() had no case for
 // SyncResult::CHECKSUM_ERROR, on the wrong assumption that only requiresFullSync() ever saw it.
 // A brand-new agent's first VD sync (feed_offset 0 racing the manager's already-loaded feed)
-// hits exactly this path (#39543). This body is executeChecksum()'s real shape
+// hits exactly this path. This body is executeChecksum()'s real shape
 // (sessionProcessor.cpp's CHECKSUM_MISMATCH_BODY), the actual case a FIM/SCA/agent-info instance
 // (isFeedBased=false) hits.
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchBodyHasGenericReason)
@@ -3759,7 +3759,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnrecognizedBodyFallsBackTo
 }
 
 // The manager answers a vulnerability-detection session with this 503 while its feed is still
-// loading, more than half an hour on a new manager (#40683). It is an expected state, not a
+// loading, more than half an hour on a new manager. It is an expected state, not a
 // communication failure: it gets its own reason and flag, on top of the managerNotReady every 503
 // sets.
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithFeedNotReadyReportsItsOwnReason)

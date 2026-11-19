@@ -1,5 +1,5 @@
 /*
- * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Wazuh Utils - Certificate helpers
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it

@@ -17,7 +17,7 @@
 #include <optional>
 #include <string>
 
-/// The two headers of one password-mode /enroll attempt (#38582):
+/// The two headers of one password-mode /enroll attempt:
 ///   protocol-version: 1
 ///   Authorization: Bearer <wazuh-enroll+jwt>
 struct EnrollSignedHeaders

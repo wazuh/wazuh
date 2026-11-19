@@ -883,7 +883,6 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
                            if request.url.path == RUN_AS_LOGIN_ENDPOINT else MAX_LOGGED_BODY_SIZE)
         content_length = get_declared_content_length(request)
         if content_length is not None and 0 < content_length <= max_cached_body:
-            # Related to https://github.com/wazuh/wazuh/issues/24060.
             try:
                 await request.body()
             except ClientDisconnect:

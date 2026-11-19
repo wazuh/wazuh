@@ -14,7 +14,7 @@
 /**
  * @file guardedTlsSocket.hpp
  * @brief RESTinio's TLS socket with a deadline on the handshake and a per-source cap on handshakes
- *        in progress (issue #6883).
+ *        in progress.
  *
  * PRIVATE to the transport: included by RestinioHttpServer.cpp and its tests only, never by a header
  * the rest of the module sees (RESTinio stays behind IHttpServer).

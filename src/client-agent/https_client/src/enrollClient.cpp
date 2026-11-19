@@ -58,7 +58,7 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
     // once -- mirrors RetrySender::send()'s identical loop.
     for (;;)
     {
-        // One-shot fallback (#38465 D7/Q9): a 415 means the manager does not
+        // One-shot fallback: a 415 means the manager does not
         // accept Content-Encoding: zstd on /enroll. No shared CompressionGate
         // here -- this is a single pre-facade call (or a one-off re-enroll
         // call), not a persistent stream with a "for the rest of this run"
@@ -72,7 +72,7 @@ HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string
             continue;
         }
 
-        // One-shot 401 grace-retry (#38440's self-correction, extended here):
+        // One-shot 401 grace-retry (the clock-skew self-correction, extended here):
         // a 401 in a signed mode (password or keyed) can be a genuinely
         // dead credential, or a clock-skewed agent whose timestamp the
         // manager rejects as too far from its own -- the response alone
@@ -137,7 +137,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     std::vector<uint8_t> compressedBody;
     std::vector<std::string> headers;
 
-    // Sent unconditionally in all three auth modes (#38465 Q4b/G5, confirmed
+    // Sent unconditionally in all three auth modes (confirmed
     // with the server team) -- unlike JwtSigner's identical header, this one
     // is not tied to whether a signature is computed below.
     headers.push_back("protocol-version: 1");
@@ -153,7 +153,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
     }
 
-    // #38492/#38491: fold the configured endpoint into the target -- a routing
+    // Fold the configured endpoint into the target -- a routing
     // matter only (the manager routes on the literal wire request-target); the
     // bearer below does not bind the target, same as RetrySender::attemptOnce.
     const std::string target = prefixedTarget(m_config.serverEndpoint, "/enroll");

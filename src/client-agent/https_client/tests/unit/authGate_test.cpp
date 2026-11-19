@@ -67,7 +67,7 @@ TEST_F(AuthGateTest, ReleaseUnpausesReArmsAndWakes)
 TEST_F(AuthGateTest, IncidentsCountEachLatchOnceAndBeforeTheConsumerIsAsked)
 {
     // Counted before onReenrollRequired(): a key renewed from inside it must never be seen
-    // without its incident (#38329).
+    // without its incident.
     EXPECT_CALL(m_sink, onReenrollRequired())
     .Times(2)
     .WillRepeatedly(::testing::Invoke([this] { m_seenAtCallback.push_back(m_gate.incidents()); }));

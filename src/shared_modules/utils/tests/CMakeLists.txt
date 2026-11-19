@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(utils_utest)
 
+# C++17 on purpose: the engine and remoted_module include these headers as C++17, so utils_utest
+# compiles them at that floor (README RNF-2) although the rest of src/ is C++20.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -34,8 +36,6 @@ file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC "windowsHelper_test.cpp"
 file(
   GLOB
   UTIL_CXX_UNITTEST_COMMON_SRC
-  "cmdHelper_test.cpp"
-  "filesystemHelper_test.cpp"
   "byteArrayHelper_test.cpp"
   "cmdHelper_test.cpp"
   "cacheLRU_test.cpp"
@@ -78,6 +78,9 @@ file(
   "asyncFlushController_test.cpp"
   "certHelper_test.cpp"
   "monotonicCondition_test.cpp")
+
+# std::filesystem tests, added to every utils_utest variant below.
+file(GLOB UTIL_CXX_UNITTEST_CPP17_SRC "stdFileSystemHelper_test.cpp")
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

@@ -32,8 +32,8 @@
 #include <vector>
 
 /*
- * The minimal end-to-end QA of POST /stateful over the module's OWN socket (design doc 12, F2
- * acceptance): every contract code -- 200 (ok and no-op), 400, 403, 404, 409, 413 and the VD
+ * The minimal end-to-end QA of POST /stateful over the module's OWN socket:
+ * every contract code -- 200 (ok and no-op), 400, 403, 404, 409, 413 and the VD
  * 503 + Retry-After -- produced by real HTTP against the real facade wiring, with only the indexer
  * faked.
  */
@@ -461,7 +461,7 @@ TEST_F(StatefulEndpointE2ETest, DeclaringMoreThanTheWholeBudgetIs413)
 }
 
 /*
- * U10: the transport's bounded resources are published as pull metrics through the module's own
+ * The transport's bounded resources are published as pull metrics through the module's own
  * GET /metrics, resolved live via the facade's weak target -- the acceptance check of the
  * transport extraction (the only wire delta it is allowed to add).
  */
@@ -478,10 +478,10 @@ TEST_F(StatefulEndpointE2ETest, TransportDiagnosticsArePublishedOnMetrics)
 }
 
 /*
- * E2 route classes, proven through wire behaviour: deletions are CONTROL (empty body by contract,
+ * Route classes, proven through wire behaviour: deletions are CONTROL (empty body by contract,
  * so their 64 KiB class cap answers 413 to an oversized one), while /stateful is DATA (the same
  * declared size sails through admission and fails only later, as FlatBuffers garbage -> 400).
- * A saturated ingest budget can therefore never starve a deletion -- the signed E2 decision.
+ * A saturated ingest budget can therefore never starve a deletion.
  */
 TEST_F(StatefulEndpointE2ETest, DeletionsAreControlClassAndStatefulIsDataClass)
 {

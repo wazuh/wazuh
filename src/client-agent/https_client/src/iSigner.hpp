@@ -15,7 +15,7 @@
 #include <optional>
 #include <string>
 
-/// The two auth headers of one attempt (#38582, the `wazuh-agent+jwt` bearer profile):
+/// The two auth headers of one attempt (the `wazuh-agent+jwt` bearer profile):
 ///   protocol-version: 1
 ///   Authorization: Bearer <compact JWS>
 struct SignedHeaders
@@ -37,7 +37,7 @@ class ISigner
         virtual std::optional<SignedHeaders> sign(std::time_t timestamp) const = 0;
 
         /// The identity the tokens currently name: the configured agent id until
-        /// hc_set_agent_identity() swaps it (a re-enroll, #38465, can hand back a
+        /// hc_set_agent_identity() swaps it (a re-enroll can hand back a
         /// new numeric id with the new key). Payloads that carry the agent id
         /// (the /stateless H line, the /stats and /config stamps) read it from
         /// here, never from the frozen ModuleConfig, so the identity moves as one

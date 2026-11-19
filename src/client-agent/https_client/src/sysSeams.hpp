@@ -81,7 +81,7 @@ class SystemClock final : public IClock
 /// Decorates a base IClock with a runtime-correctable offset applied to
 /// wallSeconds() only. All seven HTTPS senders share one instance of this
 /// (HttpsClientFacade::m_clock) by reference, so a skew learned from any one
-/// manager response (RetrySender's one-shot 401 retry, per #37828)
+/// manager response (RetrySender's one-shot 401 retry)
 /// corrects every subsequent signing timestamp agent-wide, starting with the
 /// very next request -- not just the sender that observed the 401.
 class SkewCorrectedClock final : public IClock

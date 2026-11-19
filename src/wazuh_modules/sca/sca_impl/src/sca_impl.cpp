@@ -69,7 +69,7 @@ constexpr auto SCA_LAST_INTEGRITY_CHECK_METADATA_KEY {"last_integrity_check"};
 constexpr auto SCA_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 // Persists across restarts, independent of first_sync_completed: whether SCA
 // has ever completed a full scan. Its absence IS "a scan is still owed" --
-// checked so a scan_on_start scan that got interrupted (issue 38428: the
+// checked so a scan_on_start scan that got interrupted (the
 // Windows startup/shutdown race, or being paused right at the first
 // opportunity) is retried on the next chance instead of silently waiting a
 // full <interval>.
@@ -143,7 +143,7 @@ void SecurityConfigurationAssessment::Run()
         // Sharing m_pauseMutex with quiesce()'s own m_keepRunning write closes
         // a TOCTOU: without it, a quiesce() landing between this reset and the
         // loop's first check below could still be overwritten back to true by
-        // this line racing it (issue 38428, code-map.md §3 row 2).
+        // this line racing it.
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_keepRunning = true;
     }
@@ -229,7 +229,7 @@ void SecurityConfigurationAssessment::Run()
         }
     };
 
-    // A scan_on_start scan that gets interrupted before it runs (issue 38428)
+    // A scan_on_start scan that gets interrupted before it runs
     // must not be silent, and must not just be lost until the next full
     // <interval> -- log it, once, right where each early exit happens.
     auto logSkippedFirstScanIfNeeded = [this]()
@@ -247,13 +247,13 @@ void SecurityConfigurationAssessment::Run()
         // Scan immediately if scan_on_start is enabled and no real scan has
         // completed yet this run -- whether this is the very first iteration,
         // or a scan_on_start scan is still owed after being interrupted one or
-        // more times by a pause/resume cycle (issue 38428) -- otherwise wait
+        // more times by a pause/resume cycle -- otherwise wait
         // for the interval before scanning. Deliberately NOT gated on the
         // persisted m_firstScanCompleted: that marker is write-once for the
         // installation's whole lifetime, so on any agent already past its
         // first-ever scan it would make this condition permanently true and
         // silently swallow the retry for a scan_on_start dropped by a later
-        // interruption, waiting the full interval instead (issue 38428).
+        // interruption, waiting the full interval instead.
         if (!m_scanOnStart || !firstScan)
         {
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -272,12 +272,12 @@ void SecurityConfigurationAssessment::Run()
             // LCOV_EXCL_START
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA scanning paused, skipping scan iteration");
             // firstScan is deliberately left untouched here: no scan actually ran, so a
-            // scan_on_start attempt interrupted by a pause is still owed once resumed
-            // (issue 38428). It is only cleared below, after policy->Run() actually
+            // scan_on_start attempt interrupted by a pause is still owed once resumed.
+            // It is only cleared below, after policy->Run() actually
             // completes.
 
             // Block here instead of looping straight back to the top: the wait above is
-            // skipped whenever a scan_on_start scan is still owed (issue 38428), so a pause
+            // skipped whenever a scan_on_start scan is still owed, so a pause
             // landing in exactly that window would otherwise busy-spin this thread at 100%
             // CPU -- m_paused and firstScan both stay true, so the loop condition above
             // never becomes true on its own. resume() only calls
@@ -406,7 +406,7 @@ void SecurityConfigurationAssessment::Run()
         // A full scan has now genuinely completed at least once: persist that
         // (once) so a future interrupted scan_on_start attempt knows a first
         // scan was never lost, and so this one -- if it was the delayed retry
-        // of one -- isn't retried again (issue 38428).
+        // of one -- isn't retried again.
         if (!m_firstScanCompleted.load())
         {
             updateMetadataValue(SCA_FIRST_SCAN_COMPLETED_METADATA_KEY, 1);
@@ -495,7 +495,7 @@ void SecurityConfigurationAssessment::releaseResources()
     // constructor), so it co-owns the DBSync handle. Resetting m_dBSync alone leaves that copy
     // alive, ~SQLiteDBEngine never runs, and the standing write transaction on sca.db is never
     // committed nor the connection closed -- so the file stays locked until the OS tears the
-    // process down and the next agent process fails with "database is locked" (issue #38069).
+    // process down and the next agent process fails with "database is locked".
     m_syncManager.reset();
 
     // Explicitly release DBSync before static destruction to avoid use-after-free
@@ -519,7 +519,7 @@ void SecurityConfigurationAssessment::releaseResources()
     // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
     // (sqlite3_close_v2 on last close checkpoints the WAL and removes the -wal/-shm
     // files). Stop() only signals the workers; without this the connection is leaked
-    // and a graceful stop leaves stale WAL files behind (issue #37334). The sync worker
+    // and a graceful stop leaves stale WAL files behind. The sync worker
     // thread and the SCA run loop have already exited (see wm_sca_start teardown),
     // mirroring Syscollector::releaseResources(); the entry points still reachable from
     // other threads (wcom queries and sync responses, agent-info's in-process
@@ -1496,7 +1496,7 @@ RecoveryOutcome SecurityConfigurationAssessment::performRecovery()
     }
 
     // Unlike syncModule(), performRecovery() has no periodic-cycle caller to log this for it
-    // (it runs on demand from the check_integrity command), so it must log its own outcome. (#38579)
+    // (it runs on demand from the check_integrity command), so it must log its own outcome.
     // Once the index is cleared the snapshot is already queued, and the next regular
     // synchronization delivers it; only a recovery that failed before that waits for the next
     // integrity_interval.
@@ -1571,7 +1571,7 @@ SnapshotSyncResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(
             // index before a full resync -- most commonly right after an agent restart, before the
             // manager can serve this agent again. The caller (syncModule() or performRecovery())
             // emits the single WARNING, with tolerance for manager-not-ready hiccups, same policy as
-            // the DELTA sync failure below. (#36724, #38579)
+            // the DELTA sync failure below.
             LoggingHelper::getInstance().log(
                 LOG_DEBUG, "Failed to clear SCA index before " + syncReason + "; will retry later");
             return {std::move(dataCleanResult), false};
@@ -1680,7 +1680,7 @@ SnapshotSyncResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(
         else
         {
             // Transient sync failure (manager reported an error / communication issue).
-            // The syncModule() caller emits the single WARNING; recovery retries later. (#36724)
+            // The syncModule() caller emits the single WARNING; recovery retries later.
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 

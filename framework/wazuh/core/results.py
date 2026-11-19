@@ -384,7 +384,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         # merge deliberately lets a success override a failure for the same item, which is right
         # for the stale-view case it exists for but erases a genuinely node-local fact -- an agent
         # whose upgrade task was created on two nodes and could not be created on a third reads as
-        # a clean success, and the operator is never told which node could not serve it (#39428).
+        # a clean success, and the operator is never told which node could not serve it.
         self._node_attribution = {}
         if total_affected_items is not None:
             self._total_affected_items = total_affected_items

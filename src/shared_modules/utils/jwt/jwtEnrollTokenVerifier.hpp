@@ -15,7 +15,7 @@
 /// leaves any public function. The caller owns TLS/HTTP framing, the "password required" decision,
 /// the keys' availability and the uniform 401.
 ///   verify()        the shared-key form: header exactly {alg, typ}; a `kid` is rejected here.
-///   peekKid()       the bounded, pre-signature look at the header (issue #38993): tells whether the
+///   peekKid()       the bounded, pre-signature look at the header: tells whether the
 ///                   token carries no `kid`, an enrollment-token `kid` or an agent `kid`, so the caller
 ///                   can resolve the right key. Nothing peeked is trusted until verifyWithKid() passes.
 ///   verifyWithKid() the `kid` forms: header exactly {alg, kid, typ} with the `kid` the caller resolved,

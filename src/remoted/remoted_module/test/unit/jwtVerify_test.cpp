@@ -9,7 +9,7 @@
  */
 
 // JwtRequestTokenVerifier: the frozen vector and Signer output are accepted; every row of the
-// profile's negative matrix (doc spec §11.2) is rejected with the right VerifyError; peekKid()
+// profile's negative matrix is rejected with the right VerifyError; peekKid()
 // exposes only the header-derived kid and never depends on the signature; a short fuzz pass shows
 // nothing throws or crashes on hostile input.
 #include <gtest/gtest.h>

@@ -257,7 +257,7 @@ add_subdirectory(external)
 add_definitions(-DCPPHTTPLIB_USE_POLL)
 
 # Compiler hardening of the manager's own binaries and shared libraries, the engine included: stack protector,
-# _FORTIFY_SOURCE=2, PIE and full RELRO (the protections #38571 gave the 4.x Makefile build).
+# _FORTIFY_SOURCE=2, PIE and full RELRO (the protections the 4.x Makefile build has).
 #
 # - After add_subdirectory(external) and outside the deps-recipe blocks, so the external dependencies (and
 #   libwazuhext, a pool artifact) build as before and no pool key changes.
@@ -312,15 +312,10 @@ endif()
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/utils)
-# NOTE: this gate never fires -- IS_LINUX is set only inside external/CMakeLists.txt's own scope
-# (no PARENT_SCOPE). The library is actually registered, EXCLUDE_FROM_ALL, by whichever consumer's
+# shared_modules/uds_http_server is not added here: whichever consumer's
 # `if(NOT TARGET wazuh_uds_http_server)` guard runs first (inventory_sync_server, task_manager,
 # vulnerability_scanner, remoted_module or wazuh_db -- in configure order, so inventory_sync_server
-# does today), so options set here change
-# nothing and uds_http_server_utest is not part of `all`.
-if(IS_LINUX AND NOT IS_AGENT)
-  add_subdirectory(shared_modules/uds_http_server)
-endif()
+# does today) registers it EXCLUDE_FROM_ALL, so uds_http_server_utest is not part of `all`.
 add_subdirectory(wazuh_modules)
 
 # Agent-only modules

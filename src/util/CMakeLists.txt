@@ -40,7 +40,7 @@ include_directories(
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_definitions(-DGROUPGLOBAL="wazuh")
+add_definitions(-DGROUPGLOBAL="wazuh-manager")
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})

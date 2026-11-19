@@ -161,6 +161,8 @@ int wm_config() {
     // then each section of the effective document as cJSON. task-manager always exists
     // (default_modules[]), and so does vulnerability-detection: the effective document always carries
     // its section (absent sections are inserted with their defaults), so `enabled` is the only switch.
+    // On a worker the reader replaces the local `enabled` with the master's value from
+    // queue/vd/master_enabled (wm_vulnerability_detection_follow_master()).
     //
     // There is no `agent-upgrade` section here, and none in the schema: that module is agent-only.
     // The manager serves upgrades from the task manager, which reads their two settings from its own

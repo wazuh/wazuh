@@ -13,7 +13,7 @@
 
 /**
  * @file handshakeMetrics.hpp
- * @brief Names of the handshake-guard pulls on the shared `wazuh_metrics` registry (issue #6883).
+ * @brief Names of the handshake-guard pulls on the shared `wazuh_metrics` registry.
  *
  * Registered by the facade over IHttpServer::diagnostics(), next to `remoted.server.connections.*`:
  * they read the transport's HandshakeLedger (http_server/handshakeLedger.hpp). Together they are what

@@ -78,11 +78,12 @@ namespace remoted::common
         {
             /// Current (or last known) feed offset; 0 if never obtained.
             uint64_t offset;
-            /// False only when VD answered `"enabled": false` (the module is disabled in
-            /// `wazuh-manager.conf`): no feed is downloaded and every scan request is refused, so
-            /// there is no offset worth advertising to agents. True when VD said so, when its
-            /// answer did not carry the field, and when no answer was ever obtained -- an
-            /// unreachable VD is not a disabled one.
+            /// False only when VD answered `"enabled": false` (the module is disabled: by
+            /// `wazuh-manager.conf`, or on a worker by the master's value in
+            /// `queue/vd/master_enabled`, which overrides the local one): no feed is downloaded and
+            /// every scan request is refused, so there is no offset worth advertising to agents.
+            /// True when VD said so, when its answer did not carry the field, and when no answer
+            /// was ever obtained -- an unreachable VD is not a disabled one.
             bool enabled;
         };
 

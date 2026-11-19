@@ -103,8 +103,8 @@ namespace jwt_profile::v1::test_vectors::enroll
         "-PID3RuMlsz0ShaKX5IppGhP3iX2nEq6mfyGPgqDDMY";
 } // namespace jwt_profile::v1::test_vectors::enroll
 
-/// Frozen vectors of the `kid` forms of `wazuh-enroll+jwt` and of the enrollment token itself
-/// (issue #38993). Same oracle (Python stdlib hmac/hashlib/base64 for HKDF, HS256 and base64url);
+/// Frozen vectors of the `kid` forms of `wazuh-enroll+jwt` and of the enrollment token itself.
+/// Same oracle (Python stdlib hmac/hashlib/base64 for HKDF, HS256 and base64url);
 /// JSON mirror under "enroll_token" in jwt_vectors.json; authd's C tests (test_enrollment_token.c)
 /// pin the same values, so C, C++, Go and Python cannot drift.
 namespace jwt_profile::v1::test_vectors::enroll_token

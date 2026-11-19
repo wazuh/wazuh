@@ -39,7 +39,7 @@ static int w_parse_agent_remove_response(const char* buffer,
                                          const int exit_on_error);
 #endif
 
-//Parse an agent addition response. reenroll_secret (#38993) may be NULL; when given it receives the
+//Parse an agent addition response. reenroll_secret may be NULL; when given it receives the
 //master's re-enrollment secret, or "" when the answer carries none (not an error).
 static int w_parse_agent_add_response(const char* buffer,
                                       char *err_response,
@@ -407,12 +407,12 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON_AddStringToObject(arguments, "id", id);
     }
 
-    // Enrollment token (#38993): only the id travels; the master resolves and counts it.
+    // Enrollment token: only the id travels; the master resolves and counts it.
     if (token_id) {
         cJSON_AddStringToObject(arguments, "token_id", token_id);
     }
 
-    // Re-enrollment (#38993): the bearer travels unverified -- the secret that signs it is in the
+    // Re-enrollment: the bearer travels unverified -- the secret that signs it is in the
     // master's global.db, so the master is the node that judges it (local_reenroll()).
     if (reenroll_kid && reenroll_bearer) {
         cJSON *reenroll = cJSON_AddObjectToObject(arguments, "reenroll");
@@ -510,7 +510,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                         }
                     }
                     if (reenroll_secret && result == 0) {
-                        /* Optional (#38993): a master that predates the re-enrollment secret answers without
+                        /* Optional: a master that predates the re-enrollment secret answers without
                          * it, and that is not an error -- the caller then simply has none to hand back. */
                         cJSON *data_secret = cJSON_GetObjectItem(data, "reenroll_secret");
                         if (data_secret && cJSON_IsString(data_secret) && data_secret->valuestring) {
@@ -718,7 +718,7 @@ int w_request_agent_add_clustered(char *err_response,
         os_strdup(new_id, *id);
         os_strdup(new_key, *key);
         if (reenroll_secret) {
-            // Empty when the master sent none (#38993): the caller treats "" as absent.
+            // Empty when the master sent none: the caller treats "" as absent.
             os_strdup(new_secret, *reenroll_secret);
         }
     }

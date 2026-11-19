@@ -50,7 +50,7 @@ char *w_agent_token_read_file(const char *path) {
         return NULL;
     }
 
-    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token (see its own
+    /* Heap, not stack: this bound is sized for an embedded-CA token (see its own
      * comment) and 96 KB is far too much to put on a frame. Capacity is the bound itself, as it
      * was when this was an array of that size, so the longest line fgets() will return whole is
      * still W_ETOKEN_MAX_FILE_BYTES - 1 characters. */
@@ -178,7 +178,7 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
  *        its own mode is, and the agent refuses to start on the next boot over a CA file that
  *        is sitting right there.
  *
- *        This was 0750 until #39321, on the reasoning that nothing running as the runtime user
+ *        This was 0750 until CA rotation, on the reasoning that nothing running as the runtime user
  *        has any business replacing the CA it verifies its manager against. That is no longer
  *        true of the agent itself: a CA rotation is published by the manager and adopted by the
  *        agent, which is unprivileged by the time it adopts anything, so it must be able to
@@ -220,7 +220,7 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
     }
 
     /* 01770, not 0750: the agent replaces this anchor at runtime when the manager publishes a new
-     * CA bundle (#39321), and it is the unprivileged `wazuh` user by then. rename(2) never
+     * CA bundle, and it is the unprivileged `wazuh` user by then. rename(2) never
      * consults the target file's own mode -- replacing a file is an operation on the directory
      * entry -- so group write here is the whole permission that refresh needs, exactly as it is
      * what already lets the runtime user replace a root-owned etc/client.keys.
@@ -267,7 +267,7 @@ STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, s
 /**
  * @brief chown()s @p path to @p owner:@p group without following a symlink planted in its parent
  *        directory. Both files this is used for live in INSTALLDIR/etc, which is 0770 root:wazuh
- *        -- the runtime user can create entries there, and since #39321 the same is true of
+ *        -- the runtime user can create entries there, and the same is true of
  *        AGENT_ANCHOR_CA's own directory (01770 root:gid), so the reasoning below covers both.
  *        That user can replace the target with a symlink to an arbitrary root-owned
  *        file (e.g. /etc/shadow) and have this root-privileged call chown() the link's target
@@ -389,7 +389,7 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
  * w_agent_validate_ssl_ca(), not the bootstrap, so a failure is swallowed -- but logged as a
  * warning, because without the marker a later loss of the anchor is indistinguishable from an
  * install that never had one, and the agent would come up unverified instead of refusing. Called
- * both after a fresh commit and from the latch, so an install that predates #39321 -- or one
+ * both after a fresh commit and from the latch, so an install that predates CA rotation -- or one
  * whose marker write failed once -- picks one up on a later boot.
  */
 STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
@@ -455,7 +455,7 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
 #ifndef WIN32
 
 /**
- * @brief Brings an anchor committed before #39321 up to the permissions the runtime refresh
+ * @brief Brings an anchor committed before CA rotation up to the permissions the runtime refresh
  *        needs: etc/certs 01770 root:@p gid and the anchor itself @p uid:@p gid.
  *
  * An agent that bootstrapped under the old scheme has a 0750 directory and a root-owned anchor,
@@ -1141,7 +1141,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     if (opts->anchor_only) {
 #ifndef WIN32
         /* uid, not root: under the sticky etc/certs only the file's owner may rename over it,
-         * so an anchor this path installs root-owned is one the runtime refresh (#39321) could
+         * so an anchor this path installs root-owned is one the runtime refresh could
          * never replace. fchown() reads -1 as "leave this one alone", which is exactly what the
          * opts contract already means by it. */
         if ((opts->uid != -1 || opts->gid != -1) &&
@@ -1413,7 +1413,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * unconditionally latches the bootstrap off on every later boot, so it must land before the
      * rename, never after.
      *
-     * uid:gid rather than root:gid since #39321. The mode stays 0640; what changes is who owns
+     * uid:gid rather than root:gid since CA rotation. The mode stays 0640; what changes is who owns
      * it, and it changes because etc/certs is sticky (see w_token_bootstrap_ensure_parent_dir):
      * under the sticky bit only the file's owner may rename over it, so a root-owned anchor is
      * one the agent could never refresh. client.keys keeps root:gid deliberately -- the runtime
@@ -1532,7 +1532,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         }
 
 #ifndef WIN32
-        /* Same idea for the anchor itself: an agent that bootstrapped before #39321 holds a
+        /* Same idea for the anchor itself: an agent that bootstrapped before CA rotation holds a
          * root-owned anchor under a 0750 directory and could never adopt a published CA bundle.
          * Repaired here rather than at the write below, because an existing install never
          * reaches the write again. */

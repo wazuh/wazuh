@@ -113,7 +113,7 @@ void test_read_audit_empty_file(void **state) {
  * This is a compile-time test to ensure MAX_CACHE was changed from 16 to 64
  */
 void test_max_cache_value(void **state) {
-    // This test verifies the fix for issue #32788
+    // This test verifies the cache size fix
     // The value should be 64 to support Kubernetes/containerd audit events with 35 records
     // We can't directly access MAX_CACHE since it's defined in read_audit.c
     // But we can verify the behavior by checking that the code compiles and links correctly

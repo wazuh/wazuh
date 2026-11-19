@@ -8,7 +8,7 @@
  */
 
 /* The 4.x <client> block, still read on an upgraded agent for the manager address and
- * the enrollment identity (#38103). The 5.x <agent> block is read in client-config.c. */
+ * the enrollment identity. The 5.x <agent> block is read in client-config.c. */
 
 #include "shared.h"
 #include "client-config.h"

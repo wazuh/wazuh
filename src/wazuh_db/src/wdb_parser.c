@@ -18,6 +18,24 @@
 #include "wdb.h"
 #include "cJSON.h"
 #include "wdb_state.h"
+#include <strings.h>
+
+/**
+ * @brief Tell whether a `global sql` statement is a plain SELECT, the only kind that cannot write.
+ *
+ * Leading whitespace is skipped; anything else (a comment, WITH, PRAGMA, any DML or DDL) counts as a
+ * possible write. A false "not a SELECT" only costs one recalculation of the group hash.
+ *
+ * @param sql The statement as the client sent it.
+ * @return true if it starts with SELECT, false otherwise.
+ */
+static bool wdb_global_sql_is_select(const char *sql) {
+    while (isspace((unsigned char)*sql)) {
+        sql++;
+    }
+
+    return strncasecmp(sql, "SELECT", 6) == 0;
+}
 
 sqlite3 * wdb_global_pre(void **wdb_ctx)
 {
@@ -53,6 +71,9 @@ sqlite3 * wdb_global_pre(void **wdb_ctx)
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
+        /* wdb_global_post() gets no context on this path: release the entry here, or the global.db
+         * mutex stays held and every later global query blocks. */
+        wdb_pool_leave(wdb);
         return NULL;
     }
 
@@ -112,7 +133,7 @@ int wdb_parse(char * input, char * output, int peer) {
 
         // The arguments of these two commands are the agent's key and re-enrollment secret, and this
         // log is readable through GET /cluster/<node>/logs with ordinary read permission: only the verb goes
-        // in (issue #39078, H05). Every other global command logs whole, as before.
+        // in. Every other global command logs whole, as before.
         if (!strncmp(query, "insert-agent ", 13) || !strncmp(query, "set-agent-credentials ", 22)) {
             mdebug2("Global query: %.*s (arguments not logged: they carry credentials)",
                     (int)strcspn(query, " "), query);
@@ -162,6 +183,16 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_sql_time(diff);
+
+                /* The group-hash cache is computed from the agent rows' group_hash, which a statement
+                 * changes by updating that column or by inserting, replacing or deleting agents, under
+                 * any quoting, alias or WITH clause, so telling from the text which tables a statement
+                 * touches would be fragile. Clear it after anything but a plain SELECT instead, and
+                 * even when the statement failed: UPDATE OR FAIL keeps the rows it changed before the
+                 * error. */
+                if (!wdb_global_sql_is_select(sql)) {
+                    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+                }
                 if (data) {
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -486,7 +517,7 @@ int wdb_parse(char * input, char * output, int peer) {
         } else if (strcmp(query, "commit") == 0) {
             /* End the deferred transaction NOW instead of when wdb_commit_old() gets to it. The
              * caller is authd, which may only forget a journaled identity transition once the
-             * write is durable, and an `ok` from insert-agent is not that (issue #39078, H03). */
+             * write is durable, and an `ok` from insert-agent is not that. */
             w_inc_global_commit();
             gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
@@ -597,7 +628,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
     if (!agent_data) {
         mdebug1("Global DB Invalid JSON syntax when inserting agent.");
         // The offset, not the tail: `error` points into the payload, which carries internal_key and
-        // reenroll_secret, and this log is readable through the API (issue #39078, H05).
+        // reenroll_secret, and this log is readable through the API.
         mdebug2("Global DB JSON syntax error at offset %ld when inserting agent.",
                 error != NULL ? (long)(error - input) : -1L);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
@@ -623,7 +654,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             char* ip = cJSON_IsString(j_ip) ? j_ip->valuestring : NULL;
             char* register_ip = cJSON_IsString(j_register_ip) ? j_register_ip->valuestring : NULL;
             char* internal_key = cJSON_IsString(j_internal_key) ? j_internal_key->valuestring : NULL;
-            // Optional (#38993): absent or null for every record that carries no re-enrollment secret.
+            // Optional: absent or null for every record that carries no re-enrollment secret.
             char* reenroll_secret = cJSON_IsString(j_reenroll_secret) ? j_reenroll_secret->valuestring : NULL;
             char* group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
             int date_add = j_date_add->valueint;
@@ -790,7 +821,7 @@ int wdb_parse_global_set_agent_credentials(wdb_t * wdb, char * input, char * out
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
         mdebug1("Global DB Invalid JSON syntax when setting agent credentials.");
-        // Same rule as inserting an agent: the payload is the whole credential set (issue #39078, H05).
+        // Same rule as inserting an agent: the payload is the whole credential set.
         mdebug2("Global DB JSON syntax error at offset %ld when setting agent credentials.",
                 error != NULL ? (long)(error - input) : -1L);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
@@ -802,8 +833,8 @@ int wdb_parse_global_set_agent_credentials(wdb_t * wdb, char * input, char * out
         j_internal_key = cJSON_GetObjectItem(agent_data, "internal_key");
         j_reenroll_secret = cJSON_GetObjectItem(agent_data, "reenroll_secret");
 
-        // The five fields are mandatory: this replaces the agent's whole credential set at once (issue
-        // #38993); a partial one would leave a key without its secret, or the other way round.
+        // The five fields are mandatory: this replaces the agent's whole credential set at once;
+        // a partial one would leave a key without its secret, or the other way round.
         if (cJSON_IsNumber(j_id) && cJSON_IsString(j_name) && cJSON_IsString(j_register_ip) &&
             cJSON_IsString(j_internal_key) && cJSON_IsString(j_reenroll_secret)) {
             if (OS_SUCCESS != wdb_global_set_agent_credentials(wdb, j_id->valueint, j_name->valuestring, j_register_ip->valuestring,

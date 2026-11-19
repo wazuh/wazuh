@@ -42,23 +42,26 @@ class KeystoreClient:
 
     Examples
     --------
-    >>> from wazuh.keystore import KeystoreClient
+    >>> from wazuh.core.indexer.credential_manager import KeystoreClient
     >>> client = KeystoreClient()
     >>> response = client.put('config', 'my_key', 'my_value')
     >>> print(response)
-    {'status': 'success'}
+    {'status': 'ok', 'operation': 'put', 'columnFamily': 'config', 'key': 'my_key'}
 
     # Using as a context manager
     >>> with KeystoreClient() as client:
     ...     response = client.get('config', 'my_key')
     ...     print(response)
-    {'value': 'my_value', 'status': 'OK'}
+    {'status': 'ok', 'operation': 'get', 'columnFamily': 'config', 'key': 'my_key', 'value': 'my_value'}
 
     # Using class method connection
     >>> with KeystoreClient.connection() as client:
     ...     response = client.put('config', 'another_key', 'value')
     ...     print(response)
-    {'status': 'OK'}
+    {'status': 'ok', 'operation': 'put', 'columnFamily': 'config', 'key': 'another_key'}
+
+    # A failed operation (for example, the keystore lock held for the whole wait)
+    {'status': 'error', 'message': '...'}
     """
 
     def __init__(self):
@@ -198,7 +201,7 @@ class KeystoreClient:
         Examples
         --------
         >>> client.put('config', 'api_key', 'secret123')
-        {'status': 'OK'}
+        {'status': 'ok', 'operation': 'put', 'columnFamily': 'config', 'key': 'api_key'}
         """
         return self.send_query(f"PUT|{cf}|{key}|{value}")
 
@@ -216,16 +219,17 @@ class KeystoreClient:
         Returns
         -------
         dict
-            Value and metadata if key exists
+            Value and metadata.
 
         Notes
         -----
-        Returns an error response if the key does not exist.
+        A key that does not exist is answered with status OK and an empty value; an error response
+        means the keystore could not be read (for example, its lock was held for too long).
 
         Examples
         --------
         >>> client.get('config', 'api_key')
-        {'value': 'secret123', 'status': 'OK'}
+        {'status': 'ok', 'operation': 'get', 'columnFamily': 'config', 'key': 'api_key', 'value': 'secret123'}
         """
         return self.send_query(f"GET|{cf}|{key}")
 
@@ -248,6 +252,6 @@ class KeystoreClient:
         Examples
         --------
         >>> client.delete('config', 'api_key')
-        {'status': 'OK'}
+        {'status': 'ok', 'operation': 'delete', 'columnFamily': 'config', 'key': 'api_key'}
         """
         return self.send_query(f"DELETE|{cf}|{key}")

@@ -881,7 +881,7 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
-**`ca_generation` (issue #39319, RF-3) is present too, but it is the one field whose value may be
+**`ca_generation` is present too, but it is the one field whose value may be
 `null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
 [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
 this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
@@ -1613,7 +1613,7 @@ its sole trust store), which means:
   intermediate signed the leaf.
 
 None of these could serve a verifying agent, which is why they are refused rather than served
-(issue #39319; before this the check was a bare signature and such a bundle was served and even
+(before this the check was a bare signature and such a bundle was served and even
 announced as published).
 
 The manager separately validates the same chain with the server **purpose** added and the anchor

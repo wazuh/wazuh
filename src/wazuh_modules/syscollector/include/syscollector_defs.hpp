@@ -19,8 +19,8 @@
 //
 // What this buys: the identity resync and its VD-versus-plain routing become assertable. Driving
 // them for real needs a manager to answer every notifyDataClean(), which is why the recovery path
-// carried no assertions at all until #38601 added these. The same reasoning applies to
-// SyscollectorImpTest's local-transport-unavailable cases (#38621): they used to reach in through
+// carried no assertions at all until these were added. The same reasoning applies to
+// SyscollectorImpTest's local-transport-unavailable cases: they used to reach in through
 // a public setSyncProtocol()/setSyncProtocolVD() pair that existed only for this, the one seam
 // that had no compile guard.
 //

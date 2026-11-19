@@ -28,7 +28,7 @@
 #define STATIC static
 #endif
 
-// Longest `reenroll.bearer` accepted on this socket (#38993): a wazuh-enroll+jwt is ~230 bytes, and the
+// Longest `reenroll.bearer` accepted on this socket: a wazuh-enroll+jwt is ~230 bytes, and the
 // verifier has its own, tighter cap; this only keeps an absurd payload from reaching it.
 #define REENROLL_BEARER_MAX_CHARS 4096
 
@@ -103,7 +103,7 @@ static const struct {
     // appended their code independently, and 9020 was already taken by the id check above -- the
     // framework maps the two to different API errors.
     { 9021, "Too many agent deletions are pending" },
-    // Enrollment tokens (#38993). One code for "unknown" and "revoked" on purpose: ids are 128 random
+    // Enrollment tokens. One code for "unknown" and "revoked" on purpose: ids are 128 random
     // bits, so nothing is protected by telling them apart, and one answer keeps the callers' mapping
     // simple. remoted's /enroll checks these too before opening this socket; authd is the side that
     // counts uses, which is why 9024 only exists here.
@@ -114,7 +114,7 @@ static const struct {
     // this prefix -- "Enrollment token refused: address not in certificate SAN" -- see
     // local_token_create(): the operator needs the reason, the code alone is not actionable.
     { 9025, "Enrollment token refused" },
-    // Re-enrollment (#38993): the agent's own bearer, verified here on the master against the secret in its
+    // Re-enrollment: the agent's own bearer, verified here on the master against the secret in its
     // global.db row. 9026 folds "no such agent" and "no secret on record" because the agent's remedy is the
     // same for both: its stored secret is unusable and only a fresh enrollment recovers it. This is not an
     // anti-probing measure -- 9026 vs 9027 still tells an existing id from a missing one, by design, since
@@ -123,15 +123,15 @@ static const struct {
     { 9026, "Unknown agent or no re-enrollment credential" },
     { 9027, "Invalid re-enrollment credential" },
     { 9028, "Re-enrollment credential outside the accepted time window" },
-    // A storage failure, told apart from 9022 on purpose (#39078): the id exists and the operator's
+    // A storage failure, told apart from 9022 on purpose: the id exists and the operator's
     // intent stands -- this authd already refuses the token -- but the file could not be written, so
     // the answer is "retry", not "no such token". Every later verb retries the write on its own.
     { 9029, "Enrollment token store write failed" },
-    // A rotation for that agent is accepted and not yet persisted (#39078, H02). Not an
+    // A rotation for that agent is accepted and not yet persisted. Not an
     // authentication failure -- the bearer verified, or never got the chance -- so remoted answers
     // 409 rather than the uniform 401 of 9026-9028: the caller has to wait, not re-sign.
     { 9030, "Re-enrollment already in progress" },
-    // The credential could not be journaled, so it is not handed out (#39078, H03). The operation
+    // The credential could not be journaled, so it is not handed out. The operation
     // is not wrong and the caller is not at fault: this manager cannot record it right now --
     // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
     // retries. Performing it anyway is what left agents holding credentials nothing else knew.
@@ -302,13 +302,13 @@ static cJSON* local_remove(const char *id, int purge);
 // Get agent data
 static cJSON* local_get(const char *id);
 
-// Re-enrollment (#38993, master only): verifies `bearer` against the re-enrollment secret of the agent
+// Re-enrollment (master only): verifies `bearer` against the re-enrollment secret of the agent
 // `kid` and rotates that agent's key and secret in place -- same id, no removal, no purge.
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
 
 // Generates an agent info json response
 // reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
-// predates the secret). Only `add` ever carries it (#38993).
+// predates the secret). Only `add` ever carries it.
 static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret);
 
 // Generates an agent deleted response
@@ -316,7 +316,7 @@ static cJSON* local_create_agent_delete_response(void);
 
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message);
-// Enrollment token verbs (#38993). On failure they return NULL and set *ierror to the ERRORS[] index,
+// Enrollment token verbs. On failure they return NULL and set *ierror to the ERRORS[] index,
 // except the 9025 refusal, which is a complete response because its message carries the detail.
 static cJSON* local_token_create(cJSON *arguments, int *ierror);
 static cJSON* local_token_list(void);
@@ -626,7 +626,7 @@ char* local_dispatch(const char *input) {
                 goto fail;
             }
 
-            // Re-enrollment (#38993): `reenroll` = {"kid": <the agent's id>, "bearer": <its wazuh-enroll+jwt>}.
+            // Re-enrollment: `reenroll` = {"kid": <the agent's id>, "bearer": <its wazuh-enroll+jwt>}.
             // remoted forwards the bearer unverified -- the secret that signs it lives in the master's
             // global.db and nowhere else -- so the master judges it (local_reenroll()). Malformed, or combined
             // with another credential or a caller-chosen identity, it is 9027: the caller presented a
@@ -808,7 +808,7 @@ char* local_dispatch(const char *input) {
 
             response = local_get(item->valuestring);
         } else if (!strcmp(function->valuestring, "token_create")) {
-            // Minting writes the store, and only the master writes it (T8): a worker answers the
+            // Minting writes the store, and only the master writes it: a worker answers the
             // same 9015 as every other write it cannot perform. Checked before parsing the
             // arguments so a worker never reads the listener certificate for nothing.
             if (config.worker_node) {
@@ -1095,7 +1095,7 @@ again:
         goto again;
     }
 
-    /* The per-agent re-enrollment secret (#38993), generated BEFORE the key so a CSPRNG failure leaves
+    /* The per-agent re-enrollment secret, generated BEFORE the key so a CSPRNG failure leaves
      * nothing to undo: it never goes to client.keys -- the writer persists it in global.db and this one
      * answer hands it to the agent -- and an agent without one could never re-enroll, so the enrollment
      * is refused the same way a failed key generation is (no weaker generator to fall back to). */
@@ -1140,7 +1140,7 @@ again:
         w_auth_id_reuse_note();
     }
 
-    /* The credential goes on the record BEFORE it is handed out (issue #39078, H03). The id is not
+    /* The credential goes on the record BEFORE it is handed out. The id is not
      * known any earlier -- OS_AddNewAgent() assigns it when the request brings none -- so this is
      * the first point at which the entry can be written. A failure undoes the addition in memory,
      * exactly as the 1515 path does when its answer never reaches the agent (main-server.c), and
@@ -1186,7 +1186,7 @@ fail:
     return response;
 }
 
-// Re-enrollment (#38993), master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
+// Re-enrollment, master only: the agent named by `kid` keeps its id and gets a fresh key and a fresh
 // re-enrollment secret, both rotated in place -- no removal, no purge, its documents survive.
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups) {
     int index;
@@ -1204,7 +1204,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
 
     mdebug2("reenroll(%s)", kid);
 
-    /* Before the database is even asked (issue #39078, H02). The row keeps saying the old secret until the
+    /* Before the database is even asked. The row keeps saying the old secret until the
      * writer replaces it, so two requests carrying the same bearer would both verify and both rotate: two
      * valid answers for one agent, the first invalidated by the second. Reserving here means the second
      * request never gets to read that row. From this point every exit must release the reservation. */
@@ -1248,7 +1248,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
     /* Belt and braces for the case the reservation alone does not cover: another rotation that was
      * ALREADY accepted when this request started may have completed while this one was verifying, which
      * makes the secret it verified against the previous generation's. The reservation would have been
-     * free by then, so only the counter tells (issue #39078, H02). */
+     * free by then, so only the counter tells. */
     if (w_reenroll_generation(kid) != generation) {
         ierror = EREENROLLINPROGRESS;
         goto fail;
@@ -1300,7 +1300,7 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
         goto fail;
     }
 
-    /* On the record BEFORE the keystore is touched (issue #39078, H03), which is what makes a failure here a
+    /* On the record BEFORE the keystore is touched, which is what makes a failure here a
      * plain rejection: nothing has been mutated and nothing has been answered, so the agent keeps the credentials
      * it already had and may try again. The entry carries the NEW credential -- the one the answer is about to
      * hand out -- because that is what the database will owe if the writer cannot reach it. */
@@ -1377,7 +1377,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
                                             source, &master_error_code);
 
     if (result == 0) {
-        // The master's re-enrollment secret travels through untouched (#38993); a master that predates
+        // The master's re-enrollment secret travels through untouched; a master that predates
         // it hands back none, and this node then answers without the field, as before.
         response = local_create_agent_response(new_id, name, ip, new_key, new_secret && *new_secret ? new_secret : NULL);
     } else if (master_error_code > 0) {
@@ -1473,7 +1473,7 @@ cJSON* local_get(const char *id) {
     return response;
 }
 
-// ---------------------------------------------------------------- enrollment tokens (#38993)
+// ---------------------------------------------------------------- enrollment tokens
 
 static int is_token_id(const char *text) {
     uint8_t *raw = NULL;
@@ -1657,7 +1657,7 @@ static cJSON* local_token_revoke(cJSON *arguments, int *ierror) {
         break;
     case ETOKEN_STORE_FAILED:
         // Revoked here and now, but not on disk: saying 9022 would send the operator looking for a
-        // token that does exist, when what they have to do is try again (#39078, H04).
+        // token that does exist, when what they have to do is try again.
         *ierror = ETOKENSTOREFAILED;
         return NULL;
     default:

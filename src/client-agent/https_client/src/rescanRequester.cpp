@@ -135,7 +135,7 @@ bool RescanRequester::requestRescan(uint64_t offset, Waiter& waiter)
 
             if (!observation.pending)
             {
-                // VDFirst hasn't completed yet for this newer offset (Q5): its own full
+                // VDFirst hasn't completed yet for this newer offset: its own full
                 // scan will cover it, no /scan/vd needed. The offset is already
                 // persisted by observe() above, so nothing is lost.
                 return false;

@@ -84,7 +84,7 @@ int ClientConf(const char *cfgfile)
 
     modules |= CCLIENT;
 
-    /* <agent><enrollment> defaults (#38465): a by-value struct now, like
+    /* <agent><enrollment> defaults: a by-value struct now, like
      * <ssl>/<batch> above -- set by hand before parsing, the same convention
      * this function already uses for those. */
     agt->enrollment.enabled = true;
@@ -139,7 +139,7 @@ int ClientConf(const char *cfgfile)
 }
 
 /* Settles what the agent will actually do about TLS, from two inputs: what <ssl> said, and
- * whether a usable trust anchor is on disk (#38940 requirements 4 and 13). There is no
+ * whether a usable trust anchor is on disk. There is no
  * single default any more -- it is a ladder, and 'none' is only its last rung:
  *
  *     explicit <verification_mode>                 -> honoured
@@ -151,8 +151,8 @@ int ClientConf(const char *cfgfile)
  * for the OS trust store to succeed against: the manager's certificate is signed by its own
  * root-ca.pem, which is in no OS store, so 'system' could only ever refuse to connect -- and
  * on a Linux host with no OS bundle at all it refuses to even start, (4121). An install that
- * has been given no trust material verifies nothing and says so, per #38940 requirement 5
- * and section 3.1 of the solution document; an install that has been given the anchor takes
+ * has been given no trust material verifies nothing and says so; an install
+ * that has been given the anchor takes
  * the rung above and verifies. 'system' stays available, as an explicit choice for a fleet
  * whose manager is fronted by a publicly trusted certificate.
  *
@@ -171,8 +171,8 @@ int ClientConf(const char *cfgfile)
  *
  * Runs once, here. An anchor written afterwards -- by a bootstrap that fetched it from the
  * manager, say -- is invisible until reloadAgent() re-runs ClientConf() from scratch, so a
- * future caller must either sequence its write before this point or call this again
- * (#39026, #39027). Idempotent, so calling it twice is safe. */
+ * future caller must either sequence its write before this point or call this again.
+ * Idempotent, so calling it twice is safe. */
 void w_agent_resolve_ssl_posture(agent *cfg)
 {
     /* Probed once, up front, and reused: every branch below needs the same answer, and one
@@ -181,10 +181,10 @@ void w_agent_resolve_ssl_posture(agent *cfg)
      * w_agent_validate_ssl_ca() already applies to a configured CA -- so "usable" here means
      * no more than "present and readable by whoever is running". A malformed, truncated or
      * expired anchor still counts as present and is caught later, by the transport module's
-     * own validation and then by the handshake; detecting it here is #38949 question 10.
+     * own validation and then by the handshake; detecting it here is an open question.
      * Note the euid difference that comes with that: this runs as root, before the privilege
      * drop, while the module opens the same file as the wazuh user on every request, so an
-     * anchor readable here is not necessarily readable there (#38949 questions 4 and 8). */
+     * anchor readable here is not necessarily readable there. */
     const bool anchor = w_is_file(AGENT_ANCHOR_CA) != 0;
 
     /* A present-but-empty <certificate_authorities/> (or <certificate_authorities>
@@ -253,7 +253,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * surfaces the moment verification is actually turned on, as (4118), which is the point
      * at which it starts to matter. */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
-        /* ...unless this install has verified before. Since #39321 the agent owns its anchor so
+        /* ...unless this install has verified before. The agent owns its anchor so
          * it can replace it on a CA rotation, and anything that can replace a file can delete
          * one -- at which point w_agent_resolve_ssl_posture() sees no anchor, no configured CA
          * and no explicit mode, and resolves to 'none' exactly as it would on a stock install
@@ -294,7 +294,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * caught before the module ever spins up threads -- unless AGENT_ANCHOR_CA is present,
      * in which case there is still a way to verify and startup proceeds: the https_client
      * module tries the OS store first regardless, and only falls back to that anchor if the
-     * store turns out not to vouch for this specific manager (curlPerformer.cpp, #39123). */
+     * store turns out not to vouch for this specific manager (curlPerformer.cpp). */
     if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
         /* A present-but-empty <certificate_authorities/> is not a real CA --
          * w_agent_resolve_ssl_posture() already treats it that way (it does not infer
@@ -307,9 +307,9 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         }
 
         /* w_is_file() above (and w_agent_resolve_ssl_posture()'s own probe) only answers
-         * "present and readable", not "usable" -- the same gap #38949 question 10 already
+         * "present and readable", not "usable" -- the same gap already
          * flagged for an operator's own <certificate_authorities>, and fixed below for it at
-         * the w_x509_load_all_pem() call. The fallback anchor (curlPerformer.cpp, #39123) is used
+         * the w_x509_load_all_pem() call. The fallback anchor (curlPerformer.cpp) is used
          * whenever it is present, regardless of whether an OS bundle also exists (an OS bundle
          * can be found yet simply not vouch for this manager's certificate, which is exactly
          * when the fallback engages) -- so a corrupt or truncated anchor is worth catching here
@@ -320,7 +320,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         const bool anchor_present = w_is_file(AGENT_ANCHOR_CA) != 0;
 
         if (anchor_present) {
-            /* load_ALL_pem, not w_x509_load_pem(): since #39321 this anchor is a BUNDLE -- the
+            /* load_ALL_pem, not w_x509_load_pem(): this anchor is a BUNDLE -- the
              * agent adopts up to ca_bundle::kMaxCertificates from a manager publication, and
              * during a rotation's overlap it legitimately holds two or more roots. The singular
              * loader stops at the first block, so it would pronounce a rotated store "parses"
@@ -338,7 +338,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
         }
 
 #if !defined(WIN32) && !defined(__APPLE__)
-        /* An absent OS bundle no longer refuses to start on its own (#39123): the
+        /* An absent OS bundle no longer refuses to start on its own: the
          * https_client module falls back to AGENT_ANCHOR_CA at the first handshake that
          * actually fails to verify (curlPerformer.cpp), and refusing here would never give
          * that fallback a chance to run. Both being absent is the one combination this
@@ -372,7 +372,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * certificate is truncated used to start, and then failed at a handshake against
      * whichever anchor the manager had rotated to. w_x509_load_all_pem() reads the file to
      * its end and yields nothing when any block fails to decode, which is the check this
-     * was always meant to be (issue #39321).
+     * was always meant to be.
      *
      * Text before the first -----BEGIN CERTIFICATE----- is still fine: the reader skips it,
      * so the publication block the agent records alongside its anchor (RFC 7468 section 2)
@@ -516,7 +516,7 @@ cJSON *getAgentConfig(void) {
     cJSON_AddNumberToObject(batch, "interval", agt->batch.interval);
     cJSON_AddItemToObject(agent_config, "batch", batch);
 
-    /* The two periodic report pushes (#37843). Reported so the /config document
+    /* The two periodic report pushes. Reported so the /config document
      * says whether the agent is reporting, and on what cadence. */
     cJSON *stats_report = cJSON_CreateObject();
     cJSON_AddStringToObject(stats_report, "enabled", agt->stats_report.enabled ? "yes" : "no");

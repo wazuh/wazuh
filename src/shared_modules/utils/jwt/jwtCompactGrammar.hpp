@@ -11,7 +11,7 @@
  */
 
 /// @file jwtCompactGrammar.hpp
-/// The parts of token validation both closed profiles share (issue #38582): the compact JWS
+/// The parts of token validation both closed profiles share: the compact JWS
 /// grammar checked before anything is decoded, the HS256 signature check over the signing input,
 /// and the time rules (structural + clock-relative) every token obeys with the same TimePolicy.
 /// Profile-specific work -- exact header/claim sets, identity -- stays in each verifier.

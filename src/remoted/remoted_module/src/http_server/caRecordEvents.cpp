@@ -31,7 +31,7 @@ namespace remoted::http
 
         /// The line a refused guard deserves: which guard, the value it measured and its limit.
         /// These texts are the ones the transport's own switch used to emit before the publication
-        /// moved to this mailbox (issue #39319, C21b), so what an operator greps for is unchanged.
+        /// moved to this mailbox, so what an operator greps for is unchanged.
         std::string describeGuard(const CaRecordEvent& event)
         {
             const std::string bundle {"The CA bundle '" + event.bundlePath + "'"};
@@ -43,7 +43,7 @@ namespace remoted::http
                            "' does not describe the certificates next to it (Content-SHA256 mismatch); the bundle is "
                            "served as before and announced as unpublished (0) until it is stamped again.";
 
-                // The guard is still spelled no_ca_signs_leaf, but since C33 it is a chain
+                // The guard is still spelled no_ca_signs_leaf, but it is a chain
                 // validation: the text says so, because an operator whose `openssl verify` on one
                 // certificate "works" needs to know what was actually checked -- the leaf's own
                 // path to a self-signed anchor of this bundle, validity windows and CA bits
@@ -127,8 +127,8 @@ namespace remoted::http
         }
 
         // The delivery mutex, taken OUTSIDE the queue's own (drain() takes that one): the drain and
-        // the emission are one step, so two consumers cannot publish generation N after N+1
-        // (objection 4). Nothing under this lock touches a disk, and the queue's lock is never held
+        // the emission are one step, so two consumers cannot publish generation N after N+1.
+        // Nothing under this lock touches a disk, and the queue's lock is never held
         // while emit() runs, so a source posting on the hot path never waits for a logger.
         std::lock_guard<std::mutex> delivery {m_deliveryMutex};
 
@@ -240,7 +240,7 @@ namespace remoted::http
 
             case RecordEvent::record_unwritable:
                 // The RECORD's path, never the bundle's (they are different files and different
-                // fixes), and the errno. Serving and vouching are unaffected by design (C19): the
+                // fixes), and the errno. Serving and vouching are unaffected by design: the
                 // publication in memory is the real one, this is about remembering it across a
                 // restart.
                 return std::make_pair(

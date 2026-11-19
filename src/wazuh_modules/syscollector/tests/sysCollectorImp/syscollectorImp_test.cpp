@@ -3159,7 +3159,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedReturnsTrueWhenMeta
 }
 
 
-// ── #38601: synced_agent_id marker and query ─────────────────────────────────
+// ── synced_agent_id marker and query ─────────────────────────────────────────
 //
 // An agent deleted on the manager re-enrolls under a new id while local.db -- the first-sync
 // marker in it included -- survives untouched, so every later cycle sends a delta against a
@@ -6538,7 +6538,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
     Syscollector::instance().destroy();
 }
 
-// --- Local-transport-unavailable log-level decision (issue #38621) ------------------------------
+// --- Local-transport-unavailable log-level decision ---------------------------------------------
 // These inject a MockAgentSyncProtocol via m_spSyncProtocol/m_spSyncProtocolVD (through the
 // FRIEND_TEST grants in syscollector_defs.hpp) so the classification logic in syncModule() is
 // exercised without a live transport.
@@ -6647,7 +6647,7 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLog
     Syscollector::instance().destroy();
 }
 
-// --- Generic-failure (e.g. 409 checksum/version mismatch) log-level decision (issue #39543) ----
+// --- Generic-failure (e.g. 409 checksum/version mismatch) log-level decision -------------------
 // A session rejection that isn't stopped/awaitingPrerequisite/managerNotReady/
 // localTransportUnavailable -- most commonly a 409 on synchronizeModule() (CHECKSUM_ERROR,
 // see determineSyncFailureReasonBasedOnSyncResult()) -- used to always log at WARNING, even on
@@ -6732,7 +6732,7 @@ TEST_F(SyscollectorImpTest, SyncModule_GenericFailurePastToleranceLogsWarning)
     Syscollector::instance().destroy();
 }
 
-// The exact #39543 shape: a fresh agent's first VD sync, offset 0 racing the manager's
+// The exact shape of the original failure: a fresh agent's first VD sync, offset 0 racing the manager's
 // already-loaded feed -- one 409, consecutiveFailures == 1, logged at INFO, not WARNING.
 TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailureWithinToleranceLogsDeferred)
 {
@@ -6777,7 +6777,7 @@ TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
     Syscollector::instance().destroy();
 }
 
-// --- Vulnerability feed not ready (issue #40683) ------------------------------------------------
+// --- Vulnerability feed not ready ---------------------------------------------------------------
 // A new manager answers every VD session this way while it loads its CVE feed, which can take more
 // than half an hour. It is expected, so it stays at INFO however long the streak gets: it must
 // never reach the "failed N times in a row" WARNING that sends the operator to check the network.

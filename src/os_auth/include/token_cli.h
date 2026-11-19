@@ -17,7 +17,7 @@
 #include "enrollment_token.h"
 
 /**
- * @brief The enrollment token utility mode of wazuh-manager-authd (issue #38993).
+ * @brief The enrollment token utility mode of wazuh-manager-authd.
  *
  * `wazuh-manager-authd --create-enrollment-token --address <host> ...`, `--list-enrollment-tokens`,
  * `--revoke-enrollment-token <id>` and `--show-token` are thin clients of the running daemon: they

@@ -18,7 +18,7 @@
 #include <cstdint>
 
 /**
- * @brief Full-jitter exponential backoff (D9): each delay is uniform in
+ * @brief Full-jitter exponential backoff: each delay is uniform in
  *        [0, min(cap, base * 2^attempt)]; reset on success. One instance per
  *        stream so streams back off independently.
  */

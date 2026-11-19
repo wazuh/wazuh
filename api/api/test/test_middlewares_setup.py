@@ -8,7 +8,7 @@ The order the middlewares end up in is a behavioural contract, not a detail: `Co
 raises `ContentSizeExceeded` from inside an ASGI receive call, and any `BaseHTTPMiddleware` below it
 runs that call inside its own anyio task group, where the exception is wrapped in an `ExceptionGroup`
 that connexion's exception middleware does not handle -- turning the documented 413 into a 500.
-That is exactly how https://github.com/wazuh/wazuh/issues/39127 was introduced, by a middleware added
+That is exactly how a past regression was introduced, by a middleware added
 at the same position as the ceiling and therefore below it, with no test covering the assembled stack.
 """
 

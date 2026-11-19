@@ -8,7 +8,7 @@
  * Foundation.
  */
 
-// SPIKE (issue #38582, JWT agent authentication -- plan E0): pins the behaviours of the vendored
+// SPIKE (JWT agent authentication): pins the behaviours of the vendored
 // jwt-cpp (0.7.2, nlohmann traits) that the `wazuh-agent+jwt` profile depends on. No product code
 // is exercised: the suite only records what the library does with duplicate JSON members,
 // base64url padding/alphabet/trailing bits, NumericDate types, claim enumeration, `leeway` and
@@ -18,7 +18,7 @@
 // of them, this suite fails and the Verifier's assumptions must be revisited. Cases started as
 // [hypothesis] and were corrected to the observed result when the first run disagreed.
 //
-// DISABLED_TraitsBenchmark is the traits microbenchmark behind decision J7 (run by hand with
+// DISABLED_TraitsBenchmark is the traits microbenchmark (run by hand with
 // --gtest_also_run_disabled_tests, ideally from an -O2 build -- the UNIT_TEST tree is unoptimised).
 
 #include <gtest/gtest.h>
@@ -629,8 +629,8 @@ TEST(JwtCppSpike, Hs256RoundTrip)
     EXPECT_THROW(verifier.verify(asciiSigned), jwt::error::signature_verification_exception);
 }
 
-// --- Traits microbenchmark (J7) ------------------------------------------------------------------
-// Variants (02-diseno-perfil-jwt.md §3):
+// --- Traits microbenchmark -----------------------------------------------------------------------
+// Variants:
 //   (a)  jwt::decode<nlohmann_json> + jwt::verify (library as-is; cannot reject duplicates/float)
 //   (a') own strict pre-parse via nlohmann::json::sax_parse + hs256::verify on the signing input
 //   (c)  own strict pre-parse via rapidjson SAX (Reader) + hs256::verify

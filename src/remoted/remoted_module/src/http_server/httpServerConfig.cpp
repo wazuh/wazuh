@@ -58,7 +58,7 @@ namespace
     // peak (bodies being received before they reach the budget) to conns * http_max_body_size.
     constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {256};
 
-    // Max connections from one address still in the TLS handshake (issue #6883). An honest one leaves
+    // Max connections from one address still in the TLS handshake. An honest one leaves
     // the handshake in milliseconds, so even a large fleet behind one NAT address rarely has more
     // than a few there at once; one host stalling handshakes gets an eighth of the default slots.
     constexpr std::size_t DEFAULT_MAX_HANDSHAKES_PER_SOURCE {32};

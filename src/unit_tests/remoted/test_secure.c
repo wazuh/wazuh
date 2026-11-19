@@ -3860,6 +3860,62 @@ void test_rem_log_rejected_frame_summary_has_one_full_stop(void** state)
     rem_log_rejected_frame(REM_REJECT_SIZE, "Too big message size from '%s', socket %d.", "192.0.2.1", 39);
 }
 
+/* An event drained while the engine is unreachable: every one is counted, but the warning comes at
+ * most once per window and reports how many it covers. */
+static evt_item_t *new_evt_item(const char *raw)
+{
+    evt_item_t *e = NULL;
+    os_calloc(1, sizeof(*e), e);
+    os_strdup(raw, e->raw);
+    e->len = strlen(raw);
+    return e;
+}
+
+void test_drop_consumer_throttles_warning(void** state)
+{
+    atomic_store(&s_engine_drop_log.last, 0);
+    atomic_store(&s_engine_drop_log.pending, 0);
+
+    // First drop: a warning at once
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Dropped 1 event(s) so far: unable to connect with analysisd.");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 1"), NULL);
+
+    // Inside the window: counted, no line
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1010);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 2"), NULL);
+
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1050);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 3"), NULL);
+
+    // Past the window: one warning covering the suppressed drops and the real period
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1100);
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Dropped 3 event(s) in the last 100 s: unable to connect with analysisd.");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    drop_consumer(new_evt_item("event 4"), NULL);
+
+    // The events queue's own throttle is a separate cause, not held shut by this one
+    atomic_store(&s_events_queue_drop_log.last, 0);
+    atomic_store(&s_events_queue_drop_log.pending, 0);
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 1101);
+    expect_string(__wrap__mwarn, formatted_msg, "Events queue discarded 1 event(s) so far.");
+    maybe_log_events_queue_drop();
+
+    // Leave the events queue quiet for the tests that rely on time() returning 0
+    atomic_store(&s_events_queue_drop_log.last, 0);
+    atomic_store(&s_events_queue_drop_log.pending, 0);
+}
+
 /* A frame claiming an ID that is not registered for its source address names the address and the
  * claim, never an agent: nothing has decrypted yet. */
 void test_HandleSecureMessage_unregistered_id_names_no_agent(void** state)
@@ -5219,6 +5275,8 @@ int main(void)
         // Tests the throttled rejections of unauthenticated legacy frames
         cmocka_unit_test(test_rem_log_rejected_frame_throttles_per_reason),
         cmocka_unit_test(test_rem_log_rejected_frame_summary_has_one_full_stop),
+        // Tests the throttled warning for events dropped while the engine is unreachable
+        cmocka_unit_test(test_drop_consumer_throttles_warning),
         cmocka_unit_test(test_HandleSecureMessage_unregistered_id_names_no_agent),
         cmocka_unit_test(test_HandleSecureMessage_unregistered_id_closes_tcp_connection),
         cmocka_unit_test(test_HandleSecureMessage_unterminated_id_header),

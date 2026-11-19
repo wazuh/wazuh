@@ -286,7 +286,7 @@ int main(int argc, char **argv)
         const char *server_cert = NULL;
         const char *server_key = NULL;
         unsigned short port = 0;
-        /* Enrollment token utility mode (#38993): parsed here, run right after the loop. */
+        /* Enrollment token utility mode: parsed here, run right after the loop. */
         token_cli_opts_t token_opts = {0};
 
         while (c = getopt_long(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:P", token_cli_long_opts, NULL), c != -1) {
@@ -497,7 +497,7 @@ int main(int argc, char **argv)
         break;
     }
 
-    /* Enrollment tokens (#38993): the master mints them over auth.sock and the workers hold the copy
+    /* Enrollment tokens: the master mints them over auth.sock and the workers hold the copy
      * the cluster synchronises next to authd.pass. Loaded once here; every token verb and every
      * enrollment that presents a token re-checks the file's mtime (etoken_store_reload_if_changed),
      * so a freshly synchronised copy is seen at once and no extra thread is needed. An absent file
@@ -700,7 +700,7 @@ int main(int argc, char **argv)
         purge_file_load();
         purge_startup_recover();
 
-        /* The other journal, and for the same reason it runs here (issue #39078, H03): what it
+        /* The other journal, and for the same reason it runs here: what it
          * decides is read against the client.keys just loaded, and it must be decided before any
          * request can rotate an agent it still owes. wazuh-db is deliberately not consulted --
          * its socket does not exist yet, as purge_startup_recover() explains -- so this only
@@ -1077,7 +1077,7 @@ void enqueue_pending_key(int ret, uint32_t index_client) {
                 w_mutex_lock(&mutex_keys);
                 int key_index = OS_IsAllowedID(&keys, g_client_pool[index_client]->new_id);
                 if (key_index >= 0) {
-                    /* No re-enrollment secret on 1515 (#38993): its OSSEC K: line has no field for it and
+                    /* No re-enrollment secret on 1515: its OSSEC K: line has no field for it and
                      * a 4.x agent never re-enrolls over HTTPS, so none is generated or stored. */
                     add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group, NULL, 0);
                     write_pending = 1;
@@ -1434,7 +1434,7 @@ static void purge_startup_recover(void) {
 
 /* --- Applying what the identity journal still owes ---------------------------------------------
  *
- * The journal (issue #39078, H03) holds every credential this manager handed out and the database
+ * The journal holds every credential this manager handed out and the database
  * has not stored yet. Three things happen here and nowhere else: the leftovers of earlier cycles
  * are retried, ONE `global commit` per cycle turns wazuh-db's `ok` into durability, and only then
  * are the entries forgotten -- and a rotation's reservation released.
@@ -1551,8 +1551,8 @@ static bool identity_applied_has(const identity_applied_t *applied, size_t count
  *
  * It deliberately does NOT compare the key. The keystore is written asynchronously, so a rotation
  * recovered from a previous run legitimately names a key client.keys has not got yet; refusing it
- * here would undo, one cycle later, exactly what identity_journal_reconcile() just decided to keep
- * (issue #39078, review round). Which generation is live is decided by the journal's own order,
+ * here would undo, one cycle later, exactly what identity_journal_reconcile() just decided to keep.
+ * Which generation is live is decided by the journal's own order,
  * and the reconciliation has already dropped the entries a later one superseded.
  */
 static bool identity_still_owed(const identity_journal_entry_t *entry) {
@@ -1575,7 +1575,7 @@ static void identity_apply_pending(identity_applied_t **applied, size_t *count, 
      * gives: wazuh-db starts after this daemon. Without it every entry of the batch would pay
      * wdbc_connect()'s ladder -- five attempts sleeping 1..5 seconds -- and a full batch would
      * hold the ONLY keystore writer for hours, with client.keys unwritten for the agents enrolling
-     * meanwhile (issue #39078, review round). */
+     * meanwhile. */
     if (access(WDB_LOCAL_SOCK, F_OK) != 0) {
         return;
     }
@@ -1647,7 +1647,7 @@ static void identity_commit_and_forget(identity_applied_t *applied, size_t count
             identity_journal_drop(seqs, count);
             os_free(seqs);
 
-            /* Here, and only here (issue #39078, H02 + H03): while the transition was owed the row
+            /* Here, and only here: while the transition was owed the row
              * still named the previous secret, so releasing the reservation earlier would let that
              * secret authorise another rotation. */
             for (i = 0; i < count; i++) {
@@ -1703,8 +1703,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
         w_mutex_lock(&mutex_keys);
 
         while (!write_pending && running) {
-            /* An owed identity transition cannot wait for the next enrollment to come along
-             * (issue #39078, H03): this thread sleeps until something signals it, so on an idle
+            /* An owed identity transition cannot wait for the next enrollment to come along:
+             * this thread sleeps until something signals it, so on an idle
              * manager a credential the database never got would stay owed until the next agent
              * enrolled -- or forever. While anything is owed the wait has a deadline, doubling up
              * to a minute for as long as the database stays out of reach. */
@@ -1812,7 +1812,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             }
 
             if (cur->rotate) {
-                /* A re-enrollment (#38993): the agent already has its row, so its credentials are replaced on
+                /* A re-enrollment: the agent already has its row, so its credentials are replaced on
                  * it -- id, date_add and the rest untouched -- rather than inserted (which the duplicate id
                  * would refuse). Its groups are only overridden when the request named some (below). */
                 mdebug1("[Writer] Performing credential rotation([%s] %s).", cur->id, cur->name);
@@ -1820,10 +1820,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 gettime(&t0);
                 if (wdb_set_agent_credentials(atoi(cur->id), cur->name, cur->ip, cur->raw_key, cur->reenroll_secret, &wdb_sock)) {
                     /* The reservation taken when the rotation was accepted STAYS: the row still holds the
-                     * previous secret, so releasing here would let that secret authorise another rotation
-                     * (issue #39078, H02). The agent cannot rotate again on this manager until the
+                     * previous secret, so releasing here would let that secret authorise another rotation.
+                     * The agent cannot rotate again on this manager until the
                      * transition is resolved -- and it will be: the entry is still journaled, and this
-                     * thread retries it on its own clock (H03). */
+                     * thread retries it on its own clock. */
                     merror("Unable to store the rotated credentials of agent %s '%s' in the database. The agent "
                            "keeps the credentials it was given; the change stays recorded and is retried.",
                            cur->id, cur->name);
@@ -1840,7 +1840,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->reenroll_secret, cur->group, 1, &wdb_sock)) {
                     /* Either the row is already there or the database is unreachable, and the answer
                      * does not say which. The entry stays journaled and the retry below reads the row
-                     * to tell the two apart (issue #39078, H03). */
+                     * to tell the two apart. */
                     mdebug2("The agent %s '%s' was not inserted; its credentials stay recorded.", cur->id, cur->name);
                 } else {
                     identity_applied_add(&applied, &applied_count, cur->journal_seq, cur->id, false);
@@ -1913,7 +1913,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         /* Whatever earlier cycles could not write, and then the one commit that makes everything
          * above durable -- this cycle's credentials included. Only after it are the entries
-         * forgotten and the rotations' reservations released (issue #39078, H03). */
+         * forgotten and the rotations' reservations released. */
         identity_apply_pending(&applied, &applied_count, &wdb_sock);
         identity_commit_and_forget(applied, applied_count, &wdb_sock);
         identity_applied_free(applied, applied_count);

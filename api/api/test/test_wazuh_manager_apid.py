@@ -668,7 +668,7 @@ def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):
     assert calls.mock_calls == [call.setgroups([]), call.setgid(998), call.setuid(997)]
 
 
-# --- configure_ssl / drop_privileges (#40053) -----------------------------------------------------
+# --- configure_ssl / drop_privileges -----------------------------------------------------
 #
 # The API no longer generates its TLS pair: the installer issues it signed by the manager CA. The
 # launcher drops privileges first and only then loads the TLS files, still in the foreground, so

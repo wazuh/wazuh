@@ -30,7 +30,7 @@ static agent global_config = { 0 };
 static int test_case_selector = 0;
 static int error_code_sysinfo_network = 0;
 
-/* Every frame goes to the HTTPS module: the legacy egress is gone (#38030). */
+/* Every frame goes to the HTTPS module: the legacy egress is gone. */
 int __wrap_w_https_client_submit_event(const char *frame, size_t length) {
     check_expected(frame);
     check_expected(length);
@@ -110,7 +110,7 @@ void mock_sysinfo_free_result_func(cJSON **object) {
  * OssecServiceStart() before the SCM can invoke stop_wmodules(). The tests
  * below call stop_wmodules()/wm_start_modules_unless_shutting_down()
  * directly, so wm_lifecycle_lock must be initialized here first -- entering
- * an uninitialized CRITICAL_SECTION is undefined behavior (issue 38428). */
+ * an uninitialized CRITICAL_SECTION is undefined behavior. */
 extern void wm_lifecycle_lock_init(void);
 
 static int setup_group(void **state) {
@@ -503,7 +503,7 @@ static void test_SendBinaryMSGAction_submits_the_binary_frame(void **state) {
     assert_int_equal(ret, 0);
 }
 
-/* --- issue 38428: startup vs. shutdown mutual exclusion ------------------ */
+/* --- startup vs. shutdown mutual exclusion -------------------------------- */
 
 extern volatile sig_atomic_t wm_shutdown_requested;
 extern wmodule *wmodules;
@@ -554,7 +554,7 @@ static void test_skthread_starts_syscheck_when_gate_ready(void **state) {
 }
 
 /* --- win_module_thread(): must not run a module's start routine once a
- * shutdown is in flight -- this is the exact mechanism behind issue 38428's
+ * shutdown is in flight -- this is the exact mechanism behind the
  * SCA scan_on_start being silently dropped: the thread had already been
  * spawned before the shutdown was requested, so closing the race requires
  * this check to happen here, not just at spawn time. */
@@ -639,7 +639,7 @@ static void test_wm_start_modules_spawns_a_thread_per_module_when_not_shutting_d
 }
 
 /* --- stop_wmodules(): sets the shutdown flag and joins every spawned module,
- * even when it never got a real thread (mid-startup race, issue 38428 §2). */
+ * even when it never got a real thread (mid-startup race). */
 
 static void test_stop_wmodules_sets_shutdown_flag_and_skips_join_without_a_thread(void **state) {
     (void)state;

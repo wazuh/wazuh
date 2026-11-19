@@ -21,7 +21,7 @@ typedef struct {
 } w_legacy_target_t;
 
 /* The targets of the legacy <client> blocks, in the order they appear. 4.x read several
- * <server> blocks as a failover list; 5.x connects to one of them (#37702). */
+ * <server> blocks as a failover list; 5.x connects to one of them. */
 typedef struct w_legacy_targets {
     w_legacy_target_t *items;
     size_t count;

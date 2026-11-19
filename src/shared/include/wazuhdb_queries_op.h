@@ -44,7 +44,7 @@ typedef enum global_db_access
  * @param[in] ip The agent ip address.
  * @param[in] register_ip The agent register IP.
  * @param[in] internal_key The client key of the agent.
- * @param[in] reenroll_secret The agent's re-enrollment secret (issue #38993), or NULL when the caller has none
+ * @param[in] reenroll_secret The agent's re-enrollment secret, or NULL when the caller has none
  * (client.keys mirroring, legacy 1515): the field is then left out of the request and the column stays NULL.
  * @param[in] group The agent group.
  * @param[in] keep_date If 1, the addition date will be taken from agents-timestamp. If 0, the addition date is the
@@ -92,7 +92,7 @@ int wdb_update_agent_data(agent_info_data* agent_data, int* sock);
 int wdb_update_agent_keepalive(int id, const char* connection_status, const char* sync_status, int* sock);
 
 /**
- * Rotate an agent's credentials in place (re-enrollment, issue #38993): name, registration IP, key and
+ * Rotate an agent's credentials in place (re-enrollment): name, registration IP, key and
  * re-enrollment secret replaced on the existing row -- id, date_add and everything else kept. authd's
  * writer thread calls it for a rotated key instead of wdb_insert_agent(), which would refuse the
  * duplicate id.
@@ -113,7 +113,7 @@ int wdb_set_agent_credentials(int id, const char* name, const char* register_ip,
  * wazuh-db answers `ok` to a write as soon as the statement stepped, inside a DEFERRED transaction
  * it commits later on its own clock (wdb_commit_old(), governed by commit_time_min/max), so an `ok`
  * followed by a crash loses the write. authd needs the difference to decide when a journaled
- * identity transition may be forgotten (issue #39078, H03); nothing else should need it.
+ * identity transition may be forgotten; nothing else should need it.
  *
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.

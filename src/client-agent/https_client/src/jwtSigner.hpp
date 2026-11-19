@@ -27,7 +27,7 @@ class JwtSigner final : public ISigner
     public:
         JwtSigner(std::string agentId, const IKeyProvider& keyProvider);
 
-        /// Re-enrollment (#38465) can hand back a different numeric id along
+        /// Re-enrollment can hand back a different numeric id along
         /// with a new key -- hc_set_agent_identity() calls this so every
         /// subsequently-minted token (from whichever sender thread is active)
         /// carries it. Guarded: sign() may run concurrently from another thread.

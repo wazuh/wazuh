@@ -76,8 +76,8 @@ namespace
 
     /// A genuine, unclassified chain/CA-trust failure: a certificate arrived (sawDepth0
     /// true), OpenSSL's own verification of it failed (depth0VerificationFailed true), and
-    /// not for a reason #39062's classifier names (kind stays None). The one shape
-    /// isUnclassifiedChainFailure() (curlPerformer.cpp) treats as eligible for the #39123
+    /// not for a reason the TLS failure classifier names (kind stays None). The one shape
+    /// isUnclassifiedChainFailure() (curlPerformer.cpp) treats as eligible for the
     /// local-anchor fallback -- distinct from BOTH a TlsFail that never reached certificate
     /// inspection at all (sawDepth0 false) AND a TlsFail where the certificate verified
     /// cleanly but the attempt still failed for an unrelated reason downstream (sawDepth0
@@ -111,7 +111,7 @@ namespace
         return detail;
     }
 
-    /// External review finding: classifyTlsVerifyFailure() (#39062) leaves kind at None for
+    /// External review finding: classifyTlsVerifyFailure() leaves kind at None for
     /// ANY depth0Error besides its own two classified causes -- not just genuine chain/CA-
     /// trust problems, but also X.509 outcomes that have nothing to do with which anchor is
     /// trusted (an unsupported certificate purpose, a policy/extension OpenSSL does not
@@ -128,7 +128,7 @@ namespace
         return detail;
     }
 
-    /// #39123 follow-up: the shape that used to be a KNOWN LIMITATION. OpenSSL's chain
+    /// The shape that used to be a KNOWN LIMITATION. OpenSSL's chain
     /// builder rejected an untrusted intermediate/root before internal_verify() ever reached
     /// depth 0, so sawDepth0 stays false here (there was no certificate at depth 0 to
     /// inspect) -- chainTrustRejectedAboveDepth0 is the only signal that distinguishes this
@@ -219,13 +219,13 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_EQ(200, response.httpCode);
 }
 
-// #38492/#38491: CurlPerformer itself no longer knows about the endpoint --
+// CurlPerformer itself no longer knows about the endpoint --
 // the manager routes on the literal wire request-target (prefix included),
 // so the prefix must be folded into HttpRequestSpec::target upstream of this
 // class (see RetrySender::attemptOnce and EnrollClient::performOnce, both of
 // which fold it in via requestTarget.hpp's prefixedTarget()). configureRequest()'s
 // baseUrl() + spec.target composition is deliberately unaware of it and
-// stays exactly as it was before #38492 -- see MemoryBodyMapsToExactOptions
+// stays exactly as it was before the endpoint existed -- see MemoryBodyMapsToExactOptions
 // above, which already pins that composition with a bare target.
 
 TEST(CurlPerformerTest, ContentTypeEmittedWhenSet)
@@ -588,7 +588,7 @@ TEST(CurlPerformerTest, TlsSystemModeResolvesTrustAnchorOnceNotPerRequest)
     performer.perform(HttpRequestSpec {});
 }
 
-// #39123: the OS bundle does not verify the manager, but a fallback anchor is configured --
+// The OS bundle does not verify the manager, but a fallback anchor is configured --
 // the same perform() call must retry against it before returning, with the partial-chain
 // relaxation a pinned self-signed file needs (unlike the OS-bundle attempt above, which must
 // not get it -- ConfiguredCaIsTheWholeTrustSet / TlsSystemModeVerifiesPeerAndHost already pin
@@ -843,10 +843,10 @@ TEST(CurlPerformerTest, SystemModeFailsClosedOnLatchedCallWhenFallbackAnchorCann
     EXPECT_EQ(1, callCount); // One attempt, fails closed immediately -- never retried.
 }
 
-// The merge with #39062 (isUnclassifiedChainFailure()): a hostname mismatch against the OS
+// The merge with the TLS failure classifier (isUnclassifiedChainFailure()): a hostname mismatch against the OS
 // store must NOT trigger the fallback, warn, or retry -- trying a different trust anchor can
 // never fix a name mismatch, only a chain/CA-trust problem. One attempt, and the classified
-// TlsFail is returned exactly as #39062's own classifier reported it.
+// TlsFail is returned exactly as the classifier reported it.
 TEST(CurlPerformerTest, SystemModeDoesNotFallBackOnAClassifiedFailure)
 {
     auto config = makeConfig(HC_VERIFY_SYSTEM);
@@ -978,7 +978,7 @@ TEST(CurlPerformerTest, SystemModeDoesNotFallBackWhenTheCertificateVerifiedButSo
 }
 
 // External review finding: sawDepth0 + depth0VerificationFailed alone still let through any
-// depth0Error besides the two #39062 explicitly classifies -- including X.509 outcomes that
+// depth0Error besides the two classifyTlsVerifyFailure() explicitly classifies -- including X.509 outcomes that
 // are not chain/CA-trust problems at all (an unsupported certificate purpose, a policy/
 // extension issue). A different trust anchor could never fix those, so they must stay off the
 // fallback path exactly like a hostname mismatch or a certificate-date problem do.
@@ -1011,7 +1011,7 @@ TEST(CurlPerformerTest, SystemModeDoesNotFallBackOnADepth0ErrorUnrelatedToChainT
     EXPECT_EQ(1, callCount); // Never retried against the fallback anchor.
 }
 
-// #39123 follow-up: closes the former KNOWN LIMITATION -- a chain-trust rejection above depth
+// Closes the former KNOWN LIMITATION -- a chain-trust rejection above depth
 // 0 (an untrusted intermediate/root, discovered before OpenSSL's verify callback ever reaches
 // the leaf) must still trigger the fallback, exactly like a depth-0 rejection does.
 TEST(CurlPerformerTest, SystemModeFallsBackOnAChainTrustRejectionAboveDepth0)
@@ -1050,7 +1050,7 @@ TEST(CurlPerformerTest, SystemModeFallsBackOnAChainTrustRejectionAboveDepth0)
     EXPECT_EQ(2, callCount); // OS bundle, then the fallback anchor -- the retry engaged.
 }
 
-// #39123 follow-up: the fallback retry must not silently double a caller's timeout budget.
+// The fallback retry must not silently double a caller's timeout budget.
 // ControlStream::sendShutdown() passes drain_timeout_ms as spec.timeoutMs specifically so an
 // unreachable manager cannot stall shutdown -- a hidden second full-length attempt against the
 // fallback anchor would defeat that. The second attemptOnce() must be timed against what is
@@ -1195,7 +1195,7 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemains)
     EXPECT_EQ(2, callCount); // A single attempt against the OS bundle -- not the fallback.
 }
 
-// #39123: when no OS bundle exists on this system at all, there is nothing for a first
+// When no OS bundle exists on this system at all, there is nothing for a first
 // attempt to dial "against the OS store" -- the constructor seeds caPath with the fallback
 // anchor directly and starts already latched onto it, rather than leaving caPath empty (which
 // would silently fall back to libcurl/OpenSSL's own default trust store, undocumented and not
@@ -1261,14 +1261,14 @@ TEST(CurlPerformerTest, SystemModeReportsVerifyFailureDirectlyWhenNoOsBundleExis
     EXPECT_EQ(1, callCount); // Never a second attempt -- there was only ever one trust source.
 }
 
-// #39123, second review round: one perform() call must judge its OWN attempt against the
+// One perform() call must judge its OWN attempt against the
 // trust anchor IT actually dialed, never against whatever m_usingSystemFallbackAnchor says by
 // the time it gets around to interpreting the response -- another thread can flip that flag
 // while this call's first attempt is still in flight (HttpsClientFacade's four streams share
 // one CurlPerformer). Re-reading the flag after the fact would let a call conclude "both
 // failed" on a fallback it had never itself tried, just because a concurrent call had
 // already adopted it. Reproduced deterministically (not via timing, per
-// this module's own lesson from #38440/SkewCorrectedClock: races this narrow are not reliably
+// this module's own lesson from SkewCorrectedClock: races this narrow are not reliably
 // hit by chance, real or stress-tested) by blocking "thread B"'s first handle mid-flight until
 // "thread A" has completed an entire fail -> flip -> retry-succeeds cycle on its own.
 TEST(CurlPerformerTest, SystemModeConcurrentCallerJudgesItsOwnAttemptNotAnotherThreadsFlag)
@@ -1368,7 +1368,7 @@ TEST(CurlPerformerTest, SystemModeConcurrentCallerJudgesItsOwnAttemptNotAnotherT
 }
 #endif
 
-// #39123 follow-up (coverage gap): every SystemMode* test above is guarded to Linux only,
+// Coverage gap: every SystemMode* test above is guarded to Linux only,
 // because each relies on the CONSTRUCTOR's OS-bundle auto-resolution (resolveSystemCaBundle(),
 // itself Linux-only -- Windows/macOS ask OpenSSL to consult the native store instead, via
 // TLS_NATIVE_CA_STORE, never a CAINFO file; see applyTrustAnchors()). But the retry mechanism
@@ -1379,7 +1379,7 @@ TEST(CurlPerformerTest, SystemModeConcurrentCallerJudgesItsOwnAttemptNotAnotherT
 // verification failure elsewhere). This test exercises that mechanism directly, setting
 // config.caPath by hand -- the same platform-agnostic pattern TrustAnchorsWithConfiguredCa
 // above already uses -- rather than through the Linux-only auto-resolution, so it compiles and
-// runs on every platform and closes the coverage gap for the part of #39123 that is not
+// runs on every platform and closes the coverage gap for the part of the fallback that is not
 // actually platform-specific.
 TEST(CurlPerformerTest, SystemModeFallsBackRegardlessOfPlatform)
 {

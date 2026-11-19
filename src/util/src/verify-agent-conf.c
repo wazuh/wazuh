@@ -125,6 +125,7 @@ int main(int argc, char **argv)
             if (snprintf(path_f, PATH_MAX + 1, "%s/%s", path, AGENT_CONF_FILE) > PATH_MAX) {
                 merror("Path too long.");
                 error = 1;
+                closedir(subdir);
                 break;
             }
 
@@ -133,6 +134,7 @@ int main(int argc, char **argv)
             if (IsFile(path_f) < 0){
                 printf("%s: File not found\n", ARGV0);
                 error = 1;
+                closedir(subdir);
                 continue;
             }
 

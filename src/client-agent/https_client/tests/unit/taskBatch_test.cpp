@@ -135,7 +135,7 @@ TEST(TaskBatchTest, TheUserScenarioRestartPlusUpgrade)
 
 TEST(TaskBatchTest, LegacyReconnectAndInfoRequestRankLastAndStillDispatch)
 {
-    // Removed from the contract (#37733 2026-07-21): they are unknown types
+    // Removed from the contract: they are unknown types
     // now -- tolerated, dispatched last in arrival order, never subsumed.
     auto plan = planTaskBatch({task("t1", "agent_reconnect"), task("t2", "info_request"),
                                task("t3", "active_response"), task("t4", "remote_upgrade")});

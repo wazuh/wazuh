@@ -11,7 +11,7 @@
  * resolution + a real AuthdClient talking to a FakeUdsServer standing in for authd) for the
  * scenarios the design's test plan calls out explicitly: a correctly signed Password-mode
  * request, Open mode, authd down, and a replayed signed request inside the freshness window
- * (D12: an accepted limitation, not something this code defends against -- authd's own
+ * (an accepted limitation, not something this code defends against -- authd's own
  * duplicate-name/IP rejection is what actually stops a meaningful replay from doing anything).
  * mTLS has nothing left to test here: EnrollmentAuthenticator has no notion of a client
  * certificate at all -- with requirePassword=false it always passes unconditionally (unit-tested
@@ -210,7 +210,7 @@ TEST(EnrollmentE2ETest, PasswordModeWrongSignatureIsRejected)
     EXPECT_EQ(response.status, 401);
     // RFC 6750 §3: /enroll's 401 carries the same class-naming bearer challenge every other route's
     // does (regression: its own error envelope used to drop the header errorResponseFor() attaches),
-    // and the body's `code` is that class (issue #38993).
+    // and the body's `code` is that class.
     const auto challenge = std::find_if(response.headers.begin(),
                                         response.headers.end(),
                                         [](const auto& header) { return header.first == "WWW-Authenticate"; });
@@ -271,7 +271,7 @@ TEST(EnrollmentE2ETest, AuthdDownMapsTo503)
 
 TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedItself)
 {
-    // D12 (accepted limitation): remoted keeps no jti replay store, so an identical, still-valid
+    // Accepted limitation: remoted keeps no jti replay store, so an identical, still-valid
     // bearer replayed inside the freshness window passes OUR authentication a second time
     // too -- exactly like the first. Whatever stops a meaningful replay is authd's own business
     // rule (typically duplicate-name/IP rejection), which this test's fake authd emulates by
@@ -324,7 +324,7 @@ TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedIt
 }
 
 // -----------------------------------------------------------------------------
-// Enrollment tokens (issue #38993), end to end: Password mode stays configured (the password key
+// Enrollment tokens, end to end: Password mode stays configured (the password key
 // is present and valid), the agent presents a token bearer instead, and the whole pipeline --
 // TokenKeySource replica -> verifyWithKid -> token state -> AuthdClient with token_id -> authd's
 // answer -- runs against the real handler.
@@ -431,7 +431,7 @@ TEST(EnrollmentE2ETest, RevokedTokenIsRejectedWith401)
 
     const auto response = dispatch(handler, request);
     EXPECT_EQ(response.status, 401);
-    // The generic message, and the class on the wire (issue #38993): the agent learns the token was
+    // The generic message, and the class on the wire: the agent learns the token was
     // revoked (ask the operator for a new one), never anything finer...
     const auto body = nlohmann::json::parse(response.body);
     EXPECT_EQ(body["error"]["message"], "Invalid client authentication");
@@ -449,7 +449,7 @@ TEST(EnrollmentE2ETest, RevokedTokenIsRejectedWith401)
 }
 
 // -----------------------------------------------------------------------------
-// Re-enrollment (issue #38993), end to end: Password mode configured, the agent presents the bearer
+// Re-enrollment, end to end: Password mode configured, the agent presents the bearer
 // signed with its re-enrollment key (the frozen vector: remoted never verifies it, so its 2023 iat is
 // irrelevant here), and the whole pipeline -- authenticator -> AuthdClient with `reenroll` -> authd's
 // rotated answer -- runs against the real handler.
@@ -512,7 +512,7 @@ TEST(EnrollmentE2ETest, ReenrollmentBearerReachesAuthdAndTheRotatedCredentialsCo
 // Password mode with no etc/authd.pass at all (not yet synced to a worker, deleted, unreadable): the
 // server cannot judge the credential, so the challenge is a bare `Bearer` -- RFC 6750 has no error
 // code for "I could not check", and `invalid_token` would blame the agent -- while the body's `code`
-// names the condition for the operator reading the agent's log (issue #38993).
+// names the condition for the operator reading the agent's log.
 TEST(EnrollmentE2ETest, MissingPasswordFileIsEnrollmentKeyUnavailableWithABareChallenge)
 {
     auto keySource = std::make_shared<PasswordKeySource>("/nonexistent/enrollmentE2E_test/authd.pass");

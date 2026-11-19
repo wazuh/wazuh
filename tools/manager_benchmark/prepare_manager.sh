@@ -25,7 +25,7 @@ set -euo pipefail
 #   3. takes the two UNAUTHENTICATED routes' rate limits out of the way:
 #          <remote><https><enroll_rate_limit>0</enroll_rate_limit>
 #          <remote><https><cacerts_rate_limit>0</cacerts_rate_limit>
-#      0 is the documented "no limit" (issue #39129). Unlike 1 and 2 this DOES
+#      0 is the documented "no limit". Unlike 1 and 2 this DOES
 #      remove a bound the shipped defaults apply -- 100 req/s on /enroll and 50
 #      on /cacerts, counted for the endpoint as a whole rather than per agent --
 #      and it is removed on purpose: those ceilings are sized for a fleet's
@@ -38,7 +38,7 @@ set -euo pipefail
 #
 # <use_password> and /etc/wazuh-manager/authd.pass are left exactly as installed: the token
 # bearer is verified in every mode, so a benchmark now runs against the same
-# enrollment policy a production manager has (issue #39054).
+# enrollment policy a production manager has.
 #
 # --open-1515 additionally does the OLD flip -- <use_password>no</use_password>
 # and removing /etc/wazuh-manager/authd.pass -- which the legacy bootstrap needs, since the

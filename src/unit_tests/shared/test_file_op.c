@@ -1016,6 +1016,19 @@ void test_w_uncompress_gzfile_success(void **state) {
 // libwazuh_test.a may be built under different CLIENT settings, so the env
 // var name passed to __wrap_getenv() is not asserted here — expect_any() is
 // used instead of expect_string().
+//
+// The manager build reads WAZUH_MANAGER_FORCE_HOME first; an agent build never
+// does. TEST_SERVER is defined for the manager target, whose library is built
+// without CLIENT, so it selects the matching sequence of getenv() calls.
+
+#ifdef TEST_SERVER
+#define EXPECT_NO_FORCED_HOME() do { \
+    expect_string(__wrap_getenv, name, "WAZUH_MANAGER_FORCE_HOME"); \
+    will_return(__wrap_getenv, NULL); \
+} while (0)
+#else
+#define EXPECT_NO_FORCED_HOME() do { } while (0)
+#endif
 
 void test_w_homedir_env_var(void **state)
 {
@@ -1024,6 +1037,7 @@ void test_w_homedir_env_var(void **state)
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
 
     // env var set -> realpath() not called.
+    EXPECT_NO_FORCED_HOME();
     expect_any(__wrap_getenv, name);
     will_return(__wrap_getenv, "/home/wazuh");
 
@@ -1042,6 +1056,7 @@ void test_w_homedir_first_attempt(void **state)
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
+    EXPECT_NO_FORCED_HOME();
     expect_any(__wrap_getenv, name);
     will_return(__wrap_getenv, NULL);
 
@@ -1063,6 +1078,7 @@ void test_w_homedir_second_attempt(void **state)
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
+    EXPECT_NO_FORCED_HOME();
     expect_any(__wrap_getenv, name);
     will_return(__wrap_getenv, NULL);
 
@@ -1087,6 +1103,7 @@ void test_w_homedir_third_attempt(void **state)
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
+    EXPECT_NO_FORCED_HOME();
     expect_any(__wrap_getenv, name);
     will_return(__wrap_getenv, NULL);
 
@@ -1114,6 +1131,7 @@ void test_w_homedir_check_argv0(void **state)
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
+    EXPECT_NO_FORCED_HOME();
     expect_any(__wrap_getenv, name);
     will_return(__wrap_getenv, NULL);
 
@@ -1142,6 +1160,7 @@ void test_w_homedir_stat_fail(void **state)
     char *argv0 = "/fake/dir/bin";
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
 
+    EXPECT_NO_FORCED_HOME();
     expect_any(__wrap_getenv, name);
     will_return(__wrap_getenv, NULL);
 
@@ -1160,6 +1179,36 @@ void test_w_homedir_stat_fail(void **state)
 
     expect_assert_failure(w_homedir(argv0));
 }
+
+#ifdef TEST_SERVER
+void test_w_homedir_forced_home(void **state)
+{
+    char *val = NULL;
+    char *argv0 = "/usr/share/wazuh/bin/test";
+
+    // Forced home -> returned as is: no other variable, no realpath(), no stat().
+    expect_string(__wrap_getenv, name, "WAZUH_MANAGER_FORCE_HOME");
+    will_return(__wrap_getenv, "/no/such/home/bin/x");
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "/no/such/home/bin/x");
+    free(val);
+}
+
+void test_w_homedir_forced_home_empty(void **state)
+{
+    char *val = NULL;
+    char *argv0 = "/usr/share/wazuh/bin/test";
+
+    // Defined but empty still wins, unchecked, like the engine's resolveManagerHome().
+    expect_string(__wrap_getenv, name, "WAZUH_MANAGER_FORCE_HOME");
+    will_return(__wrap_getenv, "");
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "");
+    free(val);
+}
+#endif
 #endif
 
 void test_get_file_content(void **state)
@@ -3618,6 +3667,10 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_check_argv0),
         cmocka_unit_test(test_w_homedir_env_var),
         cmocka_unit_test(test_w_homedir_stat_fail),
+#ifdef TEST_SERVER
+        cmocka_unit_test(test_w_homedir_forced_home),
+        cmocka_unit_test(test_w_homedir_forced_home_empty),
+#endif
         // w_get_file_pointer
         cmocka_unit_test(test_get_file_pointer_NULL),
         cmocka_unit_test(test_get_file_pointer_invalid),

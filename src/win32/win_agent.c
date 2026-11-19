@@ -33,7 +33,7 @@
 #define STATIC static
 #endif
 
-/* Defined in win_utils.c; idempotent (issue 38428). */
+/* Defined in win_utils.c; idempotent. */
 extern void wm_lifecycle_lock_init(void);
 
 /**************************************************************************************
@@ -69,7 +69,7 @@ void agent_help()
  * cases into their own stop-wait-start sequence, with nothing coordinating
  * which one's stop/start actually wins. Observed live to leave the service
  * permanently SERVICE_STOPPED with no self-recovery and no error logged
- * anywhere (issue 38428). The lock is held for the rest of this process's
+ * anywhere. The lock is held for the rest of this process's
  * life -- released automatically on exit, whichever return below is taken. */
 STATIC int run_service_restart(void)
 {
@@ -81,13 +81,13 @@ STATIC int run_service_restart(void)
     // not covered by any timeout of their own. 30 s left no margin for either -- a
     // shutdown that legitimately used all of stop_wmodules()'s budget plus a slow
     // fim_db_teardown() would trip this timeout and return without ever calling
-    // os_start_service(), leaving the service permanently stopped (issue 38428).
+    // os_start_service(), leaving the service permanently stopped.
     const DWORD timeoutMs = 45000;           // 45 seconds
     const DWORD sleepIntervalMs = 500;       // 0.5 seconds
     const DWORD waitForServiceStopMs = 1000; // 1 second
     // ~2-3x the normal worst case for a single restart (20 s module-join budget
     // + 10 s SCA wait + overhead), so a second concurrent restart request only
-    // ever times out here if something is already badly wrong (issue 38428).
+    // ever times out here if something is already badly wrong.
     const DWORD restartLockWaitMs = 60000;   // 60 seconds
 
     int restart_lock_timed_out = 0;
@@ -117,7 +117,7 @@ STATIC int run_service_restart(void)
      * not just "not RUNNING": CheckServiceRunning() now also treats
      * every pending/paused state as still-running, so this correctly
      * keeps waiting through the old process's own shutdown instead of
-     * starting a new one over it (issue 38428, defect #6). */
+     * starting a new one over it. */
     startTime = GetTickCount();
     while (CheckServiceRunning()) {
         if (GetTickCount() - startTime > timeoutMs) {
@@ -205,7 +205,7 @@ int main(int argc, char **argv)
              * path bypasses OssecServiceStart() entirely, so it must
              * initialize the lock itself. wm_lifecycle_lock_init() is
              * idempotent, so this is safe even though it's also called from
-             * win_service.c (issue 38428). */
+             * win_service.c. */
             wm_lifecycle_lock_init();
             return (local_start());
         } else if (strcmp(argv[1], "service-restart") == 0) {

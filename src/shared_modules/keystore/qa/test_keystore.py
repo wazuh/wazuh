@@ -195,7 +195,7 @@ def test_keystore_get_of_an_unset_key_exits_non_zero():
     """ An unset key exits non-zero and prints nothing.
 
     It must not answer a default: a caller cannot otherwise tell "not set" from "set to whatever the
-    default happens to be", which is what https://github.com/wazuh/wazuh/issues/39554 removed.
+    default happens to be", which is what 5.x removed.
     """
     status, value = run_get("indexer", "a-key-that-was-never-set")
 

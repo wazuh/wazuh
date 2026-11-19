@@ -260,7 +260,7 @@ void sync_keys_with_wdb(keystore *keys) {
              * would get date_add 0 (shown as 1970): fall back to the time it is mirrored instead. */
             int keep_date = get_agent_date_added(agent_id) > 0;
 
-            /* No re-enrollment secret: client.keys never carries it (#38993), so a row mirrored from
+            /* No re-enrollment secret: client.keys never carries it, so a row mirrored from
              * the file (workers, or a master whose global.db was lost) stays NULL there. */
             if (wdb_insert_agent(agent_id, entry->name, NULL, OS_CIDRtoStr(entry->ip, agent_cidr, IPSIZE) ?
                                 entry->ip->ip : agent_cidr, entry->raw_key, NULL, NULL, keep_date, &wdb_wmdb_sock)) {

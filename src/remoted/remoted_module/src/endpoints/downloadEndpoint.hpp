@@ -31,7 +31,7 @@ namespace remoted::endpoints::download
     /**
      * @brief The kinds of resource `POST /download` can serve.
      *
-     * Closed set, mirroring the wire enum (#37733 5.4). An unrecognized value is a 400, never a
+     * Closed set, mirroring the wire enum. An unrecognized value is a 400, never a
      * fallback.
      */
     enum class ResourceType

@@ -368,7 +368,7 @@ static void test_server_tag_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-/* Single <manager>: the last one prevails (#37702 restriction 2) */
+/* Single <manager>: the last one prevails */
 
 static void test_second_manager_block_prevails_with_warning(void **state) {
     OS_XML xml = {0};
@@ -391,7 +391,7 @@ static void test_second_manager_block_prevails_with_warning(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-/* <agent><manager> and the one value still read from a legacy <client> (#38103) */
+/* <agent><manager> and the one value still read from a legacy <client> */
 
 static void test_agent_manager_address_and_port_are_parsed(void **state) {
     OS_XML xml = {0};
@@ -426,7 +426,7 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-/* <agent><manager><endpoint> (#38492) */
+/* <agent><manager><endpoint> */
 
 static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(void **state) {
     OS_XML xml = {0};
@@ -498,9 +498,9 @@ static void test_agent_manager_endpoint_rejects_a_non_https_scheme(void **state)
 }
 
 /* The distinction the whole grammar turns on: no separator at all means the default
- * prefix, a trailing separator with nothing after it is the deliberate opt-out
- * (#38614). curl cannot tell these apart -- CURLUPART_PATH reports "/" for both --
- * so losing it would silently reinstate the default and undo #38658's fix. */
+ * prefix, a trailing separator with nothing after it is the deliberate opt-out.
+ * curl cannot tell these apart -- CURLUPART_PATH reports "/" for both --
+ * so losing it would silently reinstate the default and undo that fix. */
 
 static void test_agent_manager_endpoint_trailing_slash_opts_out(void **state) {
     OS_XML xml = {0};
@@ -1548,7 +1548,7 @@ static void test_agent_invalid_tag_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-/* <enrollment> block (#38465): by-value now, like <ssl> above -- previously
+/* <enrollment> block: by-value now, like <ssl> above -- previously
  * untestable through parse_agent() because Read_Agent_Enrollment() dereferenced
  * a lazily-allocated pointer parse_agent()'s memset() left NULL. */
 
@@ -1602,7 +1602,7 @@ static void test_enrollment_use_source_ip_yes(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-/* Superseded-by-<server>/<ssl> options (#38465 Q5): a 4.x ossec.conf (an
+/* Superseded-by-<server>/<ssl> options: a 4.x ossec.conf (an
  * upgrade never rewrites it) still parses successfully, logging INFO per
  * recognized-but-ignored tag instead of rejecting the whole block. */
 static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state) {
@@ -2007,7 +2007,7 @@ static void test_read_agent_batch_survives_a_missing_file(void **state) {
     assert_int_equal(batch.interval, 42);
 }
 
-/* Deprecated legacy-TCP options: accepted, ignored, reported (#37702 restriction 4) */
+/* Deprecated legacy-TCP options: accepted, ignored, reported */
 
 static void test_time_reconnect_is_deprecated(void **state) {
     OS_XML xml = {0};
@@ -2057,7 +2057,7 @@ static void test_retry_interval_is_deprecated(void **state) {
 }
 
 
-/* <stats_report> / <config_report> blocks (#37843) */
+/* <stats_report> / <config_report> blocks */
 
 static void test_reports_are_off_when_absent(void **state) {
     OS_XML xml = {0};

@@ -2051,7 +2051,7 @@ void test_expand_wildcard_registers_invalid_path(void **state){
 
 }
 
-/* Regression tests for issue #4287 – dynamic allocation in registry wildcard expansion */
+/* Regression tests – dynamic allocation in registry wildcard expansion */
 
 /* get_subkey: key with no backslash separator (invalid format) must not crash
  * and must return an empty string. */

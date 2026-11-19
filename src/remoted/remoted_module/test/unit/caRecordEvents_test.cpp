@@ -118,7 +118,7 @@ TEST(DescribeRecordEvent, GuardFailedNamesTheGuardAndTheObservedValue)
 
         const auto line = describeRecordEvent(event);
         ASSERT_TRUE(line.has_value());
-        // Since C33 the guard is a chain validation, and the line an operator greps says so --
+        // The guard is a chain validation, and the line an operator greps says so --
         // "signs" would send them to check a signature that may well be fine.
         EXPECT_NE(line->second.find("does not chain to any CA in it"), std::string::npos) << line->second;
     }
@@ -223,7 +223,7 @@ TEST(CaRecordEventMailbox, OverflowDropsTheOldestAndCounts)
 // deliver(): the one production way these events reach a log, and the reason it exists -- several
 // consumers drain this mailbox (the daily tick, a GET /cacerts request, the notify provider), and
 // draining and logging as two steps let one of them publish generation N after another published
-// N+1 (issue #39319, C26, objection 4).
+// N+1.
 // ---------------------------------------------------------------------------
 
 namespace

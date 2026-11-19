@@ -436,7 +436,7 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
 
     if (persist_first_sync_marker) {
-        /* #38899: the marker may only be persisted once a sync has proven it actually reached
+        /* The marker may only be persisted once a sync has proven it actually reached
          * the manager, so this case must mock a cycle that did -- an empty-queue "success" with
          * sent_anything left false must never be enough (that's exactly the bug being tested
          * against elsewhere; see the sent_anything doc comment in agent_sync_protocol_types.hpp). */
@@ -466,7 +466,7 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
     // synchronization (fim_sync_module_running already cleared), so tests that stop the
     // loop through the sync wrapper must not expect it.
     if (expect_recovery_pass) {
-        /* #38601: the identity check runs before the per-table loop. Zero means the metadata
+        /* The identity check runs before the per-table loop. Zero means the metadata
          * provider has published nothing, which is the "unknown id, do nothing" path -- these
          * cases are about the integrity loop, not about a re-enrollment. */
         will_return(__wrap_asp_get_agent_id, 0);
@@ -491,7 +491,7 @@ static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool per
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
 
     if (persist_first_sync_marker) {
-        // #38899: same reasoning as expect_fim_run_integrity_sync_body -- the marker may only be
+        // Same reasoning as expect_fim_run_integrity_sync_body -- the marker may only be
         // persisted once a sync has proven it actually reached the manager, so this case must
         // mock a cycle that did.
         sync_result = (SyncModuleResult_t){0};

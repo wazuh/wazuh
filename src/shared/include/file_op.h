@@ -867,7 +867,6 @@ char **expand_win32_wildcards(const char *path);
  * @return true if the path points to a network location, false otherwise.
  *
  * @note This function addresses CVE-2025-30201 and GHSA-5g2v-99vr-3hgw.
- * @see https://github.com/wazuh/wazuh/pull/30060
  */
 bool is_network_path(const char *path);
 
@@ -970,11 +969,18 @@ int w_is_compressed_bz2_file(const char * path);
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
 
+#ifndef CLIENT
+/* Forced manager home, read first by w_homedir() and by the engine's resolveManagerHome() */
+#define WAZUH_MANAGER_FORCE_HOME_ENV "WAZUH_MANAGER_FORCE_HOME"
+#endif
+
 /**
  * @brief Get the Wazuh installation directory
  *
- * The target-specific env var (`WAZUH_MANAGER_HOME` or `WAZUH_AGENT_HOME`) wins
- * if set; otherwise it is auto-detected from /proc, then argv[0].
+ * On the manager, `WAZUH_MANAGER_FORCE_HOME` wins when defined (even empty): it
+ * is returned as is, never checked, as the engine does. Otherwise the
+ * target-specific env var (`WAZUH_MANAGER_HOME` or `WAZUH_AGENT_HOME`) wins if
+ * set; otherwise it is auto-detected from /proc, then argv[0].
  *
  * @param arg ARGV0 - Program name
  * @return Pointer to the Wazuh installation path on success

@@ -686,7 +686,7 @@ static void expect_valid_ip(const char *ip) {
     "{\"id\":\"001\",\"name\":\"test-agent\",\"ip\":\"10.0.0.5\"," \
     "\"key\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
 
-/* The same 200, with the fifth field a 5.0 manager actually sends (#39064). */
+/* The same 200, with the fifth field a 5.0 manager actually sends. */
 #define REENROLL_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 #define VALID_ENROLL_BODY_WITH_SECRET \
     "{\"id\":\"001\",\"name\":\"test-agent\",\"ip\":\"10.0.0.5\"," \
@@ -696,7 +696,7 @@ static void expect_valid_ip(const char *ip) {
 /* ---- tests ---- */
 
 /* w_enrollment_build_request() announces the identity it is about to present before it picks a
- * credential (#38678, merged from 5.0.0), so it is the first minfo() any test that reaches it sees.
+ * credential, so it is the first minfo() any test that reaches it sees.
  * Declared once here rather than repeated literally: what these tests assert is the credential
  * choice that follows, and this line is only in the way of it. */
 #define expect_enrolling_as_line() \
@@ -923,7 +923,7 @@ static void test_anchor_latch_keys_chown_failure_is_quiet(void **state) {
     assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
-/* An agent that bootstrapped before #39321 holds a root-owned anchor under a 0750 directory, so
+/* An agent that bootstrapped on an older build holds a root-owned anchor under a 0750 directory, so
  * it could never adopt a published CA bundle: the refresh runs unprivileged and would fail at
  * mkstemp() every time, which reads as a manager problem rather than a local one. The latch --
  * the only branch an already-bootstrapped agent reaches -- repairs it on the next boot, while
@@ -960,7 +960,7 @@ static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
     assert_true(g_dir_chown_via_fd);
     assert_true(g_dir_chmod_via_fd);
 
-    /* The marker is minted here too: an install from before #39321 has an anchor but no marker,
+    /* The marker is minted here too: an install from an older build has an anchor but no marker,
      * and without one the deletion guard could never fire for it. */
     assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
 }
@@ -1206,7 +1206,7 @@ static void test_pin_mismatch_logs_named_error_and_writes_nothing(void **state) 
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
-/* #39064: a 403 carrying 9022/9023/9024 is authd's verdict on a token whose signature the manager
+/* A 403 carrying 9022/9023/9024 is authd's verdict on a token whose signature the manager
  * already verified -- unknown, revoked, or out of uses. Nothing else on this path clears the token:
  * the anchor is never installed and client.keys is never written, so neither latch trips next boot,
  * and the caller turns the -1 into merror_exit(). Keeping it would hand the same dead credential to
@@ -1495,7 +1495,7 @@ static void test_full_happy_path_via_pin(void **state) {
 
     /* The anchor is handed to the runtime user, not to root: under the sticky etc/certs only the
      * owner may rename over a file, so a root-owned anchor is one the agent could never replace
-     * when the manager publishes a new CA bundle (#39321). The mode below is still 0640. */
+     * when the manager publishes a new CA bundle. The mode below is still 0640. */
     assert_int_equal(g_anchor_chown_uid, getuid());
     assert_int_equal(g_anchor_chown_gid, getgid());
 
@@ -1629,7 +1629,7 @@ static void test_fresh_enrollment_keys_chown_failure_logs_merror(void **state) {
     assert_int_equal(g_keys_chown_gid, (gid_t) -1);
 }
 
-/* #39028's DoD: "a credential-less token enrolls when the simulator requires no credential,
+/* The requirement: "a credential-less token enrolls when the simulator requires no credential,
  * and is not treated as an error." has_key=false must not short-circuit into an error path --
  * enrollment still runs, just with no enroll_kid/enroll_key_hex on the wire (and no fallback to
  * a configured password either, per token_bootstrap.c's own comment on that branch --
@@ -1683,7 +1683,7 @@ static void test_credential_less_token_enrolls_without_error(void **state) {
 }
 
 /* The bound has to clear what authd is willing to mint, not what a pin-only token happens to
- * need. A six-certificate bundle -- the largest #39321 lets a manager publish -- embeds to
+ * need. A six-certificate bundle -- the largest a manager may publish -- embeds to
  * roughly 9 KB of token, so at the old 8192 it minted cleanly and was then refused at the
  * agent's first boot, with nothing at install time having warned about it. */
 static void test_embedded_ca_token_larger_than_the_old_cap_is_read(void **state) {
@@ -2471,7 +2471,7 @@ static void test_certs_only_embedded_ca_ignores_a_broken_client_identity(void **
     os_free(token);
 }
 
-/* #39064: the bootstrap runs as ROOT, before the privilege drop, and w_enrollment_process_response()
+/* The bootstrap runs as ROOT, before the privilege drop, and w_enrollment_process_response()
  * writes the re-enrollment secret from here. So the secret is created by a root-owned process and
  * then has to be handed to the unprivileged user like the anchor and client.keys are -- and unlike
  * those two it must end up WRITABLE by that user, because every later rotation happens in the
@@ -2560,7 +2560,7 @@ static void test_reenroll_secret_link_is_not_chowned(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
     /* A valid store on disk means w_enrollment_build_request() prefers it over every other
-     * credential (#39064), so this is the re-enrollment path, not the password one. */
+     * credential, so this is the re-enrollment path, not the password one. */
     expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg,
                   "Re-enrolling with this agent's own re-enrollment secret.");

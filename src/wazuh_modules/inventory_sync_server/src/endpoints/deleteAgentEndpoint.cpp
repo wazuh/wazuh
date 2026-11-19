@@ -194,7 +194,7 @@ namespace invsync::endpoints::delete_agent
             item.kind = invsync::sync::SyncPipeline::Item::Kind::DeleteAgent;
             // Canonical like every document `_id` and query -- the deletion must match what indexing
             // wrote. The shard hash uses this same string, so the deletion lands on the SAME
-            // worker queue as the agent's sessions (FIFO ordering is the whole point, doc 04 §1).
+            // worker queue as the agent's sessions (FIFO ordering is the whole point).
             const auto& agentId = *callerAgentId;
             item.session.agentId = agentId;
 

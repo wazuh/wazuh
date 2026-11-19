@@ -243,7 +243,9 @@ the Codex plugin), and asks before each download or install.
 
 Start Claude Code from the workspace folder so it picks up `.claude/` and the memory. If it was already running, restart it.
 
-To produce the package, run `claude-portable.sh export --with-memory` in an existing devContainer. The package never
+The `claude-portable` skill is not part of this repository: every package carries its own copy (the first command
+above extracts it), so the import needs nothing from the checkout. To produce a package, run
+`claude-portable.sh export --with-memory` in a devContainer that already has the skill installed. The package never
 contains `settings.local.json`, and the export refuses to pack credentials.
 
 ### Build tree

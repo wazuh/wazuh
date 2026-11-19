@@ -173,7 +173,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         // Windows/macOS ask their native certificate store (CurlPerformer), which this
         // process cannot introspect at validation time; Linux's trust anchor is a probed
         // file, so fail closed now rather than at the first handshake if none is found.
-        // A configured systemFallbackCaPath (#39123) is still allowed to start: an absent
+        // A configured systemFallbackCaPath is still allowed to start: an absent
         // OS bundle is exactly the case CurlPerformer's fallback exists to survive, and
         // refusing to start here would never give it the chance to try. Both being absent
         // is the one combination this process can already tell has no way to verify.
@@ -190,7 +190,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
 
         // Readability, same as the generic fallthrough below checks for caPath -- the
         // config.c/w_agent_validate_ssl_ca side additionally parses the anchor as an X.509
-        // certificate before the module ever starts (#39123); this check only guards against
+        // certificate before the module ever starts; this check only guards against
         // it disappearing or losing read permission between that startup check and here.
         if (!systemFallbackCaPath.empty() && !fsProbe.isReadableFile(systemFallbackCaPath))
         {
@@ -204,7 +204,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         return true;
     }
 
-    // Fail closed (H1): a verifying mode without a readable CA never sends. This can never
+    // Fail closed: a verifying mode without a readable CA never sends. This can never
     // self-resolve without an operator fixing the config (mirrors main.c's hard exit on a
     // missing/invalid <manager><address>) -- CRITICAL terminates the daemon via the bridge's log
     // callback instead of leaving it running with a permanently dead transport.
@@ -251,7 +251,7 @@ std::string ModuleConfig::baseUrl() const
     const bool ipv6 = serverHost.find(':') != std::string::npos && serverHost.front() != '[';
 
     // A link-local IPv6 address needs its zone id to be dialable, and inside a URL the
-    // zone separator '%' must itself be percent-encoded, hence "%25" (#38624). Only
+    // zone separator '%' must itself be percent-encoded, hence "%25". Only
     // meaningful for an IPv6 literal: an IPv4 or hostname never carries a scope.
     std::string host = serverHost;
 
@@ -267,11 +267,11 @@ std::string ModuleConfig::baseUrl() const
         host += "]";
     }
 
-    // serverEndpoint is NOT joined in here: #38491 (the manager's global
-    // prefix) routes on the prefixed request-target, so callers fold it into
+    // serverEndpoint is NOT joined in here: the manager's global
+    // prefix routes on the prefixed request-target, so callers fold it into
     // HttpRequestSpec::target (via prefixedTarget(), requestTarget.hpp) --
     // this function only ever sees the already-prefixed target appended to
-    // it afterward, same as before #38492. Routing only: the bearer token
+    // it afterward, same as before the endpoint existed. Routing only: the bearer token
     // does not bind the target.
     return scheme + "://" + host + ":" + std::to_string(serverPort);
 }

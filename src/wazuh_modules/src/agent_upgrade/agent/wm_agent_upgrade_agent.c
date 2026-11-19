@@ -61,7 +61,7 @@ STATIC void wm_agent_upgrade_check_status(void);
 
 /**
  * Checks in the upgrade_results file for a code that determines the result of the upgrade
- * operation and reports it as a stateless event, erasing the file afterwards (#38103).
+ * operation and reports it as a stateless event, erasing the file afterwards.
  * @param queue_fd file descriptor of the queue where the event will be sent
  * @return a flag indicating whether the file should be read again
  * @retval true the installer has not written a complete code yet, so retry
@@ -71,7 +71,7 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd);
 
 /**
  * Reads the upgrade_result file if it is present and reports the result as a stateless
- * event (#38103), the same egress every other module event takes: the frame goes to
+ * event, the same egress every other module event takes: the frame goes to
  * DEFAULTQUEUE, EventForward() hands it to the HTTPS /stateless accumulator.
  *
  * Example event:
@@ -280,7 +280,7 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd)
     wm_upgrade_agent_send_result_event(queue_fd, state, (unsigned int)raw_code);
 
     /* The manager used to clear this file by answering the ack with
-     * clear_upgrade_result (#38103). A stateless event is not answered, so the
+     * clear_upgrade_result. A stateless event is not answered, so the
      * result is reported once and dropped here instead of retried forever. */
     if (remove(WM_AGENT_UPGRADE_RESULT_FILE) != 0)
     {

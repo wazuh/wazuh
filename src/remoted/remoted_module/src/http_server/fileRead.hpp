@@ -16,7 +16,7 @@
  * @brief Bounded, injectable file reading with an exact failure cause: the seam CaCertificateSource
  *        reads the CA bundle through.
  *
- * Three things a plain std::ifstream did not give that reader (issue #39318): a bound that holds
+ * Three things a plain std::ifstream did not give that reader: a bound that holds
  * BEFORE the bytes are in memory (never more than maxBytes + 1 are requested, whatever the file's
  * size), the errno of the failed call (a directory at the path, a permission change and a missing
  * file lead the operator to different fixes), and a seam a test can replace -- root ignores file

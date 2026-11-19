@@ -8,7 +8,7 @@
  */
 
 /* Which manager a whole agent configuration file leaves when it still carries a legacy
- * 4.x <client> block (#41415). Read through ReadConfig(), which settles the legacy
+ * 4.x <client> block. Read through ReadConfig(), which settles the legacy
  * targets once every block of the file is read. */
 
 #include <stdarg.h>

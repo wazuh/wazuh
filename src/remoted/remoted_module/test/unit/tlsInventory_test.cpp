@@ -10,7 +10,7 @@
 
 /**
  * @file tlsInventory_test.cpp
- * @brief The `GET /tls` document (issue #39320), rendered from a hand-built inventory at a fixed
+ * @brief The `GET /tls` document, rendered from a hand-built inventory at a fixed
  *        clock: every key of the issue's example, both spellings of every timestamp, the fields
  *        that appear only on failure, and no threshold verdicts. The transport's half
  *        (IHttpServer::tlsInventory()) is httpServer_test.cpp's; the route is adminServer_test.cpp's.

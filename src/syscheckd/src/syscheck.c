@@ -56,7 +56,7 @@ int synced_docs_registry_values = 0;
 // scheduled scan (fim_file_scan()/fim_registry_scan(), under fim_scan_mutex) and realtime/
 // whodata events (fim_file(), which doesn't take fim_scan_mutex to avoid stalling realtime
 // events for the whole scan) can race on these plain ints otherwise, undercounting synced
-// documents and re-triggering #38522-style drift in file/registry limit enforcement.
+// documents and re-triggering the drift in file/registry limit enforcement.
 pthread_mutex_t synced_docs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef USE_MAGIC
@@ -574,8 +574,8 @@ void fim_initialize() {
 
 #ifdef WIN32
     /* Registered here, not where the synchronization thread is launched: fim_sync.db is open from
-     * this point on, and the stop can arrive before start_daemon() gets to the thread (issue
-     * #38212, the install then uninstall window). */
+     * this point on, and the stop can arrive before start_daemon() gets to the thread (the
+     * install then uninstall window). */
     fim_sync_register_teardown_hook();
 #endif
 

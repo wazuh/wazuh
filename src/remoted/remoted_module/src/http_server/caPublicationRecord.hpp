@@ -16,27 +16,26 @@
  * @brief The node's private memory of the CA bundle it last served: which bytes, and under which
  *        publication. Persistence and nothing else -- it does not log and it does not decide.
  *
- * Why a record at all (issue #39319): an ordinary CA file carries no publication block, and so does
+ * Why a record at all: an ordinary CA file carries no publication block, and so does
  * a published bundle somebody rewrote by hand. Without memory those two look identical, so remoted
  * could not tell "this node was never stamped" (an INFO with the command that fixes it) from "the
  * bundle that WAS published generation N is not published any more" (a WARN naming N). The record
  * is that memory, and it is auxiliary by construction: serving `GET /cacerts` and vouching for the
- * bundle never read it, so a record that cannot be written costs one log line, never a rotation
- * (C19).
+ * bundle never read it, so a record that cannot be written costs one log line, never a rotation.
  *
  * It lives in a directory of its own (`var/run/remoted-ca-bundle/`, mode 0750, created by remoted
  * at start -- see ensureRecordDirectory()): a directory nobody else writes to is what lets a write
  * failure be injected for a test without touching `var/run` itself, where the pidfiles of every
- * other daemon live (C24, C25). Its owner is the service's own user, not root.
+ * other daemon live. Its owner is the service's own user, not root.
  *
  * Two hard rules:
  *   - the record NEVER points at the bundle. If its path resolves to the bundle's (a symlink, a
  *     configuration mistake), load() and store() refuse without writing a byte: the one file this
- *     feature must never modify is the bundle (RF-8, CA-19), and a fail-closed refusal is the only
- *     way to be sure (C23).
+ *     feature must never modify is the bundle, and a fail-closed refusal is the only
+ *     way to be sure.
  *   - a record that does not describe THIS bundle, or that cannot be read or parsed, is an absence.
  *     It never lends its publication to another file. The caller is told which of those it was,
- *     because "unreadable" must not be reported to an operator as "never published" (C23).
+ *     because "unreadable" must not be reported to an operator as "never published".
  *
  * The write is the ordinary atomic-replace dance, in this order: a unique temporary (O_EXCL, 0600)
  * -> the whole entry written (short writes and EINTR handled) -> fsync -> fchmod 0640 -> rename ->
@@ -117,7 +116,7 @@ namespace remoted::http
     {
     public:
         /// Largest record accepted. An entry is ~200 bytes; past this the file is not a record we
-        /// wrote, so it is refused as malformed instead of parsed (C23).
+        /// wrote, so it is refused as malformed instead of parsed.
         static constexpr std::size_t kMaxBytes {4096};
 
         /// Version stamped into the document, so a future shape can be told apart rather than
@@ -159,7 +158,7 @@ namespace remoted::http
 
     private:
         /// Whether @p bundlePath and the record's own path are the same file. The fail-closed check
-        /// both load() and store() run first (C23).
+        /// both load() and store() run first.
         bool aliases(const std::string& bundlePath) const;
 
         const std::string m_path;
@@ -175,7 +174,7 @@ namespace remoted::http
      *
      * Called by remoted at start, once, before the record is used: the directory is part of the
      * runtime tree (`var/run/`, which the service owns), not of the package, so nothing in the
-     * installer has to know about it (RNF-4, C25). Best-effort by design -- when it cannot be
+     * installer has to know about it. Best-effort by design -- when it cannot be
      * created, the first store() fails with the real errno and the operator gets that line, which
      * is more informative than anything that could be said here.
      *

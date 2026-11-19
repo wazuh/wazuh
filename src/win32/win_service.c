@@ -44,8 +44,7 @@ extern void stop_wmodules();
 extern void wm_lifecycle_lock_init(void);
 
 /* Reports shutdown progress to the SCM so a slow stop_wmodules() (module
- * joins, each up to their own budget) doesn't read as hung (issue 38428,
- * defect #7). No-op before RegisterServiceCtrlHandler() has succeeded. */
+ * joins, each up to their own budget) doesn't read as hung. No-op before RegisterServiceCtrlHandler() has succeeded. */
 void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms)
 {
     if (!ossecServiceStatusHandle) {
@@ -137,7 +136,7 @@ int os_stop_service()
  * (this includes SERVICE_STOP_PENDING/SERVICE_START_PENDING/etc.), or 0 if
  * it's stopped or doesn't exist.
  *
- * Before issue 38428's fix this only returned 1 for SERVICE_RUNNING, which
+ * Previously this only returned 1 for SERVICE_RUNNING, which
  * made the "wait for the old process to actually die" loop in win_agent.c's
  * service-restart give up the instant the SCM reported SERVICE_STOP_PENDING
  * -- long before stop_wmodules() had actually finished -- so the new process
@@ -296,8 +295,8 @@ int UninstallService()
         schService = OpenService(schSCManager, g_lpszServiceName, SERVICE_STOP | DELETE | SERVICE_QUERY_STATUS);
         if (schService) {
             /* Query the raw state directly instead of CheckServiceRunning(): that
-             * helper now treats anything but SERVICE_STOPPED as "running" (issue
-             * 38428, to fix the restart-wait loop giving up too early), but here a
+             * helper now treats anything but SERVICE_STOPPED as "running" (to
+             * fix the restart-wait loop giving up too early), but here a
              * SERVICE_STOP_PENDING service can't accept a fresh SERVICE_CONTROL_STOP
              * -- ControlService() would fail with ERROR_SERVICE_CANNOT_ACCEPT_CTRL,
              * skipping DeleteService() below and reporting the whole uninstall as
@@ -390,15 +389,14 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 // actively reporting every couple of seconds, but fim_db_teardown() below has no
                 // progress reporting of its own and can run up to FIM_TEARDOWN_BUDGET_MS. Without
                 // re-widening the hint here first, the SCM would only be covered for the last few
-                // seconds stop_wmodules() reported, not this next phase (issue 38428).
+                // seconds stop_wmodules() reported, not this next phase.
                 report_stop_progress(ossecServiceStatus.dwCheckPoint + 1, FIM_TEARDOWN_BUDGET_MS + 5000);
                 fim_db_teardown();
 #endif
                 // report_stop_progress() (called from stop_wmodules()'s join loop, above)
                 // leaves dwCheckPoint/dwWaitHint at whatever it last wrote to signal an
                 // in-progress stop; a terminal state has no pending operation left to
-                // report, so both must go back to zero here rather than being left stale
-                // (issue 38428).
+                // report, so both must go back to zero here rather than being left stale.
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 ossecServiceStatus.dwCheckPoint              = 0;
                 ossecServiceStatus.dwWaitHint                = 0;
@@ -437,7 +435,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
 #ifdef OSSECHIDS
     /* Must run before RegisterServiceCtrlHandler() below: from that point on,
      * the SCM can invoke OssecServiceCtrlHandler() -> stop_wmodules(), which
-     * takes wm_lifecycle_lock (issue 38428). wm_lifecycle_lock_init() is only
+     * takes wm_lifecycle_lock. wm_lifecycle_lock_init() is only
      * defined in win_utils.c (win32_common), which this file is also compiled
      * without (win32_service_rk, for the setup/UI tools) -- so this call must
      * stay inside the same OSSECHIDS guard as stop_wmodules()/local_start(). */

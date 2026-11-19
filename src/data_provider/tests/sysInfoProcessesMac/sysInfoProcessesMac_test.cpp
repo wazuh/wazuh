@@ -17,7 +17,7 @@
 using ::testing::_;
 using ::testing::Return;
 
-// wazuh#39126 regression: proc_listallpids() takes its buffersize argument in
+// Regression: proc_listallpids() takes its buffersize argument in
 // bytes, not in pid_t count. Pins that listAllPids() always multiplies the
 // process count reported by kern.maxproc by sizeof(pid_t) before calling it.
 TEST(SysInfoProcessesMacTest, ListAllPids_PassesBufferSizeInBytesNotCount)

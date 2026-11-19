@@ -491,7 +491,7 @@ TEST_F(HcInterfaceTest, SetAgentIdentityValidatesTheMaterial)
     hc_destroy(handle);
 }
 
-// hc_enroll() (#38465): handle-less and synchronous, so no hc_create() ever
+// hc_enroll(): handle-less and synchronous, so no hc_create() ever
 // runs in these tests -- the whole point is that it works without one.
 
 TEST(HcEnrollTest, NullArgumentsAreRejected)

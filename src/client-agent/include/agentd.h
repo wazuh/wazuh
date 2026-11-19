@@ -88,12 +88,12 @@ void start_agent(int is_startup);
 void w_agentd_populate_metadata(void);
 
 /**
- * @brief Runs one enrollment attempt over HTTPS (#38465): build the /enroll
+ * @brief Runs one enrollment attempt over HTTPS: build the /enroll
  *        request, send it via the same transport/TLS material every other
  *        endpoint uses (agt->server[0], agt->ssl -- there is no per-attempt
  *        server selection any more), and parse the response. On success,
  *        reloads the in-memory `keys` and sets the crypto method.
- * @return W_ENROLL_OK on success, otherwise the reason it failed (#39064). The caller must feed
+ * @return W_ENROLL_OK on success, otherwise the reason it failed. The caller must feed
  *         that status to w_enrollment_apply_policy() rather than assume every failure is worth
  *         another attempt -- a credential the manager judged and refused never becomes valid.
  * */

@@ -132,7 +132,7 @@ TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
     EXPECT_EQ("https://10.0.0.1:8443", ModuleConfig::fromC(ipv4).baseUrl());
 }
 
-// #38492/#38491: reverse-proxy path segment, <endpoint>. baseUrl() stays
+// Reverse-proxy path segment, <endpoint>. baseUrl() stays
 // deliberately unaware of it (BaseUrlFormat etc. above already pin that) --
 // the manager routes on the literal wire request-target (prefix included;
 // the bearer does not bind it), so the prefix is folded into
@@ -261,7 +261,7 @@ TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
     EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
 }
 
-// #39123: no OS bundle alone no longer fails closed here -- CurlPerformer's fallback still
+// No OS bundle alone no longer fails closed here -- CurlPerformer's fallback still
 // gets a chance to try system_fallback_ca_path at the first handshake. Both absent (the
 // test above) is the one combination this static check can already rule out.
 TEST(ModuleConfigTest, SystemModeValidWithoutBundleWhenFallbackAnchorConfigured)
@@ -352,7 +352,7 @@ TEST(ModuleConfigTest, ClientCertValidWhenBothReadable)
     EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
 }
 
-// validateTransport() (#38465): the same TLS/client-cert matrix as validate(),
+// validateTransport(): the same TLS/client-cert matrix as validate(),
 // but callable with no agent_id -- an enrolling agent has none yet.
 
 TEST(ModuleConfigTest, ValidateTransportIgnoresMissingAgentId)

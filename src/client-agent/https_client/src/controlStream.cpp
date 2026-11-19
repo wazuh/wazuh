@@ -480,7 +480,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
     }
 
     // Top-level (not nested under "agent"), like settings_hash: the publication of the CA
-    // bundle this node serves and vouches for. Absent means a manager predating #39321, which
+    // bundle this node serves and vouches for. Absent means a manager predating CA rotation, which
     // is a different thing from a manager reporting 0 (a bundle nobody published) -- the first
     // says nothing about CA bundles at all, so both are inaction but neither is an error.
     const auto caGeneration = parsed.find("ca_generation");
@@ -533,7 +533,7 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
     // observe() is called every Notify that carries the field, not only when
     // it looks new: its no-op path still reports the current pending state,
     // which is what lets a restart resume an outstanding request without any
-    // separate recovery call (A10).
+    // separate recovery call.
     const VdOffsetObservation observation = m_vdOffsetStore.observe(offset);
 
     if (observation.pending)
@@ -904,7 +904,7 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome)
 
     if (outcome == OutcomeClass::AuthFail)
     {
-        // Since #39064 only `unknown_agent` costs the agent its identity, and the AuthGate is where
+        // Only `unknown_agent` costs the agent its identity, and the AuthGate is where
         // that decision is made (RetrySender::send reads the class off the body). So the gate, not
         // the status, is what says whether this 401 was fatal: OutcomeClass::AuthFail is still
         // "a 401 was observed" for all eight classes.
@@ -914,11 +914,11 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome)
         // Idle there), slows the cadence, drops an armed settings refresh, and can only be left
         // through CredentialRenewed: an event meaning "a new key is in place", which would be a
         // lie when nothing was renewed. The net effect was a full re-registration and an
-        // AUTH_ERROR -> REGISTERED flap on every retryable 401 -- the disruption #39064 set out to
+        // AUTH_ERROR -> REGISTERED flap on every retryable 401 -- the disruption the failure classes set out to
         // remove for exactly these classes.
         //
         // "Latched" is the incident count, not only paused(): a key renewed from inside
-        // on_reenroll_required can already have released the gate here (#38329).
+        // on_reenroll_required can already have released the gate here.
         return takeAuthIncident() ? ControlStateMachine::Event::AuthFailed
                : ControlStateMachine::Event::TransientFailure;
     }

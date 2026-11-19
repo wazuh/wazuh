@@ -15,7 +15,7 @@
 #include <stdexcept>      // For std::runtime_error
 #include <string>         // For std::string and std::wstring
 #include <locale>         // For localization utilities (if needed for string conversion)
-#include <chrono>         // For the bounded WMI enumeration wait (issue #38370)
+#include <chrono>         // For the bounded WMI enumeration wait
 
 // encodingWindowsHelper.h brings in winsock2.h, which has to precede the windows.h that
 // utilsWrapperWin.hpp's WMI headers pull in.
@@ -60,7 +60,7 @@ HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, 
 {
     // ConnectServer() has no timeout parameter of its own; WBEM_FLAG_CONNECT_USE_MAX_WAIT
     // plus an IWbemContext __MAX_WAIT property is WMI's own documented mechanism for
-    // bounding it instead of blocking indefinitely on an unresponsive Winmgmt (#38370).
+    // bounding it instead of blocking indefinitely on an unresponsive Winmgmt.
     // Creating/configuring that context object is a COM/WMI registration concern
     // unrelated to Winmgmt being hung; if it fails, fall back to the pre-existing
     // unbounded ConnectServer() call instead of failing hotfix collection outright, so
@@ -202,7 +202,7 @@ void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHe
     {
         // Re-checked every iteration (success or timeout) so a Winmgmt that keeps
         // returning objects without ever finishing can't block forever either
-        // (see #38370: previously WBEM_INFINITE let this block forever).
+        // (previously WBEM_INFINITE let this block forever).
         const auto now = std::chrono::steady_clock::now();
 
         if (now >= deadline)

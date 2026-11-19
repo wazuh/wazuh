@@ -92,7 +92,7 @@ class HttpsClientFacade final
         // m_clock wraps m_systemClock with a runtime-correctable offset: every
         // stream below is handed IClock& m_clock, so a skew RetrySender learns
         // from any one manager response corrects every sender's signing
-        // timestamp from the next request on (#37828 follow-up). Declaration
+        // timestamp from the next request on. Declaration
         // order matters here -- m_systemClock must construct before m_clock,
         // which holds a reference to it.
         SystemClock m_systemClock;

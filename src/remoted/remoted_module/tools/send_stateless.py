@@ -227,7 +227,7 @@ def scenario_body_too_large(agent_id, agent_key):
     # Between AuthConfig's body cap (5 MiB) and the transport's own hard cap
     # (10 MiB, see httpServerConfig.cpp) on purpose: big enough for AuthMiddleware
     # to reject it with a clean 413, not so big RESTinio drops the connection
-    # first with no response at all. Both caps moved in #39129 -- keep the two
+    # first with no response at all. Both caps have moved before -- keep the two
     # constants above in step with them or this scenario silently turns into
     # scenario_transport_body_too_large and stops covering the 413 path at all.
     target = prefixed("/stateless")

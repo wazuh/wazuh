@@ -9,7 +9,7 @@
 
 /**
  * @file enrollment.h
- * @brief Agent-side enrollment over HTTPS (#38465): build the /enroll JSON
+ * @brief Agent-side enrollment over HTTPS: build the /enroll JSON
  *        request and parse its response, entirely decoupled from transport.
  *
  * Replaces src/shared/src/enrollment_op.c's OSSEC-wire-protocol client. This
@@ -29,7 +29,7 @@ typedef struct w_enroll_request_t {
     char *body_json; /**< Heap-allocated JSON body. Freed by w_enroll_request_destroy(). */
     char *password;  /**< Heap-allocated password, or NULL for mTLS/open mode
                        *   (no bearer token). Freed by w_enroll_request_destroy(). */
-    /** Re-enrollment credential (#39064), both NULL unless this agent holds a
+    /** Re-enrollment credential, both NULL unless this agent holds a
      *  re-enrollment secret: the `kid` is the agent's own canonical id and the key is
      *  the HKDF (label WAZUH-REENROLL-KEY) of the stored secret, as 64 hex characters.
      *  When set they take priority over `password` inside the transport module, which
@@ -41,17 +41,17 @@ typedef struct w_enroll_request_t {
 
 /**
  * @brief Validates the local enrollment config and builds the /enroll JSON
- *        body + password (#38465). Pure: no transport, no globals touched
+ *        body + password. Pure: no transport, no globals touched
  *        besides reading agt->enrollment/keys.
  *
- * Body shape: {"name","version","groups"?,"ip"?,"key_hash"?} per the #38438
+ * Body shape: {"name","version","groups"?,"ip"?,"key_hash"?} per the /enroll
  * contract. "ip" encodes the same 3 cases the legacy IP:'...' field did:
  * an explicit agent_address, the literal "src" for use_source_ip=yes, or
  * omitted entirely (default -- the manager decides). "key_hash" is the SHA1
  * of the current client.keys entry (w_get_key_hash()), present only when one
  * exists (absent on first enrollment).
  *
- * Credentials, in the order they are preferred (#39064): this agent's own
+ * Credentials, in the order they are preferred: this agent's own
  * re-enrollment secret if it holds one, otherwise the configured
  * authorization_pass_path. The narrow, per-agent credential beats the
  * fleet-wide one; the enrollment token's own credential is not read here at

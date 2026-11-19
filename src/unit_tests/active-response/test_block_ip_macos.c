@@ -112,7 +112,7 @@ static void expect_pf_enabled(void) {
     will_return(__wrap_wpclose, 0);
 }
 // ============================================================================
-// try_route_macos: new in this PR, the fallback wazuh/wazuh#39192 was missing
+// try_route_macos: new in this PR, the fallback that was missing
 // ============================================================================
 
 void test_try_route_macos_binary_not_found(void **state) {
@@ -492,7 +492,7 @@ void test_try_route_macos_zero_exit_with_stderr_is_failure(void **state) {
 
 // ============================================================================
 // block_ip_macos_main: exercises the actual pf -> hostsdeny -> route table
-// wired up in main() itself, the one piece #39192's fix touches that no
+// wired up in main() itself, the one piece the fix touches that no
 // other test in this file invokes -- everything above tests the individual
 // try_*_macos functions or (in test_firewall_helpers.c) a stubbed-out chain,
 // neither of which runs the real methods[] literal through execute_firewall_chain.
@@ -523,7 +523,7 @@ void test_block_ip_macos_main_stock_install_falls_back_to_route(void **state) {
     expect_value(__wrap_access, __type, F_OK);
     will_return(__wrap_access, -1);
 
-    // route succeeds: the #39192 fallback this whole PR is about
+    // route succeeds: the fallback this whole PR is about
     char *route_path = strdup("/sbin/route");
     expect_string(__wrap_get_binary_path, command, "route");
     will_return(__wrap_get_binary_path, route_path);

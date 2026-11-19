@@ -28,7 +28,7 @@ class ScaTest : public ::testing::Test
         {
             m_logOutput.clear();
 
-            // #38601: syncModule() now asks the shared-memory provider for this agent's id, and
+            // syncModule() now asks the shared-memory provider for this agent's id, and
             // that provider is a file at a path relative to the working directory. Resetting it
             // is not enough on its own: sca_recovery_test publishes agent id "001" into the very
             // same file from its own SetUp, so under a parallel ctest that write can land after
@@ -572,7 +572,7 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
     EXPECT_NE(m_logOutput.find("SCA module running"), std::string::npos);
 }
 
-// issue 38428: a first scan that silently never ran used to have no
+// A first scan that silently never ran used to have no
 // persisted trace, so a skipped scan_on_start scan waited a full
 // m_scanInterval before the next attempt. first_scan_completed (in-memory
 // mirror: m_firstScanCompleted) closes that: false until a scan genuinely
@@ -733,7 +733,7 @@ TEST_F(ScaTest, Run_CheckThatThrowsDoesNotStopTheScan)
     EXPECT_TRUE(scaMock->getFirstScanCompletedForTest());
 }
 
-// issue 38428: first_scan_completed is write-once for the installation's whole
+// first_scan_completed is write-once for the installation's whole
 // lifetime, so on an agent already past its first-ever scan it must NOT be
 // the thing that decides whether a scan_on_start retry is still owed --
 // otherwise a scan interrupted by a pause on such an agent would silently
@@ -995,7 +995,7 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
     dbSync->closeAndDeleteDatabase();
 }
 
-// --- Manager-not-ready log-level decision (issue #37553) ------------------------------------------
+// --- Manager-not-ready log-level decision ---------------------------------------------------------
 // These use MockDBSync so the log-level decision is exercised in isolation from real DB/transport.
 
 namespace
@@ -1062,7 +1062,7 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
 }
 
 // While the local sync intake itself isn't reachable yet (streak within tolerance), the periodic
-// sync is reported at INFO as deferred, not as a WARNING (issue #38621).
+// sync is reported at INFO as deferred, not as a WARNING.
 TEST_F(ScaTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1165,7 +1165,7 @@ TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
 // The very first sync after an agent restart clears the manager's index before resending a full
 // snapshot. While the manager is briefly not ready for that DataClean (the common case right after
 // a restart/upgrade), it is reported at INFO as deferred, not as a WARNING -- same tolerance as the
-// periodic path above. (#38579)
+// periodic path above.
 TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyWithinToleranceLogsDeferred)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1195,7 +1195,7 @@ TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyWithinToleranceLo
 }
 
 // Past the tolerance, a DataClean that keeps failing before the initial sync escalates to a
-// WARNING naming the streak -- same as any other sync failure. (#38579)
+// WARNING naming the streak -- same as any other sync failure.
 TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyPastToleranceLogsWarning)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1221,7 +1221,7 @@ TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyPastToleranceLogs
 
 // While the manager is briefly not ready (streak within tolerance), a DataClean failure during
 // recovery is reported at INFO as deferred too, not as an immediate WARNING -- same policy as the
-// periodic sync path, not just the past-tolerance escalation covered below. (#38579)
+// periodic sync path, not just the past-tolerance escalation covered below.
 TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDeferred)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1278,7 +1278,7 @@ TEST_F(ScaTest, PerformRecovery_ResendFailsAfterDataCleanSaysQueuedRowsGoWithNex
 
 // performRecovery() has no periodic-cycle caller to log its outcome for it (unlike syncModule()),
 // so a DataClean failure during recovery must still be visible on its own -- at the same tolerance
-// level as any other sync failure, not silently dropped. (#38579)
+// level as any other sync failure, not silently dropped.
 TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1307,7 +1307,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
 // logSyncFailure() treats localTransportUnavailable the same as managerNotReady (same tolerance,
 // same escalation) -- companion to the ManagerNotReady pair above, covering the local-socket-down
 // case that only became reachable through performRecovery() once it started routing through
-// notifyDataClean(). (#38579)
+// notifyDataClean().
 TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranceLogsDeferred)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -1465,7 +1465,7 @@ TEST_F(ScaTest, ReleaseResources_DropsEveryDbSyncOwner)
     EXPECT_TRUE(dbSyncWatcher.expired());
 }
 
-// End-to-end form of the same bug, asserting on the symptom reported in #38069: DBSync writes go
+// End-to-end form of the same bug, asserting on the reported symptom: DBSync writes go
 // into a long-lived transaction that only ~SQLiteDBEngine commits, so while any owner survives the
 // database file stays under a RESERVED lock and the next connection fails with
 // "sqlite: database is locked" -- which on Windows is the incoming agent process after a WPK upgrade.

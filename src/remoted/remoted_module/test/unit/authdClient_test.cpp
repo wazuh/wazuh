@@ -102,7 +102,7 @@ TEST(AuthdClientTest, SuccessfulAddReturnsAgentData)
 
 TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
 {
-    // The fifth field of authd's answer (issue #38993): parsed verbatim when present, empty when an
+    // The fifth field of authd's answer: parsed verbatim when present, empty when an
     // authd that predates it answers with the four classic fields (the test above).
     const std::string path = makeUniqueSocketPath("authd_client_reenroll_secret");
     FakeUdsServer server(
@@ -125,7 +125,7 @@ TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
 
 TEST(AuthdClientTest, ReenrollCredentialTravelsAsArgumentsReenroll)
 {
-    // Re-enrollment (issue #38993): the agent id the bearer named and the bearer itself go to authd
+    // Re-enrollment: the agent id the bearer named and the bearer itself go to authd
     // verbatim as `reenroll` = {kid, bearer} -- the master verifies them, this client only forwards --
     // and a re-enrollment never carries a token_id (the two credentials are exclusive on authd's side).
     const std::string path = makeUniqueSocketPath("authd_client_reenroll");

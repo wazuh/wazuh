@@ -72,9 +72,9 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
                                          int *master_error_code) {
     check_expected(name);
     check_expected(ip);
-    // NULL when the enrollment carried no token; the id text otherwise (#38993).
+    // NULL when the enrollment carried no token; the id text otherwise.
     check_expected(token_id);
-    // NULL for a first enrollment; the agent id and its bearer, verbatim, for a re-enrollment (#38993).
+    // NULL for a first enrollment; the agent id and its bearer, verbatim, for a re-enrollment.
     check_expected(reenroll_kid);
     check_expected(reenroll_bearer);
     // NULL for a local request; the agent's peer address when the request came from the network.
@@ -156,7 +156,7 @@ static void test_local_add_clustered_success(void **state) {
     assert_string_equal(cJSON_GetObjectItem(data, "ip")->valuestring, "any");
     assert_string_equal(cJSON_GetObjectItem(data, "key")->valuestring,
                         "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
-    // The master's re-enrollment secret (#38993) is handed through verbatim...
+    // The master's re-enrollment secret is handed through verbatim...
     assert_string_equal(cJSON_GetObjectItem(data, "reenroll_secret")->valuestring,
                         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     cJSON_Delete(response);
@@ -442,12 +442,12 @@ static void test_optional_string_arg_rejects_non_string_types(void **state) {
 }
 
 
-// ---------------------------------------------------------------- enrollment tokens (#38993)
+// ---------------------------------------------------------------- enrollment tokens
 //
 // The store and the X509 checks run for real on files under a private temporary directory (the
 // same way test_purge_journal.c drives the deletion journal); only the `remote` section of the
 // configuration is handed in through __wrap_w_mconf_section, pointing at those files. Certificates
-// are the frozen E4 fixtures: the CA whose SPKI pin is 6091dc36...0aa2, the leaf it signed for
+// are the frozen fixtures: the CA whose SPKI pin is 6091dc36...0aa2, the leaf it signed for
 // `wazuh-1` (SAN 127.0.0.1, wazuh-manager, localhost, host.docker.internal, wazuh-1) and a
 // self-signed certificate that only names loopback.
 
@@ -583,7 +583,7 @@ static int setup_token_env(void **state) {
     assert_int_equal(chdir(token_env_dir), 0);
     assert_int_equal(mkdir("etc", 0770), 0);
     assert_int_equal(mkdir("etc/certs", 0770), 0);
-    // Every add and every rotation journals its credential before answering (issue #39078, H03),
+    // Every add and every rotation journals its credential before answering,
     // so without this directory the whole suite would answer 9031.
     assert_int_equal(mkdir("queue", 0770), 0);
     assert_int_equal(mkdir("queue/authd", 0750), 0);
@@ -723,7 +723,7 @@ static void test_token_create_ok(void **state) {
     assert_true(cJSON_IsNumber(expires));
     assert_in_range((long)expires->valuedouble, (long)before + ETOKEN_DEFAULT_TTL, (long)before + ETOKEN_DEFAULT_TTL + 5);
 
-    // The token text is the E4 codec's: adr, pin and id||secret round-trip.
+    // The token text is the codec's: adr, pin and id||secret round-trip.
     w_etoken_t token;
     assert_int_equal(w_etoken_decode(data_string(response, "token"), &token), ETOKEN_OK);
     assert_string_equal(token.adr, "wazuh-1");
@@ -813,7 +813,7 @@ static void test_token_create_embed_ca_never_carries_a_private_key(void **state)
     (void)state;
     EXPECT_LOG_INFO();
 
-    // The misprovisioned input of issue #39078 (H01): the CA and its private key in one file. What
+    // The misprovisioned input: the CA and its private key in one file. What
     // the operator asked to embed is the trust anchor, and that is all that may travel.
     char *combined = NULL;
     os_calloc(strlen(CA_PEM) + 128, sizeof(char), combined);
@@ -1333,7 +1333,7 @@ static void test_token_revoke_storage_failure_is_not_a_missing_token(void **stat
 
     // Point the store at a directory that does not exist: every write fails from here on. The
     // token is still there, so answering 9022 would send the operator looking for a token that
-    // exists when what they have to do is retry (issue #39078, H04).
+    // exists when what they have to do is retry.
     etoken_store_init("etc/no-such-directory/enrollment_tokens.json");
 
     snprintf(request, sizeof(request), "{\"function\":\"token_revoke\",\"arguments\":{\"id\":\"%s\"}}", id);
@@ -1468,7 +1468,7 @@ static void test_local_add_returns_and_queues_a_reenroll_secret(void **state) {
     cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"rs-agent\",\"ip\":\"any\"}}");
     assert_int_equal(response_error(response), 0);
     const char *secret = data_string(response, "reenroll_secret");
-    // 64 lowercase hex chars (#38993), generated next to the key...
+    // 64 lowercase hex chars, generated next to the key...
     assert_true(OS_IsValidReenrollSecret(secret));
     assert_string_not_equal(secret, data_string(response, "key"));
     // ...and queued for the writer, which is the only way it reaches global.db (never client.keys).
@@ -1723,7 +1723,7 @@ static void test_add_on_worker_forwards_its_source(void **state) {
     config.worker_node = FALSE;
 }
 
-// ---------------------------------------------------------------- re-enrollment (#38993)
+// ---------------------------------------------------------------- re-enrollment
 
 #define REENROLL_BEARER "eyJhbGciOiJIUzI1NiIsImtpZCI6IjAwMSIsInR5cCI6IndhenVoLWVucm9sbCtqd3QifQ.claims.signature"
 #define REENROLL_SECRET "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
@@ -1885,7 +1885,7 @@ static void test_reenroll_rotates_key_and_secret_keeping_the_id(void **state) {
     cJSON_Delete(response);
 }
 
-/* --- The credential is written down before it is handed out (issue #39078, H03) -------------- */
+/* --- The credential is written down before it is handed out ------------------------------- */
 
 static void test_an_accepted_enrollment_is_journaled_with_its_credential(void **state) {
     (void)state;
@@ -2608,7 +2608,7 @@ static void test_reenroll_twice_with_the_same_bearer_rotates_once(void **state) 
     add_agent("twice-agent", id, sizeof(id), old_key, sizeof(old_key));
 
     // First rotation: accepted, queued, and NOT yet persisted -- the writer does not run in these
-    // tests, which is exactly the window the finding is about (issue #39078, H02).
+    // tests, which is exactly the window the finding is about.
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
     will_return(__wrap_wdb_get_agent_info, agent_row(atoi(id), REENROLL_SECRET));
     expect_verify(id, REENROLL_SECRET, W_REENROLL_OK);

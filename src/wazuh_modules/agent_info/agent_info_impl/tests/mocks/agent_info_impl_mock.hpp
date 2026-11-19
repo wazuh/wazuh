@@ -8,7 +8,7 @@
 
 /// @brief Test-only subclass exposing the seams AgentInfoImpl doesn't need in production:
 /// injecting a sync protocol mock and forwarding the private performIntegritySync() so its
-/// SyncModuleResult classification (issue #38621) can be exercised directly.
+/// SyncModuleResult classification can be exercised directly.
 class AgentInfoImplMock : public AgentInfoImpl
 {
     public:

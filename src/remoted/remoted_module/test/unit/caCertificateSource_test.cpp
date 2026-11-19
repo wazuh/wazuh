@@ -11,9 +11,9 @@
 /**
  * @file caCertificateSource_test.cpp
  * @brief What the CA file turns into: certificates we re-serialise, a verdict from the same read,
- *        and a cache keyed by content so a replacement is seen at once (issue #39078, H01 and H06)
+ *        and a cache keyed by content so a replacement is seen at once
  *        -- plus the publication that verdict now carries, and the generation the notify path
- *        reads through descriptor() (issue #39319).
+ *        reads through descriptor().
  *
  * Real certificates throughout (testTlsServer.hpp's throwaway PKI): the point of the class is what
  * OpenSSL makes of the bytes, so parsing them for real is the test. The published bundles are built
@@ -167,7 +167,7 @@ namespace
         }
     };
 
-    // loadCertificates() is gone (issue #39318): CaCertificateSource is the one reader now. This is
+    // loadCertificates() is gone: CaCertificateSource is the one reader now. This is
     // the read-only half a plain loadCertificates() call used to give makePki() below -- the
     // bounded/failure-aware half is what CaCertificateSource itself is under test for.
     std::vector<remoted::http::X509Ptr> readPemCertificates(const std::string& path)
@@ -497,7 +497,7 @@ TEST(CaCertificateSource, AMissingFileKeepsThePreviousSnapshot)
 
     ::remove(path.c_str());
 
-    // A failed read is a window, not a decision (issue #39318): the last good snapshot keeps
+    // A failed read is a window, not a decision: the last good snapshot keeps
     // being served, with the failure recorded alongside it for the callers that own a logger.
     const auto firstFailure = source.snapshot();
     EXPECT_EQ(firstFailure.certificates, 1U);
@@ -564,7 +564,7 @@ TEST(CaCertificateSource, StatusFromCarriesTheReadFailure)
 {
     // statusFrom() is the one place a CaCertificateSnapshot becomes a TlsCertificateSnapshot (at
     // start and on every monitor tick): what it copies from a good read, and that a read failure
-    // travels through it too, without erasing the last good verdict (issue #39318).
+    // travels through it too, without erasing the last good verdict.
     auto pki = makePki("casource-statusfrom");
     ASSERT_TRUE(pki.has_value());
     remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
@@ -1110,7 +1110,7 @@ TEST(CaCertificateSource, RefusesToVouchOverTheByteCap)
     EXPECT_EQ(snapshot.matchesLeaf, true);
 }
 
-// GET /tls's per-certificate view (issue #39320): each entry says whether THIS certificate signs
+// GET /tls's per-certificate view: each entry says whether THIS certificate signs
 // the leaf -- the plain signature fact. The bundle-level matchesLeaf is a different question (does
 // the leaf CHAIN to the bundle, what /cacerts' 503 decides) and is asserted separately. The sizes and
 // the content hash ride along from the same read.
@@ -1174,7 +1174,7 @@ TEST(CaCertificateSource, AnExpiredCaSignsTheLeafButDoesNotValidateIt)
     const auto snapshot = source.snapshot();
 
     // signs_active_leaf is the plain signature: still true for an expired CA. The two chain verdicts
-    // both say no -- matchesLeaf (leafChainsToAnyCa, the 503) checks the validity window since C33,
+    // both say no -- matchesLeaf (leafChainsToAnyCa, the 503) checks the validity window,
     // and chain_valid is what an agent's verification would reach. GET /tls shows all three.
     ASSERT_EQ(snapshot.entries.size(), 1U);
     EXPECT_TRUE(snapshot.entries[0].signsLeaf);
@@ -1209,10 +1209,10 @@ TEST(CaCertificateSource, AnEmptyPathNeverReadsAnything)
 }
 
 // ---------------------------------------------------------------------------
-// leafSignerPem(): the ONE certificate the legacy WPK delivery may hand a 4.x agent (RF-7, C7).
+// leafSignerPem(): the ONE certificate the legacy WPK delivery may hand a 4.x agent.
 // pkg_installer.sh refuses a root-ca.pem drop-in with more than one certificate in it, so what
 // matters here is not "a CA" but WHICH one, alone, and with no publication block around it -- the
-// one the served leaf CHAINS to, asked of each candidate on its own (C33), not one that merely
+// one the served leaf CHAINS to, asked of each candidate on its own, not one that merely
 // signs it.
 // ---------------------------------------------------------------------------
 
@@ -1275,7 +1275,7 @@ TEST(CaCertificateSourceLeafSignerPem, ReturnsZeroWhenTheLeafChainsToNothingInTh
 
     // A perfectly good bundle of somebody else's CA: servable (the endpoint still answers 404/503
     // by its own rules), but there is no certificate here an upgrading agent could pin and still
-    // reach this listener -- so nothing is delivered, and the poller logs why (CA-18).
+    // reach this listener -- so nothing is delivered, and the poller logs why.
     const auto path = pki->files.caCertPath + ".foreign-signer";
     write(path, sealedDocument(readPemCertificates(foreign->files.caCertPath), kPublication));
     remoted::test::ScratchFileCleanup cleanupPath {{path}};
@@ -1337,7 +1337,7 @@ TEST(CaCertificateSourceLeafSignerPem, ReturnsMinusOneWhenCapacityIsTooSmall)
 }
 
 // ---------------------------------------------------------------------------
-// leafSignerPem() delivers an ANCHOR, not merely a signer (issue #39319, C26, objection 1).
+// leafSignerPem() delivers an ANCHOR, not merely a signer.
 // `src/init/pkg_installer.sh` rejects a delivered root-ca.pem that is not a CA (no basicConstraints
 // CA:TRUE) or whose validity window does not contain the moment of the upgrade -- and a rotation's
 // overlap is exactly where two re-issues of the SAME key both sign the served leaf, so "the first
@@ -1420,8 +1420,8 @@ TEST(CaCertificateSourceLeafSignerPem, PrefersTheValidReissueOverTheExpiredOneTh
                                                   /*isCa=*/true);
 
     // It really does sign the leaf: without this the test could pass for the wrong reason (the
-    // expired certificate being skipped as "not a signer" rather than as "not installable"). Since
-    // C33 the two facts are told apart here: the SIGNATURE is on the leaf, and the leaf still does
+    // expired certificate being skipped as "not a signer" rather than as "not installable").
+    // The two facts are told apart here: the SIGNATURE is on the leaf, and the leaf still does
     // not chain to it, which is why either rule refuses it.
     std::vector<remoted::http::X509Ptr> expiredOnly;
     expiredOnly.push_back(retainCertificate(expired.get()));
@@ -1452,7 +1452,7 @@ TEST(CaCertificateSourceLeafSignerPem, DeliversNothingWhenEveryCaThatSignsHasExp
 {
     // Only the expired re-issue is left: 0, not "the best available". An anchor the installer
     // rejects leaves the agent with none at all; delivering nothing leaves the upgrade recoverable
-    // and the poller says why (CA-18).
+    // and the poller says why.
     auto pki = makeMemoryPki("expired-only", -7200, -3600);
 
     std::vector<remoted::http::X509Ptr> bundle;
@@ -1595,7 +1595,7 @@ TEST(CaCertificateSourceLeafSignerPem, DeliversNothingWhenTheOnlyAnchorHasNoBasi
 {
     // The same certificate alone: 0, not "the only one there is". Handing it over would leave the
     // upgraded 4.x agent with a root-ca.pem its own installer deletes -- no anchor at all -- while
-    // delivering nothing leaves the upgrade recoverable and the poller says why (CA-18).
+    // delivering nothing leaves the upgrade recoverable and the poller says why.
     auto pki = makeMemoryPki("no-basic-constraints-alone");
     auto noBasicConstraints = remoted::test::makeCertificate("no-basic-constraints-alone-ca",
                                                              -3600,
@@ -1629,7 +1629,7 @@ TEST(CaCertificateSourceLeafSignerPem, DeliversNothingWhenTheOnlyAnchorHasNoBasi
 
 TEST(CaCertificateSourceLeafSignerPem, SkipsACaWithTheSameKeyAndAnotherSubject)
 {
-    // The back door of C33: an impostor CA that is current, CA:TRUE and holds the issuing key, so
+    // The back door: an impostor CA that is current, CA:TRUE and holds the issuing key, so
     // its signature verifies the served leaf -- but the leaf names the real CA as its issuer, so
     // nothing chains to it. A 4.x agent whose installer accepted this file would keep an anchor its
     // own TLS then rejects on every connection, which is the failure this export exists to prevent.
@@ -1711,7 +1711,7 @@ TEST(CaCertificateSourceDescriptor, RevalidatesAtMostOnceWithinTheRefreshWindow)
     CaCertificateSource source {path, pki->leaf.get(), reader, clock};
 
     // A notify storm asks this once per notify. Inside the window they cost one read between them:
-    // that is the whole budget the feature is allowed on the hot path (C18, CA-15).
+    // that is the whole budget the feature is allowed on the hot path.
     for (int call = 0; call < 100; ++call)
     {
         const auto descriptor = source.descriptor();
@@ -1825,7 +1825,7 @@ TEST(CaCertificateSourceDescriptor, FollowsTheClockOnceTheRefreshWindowElapses)
     EXPECT_EQ(*descriptor.generation, kPublication);
 
     // The CA expires inside the refresh window: the last verdict stands until the window closes,
-    // the one second of staleness the notify path is allowed (CA-15).
+    // the one second of staleness the notify path is allowed.
     *verdict.now = start + 7000;
     descriptor = source.descriptor();
     ASSERT_TRUE(descriptor.generation.has_value());
@@ -1866,8 +1866,8 @@ TEST(CaCertificateSourceDescriptor, IsNulloptWhenNoBundleIsServable)
 }
 
 // ---------------------------------------------------------------------------
-// CaCertificateSourceRecord: the publication record wired into the source (issue #39319, §2.3 of
-// 02-diseno.md). Real CaPublicationRecord objects backed by a throwaway directory throughout --
+// CaCertificateSourceRecord: the publication record wired into the source. Real CaPublicationRecord
+// objects backed by a throwaway directory throughout --
 // the same object flushPendingRecord() would use in production, only pointed at a temp path
 // instead of var/run/remoted-ca-bundle/.
 // ---------------------------------------------------------------------------
@@ -1937,7 +1937,7 @@ TEST(CaCertificateSourceRecord, UnreadableRecordDoesNotChangePublication)
 
     // The publication a record we could not read cannot invent: still exactly what the guard
     // computes from the file, and silent about it -- neither "never published" nor "changed
-    // outside the tool" can be concluded from a record that could not be read (C23).
+    // outside the tool" can be concluded from a record that could not be read.
     const auto snapshot = source.snapshot();
     EXPECT_EQ(snapshot.publication, 0);
     EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_block);
@@ -2212,7 +2212,7 @@ TEST(CaCertificateSourceRecord, RestartWithAnExistingRecordSkipsFirstTimeUnpubli
         auto source = makeRecordedSource(pki->files.caCertPath, pki->leaf.get(), initial, record, mailbox);
 
         EXPECT_EQ(source.snapshot().publication, 0);
-        EXPECT_TRUE(source.drainRecordEvents().empty()); // a restart, not a change (CA-14)
+        EXPECT_TRUE(source.drainRecordEvents().empty()); // a restart, not a change
     }
 }
 
@@ -2222,7 +2222,7 @@ TEST(CaCertificateSourceRecord, NoRecordInjectedNeverProducesAnEvent)
     ASSERT_TRUE(pki.has_value());
     remoted::test::ScratchFileCleanup cleanup {pki->files.files()};
 
-    // record == nullptr, mailbox == nullptr: exactly E1b's behaviour, on a bundle that would
+    // record == nullptr, mailbox == nullptr: exactly the behaviour without them, on a bundle that would
     // otherwise announce first_time_unpublished.
     CaCertificateSource source {pki->files.caCertPath, pki->leaf.get()};
     EXPECT_EQ(source.snapshot().publication, 0);
@@ -2480,7 +2480,7 @@ TEST(CaCertificateSourceRecord, SlowStoreDoesNotBlockCachedDescriptor)
 }
 
 // ---------------------------------------------------------------------------
-// Who says the events, and who pays for the disk (issue #39319, C26, objections 2 and 3). The
+// Who says the events, and who pays for the disk. The
 // events are noticed by the source and said by whoever owns a logger -- and there are now four such
 // callers, of which one (the control notify provider) must never wait for a write. Delivery is the
 // mailbox's (it orders the emission too); persisting is deliberately NOT part of it.
@@ -2531,7 +2531,7 @@ TEST(CaCertificateSourceRecord, NotifyStyleDeliveryLogsWithoutTouchingTheRecord)
 
     // A record that would work perfectly well -- and must nevertheless not be written by the
     // notify path: in steady state a manager sees nothing but keepalives, and that path may not
-    // pay for an fsync (RNF-2, C22). Every write(2) on it is counted, so "did not touch the disk"
+    // pay for an fsync. Every write(2) on it is counted, so "did not touch the disk"
     // is asserted rather than assumed.
     auto writes = std::make_shared<std::atomic<int>>(0);
     RecordIo counted;
@@ -2594,8 +2594,7 @@ TEST(CaCertificateSource, VerdictsFollowTheClockOnACacheHit)
     EXPECT_TRUE(snapshot.chainError.empty());
     EXPECT_EQ(snapshot.matchesLeaf, true);
 
-    // Same bytes, later clock: a cache hit that must not repeat a verdict the dates have overturned
-    // (PR #39370 review, r4037971554).
+    // Same bytes, later clock: a cache hit that must not repeat a verdict the dates have overturned.
     *clock.now = start + 7000;
     snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, false);

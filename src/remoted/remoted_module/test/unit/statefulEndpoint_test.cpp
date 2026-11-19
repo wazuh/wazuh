@@ -405,7 +405,7 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
     EXPECT_EQ(response.body, R"({"status":"checksum_mismatch"})");
 }
 
-// --- gateway + endpoint composition (doc 10 §3) ------------------------------------------------
+// --- gateway + endpoint composition ------------------------------------------------------------
 
 namespace
 {
@@ -447,7 +447,7 @@ namespace
     };
 } // namespace
 
-// The doc-10 §3 component chain in one piece: a bearer-authenticated agent request to /stateful
+// The component chain in one piece: a bearer-authenticated agent request to /stateful
 // runs through the real AuthGateway into the real handler, and the id that reaches the downstream
 // X-Wazuh-Agent-Id header is the AUTHENTICATED one -- written by the manager from the verified
 // token, never taken from anything the agent controls independently of the signature.

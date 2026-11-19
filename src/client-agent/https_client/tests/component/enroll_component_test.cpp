@@ -10,7 +10,7 @@
 
 /*
  * hc_enroll() end to end over the real curl path against a fork-based fake
- * manager (#38465). This is what the mocked EnrollClientTest suite cannot
+ * manager. This is what the mocked EnrollClientTest suite cannot
  * prove: a genuine TLS handshake, a real HTTP round trip, and a signature the
  * fake manager verifies with its own independently-invoked EnrollSigner --
  * the same reuse-the-production-signer idiom the rest of this component

@@ -964,7 +964,7 @@ def test_agent_add_authd_keeps_the_registered_ip(mock_wazuh_socket):
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_add_authd_unrecorded_transition(mock_wazuh_socket):
     """authd's 9031 means it refused the enrollment rather than hand out credentials it could not
-    record (issue #39078, H03), so the API says so instead of leaking the socket's own code."""
+    record, so the API says so instead of leaking the socket's own code."""
     agent = Agent('001')
     mock_wazuh_socket.return_value.receive.side_effect = WazuhError(9031, cmd_error=True)
 

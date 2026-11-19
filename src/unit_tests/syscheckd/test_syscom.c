@@ -342,7 +342,7 @@ void test_syscom_dispatch_getallconfig(void **state)
     /* "getallconfig" does not start with HC_GETCONFIG, so the outer prefix
      * guard in syscom_dispatch has to name it explicitly. When it did not, the
      * whole daemon answered "err Unrecognized command" and fim went missing
-     * from every /config document the agent pushed (#37843). */
+     * from every /config document the agent pushed. */
     char command[] = "getallconfig";
     char * output = NULL;
 

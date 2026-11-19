@@ -43,7 +43,7 @@ int win_debug_level;
  * wm_shutdown_requested and walking that same list. Without this, a stop
  * landing mid-startup could run stop_wmodules() against an empty/half-built
  * list, or local_start() could keep spawning module threads after a shutdown
- * was already requested (issue 38428). Initialized once, from
+ * was already requested. Initialized once, from
  * wm_lifecycle_lock_init(), before OssecServiceStart() registers the ctrl
  * handler that can call stop_wmodules() -- see win_service.c. */
 static CRITICAL_SECTION wm_lifecycle_lock;
@@ -54,7 +54,7 @@ static volatile LONG wm_lifecycle_lock_initialized = 0;
  * calls this first -- and directly from "wazuh-agent.exe start" (win_agent.c), which
  * never goes through OssecServiceStart() at all. Without the guard below, the "start"
  * CLI path would enter wm_start_modules_unless_shutting_down()'s EnterCriticalSection()
- * on a never-initialized CRITICAL_SECTION (issue 38428). Safe to call from both paths:
+ * on a never-initialized CRITICAL_SECTION. Safe to call from both paths:
  * InterlockedCompareExchange ensures InitializeCriticalSection() only actually runs once. */
 void wm_lifecycle_lock_init(void)
 {
@@ -65,7 +65,7 @@ void wm_lifecycle_lock_init(void)
 
 /* Defined in win_service.c: pumps dwCheckPoint/dwWaitHint back to the SCM
  * while stop_wmodules() is still joining module threads, so a slow shutdown
- * doesn't look hung to the SCM (issue 38428, defect #7). */
+ * doesn't look hung to the SCM. */
 extern void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms);
 
 void *sysinfo_module = NULL;
@@ -137,7 +137,7 @@ void *win_module_thread(void *arg)
     // the whole routine from running in the first place -- and unlike a bare
     // wm_shutdown_requested re-check, the same STARTUP_GATE_SHUTDOWN_REQUESTED result
     // also covers every other gated entry point (wazuh-syscheckd, wazuh-logcollector,
-    // execd), not just this one (issue 38428).
+    // execd), not just this one.
     //
     // gate_result is a snapshot from the moment startup_gate_wait_for_ready() last
     // queried the gate -- a real IPC round trip, not an instantaneous check -- so a
@@ -169,7 +169,7 @@ void stop_wmodules()
     // handler sets this; on Windows shutdown flows through here instead.
     //
     // Set under wm_lifecycle_lock, atomically with the check local_start() makes
-    // before building the wmodules list / spawning module threads (issue 38428):
+    // before building the wmodules list / spawning module threads:
     // whichever of the two gets there first, the other sees a consistent state --
     // either the list is untouched and local_start() is about to skip it entirely,
     // or local_start() already finished spawning everything and this walk below
@@ -202,7 +202,7 @@ void stop_wmodules()
     const DWORD MODULE_JOIN_BUDGET_MS = 20000;
     // Upper bound on how long any single wait slice blocks, so report_stop_progress()
     // gets called often enough that the SCM never sees a stale checkpoint for more
-    // than this long, even while waiting on one slow module (issue 38428, defect #7).
+    // than this long, even while waiting on one slow module.
     const DWORD CHECKPOINT_SLICE_MS = 2000;
     const ULONGLONG budget_start = GetTickCount64();
     DWORD checkpoint = 1;
@@ -274,8 +274,8 @@ void stop_wmodules()
  * "check the flag, then build the list, then spawn every thread" makes that
  * whole sequence atomic with respect to a concurrent stop_wmodules() call, so
  * a stop landing mid-startup either sees the pre-startup empty list (and
- * local_start() then sees the flag and skips out) or the fully-spawned list
- * (issue 38428, defects #2/#3/#5). The lock is only held across
+ * local_start() then sees the flag and skips out) or the fully-spawned list.
+ * The lock is only held across
  * w_create_thread() itself (fast, non-blocking) -- never across a module's
  * own subsequent Run(), which happens on that module's own thread. */
 STATIC void wm_start_modules_unless_shutting_down(void)
@@ -582,7 +582,7 @@ int local_start()
     wm_children_pool_init();
 
     /* Read wodle configuration and spawn a thread per configured module --
-     * unless a shutdown has already been requested (issue 38428). */
+     * unless a shutdown has already been requested. */
     wm_start_modules_unless_shutting_down();
 
     /* Initialize random numbers */

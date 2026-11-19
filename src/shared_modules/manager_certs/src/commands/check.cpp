@@ -135,7 +135,7 @@ namespace manager_certs
         // Per certificate FIRST, and only then the guards remoted vouches with. Both orders reject
         // exactly the same bundles -- these guards are the stricter set, so anything they refuse
         // vouch() would refuse too or the operator would want refused anyway -- but they differ in
-        // what the operator is told. Since leafChainsToAnyCa() started verifying the chain (C33),
+        // what the operator is told. Since leafChainsToAnyCa() started verifying the chain (ca_bundle D-8),
         // an expired CA or one without CA:TRUE already fails vouch()'s no_ca_signs_leaf, and
         // reporting that first would answer "no CA signs the served leaf" for a bundle whose real
         // problem is a date. `check` exists to say which certificate is wrong and why.

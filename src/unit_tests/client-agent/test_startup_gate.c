@@ -23,7 +23,7 @@
 
 extern agent *agt;
 
-/* One feed since #38030: the manager's SHA-256 config_hash against a SHA-256 of
+/* One feed now: the manager's SHA-256 config_hash against a SHA-256 of
  * the local merged.mg. The MD5 merged_sum feed went with the TCP data path. */
 
 static const char *MANAGER_SHA256 =

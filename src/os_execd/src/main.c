@@ -181,7 +181,7 @@ int main(int argc, char **argv)
     // previous order logged "wazuh-execd: INFO: Started" before the gate
     // could even be queried, making execd appear "Started" while every
     // module was in fact still blocked waiting for the manager's
-    // merged.mg hash to validate (issue 36239).
+    // merged.mg hash to validate.
     minfo(STARTUP_MSG, (int)getpid());
 
     ar_resolve_manager_hosts();

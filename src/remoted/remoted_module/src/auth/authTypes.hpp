@@ -116,7 +116,7 @@ namespace remoted::auth
      * @brief Internal auth failure reason, safe to log.
      *
      * Every credential-related reason is a 401 with the same generic message; what the wire DOES
-     * name (issue #38993, RFC 6750 `error_description` and the body's `code`) is the public CLASS
+     * name (RFC 6750 `error_description` and the body's `code`) is the public CLASS
      * publicErrorFor() maps it to -- `unknown_agent` (re-enroll), `stale_token` (fix the clock and
      * retry), `invalid_signature` (do not re-enroll), the `token_*` of /enroll, `invalid_request`
      * (no usable credential presented) -- which is coarser than this enum: several reasons share a
@@ -137,7 +137,7 @@ namespace remoted::auth
                               ///< (the legacy remoted's ENC_IP_ERROR rejection). Its public class is
                               ///< `invalid_signature`, not `unknown_agent`: the agent must not re-enroll
                               ///< over it (the id exists; the operator fixes the column), and ids being
-                              ///< sequential, revealing their existence buys an attacker nothing (T10).
+                              ///< sequential, revealing their existence buys an attacker nothing.
         InvalidToken,         ///< The bearer is not a `wazuh-agent+jwt` token: size, compact grammar,
                               ///< base64url, JSON, header/claim sets or types, jti, or the structural
                               ///< time rules (nbf == iat, exp > iat, exp - iat <= 60).
@@ -162,8 +162,8 @@ namespace remoted::auth
                                     ///< logRejection() tell an operator to "re-enroll the affected
                                     ///< agent(s)" for a condition where no agent, and no client.keys
                                     ///< entry, exists yet at all.
-        TokenUnknown,               ///< Raised ONLY by EnrollmentAuthenticator's enrollment-token path
-                                    ///< (issue #38993): the bearer's `kid` names a token id that is not in
+        TokenUnknown,               ///< Raised ONLY by EnrollmentAuthenticator's enrollment-token path:
+                                    ///< the bearer's `kid` names a token id that is not in
                                     ///< the replicated store (etc/enrollment_tokens.json) even after a
                                     ///< forced re-read -- never minted, minted without a credential, or
                                     ///< not yet synchronized to this node.
@@ -228,7 +228,7 @@ namespace remoted::auth
      * @brief Single source of truth for the client-visible status/message/class/challenge.
      *
      * Shared by every transport so they all answer identically instead of each re-deriving the
-     * error-response mapping. The class is deliberately coarser than AuthError (issue #38993, T10):
+     * error-response mapping. The class is deliberately coarser than AuthError:
      * it tells the AGENT what to do -- `unknown_agent`: re-enroll; `stale_token`: fix the clock and
      * retry; `invalid_signature`: keep the credential, do NOT re-enroll (a signature, token-shape,
      * identity, address or unusable-key failure is never fixed by a new identity); `token_*`: the

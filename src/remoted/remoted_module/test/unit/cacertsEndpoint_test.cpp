@@ -179,7 +179,7 @@ namespace
         }
     };
 
-    // ---- Helpers for the deliverCaRecordEvents() tests below (issue #39319, C21b) ----
+    // ---- Helpers for the deliverCaRecordEvents() tests below ----
 
     /// Records the ORDER "delivered"/"responded" land in, for
     /// DeliversRecordEventsBeforeRespondingOnAllThreePaths: unlike CapturingResponder, its send()
@@ -309,7 +309,7 @@ TEST(CacertsEndpoint, ServesThePreviousSnapshotOnReadFailure)
 {
     Fixture f;
 
-    // The source kept the last good bundle through a read that failed (issue #39318): the handler
+    // The source kept the last good bundle through a read that failed: the handler
     // must still answer from it -- 200, exactly as a snapshot with no failure would -- and not let
     // a transient read error turn into a spurious 404 for every agent bootstrapping trust.
     auto snapshot = snapshotOf(true);
@@ -389,7 +389,7 @@ TEST(CacertsEndpoint, CaMismatchAnswers503)
 
 TEST(CacertsEndpoint, ChainValidDoesNotDecideTheAnswer)
 {
-    // The chain verdict is information for the logs (issue #39318), never the 503 decision: a CA
+    // The chain verdict is information for the logs, never the 503 decision: a CA
     // that signs the leaf but whose chain does not validate must still serve, and a CA that does
     // not sign the leaf must still be refused even when the chain happens to validate through it.
     {
@@ -469,7 +469,7 @@ TEST(CacertsEndpoint, NullMetricsCountNothing)
 }
 
 // ---------------------------------------------------------------------------
-// Wazuh-CA-Generation (issue #39319, RF-4): the header every 200 carries, so an agent that
+// Wazuh-CA-Generation: the header every 200 carries, so an agent that
 // refreshes over an already-verified channel learns which generation the bundle it just received
 // is published under without a second round trip. 0 is deliberately the SAME wire value whether
 // nobody ever stamped the bundle or a guard refused it -- an agent cannot and need not tell those
@@ -493,7 +493,7 @@ TEST(CacertsEndpoint, UnpublishedBundleAddsZeroCaGenerationHeader)
 {
     Fixture f;
     // snapshotOf() leaves publication at CaCertificateSnapshot's own default (0): a bundle nobody
-    // ever stamped and one a guard refused both look like this on the wire (design §2.4).
+    // ever stamped and one a guard refused both look like this on the wire.
     const auto response = f.run(snapshotOf(true));
 
     EXPECT_EQ(response.status, 200);
@@ -524,7 +524,7 @@ TEST(CacertsEndpoint, NeverEmitsAHashHeader)
 {
     // The published and the unpublished 200 from above: not one header on either answer names a
     // hash -- only the generation ever leaves this endpoint, never a digest of the file or of the
-    // certificates it carries (CA-9).
+    // certificates it carries.
     Fixture f;
     auto published = snapshotOf(true);
     published.publication = 1758000000;
@@ -544,7 +544,7 @@ TEST(CacertsEndpoint, NeverEmitsAHashHeader)
 
 // ---------------------------------------------------------------------------
 // deliverCaRecordEvents(): the collaborator that says out loud, and persists, what the read just
-// above noticed about the bundle's publication (issue #39319, C21b). The first test below stays
+// above noticed about the bundle's publication. The first test below stays
 // with the file's usual canned snapshots (only the ORDER matters); the other two need a REAL
 // CaCertificateSource so there is something genuine to drain.
 // ---------------------------------------------------------------------------
@@ -621,7 +621,7 @@ TEST(CacertsEndpoint, HandlerAndTickEmitExactlyOnce)
     EXPECT_EQ(handlerDrained[0].kind, remoted::http::RecordEvent::first_time_unpublished);
 
     // A tick right after the request must see nothing: the request already drained the mailbox --
-    // an event comes out of exactly one of the two callers, never both (C21b).
+    // an event comes out of exactly one of the two callers, never both.
     EXPECT_TRUE(source.drainRecordEvents().empty());
 }
 

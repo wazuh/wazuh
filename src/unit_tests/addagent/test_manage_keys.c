@@ -87,7 +87,7 @@ void test_k_import_keyinvalid(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        // Skipped because it will be deleted by https://github.com/wazuh/wazuh/issues/30924
+        // Skipped because it will be deleted
         // cmocka_unit_test_setup_teardown(test_k_import_successful, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_k_import_keyinvalid, NULL, NULL),
     };

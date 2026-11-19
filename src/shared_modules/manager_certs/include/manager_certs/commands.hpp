@@ -13,7 +13,7 @@
 
 /**
  * @file commands.hpp
- * @brief The commands of `wazuh-manager-certs` (issue #39319): `inspect`/`check`, which only read,
+ * @brief The commands of `wazuh-manager-certs`: `inspect`/`check`, which only read,
  *        and the write transaction `add`/`remove`/`prune-expired`/`stamp` publish the bundle
  *        through.
  *
@@ -87,7 +87,7 @@ namespace manager_certs
      *    that fails either, writes one line to @p err naming it by `ca_bundle::identityOf()` and
      *    the concrete reason: "not a CA", "not yet valid (notBefore ...)" or "expired (notAfter
      *    ...)". These run first so the operator is told which certificate is wrong and why: since
-     *    the leaf-signing guard verifies the chain (C33), vouch() would refuse the same bundle as
+     *    the leaf-signing guard verifies the chain (ca_bundle D-8), vouch() would refuse the same bundle as
      *    "no CA signs the served leaf".
      * 2. Only once (1) passes: `ca_bundle::vouch(bundle, leaf, serializedBytes)`'s own six guards
      *    (structure, the publication hash, leaf-signing, the two size caps). On failure, writes one

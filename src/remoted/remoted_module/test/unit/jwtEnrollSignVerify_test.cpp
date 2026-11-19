@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-// Frozen vector + the negative matrix of the closed `wazuh-enroll+jwt` profile (issue #38582,
-// jwt/jwtEnrollProfileV1.hpp). The grammar/time core is shared with `wazuh-agent+jwt`
+// Frozen vector + the negative matrix of the closed `wazuh-enroll+jwt` profile
+// (jwt/jwtEnrollProfileV1.hpp). The grammar/time core is shared with `wazuh-agent+jwt`
 // (jwtVerify_test.cpp covers it exhaustively); here the enroll-specific surface: exact 2-field
 // header, exact 4-claim payload, no kid, cross-profile rejection in both directions, HKDF key.
 
@@ -246,7 +246,7 @@ TEST(EnrollVerifier, ProfilesNeverCrossOver)
     EXPECT_FALSE(JwtRequestTokenVerifier::peekKid(*enrollToken).has_value());
 }
 
-// ---------------------------------------------------------------------------- `kid` forms (issue #38993)
+// ---------------------------------------------------------------------------- `kid` forms
 // The shared-key surface above is untouched: a `kid` is still InvalidToken for verify(). The two
 // `kid` forms -- enrollment token id (22 base64url chars) and canonical agent id -- are classified
 // by shape with peekKid() and verified with verifyWithKid() against the key the caller resolved.

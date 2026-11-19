@@ -508,9 +508,6 @@ protected:
         std::filesystem::remove("/tmp/ca_test.pem");
         std::filesystem::remove("/tmp/cert_test.pem");
         std::filesystem::remove("/tmp/key_test.pem");
-
-        // Clean up any queue files
-        std::filesystem::remove_all("queue/indexer/");
     }
 
     void simulateSuccessfulPost(RequestParamsVariant requestParams,
@@ -750,7 +747,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithInvalidSSLPathsThrows)
     EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
 }
 
-// Queue path configuration tests
+// Constructor argument tests
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithCallerName)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
@@ -759,7 +756,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithCallerName)
         { IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest, nullptr, "test-instance"); });
 }
 
-TEST_F(IndexerConnectorAsyncTest, ConstructorWithValidConfigNoDbPath)
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithValidConfigNoCallerName)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
@@ -3374,21 +3371,20 @@ TEST_F(IndexerConnectorAsyncTest, AsyncMixedOperations)
     EXPECT_GT(callCount, 0);
 }
 
-// Test ThreadEventDispatcher queue persistence for async implementation
-TEST_F(IndexerConnectorAsyncTest, AsyncQueuePersistence)
+// Destroying a connector with documents still queued (the queue lives in memory) must not throw
+TEST_F(IndexerConnectorAsyncTest, DestroyWithQueuedDocumentsDoesNotThrow)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    // First connector instance - add some data
     {
         IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
         for (int i = 0; i < 3; ++i)
         {
-            std::string id = "persistent_doc_" + std::to_string(i);
-            std::string data = R"({"persistent":"data)" + std::to_string(i) + R"("})";
-            connector.bulkIndex(id, "persistent_index", data);
+            std::string id = "queued_doc_" + std::to_string(i);
+            std::string data = R"({"queued":"data)" + std::to_string(i) + R"("})";
+            connector.bulkIndex(id, "queued_index", data);
         }
 
         // Give some time for queue operations
@@ -4406,6 +4402,125 @@ TEST_F(IndexerConnectorAsyncTest, PitAndSearchWithEveryNodeDownThrowIndexerConne
 }
 
 // =============================================================================
+// Index-name allowlist — Async (same isSafeIndexName() rule as the sync connector)
+// =============================================================================
+
+namespace
+{
+    // Every name here would change the URL the connector builds: a path segment, a query string, a
+    // fragment, a second index, or a character the indexer would read as something else.
+    const std::vector<std::string> UNSAFE_INDEX_NAMES {"",
+                                                       "wazuh-states-/x",
+                                                       "../_cluster",
+                                                       "wazuh-states-?q=1",
+                                                       "wazuh-states-#x",
+                                                       "wazuh-states-a,b",
+                                                       "wazuh-states- ",
+                                                       "wazuh-states-\nfoo",
+                                                       "wazuh-states-\"foo\"",
+                                                       "wazuh-states-foo\\bar",
+                                                       "wazuh-states-%2F"};
+} // namespace
+
+TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeRejectsUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-pit-unsafe");
+
+    for (const auto& name : UNSAFE_INDEX_NAMES)
+    {
+        try
+        {
+            connector.createPointInTime(std::vector<std::string> {name}, "5m", false);
+            FAIL() << "createPointInTime() accepted the index name '" << name << "'";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_THAT(e.what(), ::testing::HasSubstr("createPointInTime: unsafe index name"));
+            EXPECT_EQ(e.statusCode(), 0);
+        }
+    }
+}
+
+TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeRejectsListWithOneUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-pit-unsafe-list");
+
+    // The safe entries before and after do not let the unsafe one through.
+    const std::vector<std::string> indices {"wazuh-threatintel-kvdbs", "x/_search", ".wazuh-cti-consumers"};
+    EXPECT_THROW(connector.createPointInTime(indices, "5m", true), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorAsyncTest, SearchRejectsUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-search-unsafe");
+
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    for (const auto& name : UNSAFE_INDEX_NAMES)
+    {
+        try
+        {
+            connector.search(name, 10, query, std::nullopt);
+            FAIL() << "search() accepted the index name '" << name << "'";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_THAT(e.what(), ::testing::HasSubstr("search: unsafe index name"));
+            EXPECT_EQ(e.statusCode(), 0);
+        }
+    }
+}
+
+TEST_F(IndexerConnectorAsyncTest, PitAndSearchAcceptAllowlistedIndexNames)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::vector<std::string> urls;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke(
+            [&urls](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit([&urls](auto&& request) { urls.push_back(request.url.url()); }, requestParams);
+                const std::string response =
+                    urls.size() == 1 ? R"({"pit_id":"pit-1","creation_time":1})" : R"({"hits":{"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(std::string(response));
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(response));
+                }
+            }));
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-safe-names");
+
+    connector.createPointInTime(std::vector<std::string> {"wazuh-states-*", ".wazuh-cti-consumers"}, "5m", false);
+    connector.search("Idx_With.MixedCase-1.2.3", 1, {{"match_all", nlohmann::json::object()}}, std::nullopt);
+
+    ASSERT_EQ(urls.size(), 2u);
+    EXPECT_THAT(urls[0], ::testing::HasSubstr("/wazuh-states-*,.wazuh-cti-consumers/_search/point_in_time?"));
+    EXPECT_THAT(urls[1], ::testing::HasSubstr("/Idx_With.MixedCase-1.2.3/_search?"));
+}
+
+// =============================================================================
 // Partial answers — Async (the indexer is asked to refuse them; its refusals keep their status)
 // =============================================================================
 
@@ -4713,11 +4828,11 @@ TEST_F(IndexerConnectorAsyncTest, GetDroppedEventsInitiallyZero)
 }
 
 // JSON config override tests for bulk_max_bytes and flush_interval_seconds
-TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
+TEST_F(IndexerConnectorAsyncTest, BulkMaxBytesFromJsonConfigTriggersBulk)
 {
-    // bulk_max_bytes=5 in JSON overrides the template default of 25000.
+    // bulk_max_bytes=200 in JSON overrides the template default of 25000.
     // flush_interval_seconds=60 prevents the periodic timer from firing during the test window.
-    // If the JSON value is honoured, pushing exactly 5 elements immediately triggers a bulk send.
+    // If the JSON value is honoured, 5 documents (well over 200 bytes once formatted) trigger a bulk send.
     config["bulk_max_bytes"] = 200;
     config["flush_interval_seconds"] = 60;
 
@@ -4744,7 +4859,7 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
             }));
 
     IndexerConnectorAsyncImplLargeBulk connector(
-        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-elements-per-bulk-json");
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-bulk-max-bytes-json");
 
     for (int i = 0; i < 5; ++i)
     {
@@ -4752,14 +4867,14 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
     }
 
     auto status = bulkSentFuture.wait_for(std::chrono::seconds(5));
-    EXPECT_EQ(status, std::future_status::ready) << "Bulk not sent after pushing bulk_max_bytes items";
+    EXPECT_EQ(status, std::future_status::ready) << "Bulk not sent after the queued bytes reached bulk_max_bytes";
     EXPECT_GT(callCount, 0);
 }
 
-TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkMinValueOneFlushesImmediately)
+TEST_F(IndexerConnectorAsyncTest, BulkMaxBytesOneFlushesImmediately)
 {
-    // Extreme low value: bulk_max_bytes=1 means every single element triggers its own bulk send.
-    // flush_interval_seconds=60 ensures the count trigger —not the timer— is responsible.
+    // Extreme low value: bulk_max_bytes=1 means every single document triggers its own bulk send.
+    // flush_interval_seconds=60 ensures the size trigger —not the timer— is responsible.
     config["bulk_max_bytes"] = 1;
     config["flush_interval_seconds"] = 60;
 
@@ -4786,17 +4901,17 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkMinValueOneFlushesImmediately)
             }));
 
     IndexerConnectorAsyncImplLargeBulk connector(
-        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-min-elements-per-bulk");
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-min-bulk-max-bytes");
 
     connector.bulkIndex("id0", "test_index", R"({"data":"x"})");
 
     auto status = bulkSentFuture.wait_for(std::chrono::seconds(5));
     EXPECT_EQ(status, std::future_status::ready)
-        << "Single element should trigger immediate bulk with bulk_max_bytes=1";
+        << "Single document should trigger immediate bulk with bulk_max_bytes=1";
     EXPECT_GT(callCount, 0);
 }
 
-TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkBelowThresholdNoFlush)
+TEST_F(IndexerConnectorAsyncTest, BulkMaxBytesBelowThresholdNoFlush)
 {
     // Negative path: pushing a few items whose total bytes remain below bulk_max_bytes must NOT trigger a bulk send.
     config["bulk_max_bytes"] = 4096;
@@ -4816,7 +4931,7 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkBelowThresholdNoFlush)
     // Allow the async worker enough time to process any spurious flush.
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    EXPECT_EQ(callCount, 0) << "No bulk should be sent when fewer than bulk_max_bytes items are queued";
+    EXPECT_EQ(callCount, 0) << "No bulk should be sent while the queued bytes stay below bulk_max_bytes";
 }
 
 TEST_F(IndexerConnectorAsyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)

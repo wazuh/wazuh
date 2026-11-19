@@ -77,7 +77,7 @@ SecureCommunication buildSecureCommunication(const nlohmann::json& config, const
     static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
 
     // No fallback to a built-in "wazuh-manager"/"wazuh-manager" pair. Substituting a credential
-    // every installation shares is what https://github.com/wazuh/wazuh/issues/39554 removes: it
+    // every installation shares is what 5.x removes: it
     // turned a missing key into an authentication attempt with a known password, and the warning
     // it logged scrolled past unread. The credential resolver refuses to start the manager when
     // this key is unresolved, so reaching here empty means the keystore was emptied behind a

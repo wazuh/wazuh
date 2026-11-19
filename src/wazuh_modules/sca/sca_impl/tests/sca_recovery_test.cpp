@@ -45,7 +45,7 @@ class SCARecoveryTest : public ::testing::Test
 
             // Create directory for shared memory file (required on Unix/macOS)
             // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path.
-            // #38601: in its own directory, because the id published below is now read by
+            // In its own directory, because the id published below is now read by
             // checkAgentIdentity() on every syncModule() -- including the other SCA test
             // binaries', which share this relative path and do not expect an id to appear.
             std::filesystem::create_directories("sca_recovery_test_workdir/var/run");

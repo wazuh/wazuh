@@ -78,8 +78,8 @@ func (r *Runner) bootstrap(ag *agent) (wire.Identity, error) {
 
 // enrollWithToken bootstraps one agent the way a 5.x agent handed a token does:
 // POST /enroll on the same HTTPS listener it will use afterwards, with the
-// `wazuh-enroll+jwt` bearer minted from the run's enrollment token (issue
-// #39054). It is the path that works against a manager whose <use_password> is
+// `wazuh-enroll+jwt` bearer minted from the run's enrollment token.
+// It is the path that works against a manager whose <use_password> is
 // the installed default, so no configuration flip is needed to benchmark one.
 //
 // Anything but a 200 aborts the run as a setup failure: a fleet that half

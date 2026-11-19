@@ -99,7 +99,7 @@ static int etoken_inflight_size = 0;
  * the file says, and the file is precisely what does NOT know about these. Without this list a
  * revoke whose save failed would be silently undone by the next reload -- including the reload
  * etoken_store_purge() does to recover from its own failed save -- and the token would go on
- * enrolling agents until someone revoked it again (issue #39078, H04).
+ * enrolling agents until someone revoked it again.
  *
  * Entries leave the list only when a save succeeds (the file then carries the flag) or when a
  * reload shows the id is no longer in the store at all.
@@ -553,7 +553,7 @@ invalid_description:
  * record into a fleet-wide outage: not one token loads, every token enrollment answers 9022, and
  * token_revoke cannot repair it because the in-memory list is empty -- the only way out being to
  * hand-edit the file the store's single-writer rule forbids. Dropping the record loses exactly the
- * token that could not be read, which is a token nobody could have used anyway (issue #39133).
+ * token that could not be read, which is a token nobody could have used anyway.
  *
  * @return 0 on success (an absent file included, which is simply an empty store), -1 on error.
  */
@@ -590,7 +590,7 @@ static int etoken_store_load_locked(void) {
 
     if (statbuf.st_size > (off_t) W_ETOKEN_STORE_MAX_BYTES) {
         /* Checked before parsing: a file this size is one this authd could never write back, and
-         * reading it into memory first would be the expensive way to find that out (issue #39078) */
+         * reading it into memory first would be the expensive way to find that out */
         mwarn("The enrollment token store '%s' is %lld bytes, above the %d supported: it is not loaded. "
               "The tokens already loaded are kept.",
               etoken_path, (long long) statbuf.st_size, W_ETOKEN_STORE_MAX_BYTES);
@@ -657,7 +657,7 @@ static int etoken_store_load_locked(void) {
     if (loaded_size > ETOKEN_MAX_TOKENS) {
         /* A store above the cap cannot be written back, so accepting it would leave this authd
          * unable to persist anything it does afterwards. Refusing keeps whatever was loaded before
-         * and tells the operator what to fix (issue #39078, H08) */
+         * and tells the operator what to fix */
         mwarn("The enrollment token store '%s' holds %d tokens, above the %d supported: it is not loaded. "
               "Purge it on the master (wazuh-manager-authd --purge-enrollment-tokens) and let it synchronise. "
               "The tokens already loaded are kept.",
@@ -685,7 +685,7 @@ static int etoken_store_load_locked(void) {
     etoken_mtime = statbuf.st_mtime;
 
     /* The file knows nothing about a revocation this authd could not write: re-apply those, and
-     * drop the ones whose token is no longer in the store at all (issue #39078, H04) */
+     * drop the ones whose token is no longer in the store at all */
     if (etoken_pending_revoked_size > 0) {
         int pending = 0;
         int kept = 0;
@@ -960,8 +960,8 @@ int etoken_store_reload_if_changed(void) {
     }
 
     /* Every verb calls this before doing anything, which makes it the one place where a revocation
-     * that could not be written gets another chance -- without every caller having to remember
-     * (issue #39078, H04). A save that succeeds carries all of them at once */
+     * that could not be written gets another chance -- without every caller having to remember.
+     * A save that succeeds carries all of them at once */
     if (etoken_pending_revoked_size > 0 && etoken_store_save_locked() == 0) {
         mdebug1("Persisted %d enrollment token revocation(s) that a previous write could not.",
                 etoken_pending_revoked_size);
@@ -1006,7 +1006,7 @@ int etoken_store_create(const etoken_mint_t *mint, time_t now, cJSON **data) {
      * The mint already caps the lifetime (ETOKEN_MAX_TTL, enrollment_token_mint.c), which makes
      * this the second lock on the same door, and that is on purpose: the rule it enforces belongs
      * to the store, not to one of its callers. Nothing this function writes may be something
-     * etoken_store_load_locked() would have to throw away (issue #39133). */
+     * etoken_store_load_locked() would have to throw away. */
     if (mint->ttl > ETOKEN_MAX_TTL || now < 0 || now > ETOKEN_EXPIRES_MAX - (time_t) mint->ttl) {
         merror("Cannot mint an enrollment token: a lifetime of %ld second(s) would expire outside "
                "the range the store can represent.", mint->ttl);
@@ -1242,7 +1242,7 @@ int etoken_store_revoke(const char *id) {
     /* The flag stays set in memory even when the file cannot be written -- this authd must not keep
      * honouring a token an operator revoked -- but the caller is told, and the id is remembered so
      * a reload does not undo it and the next verb tries again. Answering success here is what let a
-     * revoked token come back after a restart (issue #39078, H04) */
+     * revoked token come back after a restart */
     if (etoken_store_save_locked() < 0) {
         etoken_pending_add_locked(id);
         ret = ETOKEN_STORE_FAILED;
@@ -1333,7 +1333,7 @@ etoken_use_t etoken_store_consume(const char *id, time_t now) {
             /* Best effort on purpose: the use is counted in memory and the enrollment goes ahead,
              * because failing it over a disk hiccup would deny a legitimate agent.
              *
-             * The price, stated plainly (issue #39078, H07): a limited token's use count is NOT a
+             * The price, stated plainly: a limited token's use count is NOT a
              * durable guarantee. A restart before the next successful write reloads the older
              * counter, so a single-use token can admit another enrollment -- and if writes keep
              * failing, more than one. Nor does this need a lost disk: a store already at its

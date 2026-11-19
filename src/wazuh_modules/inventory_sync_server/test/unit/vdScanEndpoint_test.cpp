@@ -245,7 +245,7 @@ TEST(VdScanEndpoint, TheAgentIdHeaderIsIgnored)
 }
 
 /**
- * THE interlock (§7.2), from the endpoint's side. A client-side timeout does not cancel
+ * THE interlock, from the endpoint's side. A client-side timeout does not cancel
  * server-side work: the dispatcher gives up at its own deadline and re-posts while the first scan
  * is still running.
  *

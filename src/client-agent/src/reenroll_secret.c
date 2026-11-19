@@ -38,7 +38,7 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
 
 #ifdef WIN32
     /* Non-atomic, exactly like w_enrollment_store_key_entry()'s Windows branch: the platform split
-     * is inherited on purpose (#38465) rather than unified here. */
+     * is inherited on purpose rather than unified here. */
     FILE *fp = wfopen(AGENT_REENROLL_SECRET, "w");
 
     if (!fp) {

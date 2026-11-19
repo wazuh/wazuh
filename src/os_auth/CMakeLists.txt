@@ -56,7 +56,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 # Collect source files
 file(GLOB AUTHD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
-# The re-enrollment bridge (issue #38993) is authd's one C++ file: a thin extern "C" wrapper over the
+# The re-enrollment bridge is authd's one C++ file: a thin extern "C" wrapper over the
 # header-only verifier in shared_modules/utils/jwt/, so authd judges the agent's `wazuh-enroll+jwt`
 # bearer with the very code remoted and the agent use. Listed explicitly: the GLOB above is *.c on
 # purpose, and a second GLOB would silently pick up any future .cpp.

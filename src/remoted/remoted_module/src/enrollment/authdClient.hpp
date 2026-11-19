@@ -30,13 +30,13 @@ namespace remoted::enrollment
         std::string ip;
         std::optional<std::string> groups;
         std::optional<std::string> keyHash;
-        /// The enrollment token the request authenticated with (issue #38993): its id, exactly as the
+        /// The enrollment token the request authenticated with: its id, exactly as the
         /// bearer's `kid` spelled it and as EnrollmentAuthenticator verified it. Forwarded as
         /// `token_id` so authd consumes one use of that token (and answers 9022/9023/9024 when it
         /// disagrees with remoted's replica about the token's state). Absent for the password and
         /// Open paths.
         std::optional<std::string> tokenId;
-        /// Re-enrollment (issue #38993): the agent id the bearer named (`kid`) and the bearer itself, both
+        /// Re-enrollment: the agent id the bearer named (`kid`) and the bearer itself, both
         /// verbatim and UNVERIFIED -- forwarded as `reenroll` = {kid, bearer} for authd on the master to
         /// verify against that agent's re-enrollment secret (which only its global.db holds) and, when it
         /// verifies, to rotate the agent's key and secret in place. Never together with tokenId.
@@ -80,7 +80,7 @@ namespace remoted::enrollment
         std::string name;
         std::string ip;
         std::string key;
-        /// The agent's re-enrollment secret (issue #38993): 64 hex chars authd generated next to the key
+        /// The agent's re-enrollment secret: 64 hex chars authd generated next to the key
         /// and stored in global.db, handed to the agent once, here. Empty when authd sent none (an authd
         /// that predates the secret, or a master behind a worker that does) -- the 200 then omits it.
         std::string reenrollSecret;

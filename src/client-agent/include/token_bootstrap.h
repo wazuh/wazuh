@@ -44,11 +44,11 @@
  * authd is willing to mint, which is ETOKEN_CA_MAX_BYTES (64 KiB) of PEM. That PEM is escaped
  * into JSON, where every newline costs two bytes, and the whole object is then base64url'd at
  * 4/3 -- so authd's own ceiling lands near 88 KB and this has to clear it. At 8192 it did not:
- * a six-certificate bundle, which is the largest #39321 lets a manager publish, mints cleanly
+ * a six-certificate bundle, which is the largest the CA-rotation contract lets a manager publish, mints cleanly
  * at roughly 9 KB and was then refused at the agent's first boot.
  *
- * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384. Since
- * #39321 that mismatch runs the safe way round -- anything --show-token will describe, an agent
+ * Note this is NOT the manager CLI's ceiling: os_auth/src/token_cli.c caps at 16384. Now
+ * that mismatch runs the safe way round -- anything --show-token will describe, an agent
  * can read -- where before it ran the other way and produced exactly the failure above. Still
  * worth reconciling. */
 #define W_ETOKEN_MAX_FILE_BYTES 98304
@@ -78,7 +78,7 @@ typedef struct {
      *  the core's to read nor its to delete. */
     const char *token_text;
     /** The runtime user the agent will drop to. Two files are handed to it: the re-enrollment
-     *  secret, which the daemon rewrites on every rotation after that drop, and since #39321 the
+     *  secret, which the daemon rewrites on every rotation after that drop, and the
      *  trust anchor, which the daemon replaces when the manager publishes a new CA bundle --
      *  under the sticky etc/certs only the file's owner may rename over it. client.keys stays
      *  root-owned. -1 means "leave ownership alone", which is what a tool running long after the
@@ -264,7 +264,7 @@ typedef enum {
  *
  * @param uid The uid AgentdStart() is about to drop privileges to. The committed anchor is
  *        chowned to it so the agent can replace the anchor itself when the manager publishes a
- *        new CA bundle (#39321) -- under the sticky etc/certs only the file's owner may rename
+ *        new CA bundle -- under the sticky etc/certs only the file's owner may rename
  *        over it. client.keys is deliberately NOT chowned to it. Ignored on Windows, which has
  *        no privilege drop; local_start() passes 0.
  * @param gid The gid AgentdStart() is about to drop privileges to, so the committed anchor and

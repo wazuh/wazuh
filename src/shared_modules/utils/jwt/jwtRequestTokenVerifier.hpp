@@ -11,7 +11,7 @@
  */
 
 /// @file jwtRequestTokenVerifier.hpp
-/// Verifies `wazuh-agent+jwt` tokens (issue #38582; profile in jwtProfileV1.hpp) -- steps 2-10 and
+/// Verifies `wazuh-agent+jwt` tokens (profile in jwtProfileV1.hpp) -- steps 2-10 and
 /// 12-13 of the profile's validation order. Fail-closed and stateless: the caller (remoted's auth
 /// middleware) owns TLS/HTTP framing, the key lookup by `kid`, the "agent still active" check and
 /// the uniform 401. Nothing from the token is trusted before the signature except the bounded `kid`

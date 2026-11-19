@@ -24,6 +24,6 @@ namespace ProcpsWrapper
     // process-wide mutex. The vendored procps 2.8.3 keeps scratch buffers as
     // `static` inside simple_readproc/simple_readtask/file2str/get_proc_stats,
     // so concurrent iterations from different threads corrupt each other and
-    // can crash inside stat2proc (see issue #36166).
+    // can crash inside stat2proc.
     void scanProcesses(int flags, const ProcCallback& callback);
 }

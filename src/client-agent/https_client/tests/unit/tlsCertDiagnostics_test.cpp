@@ -127,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(
         // a defensive case: curlHandle.cpp's statusFromCurlCode() buckets several other curl
         // codes (CURLE_SSL_CIPHER, CURLE_SSL_CONNECT_ERROR, ...) into TlsFail too, any of
         // which can fire after the depth-0 certificate already verified cleanly. This row is
-        // exactly why verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+        // exactly why verify_mode=system's local-anchor fallback (curlPerformer.cpp)
         // does not key off sawDepth0 alone: it additionally requires depth0VerificationFailed
         // (TlsFailureDetail), so a TlsFail shaped like this row -- kind None, but the
         // certificate itself was never the problem -- is correctly left off the fallback path.

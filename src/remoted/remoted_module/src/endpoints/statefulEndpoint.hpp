@@ -66,7 +66,7 @@ namespace remoted::endpoints::stateful
      *
      * No payload identity check here (unlike /stateless): the body is an opaque FlatBuffer and
      * parsing it is the sync server's job -- identity is enforced downstream against the
-     * `X-Wazuh-Agent-Id` header target() injects (doc 05 §3). The only local check is non-emptiness:
+     * `X-Wazuh-Agent-Id` header target() injects. The only local check is non-emptiness:
      * an empty body cannot be a FullSession, and rejecting it saves a deferred-work slot and a UDS
      * round trip.
      *

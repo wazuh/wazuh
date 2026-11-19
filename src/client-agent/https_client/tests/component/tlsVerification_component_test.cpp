@@ -13,7 +13,7 @@
  * CA file on disk, with a genuine handshake to an in-process TLS server whose
  * certificate carries a matching SAN. The rest of the component suite runs
  * plaintext + HC_VERIFY_NONE (to isolate the bearer interop), so this is where
- * the fail-closed TLS policy of #37828 is proven end to end -- both that a
+ * the fail-closed TLS policy is proven end to end -- both that a
  * trusted cert is accepted and that an untrusted one is rejected (so the
  * positive case cannot be passing with verification silently off).
  */
@@ -228,7 +228,7 @@ namespace
     // verify_mode=system never sets ca_path (validateTls rejects a config that
     // does, see moduleConfig_test.cpp) -- the trust anchor comes from an
     // injected IFsProbe instead, below.
-    // fallbackCaPath: #39123's local-anchor fallback (empty -> not configured, today's
+    // fallbackCaPath: the local-anchor fallback (empty -> not configured, today's
     // behavior; CurlPerformer never retries past what the OS bundle stand-in decides).
     ModuleConfig tlsSystemConfig(uint16_t port, const std::string& fallbackCaPath = "")
     {
@@ -346,7 +346,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
     EXPECT_EQ(TransportStatus::TlsFail, response.status); // Untrusted: no HTTP status reached.
     // Not one of the two classified causes: proves the hostname-mismatch elimination fallback
     // (chain clean + CURLE_PEER_FAILED_VERIFICATION => HostnameMismatch) does NOT misfire here,
-    // where the chain itself is what failed. Also #39123's isUnclassifiedChainFailure() sees
+    // where the chain itself is what failed. Also isUnclassifiedChainFailure() sees
     // this exact shape (TlsFail + kind==None) as the one verify_mode=system's local-anchor
     // fallback may act on.
     EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
@@ -426,7 +426,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsACaSignedCertForTheWrongHostnam
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
-    // #39062 objective requirement 6: a name mismatch is classified (and, in curlHandle.cpp,
+    // A name mismatch is classified (and, in curlHandle.cpp,
     // logged at normal level) rather than reading as a generic Unreachable/TlsFail -- the chain
     // was entirely valid, so this proves the classifier is not just echoing a chain failure.
     EXPECT_EQ(TlsFailureKind::HostnameMismatch, response.tlsFailure.kind);
@@ -573,7 +573,7 @@ TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
     CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
-    // TlsFail + kind==None (#39123's isUnclassifiedChainFailure()) is the one outcome the
+    // TlsFail + kind==None (isUnclassifiedChainFailure()) is the one outcome the
     // fallback below can act on. No system_fallback_ca_path is set here, so there is nothing
     // to fall back to and this is the final result, exactly like today.
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
@@ -582,7 +582,7 @@ TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
     std::remove(bundlePath.c_str());
 }
 
-// #39123: the OS bundle stand-in does not know the server's certificate, but a fallback
+// The OS bundle stand-in does not know the server's certificate, but a fallback
 // anchor that does is configured -- CurlPerformer must retry against it transparently
 // (one warning, no operator action) instead of leaving the connection unverified or failing.
 TEST(TlsVerificationTest, SystemVerificationFallsBackToTheLocalAnchorWhenTheOsBundleDoesNotVerify)
@@ -625,7 +625,7 @@ TEST(TlsVerificationTest, SystemVerificationFallsBackToTheLocalAnchorWhenTheOsBu
     std::remove(bundlePath.c_str());
 }
 
-// #39123: neither the OS bundle nor the fallback anchor verifies the server -- the result
+// Neither the OS bundle nor the fallback anchor verifies the server -- the result
 // must still be a verification failure (never a silent unverified connection), which the
 // caller backs off and retries.
 TEST(TlsVerificationTest, SystemVerificationFailsWhenNeitherTheOsBundleNorTheFallbackAnchorVerify)
@@ -669,7 +669,7 @@ TEST(TlsVerificationTest, SystemVerificationFailsWhenNeitherTheOsBundleNorTheFal
     std::remove(fallbackPath.c_str());
 }
 
-// #39123 follow-up (contrarian-reviewer round): every other CURLE_SSL_CACERT_BADFILE-related
+// Every other CURLE_SSL_CACERT_BADFILE-related
 // assertion lives in curlPerformer_test.cpp against a MockCurlHandle with caFileLoadFailed()
 // scripted by hand -- that proves CurlPerformer::perform()'s branching is correct GIVEN that
 // value, not that curlHandle.cpp's real perform() actually produces it from a real curl/
@@ -722,8 +722,8 @@ TEST(TlsVerificationTest, SystemVerificationFailsClosedWhenTheFallbackAnchorFile
     std::remove(fallbackPath.c_str());
 }
 
-// #39123 follow-up: this used to pin a KNOWN LIMITATION (contrarian-reviewer round) where the
-// fallback never engaged here at all. The #39123 fallback used to be gated on sawDepth0 alone
+// This used to pin a KNOWN LIMITATION (contrarian-reviewer round) where the
+// fallback never engaged here at all. The fallback used to be gated on sawDepth0 alone
 // (curlPerformer.cpp's isUnclassifiedChainFailure()), which is only ever set true when
 // OpenSSL's verify callback actually reaches the leaf (depth 0) certificate. For a
 // single-certificate chain (every other test in this suite), an untrusted root is discovered

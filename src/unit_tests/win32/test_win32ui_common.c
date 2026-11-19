@@ -19,7 +19,7 @@
 
 #include "os_win32ui.h"
 
-/* Covers get_ossec_server()'s own precedence between the 5.x <endpoint> shape (#38624)
+/* Covers get_ossec_server()'s own precedence between the 5.x <endpoint> shape
  * and the deprecated <address>/<server-ip>/<server-hostname> triplet it replaced. The
  * function reads a real ossec.conf at the hardcoded relative path CONFIG ("ossec.conf",
  * os_win32ui.h) rather than taking a path argument, so these tests write and remove that

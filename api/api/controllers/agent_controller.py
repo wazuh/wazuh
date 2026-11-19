@@ -275,7 +275,7 @@ async def scan_agents(pretty: bool = False, wait_for_complete: bool = False,
                           request_type='local_master',
                           # Not is_async: scan_agents() makes one blocking VD HTTP call per
                           # agent, so it must run off the API server's event loop (in the
-                          # process pool), not inline on it - see CHANGELOG/issue #38553.
+                          # process pool), not inline on it.
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
@@ -1334,7 +1334,7 @@ async def insert_agent(pretty: bool = False, wait_for_complete: bool = False) ->
 
 
 async def create_enrollment_token(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Mint an enrollment token (issue #38993). The token text is in this answer and nowhere else.
+    """Mint an enrollment token. The token text is in this answer and nowhere else.
 
     Parameters
     ----------

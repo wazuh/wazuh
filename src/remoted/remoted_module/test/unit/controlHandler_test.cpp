@@ -690,14 +690,14 @@ TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
 }
 
 // -----------------------------------------------------------------------------
-// ca_generation (issue #39319, RF-3): what m_config.caGenerationProvider hands back on every
+// ca_generation: what m_config.caGenerationProvider hands back on every
 // notify. The provider itself is a plain std::function the fixture injects through tweakCfg, so
 // none of these tests need a real HTTPS listener or CA file -- that wiring is
 // RemotedModuleFacade's (production, not under test here) and IHttpServer::caDescriptor()'s (see
 // httpServer_test.cpp). Every assertion reads a parsed nlohmann::json by KEY, never by comparing
 // serialized text: the library sorts object keys alphabetically ("ca_generation" lands between
 // "agent" and "settings_hash" on the wire), and a test that assumed a different order would break
-// on a library upgrade for no reason that has anything to do with this feature (design §2.4).
+// on a library upgrade for no reason that has anything to do with this feature.
 // -----------------------------------------------------------------------------
 
 TEST(ControlHandlerTest, NotifyReportsCaGenerationTimestampFromProvider)

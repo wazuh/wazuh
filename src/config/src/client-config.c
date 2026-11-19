@@ -16,12 +16,12 @@
 #include "agent-manager-entry.h"
 #include "legacy-server-targets.h"
 
-/* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
+/* <endpoint> is parsed with libcurl's URL API. Already a dependency here --
  * shared/src/url.c links the same library -- so this adds no new one. */
 #include <errno.h>
 #include "urlapi.h"
 
-/* if_nametoindex(), for resolving an IPv6 zone id to a scope id (#38624). Windows
+/* if_nametoindex(), for resolving an IPv6 zone id to a scope id. Windows
  * declares it in netioapi.h and provides it from iphlpapi, which every agent binary
  * and the winagent unit tests already link. */
 #ifdef WIN32
@@ -40,7 +40,7 @@ int Read_Agent_Batch(XML_NODE node, agent *logr);
 int Read_Agent_Report(XML_NODE node, agent_report *report);
 
 /**
- * @brief Read the <agent> block, the 5.x name of what 4.x spelled <client> (#38103).
+ * @brief Read the <agent> block, the 5.x name of what 4.x spelled <client>.
  *
  * The legacy name is not a second spelling of this block: an upgrade never rewrites
  * ossec.conf, so a file left by 4.x is read for the manager address and the enrollment
@@ -122,7 +122,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
             OS_ClearNode(chld_node);
         } else if (strcmp(node[i]->element, xml_agent_ssl) == 0) {
-            /* HTTPS transport TLS settings (sibling of <manager>, #37702 §10). */
+            /* HTTPS transport TLS settings (sibling of <manager>). */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_SSL(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
@@ -132,7 +132,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
         } else if (strcmp(node[i]->element, xml_agent_batch) == 0) {
             /* <batch><size>/<interval>: the /stateless send-rate model that
-             * replaces the leaky bucket's pacing (#37835). */
+             * replaces the leaky bucket's pacing. */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_Batch(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
@@ -142,7 +142,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
         } else if (strcmp(node[i]->element, xml_agent_stats_report) == 0) {
             /* <stats_report>/<config_report>: the two independent periodic
-             * pushes to /stats and /config (#37843). <stats_report> stays off by
+             * pushes to /stats and /config. <stats_report> stays off by
              * default; <config_report> ships on -- ClientConf() sets that default
              * before this parser runs, so it is invisible here. */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
@@ -187,7 +187,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_max_time_reconnect_try) == 0) {
-            /* Deprecated with the HTTPS transport (#37702 restriction 4): no
+            /* Deprecated with the HTTPS transport: no
              * persistent connection to reconnect. Accepted so upgraded configs
              * do not fail; it no longer has any effect. The 4.x default
              * configuration sets it, so every upgraded agent carries it once
@@ -276,7 +276,7 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
         } else if (strcmp(node[i]->element, xml_agent_batch) == 0) {
             /* How much traffic an agent is allowed to push at the manager is a
              * fleet-wide call, not a per-endpoint one, so <batch> is pushed the
-             * same way the module configurations already are (#38163). */
+             * same way the module configurations already are. */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_Batch(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
@@ -297,7 +297,7 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 }
 
 /**
- * @brief Validate and normalize a present <endpoint> tag's content (#38492).
+ * @brief Validate and normalize a present <endpoint> tag's content.
  *
  * Only called with the raw content of an <endpoint> tag that was actually found in
  * the XML -- an entirely absent tag never reaches this function; see
@@ -388,7 +388,7 @@ static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_siz
 }
 
 /**
- * @brief Resolve an IPv6 zone id (interface name or numeric index) to a scope id (#38624).
+ * @brief Resolve an IPv6 zone id (interface name or numeric index) to a scope id.
  *
  * A link-local IPv6 address is ambiguous without a scope: fe80::1 may exist on
  * several interfaces at once. The zone id names the one to use, spelled with a
@@ -438,7 +438,7 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
 }
 
 /**
- * @brief Parse the combined <endpoint> value into host, port, prefix and scope id (#38624).
+ * @brief Parse the combined <endpoint> value into host, port, prefix and scope id.
  *
  * <endpoint> carries the whole connection target in one value. No deployment variable spells
  * it: a package install writes it from the address inside the enrollment token,
@@ -458,11 +458,11 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
  *
  * The one thing curl cannot answer: CURLUPART_PATH always reports at least "/",
  * so it cannot tell "no path was given" from "a trailing slash and nothing more".
- * That is exactly the distinction the prefix opt-out rests on (#38614) -- no
+ * That is exactly the distinction the prefix opt-out rests on -- no
  * separator means the default prefix, a separator with nothing after it means
  * unprefixed -- so the separator is looked for in the raw value instead, the way
  * the installers' own parsers do. Losing it would silently turn every opt-out back
- * into the default, which is the defect #38658 fixed elsewhere.
+ * into the default, which is a defect fixed elsewhere.
  *
  * @param raw Raw <endpoint> content (never NULL).
  * @param host Receives the host, brackets and zone id stripped.
@@ -701,7 +701,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             merror(XML_VALUENULL, node[j]->element);
             return (OS_INVALID);
         }
-        /* Deprecated: <address> and <port> were folded into <endpoint> (#38624). Still
+        /* Deprecated: <address> and <port> were folded into <endpoint>. Still
          * read so a hand-written configuration, or one left by a 5.0.0 development build
          * using the previous spelling, keeps working -- an upgrade never rewrites
          * ossec.conf. No released package emitted them: <agent><manager> itself landed
@@ -732,7 +732,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             legacy_port_set = true;
             legacy_tags_used = true;
         } else if (strcmp(node[j]->element, xml_agent_endpoint) == 0) {
-            /* <endpoint> always carries the whole target (#38624). The 5.0.0 spelling
+            /* <endpoint> always carries the whole target. The 5.0.0 spelling
              * that put only a prefix here shipped in no public release, so there is no
              * configuration in the field where this value means anything else -- and
              * without that case "wazuh-manager" is unambiguously a hostname. */
@@ -747,7 +747,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             minfo("Ignoring the 'protocol' option. Switching to TCP.");
         } else if (strcmp(node[j]->element, xml_max_retries) == 0 ||
                    strcmp(node[j]->element, xml_retry_interval) == 0) {
-            /* Deprecated with the HTTPS transport (#37702 restriction 4): server
+            /* Deprecated with the HTTPS transport: server
              * rotation and the connection-retry loop are removed. Accepted so
              * upgraded configs do not fail; no longer has any effect. */
             mwarn(XML_DEPRECATED, node[j]->element);
@@ -781,7 +781,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     }
 
 
-    /* Single <manager> block: the last one prevails (#37702 restriction 2) and
+    /* Single <manager> block: the last one prevails and
      * server rotation is removed (restriction 3), so the entry is replaced, not
      * appended to. */
     if (logr->server && logr->server_count > 0) {
@@ -789,8 +789,8 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     }
 
     /* <endpoint> absent entirely: default to the manager's own default prefix so an
-     * unconfigured agent still matches a manager using its default global_prefix
-     * (#38491). An explicit opt-out (endpoint present but normalizing to nothing,
+     * unconfigured agent still matches a manager using its default global_prefix.
+     * An explicit opt-out (endpoint present but normalizing to nothing,
      * e.g. "/") is preserved as-is and left unprefixed -- only "tag never appeared"
      * gets the default. */
     if (!endpoint_set) {
@@ -799,7 +799,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
 
     w_agent_set_manager(logr, rip, port, endpoint, scope_id);
 
-    /* #38624: <address>/<port> still work, but tell the operator exactly what to write
+    /* <address>/<port> still work, but tell the operator exactly what to write
      * instead. The suggestion is built from the values just resolved -- not from the
      * defaults -- so a prefix-only <endpoint> in the same block is preserved and pasting
      * the line back cannot change where the agent connects. INFO rather than WARNING:
@@ -817,7 +817,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
     logr->server[0].max_retries = max_retries;
     logr->server[0].retry_interval = retry_interval;
 
-    /* Names <endpoint>, not the <port> tag: since #38624 the port is a component of
+    /* Names <endpoint>, not the <port> tag: the port is a component of
      * <endpoint>, so pointing the operator at a <port> element sends them looking for
      * something that no longer exists in a 5.x configuration. */
     if (!port_set) {
@@ -900,7 +900,7 @@ static int w_client_validate_tls13_ciphers(const char *ciphers)
 
 int Read_Agent_SSL(XML_NODE node, agent * logr)
 {
-    /* XML definitions — the <agent><ssl> transport block (#37702 §10). */
+    /* XML definitions — the <agent><ssl> transport block. */
     const char *xml_certificate = "certificate";
     const char *xml_key = "key";
     const char *xml_certificate_authorities = "certificate_authorities";
@@ -958,7 +958,7 @@ int Read_Agent_SSL(XML_NODE node, agent * logr)
 
 int Read_Agent_Report(XML_NODE node, agent_report * report)
 {
-    /* XML definitions - shared by <stats_report> and <config_report> (#37843);
+    /* XML definitions - shared by <stats_report> and <config_report>;
      * <interval> takes the usual suffixes: <interval>1h</interval>. */
     const char *xml_enabled = "enabled";
     const char *xml_interval = "interval";
@@ -1003,7 +1003,7 @@ int Read_Agent_Report(XML_NODE node, agent_report * report)
 
 int Read_Agent_Batch(XML_NODE node, agent * logr)
 {
-    /* XML definitions - the <agent><batch> block (#37835). Both accept the
+    /* XML definitions - the <agent><batch> block. Both accept the
      * usual suffixes: <size>1MB</size>, <interval>10s</interval>. */
     const char *xml_size = "size";
     const char *xml_interval = "interval";
@@ -1209,7 +1209,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
 
-    /* Superseded by <agent><manager>/<agent><ssl> (#38465): enrollment now
+    /* Superseded by <agent><manager>/<agent><ssl>: enrollment now
      * dials the same target and presents the same TLS material as every
      * other HTTPS endpoint, so a second address/port/interface/cert/key/CA
      * for it is redundant by design. Recognized-but-ignored rather than
@@ -1417,7 +1417,7 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers) {
     for (i = 0; servers[i].rip; i++) {
         char *ip_address = NULL;
         char *tmp_str = strchr(servers[i].rip, '/');
-        /* #38624: the scope now comes from <endpoint>'s IPv6 zone id rather than the
+        /* The scope now comes from <endpoint>'s IPv6 zone id rather than the
          * removed <interface_index> tag, but the check is the same one -- a link-local
          * address without a scope is ambiguous and cannot be dialed reliably. */
         if (tmp_str) {

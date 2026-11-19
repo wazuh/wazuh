@@ -660,7 +660,7 @@ static void test_reload_if_changed_picks_up_external_write(void **state) {
     os_free(external_pin);
 }
 
-/* --- Purge, cap and byte ceiling (issue #38994) ------------------------------------------------- */
+/* --- Purge, cap and byte ceiling ---------------------------------------------------------------- */
 
 /**
  * @brief Write a store file of @p count synthetic tokens and load it.
@@ -865,7 +865,7 @@ static void test_revoke_reports_a_storage_failure_instead_of_success(void **stat
     assert_int_equal(file_revoked_of(id), 0);
 
     /* The retry that used to lie: the flag was already set in memory, so it answered success
-     * without writing anything (issue #39078, H04) */
+     * without writing anything */
     assert_int_equal(etoken_store_revoke(id), ETOKEN_STORE_FAILED);
     assert_int_equal(file_revoked_of(id), 0);
 
@@ -1007,7 +1007,7 @@ static void test_a_store_above_the_token_cap_is_not_loaded(void **state) {
     cJSON_Delete(root);
 
     /* Refused, and what was already loaded is kept: the alternative is an authd holding a store it
-     * cannot persist (issue #39078, H08) */
+     * cannot persist */
     assert_int_equal(etoken_store_load(), -1);
     assert_int_equal(etoken_store_count(), 1);
 }
@@ -1184,7 +1184,7 @@ static void test_mint_is_refused_when_the_store_would_be_too_big(void **state) {
 
     /* Few tokens, each carrying a CA far larger than a real one: the count cap is nowhere near, and
      * the only thing standing between this store and a replica that stops updating is the ceiling.
-     * The file itself stays UNDER the ceiling -- since #39078 a store above it is not even loaded --
+     * The file itself stays UNDER the ceiling -- a store above it is not even loaded --
      * so what crosses it is the mint below, which carries a CA of its own */
     write_store_of(180, 3600, 0, 0, 0, 40000);
     before = store_inode();

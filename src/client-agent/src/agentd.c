@@ -196,7 +196,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * A permanent failure ends the start, deliberately: carrying on would reach
      * start_agent_prepare(), which enrolls over whatever posture is left -- 'none', because no
      * anchor was written -- so a CA the agent had just refused would be followed by an
-     * unverified enrollment against that same manager. Failing here is what #38940 means by
+     * unverified enrollment against that same manager. Failing here is what the requirement means by
      * attempting no enrollment.
      *
      * A transient failure (the manager unreachable, a 5xx from /cacerts or /enroll, or the
@@ -288,7 +288,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         mdebug1("Version detected -> %s", getuname());
     }
 
-    /* Producer lock. Driving it from the HTTPS connection state is #38010. */
+    /* Producer lock. Driving it from the HTTPS connection state is left to a follow-up. */
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */

@@ -125,7 +125,7 @@ TEST(RegistryAgentGroupSourceTest, MatchesTheTokenControlHandsOut)
 
 TEST(RegistryAgentGroupSourceTest, ReturnsNulloptForAnEntryWhoseGroupsNeverCameFromWazuhDb)
 {
-    // Regression, found by running the real manager (E3): /control/shutdown creates an entry with
+    // Regression, found by running the real manager: /control/shutdown creates an entry with
     // no groups for an agent it has never seen, and makeConfigToken("") is "default" -- so without
     // this guard an agent could mint itself an entry with a shutdown and be handed the default
     // group's configuration. An entry is not a membership; only a wazuh-db-backed refresh is.

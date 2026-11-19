@@ -21,7 +21,7 @@
  * did not agree on what "overwriting it before unlinking" meant.
  *
  * The agent already had the primitive the script lacked -- w_reenroll_secret_clear() has opened
- * "r+" to overwrite the re-enrollment secret since #39064 -- so the fix is to let the installer
+ * "r+" to overwrite the re-enrollment secret -- so the fix is to let the installer
  * call it rather than to reimplement it a third time. Both callers now go through
  * w_fopen_nofollow_update(), which opens for update without truncating on either platform and
  * refuses a symlink at the target -- something `dd conv=notrunc` in the POSIX scripts does not do,
@@ -32,7 +32,7 @@
  *
  * --shred-enrollment-password takes no path argument on purpose. What the packages remove is the
  * compiled default and only the compiled default -- a password an operator put somewhere else is
- * theirs to keep (see the #39064 CHANGELOG entry) -- and a subcommand that zeroes and unlinks
+ * theirs to keep (see the CHANGELOG entry for the re-enrollment secret) -- and a subcommand that zeroes and unlinks
  * whatever path it is handed is a primitive worth not shipping at all.
  */
 

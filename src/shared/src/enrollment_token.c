@@ -458,8 +458,7 @@ w_etoken_error_t w_etoken_decode(const char *text, w_etoken_t *out)
      * prefix -- leaving the rest of a credential in freed memory. It would also mean unlimited
      * different texts decoding to one token, which is precisely what the codec promises cannot
      * happen (b64url_op.h: "two different texts can therefore never decode to the same bytes").
-     * That promise holds at the base64 layer; this is what makes it hold at the JSON layer too
-     * (issue #39133).
+     * That promise holds at the base64 layer; this is what makes it hold at the JSON layer too.
      */
     if (memchr(raw, '\0', raw_len) != NULL) {
         OPENSSL_cleanse(raw, raw_len);

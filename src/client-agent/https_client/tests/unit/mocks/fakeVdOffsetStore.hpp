@@ -65,7 +65,7 @@ class FakeVdOffsetStore final : public IVdOffsetStore
             return true;
         }
 
-        /// Defaults to true so a test that doesn't care about Q5's gate sees a
+        /// Defaults to true so a test that doesn't care about the gate sees a
         /// re-scan requested as soon as the offset advances.
         void setVDFirstDone(bool done)
         {

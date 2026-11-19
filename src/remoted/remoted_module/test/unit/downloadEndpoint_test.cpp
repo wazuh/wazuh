@@ -941,7 +941,7 @@ TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)
 }
 
 // ---------------------------------------------------------------------------
-// Authorization (#38683): a config download is served only for the selector the requesting agent's
+// Authorization: a config download is served only for the selector the requesting agent's
 // own groups produce -- the same string /control handed it as config_token. Everything else is a
 // 403 decided BEFORE any path is resolved.
 // ---------------------------------------------------------------------------

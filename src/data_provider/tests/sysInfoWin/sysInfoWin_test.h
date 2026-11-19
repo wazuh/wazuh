@@ -71,7 +71,7 @@ class MockComHelper : public IComHelper
 };
 
 // IComHelper::ExecuteWmiQuery hands back a raw IEnumWbemClassObject*, so exercising
-// QueryWMIHotFixes' enumeration loop (in particular the #38370 bounded-timeout path)
+// QueryWMIHotFixes' enumeration loop (in particular the bounded-timeout path)
 // needs a fake of that COM interface itself, not just of IComHelper.
 class MockEnumWbemClassObject : public IEnumWbemClassObject
 {

@@ -28,7 +28,6 @@ include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/simdjson/include)
-include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 
 include_directories(${SHARED_MODULES}/utils)
@@ -39,7 +38,6 @@ include_directories(${SHARED_MODULES}/keystore/include)
 # Link directories
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/build/lib)
-link_directories(${SRC_FOLDER}/external/rocksdb/build)
 link_directories(${SRC_FOLDER}/external/simdjson/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SHARED_MODULES}/keystore/build)
@@ -51,8 +49,9 @@ set(INDEXER_CONNECTOR_SRC src/indexerConnectorAsync.cpp
 
 add_library(indexer_connector SHARED ${INDEXER_CONNECTOR_SRC})
 
-target_link_libraries(indexer_connector PRIVATE rocksdb urlrequest gcc_s
-                                                wazuhext keystore simdjson)
+# No rocksdb here: the library has no RocksDB code of its own. The keystore reader it calls
+# (indexerTransport.cpp) does, and the static keystore archive carries that link with it.
+target_link_libraries(indexer_connector PRIVATE urlrequest gcc_s wazuhext keystore simdjson)
 
 set_target_properties(indexer_connector PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                    BUILD_RPATH "$ORIGIN/../lib")

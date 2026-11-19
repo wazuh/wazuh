@@ -250,7 +250,7 @@ namespace
     // TLS ClientHello, nothing. The moment the OS completes the three-way handshake, RESTinio's
     // async_accept fires and the connection is "accepted" at the RESTinio level regardless of
     // what the client does next; abandoning it here is what leaves it sitting in the
-    // accepted-but-not-yet-fully-set-up window the #38741 fix closes.
+    // accepted-but-not-yet-fully-set-up window the fix closes.
     void connectAndAbandon(std::uint16_t port)
     {
         try

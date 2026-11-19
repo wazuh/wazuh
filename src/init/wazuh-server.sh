@@ -529,14 +529,15 @@ checkcredentials()
 # resolver asks the keystore whether the indexer credential is already stored, and that opens the
 # `queue/keystore` RocksDB read-write. keystore_server answers the framework's KeystoreClient from
 # the same database -- once per API request that reaches the indexer -- so a probe issued while the
-# manager is running races it for RocksDB's directory lock. The loser does not merely fail: the
-# wrapper treats an IOError as corruption and runs rocksdb::RepairDB() over a database another
-# process has open. restart_service() therefore calls this AFTER stop_service(), and the start path
-# calls it with nothing running.
+# manager is running races it for RocksDB's directory lock: the wrapper waits out a held lock (its
+# lockRetryTimeout) and only then fails, so the probe either stalls behind every API request or gives
+# up with the keystore reported busy. restart_service() therefore calls this AFTER stop_service(), and
+# the start path calls it with nothing running.
 #
 # --prestart runs every --check test again, then completes what a start needs: the Server API
-# passwords and rbac.db, the indexer password in the keystore, the indexer's CA and client pair
-# imported from /etc/wazuh-indexer/export when it changed or was never imported. It never mints a CA
+# passwords and rbac.db, the indexer password in the keystore, the indexer's CA (and the client pair,
+# when the configuration names one) imported from /etc/wazuh-indexer/export when it changed or was
+# never imported. It never mints a CA
 # or issues a server pair -- those happen once, at installation -- and validates the ones in place,
 # so an operator who replaced them with their own PKI keeps them untouched.
 #

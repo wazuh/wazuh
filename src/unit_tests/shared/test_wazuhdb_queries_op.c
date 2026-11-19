@@ -189,7 +189,7 @@ void test_wdb_insert_agent_error_socket(void **state)
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     // The credential-bearing payload must NOT reach the log: the expectation is an exact match, so a
-    // message carrying the key would fail the case (issue #39078, H05).
+    // message carrying the key would fail the case.
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent for agent '001'");
 
     ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
@@ -248,7 +248,7 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     // The credential-bearing payload must NOT reach the log: the expectation is an exact match, so a
-    // message carrying the key would fail the case (issue #39078, H05).
+    // message carrying the key would fail the case.
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent for agent '001'");
 
     ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, NULL, group, keep_date, NULL);
@@ -379,7 +379,7 @@ void test_wdb_insert_agent_success_with_reenroll_secret(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    // What authd's writer sends for an agent enrolled through the local socket (#38993).
+    // What authd's writer sends for an agent enrolled through the local socket.
     const char *reenroll_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     const char *group = "default";
     int keep_date = 0;
@@ -1104,7 +1104,7 @@ void test_wdb_update_agent_keepalive_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_set_agent_credentials (re-enrollment, #38993) */
+/* Tests wdb_set_agent_credentials (re-enrollment) */
 
 #define SAC_JSON "{\"id\":1,\"name\":\"agent1\",\"register_ip\":\"any\",\"internal_key\":\"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915\",\"reenroll_secret\":\"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\"}"
 
@@ -1146,7 +1146,7 @@ void test_wdb_set_agent_credentials_error_socket(void **state)
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    // Neither the key nor the re-enrollment secret of SAC_JSON may appear (issue #39078, H05).
+    // Neither the key nor the re-enrollment secret of SAC_JSON may appear.
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials for agent '001'");
 
     ret = wdb_set_agent_credentials(1, "agent1", "any", "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915",
@@ -1170,7 +1170,7 @@ void test_wdb_set_agent_credentials_error_sql_execution(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, -100); // Returning any error
 
-    // The other branch that used to print the whole credential set (issue #39078, H05): a database
+    // The other branch that used to print the whole credential set: a database
     // that cannot run the query is the likeliest way to reach this log on a live manager.
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-credentials for agent '001'");
@@ -1734,7 +1734,7 @@ void test_wdb_remove_agent_success(void **state)
 
 void test_wdb_commit_global_success(void **state)
 {
-    // What authd waits for before it forgets a journaled identity transition (issue #39078, H03).
+    // What authd waits for before it forgets a journaled identity transition.
     char *query_str = "global commit";
     const char *response = "ok";
 

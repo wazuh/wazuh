@@ -19,7 +19,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
      *
      * To add a new upgrade step:
      *   1. Create schemas/schema_global_upgrade_vN.sql
-     *   2. Declare `extern char *schema_global_upgrade_vN_sql;` above this function.
+     *   2. Declare `extern const char *schema_global_upgrade_vN_sql;` above this function.
      *   3. Append schema_global_upgrade_vN_sql before the NULL sentinel below.
      *   4. Add the corresponding unit tests in test_wdb_upgrade.c.
      */

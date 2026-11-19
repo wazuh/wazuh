@@ -157,7 +157,7 @@ static int read_enable_firewall(const char *subkey) {
 // EnableFirewall DWORD directly from the registry.
 // Per profile: the GPO policy value wins if present, else the local SharedAccess value,
 // else it defaults to ENABLED (the Windows default). Defaulting an ABSENT value to enabled
-// is the fix for the #37388 misfire (the old check treated absent as "disabled").
+// is the fix for the misfire (the old check treated absent as "disabled").
 static bool firewall_is_effectively_on(const char *argv0) {
     static const char *profiles[] = {"DomainProfile", "StandardProfile", "PublicProfile"};
     char gpo_key[OS_MAXSTR];
@@ -258,7 +258,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             return FIREWALL_EXECUTION_FAILED;
         }
 
-        // Add outbound rule (from PR #34675 fix for bidirectional blocking)
+        // Add outbound rule (fix for bidirectional blocking)
         char remote_ip_arg_out[OS_MAXSTR];
         memset(remote_ip_arg_out, '\0', OS_MAXSTR);
         snprintf(remote_ip_arg_out, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);

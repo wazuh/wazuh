@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-// enrollTokenVectors mirrors the "enroll_token" object of testdata/jwt_vectors.json (issue
-// #38993): the frozen enrollment-token vectors shared with the manager's C++ library
+// enrollTokenVectors mirrors the "enroll_token" object of testdata/jwt_vectors.json:
+// the frozen enrollment-token vectors shared with the manager's C++ library
 // (src/shared_modules/utils/jwt/testVectors.hpp) and authd's C tests. Reproducing them byte for
 // byte is the interoperability proof: the bearer this tool mints from a pasted token IS what
 // remoted's TokenKeySource + verifyWithKid accept, and the key it derives IS the one authd derives.

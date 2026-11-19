@@ -19,8 +19,7 @@
  * Before this, `GET /cacerts` opened the file to answer and the certificate monitor opened it again
  * (up to a day earlier) to decide whether it signs the served leaf, so a replaced CA could be handed
  * out with a stale "it matches" behind it, and a repaired one refused for another day. Worse, the
- * answer was the file's own bytes: a PEM that also carried the CA's private key was published whole
- * (issue #39078, H01 and H06).
+ * answer was the file's own bytes: a PEM that also carried the CA's private key was published whole.
  *
  * Here one read produces everything: the certificates parsed out of it, a PEM **this process
  * serialised** from those objects (so nothing that is not a certificate can leave), and whether any
@@ -30,9 +29,9 @@
  * in the request that notices it. What the cache does NOT hold is any verdict with a date term
  * (does the leaf chain to the bundle, does the chain validate, is the bundle vouched for): those
  * are judged again on every call from the parsed certificates, because a CA expires or becomes
- * valid with no byte of the file changing (issue #39519).
+ * valid with no byte of the file changing.
  *
- * A read that fails does not erase what was being served (issue #39318). A permission change after
+ * A read that fails does not erase what was being served. A permission change after
  * an upgrade, a file moved away or an I/O error is a window, not a decision, and the agents that
  * need the CA during that window are exactly the ones a 404 would strand: the snapshot keeps the
  * last good bundle and records the failure (its cause, the errno, how many in a row) so the
@@ -44,7 +43,7 @@
  * injectable, so every failure path is testable without permission tricks that root ignores. The whole
  * call, read included, runs under the source's mutex, so two readers can never publish out of order.
  *
- * That same read also decides whether the bundle is PUBLISHED (issue #39319): ca_bundle::vouch()
+ * That same read also decides whether the bundle is PUBLISHED: ca_bundle::vouch()
  * runs on it once, and its verdict -- the generation, or 0 and the guard that refused -- travels in
  * the snapshot, so the endpoint, the certificate log lines and the notify path cannot disagree about
  * what generation this file is. Publishing is a separate question from serving: an unvouched bundle
@@ -54,14 +53,14 @@
  *
  * What the file cannot say about itself is whether it was EVER published: an ordinary CA file and a
  * published bundle somebody rewrote by hand look identical. That is what the optional publication
- * record adds (CaPublicationRecord), and the division of labour is deliberate (C22): the record is
+ * record adds (CaPublicationRecord), and the division of labour is deliberate: the record is
  * READ once, before this source is handed to anyone, and arrives through the constructor; the
  * comparison that turns a changed file into an event is O(1) and runs under the mutex with no I/O
  * at all; the event goes to a mailbox the source only fills; and the WRITE happens in
  * flushPendingRecord(), outside the mutex, called by whoever drained the mailbox. So no caller on
  * the hot path ever waits for a disk, an event is logged exactly once by exactly one of the three
  * callers that own a logger, and a record that cannot be written costs one warning and a retry --
- * never a publication (C19, C19b).
+ * never a publication.
  */
 
 #include "caPublicationRecord.hpp"
@@ -99,7 +98,7 @@ namespace remoted::http
     {
         std::string pem; ///< Certificates only, re-serialised here. Empty when there is nothing to serve.
         std::optional<bool> matchesLeaf; ///< Whether the served leaf CHAINS to some certificate of the bundle
-                                         ///< (ca_bundle::leafChainsToAnyCa(), C33 -- not a bare signature check),
+                                         ///< (ca_bundle::leafChainsToAnyCa() -- not a bare signature check),
                                          ///< judged against the clock on every snapshot(); nullopt when none
                                          ///< was read.
         std::optional<bool> chainValid;  ///< Whether the leaf validates with the bundle as its trust store (chain,
@@ -114,7 +113,7 @@ namespace remoted::http
         /// (or are empty when there never was one), not the file as it is right now.
         std::optional<ReadFailure> lastReadFailure;
 
-        /// The generation this bundle may be announced under (RF-2): the publication its block
+        /// The generation this bundle may be announced under: the publication its block
         /// carries once every guard passed, 0 when any of them refused -- and 0 is what an agent
         /// reads as "this manager has no published bundle". Judged on every snapshot(): the chain
         /// guard has a date term.
@@ -150,7 +149,7 @@ namespace remoted::http
         using Clock = std::function<std::chrono::steady_clock::time_point()>;
 
         /// How long descriptor() may answer without reading the file again: one read per second per
-        /// node is the whole cost the notify path is allowed to add, however many agents ask (C18).
+        /// node is the whole cost the notify path is allowed to add, however many agents ask.
         static constexpr std::chrono::seconds kDescriptorRefresh {1};
 
         /// What the notify path needs from the bundle, and nothing else: the generation to tell an
@@ -180,11 +179,11 @@ namespace remoted::http
          *              fresh. Injectable so the refresh window is testable without sleeping; an
          *              empty function falls back to the default rather than being called.
          * @param initialRecord What the publication record said when it was read, ONCE, before this
-         *              source existed (C22): reading it here would put file I/O under the hot-path
+         *              source existed: reading it here would put file I/O under the hot-path
          *              mutex. Only `ok` seeds the effective entry; `unreadable`/`malformed` make the
          *              first read of the bundle stay silent about "never published" and "changed
          *              outside the tool", because a record we could not read is not evidence of
-         *              either (C23).
+         *              either.
          * @param record Where the effective entry is persisted, outside the mutex, by
          *              flushPendingRecord(). Null keeps this source exactly as it was before the
          *              record existed: it remembers nothing and emits nothing.
@@ -212,7 +211,7 @@ namespace remoted::http
          * `chainValid`/`chainError` and the vouch (`publication`/`vouchFailure`) are judged against
          * the clock on every call -- hit, miss or failed read -- from the parsed certificates of the
          * snapshot being returned. A CA that expires, or becomes valid, with the file untouched is
-         * therefore seen by the next caller, not by the next write to the file (issue #39519). When
+         * therefore seen by the next caller, not by the next write to the file. When
          * that flips whether the leaf chains, one event says so through the mailbox.
          */
         CaCertificateSnapshot snapshot();
@@ -221,7 +220,7 @@ namespace remoted::http
          * @brief The vouched-for generation, revalidated at most once every kDescriptorRefresh.
          *
          * One call per control notify, and a notify storm is exactly what this must not turn into a
-         * read storm -- while a rotation still has to be seen within the second (CA-15). Runs under
+         * read storm -- while a rotation still has to be seen within the second. Runs under
          * the same mutex as snapshot(), so the generation it publishes is never older than what the
          * last read saw, and the first call always reads.
          */
@@ -229,12 +228,12 @@ namespace remoted::http
 
         /**
          * @brief The ONE certificate of this bundle the served leaf CHAINS to, re-serialised into
-         *        @p buffer -- a single certificate, never the bundle and never the `##` block (RF-7).
+         *        @p buffer -- a single certificate, never the bundle and never the `##` block.
          *
          * For the legacy WPK delivery, and for nothing else. `src/init/pkg_installer.sh` refuses a
          * `root-ca.pem` drop-in carrying more than one `-----BEGIN CERTIFICATE-----`, so handing a
          * 4.x agent mid-upgrade the bundle a rotation's overlap makes of this file would leave it
-         * with no anchor at all (C7). What the agent needs is the one CA that verifies this
+         * with no anchor at all. What the agent needs is the one CA that verifies this
          * listener AND that its installer will keep, and that is what comes out of here: the FIRST
          * certificate of the snapshot the served leaf chains to
          * (`ca_bundle::leafChainsToAnyCa()` over that certificate alone), that is a CA
@@ -242,7 +241,7 @@ namespace remoted::http
          * the properties pkg_installer.sh checks -- written back out by this process from the parsed
          * X.509 object rather than copied out of the file.
          *
-         * A signature alone is deliberately not enough (C26, C33): two re-issues of the same CA key
+         * A signature alone is deliberately not enough: two re-issues of the same CA key
          * both verify the leaf, so a bundle that still carries the expired one would otherwise hand
          * a 4.x agent an anchor its installer discards; and a certificate holding that key under
          * ANOTHER subject signs the leaf without being its issuer, so an installer that took it
@@ -271,13 +270,13 @@ namespace remoted::http
          * @brief Takes the publication events noticed since the last call, in order.
          *
          * The raw take. Each event comes out of exactly one caller, because draining REMOVES it
-         * (C21b) -- so a guard that starts failing between two ticks is said in the next request
+         * -- so a guard that starts failing between two ticks is said in the next request
          * instead of a day later, and nothing is said twice. Takes no lock of this source: the
          * mailbox has its own.
          *
          * Production does NOT log from here: every consumer that owns a logger goes through
          * CaRecordEventMailbox::deliver() (usually via deliverAndPersistRecordEvents()), which
-         * orders the emission as well as the drain (C26). This stays for the callers that want the
+         * orders the emission as well as the drain. This stays for the callers that want the
          * values themselves -- the tests that pin what the source posted.
          */
         std::vector<CaRecordEvent> drainRecordEvents();
@@ -287,10 +286,10 @@ namespace remoted::http
          *
          * Runs OUTSIDE the source's mutex, under a writer mutex of its own taken with try_lock: a
          * second caller arriving while one is writing returns at once rather than queueing, and a
-         * reader on the hot path never waits for the disk (RNF-2, C22). Retries as long as
+         * reader on the hot path never waits for the disk. Retries as long as
          * something is pending -- whether or not the file changed again -- so a permission repaired
-         * hours after the failure is persisted at the next revalidation, not at the next rotation
-         * (C19b). A failure is announced once per streak, and never in place of the bundle's own
+         * hours after the failure is persisted at the next revalidation, not at the next rotation.
+         * A failure is announced once per streak, and never in place of the bundle's own
          * event.
          */
         void flushPendingRecord();
@@ -313,10 +312,10 @@ namespace remoted::http
          * @brief Derives the record event for @p built and updates what this source remembers.
          *
          * Called from snapshotLocked() with m_mutex held, only when the file's hash changed, and it
-         * is O(1) on purpose: a comparison, two assignments and a post(). No I/O whatsoever (C22)
+         * is O(1) on purpose: a comparison, two assignments and a post(). No I/O whatsoever
          * -- the write it makes necessary is left pending for flushPendingRecord().
          *
-         * Follows the table of 02-diseno.md §2.3 row by row, against the EFFECTIVE entry in memory
+         * Decided against the EFFECTIVE entry in memory
          * (never against the disk): the effective entry is updated whether or not the previous
          * write succeeded, so a failing disk can never make the same bundle change be announced
          * twice.
@@ -355,7 +354,7 @@ namespace remoted::http
         /// Whether the record's state at construction was an ANSWER (`ok` or `absent`) rather than
         /// a failure to read it. False suppresses exactly two events on the first read --
         /// `first_time_unpublished` and `changed_outside_tool` -- because neither can be concluded
-        /// from a record we could not read (C23). Set once the first read has been through here.
+        /// from a record we could not read. Set once the first read has been through here.
         bool m_recordEverLoaded {false};
         /// The entry flushPendingRecord() still has to write, if any. Guarded by m_mutex.
         std::optional<Entry> m_pendingRecord;
@@ -376,11 +375,11 @@ namespace remoted::http
      * it answers) go through here, so the order is the same everywhere and nothing a write reveals
      * waits for the next drain. Draining only once was not enough: a `store()` that fails POSTS
      * its `record_unwritable` while flushing, and with nothing draining afterwards that line sat in
-     * the mailbox until the next tick -- up to 24 h -- or died with the cycle (C26, objection 3).
+     * the mailbox until the next tick -- up to 24 h -- or died with the cycle.
      *
      * The flush deliberately runs BETWEEN the two deliveries and NOT under the mailbox's delivery
      * mutex: it is the only step here that touches a disk, and the notify provider -- which drains
-     * this same mailbox on every keepalive -- must never wait for an fsync (C22, C26).
+     * this same mailbox on every keepalive -- must never wait for an fsync.
      */
     void deliverAndPersistRecordEvents(CaCertificateSource& source,
                                        CaRecordEventMailbox& mailbox,

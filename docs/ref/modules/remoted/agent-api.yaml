@@ -145,7 +145,7 @@ paths:
 
         Every `200` also carries `Wazuh-CA-Generation` (see below): the generation this bundle is
         published under -- `0` when there is a bundle to serve but no guard vouched for it -- never
-        a hash of the file or of the certificates it carries (issue #39319, RF-4).
+        a hash of the file or of the certificates it carries.
 
         What an agent MAY do with the response differs by *why* it called this route, and the two
         cases must not be conflated:
@@ -182,8 +182,7 @@ paths:
                 a stamped one a guard refused both answer `0` alike. Present on every `200`, never on
                 a `404` or a `503` (there is no bundle to attach a generation to). Never a hash of
                 the file or of the certificates it carries: this header exists to be compared with
-                `/control`'s `ca_generation` on a refresh, not to prove anything about content
-                (issue #39319, RF-4).
+                `/control`'s `ca_generation` on a refresh, not to prove anything about content.
               schema: { type: integer, minimum: 0 }
           content:
             application/x-pem-file:
@@ -449,7 +448,7 @@ paths:
         `config_hash` (a different value means fetch `merged.mg` via `POST /download`, sending
         `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
         agent, which must never derive that identifier from `agent.groups` itself),
-        `ca_generation` (issue #39319, RF-3: the generation the CA bundle `GET /cacerts` would serve
+        `ca_generation` (the generation the CA bundle `GET /cacerts` would serve
         right now is published under, costing this hot path no extra file read -- see that route's
         own description for what an agent does with a rotation once it sees one here), a strictly
         higher `vd_feed_offset` (request a re-scan via `POST /scan/vd`), and `tasks` when the manager

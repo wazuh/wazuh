@@ -293,7 +293,7 @@ static void test_handle_ssl_read_full_buffer_without_newline_closes(void ** stat
 }
 
 /* enqueue_pending_key(): both cases fail with the old `keys.keyentries[keys.keysize - 1]`
- * indexing (PR #39651) because agent-a is never the last entry. */
+ * indexing because agent-a is never the last entry. */
 
 static void test_enqueue_pending_key_inserts_own_key(void ** state) {
     enqueue_pending_key(1, TEST_SLOT);

@@ -29,15 +29,15 @@ enum class TransportStatus
     Timeout,     ///< The request timed out.
     ConnectFail, ///< DNS/connect failure.
     TlsFail,     ///< TLS handshake/verification failure. HttpResponse::tlsFailure narrows
-    ///< this further (#39062) when the cause is a hostname mismatch or a certificate-date
-    ///< problem; verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+    ///< this further when the cause is a hostname mismatch or a certificate-date
+    ///< problem; verify_mode=system's local-anchor fallback (curlPerformer.cpp)
     ///< acts only when tlsFailure.kind is still None -- a genuine chain/CA-trust failure,
     ///< the one cause a different anchor could plausibly fix.
     Aborted,     ///< Interrupted through the abort flag (shutdown).
     OtherError   ///< Any other transport error.
 };
 
-/// D9 outcome classes for a completed attempt.
+/// Outcome classes for a completed attempt.
 ///
 /// Each value names what was OBSERVED, not what policy applies to it: three of
 /// them are retried (Unreachable, ServerError, BackPressure).
@@ -54,7 +54,7 @@ enum class OutcomeClass
     RouteNotFound,   ///< 404: the target names no route the manager serves (an
     ///< endpoint/global_prefix mismatch), or -- on /download alone -- no such
     ///< resource. Which one it is depends on the endpoint, so the consumer decides.
-    PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
+    PayloadTooLarge, ///< 413: /stateless splits + resends smaller.
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
     CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
     ///< RetrySender retries once, uncompressed.
@@ -216,7 +216,7 @@ struct HttpResponse
     ///< response time (0 = absent/unparsed). Every response the manager's
     ///< transport builds carries one, including every 401 -- RetrySender's
     ///< one-shot auth retry uses it to detect and correct clock skew before
-    ///< assuming a 401 means a dead credential (#37828 follow-up).
+    ///< assuming a 401 means a dead credential.
     std::string localIp;        ///< Local IP of the connection (CURLINFO_LOCAL_IP);
     ///< the agent's own address toward the manager.
     std::string body;

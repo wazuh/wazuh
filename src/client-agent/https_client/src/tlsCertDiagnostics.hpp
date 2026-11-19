@@ -23,8 +23,7 @@
  * Kept low-cardinality, the same discipline as SpkiPinError (spkiPin.hpp):
  * each value drives exactly one distinct, greppable log line at normal level
  * -- a chain/CA-trust problem must not read like a hostname mismatch, and
- * neither must read like a certificate-date failure (#39062 objective
- * requirement 6 and its notBefore/notAfter counterpart).
+ * neither must read like a certificate-date failure.
  */
 enum class TlsFailureKind
 {
@@ -85,7 +84,7 @@ struct TlsFailureDetail
     /// (see classifyDepth0ErrorAsChainTrustRelated() in curlHandle.cpp), not an exhaustive
     /// allowlist of every genuine chain/CA-trust X509_V_ERR_*: an allowlist risks silently
     /// excluding a real trust failure nobody thought to enumerate, which is exactly the
-    /// failure mode #39123's fallback exists to handle -- understating the denylist is safer
+    /// failure mode the local-anchor fallback exists to handle -- understating the denylist is safer
     /// than overstating an allowlist.
     bool depth0ErrorIsChainTrustRelated {true};
 

@@ -141,7 +141,7 @@ namespace
     // It is registered as Liveness so back-pressure on the data plane never sheds it: a status
     // route that gets dropped exactly when the daemon is struggling answers the wrong question.
     // The class is about shedding policy and body caps, not semantics -- liveness and readiness
-    // remain distinct routes with distinct answers (issue #39429).
+    // remain distinct routes with distinct answers.
     void registerStatusRoute(wazuh::uds_http::IUdsHttpServer& server)
     {
         server.addRoute(

@@ -60,7 +60,7 @@ void audit_set_db_consistency(void);
 volatile int fim_sync_module_running = 0;
 
 #ifndef WIN32
-// Handle to the FIM inventory synchronization thread. Kept joinable (issue #37334) so
+// Handle to the FIM inventory synchronization thread. Kept joinable so
 // the shutdown waiter (fim_shutdown_waiter(), main.c) can wait for it to exit before
 // destroying the sync protocol handle, letting its SQLite connection to fim_sync.db
 // close cleanly (checkpoint + removal of the -wal/-shm files) instead of leaking it
@@ -81,7 +81,7 @@ static HANDLE fim_sync_thread_handle = NULL;
 static DWORD fim_sync_thread_id = 0;
 #endif
 
-// Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334): the
+// Serializes syscheck.sync_handle use against the shutdown teardown: the
 // users that are not joined before asp_destroy() (event persistence, syscom's fim_sync
 // responses, the DataClean paths and the scheduled-scan asp_reset) take it for reading
 // around each asp_* call, and the shutdown waiter destroys the handle under the write
@@ -141,7 +141,7 @@ static bool fim_teardown_wait_for_scan_mutex(pthread_mutex_t *mutex, const char 
 }
 
 /**
- * @brief Closes fim_sync.db before the SCM is told the service stopped (issue #38212).
+ * @brief Closes fim_sync.db before the SCM is told the service stopped.
  *
  * Same teardown fim_shutdown_waiter() (main.c) performs on POSIX, which Windows never had: FIM
  * runs inside wazuh-agent.exe, so there is no syscheckd main() to run it. Registered as
@@ -606,7 +606,6 @@ bool validate_and_persist_fim_event(
             // validating events, so a perfectly valid event can be reported as invalid. Do not
             // surface it as an error and do not act on the untrustworthy result (no deletion, no
             // persistence): the agent is stopping and the event is re-evaluated on the next start.
-            // See issue #37654.
             if (fim_shutdown_process_on()) {
                 mdebug1("Ignoring schema validation failure for %s during shutdown%s%s",
                         item_description,
@@ -895,7 +894,7 @@ void start_daemon()
 
     if (syscheck.enable_synchronization) {
         // Launch the inventory synchronization thread as joinable so the shutdown waiter
-        // can wait for it before destroying the sync protocol handle (issue #37334). The
+        // can wait for it before destroying the sync protocol handle. The
         // creation and fim_sync_thread_initialized are published under the handle write
         // lock, which the waiter also takes to decide the join: either the thread is
         // visible there and joined before the handle is destroyed, or the waiter ran
@@ -923,7 +922,7 @@ void start_daemon()
     }
 
     if (syscheck.enable_synchronization) {
-        // Same protocol as the POSIX branch above (issue #37334): the creation is published under
+        // Same protocol as the POSIX branch above: the creation is published under
         // the handle write lock the teardown also takes, so either the thread is visible there and
         // waited for before the handle is destroyed, or the teardown ran first and the shutdown
         // check keeps the thread from being created at all.
@@ -1246,7 +1245,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                                                MODE_DELTA);
 
             if (sync_result.success) {
-                // #38601: the same distinction the ordinary path below makes -- success with an
+                // The same distinction the ordinary path below makes -- success with an
                 // empty queue never opened a session, so it cannot mean the manager took data.
                 if (sync_result.sent_anything) {
                     minfo("FIM synchronization requested by agent-info finished successfully.");
@@ -1311,7 +1310,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
             if (sync_result.success) {
-                // #38601: success alone cannot tell "the manager took everything" from "there
+                // Success alone cannot tell "the manager took everything" from "there
                 // was nothing queued, so no session was opened". Both are fine outcomes, but
                 // only one of them means the manager has our data.
                 if (sync_result.sent_anything) {
@@ -1320,7 +1319,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     minfo("FIM synchronization finished: nothing to send.");
                 }
 
-                // #38899: same reasoning as the flush branch above -- sent_anything is the only
+                // Same reasoning as the flush branch above -- sent_anything is the only
                 // proof this cycle actually reached the manager, so it gates the durable marker.
                 if (sync_result.sent_anything && !first_sync_completed) {
                     fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
@@ -1368,7 +1367,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             // is in progress.
             if (sync_result.success && fim_sync_module_running &&
                 fim_sync_lock_scan_mutex()) {
-                // #38601: identity before integrity. If this agent's id changed, the manager
+                // Identity before integrity. If this agent's id changed, the manager
                 // holds nothing under it and the per-table checksum loop below would only
                 // rediscover that one table at a time, an integrity_interval apart each.
                 //

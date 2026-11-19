@@ -234,7 +234,7 @@ nothing, and the third removes a rate ceiling deliberately:
    --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
    `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself;
 3. sets `<remote><https>`'s `enroll_rate_limit` and `cacerts_rate_limit` to `0` — the documented
-   "no limit" (issue #39129). Those two routes ship with a rate limit (100 and 50 req/s), counted
+   "no limit". Those two routes ship with a rate limit (100 and 50 req/s), counted
    **for the endpoint as a whole rather than per agent**, so a harness asking faster than a fleet's
    steady state — which is the whole point of a capacity run — gets `429`s from a perfectly healthy
    manager: the `cacerts` scenario's 200 unpaced requests would spend the burst and see roughly half
@@ -242,8 +242,8 @@ nothing, and the third removes a rate ceiling deliberately:
    limiter itself; the sender counts a `429` as an ordinary outcome either way (`cacerts_429`,
    `enroll_https_429`, assertable as `s429`).
 
-`<use_password>` and `/etc/wazuh-manager/authd.pass` are left exactly as installed. That is the point of issue
-#39054: benchmarking used to require `use_password=no`, a configuration no production manager has,
+`<use_password>` and `/etc/wazuh-manager/authd.pass` are left exactly as installed. That is the point:
+benchmarking used to require `use_password=no`, a configuration no production manager has,
 and a config flip the script had to apply and undo.
 
 The mint is validated against the running listener certificate, so its `--address` must be one of

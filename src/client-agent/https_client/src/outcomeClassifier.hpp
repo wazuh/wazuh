@@ -13,9 +13,9 @@
 
 #include "httpTypes.hpp"
 
-/// D9 classification of one completed attempt. Pure; the full table is
+/// Classification of one completed attempt. Pure; the full table is
 /// enumerated by its unit test. An aborted transfer is always Interrupted,
-/// never a silent success (lesson H3 from the in-tree wrapper audit).
+/// never a silent success.
 OutcomeClass classifyOutcome(const HttpResponse& response);
 
 /// True when @p response is a TLS handshake failure whose cause is the ordinary

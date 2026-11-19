@@ -1140,7 +1140,7 @@ class Agent:
                 raise WazuhError(1766, extra_message=id)
             elif e.code == 9031:
                 # authd refused the enrollment instead of handing out credentials it could not
-                # journal (issue #39078, H03): nothing was created, and retrying is the remedy.
+                # journal: nothing was created, and retrying is the remedy.
                 raise WazuhInternalError(1772)
             raise e
 

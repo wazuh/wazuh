@@ -24,7 +24,7 @@ using invsync::vd::ServerScanCoordinator;
  * ServerScanCoordinator fences an agent out of session dispatch for the vulnerability scanner's
  * feed-update scans, and waits for anything already in flight to drain -- all through the shared
  * AgentInFlightRegistry, because with the scan synchronous "session in flight" and "scan in
- * flight" are the same thing (doc 06 §5), so no separate session table is needed.
+ * flight" are the same thing, so no separate session table is needed.
  */
 
 namespace

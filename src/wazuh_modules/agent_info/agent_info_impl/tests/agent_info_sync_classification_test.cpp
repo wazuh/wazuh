@@ -9,8 +9,8 @@
 #include <memory>
 #include <string>
 
-// --- Local-transport-unavailable log-level decision (issue #38621) ------------------------------
-// Exercises performIntegritySync()'s SyncModuleResult classification (issue #37553's fix) through
+// --- Local-transport-unavailable log-level decision ---------------------------------------------
+// Exercises performIntegritySync()'s SyncModuleResult classification through
 // AgentInfoImplMock, which injects a MockAgentSyncProtocol and forwards the private method.
 
 namespace

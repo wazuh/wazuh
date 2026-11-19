@@ -12,7 +12,7 @@ back (the credential resolver creates the initial, unstamped `root-ca.pem` from 
 at `--install` and only when it is absent, without this library — `check_bundle()` in
 `src/init/credentials/wazuh-manager-resolve-credentials.py`). It does
 verify one thing, because the publication depends on it: whether the served leaf chains to the bundle
-(`leafChainsToAnyCa()`, C33). The operator-facing chain verdict, which also weighs the server
+(`leafChainsToAnyCa()`, D-8). The operator-facing chain verdict, which also weighs the server
 purpose, stays in remoted's `chainValidates()`.
 
 Consumers: `remoted_module` (linked inside `libremoted_module.so`, see
@@ -51,9 +51,9 @@ manager never vouched for.
 | D-3 | A block that is incomplete, or whose publication is not a number, is **no block** | Half a stamp is not a stamp: the bundle then reads as "never published" (INFO for the caller) rather than as broken (WARN), which is the distinction `no_block` vs the other guards carries |
 | D-4 | `vouch()` fails with `no_ca_signs_leaf` when `leaf == nullptr` | With no served certificate to check against, nothing is vouched for — fail closed |
 | D-5 | `serializedBytes` is a **parameter** of `vouch()`, not something it computes | The cap is about what the caller would actually hand out over HTTP, which only the caller knows (it may add nothing, or a legacy wrapper) |
-| D-6 | `chainValidates()` stayed in remoted | It answers an operator-facing question — since C33 the difference is narrow but real: it adds the server **purpose** and relaxes the anchor rule with `X509_V_FLAG_PARTIAL_CHAIN`, so neither verdict subsumes the other, and no decision of this library or of the tool depends on it |
+| D-6 | `chainValidates()` stayed in remoted | It answers an operator-facing question — since D-8 the difference is narrow but real: it adds the server **purpose** and relaxes the anchor rule with `X509_V_FLAG_PARTIAL_CHAIN`, so neither verdict subsumes the other, and no decision of this library or of the tool depends on it |
 | D-7 | The library is STATIC and has no state | Two very different consumers (a long-lived daemon and a short-lived CLI); nothing here is worth a shared object or a singleton |
-| D-8 (C33) | The guard is a real chain validation (`X509_STORE` + `X509_verify_cert()`), with OpenSSL's **default flags**: no `X509_V_FLAG_PARTIAL_CHAIN`, so the anchor must be a self-signed root | A signature check passed a certificate holding the issuer's key under another subject, which no agent can chain to — remoted announced an unusable anchor as published. Default flags are what an agent's own OpenSSL applies (with no trust settings of its own, only a self-signed certificate of its CA file is trusted), so the verdict here is the verdict there |
+| D-8 | The guard is a real chain validation (`X509_STORE` + `X509_verify_cert()`), with OpenSSL's **default flags**: no `X509_V_FLAG_PARTIAL_CHAIN`, so the anchor must be a self-signed root | A signature check passed a certificate holding the issuer's key under another subject, which no agent can chain to — remoted announced an unusable anchor as published. Default flags are what an agent's own OpenSSL applies (with no trust settings of its own, only a self-signed certificate of its CA file is trusted), so the verdict here is the verdict there |
 
 ## Layout
 
@@ -109,20 +109,20 @@ them.
 `vouch()` evaluates in exactly this order and stops at the first failure:
 `no_certificates` → `no_block` → `hash_mismatch` → `no_ca_signs_leaf` → `too_many_certificates` →
 `too_many_bytes`. Callers name the cause in their logs and exit codes, so the order is part of the
-contract, not an implementation detail. `no_ca_signs_leaf` keeps its spelling from before C33 for
+contract, not an implementation detail. `no_ca_signs_leaf` keeps its spelling from before D-8 for
 exactly that reason; what it means is `leafChainsToAnyCa()` — the leaf does not chain to any CA of
 the bundle.
 
-### Behaviour change in C33 (issue #39319)
+### Behaviour change of D-8
 
-The guard was a signature check (`X509_verify` against each CA's public key) until C33. Replacing it
+The guard was a signature check (`X509_verify` against each CA's public key) until D-8. Replacing it
 with a chain validation makes several previously "matching" bundles unpublishable — every one of them
 an anchor an agent could not have used, so the stricter answer is the correct one, but the change is
 visible:
 
 | Bundle | Before | Now |
 |---|---|---|
-| A CA with the issuer's public key under **another subject** (the P1 that motivated C33) | vouched, `GET /cacerts` 200 | refused: nothing chains to it |
+| A CA with the issuer's public key under **another subject** (the case that motivated D-8) | vouched, `GET /cacerts` 200 | refused: nothing chains to it |
 | The only signer is **expired** (or not yet valid) — a rotation's leftover re-issue | vouched | refused |
 | The only signer has **no `CA:TRUE`** | vouched | refused |
 | Only a **non-self-signed intermediate**, which did sign the leaf | vouched | refused: without `PARTIAL_CHAIN` an anchor must be self-signed, exactly as on the agent |
@@ -131,7 +131,7 @@ visible:
 Two consequences worth stating. First, the verdict depends on the clock, so a bundle publishable
 yesterday can stop being publishable today with no file having changed — which is why both functions
 take an optional instant `at`, and why remoted's `CaCertificateSource` judges them again on every read
-instead of caching them with the bytes (issue #39519): a CA that expires in place is refused from the
+instead of caching them with the bytes: a CA that expires in place is refused from the
 next read on, and one whose `notBefore` was ahead of the node's clock is served once its window opens.
 Second, remoted's `caMatchesLeaf`, `remoted.server.tls.ca_matches_leaf` and the `ca_mismatch` 503 all
 mean "does not chain" now, which is what their log lines say.
@@ -162,7 +162,7 @@ mean "does not chain" now, which is what their log lines say.
 | `parseBundle` (RF-3, RF-4) | Block at the top / between certificates / after the last one; two blocks (the first wins); no block; five near-miss `##` shapes; truncated and non-base64 documents clear the certificates |
 | `vouch` (RF-2) | One case per `GuardFailure` in its evaluation order, including `leaf == nullptr`, seven certificates and one byte over the size cap; and the success that returns the block's publication |
 | `renderBlock` (RF-5) | The eight lines verbatim, and the round trip through `parseBundle()` |
-| `leafChainsToAnyCa` (C33) | The regression case — same public key, another subject: signs the leaf, does not anchor it; the root alone and among foreign CAs; an expired signer; a signer without `CA:TRUE`; an intermediate alone (default flags); an expired served LEAF; a self-signed leaf as its own anchor; null leaf, empty bundle, a null entry among the anchors; the instant given (`at`) honoured here and by `vouch()`'s chain guard; the same impostor through `vouch()`; `leafChainsToAnyCaIgnoringDates()` saying yes to an expired and a not-yet-valid CA and no to the impostor; `vouchGivenChain()` answering every guard as `vouch()` does, in the same order |
+| `leafChainsToAnyCa` (D-8) | The regression case — same public key, another subject: signs the leaf, does not anchor it; the root alone and among foreign CAs; an expired signer; a signer without `CA:TRUE`; an intermediate alone (default flags); an expired served LEAF; a self-signed leaf as its own anchor; null leaf, empty bundle, a null entry among the anchors; the instant given (`at`) honoured here and by `vouch()`'s chain guard; the same impostor through `vouch()`; `leafChainsToAnyCaIgnoringDates()` saying yes to an expired and a not-yet-valid CA and no to the impostor; `vouchGivenChain()` answering every guard as `vouch()` does, in the same order |
 | `identityOf` / `describe` | The identity against an independently computed SHA-256; subject/issuer/dates/`isCa`/`signsLeaf`, and where `signsLeaf` and `leafChainsToAnyCa()` deliberately disagree |
 
 `test/testPki.hpp` builds its certificates in memory (EC P-256, `X509_sign`) — a bounded copy of
@@ -176,5 +176,5 @@ set to a directory, `CaBundleTest.RenderBlockRoundTripsThroughParseBundle` write
 `bundle.pem` and the `leaf.pem` it signs there, and that pair is then loaded with
 `openssl storeutl -noout -certs`, verified with `openssl verify -CAfile bundle.pem leaf.pem` and
 handed to Python's `ssl.create_default_context(cafile=...)`. That external check is manual: no
-script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR` (issue #39319 keeps the script
-and its output).
+script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR` (the script
+and its output are kept).

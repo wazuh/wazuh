@@ -16,7 +16,7 @@
 #include <atomic>
 
 /**
- * @brief The /control client state machine (D7), pure logic: no I/O, no time.
+ * @brief The /control client state machine, pure logic: no I/O, no time.
  *
  * ControlStream drives it: it asks what to do next (nextAction), executes the
  * request, and feeds the result back as an Event (onEvent). Effects returned

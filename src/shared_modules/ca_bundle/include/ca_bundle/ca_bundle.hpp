@@ -20,7 +20,7 @@
  * file with the same code instead of two implementations that drift: what certificates does it
  * carry, what content do they hash to, does the certificate the listener serves CHAIN to any of
  * them, and was it stamped by the tool. Extracted from remoted's tlsCertificateStatus.{hpp,cpp},
- * which had every one of these but the block (issue #39319).
+ * which had every one of these but the block.
  *
  * Pure functions over bytes and X509 objects: no file reads, no logging, no configuration. The
  * caller reads the file (remoted through its bounded, injectable reader), decides what to do with
@@ -76,7 +76,7 @@ namespace ca_bundle
      *
      * `wellFormed` is false when the reader stopped on something it could not decode instead of at
      * end of input. The distinction matters for what we publish: a file we do not fully understand
-     * is refused whole rather than served up to its first bad block (issue #39078, H01), so a
+     * is refused whole rather than served up to its first bad block, so a
      * document that is not well formed comes back with no certificates at all.
      *
      * `block` absent means "not published" -- an ordinary CA file, the state every bundle is in
@@ -146,7 +146,7 @@ namespace ca_bundle
      * it. A signature check does not: a certificate carrying the SAME public key under ANOTHER
      * subject verifies the leaf's signature while the leaf names the other one as its issuer, so it
      * never chains and no agent can use it -- and remoted would have announced it as published all
-     * the same (issue #39319, C33).
+     * the same.
      *
      * Verified with OpenSSL's DEFAULT flags -- deliberately WITHOUT `X509_V_FLAG_PARTIAL_CHAIN`, so
      * a trust anchor has to be a self-signed root. That is how the OpenSSL of an agent that
@@ -181,16 +181,16 @@ namespace ca_bundle
      */
     bool leafChainsToAnyCaIgnoringDates(const X509* leaf, const std::vector<X509Ptr>& cas);
 
-    /// How many certificates a bundle may carry to be vouched for (spike #39277, D5).
+    /// How many certificates a bundle may carry to be vouched for.
     constexpr std::size_t kMaxCertificates = 6;
 
-    /// How many bytes the serialised bundle may take to be vouched for (spike #39277, D5).
+    /// How many bytes the serialised bundle may take to be vouched for.
     constexpr std::size_t kMaxSerializedBytes = 8191;
 
     /// Why vouch() refused, in the order it evaluates them. `none` means it did not.
     ///
     /// `no_ca_signs_leaf` keeps its name from when the guard was a signature check: what it means
-    /// since C33 is leafChainsToAnyCa()'s answer -- the served leaf does not CHAIN to any CA of the
+    /// since D-8 is leafChainsToAnyCa()'s answer -- the served leaf does not CHAIN to any CA of the
     /// bundle -- which also covers an expired or non-CA signer. The spelling is what callers'
     /// switches, logs and exit codes are written against, so it was not renamed with the function.
     enum class GuardFailure

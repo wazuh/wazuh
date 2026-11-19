@@ -178,7 +178,7 @@ public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
-     * @param config Indexer configuration, including database_path and servers.
+     * @param config Indexer configuration, including the servers.
      *               `monitoring_interval_seconds` (default 10, minimum 1) sets the polling period of
      *               the health monitor this constructor builds. `flush_interval_seconds` = 0 starts
      *               NO background flush thread at all: the caller owns every flush().
@@ -456,7 +456,7 @@ public:
  * @brief IndexerConnectorAsync class.
  *
  */
-class IndexerConnectorAsync final
+class EXPORTED IndexerConnectorAsync final
 {
 private:
     class Impl;
@@ -630,6 +630,8 @@ public:
      * @param keepAlive Time to keep the PIT alive (e.g., "5m" for 5 minutes, "1h" for 1 hour).
      * @param expandWildcards If true, expands wildcard patterns to match indices.
      * @return A PointInTime object containing the PIT ID and creation time.
+     * @throws IndexerConnectorException before any request if an entry of @p indices is empty or holds a
+     *         character outside `[a-zA-Z0-9._*-]`, as on the sync connector; statusCode() is 0.
      * @throws IndexerConnectorException if the PIT creation fails; statusCode() holds the indexer's HTTP
      *         status, 0 or negative if there was none. The indexer is asked to refuse a PIT some shards
      *         cannot take part in (allow_partial_pit_creation=false), so it answers 503 instead.
@@ -693,6 +695,8 @@ public:
      * @param query The query object (must be valid JSON).
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
+     * @throws IndexerConnectorException before any request if @p index is empty or holds a character
+     *         outside `[a-zA-Z0-9._*-]`, as on the sync connector; statusCode() is 0.
      * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
      *         status (404 for a missing index), 0 or negative if there was none. The indexer is asked to
      *         refuse an answer it cannot give over every shard (allow_partial_search_results=false).

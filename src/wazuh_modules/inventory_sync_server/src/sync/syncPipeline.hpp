@@ -63,7 +63,7 @@ namespace invsync::sync
      * FIFO. The private connector is what retires the legacy module's shared-connector machinery
      * (global notify, stale flags, cross-thread scopeLock) from this path entirely.
      *
-     * Workers GROUP-COMMIT (design doc 03 §7): bulk sessions stage and their responses wait; the
+     * Workers GROUP-COMMIT: bulk sessions stage and their responses wait; the
      * flush happens when the staged bytes reach `bulkFlushBytes` or the shard's queue drains, and
      * only then is the whole batch answered. Under low load the queue is empty after every session
      * (flush-per-request latency); under a burst of small sessions the bulks grow on their own and
@@ -78,7 +78,7 @@ namespace invsync::sync
         {
             /// What this item asks the worker to do. DeleteAgent rides the same
             /// shard queue as the agent's sessions ON PURPOSE: the deletion orders FIFO against any
-            /// in-flight session of that agent instead of racing it (design doc 04 §1) -- the
+            /// in-flight session of that agent instead of racing it -- the
             /// legacy module's delete competed for a lock with no ordering at all.
             ///
             /// VdScanRequest rides the VD SCAN LANE, never a pipeline shard: it is an on-demand

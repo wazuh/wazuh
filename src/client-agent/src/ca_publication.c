@@ -115,7 +115,7 @@ int w_ca_publication_render(int64_t generation, char *out, size_t out_size) {
  * the agent is killed mid-install. The bootstrap already writes the anchor through this same
  * fixed sibling on Windows (token_bootstrap.c).
  *
- * The exclusive create is what mkstemp() was buying and it is kept deliberately: since #39321
+ * The exclusive create is what mkstemp() was buying and it is kept deliberately:
  * etc/certs is group-writable and sticky, so this name is one the runtime user can plant a
  * symlink at, and opening it with "w" would follow that link and truncate whatever it points at
  * -- with the agent's privileges, on a schedule the manager controls. O_CREAT|O_EXCL refuses an
@@ -268,7 +268,7 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
      * holding a fragment of a certificate bundle -- unable to verify the manager, and so unable
      * to reach /cacerts to repair itself. The fallback is entered here whenever rename() fails,
      * which the sticky directory makes routine: rename() over a file owned by someone else
-     * fails EPERM, and that is what a pre-#39321 install looks like until its ownership is
+     * fails EPERM, and that is what an install predating CA rotation looks like until its ownership is
      * repaired. Measured, at the anchor's own 0640 root:wazuh, the copy then fails too -- it
      * cannot open the destination for writing either -- so the store survives that particular
      * case whichever helper is used. What it does not survive is an anchor left group-writable,

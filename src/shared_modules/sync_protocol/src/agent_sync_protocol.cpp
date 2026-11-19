@@ -1030,7 +1030,7 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
     // synchronizeModule(), notifyDataClean() has ad hoc callers (policy-removal cleanup, the
     // public C-facing wrapper) whose retries are not part of the periodic sync cycle and would
     // otherwise skew the tolerance window synchronizeModule() relies on for its own log-level
-    // decision. (#38579)
+    // decision.
     const unsigned int consecutiveFailures = trackConsecutiveFailures ? trackSyncOutcome(success, stopped) : 0;
     clearSyncState();
     return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
@@ -1115,7 +1115,7 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         // is still loading, and accepts the session (indexing the inventory without scanning
         // it) when its scanner is not running at all. Deferring here instead would make the
         // agent guess between those two from the same value, and a manager with vulnerability
-        // detection disabled would never index the agent's packages (#38599).
+        // detection disabled would never index the agent's packages.
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata
@@ -1613,7 +1613,7 @@ void AgentSyncProtocol::applyServiceUnavailable(std::string_view body)
     m_syncState.lastSyncManagerNotReady = true;
 
     // The feed is the one cause the body tells apart: it is expected on every new manager and must
-    // not be reported as a communication failure (#40683).
+    // not be reported as a communication failure.
     if (isFeedNotReadyBody(body))
     {
         m_syncState.lastSyncResult = SyncResult::FEED_NOT_READY;

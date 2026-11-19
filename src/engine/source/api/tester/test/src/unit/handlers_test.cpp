@@ -1023,7 +1023,7 @@ INSTANTIATE_TEST_SUITE_P(
         }),
     [](const testing::TestParamInfo<OutputValidationCase>& info) { return info.param.name; });
 
-// Additional tests: /logtest excludes temporary fields from validation (issue #35416)
+// Additional tests: /logtest excludes temporary fields from validation
 //
 // These verify that temporary fields (_...) are ignored by
 // /logtest WCS validation, while real schema errors are still reported.

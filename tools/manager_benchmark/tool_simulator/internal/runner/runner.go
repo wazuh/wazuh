@@ -21,7 +21,7 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
-// How an agent-mode fleet obtains the identities it runs under (issue #39054).
+// How an agent-mode fleet obtains the identities it runs under.
 // Both end in a `client.keys` entry the manager will authenticate; they differ in
 // which credential buys it, and therefore in what the manager under test has to
 // be configured as.
@@ -63,8 +63,8 @@ type Config struct {
 	// in main(). "" means unprefixed. Agent mode only: NewUDSClient takes no prefix, so
 	// a uds run ignores it by construction.
 	GlobalPrefix string
-	// EnrollToken is the enrollment token text an `enroll_https` step presents
-	// (issue #38993), as the operator pasted it -- from --enroll-token-file or
+	// EnrollToken is the enrollment token text an `enroll_https` step presents,
+	// as the operator pasted it -- from --enroll-token-file or
 	// WAZUH_ENROLLMENT_TOKEN. Environment config like Cluster: a credential minted
 	// on the manager under test, never a scenario field. "" is fine for scenarios
 	// without the step; a scenario WITH it and no token is refused before any traffic.

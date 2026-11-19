@@ -204,7 +204,7 @@ The agent has a usable key at that point, but **remoted does not know about it y
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
 may live in that pass.
 
-**One rotation at a time, per agent** (issue #39078, H02). A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
+**One rotation at a time, per agent**. A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
 the reservation is released by the **writer**, once the new credentials are in the database. That placement is the whole fix: the row keeps naming the old secret
 until the writer replaces it, so two requests carrying the same bearer used to verify and rotate one after the other, handing out two credentials for one agent and
 invalidating the first. A caller that finds the reservation taken gets `9030` (*Re-enrollment already in progress*, remoted's **409**, counter
@@ -212,7 +212,7 @@ invalidating the first. A caller that finds the reservation taken gets `9030` (*
 before anything is handed out releases the reservation at once; a **failed** database write does not, because the row still holds the old secret and letting it
 authorise another rotation is the hole itself. Until that transition is resolved the agent cannot rotate on this manager, and the writer says so in the log.
 
-**The credential is on the record before it is handed out** (issue #39078, H03). `local_add()` and `local_reenroll()` append the agent, the key and the
+**The credential is on the record before it is handed out**. `local_add()` and `local_reenroll()` append the agent, the key and the
 re-enrollment secret to `queue/authd/pending-identities` (0640, one JSON line, appended without rewriting the file) **before** they answer, and the writer
 settles live entries after `global commit`, not merely a successful statement. Startup and failed-rotation
 cleanup can also discard entries that are no longer owed. The rules that follow from that:
@@ -259,7 +259,7 @@ The operator-facing [identity-journal reference](../../docs/ref/modules/authd/ar
 explains startup reconciliation, the legacy-worker exception and the difference between the
 5000-entry admission limit and the 8 MiB load limit.
 
-**What the store promises when it cannot write** (issue #39078):
+**What the store promises when it cannot write**:
 
 - **A revoke is either written or reported as failed.** The flag goes on in memory at once — this authd stops honouring the token immediately — but the answer is
   `9029` («Enrollment token store write failed», the API's `1771`, HTTP 500), never the `9022` of an id that does not exist, and never a success. The id is kept in a

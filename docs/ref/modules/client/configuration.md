@@ -291,7 +291,7 @@ Automatically restart agent when receiving configuration updates from manager.
 
 ### enrollment
 
-Agent auto-enrollment configuration block (optional). Since 5.0.0 (#38465),
+Agent auto-enrollment configuration block (optional). Since 5.0.0,
 enrollment runs over the same HTTPS channel and TLS material as every other
 manager endpoint — it dials `<agent><manager>` and presents `<agent><ssl>`,
 instead of opening a second connection to `authd` on port 1515. There is no

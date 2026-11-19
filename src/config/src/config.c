@@ -87,7 +87,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osrootcheck = "rootcheck";                      /* Agent Config  */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
-    const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 (#38030) */
+    const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 */
     const char *osagent = "agent";                              /* Agent Config (HTTPS endpoint) */
     const char *osactiveresponse = "active-response";           /* Agent Active Response Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
@@ -161,7 +161,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 }
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
-            /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
+            /* 4.x spelled this block <client>. An upgrade never rewrites
              * ossec.conf, so the block is still accepted, but only <server><address>
              * - as the fallback for <agent><manager><address> - and <enrollment>,
              * which carries the agent's identity, are read from it. */
