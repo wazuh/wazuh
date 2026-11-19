@@ -58,7 +58,7 @@ The `libcontainer_images.so` library exposes a small C ABI and forwards calls to
 | `LayerByteStream` | Decompresses a layer blob, or passes it through when it is a plain tar. |
 | `LayerReader` | Streams the tar entries of one layer. |
 | `LayerComposer` | Composes the layers of an image into the final state of its package databases. |
-| `IPackageDbParser` | Package database format interface, implemented by `DpkgParser` and `ApkParser`. |
+| `PackageDb` | The package database parser in `data_provider`, shared with container runtime security. |
 
 ### **Reader Interface**
 
@@ -162,7 +162,7 @@ Only the tracked package database paths are kept: the image filesystem is never 
 
 ### **Package Database Parsers**
 
-Each format implements `IPackageDbParser` and registers the paths it owns, so a new format is added without changing the reader or the existing parsers. `dpkg` reports the stanzas whose status is `ok installed`; `apk` is read from both of its locations. The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
+The package databases are read by `PackageDb::read` (`src/data_provider/src/packages/packageDbParser.hpp`), the one parser shared with container runtime security, so both report the same packages for the same files. The composer hands it the composed files by in-image path. `dpkg` reports the stanzas whose status is `ok installed`, from `status`, or from the files of `status.d` when there is no `status`; `apk` is read from the first of its two locations present; `rpm` is read from the first database present (sqlite, then ndb). The formats that are recognized but not parsed yet are reported once, and the image is inventoried with zero packages.
 
 ---
 

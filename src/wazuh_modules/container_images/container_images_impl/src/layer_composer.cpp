@@ -12,7 +12,7 @@
 #include "ci_logging_helper.hpp"
 #include "layer_reader.hpp"
 #include "os_release_parser.hpp"
-#include "package_db_parser.hpp"
+#include "packageDbParser.hpp"
 
 #include <algorithm>
 #include <iterator>
@@ -29,6 +29,17 @@ namespace
     // Ceiling for an os-release file, which is a few hundred bytes. The size comes from the
     // image being scanned, so a file past this is not read.
     constexpr std::uint64_t MAX_OS_RELEASE_SIZE {64 * 1024};
+
+    /// A package database the module recognizes but does not parse.
+    ///
+    /// Recognizing them is what lets the module tell "this image uses a format we do not
+    /// support yet" apart from "this image has no packages".
+    struct UnsupportedPackageDb
+    {
+        std::string path;   ///< In-image path or directory prefix that identifies the format.
+        bool isPrefix;      ///< True when the format is identified by a directory rather than a file.
+        std::string format; ///< Format name, for the log line.
+    };
 
     void logDebug(const std::string& message)
     {
@@ -67,24 +78,27 @@ namespace
         }
     }
 
-    /// @brief The parser that owns a tracked path, or nullptr when the path is not tracked.
-    const containerimages::IPackageDbParser* parserFor(const std::string& path)
+    const std::vector<UnsupportedPackageDb>& unsupportedPackageDatabases()
     {
-        for (const auto& database : containerimages::knownPackageDatabases())
+        static const std::vector<UnsupportedPackageDb> DATABASES
         {
-            if (database.path == path)
-            {
-                return database.parser.get();
-            }
-        }
+            // The Berkeley DB format rpm used before 4.16. Named by file, not by directory,
+            // so the sqlite and ndb databases in the same directory stay parsable.
+            {"var/lib/rpm/Packages", false, "rpm"},
+            {"usr/lib/sysimage/rpm/Packages", false, "rpm"},
+            {"var/lib/pacman/local/", true, "pacman"},
+            {"var/db/pkg/", true, "portage"},
+            {"var/db/xbps/", true, "xbps"},
+            {"usr/share/clear/bundles/", true, "swupd"},
+        };
 
-        return nullptr;
+        return DATABASES;
     }
 
     /// @brief Name of the unimplemented format a path belongs to, empty when it is none.
     std::string unsupportedFormatFor(const std::string& path)
     {
-        for (const auto& database : containerimages::unsupportedPackageDatabases())
+        for (const auto& database : unsupportedPackageDatabases())
         {
             const auto matches {database.isPrefix ? path.rfind(database.path, 0) == 0 : path == database.path};
 
@@ -95,6 +109,27 @@ namespace
         }
 
         return {};
+    }
+
+    /// @brief The package record the module stores for a package the shared parser read.
+    containerimages::ImagePackageRecord toImagePackage(PackageDb::Package&& package)
+    {
+        containerimages::ImagePackageRecord record;
+        record.name = std::move(package.name);
+        record.version = std::move(package.version);
+        record.architecture = std::move(package.architecture);
+        record.type = std::move(package.type);
+        record.vendor = std::move(package.vendor);
+        record.installed = std::move(package.installed);
+        record.category = std::move(package.category);
+        record.description = std::move(package.description);
+        record.priority = std::move(package.priority);
+        record.multiarch = std::move(package.multiarch);
+        record.source = std::move(package.source);
+        record.packageDbPath = std::move(package.packageDbPath);
+        record.size = package.size;
+
+        return record;
     }
 
     /// @brief Read the content of a tar entry into a string.
@@ -115,8 +150,9 @@ namespace containerimages
     LayerSnapshot readLayerSnapshot(IByteStream& layer)
     {
         LayerSnapshot snapshot;
+        std::uint64_t statusDBytes {0};
 
-        snapshot.complete = LayerReader::read(layer, [&snapshot](const LayerEntry & entry, IByteStream & content)
+        snapshot.complete = LayerReader::read(layer, [&snapshot, &statusDBytes](const LayerEntry & entry, IByteStream & content)
         {
             if (entry.isOpaqueDirectory)
             {
@@ -151,10 +187,10 @@ namespace containerimages
                 return true;
             }
 
-            // A path a parser owns is never reported as unsupported. The two rpm formats
-            // this module reads sit in the same directory as the one it does not, so the
-            // registered paths are consulted first.
-            if (!entry.isRegularFile || parserFor(entry.path) == nullptr)
+            // A path the shared parser reads is never reported as unsupported. The rpm
+            // formats it reads sit in the same directory as the one it may not, so the
+            // parser's paths are consulted first.
+            if (!entry.isRegularFile || !PackageDb::isDatabasePath(entry.path))
             {
                 const auto unsupported {unsupportedFormatFor(entry.path)};
 
@@ -172,6 +208,19 @@ namespace containerimages
             {
                 logWarn("Package database '" + entry.path + "' is larger than the supported size, skipping it.");
                 return true;
+            }
+
+            // The dpkg status.d directory holds one small file per package and any number of
+            // them, so the layer's share of them is bounded as one database would be.
+            if (PackageDb::isStatusDEntry(entry.path))
+            {
+                statusDBytes += entry.size;
+
+                if (statusDBytes > MAX_DATABASE_SIZE)
+                {
+                    logWarn("The dpkg status.d directory is larger than the supported size, skipping '" + entry.path + "'.");
+                    return true;
+                }
             }
 
             snapshot.databases[entry.path] = readContent(content, entry.size);
@@ -288,40 +337,27 @@ namespace containerimages
 
     std::vector<ImagePackageRecord> LayerComposer::packages() const
     {
-        std::vector<ImagePackageRecord> packages;
-        std::set<const IPackageDbParser*> handled;
+        auto read {PackageDb::read(m_databases)};
 
-        // Databases are visited in the preference order of the registry, not in path
-        // order, so an image that carries two of them reports the preferred one first.
-        // Two registered locations sharing the same parser (the two apk database paths)
-        // are alternate locations of the same conceptual database, not two distinct
-        // ones: an image that happens to carry a real file at both collides on the
-        // packages table's primary key (name + version + architecture + type) and
-        // reports the same packages twice. Once a parser has produced its records from
-        // its preferred location, its other locations are skipped.
-        for (const auto& location : knownPackageDatabases())
+        for (const auto& database : read.databases)
         {
-            const auto database {m_databases.find(location.path)};
-
-            if (database == m_databases.end() || location.parser == nullptr)
+            if (database.skipped)
             {
-                continue;
-            }
-
-            if (!handled.insert(location.parser.get()).second)
-            {
-                logDebug("Skipping '" + location.path +
+                logDebug("Skipping '" + database.path +
                          "': another location for the same package database was already used.");
-                continue;
             }
+            else
+            {
+                logDebug("Parsed " + std::to_string(database.packages) + " packages from '" + database.path + "'.");
+            }
+        }
 
-            auto parsed {location.parser->parse(database->second, location.path)};
+        std::vector<ImagePackageRecord> packages;
+        packages.reserve(read.packages.size());
 
-            logDebug("Parsed " + std::to_string(parsed.size()) + " packages from '" + location.path + "'.");
-
-            packages.insert(packages.end(),
-                            std::make_move_iterator(parsed.begin()),
-                            std::make_move_iterator(parsed.end()));
+        for (auto& package : read.packages)
+        {
+            packages.push_back(toImagePackage(std::move(package)));
         }
 
         return packages;

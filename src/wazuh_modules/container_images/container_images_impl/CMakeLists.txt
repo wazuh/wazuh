@@ -24,8 +24,8 @@ include_directories(${SRC_FOLDER}/external/zstd/lib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/curl/include/) # registry transport
 include_directories(${SRC_FOLDER}/external/openssl/include/) # hash_helper, SigV4 (EVP_Q_mac)
 include_directories(${SRC_FOLDER}/external/sqlite/) # rpm sqlite database backend
-# The rpm header and database format readers are the shared agent package reading. They
-# are header only, so they are compiled here rather than linked, and the module gains no
+# The package database parser (dpkg, apk, rpm) is shared with container runtime security.
+# It is header only, so it is compiled here rather than linked, and the module gains no
 # dependency on libsysinfo.
 include_directories(${SRC_FOLDER}/data_provider/src/packages/)
 include_directories(${SRC_FOLDER}/shared/include/)
@@ -57,7 +57,6 @@ add_library(
   src/layer_reader.cpp
   src/oci_metadata.cpp
   src/os_release_parser.cpp
-  src/package_db_parser.cpp
   src/platform_selection.cpp
   src/registry_byte_stream.cpp
   src/registry_errors.cpp

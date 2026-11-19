@@ -418,7 +418,7 @@ The packages of an image come from the package database its layers carry:
 
 | Format | Database path | Status |
 |--------|---------------|--------|
-| dpkg | `var/lib/dpkg/status` | Parsed. Installed packages only. |
+| dpkg | `var/lib/dpkg/status`, `var/lib/dpkg/status.d/` | Parsed. Installed packages only. A distroless image has no `status` file and one file per package under `status.d`, which is read only when there is no `status` file. The `.md5sums` files next to them are not packages. |
 | apk | `lib/apk/db/installed`, `usr/lib/apk/db/installed` | Parsed. The second path is used by Wolfi and Chainguard images. |
 | rpm, sqlite | `var/lib/rpm/rpmdb.sqlite`, `usr/lib/sysimage/rpm/rpmdb.sqlite` | Parsed. The format rpm 4.16 and later use, so the current Red Hat, Fedora and Amazon Linux families. |
 | rpm, ndb | `var/lib/rpm/Packages.db`, `usr/lib/sysimage/rpm/Packages.db` | Parsed. The format the SUSE family uses. |

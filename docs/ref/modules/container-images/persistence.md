@@ -176,7 +176,7 @@ synchronization layer and the manager can settle on it (`IMAGE_PACKAGES_INDEX` i
 | `container_images_impl/include/image_inventory_types.hpp` | Adds `ImagePackageRecord`; references carry their packages. |
 | `container_images_impl/{include,src}/archive_image_reader.*` | Reads the configured inputs on disk and returns references with their packages. |
 | `container_images_impl/{include,src}/layer_reader.*`, `layer_composer.*`, `byte_stream.*` | Stream a layer, compose the layers of an image, and keep only its package databases. |
-| `container_images_impl/{include,src}/package_db_parser.*` | The package database formats: parsed, and recognized but not implemented yet. |
+| `data_provider/src/packages/packageDbParser.hpp` | The package database formats, shared with container runtime security. The composer in `layer_composer.cpp` also lists the formats that are recognized but not implemented yet. |
 | `container_images_impl/{include,src}/container_images_db.*` | Owns DBSync, holds the CREATE TABLE statements and the upgrade list, runs the transactions, emits deltas. |
 | `container_images_impl/{include,src}/container_images_impl.*` | Orchestrator: scan -> DB -> delta callback. |
 | `container_images/{include,src}/container_images.{h,hpp,cpp}` | C ABI + facade; initializes DBSync. |

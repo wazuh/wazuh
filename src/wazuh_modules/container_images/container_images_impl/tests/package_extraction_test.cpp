@@ -16,7 +16,6 @@
 #include "image_fixtures.hpp"
 #include "layer_composer.hpp"
 #include "layer_reader.hpp"
-#include "package_db_parser.hpp"
 
 #include <gtest/gtest.h>
 
@@ -42,6 +41,7 @@ namespace
     const std::string RPM_NDB_PATH {"var/lib/rpm/Packages.db"};
     const std::string RPM_NDB_USR_PATH {"usr/lib/sysimage/rpm/Packages.db"};
     const std::string RPM_BDB_PATH {"var/lib/rpm/Packages"};
+    const std::string DPKG_STATUS_D_PATH {"var/lib/dpkg/status.d/"};
     constexpr char TYPE_HARDLINK {'1'};
     constexpr char TYPE_SYMLINK {'2'};
     const std::string OS_RELEASE_PATH {"etc/os-release"};
@@ -997,110 +997,9 @@ TEST_F(PackageExtractionTest, ComposerDoesNotReadAnOversizedOsRelease)
 }
 
 // ---------------------------------------------------------------------------
-// Package database parsers.
+// Package databases through the composer. The formats themselves are read by the parser
+// shared with container runtime security, which has its own tests in data_provider.
 // ---------------------------------------------------------------------------
-
-TEST_F(PackageExtractionTest, DpkgParserMapsEveryField)
-{
-    const DpkgParser parser;
-    const auto packages {parser.parse(dpkgStanza("curl", "7.88.1-10"), DPKG_STATUS_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-
-    const auto& package {packages.front()};
-    EXPECT_EQ(package.name, "curl");
-    EXPECT_EQ(package.version, "7.88.1-10");
-    EXPECT_EQ(package.architecture, "amd64");
-    EXPECT_EQ(package.type, "deb");
-    EXPECT_EQ(package.vendor, "Debian curl Maintainers <team@debian.org>");
-    EXPECT_EQ(package.category, "utils");
-    EXPECT_EQ(package.priority, "optional");
-    EXPECT_EQ(package.multiarch, "same");
-    EXPECT_EQ(package.source, "curl-source");
-    EXPECT_EQ(package.packageDbPath, DPKG_STATUS_PATH);
-    // dpkg reports kibibytes, the inventory stores bytes.
-    EXPECT_EQ(package.size, 100 * 1024);
-    // Only the short description, not the continuation lines.
-    EXPECT_EQ(package.description, "short description of curl");
-}
-
-TEST_F(PackageExtractionTest, DpkgParserReportsInstalledPackagesOnly)
-{
-    const DpkgParser parser;
-    const auto content {dpkgStanza("curl", "7.0") +
-                        dpkgStanza("wget", "1.0", "amd64", "deinstall ok config-files") +
-                        dpkgStanza("nano", "5.0", "amd64", "install ok half-configured") +
-                        dpkgStanza("tar", "1.34")};
-
-    EXPECT_EQ(packageNames(parser.parse(content, DPKG_STATUS_PATH)), std::vector<std::string>({"curl", "tar"}));
-}
-
-TEST_F(PackageExtractionTest, DpkgParserSkipsStanzasWithoutAName)
-{
-    const DpkgParser parser;
-    EXPECT_TRUE(parser.parse("Status: install ok installed\nVersion: 1.0\n", DPKG_STATUS_PATH).empty());
-}
-
-TEST_F(PackageExtractionTest, DpkgParserSurvivesMalformedContent)
-{
-    const DpkgParser parser;
-    EXPECT_NO_THROW(parser.parse("Installed-Size: not-a-number\nPackage: curl\nStatus: install ok installed\n",
-                                 DPKG_STATUS_PATH));
-    EXPECT_EQ(parser.parse("Installed-Size: not-a-number\nPackage: curl\nStatus: install ok installed\n",
-                           DPKG_STATUS_PATH).front().size, 0);
-}
-
-TEST_F(PackageExtractionTest, ApkParserMapsEveryField)
-{
-    const ApkParser parser;
-    const auto packages {parser.parse(apkStanza("busybox", "1.36.1-r5"), APK_DB_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-
-    const auto& package {packages.front()};
-    EXPECT_EQ(package.name, "busybox");
-    EXPECT_EQ(package.version, "1.36.1-r5");
-    EXPECT_EQ(package.architecture, "x86_64");
-    EXPECT_EQ(package.type, "apk");
-    EXPECT_EQ(package.vendor, "Alpine busybox Maintainers <team@alpinelinux.org>");
-    EXPECT_EQ(package.source, "busybox-origin");
-    EXPECT_EQ(package.description, "short description of busybox");
-    EXPECT_EQ(package.packageDbPath, APK_DB_PATH);
-    // The apk database reports bytes already.
-    EXPECT_EQ(package.size, 2048);
-}
-
-TEST_F(PackageExtractionTest, ApkParserReadsSeveralStanzas)
-{
-    const ApkParser parser;
-    const auto content {apkStanza("busybox", "1.36") + apkStanza("musl", "1.2.4") + apkStanza("apk-tools", "2.14")};
-
-    EXPECT_EQ(packageNames(parser.parse(content, APK_DB_PATH)),
-              std::vector<std::string>({"apk-tools", "busybox", "musl"}));
-}
-
-TEST_F(PackageExtractionTest, ApkParserSkipsStanzasWithoutAName)
-{
-    const ApkParser parser;
-    EXPECT_TRUE(parser.parse("V:1.0\nA:x86_64\n", APK_DB_PATH).empty());
-}
-
-TEST_F(PackageExtractionTest, BothApkDatabaseLocationsAreTracked)
-{
-    const auto& databases {knownPackageDatabases()};
-
-    const auto tracked = [&databases](const std::string & path)
-    {
-        return std::any_of(databases.begin(), databases.end(), [&path](const PackageDbLocation & location)
-        {
-            return location.path == path && location.parser != nullptr;
-        });
-    };
-
-    EXPECT_TRUE(tracked(APK_DB_PATH));
-    // Wolfi and Chainguard images keep the database under /usr.
-    EXPECT_TRUE(tracked(APK_USR_DB_PATH));
-}
 
 TEST_F(PackageExtractionTest, WolfiStyleApkDatabaseIsInventoried)
 {
@@ -1110,203 +1009,6 @@ TEST_F(PackageExtractionTest, WolfiStyleApkDatabaseIsInventoried)
     composer.apply(snapshot);
 
     EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"wolfi-base"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserMapsEveryFieldOfASqliteDatabase)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-    bash.release = "9.el9";
-    bash.architecture = "x86_64";
-    bash.summary = "The GNU Bourne Again shell";
-    bash.vendor = "Rocky Enterprise Software Foundation";
-    bash.group = "Unspecified";
-    bash.sourceRpm = "bash-5.1.8-9.el9.src.rpm";
-    bash.size = 7802001;
-    bash.installTime = 1700000000;
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(bash)}), RPM_SQLITE_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().name, "bash");
-    EXPECT_EQ(packages.front().version, "5.1.8-9.el9");
-    EXPECT_EQ(packages.front().architecture, "x86_64");
-    EXPECT_EQ(packages.front().type, "rpm");
-    EXPECT_EQ(packages.front().vendor, "Rocky Enterprise Software Foundation");
-    EXPECT_EQ(packages.front().category, "Unspecified");
-    EXPECT_EQ(packages.front().description, "The GNU Bourne Again shell");
-    EXPECT_EQ(packages.front().source, "bash-5.1.8-9.el9.src.rpm");
-    EXPECT_EQ(packages.front().size, 7802001);
-    EXPECT_EQ(packages.front().packageDbPath, RPM_SQLITE_PATH);
-    EXPECT_FALSE(packages.front().installed.empty());
-}
-
-TEST_F(PackageExtractionTest, RpmParserReadsADatabaseInWriteAheadLogMode)
-{
-    // The rpmdb.sqlite an image layer carries is in write-ahead log mode. Reading it from
-    // the layer bytes has to account for that, or every current Red Hat and Fedora image
-    // is inventoried with no packages.
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    auto database {rpmSqliteDatabase({rpmHeaderBlob(bash)})};
-    database[18] = 2;
-    database[19] = 2;
-
-    const RpmParser parser;
-    EXPECT_EQ(packageNames(parser.parse(database, RPM_SQLITE_PATH)), std::vector<std::string>({"bash"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserMapsEveryFieldOfAnNdbDatabase)
-{
-    RpmPackage aaaBase;
-    aaaBase.name = "aaa_base";
-    aaaBase.version = "84.87";
-    aaaBase.release = "150300.10.20.1";
-    aaaBase.vendor = "SUSE LLC";
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmNdbDatabase({rpmHeaderBlob(aaaBase)}), RPM_NDB_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().name, "aaa_base");
-    EXPECT_EQ(packages.front().version, "84.87-150300.10.20.1");
-    EXPECT_EQ(packages.front().type, "rpm");
-    EXPECT_EQ(packages.front().vendor, "SUSE LLC");
-    EXPECT_EQ(packages.front().packageDbPath, RPM_NDB_PATH);
-}
-
-TEST_F(PackageExtractionTest, RpmParserReadsEveryPackageOfADatabase)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    RpmPackage glibc;
-    glibc.name = "glibc";
-    glibc.version = "2.34";
-
-    const RpmParser parser;
-
-    EXPECT_EQ(packageNames(parser.parse(rpmSqliteDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)}), RPM_SQLITE_PATH)),
-              std::vector<std::string>({"bash", "glibc"}));
-    EXPECT_EQ(packageNames(parser.parse(rpmNdbDatabase({rpmHeaderBlob(bash), rpmHeaderBlob(glibc)}), RPM_NDB_PATH)),
-              std::vector<std::string>({"bash", "glibc"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserKeepsTheEpochInTheVersion)
-{
-    // rpm orders versions by epoch first, so a version that carries one is only correct
-    // with the epoch kept, exactly as the package manager prints it.
-    RpmPackage gdbm;
-    gdbm.name = "gdbm-libs";
-    gdbm.version = "1.19";
-    gdbm.release = "4.el9";
-    gdbm.hasEpoch = true;
-    gdbm.epoch = 1;
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(gdbm)}), RPM_SQLITE_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().version, "1:1.19-4.el9");
-}
-
-TEST_F(PackageExtractionTest, RpmParserReportsAPackageWithNoEpochWithoutAPrefix)
-{
-    RpmPackage basesystem;
-    basesystem.name = "basesystem";
-    basesystem.version = "11";
-    basesystem.release = "13.el9";
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(basesystem)}), RPM_SQLITE_PATH)};
-
-    ASSERT_EQ(packages.size(), 1U);
-    EXPECT_EQ(packages.front().version, "11-13.el9");
-}
-
-TEST_F(PackageExtractionTest, RpmParserSkipsTheSigningKeys)
-{
-    // rpm keeps its trusted keys as packages in the same database. They are not installed
-    // software and the host package inventory drops them the same way.
-    RpmPackage key;
-    key.name = "gpg-pubkey";
-    key.version = "3228467c";
-
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    const RpmParser parser;
-    const auto packages {parser.parse(rpmSqliteDatabase({rpmHeaderBlob(key), rpmHeaderBlob(bash)}), RPM_SQLITE_PATH)};
-
-    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"bash"}));
-}
-
-TEST_F(PackageExtractionTest, RpmParserReportsNothingForContentThatIsNoDatabase)
-{
-    const RpmParser parser;
-
-    EXPECT_TRUE(parser.parse("", RPM_SQLITE_PATH).empty());
-    EXPECT_TRUE(parser.parse("not a database at all", RPM_SQLITE_PATH).empty());
-    EXPECT_TRUE(parser.parse(std::string("SQLite format 3\0 truncated", 26), RPM_SQLITE_PATH).empty());
-    EXPECT_TRUE(parser.parse(std::string("RpmP", 4) + std::string(60, '\0'), RPM_NDB_PATH).empty());
-}
-
-TEST_F(PackageExtractionTest, RpmParserSurvivesATruncatedDatabase)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    const RpmParser parser;
-    const auto sqlite {rpmSqliteDatabase({rpmHeaderBlob(bash)})};
-    const auto ndb {rpmNdbDatabase({rpmHeaderBlob(bash)})};
-
-    // Half a database is not a database. Nothing is reported and nothing throws.
-    EXPECT_NO_THROW(parser.parse(sqlite.substr(0, sqlite.size() / 2), RPM_SQLITE_PATH));
-    EXPECT_TRUE(parser.parse(ndb.substr(0, ndb.size() - 16), RPM_NDB_PATH).empty());
-}
-
-TEST_F(PackageExtractionTest, RpmParserSkipsABlobItCannotRead)
-{
-    RpmPackage bash;
-    bash.name = "bash";
-    bash.version = "5.1.8";
-
-    const RpmParser parser;
-    const auto packages
-    {
-        parser.parse(rpmSqliteDatabase({std::string("\xff\xff\xff\xff\x00\x00\x00\x10", 8), rpmHeaderBlob(bash)}),
-                     RPM_SQLITE_PATH)
-    };
-
-    // A blob declaring more index entries than it carries costs its own package only.
-    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"bash"}));
-}
-
-TEST_F(PackageExtractionTest, EveryRpmDatabaseLocationIsTracked)
-{
-    const auto& databases {knownPackageDatabases()};
-
-    const auto tracked = [&databases](const std::string & path)
-    {
-        return std::any_of(databases.begin(), databases.end(), [&path](const PackageDbLocation & location)
-        {
-            return location.path == path && location.parser != nullptr && location.parser->format() == "rpm";
-        });
-    };
-
-    // The Red Hat family keeps the database under /var, Fedora and the SUSE family under
-    // /usr, and both formats occur at both locations.
-    EXPECT_TRUE(tracked(RPM_SQLITE_PATH));
-    EXPECT_TRUE(tracked(RPM_SQLITE_USR_PATH));
-    EXPECT_TRUE(tracked(RPM_NDB_PATH));
-    EXPECT_TRUE(tracked(RPM_NDB_USR_PATH));
 }
 
 TEST_F(PackageExtractionTest, RpmDatabaseIsNotReportedAsAnUnsupportedFormat)
@@ -1370,6 +1072,81 @@ TEST_F(PackageExtractionTest, SysimageRpmDatabaseIsInventoried)
     ASSERT_EQ(packages.size(), 1U);
     EXPECT_EQ(packages.front().version, "2:9.1.785-1.fc39");
     EXPECT_EQ(packages.front().packageDbPath, RPM_SQLITE_USR_PATH);
+}
+
+TEST_F(PackageExtractionTest, ComposerReadsTheDpkgStatusDirectoryOfADistrolessImage)
+{
+    // A distroless image has no `status`: each package is its own file, usually with no
+    // Status line, and the checksum files next to them are not packages.
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\nArchitecture: amd64\n") +
+                              tarMember(DPKG_STATUS_D_PATH + "base-files.md5sums", "d41d8cd98f00b204e9800998ecf8427e  etc/issue\n") +
+                              tarMember(DPKG_STATUS_D_PATH + "tzdata", "Package: tzdata\nVersion: 2024a\nArchitecture: all\n") +
+                              tarEnd()));
+
+    const auto packages {composer.packages()};
+
+    EXPECT_EQ(packageNames(packages), std::vector<std::string>({"base-files", "tzdata"}));
+    EXPECT_EQ(packages.front().type, "deb");
+    EXPECT_TRUE(composer.unsupportedFormats().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerAppliesAWhiteoutToOneFileOfTheDpkgStatusDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") +
+                              tarMember(DPKG_STATUS_D_PATH + "tzdata", "Package: tzdata\nVersion: 2024a\n") +
+                              tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + ".wh.tzdata", "") + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files"}));
+}
+
+TEST_F(PackageExtractionTest, ComposerAppliesAWhiteoutToTheDpkgStatusDirectory)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") + tarEnd()));
+    composer.apply(snapshotOf(tarMember("var/lib/dpkg/.wh.status.d", "") + tarEnd()));
+
+    EXPECT_TRUE(composer.packages().empty());
+}
+
+TEST_F(PackageExtractionTest, ComposerReplacesAFileOfTheDpkgStatusDirectoryWithALaterLayer)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") + tarEnd()));
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.5\n") + tarEnd()));
+
+    const auto packages {composer.packages()};
+
+    ASSERT_EQ(packages.size(), 1U);
+    EXPECT_EQ(packages.front().version, "12.5");
+}
+
+TEST_F(PackageExtractionTest, ComposerReadsTheDpkgStatusDirectoryOnlyWhenThereIsNoStatusFile)
+{
+    LayerComposer composer;
+    composer.apply(snapshotOf(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) +
+                              tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\nVersion: 12.4\n") +
+                              tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"curl"}));
+
+    // The same directory is read once the status file is gone.
+    composer.apply(snapshotOf(tarMember("var/lib/dpkg/.wh.status", "") + tarEnd()));
+
+    EXPECT_EQ(packageNames(composer.packages()), std::vector<std::string>({"base-files"}));
+}
+
+TEST_F(PackageExtractionTest, TheDpkgStatusDirectoryIsKeptOnlyForItsDirectChildren)
+{
+    const auto snapshot {snapshotOf(tarMember(DPKG_STATUS_D_PATH + "base-files", "Package: base-files\n") +
+                                    tarMember(DPKG_STATUS_D_PATH + "base-files.md5sums", "sums") +
+                                    tarMember(DPKG_STATUS_D_PATH + "nested/other", "Package: other\n") +
+                                    tarEnd())};
+
+    EXPECT_EQ(snapshot.databases.size(), 1U);
+    EXPECT_EQ(snapshot.databases.count(DPKG_STATUS_D_PATH + "base-files"), 1U);
 }
 
 // ---------------------------------------------------------------------------

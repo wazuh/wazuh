@@ -186,18 +186,18 @@ class IByteStream
 
 Implementations: `FileByteStream`, `MemoryByteStream`, `BoundedByteStream` and `GzipByteStream`.
 
-### `IPackageDbParser` Interface
+### `PackageDb::read`
 
-`IPackageDbParser` is the extension point for package database formats. A new format is added by implementing it and registering the paths it owns in `knownPackageDatabases()`.
+The package database parser is shared with container runtime security and lives in `src/data_provider/src/packages/packageDbParser.hpp`. It works on bytes and in-image paths, never on the host filesystem.
 
 ```cpp
-class IPackageDbParser
+namespace PackageDb
 {
-    public:
-        virtual ~IPackageDbParser() = default;
-        virtual std::vector<ImagePackageRecord> parse(const std::string& content, const std::string& dbPath) const = 0;
-        virtual std::string format() const = 0;
-};
+    using Files = std::map<std::string, std::string>; // in-image path (no leading slash) to content
+
+    bool isDatabasePath(const std::string& path);      // a file the parser reads, so a caller keeps its content
+    Result read(const Files& files);                   // packages, and one report per database found
+}
 ```
 
-The current implementations are `DpkgParser` and `ApkParser`.
+`Result::databases` says, for each database, how many packages it gave, whether it was skipped because another location of the same format was read, and why it could not be read. A new format is added there, not in the module.

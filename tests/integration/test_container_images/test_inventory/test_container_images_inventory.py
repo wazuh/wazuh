@@ -99,6 +99,12 @@ t9_params, t9_metadata, t9_ids = configuration.get_test_cases_data(t9_cases_path
 t9_configurations = configuration.load_configuration_template(config_path, t9_params, t9_metadata)
 
 
+# T10: the dpkg status.d directory of a distroless image is inventoried.
+t10_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_dpkg_distroless.yaml')
+t10_params, t10_metadata, t10_ids = configuration.get_test_cases_data(t10_cases_path)
+t10_configurations = configuration.load_configuration_template(config_path, t10_params, t10_metadata)
+
+
 def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60) -> None:
     """Block until the next 'Scan ended.' line. This is the race-free scan barrier."""
     monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_ENDED), timeout=timeout)
@@ -367,6 +373,36 @@ def test_container_images_rpm_ndb_database(test_configuration, test_metadata, pr
     packages = _stored_packages()
     assert packages.get('aaa_base') == '84.87-150300.10.20.1', \
         f'aaa_base is missing or has the wrong version: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t10_configurations, t10_metadata), ids=t10_ids)
+def test_container_images_dpkg_status_directory(test_configuration, test_metadata, prepare_dpkg_distroless_image,
+                                                set_wazuh_configuration, configure_local_internal_options,
+                                                truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that an image with no dpkg status file, but one file per package under
+                 status.d as a distroless image has, is inventoried with its packages.
+
+    test_phases:
+        - setup: write an OCI layout holding a status.d directory, configure it, restart daemons.
+        - test: wait for "Scan ended.", then confirm the packages are stored.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference is stored.
+        - One package is stored per status.d file, with the version the file holds.
+        - The checksum files next to them are not stored as packages.
+
+    expected_result: PASS when the status.d directory is inventoried.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    assert query_table(REFERENCES_TABLE), 'The references table is empty after the scan.'
+
+    packages = _stored_packages()
+    assert packages == {'base-files': '12.4+deb12u5', 'tzdata': '2024a-0+deb12u1'}, \
+        f'The status.d packages were not stored as the files state them: {packages}.'
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t9_configurations, t9_metadata), ids=t9_ids)

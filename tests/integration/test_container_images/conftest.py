@@ -56,6 +56,8 @@ DEBIAN_OS_RELEASE = (
 )
 # The Berkeley DB format rpm used before 4.16, which the module recognizes but does not read.
 RPM_BDB_PATH = 'var/lib/rpm/Packages'
+# A distroless image keeps one dpkg status file per package in this directory, with no `status` file.
+DPKG_STATUS_D_PATH = 'var/lib/dpkg/status.d'
 
 
 def dpkg_status(packages: list) -> str:
@@ -77,6 +79,27 @@ def dpkg_status(packages: list) -> str:
         )
 
     return '\n'.join(stanzas) + '\n'
+
+
+def dpkg_status_d(packages: list) -> dict:
+    """Build the files of a distroless dpkg ``status.d`` directory, one per (name, version) pair.
+
+    dpkg never ran for these packages, so a file has no ``Status`` line. The ``.md5sums`` file
+    next to each one is a checksum list, not a package.
+    """
+    files = {}
+
+    for name, version in packages:
+        files[f'{DPKG_STATUS_D_PATH}/{name}'] = (
+            f'Package: {name}\n'
+            f'Version: {version}\n'
+            'Architecture: amd64\n'
+            f'Maintainer: Debian {name} Maintainers <team@debian.org>\n'
+            f'Description: short description of {name}\n'
+        )
+        files[f'{DPKG_STATUS_D_PATH}/{name}.md5sums'] = f'd41d8cd98f00b204e9800998ecf8427e  usr/share/doc/{name}/copyright\n'
+
+    return files
 
 
 def apk_installed(packages: list) -> str:
@@ -448,6 +471,22 @@ def prepare_rpm_ndb_image(request: pytest.FixtureRequest, test_configuration: di
     layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-ndb')
     database = rpm_ndb_db([('aaa_base', '84.87', '150300.10.20.1', None)])
     write_oci_layout(layout_path, [{RPM_NDB_DB_PATH: database}], ref_name='opensuse/leap:15.5')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_dpkg_distroless_image(request: pytest.FixtureRequest, test_configuration: dict):
+    """Lay down an OCI layout whose dpkg packages are in a ``status.d`` directory, as in a distroless image."""
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-distroless')
+    write_oci_layout(layout_path,
+                     [dpkg_status_d([('base-files', '12.4+deb12u5'), ('tzdata', '2024a-0+deb12u1')])],
+                     ref_name='gcr.io/distroless/static-debian12:latest')
 
     reset_module_database()
     point_configuration_at(test_configuration, layout_path)
