@@ -231,9 +231,8 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
             return None
         if self.path.startswith("/agents"):
-            items = [{"id": "000", "name": "manager", "group": []}] + [
-                {"id": "%03d" % i, "name": a["name"], "group": a["groups"]}
-                for i, a in sorted(FakeManager.agents.items())]
+            items = [{"id": "%03d" % i, "name": a["name"], "group": a["groups"]}
+                     for i, a in sorted(FakeManager.agents.items())]
             return self._send(200, {"data": {"affected_items": items,
                                              "total_affected_items": len(items)}, "error": 0})
         if self.path.startswith("/groups"):
