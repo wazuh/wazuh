@@ -1596,6 +1596,94 @@ void test_getDefine_Int_overflow(void **state)
     expect_assert_failure(getDefine_Int("rootcheck", "sleep", 0, 1000));
 }
 
+/* An option written with no value is read as 0, as in earlier 4.x releases */
+void test_getDefine_Int_empty(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=\n");
+
+    assert_int_equal(getDefine_Int("agent", "state_interval", 0, 86400), 0);
+}
+
+/* The spaces after the equal sign are skipped, so this is also an empty value */
+void test_getDefine_Int_empty_spaces(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=   \n");
+
+    assert_int_equal(getDefine_Int("agent", "state_interval", 0, 86400), 0);
+}
+
+void test_getDefine_Int_empty_crlf(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=\r\n");
+
+    assert_int_equal(getDefine_Int("agent", "state_interval", 0, 86400), 0);
+}
+
+/* An empty value read as 0 is still refused when 0 is below the minimum */
+void test_getDefine_Int_empty_below_min(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.recv_timeout=\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for agent.recv_timeout: ''.");
+
+    expect_assert_failure(getDefine_Int("agent", "recv_timeout", 1, 600));
+}
+
+/* An empty value in the local file overrides the global one, as any other value */
+void test_getDefine_Int_empty_local(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=5\n");
+    write_defines(OSSEC_LDEFINES, "agent.state_interval=\n");
+
+    assert_int_equal(getDefine_Int("agent", "state_interval", 0, 86400), 0);
+}
+
+void test_getDefine_Int_zero(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=0\n");
+
+    assert_int_equal(getDefine_Int("agent", "state_interval", 0, 86400), 0);
+}
+
+void test_getDefine_Int_crlf(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=5\r\n");
+
+    assert_int_equal(getDefine_Int("agent", "state_interval", 0, 86400), 5);
+}
+
+void test_getDefine_Int_negative(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=-1\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for agent.state_interval: '-1'.");
+
+    expect_assert_failure(getDefine_Int("agent", "state_interval", 0, 86400));
+}
+
+void test_getDefine_Int_trailing_space(void **state)
+{
+    write_defines(OSSEC_DEFINES, "agent.state_interval=5 \n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for agent.state_interval: '5 '.");
+
+    expect_assert_failure(getDefine_Int("agent", "state_interval", 0, 86400));
+}
+
+/* An empty max_pid is refused (0 is below its minimum), not replaced by the default */
+void test_getDefine_Int_default_empty(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.max_pid=\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for rootcheck.max_pid: ''.");
+
+    expect_assert_failure(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768));
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1682,6 +1770,17 @@ int main(void) {
         cmocka_unit_test_teardown(test_getDefine_Int_default_not_numeric, teardown_defines),
         cmocka_unit_test_teardown(test_getDefine_Int_default_overflow, teardown_defines),
         cmocka_unit_test_teardown(test_getDefine_Int_overflow, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_empty, teardown_defines),
+        // Tests getDefine_Int
+        cmocka_unit_test_teardown(test_getDefine_Int_empty, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_empty_spaces, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_empty_crlf, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_empty_below_min, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_empty_local, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_zero, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_crlf, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_negative, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_trailing_space, teardown_defines),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
