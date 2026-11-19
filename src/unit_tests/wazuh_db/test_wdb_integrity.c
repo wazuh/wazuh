@@ -581,6 +581,67 @@ static void test_wdbi_delete_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
+// FIM sync deletion statements run on a real SQLite database
+extern int __real_wdb_stmt_cache(wdb_t * wdb, int index);
+extern int __real_sqlite3_bind_text(sqlite3_stmt * stmt, int pos, const char * buffer, int length, void (*destructor)(void *));
+extern int __real_sqlite3_step(sqlite3_stmt * stmt);
+
+static int append_file(void * remaining, __attribute__((unused)) int argc, char ** argv, __attribute__((unused)) char ** columns) {
+    if (*(char *)remaining != '\0') {
+        strcat(remaining, ",");
+    }
+    strcat(remaining, argv[0]);
+    return 0;
+}
+
+static void run_fim_sync_delete(int index, const char * first, const char * second, char * remaining) {
+    wdb_t wdb;
+    memset(&wdb, 0, sizeof(wdb));
+
+    assert_int_equal(sqlite3_open(":memory:", &wdb.db), SQLITE_OK);
+    assert_int_equal(sqlite3_exec(wdb.db,
+                                  "CREATE TABLE fim_entry (file TEXT PRIMARY KEY, type TEXT, checksum TEXT);"
+                                  "INSERT INTO fim_entry VALUES ('/a', 'file', 'x'), ('/b', 'file', NULL), ('/c', 'file', 'x'),"
+                                  " ('/d', 'file', 'x'), ('/e', 'file', 'x'), ('/f', 'file', 'x'), ('user@host:/a', 'file', NULL);",
+                                  NULL, NULL, NULL), SQLITE_OK);
+    assert_int_equal(__real_wdb_stmt_cache(&wdb, index), 0);
+
+    if (first) {
+        __real_sqlite3_bind_text(wdb.stmt[index], 1, first, -1, NULL);
+        __real_sqlite3_bind_text(wdb.stmt[index], 2, second, -1, NULL);
+    }
+
+    while (__real_sqlite3_step(wdb.stmt[index]) == SQLITE_ROW) {}
+
+    *remaining = '\0';
+    assert_int_equal(sqlite3_exec(wdb.db, "SELECT file FROM fim_entry ORDER BY file;", append_file, remaining, NULL), SQLITE_OK);
+
+    sqlite3_finalize(wdb.stmt[index]);
+    sqlite3_close(wdb.db);
+}
+
+static void test_wdbi_fim_sync_delete_keeps_null_checksum(void **state) {
+    char remaining[OS_SIZE_256];
+
+    run_fim_sync_delete(WDB_STMT_FIM_FILE_DELETE_AROUND, "/c", "/e", remaining);
+    assert_string_equal(remaining, "/b,/c,/d,/e,user@host:/a");
+
+    run_fim_sync_delete(WDB_STMT_FIM_DELETE_AROUND, "/c", "/e", remaining);
+    assert_string_equal(remaining, "/b,/c,/d,/e,user@host:/a");
+
+    run_fim_sync_delete(WDB_STMT_FIM_FILE_DELETE_RANGE, "/a", "/d", remaining);
+    assert_string_equal(remaining, "/a,/b,/d,/e,/f,user@host:/a");
+
+    run_fim_sync_delete(WDB_STMT_FIM_DELETE_RANGE, "/a", "/d", remaining);
+    assert_string_equal(remaining, "/a,/b,/d,/e,/f,user@host:/a");
+
+    run_fim_sync_delete(WDB_STMT_FIM_FILE_CLEAR, NULL, NULL, remaining);
+    assert_string_equal(remaining, "/b,user@host:/a");
+
+    run_fim_sync_delete(WDB_STMT_FIM_CLEAR, NULL, NULL, remaining);
+    assert_string_equal(remaining, "/b,user@host:/a");
+}
+
 // Test wdbi_update_attempt
 static void test_wdbi_update_attempt_wdb_null(void **state) {
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
@@ -2326,6 +2387,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_delete_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_sql_no_done, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test(test_wdbi_fim_sync_delete_keeps_null_checksum),
         //Test wdbi_update_attempt
         cmocka_unit_test(test_wdbi_update_attempt_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdbi_update_attempt_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
