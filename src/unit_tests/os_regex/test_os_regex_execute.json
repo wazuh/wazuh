@@ -5064,5 +5064,77 @@
                 ]
             }
         ]
+    },
+    {
+        "description": "[Functionality] A capture before '$' must not keep a position from an abandoned attempt.",
+        "batch_test": [
+            {
+                "description": "Text ends in the literal before the capture. No capture is returned.",
+                "pattern": " (\\S*)$",
+                "log": "a b ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Text ends in two spaces.",
+                "pattern": " (\\S*)$",
+                "log": "ab  ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Leading space before the literal, text ends in a space.",
+                "pattern": " (\\S*)$",
+                "log": " secured a ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Same shape with \\w*.",
+                "pattern": " (\\w*)$",
+                "log": "a b ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Earlier attempt leaves the end two characters before the start.",
+                "pattern": "=(\\S*)$",
+                "log": "a= =",
+                "end_match": "=",
+                "captured_groups": []
+            },
+            {
+                "description": "Literal is a letter.",
+                "pattern": "x(\\S*)$",
+                "log": "ax x",
+                "end_match": "x",
+                "captured_groups": []
+            },
+            {
+                "description": "Control: no trailing space, the last word is captured.",
+                "pattern": " (\\S*)$",
+                "log": "a b",
+                "end_match": " b",
+                "captured_groups": [
+                    "b"
+                ]
+            },
+            {
+                "description": "Control: same text without the trailing space.",
+                "pattern": " (\\S*)$",
+                "log": " secured a",
+                "end_match": " a",
+                "captured_groups": [
+                    "a"
+                ]
+            },
+            {
+                "description": "Control: no earlier attempt, nothing to clear.",
+                "pattern": " (\\S*)$",
+                "log": "x ",
+                "end_match": " ",
+                "captured_groups": []
+            }
+        ]
     }
 ]
