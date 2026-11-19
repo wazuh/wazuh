@@ -6,10 +6,12 @@
 #include <cstdint>
 #include <cstdio>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <random>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <typeinfo>
@@ -1382,4 +1384,831 @@ TEST(JsonPathWriter, CompactDocuments)
         ops.push_back(opGetJson(""));
         EXPECT_TRUE(checkSeq(v.label, v.prefilled ? wideText(300) : "{}", ops, THRESHOLD, v.kind));
     }
+}
+
+// ------------------------------------------------------------------------------------------------ anchors
+
+namespace
+{
+
+// Reference sequence for wrapInArray: getJson + setArray + appendJson, only when the path exists.
+bool absoluteWrap(PathWriter& writer, const std::string& path)
+{
+    if (!writer.exists(path))
+    {
+        return false;
+    }
+    const auto copy = writer.getJson(path);
+    writer.setArray(path);
+    writer.appendJson(*copy, path);
+    return true;
+}
+
+// '/t0/t1/...' made of tokens [from, to); empty when from == to.
+std::string joinTokens(const std::vector<std::string>& tokens, size_t from, size_t to)
+{
+    std::string out;
+    for (size_t i = from; i < to; ++i)
+    {
+        out += "/" + tokens[i];
+    }
+    return out;
+}
+
+// Outcome of an operation as a string: the value it returns or the fact that it threw.
+template<typename F>
+std::string attempt(F&& fn)
+{
+    try
+    {
+        return "returns " + fn();
+    }
+    catch (const std::exception&)
+    {
+        return "throws";
+    }
+}
+
+std::string anchorName(size_t i, const char* prefix = "member_name_padding_")
+{
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%s%06zu", prefix, i);
+    return buf;
+}
+
+} // namespace
+
+TEST(JsonPathWriterAnchor, RelativeEqualsAbsoluteGenerated)
+{
+    initLogging();
+    const std::vector<std::string> alphabet {"a", "b", "c", "0", "1", "k17", "-"};
+    constexpr size_t OP_KINDS = 9;
+    const char* const opNames[OP_KINDS] = {
+        "setString", "setObject", "appendString", "appendJson", "wrapInArray", "exists", "isObject", "isArray", "size"};
+    size_t executed[OP_KINDS] = {};
+    // Events that prove the case is not vacuous: an operation that did something through an anchor that is not the root
+    size_t writesThroughAnchor = 0;
+    size_t wrapsThroughAnchor = 0;
+    size_t sizesThroughAnchor = 0;
+    size_t emptyRelativeWraps = 0;
+
+    for (uint32_t seed = 0; seed < 200; ++seed)
+    {
+        std::mt19937 rng(seed);
+        Json docAbs("{}");
+        Json docRel("{}");
+        PathWriter wAbs(docAbs);
+        PathWriter wRel(docRel);
+
+        const size_t nOps = 50 + rng() % 151; // 50..200
+        for (size_t i = 0; i < nOps; ++i)
+        {
+            const size_t kind = rng() % OP_KINDS;
+            const size_t nTokens = 1 + rng() % 6;
+            std::vector<std::string> tokens;
+            for (size_t t = 0; t < nTokens; ++t)
+            {
+                tokens.push_back(alphabet[rng() % alphabet.size()]);
+            }
+            const size_t cut = rng() % (nTokens + 1); // 0..n inclusive
+            const std::string path = joinTokens(tokens, 0, nTokens);
+            const std::string prefix = joinTokens(tokens, 0, cut);
+            const std::string rel = joinTokens(tokens, cut, nTokens);
+            const std::string text = "v" + std::to_string(rng() % 1000);
+            const Json& value = values()[rng() % values().size()];
+
+            SCOPED_TRACE("seed " + std::to_string(seed) + ", op " + std::to_string(i) + ": " + opNames[kind]
+                         + " path=\"" + path + "\" prefix=\"" + prefix + "\" rel=\"" + rel + "\"");
+
+            if (kind <= 3)
+            {
+                // Writes: the prefix is taken with ensure.
+                const auto anchor = wRel.ensure(wRel.root(), prefix);
+                writesThroughAnchor += cut > 0 ? 1 : 0;
+                switch (kind)
+                {
+                    case 0:
+                        wAbs.setString(text, path);
+                        wRel.setString(anchor, text, rel);
+                        break;
+                    case 1:
+                        wAbs.setObject(path);
+                        wRel.setObject(anchor, rel);
+                        break;
+                    case 2:
+                        wAbs.appendString(text, path);
+                        wRel.appendString(anchor, text, rel);
+                        break;
+                    default:
+                        wAbs.appendJson(value, path);
+                        wRel.appendJson(anchor, value, rel);
+                        break;
+                }
+                ++executed[kind];
+            }
+            else
+            {
+                // wrapInArray and reads: the prefix is taken with find.
+                const auto anchor = wRel.find(wRel.root(), prefix);
+                if (!anchor)
+                {
+                    switch (kind)
+                    {
+                        case 4: break; // skipped on both sides
+                        case 5: EXPECT_FALSE(wAbs.exists(path)); break;
+                        case 6: EXPECT_FALSE(wAbs.isObject(path)); break;
+                        case 7: EXPECT_FALSE(wAbs.isArray(path)); break;
+                        default: EXPECT_THROW(wAbs.size(path), std::runtime_error); break;
+                    }
+                }
+                else
+                {
+                    switch (kind)
+                    {
+                        case 4:
+                        {
+                            const bool absResult = absoluteWrap(wAbs, path);
+                            EXPECT_EQ(wRel.wrapInArray(*anchor, rel), absResult);
+                            wrapsThroughAnchor += (absResult && cut > 0) ? 1 : 0;
+                            emptyRelativeWraps += (absResult && cut > 0 && rel.empty()) ? 1 : 0;
+                            break;
+                        }
+                        case 5: EXPECT_EQ(wRel.exists(*anchor, rel), wAbs.exists(path)); break;
+                        case 6: EXPECT_EQ(wRel.isObject(*anchor, rel), wAbs.isObject(path)); break;
+                        case 7: EXPECT_EQ(wRel.isArray(*anchor, rel), wAbs.isArray(path)); break;
+                        default:
+                        {
+                            std::optional<size_t> sizeAbs;
+                            std::optional<size_t> sizeRel;
+                            bool threwAbs = false;
+                            bool threwRel = false;
+                            try
+                            {
+                                sizeAbs = wAbs.size(path);
+                            }
+                            catch (const std::runtime_error&)
+                            {
+                                threwAbs = true;
+                            }
+                            try
+                            {
+                                sizeRel = wRel.size(*anchor, rel);
+                            }
+                            catch (const std::runtime_error&)
+                            {
+                                threwRel = true;
+                            }
+                            EXPECT_EQ(threwAbs, threwRel);
+                            EXPECT_EQ(sizeAbs, sizeRel);
+                            sizesThroughAnchor += (sizeRel.has_value() && cut > 0) ? 1 : 0;
+                            break;
+                        }
+                    }
+                    ++executed[kind];
+                }
+            }
+
+            EXPECT_TRUE(docAbs == docRel);
+            EXPECT_EQ(docAbs.str(), docRel.str());
+            if (::testing::Test::HasFailure())
+            {
+                return;
+            }
+        }
+    }
+
+    for (size_t k = 0; k < OP_KINDS; ++k)
+    {
+        EXPECT_GT(executed[k], 0u) << opNames[k] << " never ran with an existing prefix";
+    }
+    EXPECT_GT(writesThroughAnchor, 1000u);
+    EXPECT_GT(wrapsThroughAnchor, 50u);
+    EXPECT_GT(emptyRelativeWraps, 20u);
+    EXPECT_GT(sizesThroughAnchor, 50u);
+}
+
+TEST(JsonPathWriterAnchor, RootAnchorIsAbsolute)
+{
+    initLogging();
+    const std::string initial = "{\"a\":{\"b\":[1,{\"c\":\"x\"}]},\"s\":\"t\"}";
+    const std::vector<std::string> paths {"", "/a/b", "/a/b/1/c", "/a/b/1/zz", "/new/p", "/s", "/s/x"};
+    const char* const opNames[] = {"setString",
+                                   "setObject",
+                                   "appendString",
+                                   "appendJson",
+                                   "exists",
+                                   "isObject",
+                                   "isArray",
+                                   "size",
+                                   "find",
+                                   "ensure",
+                                   "wrapInArray"};
+    const Json payload("{\"p\":[1,2]}");
+
+    for (const auto& path : paths)
+    {
+        for (size_t op = 0; op < 11; ++op)
+        {
+            SCOPED_TRACE(std::string(opNames[op]) + " path=\"" + path + "\"");
+            Json docAbs(initial.c_str());
+            Json docRel(initial.c_str());
+            PathWriter wAbs(docAbs);
+            PathWriter wRel(docRel);
+            const auto root = wRel.root();
+
+            std::string outAbs;
+            std::string outRel;
+            switch (op)
+            {
+                case 0:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.setString("val", path);
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.setString(root, "val", path);
+                            return std::string("-");
+                        });
+                    break;
+                case 1:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.setObject(path);
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.setObject(root, path);
+                            return std::string("-");
+                        });
+                    break;
+                case 2:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.appendString("val", path);
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.appendString(root, "val", path);
+                            return std::string("-");
+                        });
+                    break;
+                case 3:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.appendJson(payload, path);
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.appendJson(root, payload, path);
+                            return std::string("-");
+                        });
+                    break;
+                case 4:
+                    outAbs = attempt([&] { return std::to_string(wAbs.exists(path)); });
+                    outRel = attempt([&] { return std::to_string(wRel.exists(root, path)); });
+                    break;
+                case 5:
+                    outAbs = attempt([&] { return std::to_string(wAbs.isObject(path)); });
+                    outRel = attempt([&] { return std::to_string(wRel.isObject(root, path)); });
+                    break;
+                case 6:
+                    outAbs = attempt([&] { return std::to_string(wAbs.isArray(path)); });
+                    outRel = attempt([&] { return std::to_string(wRel.isArray(root, path)); });
+                    break;
+                case 7:
+                    outAbs = attempt([&] { return std::to_string(wAbs.size(path)); });
+                    outRel = attempt([&] { return std::to_string(wRel.size(root, path)); });
+                    break;
+                case 8:
+                    outAbs = attempt([&] { return std::to_string(wAbs.exists(path)); });
+                    outRel = attempt([&] { return std::to_string(wRel.find(root, path).has_value()); });
+                    break;
+                case 9:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            if (!wAbs.exists(path))
+                            {
+                                wAbs.set(path, Json("null"));
+                            }
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.ensure(root, path);
+                            return std::string("-");
+                        });
+                    break;
+                default:
+                    outAbs = attempt([&] { return std::to_string(absoluteWrap(wAbs, path)); });
+                    outRel = attempt([&] { return std::to_string(wRel.wrapInArray(root, path)); });
+                    break;
+            }
+            EXPECT_EQ(outAbs, outRel);
+            EXPECT_TRUE(docAbs == docRel);
+            EXPECT_EQ(docAbs.str(), docRel.str());
+        }
+    }
+}
+
+TEST(JsonPathWriterAnchor, SurvivesGrowthOfAnchoredObject)
+{
+    initLogging();
+    constexpr size_t N = 1000;
+    Json docRel("{}");
+    Json docAbs("{}");
+    PathWriter wRel(docRel);
+    PathWriter wAbs(docAbs);
+
+    const auto anchor = wRel.ensure(wRel.root(), "/a/b");
+    const std::string firstPath = "/" + anchorName(0);
+    std::optional<PathWriter::Anchor> firstAfterFirst;
+    std::optional<PathWriter::Anchor> firstAfterLast;
+
+    for (size_t i = 0; i < N; ++i)
+    {
+        const std::string member = "/" + anchorName(i);
+        const std::string val = anchorName(i, "member_value_padding_");
+        wRel.setString(anchor, val, member);
+        wAbs.setString(val, "/a/b" + member);
+        if (i == 0)
+        {
+            firstAfterFirst = wRel.find(anchor, firstPath);
+        }
+    }
+    firstAfterLast = wRel.find(anchor, firstPath);
+
+    EXPECT_EQ(wRel.size("/a/b"), N);
+    const auto members = docRel.getObject("/a/b");
+    ASSERT_TRUE(members.has_value());
+    ASSERT_EQ(members->size(), N);
+    for (size_t i = 0; i < N; ++i)
+    {
+        EXPECT_EQ(std::get<0>((*members)[i]), anchorName(i)) << "member " << i;
+    }
+    EXPECT_GE(wRel.indexedObjects(), 1u);
+    EXPECT_TRUE(docRel == docAbs);
+    EXPECT_EQ(docRel.str(), docAbs.str());
+
+    // The member array reallocated while the anchor kept working: the anchor of the first member taken at the start
+    // and at the end differ. If they do not, the case proves nothing.
+    ASSERT_TRUE(firstAfterFirst.has_value());
+    ASSERT_TRUE(firstAfterLast.has_value());
+    EXPECT_NE(*firstAfterFirst, *firstAfterLast);
+}
+
+TEST(JsonPathWriterAnchor, NameTokenTurnsAnchoredArrayIntoObject)
+{
+    initLogging();
+    Json doc("{\"arr\":[1,2]}");
+    PathWriter writer(doc);
+    const auto anchor = writer.find(writer.root(), "/arr");
+    ASSERT_TRUE(anchor.has_value());
+
+    writer.setString(*anchor, "v", "/k");
+    EXPECT_EQ(doc.getJson("/arr")->str(), "{\"k\":\"v\"}");
+
+    // The anchor is still valid for a second write.
+    writer.setString(*anchor, "w", "/j");
+    EXPECT_EQ(doc.getJson("/arr")->str(), "{\"k\":\"v\",\"j\":\"w\"}");
+}
+
+TEST(JsonPathWriterAnchor, WrapInArrayEqualsCopySequence)
+{
+    initLogging();
+    constexpr size_t WIDE = 200;
+    enum class Shape
+    {
+        Wide,
+        Scalar,
+        Array,
+        EmptyObject
+    };
+
+    const auto build = [](PathWriter& writer, Shape shape)
+    {
+        switch (shape)
+        {
+            case Shape::Wide:
+                for (size_t i = 0; i < WIDE; ++i)
+                {
+                    writer.setString("v" + std::to_string(i), "/x/" + anchorName(i, "m"));
+                }
+                break;
+            case Shape::Scalar: writer.setString("s", "/x"); break;
+            case Shape::Array:
+                writer.setArray("/x");
+                writer.appendString("e0", "/x");
+                writer.appendString("e1", "/x");
+                break;
+            case Shape::EmptyObject: writer.setObject("/x"); break;
+        }
+    };
+
+    const std::vector<std::pair<const char*, Shape>> shapes {{"wide object", Shape::Wide},
+                                                             {"scalar", Shape::Scalar},
+                                                             {"array", Shape::Array},
+                                                             {"empty object", Shape::EmptyObject}};
+    for (const auto& [label, shape] : shapes)
+    {
+        SCOPED_TRACE(label);
+        Json docAbs("{\"y\":1}");
+        Json docRel("{\"y\":1}");
+        PathWriter wAbs(docAbs);
+        PathWriter wRel(docRel);
+        build(wAbs, shape);
+        build(wRel, shape);
+        ASSERT_EQ(docAbs.str(), docRel.str());
+
+        const size_t before = wRel.indexedObjects();
+        if (shape == Shape::Wide)
+        {
+            // 200 members written by the writer exceed the threshold: the object is indexed.
+            ASSERT_GE(before, 1u);
+        }
+
+        ASSERT_TRUE(absoluteWrap(wAbs, "/x"));
+        ASSERT_TRUE(wRel.wrapInArray(wRel.root(), "/x"));
+        EXPECT_TRUE(docAbs == docRel);
+        EXPECT_EQ(docAbs.str(), docRel.str());
+        EXPECT_EQ(wRel.indexedObjects(), before);
+
+        if (shape == Shape::Wide || shape == Shape::EmptyObject)
+        {
+            wAbs.setString("new", "/x/0/added");
+            wRel.setString("new", "/x/0/added");
+            EXPECT_TRUE(docAbs == docRel);
+            EXPECT_EQ(docAbs.str(), docRel.str());
+            if (shape == Shape::Wide)
+            {
+                EXPECT_EQ(wRel.indexedObjects(), before);
+            }
+        }
+    }
+}
+
+// The shape a tree walker uses: the node is found once and wrapped through its own anchor with an empty relative
+// path. The value must be moved (its index entry is reused, never rebuilt) whatever its type, and the anchor keeps
+// naming the same path, which now holds the array.
+TEST(JsonPathWriterAnchor, WrapInArrayThroughAnchorKeepsIndex)
+{
+    initLogging();
+    constexpr size_t WIDE = 200;
+    Json doc;
+    PathWriter writer(doc);
+    for (size_t i = 0; i < WIDE; ++i)
+    {
+        const auto value = "v" + std::to_string(i);
+        writer.setString(value, "/x/" + anchorName(i));     // wide object
+        writer.setString(value, "/arr/0/" + anchorName(i)); // array holding a wide object
+        writer.setString(value, "/other/" + anchorName(i)); // unrelated wide object
+    }
+    writer.setString("s", "/scalar");
+    ASSERT_TRUE(doc.isArray("/arr"));
+    const size_t before = writer.indexedObjects();
+    ASSERT_GE(before, 3u);
+    const std::string first = "/" + anchorName(0);
+
+    // An object, through a non-root anchor
+    const auto existing = writer.find(writer.root(), "/x");
+    ASSERT_TRUE(existing.has_value());
+    const auto descendant = writer.find(*existing, first);
+    ASSERT_TRUE(descendant.has_value());
+    ASSERT_TRUE(writer.wrapInArray(*existing));
+    EXPECT_EQ(writer.indexedObjects(), before);
+    EXPECT_TRUE(writer.isArray(*existing));
+    EXPECT_EQ(writer.size(*existing), 1u);
+    const auto moved = writer.find(*existing, "/0" + first);
+    ASSERT_TRUE(moved.has_value());
+    EXPECT_TRUE(*moved == *descendant); // moved, not copied: the member is where it was
+    writer.setString(*existing, "new", "/0/added");
+    EXPECT_EQ(writer.indexedObjects(), before);
+    writer.ensure(*existing, "/1");
+    EXPECT_EQ(writer.size(*existing), 2u);
+    EXPECT_EQ(writer.indexedObjects(), before);
+    EXPECT_EQ(doc.size("/x/0"), WIDE + 1);
+    EXPECT_EQ(doc.getJson("/x/0/added")->str(), "\"new\"");
+    EXPECT_EQ(doc.getJson("/x/1")->str(), "null");
+
+    // An array whose element is indexed: a copy would have to index the element again
+    const auto arr = writer.find(writer.root(), "/arr");
+    ASSERT_TRUE(arr.has_value());
+    ASSERT_TRUE(writer.wrapInArray(*arr));
+    EXPECT_EQ(writer.indexedObjects(), before);
+    writer.setString(*arr, "new", "/0/0/added");
+    EXPECT_EQ(writer.indexedObjects(), before);
+    EXPECT_EQ(doc.size("/arr/0/0"), WIDE + 1);
+
+    // A scalar: the entries of the other objects are not touched
+    const auto scalar = writer.find(writer.root(), "/scalar");
+    ASSERT_TRUE(scalar.has_value());
+    ASSERT_TRUE(writer.wrapInArray(*scalar));
+    EXPECT_EQ(writer.indexedObjects(), before);
+    EXPECT_EQ(doc.getJson("/scalar")->str(), "[\"s\"]");
+    writer.setString("again", "/other/" + anchorName(WIDE));
+    EXPECT_EQ(writer.indexedObjects(), before);
+}
+
+// "-" appends to the array the path reaches: relative to an anchor, that is the anchored array, not one at the root
+TEST(JsonPathWriterAnchor, DashTokenAppendsToAnchoredArray)
+{
+    initLogging();
+    Json docAbs("{\"a\":{\"arr\":[1]},\"arr\":[7,8]}");
+    Json docRel("{\"a\":{\"arr\":[1]},\"arr\":[7,8]}");
+    PathWriter wAbs(docAbs);
+    PathWriter wRel(docRel);
+
+    const auto arr = wRel.find(wRel.root(), "/a/arr");
+    ASSERT_TRUE(arr.has_value());
+    const auto appended = wRel.ensure(*arr, "/-");
+    EXPECT_EQ(docRel.str(), "{\"a\":{\"arr\":[1,null]},\"arr\":[7,8]}");
+    const auto last = wRel.find(*arr, "/1");
+    ASSERT_TRUE(last.has_value());
+    EXPECT_TRUE(appended == *last);
+
+    wAbs.setString("x", "/a/arr/-");
+    wAbs.setString("y", "/a/arr/-/k");
+    wRel.setString(appended, "x", "");
+    wRel.setString(*arr, "y", "/-/k");
+    EXPECT_TRUE(docAbs == docRel);
+    EXPECT_EQ(docRel.str(), "{\"a\":{\"arr\":[1,\"x\",{\"k\":\"y\"}]},\"arr\":[7,8]}");
+}
+
+TEST(JsonPathWriterAnchor, MissingAndInvalidPaths)
+{
+    initLogging();
+    Json doc("{\"a\":{\"b\":1}}");
+    PathWriter writer(doc);
+    const auto root = writer.root();
+    const std::string before = doc.str();
+
+    EXPECT_FALSE(writer.find(root, "/zz").has_value());
+    EXPECT_FALSE(writer.find(root, "/a/zz").has_value());
+    EXPECT_FALSE(writer.wrapInArray(root, "/zz"));
+    EXPECT_FALSE(writer.wrapInArray(root, "/a/zz"));
+    EXPECT_FALSE(writer.exists(root, "/zz"));
+    EXPECT_FALSE(writer.exists(root, "/a/zz"));
+    EXPECT_THROW(writer.size(root, "/zz"), std::runtime_error);
+    EXPECT_THROW(writer.size(root, "/a/zz"), std::runtime_error);
+    EXPECT_EQ(doc.str(), before);
+
+    const Json payload("1");
+    for (const char* bad : {"x", "/~2", "#/a", "#"})
+    {
+        SCOPED_TRACE(bad);
+        EXPECT_THROW(writer.setString(root, "v", bad), std::runtime_error);
+        EXPECT_THROW(writer.setObject(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.appendString(root, "v", bad), std::runtime_error);
+        EXPECT_THROW(writer.appendJson(root, payload, bad), std::runtime_error);
+        EXPECT_THROW(writer.exists(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.isObject(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.isArray(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.size(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.find(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.ensure(root, bad), std::runtime_error);
+        EXPECT_THROW(writer.wrapInArray(root, bad), std::runtime_error);
+    }
+}
+
+TEST(JsonPathWriterAnchor, EmptyRelativePathAndEnsure)
+{
+    initLogging();
+    // Default (empty) relative path: the anchored node itself, same as the absolute operation on its path.
+    const std::vector<std::pair<const char*, std::string>> docs {{"object", "{\"o\":{\"k\":1},\"z\":0}"},
+                                                                 {"array", "{\"o\":[1,2],\"z\":0}"},
+                                                                 {"scalar", "{\"o\":\"s\",\"z\":0}"}};
+    const Json payload("{\"p\":1}");
+    for (const auto& [label, text] : docs)
+    {
+        for (size_t op = 0; op < 6; ++op)
+        {
+            SCOPED_TRACE(std::string(label) + ", op " + std::to_string(op));
+            Json docAbs(text.c_str());
+            Json docRel(text.c_str());
+            PathWriter wAbs(docAbs);
+            PathWriter wRel(docRel);
+            const auto anchor = wRel.find(wRel.root(), "/o");
+            ASSERT_TRUE(anchor.has_value());
+
+            std::string outAbs;
+            std::string outRel;
+            switch (op)
+            {
+                case 0:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.appendString("v", "/o");
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.appendString(*anchor, "v");
+                            return std::string("-");
+                        });
+                    break;
+                case 1:
+                    outAbs = attempt([&] { return std::to_string(wAbs.isObject("/o")); });
+                    outRel = attempt([&] { return std::to_string(wRel.isObject(*anchor)); });
+                    break;
+                case 2:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.setObject("/o");
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.setObject(*anchor);
+                            return std::string("-");
+                        });
+                    break;
+                case 3:
+                    outAbs = attempt([&] { return std::to_string(wAbs.isArray("/o")); });
+                    outRel = attempt([&] { return std::to_string(wRel.isArray(*anchor)); });
+                    break;
+                case 4:
+                    outAbs = attempt([&] { return std::to_string(wAbs.size("/o")); });
+                    outRel = attempt([&] { return std::to_string(wRel.size(*anchor)); });
+                    break;
+                default:
+                    outAbs = attempt(
+                        [&]
+                        {
+                            wAbs.appendJson(payload, "/o");
+                            return std::string("-");
+                        });
+                    outRel = attempt(
+                        [&]
+                        {
+                            wRel.appendJson(*anchor, payload);
+                            return std::string("-");
+                        });
+                    break;
+            }
+            EXPECT_EQ(outAbs, outRel);
+            EXPECT_TRUE(docAbs == docRel);
+            EXPECT_EQ(docAbs.str(), docRel.str());
+        }
+    }
+
+    // ensure on a new path: a null node, siblings untouched.
+    {
+        Json doc("{\"a\":{\"b\":1},\"s\":2}");
+        PathWriter writer(doc);
+        const auto node = writer.ensure(writer.root(), "/a/n/m");
+        EXPECT_EQ(doc.getJson("/a/n/m")->str(), "null");
+        const auto found = writer.find(writer.root(), "/a/n/m");
+        ASSERT_TRUE(found.has_value());
+        EXPECT_TRUE(node == *found);
+        EXPECT_EQ(doc.getJson("/a/b")->str(), "1");
+        EXPECT_EQ(doc.getJson("/s")->str(), "2");
+
+        const auto parent = writer.find(writer.root(), "/a");
+        ASSERT_TRUE(parent.has_value());
+        writer.ensure(*parent, "/c");
+        EXPECT_EQ(doc.getJson("/a/c")->str(), "null");
+        EXPECT_EQ(doc.getJson("/a/b")->str(), "1");
+        EXPECT_EQ(doc.getJson("/s")->str(), "2");
+    }
+
+    // ensure on an existing path: nothing changes and the anchor is the one find returns.
+    {
+        Json doc("{\"a\":{\"b\":1},\"s\":2}");
+        PathWriter writer(doc);
+        for (size_t i = 0; i < 200; ++i)
+        {
+            writer.setString("v", "/w/" + anchorName(i, "m"));
+        }
+        ASSERT_GE(writer.indexedObjects(), 1u);
+        for (const char* path : {"/a/b", "/s", "/a", "/w", "/w/m000005", "/w/m000199", ""})
+        {
+            SCOPED_TRACE(path);
+            const std::string before = doc.str();
+            const size_t indexed = writer.indexedObjects();
+            const auto found = writer.find(writer.root(), path);
+            ASSERT_TRUE(found.has_value());
+            const auto ensured = writer.ensure(writer.root(), path);
+            EXPECT_EQ(doc.str(), before);
+            EXPECT_EQ(writer.indexedObjects(), indexed);
+            EXPECT_TRUE(ensured == *found);
+        }
+    }
+}
+
+TEST(JsonPathWriterAnchor, ForeignAnchorIsRejected)
+{
+    Json docA("{\"a\":{\"x\":\"1\"},\"arr\":[\"e\"]}");
+    Json docB("{\"b\":{}}");
+    PathWriter wa(docA);
+    PathWriter wb(docB);
+
+    const auto rootA = wa.root();
+    // ensure() adds /n to the root of A, so it runs before any other anchor below the root is taken; the reference
+    // text of A is taken after it
+    const auto ensuredA = wa.ensure(rootA, "/n");
+    const auto foundA = wa.find(rootA, "/a");
+    ASSERT_TRUE(foundA.has_value());
+    const auto copyA = *foundA;
+    const std::vector<PathWriter::Anchor> anchorsA {rootA, *foundA, ensuredA, copyA};
+
+    const std::string refA = docA.str();
+    const std::string refB = docB.str();
+    const size_t indexedA = wa.indexedObjects();
+    const size_t indexedB = wb.indexedObjects();
+    const Json element("\"j\"");
+
+    // Each of the eleven anchored operations, called on wb with a relative path
+    const std::vector<std::pair<std::string, std::function<void(PathWriter::Anchor, std::string_view)>>> ops {
+        {"find", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.find(a, p); }},
+        {"ensure", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.ensure(a, p); }},
+        {"setString", [&](PathWriter::Anchor a, std::string_view p) { wb.setString(a, "v", p); }},
+        {"setObject", [&](PathWriter::Anchor a, std::string_view p) { wb.setObject(a, p); }},
+        {"appendString", [&](PathWriter::Anchor a, std::string_view p) { wb.appendString(a, "v", p); }},
+        {"appendJson", [&](PathWriter::Anchor a, std::string_view p) { wb.appendJson(a, element, p); }},
+        {"exists", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.exists(a, p); }},
+        {"isObject", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.isObject(a, p); }},
+        {"isArray", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.isArray(a, p); }},
+        {"size", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.size(a, p); }},
+        {"wrapInArray", [&](PathWriter::Anchor a, std::string_view p) { (void)wb.wrapInArray(a, p); }},
+    };
+    ASSERT_EQ(ops.size(), 11u);
+
+    for (size_t i = 0; i < anchorsA.size(); ++i)
+    {
+        for (const auto& [name, op] : ops)
+        {
+            for (const char* path : {"/k", ""})
+            {
+                SCOPED_TRACE("anchor " + std::to_string(i) + " " + name + " '" + path + "'");
+                EXPECT_THROW(op(anchorsA[i], path), std::runtime_error);
+            }
+            // An invalid relative path with a foreign anchor also throws
+            SCOPED_TRACE("anchor " + std::to_string(i) + " " + name + " 'k'");
+            EXPECT_THROW(op(anchorsA[i], "k"), std::runtime_error);
+        }
+    }
+
+    EXPECT_EQ(docA.str(), refA);
+    EXPECT_EQ(docB.str(), refB);
+    EXPECT_EQ(wa.indexedObjects(), indexedA);
+    EXPECT_EQ(wb.indexedObjects(), indexedB);
+
+    // Positive control: each writer accepts its own anchors
+    EXPECT_NO_THROW(wb.setString(wb.root(), "v", "/k"));
+    EXPECT_NO_THROW(wa.setString(rootA, "v", "/k"));
+    EXPECT_EQ(docB.getJson("/k")->str(), "\"v\"");
+    EXPECT_EQ(docA.getJson("/k")->str(), "\"v\"");
+
+    // Symmetric: an anchor of B is rejected by wa
+    EXPECT_THROW(wa.exists(wb.root(), "/b"), std::runtime_error);
+}
+
+TEST(JsonPathWriterAnchor, RelativePathIsPlainPointer)
+{
+    // The equivalent absolute path of (anchor at /p, "/%41") is the plain pointer "/p/%41": '%' is not an escape
+    Json anchored("{\"p\":{}}");
+    {
+        PathWriter writer(anchored);
+        const auto p = writer.find(writer.root(), "/p");
+        ASSERT_TRUE(p.has_value());
+        writer.setString(*p, "v", "/%41");
+    }
+    EXPECT_EQ(anchored.str(), "{\"p\":{\"%41\":\"v\"}}");
+
+    Json plain("{\"p\":{}}");
+    {
+        PathWriter writer(plain);
+        writer.setString("v", "/p/%41");
+    }
+    EXPECT_EQ(plain.str(), anchored.str());
+
+    // In the URI fragment form the same member is spelled "%2541", and "%41" names the member "A"
+    Json fragment("{\"p\":{}}");
+    Json fragmentDecoded("{\"p\":{}}");
+    {
+        PathWriter writer(fragment);
+        writer.setString("v", "#/p/%2541");
+        PathWriter writerDecoded(fragmentDecoded);
+        writerDecoded.setString("v", "#/p/%41");
+    }
+    EXPECT_EQ(fragment.str(), anchored.str());
+    EXPECT_EQ(fragmentDecoded.str(), "{\"p\":{\"A\":\"v\"}}");
 }

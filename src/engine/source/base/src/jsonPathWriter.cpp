@@ -3,9 +3,12 @@
 
 #include <algorithm>
 #include <cstring>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include <fmt/format.h>
 
 #include "jsonNameCompare.hpp"
 
@@ -51,6 +54,24 @@ const Token* tokensBegin(const rapidjson::Pointer& pointer)
 const Token* tokensEnd(const rapidjson::Pointer& pointer)
 {
     return pointer.GetTokens() + pointer.GetTokenCount();
+}
+
+// A relative path is valid when it is empty or starts with '/' and is a valid JSON pointer (no URI fragment form)
+rapidjson::Pointer relativePointer(std::string_view relPath)
+{
+    if (relPath.empty())
+    {
+        return rapidjson::Pointer();
+    }
+    if (relPath[0] == '/')
+    {
+        auto pointer = rapidjson::Pointer(relPath.data(), relPath.size());
+        if (pointer.IsValid())
+        {
+            return pointer;
+        }
+    }
+    throw std::runtime_error(fmt::format("Invalid relative pointer path '{}'", relPath));
 }
 
 } // namespace
@@ -133,11 +154,11 @@ PathWriter::Value& PathWriter::addMember(Value& object, IndexEntry* entry, const
     return (--last)->value; // AddMember appends at the end
 }
 
-PathWriter::Value& PathWriter::create(const Token* begin, const Token* end)
+PathWriter::Value& PathWriter::create(Value& from, const Token* begin, const Token* end)
 {
     // Mirrors rapidjson's GenericPointer::Create; only the member lookup differs
     auto& allocator = m_doc.m_document.GetAllocator();
-    Value* v = &m_doc.m_document;
+    Value* v = &from;
     for (const Token* t = begin; t != end; ++t)
     {
         if (v->IsArray() && t->name[0] == '-' && t->length == 1)
@@ -182,10 +203,10 @@ PathWriter::Value& PathWriter::create(const Token* begin, const Token* end)
     return *v;
 }
 
-PathWriter::Value* PathWriter::get(const Token* begin, const Token* end) const
+PathWriter::Value* PathWriter::get(Value& from, const Token* begin, const Token* end) const
 {
     // Mirrors rapidjson's GenericPointer::Get; only the member lookup differs
-    Value* v = &m_doc.m_document;
+    Value* v = &from;
     for (const Token* t = begin; t != end; ++t)
     {
         switch (v->GetType())
@@ -231,9 +252,18 @@ void PathWriter::set(std::string_view pointerPath, const Json& value)
         return;
     }
 
-    auto& target = create(tokensBegin(pointer), tokensEnd(pointer));
+    auto& target = create(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer));
     forget(target);
     target.CopyFrom(value.m_document, m_doc.m_document.GetAllocator());
+}
+
+void PathWriter::setStringAt(Value& from, const rapidjson::Pointer& pointer, std::string_view value)
+{
+    const auto* data = value.data() ? value.data() : "";
+    Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_doc.m_document.GetAllocator());
+    auto& target = create(from, tokensBegin(pointer), tokensEnd(pointer));
+    forget(target);
+    target = v;
 }
 
 void PathWriter::setString(std::string_view value, std::string_view path)
@@ -245,11 +275,7 @@ void PathWriter::setString(std::string_view value, std::string_view path)
         return;
     }
 
-    const auto* data = value.data() ? value.data() : "";
-    Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_doc.m_document.GetAllocator());
-    auto& target = create(tokensBegin(pointer), tokensEnd(pointer));
-    forget(target);
-    target = v;
+    setStringAt(m_doc.m_document, pointer, value);
 }
 
 void PathWriter::setStringAsMembers(std::string_view value, std::string_view path)
@@ -264,7 +290,7 @@ void PathWriter::setStringAsMembers(std::string_view value, std::string_view pat
     const auto tokens = asMemberTokens(pointer);
     const auto* data = value.data() ? value.data() : "";
     Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_doc.m_document.GetAllocator());
-    auto& target = create(tokens.data(), tokens.data() + tokens.size());
+    auto& target = create(m_doc.m_document, tokens.data(), tokens.data() + tokens.size());
     forget(target);
     target = v;
 }
@@ -279,10 +305,18 @@ void PathWriter::setNullAsMembers(std::string_view path)
     }
 
     const auto tokens = asMemberTokens(pointer);
-    auto& target = create(tokens.data(), tokens.data() + tokens.size());
+    auto& target = create(m_doc.m_document, tokens.data(), tokens.data() + tokens.size());
     forget(target);
     Value v;
     target = v.SetNull();
+}
+
+void PathWriter::setObjectAt(Value& from, const rapidjson::Pointer& pointer)
+{
+    auto& target = create(from, tokensBegin(pointer), tokensEnd(pointer));
+    forget(target);
+    Value v;
+    target = v.SetObject();
 }
 
 void PathWriter::setObject(std::string_view path)
@@ -294,10 +328,7 @@ void PathWriter::setObject(std::string_view path)
         return;
     }
 
-    auto& target = create(tokensBegin(pointer), tokensEnd(pointer));
-    forget(target);
-    Value v;
-    target = v.SetObject();
+    setObjectAt(m_doc.m_document, pointer);
 }
 
 void PathWriter::setArray(std::string_view path)
@@ -309,33 +340,18 @@ void PathWriter::setArray(std::string_view path)
         return;
     }
 
-    auto& target = create(tokensBegin(pointer), tokensEnd(pointer));
+    auto& target = create(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer));
     forget(target);
     Value v;
     target = v.SetArray();
 }
 
-void PathWriter::appendString(std::string_view value, std::string_view path)
+void PathWriter::appendStringAt(Value& from, const rapidjson::Pointer& pointer, std::string_view value)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
-    if (!pointer.IsValid())
-    {
-        m_doc.appendString(value, path);
-        return;
-    }
-
     auto& allocator = m_doc.m_document.GetAllocator();
-    const rapidjson::size_t s1 = static_cast<rapidjson::size_t>(value.size());
-    const size_t s2 = static_cast<size_t>(s1);
-    if (s2 != value.size())
-    {
-        // Json throws here; let it build the identical exception
-        m_doc.appendString(value, path);
-        return;
-    }
-    Value v(value.data(), static_cast<rapidjson::SizeType>(s2), allocator);
+    Value v(value.data(), static_cast<rapidjson::SizeType>(value.size()), allocator);
 
-    auto* val = get(tokensBegin(pointer), tokensEnd(pointer));
+    auto* val = get(from, tokensBegin(pointer), tokensEnd(pointer));
     if (val)
     {
         if (!val->IsArray())
@@ -351,22 +367,36 @@ void PathWriter::appendString(std::string_view value, std::string_view path)
         vArray.SetArray();
         vArray.PushBack(v, allocator);
         // The path did not exist, so the target is a value that create() has just added
-        create(tokensBegin(pointer), tokensEnd(pointer)) = vArray;
+        create(from, tokensBegin(pointer), tokensEnd(pointer)) = vArray;
     }
 }
 
-void PathWriter::appendJson(const Json& value, std::string_view path)
+void PathWriter::appendString(std::string_view value, std::string_view path)
 {
     const auto pointer = rapidjson::Pointer(path.data(), path.size());
     if (!pointer.IsValid())
     {
-        m_doc.appendJson(value, path);
+        m_doc.appendString(value, path);
         return;
     }
 
+    const rapidjson::size_t s1 = static_cast<rapidjson::size_t>(value.size());
+    const size_t s2 = static_cast<size_t>(s1);
+    if (s2 != value.size())
+    {
+        // Json throws here; let it build the identical exception
+        m_doc.appendString(value, path);
+        return;
+    }
+
+    appendStringAt(m_doc.m_document, pointer, value);
+}
+
+void PathWriter::appendJsonAt(Value& from, const rapidjson::Pointer& pointer, const Json& value)
+{
     auto& allocator = m_doc.m_document.GetAllocator();
     Value rapidValue {value.m_document, allocator};
-    auto* val = get(tokensBegin(pointer), tokensEnd(pointer));
+    auto* val = get(from, tokensBegin(pointer), tokensEnd(pointer));
     if (val)
     {
         if (!val->IsArray())
@@ -382,8 +412,25 @@ void PathWriter::appendJson(const Json& value, std::string_view path)
         vArray.SetArray();
         vArray.PushBack(rapidValue, allocator);
         // The path did not exist, so the target is a value that create() has just added
-        create(tokensBegin(pointer), tokensEnd(pointer)) = vArray;
+        create(from, tokensBegin(pointer), tokensEnd(pointer)) = vArray;
     }
+}
+
+void PathWriter::appendJson(const Json& value, std::string_view path)
+{
+    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    if (!pointer.IsValid())
+    {
+        m_doc.appendJson(value, path);
+        return;
+    }
+
+    appendJsonAt(m_doc.m_document, pointer, value);
+}
+
+bool PathWriter::existsAt(Value& from, const rapidjson::Pointer& pointer) const
+{
+    return get(from, tokensBegin(pointer), tokensEnd(pointer)) != nullptr;
 }
 
 bool PathWriter::exists(std::string_view pointerPath) const
@@ -393,7 +440,13 @@ bool PathWriter::exists(std::string_view pointerPath) const
     {
         return m_doc.exists(pointerPath);
     }
-    return get(tokensBegin(pointer), tokensEnd(pointer)) != nullptr;
+    return existsAt(m_doc.m_document, pointer);
+}
+
+bool PathWriter::isObjectAt(Value& from, const rapidjson::Pointer& pointer) const
+{
+    const auto* value = get(from, tokensBegin(pointer), tokensEnd(pointer));
+    return value != nullptr && value->IsObject();
 }
 
 bool PathWriter::isObject(std::string_view path) const
@@ -403,8 +456,13 @@ bool PathWriter::isObject(std::string_view path) const
     {
         return m_doc.isObject(path);
     }
-    const auto* value = get(tokensBegin(pointer), tokensEnd(pointer));
-    return value != nullptr && value->IsObject();
+    return isObjectAt(m_doc.m_document, pointer);
+}
+
+bool PathWriter::isArrayAt(Value& from, const rapidjson::Pointer& pointer) const
+{
+    const auto* value = get(from, tokensBegin(pointer), tokensEnd(pointer));
+    return value != nullptr && value->IsArray();
 }
 
 bool PathWriter::isArray(std::string_view path) const
@@ -414,8 +472,28 @@ bool PathWriter::isArray(std::string_view path) const
     {
         return m_doc.isArray(path);
     }
-    const auto* value = get(tokensBegin(pointer), tokensEnd(pointer));
-    return value != nullptr && value->IsArray();
+    return isArrayAt(m_doc.m_document, pointer);
+}
+
+std::optional<size_t> PathWriter::sizeAt(Value& from, const rapidjson::Pointer& pointer) const
+{
+    const auto* value = get(from, tokensBegin(pointer), tokensEnd(pointer));
+    if (value != nullptr)
+    {
+        if (value->IsArray())
+        {
+            return value->Size();
+        }
+        if (value->IsObject())
+        {
+            return value->MemberCount();
+        }
+        if (value->IsString())
+        {
+            return value->GetStringLength();
+        }
+    }
+    return std::nullopt;
 }
 
 size_t PathWriter::size(std::string_view path) const
@@ -423,21 +501,10 @@ size_t PathWriter::size(std::string_view path) const
     const auto pointer = rapidjson::Pointer(path.data(), path.size());
     if (pointer.IsValid())
     {
-        const auto* value = get(tokensBegin(pointer), tokensEnd(pointer));
-        if (value != nullptr)
+        const auto result = sizeAt(m_doc.m_document, pointer);
+        if (result.has_value())
         {
-            if (value->IsArray())
-            {
-                return value->Size();
-            }
-            if (value->IsObject())
-            {
-                return value->MemberCount();
-            }
-            if (value->IsString())
-            {
-                return value->GetStringLength();
-            }
+            return *result;
         }
     }
     // Invalid pointer, path not found or size not measurable: Json builds the identical exception
@@ -453,12 +520,124 @@ std::optional<Json> PathWriter::getJson(std::string_view path) const
         return m_doc.getJson(path);
     }
 
-    const auto* val = get(tokensBegin(pointer), tokensEnd(pointer));
+    const auto* val = get(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer));
     if (val)
     {
         retval = Json(*val);
     }
     return retval;
+}
+
+PathWriter::Value& PathWriter::resolve(Anchor from) const
+{
+    if (from.m_owner != this)
+    {
+        throw std::runtime_error("Anchor does not belong to this PathWriter");
+    }
+    return *from.m_value;
+}
+
+PathWriter::Anchor PathWriter::root()
+{
+    return Anchor(this, &m_doc.m_document);
+}
+
+std::optional<PathWriter::Anchor> PathWriter::find(Anchor from, std::string_view relPath) const
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    auto* value = get(node, tokensBegin(pointer), tokensEnd(pointer));
+    if (value == nullptr)
+    {
+        return std::nullopt;
+    }
+    return Anchor(this, value);
+}
+
+PathWriter::Anchor PathWriter::ensure(Anchor from, std::string_view relPath)
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    return Anchor(this, &create(node, tokensBegin(pointer), tokensEnd(pointer)));
+}
+
+void PathWriter::setString(Anchor from, std::string_view value, std::string_view relPath)
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    setStringAt(node, pointer, value);
+}
+
+void PathWriter::setObject(Anchor from, std::string_view relPath)
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    setObjectAt(node, pointer);
+}
+
+void PathWriter::appendString(Anchor from, std::string_view value, std::string_view relPath)
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    appendStringAt(node, pointer, value);
+}
+
+void PathWriter::appendJson(Anchor from, const Json& value, std::string_view relPath)
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    appendJsonAt(node, pointer, value);
+}
+
+bool PathWriter::exists(Anchor from, std::string_view relPath) const
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    return existsAt(node, pointer);
+}
+
+bool PathWriter::isObject(Anchor from, std::string_view relPath) const
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    return isObjectAt(node, pointer);
+}
+
+bool PathWriter::isArray(Anchor from, std::string_view relPath) const
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    return isArrayAt(node, pointer);
+}
+
+size_t PathWriter::size(Anchor from, std::string_view relPath) const
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    const auto result = sizeAt(node, pointer);
+    if (!result.has_value())
+    {
+        throw std::runtime_error(fmt::format(
+            "Size of relative path '{}' is not measurable: not found or not an array, object or string", relPath));
+    }
+    return *result;
+}
+
+bool PathWriter::wrapInArray(Anchor from, std::string_view relPath)
+{
+    auto& node = resolve(from);
+    const auto pointer = relativePointer(relPath);
+    auto* value = get(node, tokensBegin(pointer), tokensEnd(pointer));
+    if (value == nullptr)
+    {
+        return false;
+    }
+
+    // No forget(): the moved object keeps the address of its member array, so its index entry stays valid
+    Value moved(std::move(*value));
+    value->SetArray();
+    value->PushBack(moved, m_doc.m_document.GetAllocator());
+    return true;
 }
 
 size_t PathWriter::indexedObjects() const
