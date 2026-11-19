@@ -55,6 +55,18 @@ def test_insert(json_dst, section_name, option, value):
         assert json_dst == {}
 
 
+@pytest.mark.parametrize("json_dst, option, value, expected", [
+    ({}, 'allowed-ips', '127.0.0.0/24', ['127.0.0.0/24']),
+    ({'allowed-ips': ['127.0.0.0/24']}, 'allowed-ips', '192.168.0.0/24', ['127.0.0.0/24', '192.168.0.0/24']),
+    ({}, 'denied-ips', '127.0.0.1', ['127.0.0.1']),
+    ({'denied-ips': ['127.0.0.1']}, 'denied-ips', '192.168.0.1', ['127.0.0.1', '192.168.0.1']),
+])
+def test_insert_remote_ip_lists(json_dst, option, value, expected):
+    """Check that _insert keeps every allowed-ips and denied-ips entry of a remote section as a list."""
+    configuration._insert(json_dst, 'remote', option, value)
+    assert json_dst[option] == expected
+
+
 @pytest.mark.parametrize("json_dst, section_name, section_data", [
     ({'old': []}, 'ruleset', 'include'),
     ({'labels': []}, 'labels', ['label']),
@@ -261,6 +273,18 @@ def test_get_ossec_conf():
         section='ruleset',
         field='rule_dir',
         distinct=True)['ruleset']['rule_dir'] == ['ruleset/rules', 'etc/rules']
+
+
+def test_get_ossec_conf_remote_ip_lists():
+    """Check that get_ossec_conf returns every allowed-ips and denied-ips entry of each remote block."""
+    assert configuration.get_ossec_conf(
+        section='remote',
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec_remote.conf')
+    ) == {'remote': [
+        {'connection': 'secure', 'port': '1514', 'protocol': ['tcp']},
+        {'connection': 'syslog', 'port': '514', 'protocol': ['udp'],
+         'allowed-ips': ['127.0.0.0/24', '192.168.0.0/24'], 'denied-ips': ['127.0.0.1', '192.168.0.1']}
+    ]}
 
 
 def test_get_agent_conf():
