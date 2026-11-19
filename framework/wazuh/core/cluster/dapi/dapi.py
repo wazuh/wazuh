@@ -878,7 +878,8 @@ class SendSyncRequestQueue(WazuhRequestQueue):
         try:
             request = json.loads(request, object_hook=c_common.as_wazuh_object)
             self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
-            result = await wazuh_sendsync(**request)
+            result = await wazuh_sendsync(
+                **request, timeout=self.server.cluster_items['intervals']['communication']['timeout_sendsync_request'])
             task_id = await node.send_string(result.encode())
         except Exception as e:
             # The daemon only, never the message: an enrollment forwarded to authd carries the agent's

@@ -1014,6 +1014,7 @@ async def test_SendSyncRequestQueue_process(loop_mock, contexlib_mock):
             self.configuration = {'node_type': 'master'}
             self.tasks_event = asyncio.Event()
             self.tasks_event.set()
+            self.cluster_items = {'intervals': {'communication': {'timeout_sendsync_request': 600}}}
 
     class RequestQueueMock:
         async def get(self):
