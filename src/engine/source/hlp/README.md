@@ -284,12 +284,29 @@ The root container is level 1: 256 nested containers (objects and arrays) parse,
 | Parser | Depth unit | Fails at | Returns |
 |--------|------------|----------|---------|
 | `getJSONParser` | open JSON containers (objects and arrays), counted by `json::Json::parseBounded` | the 257th nested container | Syntax-phase failure (`makeFailure`) whose trace names the limit; no document is built |
-| `getXMLParser` | nested XML elements, counted by `xmlToJson` (in `windows` mode the root `Event`, omitted from the output, is level 1) | the 257th nested element | Semantic-phase `base::Error`, the same contract as `Invalid XML` |
+| `getXMLParser` | containers of the document it builds, counted by `xmlToJson`: the document is level 1, each element adds one and a repeated sibling two (the array and its element); in `windows` mode the `Event` and `Data` elements add none. A first sibling moved into the array when the second one appears is counted at its new depth | the 257th nested container (255 nested elements fill the cap) | Semantic-phase `base::Error`, the same contract as `Invalid XML` |
 | `getKVParser` | tokens of the destination path of a key, with or without a value: one level per `.` plus one | a key with 256 dots (a key with 255 dots maps) | Semantic-phase `base::Error` |
 
 `parser::run()` turns either failure into a `base::Error` that carries the message only when tracing is enabled (test mode) and is empty otherwise, exactly as for any other parse failure.
 
 The XML parser creates one `json::PathWriter` per parse, and `xmlToJson` and the `windows` module read and write the document through it. Repeated sibling elements are appended to their array, which grows geometrically. The writer is described in the [JSON Path Writer](../base/README.md#json-path-writer) section of the `base` README.
+
+Sibling elements that share a name become one array under that name, in document order. The first one is written as an object and is moved into the array when the second one appears; each element of the array holds the `#text`, the `@<attribute>` members and the child elements of its own sibling, and the same rule applies inside it:
+
+| Input | Output |
+|---|---|
+| `<r><a>1</a></r>` | `{"r":{"a":{"#text":"1"}}}` |
+| `<r><a>1</a><a>2</a></r>` | `{"r":{"a":[{"#text":"1"},{"#text":"2"}]}}` |
+| `<r><a><x>1</x></a><a><x>2</x></a></r>` | `{"r":{"a":[{"x":{"#text":"1"}},{"x":{"#text":"2"}}]}}` |
+| `<r><a k="1"><b>1</b><b>2</b></a><a/></r>` | `{"r":{"a":[{"@k":"1","b":[{"#text":"1"},{"#text":"2"}]},{}]}}` |
+
+In `windows` mode the named `Data` of a repeated element are members of that element of the array: `<Event><EventData><Data Name="a">v</Data></EventData><EventData><Data Name="b">w</Data></EventData></Event>` maps to `{"EventData":[{"a":"v"},{"b":"w"}]}`. A `Data` without `Name` turns its parent into an array of strings, which a later sibling of that parent takes for the array of the repeated siblings. The result is an array that mixes both: the strings of the first sibling stay flat in it, and each later sibling is one element of it, a nested array of strings or an object:
+
+| Input (`windows`) | Output |
+|---|---|
+| `<Event><EventData><Data>a</Data><Data>b</Data></EventData><EventData><Data>c</Data></EventData></Event>` | `{"EventData":["a","b",["c"]]}` |
+| `<Event><EventData><Data Name="k">v</Data></EventData><EventData><Data>a</Data></EventData></Event>` | `{"EventData":[{"k":"v"},["a"]]}` |
+| `<Event><EventData><Data>a</Data></EventData><EventData><Data Name="k">v</Data></EventData></Event>` | `{"EventData":["a",{"k":"v"}]}` |
 
 XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is a leaf and does not produce a member of its own: `<a><![CDATA[x]]></a>` maps to `{"a":{"#text":"x"}}`.
 
