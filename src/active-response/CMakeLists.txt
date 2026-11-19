@@ -124,7 +124,7 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Windows active responses need win32_stubs and resource files (.rc)
 
-  # Unified block-ip.exe (netsh + route fallback)
+  # Unified block-ip.exe (netsh)
   add_executable(
     block-ip
     ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-windows.c
@@ -138,5 +138,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     block-ip PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                        OUTPUT_NAME block-ip)
-  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS} iphlpapi)
+  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS} iphlpapi ole32)
 endif()

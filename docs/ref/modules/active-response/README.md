@@ -10,7 +10,8 @@ reverts it when its timeout expires.
 
 - **IP blocking**: `block-ip` tries the platform's mechanisms in order and stops at the first that
   succeeds — firewalld then iptables on Linux, ipfw/pf/npf on the BSDs, pf on macOS, each followed by
-  `hosts.deny` and `route`; netsh then `route` on Windows
+  `hosts.deny` and `route`; netsh only on Windows, where a block is reported as done only if the
+  firewall enforces it on the networks in use
 - **Account locking**: `disable-account` locks a local account (`passwd -l` on Linux, `pwpolicy` on macOS)
 - **Stateful or stateless**: a stateful response is reverted by `wazuh-execd` after its
   `stateful_timeout`; a stateless one runs once

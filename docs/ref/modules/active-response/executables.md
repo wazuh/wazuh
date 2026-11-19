@@ -108,35 +108,40 @@ block out quick from any to <wazuh_fwtable>
 
 **Keys**: the IP address.
 
-**Methods** (ENABLE tries them in order; DISABLE removes **both** — see Removal below):
+**Method**: netsh (Windows Firewall) only. There is no fallback: a route can't filter inbound connections, so it can't block an address.
 
-| Priority | Method | Tool | Command Example |
-|----------|--------|------|-----------------|
-| 1 | netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" interface=any dir=in action=block remoteip=192.168.1.100/32` (plus a matching `dir=out` rule) |
-| 2 | route | `route.exe` | `route -p ADD 192.168.1.100 MASK 255.255.255.255 0.0.0.0 IF 1` (blackhole via the loopback interface) |
+| Method | Tool | Command Example |
+|--------|------|-----------------|
+| netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" interface=any dir=in action=block remoteip=192.168.1.100/32` (plus a matching `dir=out` rule) |
 
 The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for IPv6.
 
 **Windows-Specific Details**:
-- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"` — one inbound (`dir=in`) and one outbound (`dir=out`) for bidirectional blocking. A failed outbound rule is logged and does not fail the block.
-- **Effective firewall-state detection**: On **ENABLE only**, netsh is used only if the Windows Firewall is *effectively* enabled. The state is read directly from the registry `EnableFirewall` DWORD (locale-independent), evaluated per profile (Domain/Standard/Public):
-  - The GPO policy value (`HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<profile>`) wins if present;
-  - otherwise the local SharedAccess value (`HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\<profile>`);
-  - otherwise, an **absent** value defaults to **enabled** (the Windows default).
+- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"`, one inbound (`dir=in`) and one outbound (`dir=out`). A failed outbound rule is logged and does not fail the block.
+- **Is the block enforced?** Windows only applies the rules on networks whose firewall profile is on, and only if Group Policy lets local rules apply. After adding the rules, `block-ip` checks the profiles of the networks in use (`INetFwPolicy2::CurrentProfileTypes`):
+  - Firewall state per profile: the Group Policy value (`EnableFirewall` under `HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<Domain|Private|Public>Profile`) when set, otherwise the local setting (`INetFwPolicy2::FirewallEnabled`). Group Policy wins over the local setting in both directions. For Private and Public, the older `StandardProfile` key is read instead only when neither the `PrivateProfile` nor the `PublicProfile` key exists, which is when Windows applies it.
+  - Local rules: `INetFwPolicy2::LocalPolicyModifyState`. A Group Policy with *Apply local firewall rules: No* (`AllowLocalPolicyMerge` = 0) makes Windows ignore the rules `block-ip` adds. When the networks in use differ (`S_FALSE`), the profiles with `AllowLocalPolicyMerge` = 0 in their Group Policy key (the same key the firewall state was read from) are named; if none is, the block is reported as unconfirmed. A profile that blocks all inbound connections also makes the profiles differ, so a block on such a host is reported as unconfirmed even though it is in place.
 
-  If any profile is effectively enabled, netsh is used; if the firewall is effectively off, netsh is skipped and the chain defers to the `route` fallback (adding a rule that would sit dormant is avoided). This check is **not** applied on DISABLE, so an unblock always attempts to remove the rule.
-- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **blackholed through the loopback interface** (`route -p ADD <IP> MASK 255.255.255.255 0.0.0.0 IF 1`) so the host discards packets destined to it. A `0.0.0.0 IF 1` gateway stays in the active routing table; a `127.0.0.1` gateway is only saved to the persistent store and never becomes active, so it would not block anything. This is **best-effort**: the /32 host route is more specific than the on-link subnet route and wins, so it drops egress to the target (including a host on a directly-connected subnet) and breaks the reverse path of inbound sessions, but it does **not** filter inbound packets the way a firewall rule does. Because `route.exe` exits 0 even when it rejects the route, the route is verified against the active routing table after the add (`GetBestRoute`); if it did not take, the method reports a failure. **Windows Firewall (netsh) remains the preferred, bidirectional blocking mechanism.**
-- **IPv4-only fallback**: The `route` fallback applies to **IPv4 targets only**; IPv6 targets are skipped (netsh already covers IPv6).
-- **Input validation**: `source.ip` must consist only of the characters of a numeric IPv4 address, or of hex digits, `:` and `.` for IPv6, 2 to 45 characters long, so nothing else reaches the netsh or route command line.
+  The block is reported as done (`[INFO] Method=netsh Action=success Details=IP <ip> successfully blocked`, exit `0`) only when the firewall is on and local rules apply for **every** network in use. Otherwise `block-ip` logs `[ERROR] Method=netsh Action=not_enforced` with one of these causes, and exits with a failure, which `wazuh-execd` logs in `ossec.log` as `Active response command '<path>\block-ip.exe' reported failure (exit code -1).`:
+  - `is not blocked: Windows Firewall is off for the networks in use (profiles: <names>)`
+  - `is not blocked on every network in use: Windows Firewall is off for some of them (profiles: <names>)`
+  - `is not blocked: Group Policy doesn't apply local firewall rules to the networks in use`
+  - `is not blocked on every network in use: Group Policy doesn't apply local firewall rules to some of them (profiles: <names>)`
+  - `may not be blocked on every network in use: the firewall policy differs between them`
+  - `may not be blocked: ... the firewall state of the networks in use can't be read`
+
+  The chain then adds `[WARNING] Method=netsh Action=invalid_state`, as for any method that doesn't apply. The rules are kept in every case, so they take effect if the cause goes away before the unblock: for a stateful response the unblock at its timeout removes them; a stateless response has no unblock, so they stay, as any stateless block does.
+  - Policy set through MDM (Intune Firewall CSP) is not read: only Group Policy and the local setting are.
+- **Input validation**: `source.ip` must consist only of the characters of a numeric IPv4 address, or of hex digits, `:` and `.` for IPv6, 2 to 45 characters long, so nothing else reaches the netsh command line.
 - **Permissions**: Requires Administrator privileges
 
 **Removal**:
 
-DISABLE is **not** a fallback chain — because a block may have been applied by *either* netsh (firewall on) *or* the null-route (firewall off), unblock unconditionally attempts to remove **both**, each best-effort (a missing rule/route is the expected, non-failure case):
+Unblock removes the netsh rules whether or not the firewall is on, since they may have been added while it was on:
 - netsh: `netsh advfirewall firewall delete rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" remoteip=192.168.1.100/32`; for an IPv6 address the `/128` rule and then a `/32` rule, the prefix older agents wrote for IPv6
-- route: `route DELETE 192.168.1.100`
+- route: 5.0.0 pre-releases fell back to a persistent loopback route (`route -p ADD <IP> MASK 255.255.255.255 0.0.0.0 IF 1`). If one is still in place, unblock removes it (`route DELETE <IP> MASK 255.255.255.255 0.0.0.0 IF 1`), only when the best route to the IP is exactly that `/32` route through the loopback interface. A route to the IP through another gateway or interface is never touched; an identical loopback route added by hand can't be told apart and is removed too.
 
-The unblock logs `IP <ip> successfully unblocked` if **either** removal took effect; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
+The unblock logs `IP <ip> successfully unblocked` if a rule or a leftover route was removed; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
 
 **Logging**: `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
 
