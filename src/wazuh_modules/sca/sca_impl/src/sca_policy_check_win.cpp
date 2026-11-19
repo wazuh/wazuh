@@ -205,12 +205,14 @@ RuleResult RegistryRuleEvaluator::Evaluate()
     // lives. Combining is done before negating: a negated rule must fail if either view matches.
     auto combined = RuleResult::NotFound;
     auto allInvalid = true;
-    std::string firstReason;
+    std::string invalidReason;
+    auto invalidReasonHasKey = false;
 
     for (const auto view : VIEWS_IN_LOOKUP_ORDER)
     {
         // A previous evaluation of this rule must not explain this one
         m_lastUnresolvedReason.clear();
+        m_lastKeyExists = false;
 
         const auto result = m_ctx.pattern ? CheckKeyForContents(view) : CheckKeyExistence(view);
 
@@ -225,15 +227,18 @@ RuleResult RegistryRuleEvaluator::Evaluate()
         {
             allInvalid = false;
         }
-        else if (firstReason.empty())
+        // A view where the key exists explains the failure better (missing value, unsupported type)
+        // than a view where the key itself is missing, e.g. a key present only in WOW6432Node.
+        else if (invalidReason.empty() || (m_lastKeyExists && !invalidReasonHasKey))
         {
-            firstReason = m_lastUnresolvedReason;
+            invalidReason = m_lastUnresolvedReason;
+            invalidReasonHasKey = m_lastKeyExists;
         }
     }
 
     if (allInvalid)
     {
-        m_lastUnresolvedReason = firstReason;
+        m_lastUnresolvedReason = invalidReason;
         LoggingHelper::getInstance().log(LOG_DEBUG, "Registry rule could not be evaluated in any registry view");
         return RuleResult::Invalid;
     }
@@ -268,6 +273,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents(const RegistryView view)
         return RuleResult::Invalid;
     }
 
+    m_lastKeyExists = true;
     auto result = RuleResult::NotFound;
 
     if (const auto content = sca::GetPattern(pattern))
@@ -305,15 +311,12 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents(const RegistryView view)
         {
             for (const auto& value : m_enumValues(m_ctx.rule, view))
             {
-                // LCOV_EXCL_START
                 if (CheckMatch(value, pattern, isRegex) == RuleResult::Found)
                 {
                     result = RuleResult::Found;
                     LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + pattern + "' exists");
                     break;
                 }
-
-                // LCOV_EXCL_STOP
             }
         }
     }

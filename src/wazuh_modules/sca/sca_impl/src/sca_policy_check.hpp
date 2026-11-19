@@ -189,6 +189,8 @@ class RegistryRuleEvaluator : public RuleEvaluator
         /// @details The rule is evaluated against the 64-bit registry view and, unless it is found
         ///          there, against the 32-bit view. It is Found if either view finds it and Invalid
         ///          only if both views are Invalid. Negation is applied to that combined result.
+        ///          When both views are Invalid, the reason reported comes from the first view in
+        ///          which the key exists, or from the first view if the key exists in neither.
         RuleResult Evaluate() override;
 
     private:
@@ -206,6 +208,9 @@ class RegistryRuleEvaluator : public RuleEvaluator
         EnumKeysFunc m_enumKeys = nullptr;
         EnumValuesFunc m_enumValues = nullptr;
         GetValueFunc m_getValue = nullptr;
+
+        /// @brief Whether the last CheckKeyForContents call found the key in its view
+        bool m_lastKeyExists = false;
 };
 
 namespace sca::win
