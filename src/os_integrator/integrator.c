@@ -14,7 +14,7 @@
 #include "os_net/os_net.h"
 
 
-/* Return a copy of a line of script output with the API key, the hook URL and its path (what requests prints on errors) masked */
+/* Return a copy of a line of script output with the API key, the hook URL and its path or query (what requests prints on errors) masked */
 static char *mask_secrets(const char *line, const IntegratorConfig *config)
 {
     const char *secrets[3] = { config->hookurl, NULL, config->apikey };
@@ -25,7 +25,7 @@ static char *mask_secrets(const char *line, const IntegratorConfig *config)
 
     if (config->hookurl) {
         scheme = strstr(config->hookurl, "://");
-        secrets[1] = strchr(scheme ? scheme + 3 : config->hookurl, '/');
+        secrets[1] = strpbrk(scheme ? scheme + 3 : config->hookurl, "/?");
     }
 
     os_strdup(line, masked);
