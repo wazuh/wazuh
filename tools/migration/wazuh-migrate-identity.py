@@ -844,8 +844,7 @@ def api_preflight(api, manifest, force):
     ok, answer = api.request("GET", "/agents?select=id&limit=1&offset=0")
     if not ok:
         raise MigrationError("cannot read the agent list: %s" % describe_api_error(answer))
-    # The manager itself is agent 0 and is always present; anything else is a real agent.
-    existing = answer["data"]["total_affected_items"] - 1
+    existing = answer["data"]["total_affected_items"]
     if existing > 0 and not force:
         raise MigrationError(
             "the target already holds %d agent(s). Importing would collide with them by id"
