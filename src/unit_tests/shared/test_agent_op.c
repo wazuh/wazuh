@@ -29,6 +29,10 @@
 
 #include "cJSON.h"
 
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#ifdef WIN32
+#include "../wrappers/windows/winsock_wrappers.h"
+#endif
 
 /* redefinitons/wrapping */
 
@@ -850,6 +854,250 @@ static void test_os_read_agent_profile_success(void **state) {
     free(profile);
 }
 
+/* getPrimaryIP: socket(), connect() and getsockname() are wrapped by the linker on Unix and by
+ * winsock_wrappers.h on Windows. The destination of the last connect() is kept to check the probe. */
+#ifdef WIN32
+#define MOCK_SOCKET wrap_socket
+#define MOCK_CONNECT wrap_connect
+#define MOCK_GETSOCKNAME wrap_getsockname
+#define last_connect_addr wrap_connect_addr
+#else
+#define MOCK_SOCKET __wrap_socket
+#define MOCK_CONNECT __wrap_connect
+#define MOCK_GETSOCKNAME __wrap_getsockname
+
+static struct sockaddr_storage last_connect_addr;
+static int last_socket_type;
+
+int __wrap_socket(__attribute__((unused)) int domain, int type, __attribute__((unused)) int protocol) {
+    last_socket_type = type;
+    return mock();
+}
+
+int __wrap_connect(__attribute__((unused)) int fd, const struct sockaddr * addr, socklen_t len) {
+    memset(&last_connect_addr, 0, sizeof(last_connect_addr));
+    memcpy(&last_connect_addr, addr, len);
+    return mock();
+}
+
+/* Copies the sockaddr given with will_return (NULL leaves it untouched), then returns the next mock value. */
+int __wrap_getsockname(__attribute__((unused)) int fd, struct sockaddr * addr, socklen_t * len) {
+    const struct sockaddr * source = mock_ptr_type(const struct sockaddr *);
+
+    if (source) {
+        const socklen_t size = AF_INET6 == source->sa_family ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+        memcpy(addr, source, size < *len ? size : *len);
+        *len = size;
+    }
+
+    return mock();
+}
+
+/* setsockopt() is best effort: records the call and returns setsockopt_retval. */
+static int setsockopt_calls;
+static int last_setsockopt_level;
+static int last_setsockopt_name;
+static int last_setsockopt_value;
+static int setsockopt_retval;
+
+int __wrap_setsockopt(__attribute__((unused)) int fd, int level, int optname, const void * optval, socklen_t optlen) {
+    setsockopt_calls++;
+    last_setsockopt_level = level;
+    last_setsockopt_name = optname;
+    last_setsockopt_value = optlen == sizeof(int) ? *(const int *)optval : -1;
+    return setsockopt_retval;
+}
+#endif
+
+/* will_return() stringifies its first argument, so the mock name has to be expanded first. */
+#define will_return_mock(function, value) will_return(function, value)
+
+static const uint8_t PROBE_V4[4] = { 1, 1, 1, 1 };
+static const uint8_t PROBE_V6[16] = { 0x26, 0x06, 0x47, 0x00, [14] = 0x11, [15] = 0x11 };
+static const uint8_t SOURCE_V4[4] = { 192, 168, 1, 10 };
+static const uint8_t SOURCE_V6[16] = { 0x20, 0x01, 0x0d, 0xb8, [15] = 0x10 };
+static const uint8_t LINK_LOCAL_V6[16] = { 0xfe, 0x80, [15] = 0x01 };
+static const char * SOURCE_V6_EXPANDED = "2001:0DB8:0000:0000:0000:0000:0000:0010";
+
+static struct sockaddr_in route_source_v4(const uint8_t address[4]) {
+    struct sockaddr_in src;
+    memset(&src, 0, sizeof(src));
+    src.sin_family = AF_INET;
+    memcpy(&src.sin_addr, address, 4);
+    return src;
+}
+
+static struct sockaddr_in6 route_source_v6(const uint8_t address[16]) {
+    struct sockaddr_in6 src;
+    memset(&src, 0, sizeof(src));
+    src.sin6_family = AF_INET6;
+    memcpy(&src.sin6_addr, address, 16);
+    return src;
+}
+
+/* The source of an IPv6 lookup is never an IPv4-mapped address. */
+static void expect_not_ipv4_mapped(const char * address) {
+    expect_string(__wrap_OS_GetIPv4FromIPv6, ip_address, address);
+    expect_value(__wrap_OS_GetIPv4FromIPv6, size, IPSIZE);
+    will_return(__wrap_OS_GetIPv4FromIPv6, 0);
+}
+
+/* Queue a route lookup of one family that fails at connect(). */
+static void expect_route_lookup_unreachable() {
+    will_return_mock(MOCK_SOCKET, 3);
+    will_return_mock(MOCK_CONNECT, -1);
+}
+
+/* Queue a route lookup of one family that gives a source address. */
+static void expect_route_lookup_source(const void * source) {
+    will_return_mock(MOCK_SOCKET, 3);
+    will_return_mock(MOCK_CONNECT, 0);
+    will_return_mock(MOCK_GETSOCKNAME, source);
+    will_return_mock(MOCK_GETSOCKNAME, 0);
+}
+
+static void assert_connected_to(int family) {
+    assert_int_equal(last_connect_addr.ss_family, family);
+
+    if (AF_INET6 == family) {
+        const struct sockaddr_in6 * dst = (const struct sockaddr_in6 *)&last_connect_addr;
+        assert_memory_equal(&dst->sin6_addr, PROBE_V6, sizeof(PROBE_V6));
+        assert_int_equal(ntohs(dst->sin6_port), 53);
+    } else {
+        const struct sockaddr_in * dst = (const struct sockaddr_in *)&last_connect_addr;
+        assert_memory_equal(&dst->sin_addr, PROBE_V4, sizeof(PROBE_V4));
+        assert_int_equal(ntohs(dst->sin_port), 53);
+    }
+}
+
+static int setup_getPrimaryIP(void ** state) {
+#ifdef __linux__
+    setsockopt_calls = 0;
+    last_setsockopt_level = 0;
+    last_setsockopt_name = 0;
+    last_setsockopt_value = 0;
+    setsockopt_retval = 0;
+#endif
+    return 0;
+}
+
+static void test_getPrimaryIP_ipv4_route(void ** state) {
+    struct sockaddr_in src = route_source_v4(SOURCE_V4);
+
+    expect_route_lookup_source(&src);
+
+    char * ip = getPrimaryIP();
+
+    assert_connected_to(AF_INET);
+#if !defined(WIN32) && defined(SOCK_CLOEXEC)
+    assert_true(last_socket_type & SOCK_CLOEXEC);
+#endif
+#ifdef __linux__
+    assert_int_equal(setsockopt_calls, 0);
+#endif
+    assert_string_equal(ip, "192.168.1.10");
+    os_free(ip);
+}
+
+static void test_getPrimaryIP_ipv6_route_when_no_ipv4_route(void ** state) {
+    struct sockaddr_in6 src = route_source_v6(SOURCE_V6);
+
+    expect_route_lookup_unreachable();
+    expect_route_lookup_source(&src);
+    expect_not_ipv4_mapped("2001:db8::10");
+
+    char * ip = getPrimaryIP();
+
+    assert_connected_to(AF_INET6);
+#ifdef __linux__
+    // IPV6_ADDR_PREFERENCES and IPV6_PREFER_SRC_PUBLIC, from linux/in6.h.
+    assert_int_equal(setsockopt_calls, 1);
+    assert_int_equal(last_setsockopt_level, IPPROTO_IPV6);
+    assert_int_equal(last_setsockopt_name, 72);
+    assert_int_equal(last_setsockopt_value, 0x0002);
+#endif
+    assert_string_equal(ip, SOURCE_V6_EXPANDED);
+    os_free(ip);
+}
+
+#ifdef __linux__
+static void test_getPrimaryIP_ipv6_source_preference_unsupported(void ** state) {
+    struct sockaddr_in6 src = route_source_v6(SOURCE_V6);
+
+    setsockopt_retval = -1;
+    expect_route_lookup_unreachable();
+    expect_route_lookup_source(&src);
+    expect_not_ipv4_mapped("2001:db8::10");
+
+    char * ip = getPrimaryIP();
+
+    assert_int_equal(setsockopt_calls, 1);
+    assert_string_equal(ip, SOURCE_V6_EXPANDED);
+    os_free(ip);
+}
+#endif
+
+static void test_getPrimaryIP_no_route(void ** state) {
+    expect_route_lookup_unreachable();
+    expect_route_lookup_unreachable();
+
+    assert_null(getPrimaryIP());
+}
+
+static void test_getPrimaryIP_no_socket(void ** state) {
+    // For example, IPv6 disabled in the kernel.
+    expect_route_lookup_unreachable();
+    will_return_mock(MOCK_SOCKET, -1);
+
+    assert_null(getPrimaryIP());
+}
+
+static void test_getPrimaryIP_getsockname_error(void ** state) {
+    struct sockaddr_in6 src = route_source_v6(SOURCE_V6);
+
+    will_return_mock(MOCK_SOCKET, 3);
+    will_return_mock(MOCK_CONNECT, 0);
+    will_return_mock(MOCK_GETSOCKNAME, NULL);
+    will_return_mock(MOCK_GETSOCKNAME, -1);
+    expect_route_lookup_source(&src);
+    expect_not_ipv4_mapped("2001:db8::10");
+
+    char * ip = getPrimaryIP();
+
+    assert_string_equal(ip, SOURCE_V6_EXPANDED);
+    os_free(ip);
+}
+
+static void test_getPrimaryIP_unspecified_source(void ** state) {
+    const uint8_t any[16] = { 0 };
+    struct sockaddr_in src4 = route_source_v4(any);
+    struct sockaddr_in6 src6 = route_source_v6(any);
+
+    expect_route_lookup_source(&src4);
+    expect_route_lookup_source(&src6);
+
+    assert_null(getPrimaryIP());
+}
+
+static void test_getPrimaryIP_ipv6_link_local_source(void ** state) {
+    struct sockaddr_in6 src = route_source_v6(LINK_LOCAL_V6);
+
+    expect_route_lookup_unreachable();
+    expect_route_lookup_source(&src);
+
+    assert_null(getPrimaryIP());
+}
+
+static void test_getPrimaryIP_family_mismatch(void ** state) {
+    struct sockaddr_in6 src6 = route_source_v6(SOURCE_V6);
+    struct sockaddr_in src4 = route_source_v4(SOURCE_V4);
+
+    expect_route_lookup_source(&src6);
+    expect_route_lookup_source(&src4);
+
+    assert_null(getPrimaryIP());
+}
+
 /* w_validate_group_name */
 
 #define GROUP_RESPONSE_SIZE OS_SIZE_2048
@@ -1136,6 +1384,18 @@ int main(void) {
         cmocka_unit_test(test_w_send_clustered_message_success_after_cluster_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_recv_error),
         #endif
+        // Tests getPrimaryIP
+        cmocka_unit_test_setup(test_getPrimaryIP_ipv4_route, setup_getPrimaryIP),
+        cmocka_unit_test_setup(test_getPrimaryIP_ipv6_route_when_no_ipv4_route, setup_getPrimaryIP),
+#ifdef __linux__
+        cmocka_unit_test_setup(test_getPrimaryIP_ipv6_source_preference_unsupported, setup_getPrimaryIP),
+#endif
+        cmocka_unit_test(test_getPrimaryIP_no_route),
+        cmocka_unit_test(test_getPrimaryIP_no_socket),
+        cmocka_unit_test(test_getPrimaryIP_getsockname_error),
+        cmocka_unit_test(test_getPrimaryIP_unspecified_source),
+        cmocka_unit_test(test_getPrimaryIP_ipv6_link_local_source),
+        cmocka_unit_test(test_getPrimaryIP_family_mismatch),
         // Tests w_validate_group_name
         cmocka_unit_test(test_w_validate_group_name_valid_single),
         cmocka_unit_test(test_w_validate_group_name_valid_multi),

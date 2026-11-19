@@ -21,6 +21,7 @@
 #define static
 #ifdef WIN32
 #include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/winsock_wrappers.h"
 #endif
 #endif
 

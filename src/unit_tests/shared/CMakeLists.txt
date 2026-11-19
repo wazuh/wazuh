@@ -222,7 +222,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap=fim_db_teardown -Wl,--wrap,OS_GetIPv4FromIPv6 ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,external_socket_connect \
                                 -Wl,--wrap,sleep -Wl,--wrap,strerror -Wl,--wrap,getpid -Wl,--wrap,close \
@@ -230,7 +230,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,
                                 -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
                                 -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP \
-                                ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,socket -Wl,--wrap,connect -Wl,--wrap,getsockname -Wl,--wrap,setsockopt \
+                                -Wl,--wrap,OS_GetIPv4FromIPv6 ${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
