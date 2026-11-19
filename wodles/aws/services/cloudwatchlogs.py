@@ -7,13 +7,15 @@ import re
 import sqlite3
 import sys
 
-import botocore
 from datetime import datetime
 from datetime import timezone
 from os import path
 
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
+
+# After the boto3 check in wazuh_integration (exit code 4).
+import botocore
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools

@@ -47,6 +47,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the agent listing every network interface about once a minute to resolve the host IP when no log output format uses `$(host_ip)`. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
 - Fixed 32-bit Linux agents reporting no network inventory when a route's gateway ends in 128 or higher. ([#41579](https://github.com/wazuh/wazuh/pull/41579))
 - Fixed the MS Graph module applying `only_future_events` only to the first tenant it scanned after a start, and the MS Graph and Office 365 modules sending the same events again at every scan while the API returned a URL out of the configured host. ([#41564](https://github.com/wazuh/wazuh/pull/41564))
+- Fixed the AWS module logging a missing `boto3` module as an unknown error. It now exits with code 4 and logs that `boto3` is required. ([#41674](https://github.com/wazuh/wazuh/pull/41674))
 
 ### Ruleset
 
