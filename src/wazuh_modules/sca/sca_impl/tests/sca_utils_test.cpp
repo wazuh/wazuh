@@ -173,6 +173,38 @@ TEST(PatternMatchesTest, NumericComparison)
     EXPECT_FALSE(*patternMatch);
 }
 
+TEST(PatternMatchesTest, NumericComparisonAboveIntMax)
+{
+    // A registry DWORD of 0xFFFFFFFF is read as its unsigned value
+    auto patternMatch = PatternMatches("4294967295", "n:^(\\d+) compare > 15");
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_TRUE(*patternMatch);
+    patternMatch = PatternMatches("4294967295", "n:^(\\d+) compare <= 15");
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(*patternMatch);
+}
+
+TEST(PatternMatchesTest, NumericComparisonExpectedValueAboveIntMax)
+{
+    const std::string pattern = "n:^expire-after:(\\d+)B compare >= 5368709120";
+    auto patternMatch = PatternMatches("expire-after:6000000000B", pattern);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_TRUE(*patternMatch);
+    patternMatch = PatternMatches("expire-after:1000B", pattern);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(*patternMatch);
+    // A line the regex does not capture from is not a match, whatever the expected value
+    patternMatch = PatternMatches("expire-after:30d", pattern);
+    ASSERT_TRUE(patternMatch.has_value());
+    EXPECT_FALSE(*patternMatch);
+}
+
+TEST(PatternMatchesTest, NumericComparisonOutOfRangeReturnsNullopt)
+{
+    const auto patternMatch = PatternMatches("99999999999999999999", "n:^(\\d+) compare > 15");
+    ASSERT_FALSE(patternMatch.has_value());
+}
+
 TEST(PatternMatchesTest, Negated)
 {
     auto patternMatch = PatternMatches("something", "!r:abc");
