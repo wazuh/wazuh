@@ -11,14 +11,12 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <sys/types.h>
 #include <vector>
 
 #include "igroup_wrapper.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
-#include "iuuid_wrapper.hpp"
 
 /// @brief The groups each macOS account is a direct member of.
 ///
@@ -31,8 +29,7 @@ class DirectMemberships
 {
     public:
         DirectMemberships(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
-                          std::shared_ptr<IODUtilsWrapper> odWrapper,
-                          std::shared_ptr<IUUIDWrapper> uuidWrapper);
+                          std::shared_ptr<IODUtilsWrapper> odWrapper);
 
         /// @brief Groups of one account: the primary gid first, then the others by ascending gid
         /// without repeats, so the list does not change from one scan to the next.
@@ -47,12 +44,11 @@ class DirectMemberships
         };
 
         void load();
-        std::optional<std::string> uuidOf(uid_t uid) const;
 
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
-        std::shared_ptr<IUUIDWrapper> m_uuidWrapper;
         std::vector<Group> m_groups;
+        std::map<uid_t, std::string> m_guidByUid;
         bool m_loaded {false};
         bool m_readable {false};
 };

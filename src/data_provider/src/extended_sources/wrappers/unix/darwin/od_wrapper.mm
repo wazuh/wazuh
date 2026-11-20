@@ -13,6 +13,7 @@
 #include "password_authority.hpp"
 #include "json.hpp"
 
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -479,6 +480,50 @@ namespace od
             }
 
             membersByGroup = std::move(collected);
+            return true;
+        }
+    }
+
+    bool genUserGuids(std::map<uid_t, std::string>& guidByUid)
+    {
+        @autoreleasepool
+        {
+            // Every user has a uid, so a null value matches all of them, as in genEntries().
+            NSArray* results = queryLocalNode(kODRecordTypeUsers,
+                                              kODAttributeTypeUniqueID,
+                                              nil,
+                                              @[kODAttributeTypeUniqueID, kODAttributeTypeGUID]);
+
+            if (results == nil)
+            {
+                return false;
+            }
+
+            std::map<uid_t, std::string> collected;
+
+            for (ODRecord * re in results)
+            {
+                NSError* uidErr = nullptr;
+                NSError* guidErr = nullptr;
+                NSArray* uids = [re valuesForAttribute:kODAttributeTypeUniqueID error:&uidErr];
+                NSArray* guids = [re valuesForAttribute:kODAttributeTypeGUID error:&guidErr];
+
+                if (uidErr != nullptr || guidErr != nullptr)
+                {
+                    return false;
+                }
+
+                // An account without a GUID cannot be listed by GUID, so there is nothing to match.
+                if ([uids count] == 0 || [guids count] == 0)
+                {
+                    continue;
+                }
+
+                const auto uid = static_cast<uid_t>(std::strtoll(toStdString([uids[0] description]).c_str(), nullptr, 10));
+                collected[uid] = toStdString([guids[0] description]);
+            }
+
+            guidByUid = std::move(collected);
             return true;
         }
     }

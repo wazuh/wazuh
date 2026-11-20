@@ -12,7 +12,6 @@
 #include "group_wrapper.hpp"
 #include "passwd_wrapper.hpp"
 #include "open_directory_utils_wrapper.hpp"
-#include "uuid_wrapper.hpp"
 
 // Thread-local cache for user group mappings (uid -> list of gids)
 static thread_local std::unordered_map<uid_t, std::vector<gid_t>> s_userGroupsCache;
@@ -21,12 +20,11 @@ static constexpr std::chrono::seconds CACHE_TIMEOUT{60};
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
                                        std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
-                                       std::shared_ptr<IODUtilsWrapper> odWrapper,
-                                       std::shared_ptr<IUUIDWrapper> uuidWrapper)
+                                       std::shared_ptr<IODUtilsWrapper> odWrapper)
     : m_groupWrapper(std::move(groupWrapper))
     , m_passwdWrapper(std::move(passwdWrapper))
     , m_odWrapper(std::move(odWrapper))
-    , m_directMemberships(m_groupWrapper, m_odWrapper, std::move(uuidWrapper))
+    , m_directMemberships(m_groupWrapper, m_odWrapper)
     , m_effectiveGroups(m_groupWrapper)
 {
 }
@@ -34,8 +32,7 @@ UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> grou
 UserGroupsProvider::UserGroupsProvider()
     : UserGroupsProvider(std::make_shared<GroupWrapperDarwin>(),
                          std::make_shared<PasswdWrapperDarwin>(),
-                         std::make_shared<ODUtilsWrapper>(),
-                         std::make_shared<UUIDWrapper>())
+                         std::make_shared<ODUtilsWrapper>())
 {
 }
 

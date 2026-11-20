@@ -36,11 +36,9 @@ static std::string toLower(std::string value)
 }
 
 DirectMemberships::DirectMemberships(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
-                                     std::shared_ptr<IODUtilsWrapper> odWrapper,
-                                     std::shared_ptr<IUUIDWrapper> uuidWrapper)
+                                     std::shared_ptr<IODUtilsWrapper> odWrapper)
     : m_groupWrapper(std::move(groupWrapper))
     , m_odWrapper(std::move(odWrapper))
-    , m_uuidWrapper(std::move(uuidWrapper))
 {
 }
 
@@ -54,7 +52,7 @@ void DirectMemberships::load()
     m_loaded = true;
 
     std::map<std::string, ODGroupMembers> membersByGroup;
-    m_readable = m_odWrapper->genGroupMembers(membersByGroup);
+    m_readable = m_odWrapper->genGroupMembers(membersByGroup) && m_odWrapper->genUserGuids(m_guidByUid);
 
     if (!m_readable)
     {
@@ -78,24 +76,6 @@ void DirectMemberships::load()
     }
 }
 
-std::optional<std::string> DirectMemberships::uuidOf(uid_t uid) const
-{
-    uuid_t uuid = {0};
-    uuid_string_t uuidString = {0};
-
-    m_uuidWrapper->uidToUUID(uid, uuid);
-
-    // mbr_uid_to_uuid() reports a failure only through its return value, which the wrapper does not
-    // pass on. A successful call always writes a UUID, so a null one means there is no answer.
-    if (uuid_is_null(uuid))
-    {
-        return std::nullopt;
-    }
-
-    m_uuidWrapper->uuidToString(uuid, uuidString);
-    return toUpper(uuidString);
-}
-
 std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_t uid, gid_t primaryGid)
 {
     load();
@@ -105,21 +85,16 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_
         return {};
     }
 
-    const auto uuid = uuidOf(uid);
-
-    // Without the account's UUID the memberships listed by GUID cannot be told apart, and
-    // reporting only the others would hide groups, so the account's groups are unknown.
-    if (!uuid)
-    {
-        return {};
-    }
+    // An account whose record has no GUID cannot be listed by GUID, only by name.
+    const auto guid = m_guidByUid.find(uid);
+    const std::string uuid = guid != m_guidByUid.end() ? toUpper(guid->second) : std::string {};
 
     const auto lowerName = toLower(userName);
     std::vector<gid_t> others;
 
     for (const auto& group : m_groups)
     {
-        const bool listed = group.members.names.count(lowerName) != 0 || group.members.uuids.count(*uuid) != 0;
+        const bool listed = group.members.names.count(lowerName) != 0 || !uuid.empty() && group.members.uuids.count(uuid) != 0;
 
         if (listed && group.gid != primaryGid)
         {
