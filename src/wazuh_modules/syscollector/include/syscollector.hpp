@@ -608,6 +608,14 @@ class EXPORTED Syscollector final
         /// @brief Set once a scan completes in this run with the VD lane enabled: the re-arm waits
         /// for it, so the first-scan session it sends carries the inventory that scan rebuilt.
         std::atomic<bool>                                                        m_vdLaneScanCompleted {false};
+        /// @brief Set once the re-arm has requeued the VD inventory in this run: from then on the
+        /// lane is no longer held. Not persisted, so a run that ends before the first scan landed
+        /// leaves the re-arm pending and the next run requeues the inventory again.
+        std::atomic<bool>                                                        m_vdRearmRequeued {false};
+        /// @brief Set by notifyChange() when DBSync reports a row it could not write during the
+        /// running scan task, so that task's tables are not given a baseline. Written from DBSync's
+        /// dispatch threads, read and reset by the scan thread between tasks.
+        std::atomic<bool>                                                        m_scanTaskDbError {false};
         /// @brief Serializes updateMetadataValue(): it rewrites the whole table_metadata from a
         /// snapshot, and the scan and sync threads both call it, so two concurrent writers could
         /// drop each other's key. A leaf lock: nothing that takes another lock runs while it is held.

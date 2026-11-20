@@ -122,9 +122,10 @@ constexpr auto SYSCOLLECTOR_TABLE_SCAN_BASELINE_METADATA_PREFIX {"scan_baseline:
 // rows that changed, so a first-scan session sent from that queue would miss the OS or the packages.
 constexpr auto SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY {"vd_lane_rearm"};
 // Values of SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY.
-constexpr int64_t VD_REARM_NONE {0};     // Nothing to re-arm.
-constexpr int64_t VD_REARM_PENDING {1};  // The lane was disabled; its inventory must be requeued.
-constexpr int64_t VD_REARM_QUEUED {2};   // Requeued; waiting for the first-scan session to land.
+// PENDING: the lane was disabled, and its inventory must be requeued and sent as a first scan. It is
+// kept until that session landed.
+constexpr int64_t VD_REARM_NONE {0};
+constexpr int64_t VD_REARM_PENDING {1};
 
 static std::string scanBaselineKey(const std::string& tableName)
 {
@@ -321,6 +322,9 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     if (DB_ERROR == result)
     {
         m_logFunction(LOG_ERROR, data.dump());
+        // The row was not written, so the table is not a complete baseline: the next scan inserts
+        // it again, and it must not be reported as created.
+        m_scanTaskDbError = true;
     }
     else
     {
@@ -603,6 +607,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_notify = notifyOnFirstScan;
     m_notifyOnFirstScan = notifyOnFirstScan;
     m_vdLaneScanCompleted = false;
+    m_vdRearmRequeued = false;
+    m_scanTaskDbError = false;
     m_tablesWithoutBaseline.clear();
     m_groups = groups;
     m_users = users;
@@ -2169,14 +2175,19 @@ void Syscollector::scan()
     loadTablesWithoutBaseline();
 
     // TRY_CATCH_TASK, plus the baseline of the task's tables once it has completed. Recorded only
-    // for a task that ran to the end: one skipped by a stop or cut short by an exception may have
-    // left its table partly filled, and the rows its next scan inserts are not changes either.
+    // for a task that ran to the end with every row written: one skipped by a stop, cut short by an
+    // exception or with rows DBSync could not write may have left its table partly filled, and the
+    // rows its next scan inserts are not changes either.
     const auto runScanTask = [this](void (Syscollector::*task)(), const std::vector<std::string>& tables)
     {
         if (m_stopping.load())
         {
             return false;
         }
+
+        // The task's transactions are drained before it returns, so every DB_ERROR it can raise
+        // has been reported by the time the flag is read below.
+        m_scanTaskDbError = false;
 
         try
         {
@@ -2189,6 +2200,11 @@ void Syscollector::scan()
                 m_logFunction(LOG_ERROR, std::string{ex.what()});
             }
 
+            return false;
+        }
+
+        if (m_scanTaskDbError.load())
+        {
             return false;
         }
 
@@ -2251,6 +2267,14 @@ void Syscollector::scan()
     if (m_vdSyncEnabled && vdTablesScanned && !m_stopping.load())
     {
         m_vdLaneScanCompleted = true;
+    }
+    else if (m_vdSyncEnabled && !m_stopping.load() && !m_vdLaneScanCompleted.load() && !m_vdRearmRequeued.load() &&
+             vdLaneRearmState() == VD_REARM_PENDING)
+    {
+        // Waiting for the first scan is expected; a scan that ran and still did not complete these
+        // tables is not, and until one does the manager gets no vulnerability data for this agent.
+        m_logFunction(LOG_WARNING, "The vulnerability inventory cannot be resent yet: the OS, packages or hotfixes "
+                      "scan did not complete. Vulnerability Detector synchronization stays on hold until it does.");
     }
 
     m_notify = true;
@@ -3100,7 +3124,7 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
         vdOption = Option::SYNC;
         m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
     }
-    else if (vdLaneRearmState() == VD_REARM_PENDING)
+    else if (!m_vdRearmRequeued.load() && vdLaneRearmState() == VD_REARM_PENDING)
     {
         // The lane is back after being disabled, and its inventory has not been requeued yet:
         // what is queued is only what changed since, so a first-scan session sent now would leave
@@ -3209,22 +3233,20 @@ void Syscollector::rearmVDLaneIfPending()
         return;
     }
 
-    const auto state = vdLaneRearmState();
-
-    if (state == VD_REARM_QUEUED)
+    if (vdLaneRearmState() != VD_REARM_PENDING)
     {
-        // Requeued in this run or in an earlier one, so the queue already holds the whole VD
-        // inventory and the ordinary cycle sends it as a first scan. Done once that session landed.
+        return;
+    }
+
+    if (m_vdRearmRequeued.load())
+    {
+        // Requeued earlier in this run, so the queue holds the whole VD inventory and the ordinary
+        // cycle sends it as a first scan. Done once that session landed.
         if (isVDFirstSyncDone())
         {
             updateMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, VD_REARM_NONE);
         }
 
-        return;
-    }
-
-    if (state != VD_REARM_PENDING)
-    {
         return;
     }
 
@@ -3281,14 +3303,13 @@ void Syscollector::rearmVDLaneIfPending()
         return;
     }
 
-    // From here the queue holds the whole inventory and the lane is released: whichever session
-    // sends it next -- the one below, the next cycle's or the next run's -- is a first scan.
-    if (!updateMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, VD_REARM_QUEUED))
-    {
-        m_logFunction(LOG_WARNING, "Could not record that the vulnerability inventory was requeued; it will be requeued "
-                      "again on the next sync cycle.");
-        return;
-    }
+    // From here the queue holds the whole inventory and the lane is released for the rest of this
+    // run: whichever session sends it next -- the one below or a later cycle's -- is a first scan.
+    // Released in memory only. The rows just queued sit in the persistent queue's in-memory buffer
+    // until its next flush, so a persisted "requeued" state could outlive them in a crash and let
+    // the next run send a first scan with part of the inventory. The persisted state stays pending
+    // until the first scan lands, and a run that ends before that requeues the lane again.
+    m_vdRearmRequeued = true;
 
     // Same reason as the identity resync stamps them: the integrity check that follows in this pass
     // would otherwise compare checksums the manager has not recomputed yet and clear these indices

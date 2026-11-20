@@ -101,7 +101,10 @@
     FRIEND_TEST(SyscollectorBaselineTest, RearmResendsTheVDInventoryAsOneFirstScan);                                   \
     FRIEND_TEST(SyscollectorBaselineTest, FailedRequeueKeepsTheRearmPending);                                          \
     FRIEND_TEST(SyscollectorBaselineTest, StopDuringTheRearmKeepsItPending);                                           \
-    FRIEND_TEST(SyscollectorBaselineTest, QueuedRearmSendsAFirstScanAndClearsOnceItLanded);                            \
+    FRIEND_TEST(SyscollectorBaselineTest, RequeuedLaneIsReleasedUntilTheFirstScanLands);                               \
+    FRIEND_TEST(SyscollectorBaselineTest, NextRunRequeuesALaneWhoseFirstScanNeverLanded);                              \
+    FRIEND_TEST(SyscollectorBaselineTest, TaskWithAFailedRowWriteLeavesItsTableWithoutBaseline);                       \
+    FRIEND_TEST(SyscollectorBaselineTest, RearmHeldByAnIncompleteScanIsWarned);                                        \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \
