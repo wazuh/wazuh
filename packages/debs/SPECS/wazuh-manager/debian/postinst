@@ -337,7 +337,10 @@ case "$1" in
         fi
     fi
 
-    # Remove old service file /etc/systemd/system/wazuh-manager.service if present
+    # Remove old service file /etc/systemd/system/wazuh-manager.service, and the units beside it, if present
+    rm -f /etc/systemd/system/wazuh-manager-service-control@.service \
+        /etc/systemd/system/wazuh-manager-service-control-restart.path \
+        /etc/systemd/system/wazuh-manager-service-control-reload.path
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then
         rm -f /etc/systemd/system/wazuh-manager.service
         if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then

@@ -98,6 +98,42 @@ static void test_service_states(void **state)
     assert_int_equal(parse_service_state(""), SERVICE_QUERY_FAILED);
 }
 
+static void test_request_unit_is_found_in_any_cgroup_line(void **state)
+{
+    (void)state;
+    char v2[] = "0::/system.slice/system-wazuh\\x2dmanager\\x2dservice\\x2dcontrol.slice/"
+                "wazuh-manager-service-control@reload.service\n";
+    char v1[] = "11:cpuset:/\n"
+                "1:name=systemd:/system.slice/wazuh-manager-service-control@restart.service\n";
+    char manager[] = "0::/system.slice/wazuh-manager.service\n";
+    FILE *stream;
+
+    stream = fmemopen(v2, strlen(v2), "r");
+    assert_true(cgroup_names(stream, REQUEST_UNIT));
+    fclose(stream);
+
+    stream = fmemopen(v1, strlen(v1), "r");
+    assert_true(cgroup_names(stream, REQUEST_UNIT));
+    fclose(stream);
+
+    stream = fmemopen(manager, strlen(manager), "r");
+    assert_false(cgroup_names(stream, REQUEST_UNIT));
+    fclose(stream);
+}
+
+static void test_reload_never_runs_control_in_request_unit(void **state)
+{
+    (void)state;
+    assert_int_equal(reload_step(SERVICE_ACTIVE, false), RELOAD_SYSTEMCTL);
+    assert_int_equal(reload_step(SERVICE_ACTIVE, true), RELOAD_SYSTEMCTL);
+    assert_int_equal(reload_step(SERVICE_INACTIVE, false), RELOAD_CONTROL);
+    assert_int_equal(reload_step(SERVICE_INACTIVE, true), RELOAD_REFUSE);
+    assert_int_equal(reload_step(SERVICE_TRANSITIONAL, false), RELOAD_WAIT);
+    assert_int_equal(reload_step(SERVICE_TRANSITIONAL, true), RELOAD_WAIT);
+    assert_int_equal(reload_step(SERVICE_QUERY_FAILED, false), RELOAD_WAIT);
+    assert_int_equal(reload_step(SERVICE_QUERY_FAILED, true), RELOAD_WAIT);
+}
+
 static void test_install_paths_are_derived_independently(void **state)
 {
     (void)state;
@@ -152,6 +188,8 @@ int main(void)
         cmocka_unit_test(test_setuid_required_only_for_non_root_callers),
         cmocka_unit_test(test_privileged_path_policy),
         cmocka_unit_test(test_service_states),
+        cmocka_unit_test(test_request_unit_is_found_in_any_cgroup_line),
+        cmocka_unit_test(test_reload_never_runs_control_in_request_unit),
         cmocka_unit_test(test_install_paths_are_derived_independently),
         cmocka_unit_test(test_check_verdict_requires_a_clean_exit),
         cmocka_unit_test(test_check_refusal_names_the_requested_action),

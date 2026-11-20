@@ -192,26 +192,36 @@ int __wrap_open(const char *path, int flags, ...) {
     return fd;
 }
 
-/* wm_control_execute_action reaches the real wm_control_check_systemd (same translation unit). */
-static void expect_systemd(bool running) {
-    expect_string(__wrap_access, __name, "/run/systemd/system");
-    expect_value(__wrap_access, __type, F_OK);
-    will_return(__wrap_access, running ? 0 : -1);
+extern int __real_close(int fd);
 
-    if (running) {
-        FILE *fp = (FILE *)1;
-        expect_string(__wrap_fopen, path, "/proc/1/comm");
-        expect_string(__wrap_fopen, mode, "r");
-        will_return(__wrap_fopen, fp);
-        will_return(__wrap_fgets, "systemd\n");
-        expect_value(__wrap_fgets, __stream, fp);
-        expect_value(__wrap_fclose, _File, fp);
-        will_return(__wrap_fclose, 0);
+/* wm_control_execute_action reaches the real wm_control_in_manager_service (same translation unit). */
+static void expect_in_manager_service(bool in_service) {
+    expect_string(__wrap_fopen, path, "/proc/self/cgroup");
+    expect_string(__wrap_fopen, mode, "r");
+    if (!in_service) {
+        will_return(__wrap_fopen, NULL);
+        return;
     }
+
+    FILE *fp = (FILE *)1;
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fgets, "0::/system.slice/wazuh-manager.service\n");
+    expect_value(__wrap_fgets, __stream, fp);
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+}
+
+/* A real descriptor, so the fstat on it is real too. */
+static int open_regular_file(void) {
+    char path[] = "/tmp/test_wm_control_XXXXXX";
+    const int fd = mkstemp(path);
+    assert_true(fd >= 0);
+    unlink(path);
+    return fd;
 }
 
 static void expect_service_control_accepted(pid_t pid, int thread_outcome) {
-    expect_systemd(false);
+    expect_in_manager_service(false);
     will_return(__wrap_pipe, 10);
     will_return(__wrap_pipe, 11);
     will_return(__wrap_pipe, 0);
@@ -582,7 +592,7 @@ static void test_log_input_small_buffer_and_null(void **state) {
 static void test_execute_action_fork_fails(void **state) {
     char *output = NULL;
 
-    expect_systemd(false);
+    expect_in_manager_service(false);
     will_return(__wrap_pipe, 10);
     will_return(__wrap_pipe, 11);
     will_return(__wrap_pipe, 0);
@@ -667,25 +677,28 @@ static void test_execute_action_systemd_writes_request(void **state) {
         char *output = NULL;
         char request[64];
         char message[128];
-        snprintf(request, sizeof(request), "var/run/wazuh-manager-service-control.%s", actions[i]);
+        snprintf(request, sizeof(request), "var/run/service-control/%s", actions[i]);
         snprintf(message, sizeof(message), "Requested '%s' from systemd (request '%s')", actions[i], request);
         closed_fds_count = 0;
+        const int fd = open_regular_file();
 
         open_mocked = true;
-        expect_systemd(true);
+        expect_in_manager_service(true);
         expect_string(__wrap_open, path, request);
-        expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC);
-        will_return(__wrap_open, 20);
+        expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+        will_return(__wrap_open, fd);
         expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
         expect_string(__wrap__mtinfo, formatted_msg, message);
 
         size_t ret = __real_wm_control_execute_action(actions[i], "wazuh-manager", &output);
+        open_mocked = false;
 
         assert_string_equal(output, "ok accepted");
         assert_int_equal(ret, strlen("ok accepted"));
         assert_int_equal(closed_fds_count, 1);
-        assert_int_equal(closed_fds[0], 20);
+        assert_int_equal(closed_fds[0], fd);
 
+        __real_close(fd);
         free(output);
     }
 }
@@ -694,13 +707,13 @@ static void test_execute_action_systemd_request_fails(void **state) {
     char *output = NULL;
 
     open_mocked = true;
-    expect_systemd(true);
-    expect_string(__wrap_open, path, "var/run/wazuh-manager-service-control.restart");
-    expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC);
+    expect_in_manager_service(true);
+    expect_string(__wrap_open, path, "var/run/service-control/restart");
+    expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
     will_return(__wrap_open, -1);
     expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
-                  "Cannot create service control request 'var/run/wazuh-manager-service-control.restart': "
+                  "Cannot create service control request 'var/run/service-control/restart': "
                   "Permission denied (13)");
 
     size_t ret = __real_wm_control_execute_action("restart", "wazuh-manager", &output);
@@ -710,6 +723,84 @@ static void test_execute_action_systemd_request_fails(void **state) {
     assert_int_equal(closed_fds_count, 0);
 
     free(output);
+}
+
+static void test_execute_action_systemd_request_not_regular(void **state) {
+    char *output = NULL;
+    const int fd = open("/dev/null", O_WRONLY);
+    assert_true(fd >= 0);
+
+    open_mocked = true;
+    expect_in_manager_service(true);
+    expect_string(__wrap_open, path, "var/run/service-control/reload");
+    expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+    will_return(__wrap_open, fd);
+    expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
+                  "Service control request 'var/run/service-control/reload' is not a regular file");
+
+    size_t ret = __real_wm_control_execute_action("reload", "wazuh-manager", &output);
+    open_mocked = false;
+
+    assert_string_equal(output, "err Cannot write service control request");
+    assert_int_equal(ret, strlen("err Cannot write service control request"));
+    assert_int_equal(closed_fds_count, 1);
+    assert_int_equal(closed_fds[0], fd);
+
+    __real_close(fd);
+    free(output);
+}
+
+/* ------------------------------------------------------------------ */
+/* wm_control_in_manager_service tests                                  */
+/* ------------------------------------------------------------------ */
+
+static void test_in_manager_service_fopen_fails(void **state) {
+    expect_in_manager_service(false);
+
+    assert_false(wm_control_in_manager_service());
+}
+
+static void test_in_manager_service_cgroup_v2(void **state) {
+    expect_in_manager_service(true);
+
+    assert_true(wm_control_in_manager_service());
+}
+
+static void test_in_manager_service_cgroup_v1(void **state) {
+    FILE *fp = (FILE *)1;
+
+    expect_string(__wrap_fopen, path, "/proc/self/cgroup");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fgets, "11:cpuset:/\n");
+    expect_value(__wrap_fgets, __stream, fp);
+    will_return(__wrap_fgets, "1:name=systemd:/system.slice/wazuh-manager.service\n");
+    expect_value(__wrap_fgets, __stream, fp);
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    assert_true(wm_control_in_manager_service());
+}
+
+static void test_in_manager_service_other_cgroup(void **state) {
+    FILE *fp = (FILE *)1;
+
+    expect_string(__wrap_fopen, path, "/proc/self/cgroup");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, fp);
+    will_return(__wrap_fgets, "0::/user.slice/user-0.slice/session-1.scope\n");
+    expect_value(__wrap_fgets, __stream, fp);
+    will_return(__wrap_fgets, "0::/system.slice/other-wazuh-manager.service\n");
+    expect_value(__wrap_fgets, __stream, fp);
+    will_return(__wrap_fgets, "0::/system.slice/wazuh-manager.service/child\n");
+    expect_value(__wrap_fgets, __stream, fp);
+    will_return(__wrap_fgets, NULL);
+    expect_value(__wrap_fgets, __stream, fp);
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    assert_false(wm_control_in_manager_service());
 }
 
 /* ------------------------------------------------------------------ */
@@ -838,6 +929,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_execute_action_reaper_detach_fails,  setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_systemd_writes_request, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_systemd_request_fails,  setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_systemd_request_not_regular, setup_test_mode, teardown_test_mode),
+        /* wm_control_in_manager_service */
+        cmocka_unit_test_setup_teardown(test_in_manager_service_fopen_fails,   setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_in_manager_service_cgroup_v2,     setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_in_manager_service_cgroup_v1,     setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_in_manager_service_other_cgroup,  setup_test_mode, teardown_test_mode),
         /* wm_control_check_systemd */
         cmocka_unit_test_setup_teardown(test_check_systemd_no_run_dir,    setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_check_systemd_fopen_fails,   setup_test_mode, teardown_test_mode),
