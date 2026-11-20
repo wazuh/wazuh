@@ -29,6 +29,7 @@
 #include "../config/client-config.h"
 #include "../headers/store_op.h"
 #include "../monitord/monitord.h"
+#include "../wazuh_db/wdb.h"
 #include "../headers/defs.h"
 #include "../headers/shared.h"
 #include "../config/config.h"
