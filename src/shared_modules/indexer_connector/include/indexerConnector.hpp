@@ -107,11 +107,13 @@ class EXPORTED IndexerConnector final
      *
      * @param logFunction Callback function to be called when trying to log a message.
      * @param config Indexer configuration, including database_path and servers.
+     * @param compression Compression of the local database.
      */
     void preInitialization(
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
-        const nlohmann::json& config);
+        const nlohmann::json& config,
+        Utils::RocksDBCompression compression);
 
     /*
      * @brief Send bulk reactive, this method is used to send a bulk request to the indexer.
@@ -135,6 +137,7 @@ public:
      * @param useSeekDelete If true, the connector will index the seek method to delete operation.
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
+     * @param compression Compression of the local database and of the queue of pending documents. Default: none.
      */
     explicit IndexerConnector(
         const nlohmann::json& config,
@@ -143,7 +146,8 @@ public:
         bool useSeekDelete = true,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction = {},
-        const uint32_t& timeout = DEFAULT_INTERVAL);
+        const uint32_t& timeout = DEFAULT_INTERVAL,
+        Utils::RocksDBCompression compression = Utils::RocksDBCompression::NONE);
 
     /**
      * @brief Class constructor that initializes the publisher in a simplified state that doesn't index the data and
@@ -152,12 +156,14 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param useSeekDelete If true, the connector will index the seek method to delete operation.
      * @param logFunction Callback function to be called when trying to log a message.
+     * @param compression Compression of the local database and of the queue of pending documents. Default: none.
      */
     explicit IndexerConnector(
         const nlohmann::json& config,
         bool useSeekDelete = true,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {});
+            logFunction = {},
+        Utils::RocksDBCompression compression = Utils::RocksDBCompression::NONE);
 
     /**
      * @brief Class destructor.

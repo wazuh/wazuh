@@ -70,6 +70,8 @@ EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
 EXTERNAL_ROCKSDB=external/rocksdb/
+EXTERNAL_ZSTD=external/zstd/
+EXTERNAL_LZ4=external/lz4/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
@@ -878,6 +880,8 @@ POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
+ZSTD_LIB = $(EXTERNAL_ZSTD)build/cmake-build/lib/libzstd.a
+LZ4_LIB = $(EXTERNAL_LZ4)build/cmake-build/liblz4.a
 SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
@@ -1009,10 +1013,20 @@ endif
 $(LIBBPF_LIB):
 	cd $(EXTERNAL_LIBBPF) && mkdir -p build && cd build && cmake .. && ${MAKE}
 
+### zstd ###
+
+$(ZSTD_LIB):
+	mkdir -p $(EXTERNAL_ZSTD)build/cmake-build && cd $(EXTERNAL_ZSTD)build/cmake-build && cmake ../cmake -DCMAKE_BUILD_TYPE=Release -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF -DZSTD_LEGACY_SUPPORT=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
+### lz4 ###
+
+$(LZ4_LIB):
+	mkdir -p $(EXTERNAL_LZ4)build/cmake-build && cd $(EXTERNAL_LZ4)build/cmake-build && cmake ../cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DLZ4_BUILD_CLI=OFF -DLZ4_BUILD_LEGACY_LZ4C=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+
 ### rocks db ###
 
-${ROCKSDB_LIB}:
-	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DWITH_BZ2=1 -DBZIP2_INCLUDE_DIR=$(realpath $(EXTERNAL_BZIP2)) -DBZIP2_LIBRARIES=$(realpath $(BZIP2_LIB)) -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 -DPORTABLE=1 && ${MAKE}
+${ROCKSDB_LIB}: | $(ZSTD_LIB) $(LZ4_LIB)
+	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DWITH_BZ2=1 -DBZIP2_INCLUDE_DIR=$(realpath $(EXTERNAL_BZIP2)) -DBZIP2_LIBRARIES=$(realpath $(BZIP2_LIB)) -DWITH_ZSTD=1 -Dzstd_INCLUDE_DIRS=$(realpath $(EXTERNAL_ZSTD)lib) -Dzstd_LIBRARIES=$(realpath $(ZSTD_LIB)) -DWITH_LZ4=1 -Dlz4_INCLUDE_DIRS=$(realpath $(EXTERNAL_LZ4)lib) -Dlz4_LIBRARIES=$(realpath $(LZ4_LIB)) -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 -DPORTABLE=1 && ${MAKE}
 
 ### simdjson ###
 ${SIMDJSON_LIB}:
@@ -1403,7 +1417,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson zstd lz4
 endif
 endif
 
@@ -2702,6 +2716,8 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
+	rm -rf $(EXTERNAL_ZSTD)build/cmake-build
+	rm -rf $(EXTERNAL_LZ4)build/cmake-build
 	rm -rf $(EXTERNAL_SIMDJSON)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_LZMA)build

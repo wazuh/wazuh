@@ -10,14 +10,18 @@
  */
 
 #include "rocksDBSafeQueue_test.hpp"
+#include "rocksDBQueueTestHelpers.hpp"
 #include "rocksDBWrapper.hpp"
 #include "rocksdb/cache.h"
 #include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iomanip>
+#include <random>
 #include <sstream>
+#include <string_view>
 #include <vector>
 
 void RocksDBSafeQueueTest::SetUp()
@@ -575,4 +579,52 @@ TEST_F(RocksDBSafeQueueTest, StressTestMultipleQueuesAndThreads)
     }
 
     printSharedBufferStats("After cleanup - buffers should persist");
+}
+
+// Test that a push is not blocked by a reclaim running on another thread
+TEST_F(RocksDBSafeQueueTest, SafeQueueReclaimDoesNotBlockPush)
+{
+    using namespace RocksDBQueueTestHelpers;
+
+    queue.reset();
+    std::error_code ec;
+    std::filesystem::remove_all("test.db", ec);
+    queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+        RocksDBQueue<std::string>("test.db", false, Utils::RocksDBCompression::LZ4_ZSTD, true));
+
+    std::mt19937_64 generator {42};
+    for (size_t i = 0; i < RECLAIM_ELEMENTS; ++i)
+    {
+        queue->push(randomValue(generator));
+    }
+    queue->popBulk(RECLAIM_ELEMENTS);
+    ASSERT_TRUE(queue->empty());
+
+    std::promise<void> started;
+    Log::deassignLogFunction();
+    Log::assignLogFunction(
+        [&started](const int, const char*, const char*, const int, const char*, const char* message, va_list)
+        {
+            if (std::string_view {message}.find("is empty, compacting") != std::string_view::npos)
+            {
+                started.set_value();
+            }
+        });
+
+    std::atomic<bool> reclaimDone {false};
+    std::thread reclaim {[this, &reclaimDone]()
+                         {
+                             queue->reclaimSpaceIfEmpty();
+                             reclaimDone = true;
+                         }};
+    started.get_future().wait();
+    queue->push("value");
+    EXPECT_FALSE(reclaimDone.load()) << "The push waited for the reclaim";
+
+    reclaim.join();
+    Log::deassignLogFunction();
+    EXPECT_EQ(queue->size(), 1);
+    std::string value;
+    EXPECT_TRUE(queue->pop(value, false));
+    EXPECT_EQ(value, "value");
 }

@@ -11,6 +11,78 @@
 
 #include "rocksDBWrapper_test.hpp"
 #include <fstream>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+
+namespace
+{
+    /**
+     * @brief Opens a closed database read-only and returns the compression names of its SST files, per column.
+     *
+     * @param path Database path.
+     * @return std::map<std::string, std::set<std::string>> Column name to the compression names of its files.
+     */
+    std::map<std::string, std::set<std::string>> tableCompressions(const std::filesystem::path& path)
+    {
+        const rocksdb::Options options;
+        std::vector<std::string> names;
+        if (const auto status {rocksdb::DB::ListColumnFamilies(options, path.string(), &names)}; !status.ok())
+        {
+            throw std::runtime_error("Failed to list columns: " + status.ToString());
+        }
+
+        std::vector<rocksdb::ColumnFamilyDescriptor> descriptors;
+        for (const auto& name : names)
+        {
+            descriptors.emplace_back(name, rocksdb::ColumnFamilyOptions());
+        }
+
+        std::vector<rocksdb::ColumnFamilyHandle*> handles;
+        rocksdb::DB* rawDb {nullptr};
+        if (const auto status {rocksdb::DB::OpenForReadOnly(options, path.string(), descriptors, &handles, &rawDb)};
+            !status.ok())
+        {
+            throw std::runtime_error("Failed to open read-only: " + status.ToString());
+        }
+        const std::unique_ptr<rocksdb::DB> db {rawDb};
+
+        std::map<std::string, std::set<std::string>> result;
+        for (auto* handle : handles)
+        {
+            rocksdb::TablePropertiesCollection properties;
+            db->GetPropertiesOfAllTables(handle, &properties);
+            for (const auto& [file, table] : properties)
+            {
+                result[handle->GetName()].insert(table->compression_name);
+            }
+            db->DestroyColumnFamilyHandle(handle);
+        }
+        return result;
+    }
+
+    /**
+     * @brief Returns the compression names of every SST file of a closed database.
+     *
+     * @param path Database path.
+     * @return std::set<std::string> Compression names.
+     */
+    std::set<std::string> allCompressions(const std::filesystem::path& path)
+    {
+        std::set<std::string> result;
+        for (const auto& [column, compressions] : tableCompressions(path))
+        {
+            result.insert(compressions.begin(), compressions.end());
+        }
+        return result;
+    }
+
+    const std::set<std::string> NO_COMPRESSION {"NoCompression"};
+    const std::set<std::string> LZ4 {"LZ4"};
+    const std::set<std::string> ZSTD {"ZSTD"};
+    constexpr auto COLUMN_A {"a"};
+} // namespace
 
 /**
  * @brief Tests the put function
@@ -608,4 +680,210 @@ TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
 
     EXPECT_ANY_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, false); });
     EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, true); });
+}
+
+/**
+ * @brief The RocksDB library in use must support lz4 and zstd; a library built without them makes every database
+ * fall back to no compression.
+ */
+TEST_F(RocksDBWrapperTest, Lz4AndZstdAreSupported)
+{
+    EXPECT_TRUE(Utils::RocksDBOptions::isCompressionSupported(Utils::RocksDBCompression::LZ4_ZSTD));
+    EXPECT_TRUE(Utils::RocksDBOptions::isCompressionSupported(Utils::RocksDBCompression::ZSTD));
+}
+
+TEST_F(RocksDBWrapperTest, NoneIsAlwaysSupported)
+{
+    EXPECT_TRUE(Utils::RocksDBOptions::isCompressionSupported(Utils::RocksDBCompression::NONE));
+}
+
+TEST_F(RocksDBWrapperTest, DefaultWritesWithoutCompression)
+{
+    const auto path {OUTPUT_FOLDER / "default"};
+    {
+        Utils::RocksDBWrapper db {path};
+        db.put("key", "value");
+        db.flush();
+    }
+
+    EXPECT_EQ(allCompressions(path), NO_COMPRESSION);
+}
+
+TEST_F(RocksDBWrapperTest, Lz4ZstdFlushIsLz4)
+{
+    const auto path {OUTPUT_FOLDER / "lz4zstd"};
+    {
+        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
+        db.createColumn(COLUMN_A);
+        db.put("key", "value");
+        db.put("key", "value", COLUMN_A);
+        db.flush();
+    }
+
+    const auto compressions {tableCompressions(path)};
+    ASSERT_EQ(compressions.size(), 2);
+    EXPECT_EQ(compressions.at(rocksdb::kDefaultColumnFamilyName), LZ4);
+    EXPECT_EQ(compressions.at(COLUMN_A), LZ4);
+}
+
+TEST_F(RocksDBWrapperTest, ZstdAppliedToEveryColumn)
+{
+    const auto path {OUTPUT_FOLDER / "zstd"};
+    {
+        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::ZSTD};
+        db.createColumn(COLUMN_A);
+        db.put("key", "value");
+        db.put("key", "value", COLUMN_A);
+        db.flush();
+    }
+
+    const auto compressions {tableCompressions(path)};
+    ASSERT_EQ(compressions.size(), 2);
+    EXPECT_EQ(compressions.at(rocksdb::kDefaultColumnFamilyName), ZSTD);
+    EXPECT_EQ(compressions.at(COLUMN_A), ZSTD);
+}
+
+TEST_F(RocksDBWrapperTest, CompressionKeptAfterDeleteAll)
+{
+    const auto path {OUTPUT_FOLDER / "delete_all"};
+    {
+        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
+        db.createColumn(COLUMN_A);
+        db.deleteAll();
+        db.put("key", "value", COLUMN_A);
+        db.flush();
+    }
+
+    EXPECT_EQ(tableCompressions(path).at(COLUMN_A), LZ4);
+}
+
+/**
+ * @brief Writes keys "key0".."key<count-1>" with the given prefix into the default column and column "a".
+ */
+static void writeKeys(Utils::RocksDBWrapper& db, const std::string& prefix, const int count)
+{
+    for (int i = 0; i < count; ++i)
+    {
+        db.put(prefix + std::to_string(i), "value_" + prefix + std::to_string(i));
+        db.put(prefix + std::to_string(i), "value_" + prefix + std::to_string(i), COLUMN_A);
+    }
+}
+
+/**
+ * @brief Creates a database with two columns written without compression.
+ */
+static void createOldDatabase(const std::filesystem::path& path)
+{
+    Utils::RocksDBWrapper db {path};
+    db.createColumn(COLUMN_A);
+    writeKeys(db, "old", 10);
+    db.flush();
+}
+
+TEST_F(RocksDBWrapperTest, OldDatabaseOpensWithCompression)
+{
+    const auto path {OUTPUT_FOLDER / "old"};
+    createOldDatabase(path);
+
+    {
+        std::unique_ptr<Utils::RocksDBWrapper> db;
+        ASSERT_NO_THROW(
+            db = std::make_unique<Utils::RocksDBWrapper>(path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD));
+
+        std::string value;
+        for (int i = 0; i < 10; ++i)
+        {
+            const auto key {"old" + std::to_string(i)};
+            ASSERT_TRUE(db->get(key, value));
+            EXPECT_EQ(value, "value_" + key);
+            ASSERT_TRUE(db->get(key, value, COLUMN_A));
+            EXPECT_EQ(value, "value_" + key);
+        }
+
+        auto count {0};
+        for (const auto& [key, read] : db->seek("old", COLUMN_A))
+        {
+            EXPECT_EQ(read, "value_" + key);
+            ++count;
+        }
+        EXPECT_EQ(count, 10);
+    }
+
+    EXPECT_EQ(allCompressions(path), NO_COMPRESSION);
+}
+
+TEST_F(RocksDBWrapperTest, OldDatabaseAcceptsNewWrites)
+{
+    const auto path {OUTPUT_FOLDER / "old"};
+    createOldDatabase(path);
+
+    {
+        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
+        writeKeys(db, "new", 5);
+        db.put("old0", "overwritten", COLUMN_A);
+        db.flush();
+    }
+
+    EXPECT_EQ(allCompressions(path), (std::set<std::string> {"NoCompression", "LZ4"}));
+
+    Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
+    std::string value;
+    ASSERT_TRUE(db.get("old0", value, COLUMN_A));
+    EXPECT_EQ(value, "overwritten");
+    ASSERT_TRUE(db.get("old1", value, COLUMN_A));
+    EXPECT_EQ(value, "value_old1");
+    ASSERT_TRUE(db.get("new4", value, COLUMN_A));
+    EXPECT_EQ(value, "value_new4");
+    ASSERT_TRUE(db.get("old0", value));
+    EXPECT_EQ(value, "value_old0");
+}
+
+TEST_F(RocksDBWrapperTest, ReadsAcrossFormats)
+{
+    const auto path {OUTPUT_FOLDER / "mixed"};
+    const std::vector<std::pair<Utils::RocksDBCompression, std::string>> phases {
+        {Utils::RocksDBCompression::NONE, "k1_"},
+        {Utils::RocksDBCompression::ZSTD, "k2_"},
+        {Utils::RocksDBCompression::LZ4_ZSTD, "k3_"}};
+
+    for (const auto& [compression, prefix] : phases)
+    {
+        Utils::RocksDBWrapper db {path, true, true, false, compression};
+        db.put(prefix + "key", "value_" + prefix);
+        db.flush();
+    }
+
+    EXPECT_EQ(allCompressions(path), (std::set<std::string> {"NoCompression", "ZSTD", "LZ4"}));
+
+    Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
+    std::vector<std::string> keys;
+    for (const auto& [key, value] : db.seek("k"))
+    {
+        EXPECT_EQ(value, "value_" + key.substr(0, 3));
+        keys.push_back(key);
+    }
+    EXPECT_EQ(keys, (std::vector<std::string> {"k1_key", "k2_key", "k3_key"}));
+
+    std::string value;
+    EXPECT_TRUE(db.get("k2_key", value));
+    EXPECT_EQ(value, "value_k2_");
+}
+
+TEST_F(RocksDBWrapperTest, DeleteAllOnOldDatabase)
+{
+    const auto path {OUTPUT_FOLDER / "old"};
+    createOldDatabase(path);
+
+    {
+        Utils::RocksDBWrapper db {path, true, true, false, Utils::RocksDBCompression::LZ4_ZSTD};
+        db.deleteAll();
+        db.put("fresh", "value", COLUMN_A);
+        db.flush();
+
+        std::string value;
+        EXPECT_FALSE(db.get("old0", value, COLUMN_A));
+        EXPECT_TRUE(db.get("fresh", value, COLUMN_A));
+    }
+
+    EXPECT_EQ(tableCompressions(path).at(COLUMN_A), LZ4);
 }

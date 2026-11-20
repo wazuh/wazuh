@@ -69,13 +69,18 @@ namespace Utils
          * @param enableWal Whether to enable WAL or not.
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
+         * @param useSharedBuffers Whether to use the process-wide read cache and write buffer manager.
+         * @param compression Compression of the SST files written from now on. Falls back to NONE, with a warning,
+         *                    when the loaded RocksDB library does not support it.
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
-                                 const bool useSharedBuffers = false)
+                                 const bool useSharedBuffers = false,
+                                 const RocksDBCompression compression = RocksDBCompression::NONE)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
+            , m_compression {RocksDBOptions::effectiveCompression(compression, m_path)}
         {
 
             if (useSharedBuffers)
@@ -91,7 +96,8 @@ namespace Utils
             }
 
             rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
-            rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
+            rocksdb::ColumnFamilyOptions columnFamilyOptions =
+                RocksDBOptions::buildColumnFamilyOptions(m_readCache, m_compression);
 
             T* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
@@ -477,7 +483,7 @@ namespace Utils
             rocksdb::ColumnFamilyHandle* pColumnFamily;
 
             if (const auto status {m_db->CreateColumnFamily(
-                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &pColumnFamily)};
+                    RocksDBOptions::buildColumnFamilyOptions(m_readCache, m_compression), columnName, &pColumnFamily)};
                 !status.ok())
             {
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
@@ -703,6 +709,7 @@ namespace Utils
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
+        const RocksDBCompression m_compression;                      ///< Effective compression of the SST files.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
 
