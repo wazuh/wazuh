@@ -22,10 +22,12 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states as warnings or errors: after a `409`, `413` or `429` answer from the indexer, and when the queue stops. A `409` or `429` that persists for a minute is still reported, with the reason given by the indexer. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
 - Hardened how the vulnerability scanner processes syscollector deltas. ([#41388](https://github.com/wazuh/wazuh/pull/41388))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on systems with glibc older than 2.34, which left `wazuh-clusterd` stopped after a manager restart. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
+- Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 #### Changed
 
 - Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
+- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. At startup, it returns to the `wazuh` user the rotated API log directories and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
 
 ### Agent
 

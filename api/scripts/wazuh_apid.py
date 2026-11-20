@@ -5,8 +5,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import calendar
 import os
+import re
 import signal
+import stat
 import sys
 import warnings
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -33,6 +36,116 @@ def assign_wazuh_ownership(filepath: str):
     if os.stat(filepath).st_gid != common.wazuh_gid() or \
         os.stat(filepath).st_uid != common.wazuh_uid():
         os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
+
+
+def hand_back_dir(fd: int, entry_pattern: str, entries_are_dirs: bool):
+    """Assign the directory opened as `fd` to wazuh if root owns it and it only holds expected entries.
+
+    Parameters
+    ----------
+    fd : int
+        Descriptor of the directory.
+    entry_pattern : str
+        Regular expression every entry name must match.
+    entries_are_dirs : bool
+        Whether every entry must be a directory already assigned to wazuh, or a regular file.
+    """
+    entries = os.listdir(fd)
+    if os.fstat(fd).st_uid != 0 or not entries:
+        return
+    for entry in entries:
+        entry_stat = os.stat(entry, dir_fd=fd, follow_symlinks=False)
+        if entries_are_dirs:
+            expected = stat.S_ISDIR(entry_stat.st_mode) and entry_stat.st_uid == common.wazuh_uid()
+        else:
+            expected = stat.S_ISREG(entry_stat.st_mode)
+        if not expected or not re.fullmatch(entry_pattern, entry):
+            return
+    os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+
+
+def hand_back_rotated_logs():
+    """Assign to wazuh the rotated log directories that an API run as root created.
+
+    `logs/api` is writable by the wazuh user, who could move any root-owned directory into it. A month
+    directory is only assigned if it holds rotated logs alone, and a year directory if it holds month
+    directories already assigned. Each one is checked and assigned through the same descriptor.
+    """
+    dir_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY
+    months = '|'.join(calendar.month_abbr[1:])
+
+    def subdirs(fd: int, pattern: str) -> list:
+        return [name for name in os.listdir(fd) if re.fullmatch(pattern, name)
+                and stat.S_ISDIR(os.stat(name, dir_fd=fd, follow_symlinks=False).st_mode)]
+
+    try:
+        logs_fd = os.open(API_LOG_PATH, dir_flags)
+    except FileNotFoundError:
+        return
+    try:
+        for year in subdirs(logs_fd, r'\d{4}'):
+            year_fd = os.open(year, dir_flags, dir_fd=logs_fd)
+            try:
+                for month in subdirs(year_fd, months):
+                    month_fd = os.open(month, dir_flags, dir_fd=year_fd)
+                    try:
+                        hand_back_dir(month_fd, r'api\.(log|json)-\d+(_\d+)?\.gz', entries_are_dirs=False)
+                    finally:
+                        os.close(month_fd)
+                hand_back_dir(year_fd, months, entries_are_dirs=True)
+            finally:
+                os.close(year_fd)
+    finally:
+        os.close(logs_fd)
+
+
+def hand_back_security_config():
+    """Assign to wazuh the `security.yaml` that an API run as root created.
+
+    Its directory is writable by the wazuh user, who could move any root-owned file there: the file is
+    only assigned if it holds security options alone, read through the descriptor that is assigned.
+    """
+    try:
+        fd = os.open(SECURITY_CONFIG_PATH, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return
+    try:
+        file_stat = os.fstat(fd)
+        if file_stat.st_uid != 0 or not stat.S_ISREG(file_stat.st_mode) or file_stat.st_nlink != 1 \
+                or file_stat.st_size > 4096:
+            return
+        try:
+            content = yaml.safe_load(os.read(fd, 4096))
+        except yaml.YAMLError:
+            return
+        if isinstance(content, dict) and content.keys() <= security_config_schema['properties'].keys():
+            os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+    finally:
+        os.close(fd)
+
+
+def hand_back_ca():
+    """Assign to wazuh the HTTPS CA file that an API run as root could read and wazuh cannot.
+
+    Its directory is writable by the wazuh user, who could move any root-owned file there: the file is
+    only assigned if it holds certificates alone, read through the descriptor that is assigned.
+    """
+    if not (api_conf['https']['enabled'] and api_conf['https']['use_ca']):
+        return
+    try:
+        fd = os.open(api_conf['https']['ca'], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return
+    try:
+        file_stat = os.fstat(fd)
+        if file_stat.st_uid != 0 or not stat.S_ISREG(file_stat.st_mode) or file_stat.st_nlink != 1 \
+                or file_stat.st_size > 1048576:
+            return
+        if re.fullmatch(rb'\s*(?:-----BEGIN CERTIFICATE-----[A-Za-z0-9+/=\s]+-----END CERTIFICATE-----\s*)+',
+                        os.read(fd, 1048576)):
+            os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+    finally:
+        os.close(fd)
 
 
 def configure_ssl(params):
@@ -316,11 +429,13 @@ if __name__ == '__main__':
     from api.alogging import set_logging
     from api.api_exception import APIError, ExpectFailedException
     from api.configuration import api_conf, generate_private_key, generate_self_signed_certificate, security_conf
-    from api.constants import API_LOG_PATH
+    import yaml
+    from api.constants import API_LOG_PATH, SECURITY_CONFIG_PATH
     from api.middlewares import setup_middlewares
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
+    from api.validator import security_config_schema
 
     try:
         if args.config_file is not None:
@@ -362,6 +477,12 @@ if __name__ == '__main__':
         logger.warning(
             "'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
 
+    if 'drop_privileges' in api_conf:
+        del api_conf['drop_privileges']
+        logger.warning(
+            "'drop_privileges' option is ignored. "
+            "The API always runs as the wazuh user unless it is started with '-r'")
+
     if 'path' in api_conf['logs']:
         del api_conf['logs']['path']
         logger.warning(
@@ -383,9 +504,15 @@ if __name__ == '__main__':
 
     # Drop privileges to wazuh
     if not args.root:
-        if api_conf['drop_privileges']:
-            os.setgid(common.wazuh_gid())
-            os.setuid(common.wazuh_uid())
+        if os.geteuid() == 0:
+            for hand_back in (hand_back_rotated_logs, hand_back_security_config, hand_back_ca):
+                try:
+                    hand_back()
+                except OSError as e:
+                    logger.warning(f'Could not assign {e.filename} to the wazuh user: {e.strerror}')
+            os.setgroups([])
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
     else:
         logger.info('Starting API as root')
 
