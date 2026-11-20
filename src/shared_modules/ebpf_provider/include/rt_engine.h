@@ -115,8 +115,8 @@ enum rt_cgroup_mode
     RT_CGROUP_MODE_ALL = 0,
 
     /* Submit only events whose cgroup_id has been added with
-     * rt_allow_cgroup(). Everything else is discarded in the kernel, before a
-     * 12,416-byte ring reservation is even attempted.
+     * rt_allow_cgroup(). Everything else is discarded in the kernel, before its
+     * path is resolved or a 12,416-byte ring reservation is attempted.
      *
      * IMPORTANT for a container consumer: in this mode an event from a cgroup
      * you have not added is invisible, not merely unattributed. That removes

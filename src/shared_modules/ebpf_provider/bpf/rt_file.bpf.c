@@ -180,6 +180,9 @@ struct
  *   RT_CGROUP_MODE_ALLOWLIST (1)  only events whose cgroup_id is present in
  *                                 cgroup_allow_map are submitted.
  *
+ * Each program checks this (cgroup_wanted()) before resolving the event's path,
+ * so a discarded event costs no path walk either.
+ *
  * A filtered-out event is NOT counted as a drop. Drops mean "the consumer
  * wanted this and lost it"; a filter miss means "the consumer never asked".
  * Conflating them would make every unfiltered container's activity look like
@@ -294,7 +297,7 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  *   INT against UNION, so on a union-layout kernel the relocation below would
  *   find no candidate, libbpf would poison the instruction, and the verifier
  *   would reject the whole object -- not merely container attribution, since
- *   submit_event() reaches this from every program. Amazon Linux 2's 4.14 is
+ *   cgroup_wanted() reaches this from every program. Amazon Linux 2's 4.14 is
  *   further out still: there the field is `ino` and not `id` at all. Neither
  *   host can load the engine, which is the only reason this is safe.
  *
@@ -379,9 +382,7 @@ statfunc __u64 current_container_cgroup_id(void)
     return kernfs_node_ino(BPF_CORE_READ(cgrp, kn, id));
 }
 
-/* Returns non-zero when this event should reach the ring buffer. Called before
- * bpf_ringbuf_reserve() so a filtered event costs one map lookup rather than a
- * 12 KB reservation. */
+/* Returns non-zero when this event should reach the ring buffer. */
 statfunc int event_is_wanted(__u64 cgroup_id)
 {
     __u32 key = FILTER_CFG_KEY_MODE;
@@ -397,6 +398,17 @@ statfunc int event_is_wanted(__u64 cgroup_id)
     return bpf_map_lookup_elem(&cgroup_allow_map, &cgroup_id) != NULL;
 }
 
+/* The cgroup filter. Every event-producing program calls it after its cheap
+ * checks and before resolving the path, so a filtered event costs a few map
+ * lookups instead of a path walk and a 12 KB reservation. The id it stores is
+ * the one submit_event() records and bump_drop_counter() charges, so the
+ * filter, the event and drop attribution always agree on the cgroup. */
+statfunc bool cgroup_wanted(__u64* cgroup_id)
+{
+    *cgroup_id = current_container_cgroup_id();
+    return event_is_wanted(*cgroup_id);
+}
+
 /* Per-event work this handle's consumer has opted out of. Read after the filter
  * and after the reservation, so a filtered-out event never pays for it; an
  * absent or unwritten slot means "skip nothing", which is the behaviour every
@@ -409,7 +421,7 @@ statfunc __u32 skip_mask(void)
     return mask ? *mask : 0;
 }
 
-statfunc void bump_drop_counter(void)
+statfunc void bump_drop_counter(__u64 cgroup_id)
 {
     __u32 key = 0;
     __u32* counter = bpf_map_lookup_elem(&drops_map, &key);
@@ -418,10 +430,7 @@ statfunc void bump_drop_counter(void)
         __sync_fetch_and_add(counter, 1);
     }
 
-    /* Attribute the same drop to the cgroup that would have owned the event.
-     * The same reader as the submit path, so drop attribution and event
-     * attribution cannot disagree about which cgroup a task is in. */
-    __u64 cgroup_id = current_container_cgroup_id();
+    /* Attribute the same drop to the cgroup that would have owned the event. */
     __u32* per_cgroup = bpf_map_lookup_elem(&cgroup_drops_map, &cgroup_id);
     if (!per_cgroup)
     {
@@ -664,21 +673,13 @@ statfunc __u32 get_mnt_ns_inum(struct task_struct* task)
     return BPF_CORE_READ(mnt_ns, ns.inum);
 }
 
-statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __u64 dev)
+/* Called only for events cgroup_wanted() let through, with the id it read. */
+statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __u64 dev, __u64 cgroup_id)
 {
-    /* Resolved once, up front: the filter needs it before deciding whether to
-     * reserve, and the event needs it afterwards. */
-    __u64 cgroup_id = current_container_cgroup_id();
-
-    if (!event_is_wanted(cgroup_id))
-    {
-        return;
-    }
-
     struct rt_file_event* evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
     if (!evt)
     {
-        bump_drop_counter();
+        bump_drop_counter(cgroup_id);
         return;
     }
 
@@ -795,6 +796,10 @@ int kprobe__vfs_open(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
+
     struct vfsmount* mnt = NULL;
     bpf_probe_read_kernel(&mnt, sizeof(mnt), &path->mnt);
     if (!mnt)
@@ -806,7 +811,7 @@ int kprobe__vfs_open(struct pt_regs* ctx)
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -826,6 +831,10 @@ int BPF_PROG(file_open_dpath, struct file* file)
     if (!f_inode || !is_regular_file(f_inode))
         return 0;
 
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
+
     char* full_path = bpf_map_lookup_elem(&dpath_map, &(__u32) {0});
     if (!full_path)
         return 0;
@@ -834,7 +843,7 @@ int BPF_PROG(file_open_dpath, struct file* file)
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -853,6 +862,10 @@ int BPF_PROG(file_open_walk, struct file* file)
     if (!f_inode || !is_regular_file(f_inode))
         return 0;
 
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
+
     struct dentry* dentry = BPF_CORE_READ(file, f_path.dentry);
     struct vfsmount* mnt = BPF_CORE_READ(file, f_path.mnt);
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
@@ -861,7 +874,7 @@ int BPF_PROG(file_open_walk, struct file* file)
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -897,12 +910,15 @@ int BPF_PROG(path_unlink_dpath, struct path* path, struct dentry* dentry)
     struct inode* d_inode = BPF_CORE_READ(dentry, d_inode);
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
     const char* full_path = rt_lsm_dpath(path, dentry);
     if (!full_path)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -912,6 +928,9 @@ int BPF_PROG(path_unlink_walk, struct path* path, struct dentry* dentry)
     struct inode* d_inode = BPF_CORE_READ(dentry, d_inode);
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
     struct vfsmount* mnt = BPF_CORE_READ(path, mnt);
     if (!mnt)
         return 0;
@@ -920,7 +939,7 @@ int BPF_PROG(path_unlink_walk, struct path* path, struct dentry* dentry)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -932,12 +951,15 @@ statfunc int path_rename_dpath_event(struct path* dir, struct dentry* dentry,
     struct inode* d_inode = BPF_CORE_READ(old_dentry, d_inode);
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
     const char* full_path = rt_lsm_dpath(dir, dentry);
     if (!full_path)
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -961,6 +983,9 @@ statfunc int path_rename_walk_event(struct path* dir, struct dentry* dentry,
     struct inode* d_inode = BPF_CORE_READ(old_dentry, d_inode);
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
     struct vfsmount* mnt = BPF_CORE_READ(dir, mnt);
     if (!mnt)
         return 0;
@@ -969,7 +994,7 @@ statfunc int path_rename_walk_event(struct path* dir, struct dentry* dentry,
         return 0;
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+    submit_event(RT_EV_FILE_RENAME, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -1051,6 +1076,10 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
+
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
@@ -1059,7 +1088,7 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_ATTR, full_path, inode, dev);
+    submit_event(RT_EV_FILE_ATTR, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -1084,6 +1113,10 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
+
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
 
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
@@ -1092,7 +1125,7 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev, cgroup_id);
     return 0;
 }
 
@@ -1147,6 +1180,10 @@ statfunc int vfs_rename_event(struct pt_regs* ctx, bool old)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
+    __u64 cgroup_id = 0;
+    if (!cgroup_wanted(&cgroup_id))
+        return 0;
+
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
@@ -1156,7 +1193,7 @@ statfunc int vfs_rename_event(struct pt_regs* ctx, bool old)
         RT_SLOT_EVENT, rt_walk_path_at(old ? old_dentry : new_dentry, mnt, RT_SLOT_EVENT));
     if (full_path)
     {
-        submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
+        submit_event(RT_EV_FILE_RENAME, full_path, inode, dev, cgroup_id);
     }
     return 0;
 }
