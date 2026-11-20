@@ -278,7 +278,14 @@ std::string jsonFieldToString(const std::unordered_map<K, V>& map)
             json.push_back(',');
         }
         json.push_back('\"');
-        json.append(key);
+        if (needEscape(key))
+        {
+            escapeJSONString(key, json);
+        }
+        else
+        {
+            json.append(key);
+        }
         json.push_back('\"');
         json.push_back(':');
         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
@@ -421,7 +428,14 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                  json.push_back(',');
                              }
                              json.push_back('\"');
-                             json.append(key);
+                             if (needEscape(key))
+                             {
+                                 escapeJSONString(key, json);
+                             }
+                             else
+                             {
+                                 json.append(key);
+                             }
                              json.push_back('\"');
                              json.push_back(':');
                              if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
@@ -638,7 +652,14 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                  json.push_back(',');
                              }
                              json.push_back('\"');
-                             json.append(key);
+                             if (needEscape(key))
+                             {
+                                 escapeJSONString(key, json);
+                             }
+                             else
+                             {
+                                 json.append(key);
+                             }
                              json.push_back('\"');
                              json.push_back(':');
                              if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
