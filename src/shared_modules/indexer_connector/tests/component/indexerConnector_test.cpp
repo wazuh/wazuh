@@ -1381,6 +1381,8 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
  */
 TEST_F(IndexerConnectorTest, PublishErrorFromServer)
 {
+    clearCapturedLogs();
+
     // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
@@ -1395,7 +1397,8 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
     ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
 
     // Trigger publication and expect that it is not made.
@@ -1405,6 +1408,10 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
     publishData["data"] = "content";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // A server error, unlike an expected retry, is reported by the dispatcher.
+    ASSERT_NO_THROW(waitUntil([]() { return countCapturedLogs(Log::LOGLEVEL_WARNING, "dispatch handler error") > 0; },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
 
     callbackCalled = false;
     publishData.erase("data");
@@ -1540,6 +1547,139 @@ TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(
         waitUntil([&secondPublishSeen]() { return secondPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that a `_bulk` answered with a version conflict, too many requests and a too large request is retried
+ * until it is indexed, without any warning or error in the log.
+ */
+TEST_F(IndexerConnectorTest, PublishRetriesExpectedErrorsWithoutWarning)
+{
+    std::atomic<int> attempts {0};
+    m_indexerServers[A_IDX]->setPublishStatusCallback(
+        [&attempts](const std::string&)
+        {
+            switch (++attempts)
+            {
+                case 1: return 409;
+                case 2: return 429;
+                case 3: return 413;
+                default: return 200;
+            }
+        });
+    // Bodies as an indexer sends them; the 413 one is not JSON.
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [&attempts](const std::string&) -> std::string
+        {
+            switch (attempts.load())
+            {
+                case 1:
+                    return R"({"error":{"type":"version_conflict_engine_exception","reason":"[A]: version conflict"},)"
+                           R"("status":409})";
+                case 2:
+                    return R"({"error":{"type":"es_rejected_execution_exception","reason":"rejected execution of )"
+                           R"(coordinating operation"},"status":429})";
+                case 3: return "Request Entity Too Large";
+                default: return R"({"took":0,"errors":false,"items":[]})";
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(
+        waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, "IndexerConnector initialized successfully"); },
+                  MAX_INDEXER_INIT_TIME_MS));
+    clearCapturedLogs();
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    // Each retry waits for the queue's bulk timeout (5 s) on top of the dispatcher's 1 s sleep. The last debug line of
+    // the successful attempt is the one about the bulk size reduced by the 413.
+    ASSERT_NO_THROW(waitUntil(
+        []() { return hasCapturedLog(Log::LOGLEVEL_DEBUG_VERBOSE, "successful requests to increase the bulk size"); },
+        6 * MAX_INDEXER_PUBLISH_TIME_MS));
+
+    EXPECT_EQ(attempts.load(), 4);
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_DEBUG_VERBOSE, "Document version conflict, retrying in 1 second."), 1);
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_DEBUG_VERBOSE, "Too many requests, retrying in 1 second."), 1);
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_DEBUG_VERBOSE, "Reducing the elements to be sent to the indexer"), 1);
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, ""), 0);
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_ERROR, ""), 0);
+
+    // The accepted batch ended the streak: a conflict after the silent retry time starts a new one and stays quiet.
+    std::this_thread::sleep_for(std::chrono::minutes(1));
+    attempts = 0;
+    publishData["id"] = INDEX_ID_B;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&attempts]() { return attempts.load() >= 4; }, 6 * MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, ""), 0);
+}
+
+/**
+ * @brief Test that an indexer that keeps answering too many requests for longer than the silent retry time is reported
+ * by the dispatcher, and that the document is indexed once the indexer accepts it.
+ */
+TEST_F(IndexerConnectorTest, PublishWarnsWhenTheIndexerKeepsRejecting)
+{
+    std::atomic<bool> accept {false};
+    std::atomic<int> accepted {0};
+    m_indexerServers[A_IDX]->setPublishStatusCallback(
+        [&accept, &accepted](const std::string&)
+        {
+            if (!accept)
+            {
+                return 429;
+            }
+            ++accepted;
+            return 200;
+        });
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [&accept](const std::string&) -> std::string
+        {
+            if (!accept)
+            {
+                return R"({"error":{"type":"circuit_breaking_exception","reason":"[parent] Data too large"},)"
+                       R"("status":429})";
+            }
+            return R"({"took":0,"errors":false,"items":[]})";
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(
+        waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_INFO, "IndexerConnector initialized successfully"); },
+                  MAX_INDEXER_INIT_TIME_MS));
+    clearCapturedLogs();
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    const auto start {std::chrono::steady_clock::now()};
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+
+    // The silent retry time (1 min) plus the bulk timeout and a few retries.
+    constexpr auto MAX_REJECTING_TIME_MS {90000u};
+    ASSERT_NO_THROW(waitUntil(
+        []() { return countCapturedLogs(Log::LOGLEVEL_WARNING, "dispatch handler error, Too many requests") > 0; },
+        MAX_REJECTING_TIME_MS));
+    EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::minutes(1));
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING,
+                               "Too many requests, retrying in 1 second. Indexer error type: "
+                               "'circuit_breaking_exception', reason: '[parent] Data too large'."));
+
+    accept = true;
+    ASSERT_NO_THROW(waitUntil([&accepted]() { return accepted.load() > 0; }, 2 * MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, "dispatch handler error"), 1);
 }
 
 /**

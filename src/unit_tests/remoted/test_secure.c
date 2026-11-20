@@ -2935,21 +2935,38 @@ void test_router_message_forward_syscollector_no_handle(void** state) {
     router_message_forward(msg, agent_id, agent_ip, agent_name);
 }
 
+void test_agent_version_dup(void** state) {
+    char stored[] = "v4.14.13";
+
+    char* copy = agent_version_dup(stored);
+
+    assert_ptr_not_equal(copy, stored);
+    assert_string_equal(copy, stored);
+    assert_null(agent_version_dup(NULL));
+
+    os_free(copy);
+}
+
+static int check_agent_version(const LargestIntegralType value, const LargestIntegralType check_value_data) {
+    const char* agent_version = ((const agent_ctx*)value)->agent_version;
+    return agent_version && strcmp(agent_version, (const char*)check_value_data) == 0;
+}
+
 void test_router_message_forward_syscollector_with_handle(void** state) {
     char msg[] = "d:syscollector: valid";
     const char* agent_id = "001";
     const char* agent_ip = "192.168.1.1";
     const char* agent_name = "test-agent";
 
-    // Mock OSHash_Get_ex call
-    expect_any(__wrap_OSHash_Get_ex, self);
-    expect_string(__wrap_OSHash_Get_ex, key, "001");
-    will_return(__wrap_OSHash_Get_ex, NULL);
+    // Mock OSHash_Get_ex_dup call
+    expect_any(__wrap_OSHash_Get_ex_dup, self);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, "001");
+    will_return(__wrap_OSHash_Get_ex_dup, strdup("v4.14.13"));
 
     // Mock router_provider_send_fb_json call
     expect_any(__wrap_router_provider_send_fb_json, handle);
     expect_string(__wrap_router_provider_send_fb_json, msg, " valid");  // after stripping header
-    expect_any(__wrap_router_provider_send_fb_json, agent_ctx);
+    expect_check(__wrap_router_provider_send_fb_json, agent_ctx, check_agent_version, "v4.14.13");
     expect_value(__wrap_router_provider_send_fb_json, schema_type, MT_SYS_DELTAS);
 
     will_return(__wrap_router_provider_send_fb_json, 1);
@@ -2980,9 +2997,9 @@ void test_router_message_forward_dbsync_with_handle(void** state) {
     const char* agent_ip = "192.168.1.1";
     const char* agent_name = "test-agent";
 
-    expect_any(__wrap_OSHash_Get_ex, self);
-    expect_string(__wrap_OSHash_Get_ex, key, "001");
-    will_return(__wrap_OSHash_Get_ex, NULL);
+    expect_any(__wrap_OSHash_Get_ex_dup, self);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, "001");
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
 
     expect_any(__wrap_router_provider_send_fb_json, handle);
     expect_string(__wrap_router_provider_send_fb_json, msg, "syscollector sync valid");
@@ -3048,6 +3065,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_router_message_forward_fim_syscheck_header, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_fim_dbsync_file, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_no_handle, setup_config, teardown_config),
+        cmocka_unit_test(test_agent_version_dup),
         cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_with_handle, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_no_handle, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_unrecognized_subheader, setup_config, teardown_config),

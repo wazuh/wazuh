@@ -13,8 +13,18 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+static void (*sleep_callback)(void) = NULL;
+
 VOID wrap_Sleep(DWORD dwMilliseconds) {
     check_expected(dwMilliseconds);
+
+    if (sleep_callback) {
+        sleep_callback();
+    }
+}
+
+void wrap_Sleep_set_callback(void (*callback)(void)) {
+    sleep_callback = callback;
 }
 
 HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,

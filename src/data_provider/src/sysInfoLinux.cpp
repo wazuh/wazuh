@@ -20,6 +20,7 @@
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
+#include "hardware/cpuInfoLinux.h"
 #include "sysInfo.hpp"
 #include "readproc.h"
 #include "networkUnixHelper.h"
@@ -173,17 +174,9 @@ static std::string getSerialNumber()
 
 static std::string getCpuName()
 {
-    std::string retVal { UNKNOWN_VALUE };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
-    const auto& it { systemInfo.find("model name") };
-
-    if (it != systemInfo.end())
-    {
-        retVal = it->second;
-    }
-
-    return retVal;
+    return CpuInfoLinux::cpuName(systemInfo);
 }
 
 static int getCpuCores()
@@ -422,13 +415,17 @@ nlohmann::json SysInfo::getNetworks() const
         // Without the dump, IPv4 entries keep being grouped by their label.
     }
 
+    // One read of the IPv4 route table, shared by every entry.
+    const auto gatewaysV4 { std::make_shared<const IPv4Gateways>(NetworkLinuxInterface::loadGatewaysV4()) };
+    const auto gatewaysV6 { std::make_shared<const IPv6Gateways>(NetworkLinuxInterface::loadGatewaysV6(NetworkLinuxAddressResolver::dumpIPv6DefaultGateways)) };
+
     for (const auto& interface : NetworkLinuxAddressResolver::groupByLink(interfacesAddress.get(), networkInterfaces, addressLinks))
     {
         nlohmann::json ifaddr {};
 
         for (auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first, addressFlags)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first, addressFlags, gatewaysV4, gatewaysV6)) };
 
             if (networkInterfacePtr)
             {

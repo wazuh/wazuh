@@ -912,7 +912,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                                 wm_strcat(&ip6_address, address_i->valuestring, ',');
                             }
 
-                            if (netmask_i != NULL) {
+                            if (cJSON_IsString(netmask_i)) {
                                 wm_strcat(&msg, netmask_i->valuestring, '|');
                                 if(i == 0){
                                     os_strdup(netmask_i->valuestring,ip6_netmask);
@@ -923,7 +923,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                                 wm_strcat(&msg, "NULL", '|');
                             }
 
-                            if (broadcast_i != NULL) {
+                            if (cJSON_IsString(broadcast_i)) {
                                 wm_strcat(&msg, broadcast_i->valuestring, '|');
                                 if(i == 0){
                                     os_strdup(broadcast_i->valuestring, ip6_broadcast);

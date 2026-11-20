@@ -126,6 +126,8 @@ enum MacOSArchitecture
     ARM64
 };
 
+// In the per-user patterns below, the home directory level must be the first wildcard: it is the
+// only level the PyPI and npm collectors check for automount points that are not mounted yet
 static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS
 {
     "/usr/lib/python*/*-packages",

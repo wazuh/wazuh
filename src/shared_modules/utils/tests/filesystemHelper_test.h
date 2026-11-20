@@ -13,6 +13,20 @@
 #define FILESYSTEM_HELPER_TESTS_H
 #include "gtest/gtest.h"
 #include "filesystemHelper.h"
+#include "stdFileSystemHelper.hpp"
+#include <algorithm>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#ifndef WIN32
+#include "scopedTestDirectory.hpp"
+#include <cerrno>
+#include <unistd.h>
+#endif
+#ifdef __linux__
+#include <linux/magic.h>
+#endif
+#include <vector>
 #include <thread>
 
 class FilesystemUtilsTest : public ::testing::Test

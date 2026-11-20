@@ -23,6 +23,12 @@
   - [**] [1:1882:10] ATTACK-RESPONSES id check returned userid [**]
     [Classification: Potentially Bad Traffic] [Priority: 2]
     {UDP} 192.168.20.32 -> 192.168.20.2
+  - snort: [1:1852:3] WEB-MISC robots.txt access [Classification: access to a
+    potentially vulnerable web application] [Priority: 2]: {TCP}
+    2001:db8::50:51234 -> 2001:db8::80:80
+  - snort: [1:40063:5] "OS-LINUX Linux Kernel Challenge ACK provocation attempt"
+    [Classification: Attempted Administrator Privilege Gain] [Priority: 1]
+    <ens33> {TCP} 2001:123:23a0:f213::134:705 -> 2001:231:23f0:a626::134:703
   -->
 
 <decoder name="snort">
@@ -38,9 +44,28 @@
    <parent>snort</parent>
    <type>ids</type>
    <prematch>^[**] |^[\d+:\d+:\d+] </prematch>
-   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
-   <regex>(\d+.\d+.\d+.\d+)\p*\d*|^[(\d+:\d+:\d+)] \.+ </regex>
-   <regex>(\d+.\d+.\d+.\d+)\p*\d* -> (\d+.\d+.\d+.\d+)\p*\d*</regex>
+   <!--
+     - Snort writes an IPv6 address and its port as "address:port", so the port
+       can only be told apart when the protocol has one: the {TCP} and {UDP}
+       alternatives strip the last ":port", and the others keep the whole
+       address. The IPv4 alternatives strip the port by the address shape.
+     - Each alternative is anchored at the end of the line, so an address
+       without a port keeps all its digits.
+     - An alert with an IPv6 address and no protocol (snort-full) or with any
+       other layout only decodes the id.
+     -->
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ {TCP} (\S+):\d+ -> (\S+):\d+$|</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ {UDP} (\S+):\d+ -> (\S+):\d+$|</regex>
+   <regex>^[(\d+:\d+:\d+)] \.+ {TCP} (\S+):\d+ -> (\S+):\d+$|</regex>
+   <regex>^[(\d+:\d+:\d+)] \.+ {UDP} (\S+):\d+ -> (\S+):\d+$|</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+):\d+ -> (\d+.\d+.\d+.\d+):\d+$|</regex>
+   <regex>^[(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+):\d+ -> (\d+.\d+.\d+.\d+):\d+$|</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+) -> (\d+.\d+.\d+.\d+)$|</regex>
+   <regex>^[(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+) -> (\d+.\d+.\d+.\d+)$|</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ {\S+} (\S+) -> (\S+)$|</regex>
+   <regex>^[(\d+:\d+:\d+)] \.+ {\S+} (\S+) -> (\S+)$|</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] |</regex>
+   <regex>^[(\d+:\d+:\d+)] </regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
 </decoder>

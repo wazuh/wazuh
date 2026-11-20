@@ -138,7 +138,12 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
  */
 int SendJSONtoSCK(char* message, socket_forwarder* Config);
 
-void mq_log_builder_init();
+/**
+ * @brief Initialize the message queue's log builder
+ *
+ * @param host_ip_used Whether any log format uses $(host_ip).
+ */
+void mq_log_builder_init(bool host_ip_used);
 
 int mq_log_builder_update();
 

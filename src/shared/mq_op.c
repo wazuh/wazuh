@@ -377,9 +377,9 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
 #endif /* !WIN32 */
 
-void mq_log_builder_init() {
+void mq_log_builder_init(bool host_ip_used) {
     assert(mq_log_builder == NULL);
-    mq_log_builder = log_builder_init(true);
+    mq_log_builder = log_builder_init(true, host_ip_used);
 }
 
 int mq_log_builder_update() {

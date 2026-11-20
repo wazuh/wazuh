@@ -501,6 +501,7 @@
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED    "(6981): eBPF healthcheck action failed: %s. %s"
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED   "(6982): eBPF healthcheck action skipped: %s. %s"
 #define FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL            "(6983): Attaching BPF program '%s' failed (errno=%d: %s)."
+#define FIM_ERROR_AUDIT_LEFT_STOPPED                "(6989): Auditd could not be started again after stopping it to recover the stale Audit socket (%s). System auditing is stopped."
 #define FIM_EBPF_HEALTHCHECK_EVENT_CONSUME_DETAIL   "Failed while consuming healthcheck events."
 #define FIM_EBPF_HEALTHCHECK_EVENT_TIMEOUT_DETAIL   "Timed out waiting for the corresponding event."
 #define FIM_EBPF_HEALTHCHECK_CREATE_DETAIL          "Could not create the temporary healthcheck file."

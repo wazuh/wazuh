@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include "sym_load.h"
 #include <sys/types.h>
 
 static void wm_help();                  // Print help.
@@ -95,6 +96,17 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
 
     minfo(STARTUP_MSG, (int)getpid());
+
+    // Load the module libraries that carry TLS (sysinfo also brings libstdc++ and libgcc_s) before
+    // creating any thread, and keep them loaded: with glibc < 2.34, a dlopen() racing pthread_create()
+    // can abort the process in ld.so (glibc BZ #19329).
+#ifdef __linux__
+    so_get_module_handle("sysinfo");
+#ifndef CLIENT
+    so_get_module_handle("router");
+    so_get_module_handle("content_manager");
+#endif
+#endif
 
     // Run modules
 
