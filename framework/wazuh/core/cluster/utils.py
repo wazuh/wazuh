@@ -236,13 +236,33 @@ def _reap_service_control(pid: int, stderr_fd: int, action: str, output: bytes =
                      f"{f': {reason}' if reason else ''}")
 
 
+def _systemd_running() -> bool:
+    """Whether systemd is PID 1, by the rule the control module and the service-control helper apply.
+
+    Returns
+    -------
+    bool
+        True when `/run/systemd/system` exists and `/proc/1/comm` is `systemd`.
+    """
+    if not os.path.exists('/run/systemd/system'):
+        return False
+    try:
+        with open('/proc/1/comm') as comm:
+            return comm.read().strip() == 'systemd'
+    except OSError:
+        return False
+
+
 def _run_service_control(action: str) -> None:
     """Ask the privileged service-control helper to restart or reload the manager.
 
     This is the path the control module takes, used directly when the control socket is unavailable (modulesd is
-    not running). The helper reports acceptance by writing '1' on descriptor 3 before it runs the action; it runs in
-    its own process group so that stopping this daemon, which the action does, does not stop it. A refusal of the
-    check it runs after accepting is reported too, when it comes within `SERVICE_CONTROL_CHECK_TIMEOUT` seconds.
+    not running). When systemd is PID 1 the request is an empty file, `var/run/wazuh-manager-service-control.<action>`,
+    whose path unit makes systemd run the helper as root; a refusal of its check is then only logged, not answered.
+    Otherwise the helper is run here: it reports acceptance by writing '1' on descriptor 3 before it runs the action,
+    and runs in its own process group so that stopping this daemon, which the action does, does not stop it. A
+    refusal of the check it runs after accepting is reported too, when it comes within
+    `SERVICE_CONTROL_CHECK_TIMEOUT` seconds.
 
     The helper is spawned with `os.posix_spawn`, the only primitive that both places the status pipe on descriptor 3
     and runs no Python code in the child. It gets a new process group (`setpgroup`), not a new session: `setsid`
@@ -257,10 +277,19 @@ def _run_service_control(action: str) -> None:
     Raises
     ------
     WazuhInternalError(1903)
-        If the helper cannot be run.
+        If the request cannot be written (systemd) or the helper cannot be run.
     WazuhError(1904)
-        If the helper refused the action (its check included) or did not accept it in time.
+        If the helper refused the action (its check included) or did not accept it in time; never with systemd.
     """
+    if _systemd_running():
+        request = os.path.join(common.WAZUH_PATH, 'var', 'run', f'{SERVICE_CONTROL_NAME}.{action}')
+        try:
+            os.close(os.open(request, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o660))
+        except OSError as e:
+            raise WazuhInternalError(1903, extra_message=f"{request}: {e.strerror}")
+        logger.info(f"Manager {action} requested from systemd ({request})")
+        return
+
     helper = os.path.join(common.WAZUH_PATH, 'bin', SERVICE_CONTROL_NAME)
     status_r = status_w = stderr_r = stderr_w = devnull = None
     try:
@@ -418,9 +447,10 @@ def _send_control_command(msg: str) -> None:
     Raises
     ------
     WazuhInternalError(1903)
-        If the control socket is unavailable and the service-control helper cannot be run.
+        If the control socket is unavailable and the service-control request cannot be written (systemd) or the
+        helper cannot be run.
     WazuhError(1904)
-        If the control socket is unavailable and the service-control helper refused the command.
+        If the control socket is unavailable and the service-control helper refused the command (without systemd).
     WazuhInternalError(1014)
         If there is a socket communication error.
     """
@@ -469,9 +499,10 @@ def manager_restart() -> WazuhResult:
     Raises
     ------
     WazuhInternalError(1903)
-        If the control socket is unavailable and the service-control helper cannot be run.
+        If the control socket is unavailable and the service-control request cannot be written (systemd) or the
+        helper cannot be run.
     WazuhError(1904)
-        If the control socket is unavailable and the service-control helper refused the command.
+        If the control socket is unavailable and the service-control helper refused the command (without systemd).
     WazuhInternalError(1014)
         If there is a socket communication error.
 
@@ -493,9 +524,10 @@ def manager_reload() -> WazuhResult:
     Raises
     ------
     WazuhInternalError(1903)
-        If the control socket is unavailable and the service-control helper cannot be run.
+        If the control socket is unavailable and the service-control request cannot be written (systemd) or the
+        helper cannot be run.
     WazuhError(1904)
-        If the control socket is unavailable and the service-control helper refused the command.
+        If the control socket is unavailable and the service-control helper refused the command (without systemd).
     WazuhInternalError(1014)
         If there is a socket communication error.
 

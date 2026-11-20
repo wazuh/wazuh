@@ -7,7 +7,7 @@ import json
 import os
 import re
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -330,6 +330,7 @@ def service_control(tmp_path):
     with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
             patch('wazuh.core.common.CONTROL_SOCKET', str(tmp_path / 'queue' / 'sockets' / 'control.sock')), \
             patch('wazuh.core.cluster.utils.api_operation_lockfile', str(tmp_path / 'var' / 'run' / '.lock')), \
+            patch('wazuh.core.cluster.utils._systemd_running', return_value=False), \
             patch('wazuh.core.cluster.utils.threading.Thread',
                   side_effect=lambda target, args, daemon: MagicMock(start=lambda: target(*args))):
         yield write
@@ -456,6 +457,56 @@ def test_manager_restart_helper_check_outlasts_the_wait(service_control, caplog)
         assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
 
     assert 'failed (exit code 1): check failed' in caplog.text
+
+
+@pytest.mark.parametrize('exists, comm, expected', [
+    (False, 'systemd\n', False),
+    (True, 'systemd\n', True),
+    (True, 'init\n', False),
+    (True, None, False),
+])
+def test_systemd_running(exists, comm, expected):
+    """systemd is PID 1 when /run/systemd/system exists and /proc/1/comm is 'systemd'."""
+    opener = mock_open(read_data=comm) if comm is not None else MagicMock(side_effect=OSError)
+    with patch('wazuh.core.cluster.utils.os.path.exists', return_value=exists) as path_exists, \
+            patch('wazuh.core.cluster.utils.open', opener):
+        assert utils._systemd_running() is expected
+
+    path_exists.assert_called_once_with('/run/systemd/system')
+
+
+@pytest.mark.parametrize('function, action, message', [
+    (utils.manager_restart, 'restart', 'Restart request sent'),
+    (utils.manager_reload, 'reload', 'Reload request sent'),
+])
+def test_manager_restart_reload_systemd_request(service_control, tmp_path, caplog, function, action, message):
+    """With systemd as PID 1, the fallback leaves an empty request file for the path unit and runs no helper."""
+    request = tmp_path / 'var' / 'run' / f'{utils.SERVICE_CONTROL_NAME}.{action}'
+
+    with patch('wazuh.core.cluster.utils._systemd_running', return_value=True), \
+            patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, \
+            caplog.at_level(logging.INFO, logger='wazuh'):
+        assert WazuhResult({'message': message}) == function()
+
+    spawn.assert_not_called()
+    assert request.read_bytes() == b''
+    assert f'Manager {action} requested from systemd ({request})' in caplog.text
+
+
+def test_manager_restart_reload_systemd_request_fails(service_control, tmp_path):
+    """A request that cannot be written is a 1903 internal error; a symbolic link in its place is not followed."""
+    target = tmp_path / 'target'
+    request = tmp_path / 'var' / 'run' / f'{utils.SERVICE_CONTROL_NAME}.restart'
+    request.symlink_to(target)
+
+    with patch('wazuh.core.cluster.utils._systemd_running', return_value=True), \
+            patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, \
+            pytest.raises(WazuhInternalError, match='.* 1903 .*') as exc:
+        utils.manager_restart()
+
+    spawn.assert_not_called()
+    assert not target.exists()
+    assert str(request) in exc.value.message
 
 
 def test_get_cluster_items():
