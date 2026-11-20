@@ -205,7 +205,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * w_agentd_keys_init()) -- rather than falling through to that loop, which enrolls
      * unverified and would defeat the whole point of the token path. A token the manager does
      * not accept yet (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
-     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S.
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S. Refusals the manager's state can change come back
+     * TRANSIENT and retry here too.
      *
      * Only a token that was present and (after any transient retries) still failed does this.
      * An install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the
@@ -229,7 +230,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         if (token_bootstrap_delay < agt->enrollment.retry_max) {
             token_bootstrap_delay += agt->enrollment.retry_delta;
         }
-        mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
+        mdebug1("Token bootstrap: not finished, retrying in %d seconds.", token_bootstrap_delay);
         publish_pid_files((uid_t)uid, (gid_t)gid);
         sleep(token_bootstrap_delay);
     }
@@ -239,7 +240,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     w_mutex_unlock(&pid_publish_lock);
 
     if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
-        merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
+        merror_exit("Enrollment-token bootstrap failed: %s", w_agent_token_bootstrap_failure());
     }
 
     /* Only when this boot is the one that created the anchor. ClientConf() resolved the TLS
