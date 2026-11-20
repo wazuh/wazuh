@@ -19,6 +19,7 @@
 #include "iopen_directory_utils_wrapper.hpp"
 #include "iuuid_wrapper.hpp"
 #include "direct_memberships_darwin.hpp"
+#include "effective_groups_darwin.hpp"
 
 #define EXPECTED_GROUPS_MAX 64
 
@@ -36,6 +37,9 @@ class UserGroupsProvider
 
         nlohmann::json getGroupNamesByUid(const std::set<uid_t>& uids);
 
+        /// @brief Names of the groups of one account counting nested groups, as sudo sees them.
+        std::set<std::string> getEffectiveGroupNamesByUid(uid_t uid);
+
         static void resetCache();
 
     private:
@@ -45,6 +49,7 @@ class UserGroupsProvider
         std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
         DirectMemberships m_directMemberships;
+        EffectiveGroups m_effectiveGroups;
 
         struct UserInfo
         {

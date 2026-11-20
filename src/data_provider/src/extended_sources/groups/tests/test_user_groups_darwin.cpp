@@ -517,3 +517,49 @@ TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryReportsNoGroupsAndIsNotC
     // The failed scan left nothing behind: the next one reads the directory again.
     EXPECT_EQ(env.collect().size(), 2u);
 }
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesIncludeGroupsReachedThroughNesting)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
+    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
+
+    passwd* fakePwd = createFakePasswd("member", 800, 20);
+    EXPECT_CALL(*mockPasswd, getpwuid(800)).WillOnce(Return(fakePwd));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("member"), 20)).WillOnce(Return(2));
+    // The second gid is a group the account reaches only because another group nests into it.
+    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("member"), 20, _, _))
+    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int*)
+    {
+        groups[0] = 20;
+        groups[1] = 80;
+        return 0;
+    }));
+
+    struct group staff {};
+    staff.gr_name = const_cast<char*>("staff");
+    struct group admin {};
+    admin.gr_name = const_cast<char*>("admin");
+    EXPECT_CALL(*mockGroup, getgrgid(20)).WillOnce(Return(&staff));
+    EXPECT_CALL(*mockGroup, getgrgid(80)).WillOnce(Return(&admin));
+
+    EXPECT_THAT(provider.getEffectiveGroupNamesByUid(800), ::testing::UnorderedElementsAre("staff", "admin"));
+
+    free(fakePwd->pw_name);
+    delete fakePwd;
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesOfUnknownUidAreEmpty)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
+    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
+
+    EXPECT_CALL(*mockPasswd, getpwuid(9999)).WillOnce(Return(nullptr));
+
+    EXPECT_TRUE(provider.getEffectiveGroupNamesByUid(9999).empty());
+}

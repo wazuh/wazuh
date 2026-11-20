@@ -27,6 +27,7 @@ UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> grou
     , m_passwdWrapper(std::move(passwdWrapper))
     , m_odWrapper(std::move(odWrapper))
     , m_directMemberships(m_groupWrapper, m_odWrapper, std::move(uuidWrapper))
+    , m_effectiveGroups(m_groupWrapper)
 {
 }
 
@@ -238,4 +239,11 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
     }
 
     return results;
+}
+
+std::set<std::string> UserGroupsProvider::getEffectiveGroupNamesByUid(uid_t uid)
+{
+    const struct passwd* pwd = m_passwdWrapper->getpwuid(uid);
+
+    return pwd != nullptr ? m_effectiveGroups.namesOf(pwd->pw_name, pwd->pw_gid) : std::set<std::string> {};
 }

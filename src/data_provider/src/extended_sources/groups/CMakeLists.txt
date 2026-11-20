@@ -37,6 +37,7 @@ else()
 
     list(APPEND SRC_FILES src/groups_darwin.cpp src/user_groups_darwin.cpp
          src/direct_memberships_darwin.cpp
+         src/effective_groups_darwin.cpp
          ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm)
     set(PLATFORM_LIBS_GROUPS ${OPEN_DIRECTORY} ${FOUNDATION})
   endif()

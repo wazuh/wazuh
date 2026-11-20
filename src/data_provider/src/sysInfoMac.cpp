@@ -565,9 +565,6 @@ nlohmann::json SysInfo::getUsers() const
         std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
 
-        // The sudoers lookup needs the group names one by one, not concatenated.
-        std::set<std::string> userGroupNames;
-
         if (collectedUsersGroups.empty())
         {
             userItem["user_groups"] = UNKNOWN_VALUE;
@@ -585,7 +582,6 @@ nlohmann::json SysInfo::getUsers() const
 
                 const auto groupName = group.get<std::string>();
                 accumGroups += groupName;
-                userGroupNames.insert(groupName);
             }
 
             userItem["user_groups"] = accumGroups;
@@ -684,7 +680,11 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_roles"] = UNKNOWN_VALUE;
 
-        if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames, sudoersUserAliases))
+        // sudo matches a %group rule against the effective groups, nested ones included, while the
+        // groups reported for the account are its direct memberships.
+        const auto sudoGroupNames = userGroupsProvider.getEffectiveGroupNamesByUid(*uid.begin());
+
+        if (SudoersProvider::isUserSudoer(collectedSudoers, username, sudoGroupNames, sudoersUserAliases))
         {
             //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
             userItem["user_roles"] = "sudo";
