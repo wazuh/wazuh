@@ -223,22 +223,34 @@ The Vulnerability Scanner validates each upserted detection against `wazuh-state
 
 ## Building
 
-The Schema Validator is built as part of the Wazuh build system:
+The Schema Validator is built with every target, manager and agent alike:
 
 ```bash
-make TARGET=server|agent <DEBUG=1>
+make -C src deps TARGET=manager   # or TARGET=agent; downloads the index templates it embeds
+make -C src TARGET=manager
 ```
 
-Schema resources are automatically embedded during the build process using CMake.
+It is a shared library, `libschema_validator.so` (`schema_validator.dll` on Windows). The
+manager installs it as `/var/wazuh-manager/lib/libschema_validator.so` (root:wazuh-manager
+0750), and `wazuh-manager-modulesd` links it. At build time, CMake embeds every template under
+`src/external/indexer-plugins/` except `metrics-*.json`. When that directory is empty, the build
+warns `No schema files found in …`, the library carries no schema, and `initialize()` returns
+`false`.
 
 ## Testing
 
-Run unit tests with:
+The unit suite `schema_validator_unit_test` (ctest label `schema_validator`) is built only in a
+tree configured with `UNIT_TEST=ON`:
 
 ```bash
 cd src/build
 ctest -L schema_validator -V
 ```
+
+The build also produces `schema_validator_test_tool`, which is not installed. It takes no
+arguments. It initializes the factory from 8 threads at once, validates one sample, prints `OK`
+and exits 0. CI runs both, with the tool under ASAN, only for the agent and Windows agent
+targets (`.github/workflows/5_testcomponent_schema_validator-rtr.yml`).
 
 ## References
 

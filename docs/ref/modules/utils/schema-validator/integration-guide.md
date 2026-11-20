@@ -589,7 +589,8 @@ LOG_WARNING: "Failed to initialize schema validator. Schema validation will be d
 // When validation fails
 LOG_ERROR: "Schema validation failed for <module> message (<context>, index: <index>). Errors: <details>"
 LOG_ERROR: "Raw event that failed validation: <json>"
-LOG_DEBUG: "Marking entry for deferred deletion due to validation failure"
+LOG_DEBUG: "Marking SCA check for deferred deletion due to validation failure"   // SCA
+LOG_DEBUG: "Marking <item> for deletion from DBSync due to validation failure"    // FIM
 ```
 
 **Deletion:**

@@ -68,7 +68,7 @@ Each module instance:
 - Has its own Agent Sync Protocol instance
 - Maintains separate SQLite database for persistent storage
 - Manages its own synchronization sessions independently
-- Hands every session to `wazuh-agentd` over the same local `queue-sync` socket
+- Hands every session to `wazuh-agentd` over the same local `queue-sync` socket (`queue/sockets/queue-sync`); the Windows agent runs its modules in-process and has no such socket, so the session goes straight to the HTTPS client through the sender registered with `asp_set_session_sender()`
 - Exceptions: agent-info's sync-protocol instance has no queue database (metadata, groups and integrity checks only), and Syscollector runs a second instance (`syscollector_vd`, `syscollector_vd_sync.db`) for vulnerability-detection data
 
 ## Documentation Structure
@@ -106,3 +106,12 @@ To integrate the Agent Sync Protocol in your module:
    anymore (see [Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta)).
 
 See the [Integration Guide](integration-guide.md) for detailed examples.
+
+## Testing
+
+The unit suite is `agent_sync_protocol_tests` (ctest label `sync_protocol`, sources in
+`src/shared_modules/sync_protocol/tests/`). `sync_protocol_test_tool` (built from
+`src/shared_modules/sync_protocol/testtool/`, not installed) is a smoke test: it persists two
+items in an in-memory queue, runs one `Mode::DELTA` sync against a loopback transport that answers
+`200`, and prints `OK` (exit code 0) or `FAIL`. Both are agent builds only; CI runs them in
+`.github/workflows/5_testcomponent_sync_protocol-rtr.yml`.

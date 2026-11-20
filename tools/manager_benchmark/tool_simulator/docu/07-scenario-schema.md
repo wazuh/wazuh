@@ -288,5 +288,5 @@ already invalid — judging counters produced by an unauthenticated fleet would 
   `/scan/vd`, `/cacerts` or a measured `/enroll`, a dump that cannot be decoded, any transport error
   in `uds` mode), because those mean the measurement itself is invalid — see
   [10](10-error-handling-and-shutdown.md).
-- The scenario file used **MUST** be copied into the run's artifacts verbatim (F9c-3), together with
+- The scenario file used **MUST** be copied into the run's artifacts verbatim (`run_benchmark.sh` does), together with
   the effective CLI parameters.

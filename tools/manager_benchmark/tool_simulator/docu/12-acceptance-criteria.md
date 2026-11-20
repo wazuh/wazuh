@@ -1,7 +1,6 @@
 # 12 — Acceptance criteria
 
-What a person with a devcontainer checks to accept the sender (F9c-2's subplan closed against this
-list). Each criterion describes behaviour the code on this branch has; whether a given run
+What a person with a devcontainer checks to accept the sender. Each criterion describes behaviour the code on this branch has; whether a given run
 demonstrates it is for that run to show. The nineteen criteria are AC-A…AC-S; their order below is
 historical.
 
@@ -30,6 +29,6 @@ historical.
 ## Out of scope for these criteria
 
 Absolute performance numbers are **not** an acceptance criterion of the tool: they are the deliverable
-of F9c-4, and any target here would prejudge the baseline the report is supposed to establish. The
+of the load report, and any target here would prejudge the baseline the report is supposed to establish. The
 tool is done when it measures faithfully and fails loudly — not when it reaches a particular
 throughput.

@@ -143,10 +143,10 @@ rather than being allowed to break the serialization of every request.
 
 Like `/stats`, the body is a `modules`-keyed object -- `{"modules": {"<module>": <config>, ...}}`,
 one entry per agent module (e.g. `fim`, `logcollector`). A module is unique per report by construction
-(object keys cannot repeat), and its `config` is never validated against a schema here -- it is copied
-through as an opaque JSON value into `configuration.content`; per-module field typing lives entirely in
-the `wazuh-agent-config` index mapping. An empty `modules` object is rejected, for the same reason
-`/stats` rejects an empty report.
+(object keys cannot repeat). Each module's `config` must be a JSON object (anything else is `400`), but
+its fields are never validated against a schema here -- it is copied through as is into
+`configuration.content`; per-module field typing lives entirely in the `wazuh-agent-config` index
+mapping. An empty `modules` object is rejected, for the same reason `/stats` rejects an empty report.
 
 The result is indexed under the agent id as `_id`, via a plain upsert -- each report replaces the
 previous one for that agent in full, there is no delete step:
@@ -286,7 +286,7 @@ The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md))
 
 | `Start.mode` | Accepted payload | What it does |
 |---|---|---|
-| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent (a non-object value the payload put on one of those paths, such as `"wazuh":"x"`, is replaced), and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist, documents whose `_id` would exceed the indexer's 512-byte limit, and upserts whose `data` is not a JSON object, nests deeper than 256 levels or has a dotted member name that would expand into `wazuh.*` — a root name whose first segment is `wazuh` (`"wazuh.agent.id"`) or a dotted name inside `wazuh` (`"agent.id"`), which the indexer would store as a second value of the overlaid field, are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
+| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent (a non-object value the payload put on one of those paths, such as `"wazuh":"x"`, is replaced), and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist (or writing to the clean-only `wazuh-states-vulnerabilities`), documents missing their `id` (or an upsert missing its `data`), documents whose `_id` would exceed the indexer's 512-byte limit, and upserts whose `data` is not a JSON object, nests deeper than 256 levels or has a dotted member name that would expand into `wazuh.*` — a root name whose first segment is `wazuh` (`"wazuh.agent.id"`) or a dotted name inside `wazuh` (`"agent.id"`), which the indexer would store as a second value of the overlaid field, are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
 | `ModuleDelta` | `Cleans` (items ≥ 1) | Deletes this agent's documents from each named index (deduplicated, allowlisted). A full resync is composed by the agent as two requests: a `Cleans` of the module's indices, then a `ModuleDelta` with the complete dataset. |
 | `ModuleCheck` | `ChecksumModule` | Integrity verification of one index: the server pages this agent's documents in deterministic order, aggregates their checksums (SHA-1), and compares with the declared value — `200` on match, `409` on mismatch, `503` when the indexer answered `5xx` to the read (it asks for `allow_partial_search_results=false`, so a read the indexer cannot answer over every shard is refused instead of returned partial; generic body, no `Retry-After`, never `409`). One attempt on the server, no retry loop: the agent repeats a check answered `409` and full-resyncs once the mismatch is confirmed on every attempt; a `503` ends the check without a verdict, once the agent's sender has spent its attempt budget retrying the same request (one refused check is answered `503` more than once). |
 | `MetadataDelta` / `GroupDelta` | *(none)* | Reconciles agent metadata (or group membership) across the agent's already-indexed documents with one update-by-query, guarded by `global_version` so a stale update can never overwrite a newer one. |
@@ -375,7 +375,7 @@ These can be returned on any route, by the transport rather than by a handler:
 | `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for the two `_internal` routes: an object carrying a usable `agent_id`). Of these, only malformed HTTP is answered by the transport; the shape checks are the handlers' |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
-| `400` (chunked) | Chunked transfer encoding is not supported; on an installed manager a chunked request is answered `400`, not `411` |
+| `411` / `400` (chunked) | Chunked transfer encoding is not supported. `Transfer-Encoding: chunked` without `Content-Length` is answered `411`; sent together with `Content-Length` it is answered `400`, because the HTTP parser refuses that pair while reading the headers. See the [transport's status codes](../utils/uds-http-server/README.md) |
 | `413` | A body declaring more bytes than the total in-flight budget (or over `max_body_size`, when one is explicitly configured), or, on the two `_internal` routes, more than `control_max_body_bytes` |
 | `414` | Request target over `max_url_size` |
 | `431` | A header name or value over its cap, or more than 32 header lines |

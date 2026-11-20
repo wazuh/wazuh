@@ -9,14 +9,23 @@ parser).
 | File | Location | Mode | Description |
 |------|----------|------|-------------|
 | `wazuh-manager.conf` | `/etc/wazuh-manager` | 660 `root:wazuh-manager` | Main configuration: a single `<wazuh_config>` root with one element per section (see [the generated reference](reference.md)) |
-| `wazuh-manager.schema.json` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | JSON Schema (draft-04) the file is validated against; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`, replaced on every install and upgrade (product, not configuration) |
+| `wazuh-manager.schema.json` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | JSON Schema (draft-04) of the file; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`, replaced on every install and upgrade (product, not configuration). No binary reads it — each one embeds the copy it was built with, so editing it changes nothing they accept; the Python framework reads it for the section names |
 | `wazuh-manager-internal-options.conf` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | Internal tuning parameters (`key=value`); ships with comments only, the defaults are compiled in, and an existing file is kept |
 | `api.yaml` | `/var/wazuh-manager/api/configuration/` | 660 `root:wazuh-manager` | REST API configuration (see [Server API configuration](../../modules/server-api/configuration.md)). Also installed (660) on a worker, which runs no API but still checks it at every start (`wazuh-manager-apid -t`, error 20), and whose `wazuh-manager-clusterd` reads it when it starts and applies it to the requests the master forwards — for example the `upload_configuration` limits of a `PUT /cluster/{node_id}/configuration` aimed at that node |
 
 `wazuh-manager.conf` is **generated, not shipped**: the installer and the packages write it once
 (`src/init/gen_wazuh.sh conf manager <dist> <version>` prints the same document) from the templates in
-`etc/templates/config/`, validate it with `wazuh-manager-conf --skip-file-checks validate` and install it.
-Upgrades preserve it; DEB upgrades leave the regenerated defaults next to it as `wazuh-manager.conf.new`.
+`etc/templates/config/generic/` and the `<remote>` block `WriteRemote()` writes, validate it with
+`wazuh-manager-conf --skip-file-checks validate` and install it. Upgrades preserve it; DEB upgrades leave the
+regenerated defaults next to it as `wazuh-manager.conf.new`.
+
+The generated file is the installer's choice, not the schema defaults: it enables the legacy listener
+(`remote.legacy`, `1514/tcp`, absent and so disabled by default), sets `auth.purge` and `auth.use_password` to
+`yes` (both default to `no`), names `https://127.0.0.1:9200` in `indexer.hosts` with the CA
+`/etc/wazuh-manager/certs/indexer-ca.pem`, and writes a random `cluster.key`; it has no `wdb` or `task-manager`
+section, so those take their defaults. The `WAZUH_REMOTE_*` variables that change the `<remote>` block at
+installation are listed in [Installation variables](../../getting-started/installation.md#installation-variables).
+`wazuh-manager-conf dump` prints what is in effect.
 
 The file is parsed as **well-formed XML**: a single `<wazuh_config>` root without attributes, no
 unescaped `&` or `<`, `<!-- -->` comments only (with no `--` inside), at most 1 MiB and 16 levels of
@@ -24,7 +33,7 @@ nesting. An XML declaration (`<?xml …?>`), a processing instruction or a `<!DO
 ignored without a message; nothing declared in a DOCTYPE is applied, and a reference to an entity it declares
 is refused as a raw `&`. The predefined XML entities (`&amp;`, `&lt;`…) and character references are decoded
 into the values. Values are typed by the schema:
-booleans are written `yes`/`no` (any case; `true`/`false` are rejected), numbers as digits (an optional leading `-` or `+` is accepted: `<port>+1515</port>` is read as `1515`; leading zeros, decimals, hex and surrounding spaces are refused), enumerated
+booleans are written `yes`/`no` (any case; `true`/`false` are rejected), numbers as digits (an optional leading `-` or `+` is accepted: `<port>+1515</port>` is read as `1515`; leading zeros, decimals, hex and surrounding spaces are refused — except that a duration or a size, which also takes a string, keeps its leading zeros: `<agents_disconnection_time>0900</agents_disconnection_time>` is 900 seconds), enumerated
 values in any case, and lists in any of three forms: one child per item
 (`<hosts><host>…</host></hosts>`), a comma-separated value (`<protocol>tcp,udp</protocol>`), or the
 element repeated (`<log_format>plain</log_format><log_format>json</log_format>`). Any other repeated
@@ -157,7 +166,7 @@ element is rejected as a duplicate.
 | Module | Section | Internal Options |
 |--------|---------|------------------|
 | [Server API](../../modules/server-api/configuration.md) | - (`api.yaml`) | - |
-| [Authentication](../../modules/authd/configuration.md) | `auth`, `remote` (`legacy.enabled`, and `https.port`/`global_prefix` for the enrollment tokens it mints; read-only consumer) | `authd.*`, `auth.timeout_seconds`, `auth.timeout_microseconds`; shared with other daemons: `remoted.jwt_max_age`, `remoted.jwt_clock_skew` (also Remoted) and `wazuh_modules.manager_task_max_pending_deletes` (also the Task Manager) |
+| [Authentication](../../modules/authd/configuration.md) | `auth`, `remote` (`legacy.enabled`, and `https.port`, `global_prefix`, `certificate` and `ca_certificate` for the enrollment tokens it mints; read-only consumer) | `authd.*`, `auth.timeout_seconds`, `auth.timeout_microseconds`; shared with other daemons: `remoted.jwt_max_age`, `remoted.jwt_clock_skew` (also Remoted) and `wazuh_modules.manager_task_max_pending_deletes` (also the Task Manager) |
 | [Cluster](../../modules/cluster/configuration.md) | `cluster`, `indexer` (read-only consumer) | `wazuh_clusterd.debug` |
 | [Database Sync](../../modules/database-sync/configuration.md) | - | `wazuh_database.*` |
 | [Engine](../../modules/engine/configuration.md) | `cluster`, `logging`, `indexer` (read-only consumer) | `analysisd.*` |

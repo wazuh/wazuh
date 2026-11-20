@@ -31,9 +31,12 @@ generate_certs.sh       the PKI: one leaf per node, plus deliberately broken one
 cert_drill.sh           install a broken certificate on one node and measure every front end
 build_wpk.sh            a WPK signed by the lab CA, for a real end-to-end upgrade
 base/                   one image per role (manager, agent5, agent4, indexer, probe), plus the two proxy configurations
+docker-compose.yml      the nodes, the two proxies, the agents and the indexer
 probe/                  scripts that drive scenarios an agent does not perform on demand
-scenarios/              per-node configuration overrides for failure injection
+scenarios/              the failure-injection library (see Failure injection)
+overrides/              what wazuh-worker2 sources on boot: empty unless a scenario is staged
 migrate/                a 5.x agent booted with a 4.x configuration, for the in-place upgrade path
+wpk/                    the benign upgrade.sh payload build_wpk.sh packs
 ```
 
 The probe container mounts the repository's **own** agent tools from the parent directory
@@ -240,8 +243,8 @@ that check refuses a remoted leaf that is expired or does not chain to `certs/ro
 | SAN mismatch | restarts (the check requires SANs, not particular names) | the mismatched leaf |
 
 Each drill prints the restart's verdict with the resolver's reason, the leaf on disk next to the
-leaf worker2 actually serves on `41519`, the node's two TLS metrics, and twelve requests from all
-five paths — which measure the served leaf, not necessarily the installed one. Only the SAN
+leaf worker2 actually serves on `41519`, the node's two TLS metrics, and twelve requests on each of the
+five paths (the four front ends and the direct port) — which measure the served leaf, not necessarily the installed one. Only the SAN
 mismatch is a TLS failure the front ends can see.
 
 A refused pair stays on disk, so worker2's **next** start is refused too: a `docker restart
@@ -265,7 +268,7 @@ download through the balancer, signature verification, unpacking and installer e
 run for real. It does not exercise the Wazuh release signing key.
 
 The installer must sit at the **root** of the package. Nested under a directory, the agent fails
-with `(8134) Could not chmod 'var/upgrade/upgrade.sh'`, which does not name the real cause.
+with `(8134): At upgrade: Could not chmod 'var/upgrade/upgrade.sh'`, which does not name the real cause.
 
 ### The 4.x to 5.x in-place transition
 

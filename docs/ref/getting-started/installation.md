@@ -150,7 +150,7 @@ to do when the manager refuses to start.
 
 A distributed deployment, a corporate PKI, cert-manager or Vault all issue the manager's certificates outside the
 host. Stage the CA **before** installing the package, so the install issues the pairs from it or mints nothing,
-and stage the files of `certs/` before installing (Debian packages only) or after it, before the first start.
+and stage the files of `certs/` before installing (DEB or RPM package) or after it, before the first start.
 Staged files are validated at every start and never replaced.
 
 The manager uses two server pairs of its own, issued by one CA, and the indexer's trust:
@@ -263,9 +263,10 @@ stopped by an unsafe or invalid entry writes nothing), whether the credential
 resolution is incomplete and what completes it — the command
 `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (run as root) when
 the CA, the agents' bundle or a server pair is missing or an entry is invalid or unsafe; when the CA was staged in
-`/etc/wazuh-manager/ca` without its key, staging that key as `/etc/wazuh-manager/ca/root-ca.key` (owned by root,
-mode `0400` or `0600`) before that command, or staging the missing server pairs in `/etc/wazuh-manager/certs` and
-starting the manager; otherwise the start itself once the indexer's password and files are supplied — and the command to start the service (and to enable it at boot, when systemd is running).
+`/etc/wazuh-manager/ca` without its key, staging this node's missing server pairs in `/etc/wazuh-manager/certs` and
+starting the manager, with no new `--install` (the node does not need the root CA's private key); otherwise the
+start itself once the indexer's password and files are supplied — and the command to start the service (and to
+enable it at boot, when systemd is running).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;
@@ -283,8 +284,9 @@ sudo systemctl status wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-`wazuh-manager-control status` prints one `<daemon> is running...` line per daemon and exits `1` when
-any of them is down. `wazuh-manager-apid` is listed only on a master node, and
+`wazuh-manager-control status` prints one line per daemon, `<daemon> is running...` when it is up, and exits
+`1` when any of them is down (`<daemon> not running...`, `<daemon> refused its configuration...` after a start that
+refused it, or `<daemon> failed to start...`). `wazuh-manager-apid` is listed only on a master node, and
 `wazuh-manager-authd` only when `auth.disabled` is not set.
 
 If it refuses to start, `wazuh-manager-control` (and so the journal) prints one line ending in `Exiting`:

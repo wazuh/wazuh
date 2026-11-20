@@ -61,15 +61,15 @@ Because the account's operator chooses the context, the flag puts every role lin
 They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user, logged in without `run_as`, can change their password or their `allow_run_as` flag — `update_user` and `edit_run_as` need a `current_user` naming who is asking, which the API takes from the token's `sub`, and refuse a `run_as` token with `5011` whoever holds it.
 
 The `administrator` role these two users carry is also the only one that receives `secrets_read`,
-the policy behind `cluster:read_secrets` and `agent:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
-gain it — the defaults are only re-inserted when the ORM version changes — so on such an installation
-even `wazuh` sees the enrollment password and the cluster key masked, and is denied an agent's key,
-until the database is recreated or the policy is added by hand.
+the policy behind `cluster:read_secrets` and `agent:read_secrets`.
 
-That is the general rule, not an exception: **RBAC policies are not migrated.** There is no upgrade
-path from 4.x, and an `rbac.db` left by an earlier 5.0 development build keeps whatever defaults it
-was seeded with — its owner recreates it, or adds the missing policy. New default policies therefore
-reach an installation through a fresh database, and nothing in the manager rewrites one in place.
+**Default RBAC data reaches an existing `rbac.db` only through a version bump.** Every
+`wazuh-manager-apid` start runs `check_database_integrity()` (`framework/wazuh/rbac/orm.py`): when the
+database's version is lower than `CURRENT_ORM_VERSION`, it is rebuilt from the shipped defaults and the
+existing users (with their password hashes) and the roles, policies and rules created through the API are
+copied across with their links. With an equal
+version nothing is re-inserted, so a default policy, role or rule added without bumping
+`CURRENT_ORM_VERSION` reaches fresh installations only.
 
 `rbac.db` is created by the credential resolver with `bin/rbac_control seed`, which reads a JSON object mapping the default usernames to their passwords from `--passwords-file` (`-` for the standard input), generates a password for any user left out, and leaves an existing, non-empty database untouched.
 

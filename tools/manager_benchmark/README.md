@@ -10,10 +10,10 @@ manager as a whole (authd enrollment, remoted, the engine ingress), not one modu
 
 | Piece | State |
 |---|---|
-| `tool_simulator/docu/` — design documentation of the sender | **written** (subplan F9c-1) |
-| `tool_simulator/` — the Go sender | **built** (subplan F9c-2) |
-| `scenarios/` + orchestration scripts | **built** (subplan F9c-3) |
-| `LOAD_REPORT.md` — the baseline report | **produced** (subplan F9c-4); generated per environment, not committed |
+| `tool_simulator/docu/` — design documentation of the sender | **written** |
+| `tool_simulator/` — the Go sender | **built** |
+| `scenarios/` + orchestration scripts | **built** |
+| `LOAD_REPORT.md` — the baseline report | generated per environment, not committed |
 
 ## Running a benchmark
 
@@ -234,7 +234,7 @@ nothing, and the third removes a rate ceiling deliberately:
    --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
    `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself;
 3. sets `<remote><https>`'s `enroll_rate_limit` and `cacerts_rate_limit` to `0` — the documented
-   "no limit" (issue #39129). Those two routes ship with a rate limit (100 and 50 req/s), counted
+   "no limit". Those two routes ship with a rate limit (100 and 50 req/s), counted
    **for the endpoint as a whole rather than per agent**, so a harness asking faster than a fleet's
    steady state — which is the whole point of a capacity run — gets `429`s from a perfectly healthy
    manager: the `cacerts` scenario's 200 unpaced requests would spend the burst and see roughly half
@@ -242,14 +242,16 @@ nothing, and the third removes a rate ceiling deliberately:
    limiter itself; the sender counts a `429` as an ordinary outcome either way (`cacerts_429`,
    `enroll_https_429`, assertable as `s429`).
 
-`<use_password>` and `/etc/wazuh-manager/authd.pass` are left exactly as installed. That is the point of issue
-#39054: benchmarking used to require `use_password=no`, a configuration no production manager has,
+`<use_password>` and `/etc/wazuh-manager/authd.pass` are left exactly as installed. Benchmarking used to require `use_password=no`, a configuration no production manager has,
 and a config flip the script had to apply and undo.
 
 The mint is validated against the running listener certificate, so its `--address` must be one of
 that certificate's SANs; the default is read from the certificate itself. `--address` overrides it,
-and `--no-mint` skips minting (bring your own token with `--enroll-token-file`). It is idempotent and
-writes a one-time `.bak`.
+and `--no-mint` skips minting (bring your own token with `run_benchmark.sh --enroll-token-file`;
+`--token-file` changes where the script writes the minted one). It **edits the live
+`/etc/wazuh-manager/wazuh-manager.conf` in place** (`--conf` names another file; a one-time `.bak` is
+written next to it), is idempotent, and **restarts the manager** with `wazuh-manager-control restart`
+unless `--no-restart` is given.
 
 ### Bootstrapping over the legacy 1515 listener
 

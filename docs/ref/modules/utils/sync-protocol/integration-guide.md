@@ -33,6 +33,9 @@ There is no message-queue setup to wire in: the protocol carries a whole session
 
 ### Step 2: Initialize the Protocol
 
+The in-tree consumers: SCA, Syscollector and agent-info use the C++ class; FIM (`wazuh-syscheckd`)
+is the only C consumer, and it passes its configured flush and WAL values to `asp_create()`.
+
 #### C++ Example
 ```cpp
 // Define logger function
@@ -49,8 +52,8 @@ LoggerFunc logger = [](modules_log_level_t level, const std::string& message) {
 // Create protocol instance. queue and syncTransport are left at their
 // defaults (real SQLite queue, real queue-sync socket transport).
 auto protocol = std::make_unique<AgentSyncProtocol>(
-    "fim",                              // Module name
-    "queue/fim/db/fim_sync.db",          // Database path, relative to the install root
+    "sca",                              // Module name
+    "queue/sca/db/sca_sync.db",          // Database path, relative to the install root
     logger                              // Logger callback
 );
 ```
@@ -70,8 +73,8 @@ void module_logger(modules_log_level_t level, const char* message) {
 
 // Create protocol handle
 AgentSyncProtocolHandle* handle = asp_create(
-    "sca",
-    "queue/sca/db/sca_sync.db",
+    "fim",
+    "queue/fim/db/fim_sync.db",
     module_logger,
     0,  // flush_batch_size: use the built-in default
     0,  // flush_interval_ms: use the built-in default
@@ -86,7 +89,7 @@ if (!handle) {
 
 ### Step 3: Persist Module Data
 
-#### C++ Example - FIM File Change
+#### C++ Example - File Change
 ```cpp
 // File creation event
 void onFileCreated(const std::string& filepath, const FileInfo& info) {
@@ -140,7 +143,7 @@ void onFileDeleted(const std::string& filepath, uint64_t version) {
 }
 ```
 
-#### C Example - SCA Policy Check
+#### C Example - Policy Check
 ```c
 // Policy check result
 void persist_policy_check(const char* policy_id, CheckResult* result, uint64_t version) {

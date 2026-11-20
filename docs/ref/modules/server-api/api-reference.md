@@ -85,7 +85,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
     "api_version": "5.0.0",
     "revision": "rc3",
     "license_name": "GPL 2.0",
-    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE",
+    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc3/LICENSE",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
   },
@@ -450,7 +450,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/security/roles/{role_id}/rules` | Assign rules |
 | DELETE | `/security/roles/{role_id}/rules` | Remove rules |
 | GET | `/security/policies` | List policies |
-| POST | `/security/policies` | Create policy (a policy whose content equals an existing one, a default included, is refused with `4009` even under another name; `effect` is not validated as `allow`/`deny`) |
+| POST | `/security/policies` | Create policy (a policy whose content equals an existing one, a default included, is refused with `4009` even under another name; an `effect` other than `allow` or `deny`, an unknown action or resource type is refused with `4006`: see [What a create or update accepts](../rbac/README.md#what-a-create-or-update-accepts)) |
 | DELETE | `/security/policies` | Delete policies |
 | PUT | `/security/policies/{policy_id}` | Update policy |
 | GET | `/security/rules` | List rules |
@@ -574,7 +574,24 @@ curl -k -X GET "https://localhost:55000/agents?q=os.platform!%3Dwindows" \
 
 ## Error Handling
 
-Errors follow a structured JSON response format.
+Errors follow a structured JSON response format: `title`, `detail` and, when a Wazuh error caused
+it, the Wazuh error code in `error` and a `remediation` when the code has one, and `dapi_errors`, keyed by node name, when the error came back
+from the Distributed API (`api/api/util.py`, `api/api/error_handler.py`). The example of the
+specification's `PermissionDeniedResponse`:
+
+```json
+{
+  "title": "Permission Denied",
+  "detail": "Permission denied: Resource type: *:*",
+  "remediation": "Please, make sure you have permissions to execute the current request. For more information on how to set up permissions, please visit https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html",
+  "error": 4000,
+  "dapi_errors": {
+    "unknown-node": {
+      "error": "Permission denied: Resource type: *:*"
+    }
+  }
+}
+```
 
 ### HTTP Status Codes
 
@@ -611,8 +628,6 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 5000–5999 | User management errors | User not found, insecure password, invalid `allow_run_as` |
 | 6000–6999 | Security errors | Blocked IP, request rate limit reached, login queue full, `run_as` not enabled for the user |
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
-
-Error responses include a `dapi_errors` field in cluster deployments.
 
 Agents are the exception to the 404 rule. Every endpoint that names agents, the single-agent paths
 included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,

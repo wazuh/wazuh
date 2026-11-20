@@ -7,7 +7,7 @@ makes sure that agent's documents leave the indexer too.
 Three documentation layers cover authd, each with its own job:
 
 - **This README** — the developer's map: the [requirements catalog](#requirements) and
-  [design decisions](#design-decisions-d1d13), how the threads divide the work, which invariants are
+  [design decisions](#design-decisions-d1d17), how the threads divide the work, which invariants are
   load-bearing, and *why* it is built this way ([threads](#threads),
   [agent removal](#agent-removal), [invariants](#invariants), [operational notes](#operational-notes)).
 - **[`docs/ref/modules/authd/`](../../docs/ref/modules/authd/README.md)** — the operator-facing
@@ -77,8 +77,9 @@ it, inventory-sync applies it — and all three depend on these:
 | REQ-PURGE-5 | Deletion orders FIFO against that agent's in-flight sessions; neither authd nor the dispatcher serializes it |
 
 <a id="design-decisions-d1d12"></a>
+<a id="design-decisions-d1d13"></a>
 
-## Design decisions (D1–D13)
+## Design decisions (D1–D17)
 
 | # | Decision | Rationale |
 |---|---|---|
@@ -131,7 +132,7 @@ libcrypto next to the one `libwazuhext.so` already provides.
 
 | Thread | Role |
 |---|---|
-| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route, and the `token_*` verbs for the token CLI and the API. Each accepted connection is served on its own detached thread |
+| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route, and the `token_*` verbs for the token CLI and the API. Each accepted connection is served on its own detached thread, up to 128 at once (`MAX_LOCAL_CLIENT_THREADS`); past that the accept loop serves the connection inline before accepting the next |
 | Remote server | TLS enrollment on port 1515, when `remote_enrollment` and `legacy_enrollment` are both on |
 | Writer | master only: the only thread that persists `client.keys`; also writes and removes rows in wazuh-db, commits and forgets identity-journal entries, and records each deletion as a Task Manager row |
 | authpass watcher | workers with `use_password` only: re-reads `/etc/wazuh-manager/authd.pass` as the cluster syncs it down; the worker rejects port-1515 enrollments until it arrives |
@@ -204,7 +205,7 @@ The agent has a usable key at that point, but **remoted does not know about it y
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
 may live in that pass.
 
-**One rotation at a time, per agent** (issue #39078, H02). A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
+**One rotation at a time, per agent.** A re-enrollment reserves the agent **before** the request reads its `reenroll_secret` from wazuh-db, and
 the reservation is released by the **writer**, once the new credentials are in the database. That placement is the whole fix: the row keeps naming the old secret
 until the writer replaces it, so two requests carrying the same bearer used to verify and rotate one after the other, handing out two credentials for one agent and
 invalidating the first. A caller that finds the reservation taken gets `9030` (*Re-enrollment already in progress*, remoted's **409**, counter
@@ -212,7 +213,7 @@ invalidating the first. A caller that finds the reservation taken gets `9030` (*
 before anything is handed out releases the reservation at once; a **failed** database write does not, because the row still holds the old secret and letting it
 authorise another rotation is the hole itself. Until that transition is resolved the agent cannot rotate on this manager, and the writer says so in the log.
 
-**The credential is on the record before it is handed out** (issue #39078, H03). `local_add()` and `local_reenroll()` append the agent, the key and the
+**The credential is on the record before it is handed out.** `local_add()` and `local_reenroll()` append the agent, the key and the
 re-enrollment secret to `queue/authd/pending-identities` (0640, one JSON line, appended without rewriting the file) **before** they answer, and the writer
 settles live entries after `global commit`, not merely a successful statement. Startup and failed-rotation
 cleanup can also discard entries that are no longer owed. The rules that follow from that:
@@ -259,7 +260,7 @@ The operator-facing [identity-journal reference](../../docs/ref/modules/authd/ar
 explains startup reconciliation, the legacy-worker exception and the difference between the
 5000-entry admission limit and the 8 MiB load limit.
 
-**What the store promises when it cannot write** (issue #39078):
+**What the store promises when it cannot write:**
 
 - **A revoke is either written or reported as failed.** The flag goes on in memory at once — this authd stops honouring the token immediately — but the answer is
   `9029` («Enrollment token store write failed», the API's `1771`, HTTP 500), never the `9022` of an id that does not exist, and never a success. The id is kept in a
@@ -563,9 +564,9 @@ served when the id is not valid, or not free to reuse:
 | the id belongs to an existing agent | `9012 Duplicate ID` |
 | the database cannot say whether the id owes one | `9018` as well — the guard fails closed |
 
-The second one is a **behaviour change**: `force` no longer replaces an agent when the id is given
-explicitly. Replacing by the same id would queue a purge for an id that receives a new owner in the
-same operation, and cancelling that purge is not an option — see the FAQ.
+`force` never replaces an agent when the id is given explicitly. Replacing by the same id would queue
+a purge for an id that receives a new owner in the same operation, and cancelling that purge is not an
+option — see [why an id is never reused](#why-an-id-is-never-reused).
 
 ## Force replacement
 
@@ -711,8 +712,7 @@ would make "the row is outstanding" and "the query failed" the same case.
   than `authd.purge_delay` after that. Tooling that deletes and immediately asserts on the indexer has
   to wait — but the deletion is now *recorded*, so waiting is all it has to do.
 - **A deletion can be refused.** `9021` / `1766` means the backlog is too deep; the agent is untouched
-  and the request can be retried once it drains. This is new, and it is the price of never orphaning
-  documents again.
+  and the request can be retried once it drains. It is the price of never orphaning documents.
 - **`queue/authd/pending-identities` holds credentials in the clear**, and is normally empty. A file
   that stays populated can indicate database-write or journal-compaction failures: the writer keeps
   retrying on its own clock, and enrollments start being refused with `9031` (a `503` at `/enroll`)
@@ -737,8 +737,7 @@ would make "the row is outstanding" and "the query failed" the same case.
 - **A re-enrollment is not a deletion**: same id, no purge, documents kept. Agents enrolled over port
   1515, and rows the database module rebuilt from `client.keys`, have no secret and answer `9026`
   until they enroll anew. Rebuilding those rows is not a recovery of the secret and never can be:
-  `client.keys` does not carry it, and neither does a `global.db` from a build older than the column
-  — that database is recreated, not migrated.
+  `client.keys` does not carry it.
 - **Re-enrollment supports agent ids of up to eight digits.** `OS_IsValidID()` caps the `kid` there
   and the agent applies the same rule to the answer, so an agent holding a nine- or ten-digit id
   cannot rotate its credentials. Administrative insertion still accepts the full range on purpose:
