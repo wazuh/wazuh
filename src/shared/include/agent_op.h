@@ -11,6 +11,8 @@
 #ifndef AGENT_OP_H
 #define AGENT_OP_H
 
+#include <stdint.h>
+
 #include <cJSON.h>
 #include "authd-config.h"
 
@@ -126,6 +128,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *reenroll_kid,
                                   const char *reenroll_bearer,
                                   const char *source,
+                                  int64_t deadline_ms,
                                   int *master_error_code);
 
 // Send a clustered agent remove request.

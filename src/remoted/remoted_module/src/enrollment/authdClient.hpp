@@ -50,6 +50,12 @@ namespace remoted::enrollment
         /// key generated for agent 'X' (requested by <source>)"). Distinct from `ip`, which is the
         /// address to register and is usually "any". Absent: authd logs the request as local.
         std::optional<std::string> source;
+        /// When this request arrived at the HTTP handler, in milliseconds since the Unix epoch
+        /// (wall clock: the master compares it against its own). The worker turns it into the
+        /// request's deadline at DEQUEUE time -- the instant after which this client will have
+        /// stopped waiting, so authd must not rotate anything for it. Absent means
+        /// "no deadline", which is the behaviour that predates it.
+        std::optional<std::int64_t> arrivalMs;
     };
 
     /// The request never reached authd: stopping, queue full, or connect failure. Safe to retry.
@@ -152,6 +158,11 @@ namespace remoted::enrollment
         static constexpr std::uint32_t kMasterDefaultResponseTimeoutMs = 5000;
         static constexpr std::uint32_t kWorkerDefaultResponseTimeoutMs = 15000;
         static constexpr std::uint32_t kDefaultMaxQueueSize = 256;
+        /// Mirrors remoted.http_request_timeout's own default (30 s, src/remoted/src/secure.c).
+        /// It bounds the WHOLE HTTP request, so it is the ceiling the dequeue-time deadline is
+        /// capped by: remoted only WARNS at start-up when authd's budget exceeds it, so this cap
+        /// is the only hard limit there is.
+        static constexpr std::uint32_t kDefaultHttpRequestTimeoutMs = 30000;
         /// Deliberately a small, fixed number, not CPU-scaled like this module's other worker
         /// pools (e.g. http_worker_threads): bounded by authd's listen backlog (128 slots), not by
         /// the manager's CPU count, so scaling this with core count would just leave surplus
@@ -179,7 +190,8 @@ namespace remoted::enrollment
                              std::uint32_t connectTimeoutMs = 0,
                              std::uint32_t responseTimeoutMs = 0,
                              std::uint32_t maxQueueSize = 0,
-                             std::uint32_t workerThreads = 0);
+                             std::uint32_t workerThreads = 0,
+                             std::uint32_t httpRequestTimeoutMs = 0);
         ~AuthdClient();
 
         AuthdClient(const AuthdClient&) = delete;

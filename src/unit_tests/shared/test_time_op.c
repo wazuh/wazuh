@@ -28,6 +28,24 @@ void test_w_get_monotonic_time_is_positive(void **state)
     assert_true(t > 0);
 }
 
+/* Shares an epoch with other processes and cluster nodes, which is the whole reason it exists
+ * alongside the monotonic clock: a deadline one party stamps is compared by another. */
+void test_w_get_epoch_ms_matches_wall_clock(void **state)
+{
+    (void) state;
+    const time_t before = time(NULL);
+    const int64_t ms = w_get_epoch_ms();
+    const time_t after = time(NULL);
+
+    assert_true(ms > 0);
+    /* Same epoch as time(), in milliseconds. One second of slack on each side: on Windows,
+     * gettimeofday() and time() read the system clock through different paths that do not
+     * round to the same second, so an exact bound fails there whenever the call straddles a
+     * second boundary. A wrong epoch would be off by far more than a second. */
+    assert_true(ms / 1000 >= (int64_t)before - 1);
+    assert_true(ms / 1000 <= (int64_t)after + 1);
+}
+
 void test_w_get_monotonic_time_is_nondecreasing(void **state)
 {
     (void) state;
@@ -101,6 +119,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_get_monotonic_time_is_positive),
         cmocka_unit_test(test_w_get_monotonic_time_is_nondecreasing),
+        cmocka_unit_test(test_w_get_epoch_ms_matches_wall_clock),
         cmocka_unit_test(test_is_leap_year_two),
         cmocka_unit_test(test_is_leap_year_four),
         cmocka_unit_test(test_is_leap_year_one_hundred),

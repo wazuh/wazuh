@@ -15,8 +15,10 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
+#include <chrono>
 #include <condition_variable>
 #include <cstring>
 #include <mutex>
@@ -93,9 +95,12 @@ namespace remoted::enrollment
             return message;
         }
 
-        /// The `add` wire request. Built on the calling thread (see AuthdClient::addAgent), so the
-        /// bounded queue carries opaque bytes and knows nothing about verbs.
-        std::string buildAddPayload(const AuthdAddRequest& request)
+        /// The `add` wire request. Built on the WORKER thread that dequeues the request (see
+        /// enqueue() and deadlineFor()), not on the caller's: the deadline below is measured from
+        /// the dequeue, so the bounded queue carries the structured request rather than bytes.
+        /// @param deadlineMs Absolute instant (ms since the Unix epoch) after which the answer can
+        ///                    no longer be delivered; 0 means "no deadline" and the field is omitted.
+        std::string buildAddPayload(const AuthdAddRequest& request, std::int64_t deadlineMs)
         {
             nlohmann::json arguments;
             arguments["name"] = request.name;
@@ -120,6 +125,12 @@ namespace remoted::enrollment
             {
                 arguments["source"] = *request.source;
             }
+            // authd on the master refuses a re-enrollment that arrives past it,
+            // without rotating anything. Omitted when unknown, which authd reads as "no deadline".
+            if (deadlineMs > 0)
+            {
+                arguments["deadline_ms"] = deadlineMs;
+            }
 
             nlohmann::json payload;
             payload["function"] = "add";
@@ -136,11 +147,14 @@ namespace remoted::enrollment
              std::uint32_t connectTimeoutMs,
              std::uint32_t responseTimeoutMs,
              std::uint32_t maxQueueSize,
-             std::uint32_t workerThreads)
+             std::uint32_t workerThreads,
+             std::uint32_t httpRequestTimeoutMs)
             : m_socketPath(std::move(socketPath))
             , m_connectTimeoutMs(connectTimeoutMs != 0 ? connectTimeoutMs : AuthdClient::kDefaultConnectTimeoutMs)
             , m_responseTimeoutMs(AuthdClient::resolveResponseTimeoutMs(responseTimeoutMs, isWorkerNode))
             , m_maxQueueSize(maxQueueSize != 0 ? maxQueueSize : AuthdClient::kDefaultMaxQueueSize)
+            , m_httpRequestTimeoutMs(httpRequestTimeoutMs != 0 ? httpRequestTimeoutMs
+                                                               : AuthdClient::kDefaultHttpRequestTimeoutMs)
         {
             const auto poolSize = workerThreads != 0 ? workerThreads : AuthdClient::kDefaultWorkerThreads;
             m_workers.reserve(poolSize);
@@ -189,9 +203,11 @@ namespace remoted::enrollment
             }
         }
 
-        /// The wire request is built by the CALLER's thread (see addAgent() below) and travels as
-        /// opaque bytes from here on: this queue and its worker pool only move it to authd.
-        void enqueue(std::string wire, std::function<void(AuthdResult)> callback)
+        /// The request travels UNSERIALIZED from here on: the payload is built by the worker that
+        /// dequeues it, not by the caller's thread, because the deadline it carries has to be
+        /// measured from the dequeue -- authd's connect/response budgets only start counting then
+        /// Queue wait therefore does not eat into the deadline.
+        void enqueue(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
         {
             std::function<void(AuthdResult)> reject;
             bool stopping = false;
@@ -212,7 +228,7 @@ namespace remoted::enrollment
                 }
                 else
                 {
-                    m_queue.push({std::move(wire), std::move(callback)});
+                    m_queue.push({std::move(request), std::move(callback)});
                     m_cv.notify_one();
                 }
             }
@@ -252,7 +268,7 @@ namespace remoted::enrollment
     private:
         struct Request
         {
-            std::string wire; ///< The already-serialized authd request.
+            AuthdAddRequest request; ///< Serialized by the worker, not by the caller (see enqueue()).
             std::function<void(AuthdResult)> callback;
         };
 
@@ -293,9 +309,27 @@ namespace remoted::enrollment
                 // already-torn-down connection) -- would escape this thread's entry function and
                 // std::terminate the entire remoted daemon, taking down every other agent's
                 // connection along with the one enrollment request that triggered it.
+                // Serialized OUTSIDE the try below, and its failure answered explicitly: an
+                // exception escaping into that catch would only be logged, leaving this request's
+                // responder unanswered and the agent waiting out its whole HTTP budget.
+                std::string wire;
                 try
                 {
-                    req.callback(performRequest(req.wire));
+                    wire = buildAddPayload(req.request, deadlineFor(req.request));
+                }
+                catch (const std::exception& e)
+                {
+                    LOGFN_ERROR(logFn(), "AuthdClient could not serialize an enrollment request: %s", e.what());
+                    AuthdResult failed;
+                    failed.errorCode = kAuthdRequestNotSentErrorCode;
+                    failed.message = "Enrollment request could not be serialized";
+                    req.callback(std::move(failed));
+                    continue;
+                }
+
+                try
+                {
+                    req.callback(performRequest(wire));
                 }
                 catch (const std::exception& e)
                 {
@@ -306,6 +340,35 @@ namespace remoted::enrollment
                     LOGFN_ERROR(logFn(), "AuthdClient worker thread caught a non-standard exception.");
                 }
             }
+        }
+
+        /// The instant after which THIS client can no longer deliver an answer, as an absolute
+        /// wall-clock epoch in milliseconds -- what authd on the master compares against its own
+        /// clock to refuse a re-enrollment nobody is waiting for any more.
+        ///
+        /// Computed here, on the worker, and deliberately NOT when the request was enqueued: the
+        /// connect and response budgets below only start counting once a worker picks the request
+        /// up (::poll() for the connect, SO_RCVTIMEO for the reply), so a deadline stamped at
+        /// enqueue time would be earlier than the instant this client actually gives up, and the
+        /// master would discard requests still being waited for.
+        ///
+        /// Capped by the request's own HTTP budget: remoted only WARNS at start-up when authd's
+        /// budget exceeds http_request_timeout, so that cap is the only hard bound there is.
+        /// Returns 0 ("no deadline", the behaviour that predates this) when the arrival instant is
+        /// unknown, which keeps every path that does not set it working exactly as before.
+        std::int64_t deadlineFor(const AuthdAddRequest& request) const
+        {
+            if (!request.arrivalMs)
+            {
+                return 0;
+            }
+
+            const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::system_clock::now().time_since_epoch())
+                                   .count();
+            const std::int64_t authdBudget = nowMs + m_connectTimeoutMs + m_responseTimeoutMs;
+            const std::int64_t httpBudget = *request.arrivalMs + m_httpRequestTimeoutMs;
+            return std::min(authdBudget, httpBudget);
         }
 
         AuthdResult performRequest(const std::string& requestStr)
@@ -542,6 +605,7 @@ namespace remoted::enrollment
         std::uint32_t m_connectTimeoutMs;
         std::uint32_t m_responseTimeoutMs;
         std::uint32_t m_maxQueueSize;
+        std::uint32_t m_httpRequestTimeoutMs;
 
         std::vector<std::thread> m_workers;
         std::queue<Request> m_queue;
@@ -569,9 +633,15 @@ namespace remoted::enrollment
                              std::uint32_t connectTimeoutMs,
                              std::uint32_t responseTimeoutMs,
                              std::uint32_t maxQueueSize,
-                             std::uint32_t workerThreads)
-        : m_impl(std::make_unique<Impl>(
-              std::move(socketPath), isWorkerNode, connectTimeoutMs, responseTimeoutMs, maxQueueSize, workerThreads))
+                             std::uint32_t workerThreads,
+                             std::uint32_t httpRequestTimeoutMs)
+        : m_impl(std::make_unique<Impl>(std::move(socketPath),
+                                        isWorkerNode,
+                                        connectTimeoutMs,
+                                        responseTimeoutMs,
+                                        maxQueueSize,
+                                        workerThreads,
+                                        httpRequestTimeoutMs))
     {
     }
 
@@ -579,7 +649,7 @@ namespace remoted::enrollment
 
     void AuthdClient::addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback)
     {
-        m_impl->enqueue(buildAddPayload(request), std::move(callback));
+        m_impl->enqueue(std::move(request), std::move(callback));
     }
 
     std::uint32_t AuthdClient::resolveResponseTimeoutMs(std::uint32_t configuredMs, bool isWorkerNode) noexcept

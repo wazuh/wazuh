@@ -36,7 +36,7 @@
 
 /* redefinitons/wrapping */
 
-extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id, const char *reenroll_kid, const char *reenroll_bearer, const char *source);
+extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id, const char *reenroll_kid, const char *reenroll_bearer, const char *source, int64_t deadline_ms);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code);
@@ -66,7 +66,7 @@ static void test_create_agent_add_payload(void **state) {
     force_options.key_mismatch = false;
     force_options.after_registration_time = 0;
 
-    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options, NULL, NULL, NULL, NULL);
+    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options, NULL, NULL, NULL, NULL, 0);
 
     assert_non_null(payload);
     cJSON* function = cJSON_GetObjectItem(payload, "function");
@@ -114,7 +114,7 @@ static void test_create_agent_add_payload(void **state) {
 // target, like test_create_agent_add_payload: the payload builder is plain cJSON.
 static void test_create_agent_add_payload_carries_token_id(void **state) {
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL, NULL);
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL, NULL, 0);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -131,7 +131,7 @@ static void test_create_agent_add_payload_carries_token_id(void **state) {
 // `arguments.reenroll.{kid,bearer}`. A kid without a bearer (or the reverse) travels as nothing.
 static void test_create_agent_add_payload_carries_reenroll_credential(void **state) {
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", "eyJ.claims.sig", NULL);
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", "eyJ.claims.sig", NULL, 0);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -143,7 +143,7 @@ static void test_create_agent_add_payload_carries_reenroll_credential(void **sta
     assert_null(cJSON_GetObjectItem(arguments, "id"));
     cJSON_Delete(payload);
 
-    payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", NULL, NULL);
+    payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", NULL, NULL, 0);
     assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(payload, "arguments"), "reenroll"));
     cJSON_Delete(payload);
 }
@@ -152,12 +152,31 @@ static void test_create_agent_add_payload_carries_reenroll_credential(void **sta
 // master's log names it, and the master reads it back as `arguments.source`. It never replaces `ip`.
 static void test_create_agent_add_payload_carries_source(void **state) {
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "192.168.60.71");
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "192.168.60.71", 0);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
     assert_string_equal(cJSON_GetObjectItem(arguments, "source")->valuestring, "192.168.60.71");
     assert_string_equal(cJSON_GetObjectItem(arguments, "ip")->valuestring, "any");
+    cJSON_Delete(payload);
+}
+
+// The re-enrollment deadline (epoch ms) travels as `arguments.deadline_ms` only when positive; zero means
+// "no deadline" and the member is absent.
+static void test_create_agent_add_payload_carries_deadline_ms(void **state) {
+    (void)state;
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1760000000000LL);
+    assert_non_null(payload);
+    cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
+    assert_non_null(arguments);
+    cJSON* deadline = cJSON_GetObjectItem(arguments, "deadline_ms");
+    assert_true(cJSON_IsNumber(deadline));
+    assert_true((int64_t)deadline->valuedouble == 1760000000000LL);
+    cJSON_Delete(payload);
+
+    payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+    assert_non_null(payload);
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(payload, "arguments"), "deadline_ms"));
     cJSON_Delete(payload);
 }
 
@@ -1380,6 +1399,7 @@ int main(void) {
         cmocka_unit_test(test_create_agent_add_payload_carries_token_id),
         cmocka_unit_test(test_create_agent_add_payload_carries_reenroll_credential),
         cmocka_unit_test(test_create_agent_add_payload_carries_source),
+        cmocka_unit_test(test_create_agent_add_payload_carries_deadline_ms),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_parse_agent_add_response_logs_only_without_error_code),
         cmocka_unit_test(test_os_write_agent_info_success),
