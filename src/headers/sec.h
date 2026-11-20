@@ -52,6 +52,7 @@ typedef struct _keyentry {
     char *encryption_key;
     char *name;
     _Atomic (bool) post_startup;
+    _Atomic (bool) shutdown_received;   ///< The last control message from the agent was a shutdown
 
     ino_t inode;
 
@@ -196,8 +197,8 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
 // Add socket number into keystore
 int OS_AddSocket(keystore * keys, unsigned int i, int sock);
 
-// Delete socket number from keystore
-int OS_DeleteSocket(keystore * keys, int sock);
+// Delete socket number from keystore. Returns a copy of the agent's entry if it was its current socket, or NULL.
+keyentry * OS_DeleteSocket(keystore * keys, int sock);
 
 /**
  * @brief Get agent's network protocol from keystore given its agent id

@@ -60,6 +60,7 @@ typedef enum agent_status_code_t {
         HC_SHUTDOWN_RECV,       ///< Shutdown message received
         NO_KEEPALIVE,           ///< Disconnected because no keepalive received
         RESET_BY_MANAGER,       ///< Connection reset by manager
+        CONNECTION_CLOSED,      ///< TCP connection closed without a shutdown message
 } agent_status_code_t;
 
 /* wdb_exec_row_stmt modes */
