@@ -1808,6 +1808,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
         } else {
             key_unlock();
+
+            if (sock_idle >= 0) {
+                _close_sock(&keys, sock_idle);
+            }
+
             rem_inc_recv_dequeued();
         }
         return;
