@@ -31,10 +31,13 @@ class UserGroupsProvider
                                     std::shared_ptr<IODUtilsWrapper> odWrapper,
                                     std::shared_ptr<IUUIDWrapper> uuidWrapper);
         UserGroupsProvider();
+        /// @brief One row (uid, gid) for each group the accounts are direct members of, primary group included.
         nlohmann::json collect(const std::set<uid_t>& uids = {});
 
+        /// @brief Names of the accounts that are direct members of each group, as collect() reports them.
         nlohmann::json getUserNamesByGid(const std::set<gid_t>& gids);
 
+        /// @brief Names of the groups each account is a direct member of; nested groups are not followed.
         nlohmann::json getGroupNamesByUid(const std::set<uid_t>& uids);
 
         /// @brief Names of the groups of one account counting nested groups, as sudo sees them.
