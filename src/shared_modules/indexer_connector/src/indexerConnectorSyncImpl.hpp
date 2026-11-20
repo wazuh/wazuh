@@ -505,8 +505,8 @@ class IndexerConnectorSyncImpl final
     /// The single definition of the rule: the HTTP status AND the error type must both say so, so a
     /// body that merely quotes `index_not_found_exception` inside another error (a
     /// `search_phase_execution_exception` with it as `caused_by`, a 500) is NOT a missing index.
-    /// Callers classify on it (the scanner's `IndexerErrorHelper` reads the same two facts back off
-    /// the exception), so it may not drift between the search and the update_by_query paths.
+    /// Callers classify on it (the scanner's `vulnscan::isMissingIndexResponse` reads the same two
+    /// facts back off the exception), so it may not drift between the search and the update_by_query paths.
     static bool isIndexNotFound(const long statusCode, const std::string& responseBody)
     {
         return statusCode == HTTP_NOT_FOUND && responseBody.find("index_not_found_exception") != std::string::npos;
@@ -1541,6 +1541,10 @@ public:
 
         nlohmann::json resultJson;
         bool needToRetry = false;
+        // Status of the last failed attempt when it was a 502/503/504, 0 otherwise (429, transport):
+        // the exhaustion exception carries it so callers can tell an indexer that could not serve the
+        // read from a rate-limited or unreachable one.
+        long lastServerStatus {0};
         std::optional<std::string> invalidResponse;
 
         // The parse failure must be caught here, not left to propagate: HTTPRequest::post() runs
@@ -1566,9 +1570,10 @@ public:
             }
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError = [this, &needToRetry, &lastServerStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
@@ -1656,7 +1661,8 @@ public:
                 if (retryBudget.exhausted(retryDelay))
                 {
                     throw IndexerConnectorException("Search query retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    lastServerStatus);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);

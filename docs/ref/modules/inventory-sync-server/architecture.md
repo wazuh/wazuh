@@ -136,7 +136,8 @@ agent saw 200" always means "the indexer accepted the data". A failed flush fail
 batch; the status is picked by connector availability — `503` when the indexer is the problem
 (the agent retries, exactly like any other not-ready condition), `500` otherwise (same retry, but
 the log line is operator-actionable). One failure skips the availability check: when the indexer
-answered a read (the checksum's) with a `5xx`, the session is answered `503` at once, with the
+answered a read (the checksum's) with a `5xx`, the session is answered `503` without that check
+(for a `502`/`503`/`504`, once the connector's retry budget for the read is spent), with the
 generic body and no `Retry-After`, because the answer is the indexer's own and the last health
 check can still say "available" while a node restarts. It is never `409`: no mismatch was
 calculated. A `5xx` on a write follows the rule above, and any other read failure (a `4xx`, a
@@ -443,7 +444,7 @@ answers to) lives in the module's in-tree developer README,
 | 5 | **The in-flight byte budget is the size limit** — no per-request body cap by default. A session declaring more than the total budget answers `413`. | One limit that actually bounds memory, instead of two that can contradict each other. |
 | 6 | **Per-agent ordering by sharding**, not by locking: `hash(agentId) % workers`, one connector per worker, group commit. | Ordering becomes a topology property; the indexer sees few large bulks; no shared connector state on the hot path. |
 | 7 | **A `200` means flushed.** Bulk responses wait for the group commit; immediate sessions flush inside their own execution. | "The agent saw success" and "the indexer has the data" can never diverge. |
-| 8 | **Checksum verification is one attempt on the server, no retry loop.** Mismatch answers `409`; the agent repeats the check and, once the mismatch is confirmed on every attempt, full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison inside the server only delays the answer; whether to check again is the agent's call. |
+| 8 | **Checksum verification has no retry loop of its own on the server** (only the connector's, which repeats a read answered `502`/`503`/`504` within its retry budget). Mismatch answers `409`; the agent repeats the check and, once the mismatch is confirmed on every attempt, full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison inside the server only delays the answer; whether to check again is the agent's call. |
 | 9 | **VD sessions scan synchronously, and the scan gates indexing** — scan → ok → index → `200`; failure → `500` with nothing indexed. | A VD `200` certifies both halves; there is no window where inventory exists without its scan. |
 | 10 | **Feed not ready ⇒ `503` + `Retry-After`, rejected without processing.** Nobody blocks waiting for the CVE feed. | The re-POST applies ingest and scan together; threads are never parked on a download that can take minutes. |
 | 11 | **A short scan-lane queue** with immediate `503` on overflow, and per-agent cross-lane exclusion through a shared registry. | Early rejection beats late timeout; the pipeline and the lane can never interleave one agent's operations. |

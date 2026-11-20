@@ -5609,8 +5609,13 @@ TEST_F(IndexerConnectorSyncTest, SearchWithPitFlagRefusalKeepsStatus)
     EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
 }
 
+// A 503 refusal is retried like any other 503 and, once the budget is spent, keeps its status; a 500
+// refusal is not retried.
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryRefusalKeepsStatus)
 {
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
     for (const long status : {503L, 500L})
     {
         auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -5634,8 +5639,101 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryRefusalKeepsStatus)
         const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
 
         EXPECT_EQ(e.statusCode(), status);
-        EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
-        EXPECT_EQ(postCalls, 1) << "status " << status;
+        if (status == 503)
+        {
+            EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+            EXPECT_EQ(postCalls, 2) << "status " << status;
+        }
+        else
+        {
+            EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+            EXPECT_EQ(postCalls, 1) << "status " << status;
+        }
+    }
+}
+
+// The exhaustion exception carries the status of the last attempt when it was a 502/503/504.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryExhaustionKeepsTheLastServerStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    const std::vector<std::pair<std::vector<long>, long>> cases {
+        {{502L, 502L}, 502L}, {{504L, 504L}, 504L}, {{502L, 504L}, 504L}, {{504L, 502L}, 502L}};
+
+    for (const auto& [statuses, expectedStatus] : cases)
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, &statuses = statuses](auto, auto postParams, const ConfigurationParameters&)
+                {
+                    const auto index = std::min(static_cast<std::size_t>(postCalls), statuses.size() - 1);
+                    ++postCalls;
+                    answerError(postParams, "Server error", statuses[index], R"({"error":"cluster unavailable"})");
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json query;
+        query["query"] = MATCH_ALL;
+
+        const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted)
+            << "last status " << expectedStatus;
+        EXPECT_EQ(e.statusCode(), expectedStatus);
+        EXPECT_EQ(std::string(e.what()), "Search query retry budget exhausted");
+        EXPECT_EQ(postCalls, 2) << "last status " << expectedStatus;
+    }
+}
+
+// A last attempt answered 429, or with no HTTP response at all, leaves the exhaustion without a status,
+// even after a 503.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryExhaustionAfterA429HasNoStatus)
+{
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
+    for (const long lastStatus : {429L, -1L})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        NiceMock<MockHTTPRequest> localHttpRequest;
+        int postCalls = 0;
+        EXPECT_CALL(localHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&postCalls, lastStatus](auto, auto postParams, const ConfigurationParameters&)
+                {
+                    if (++postCalls == 1)
+                    {
+                        answerError(postParams, "Server error", 503, R"({"error":"cluster unavailable"})");
+                    }
+                    else if (lastStatus == 429L)
+                    {
+                        answerError(postParams, "Too many requests", lastStatus);
+                    }
+                    else
+                    {
+                        answerError(postParams, "Couldn't connect to server", lastStatus);
+                    }
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &localHttpRequest, std::move(mockSelector));
+
+        nlohmann::json query;
+        query["query"] = MATCH_ALL;
+
+        const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
+
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted) << "last status " << lastStatus;
+        EXPECT_EQ(e.statusCode(), 0) << "last status " << lastStatus;
+        EXPECT_EQ(postCalls, 2) << "last status " << lastStatus;
     }
 }
 
@@ -5667,6 +5765,9 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryMissingIndexKeepsStatusAndMes
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationRefusalOnSecondPagePropagates)
 {
+    config["max_retry_attempts"] = 2;
+    config["max_retry_duration_seconds"] = 0;
+
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
@@ -5703,8 +5804,9 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationRefusalOnSecond
         });
 
     EXPECT_EQ(callbackCount, 1);
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
     EXPECT_EQ(e.statusCode(), 503);
-    EXPECT_EQ(postCalls, 2) << "The refused page must not be retried";
+    EXPECT_EQ(postCalls, 3) << "One request for the first page and two for the refused page, within the budget";
 }
 
 // =============================================================================
@@ -7726,8 +7828,11 @@ TEST_F(IndexerConnectorSyncTest, SearchQueryBudgetBounds429Retries)
 
     IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    EXPECT_THROW(connector.executeSearchQuery("test-index", nlohmann::json::object()), IndexerConnectorException);
+    const auto e =
+        captureException([&connector]() { connector.executeSearchQuery("test-index", nlohmann::json::object()); });
     EXPECT_EQ(postCount.load(), 2);
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    EXPECT_EQ(e.statusCode(), 0);
 }
 
 /// The deadline half of the budget: with attempts unbounded, a short deadline still fails the

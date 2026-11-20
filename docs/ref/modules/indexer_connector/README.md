@@ -112,7 +112,8 @@ sync `_bulk` flush, each drawing on the budget below:
   the search parses inside its success callback and raises the failure itself.
 - Retried attempts are logged at debug level 2 and never warn. When the budget is spent the operation
   throws `Search query retry budget exhausted` / `Update by query retry budget exhausted`
-  (`Category::RetryExhausted`, `statusCode() == 0`).
+  (`Category::RetryExhausted`). `statusCode()` is `0`, except on a search whose last attempt was
+  answered `502`/`503`/`504`: it then carries that status.
 
 **How the delay scales:**
 
@@ -195,10 +196,11 @@ achieve leaves documents nothing will ever overwrite:
   respectively (the ` - <body>` suffix is present only when the response has a body: a transport failure
   carries just the transport error), and `statusCode()` carries `N`. OpenSearch puts the error type (e.g.
   `index_not_found_exception`) near the start of the body, so it survives the truncation; consumers such
-  as the scanner's `IndexerErrorHelper` rely on it. **A spent retry budget is the one failure that does not
-  take that shape**: it throws `Search query retry budget exhausted` / `Update by query retry budget
-  exhausted` under `Category::RetryExhausted`, with no status in the text and `statusCode() == 0`, and the
-  connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
+  as the scanner's `vulnscan::isMissingIndexResponse` rely on it. **A spent retry budget is the one failure
+  that does not take that shape**: it throws `Search query retry budget exhausted` / `Update by query retry
+  budget exhausted` under `Category::RetryExhausted`, with no status in the text; `statusCode()` is the
+  status of the last attempt when a search's last attempt was answered `502`/`503`/`504`, and `0` otherwise
+  (a `429`, a transport failure, every update-by-query). The connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
   by text must treat it as a failed read and must not look for a status in it. `executeUpdateByQuery` also
   throws `Update by query version conflict` on a request-level `409`, which is a warning and is not
   retried. `executeSearchQuery` throws `Search query returned an invalid response: <parse error> -
@@ -247,13 +249,15 @@ holds them is stopping: it replies `200`, leaves those shards' documents out and
 - **HTTP errors keep their status.** A failed PIT creation or search, with or without a PIT, carries
   the indexer's status in `statusCode()`, so a `404` still means a missing index or document and a
   refusal is reported as the `503`/`500` it is.
-- **Nothing is retried here except a `429`.** `IndexerConnectorSync` repeats a search answered `429`
-  within its retry budget; every other failure, a refusal included, goes to the caller without a
-  retry. The PIT callers repeat the whole read (the engine's content sync, the vulnerability feed's
+- **Only the searches without a PIT retry a refusal.** `IndexerConnectorSync` repeats a PIT search
+  answered `429` within its retry budget; every other PIT failure, a refusal included, goes to the
+  caller without a retry. `executeSearchQuery()` retries a refused search answered `503` within the
+  same budget as any other `502`/`503`/`504` (see the table above); a `500` refusal is not retried, and
+  a spent budget throws `Category::RetryExhausted` with the status of the last attempt when it was a `502`/`503`/`504` (`0` otherwise). The PIT callers repeat the whole read (the engine's content sync, the vulnerability feed's
   page retry). What each caller of the synchronous searches does with a refusal: the vulnerability scanner fails the scan (a feed-update
   rescan marks the agent's scan as incomplete; the baseline's probe of the indices a scan reads takes it as "cannot be read" and does
   not count that pass against the agents); the `inventory_sync_server` checksum answers a generic `503` without `Retry-After`
-  when the indexer answered `5xx`; the feed downloader's polls count the refusal as a failed query and keep waiting, with no
+  when the indexer answered `5xx` (after the connector's retries for a `502`/`503`/`504`); the feed downloader's polls count the refusal as a failed query and keep waiting, with no
   limit.
 - **A red cluster gets no request at all.** The health monitor takes a node whose cluster reports
   `red` out of rotation, so the call fails earlier with `No available server`. A refusal is only
