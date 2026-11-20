@@ -52,6 +52,12 @@ class PolicyParser
         /// @return A populated SCAPolicy object.
         std::unique_ptr<ISCAPolicy> ParsePolicy(nlohmann::json& policiesAndChecks);
 
+        /// @brief Whether the last ParsePolicy call returned null because the policy id was already loaded.
+        bool SkippedAsDuplicate() const
+        {
+            return m_skippedAsDuplicate;
+        }
+
     private:
         /// @brief Replaces variables in the JSON document with their values.
         /// @param jsonNode The JSON object to process.
@@ -68,6 +74,9 @@ class PolicyParser
 
         /// @brief Flag indicating whether remote is enabled
         bool m_commandsEnabled;
+
+        /// @brief Set when the policy file was skipped for repeating an already loaded policy id.
+        bool m_skippedAsDuplicate = false;
 
         /// @brief Map of variables found in the YAML file, used for substitution.
         PolicyVariables m_variablesMap;

@@ -31,7 +31,6 @@
 
 STATIC char *w_enrollment_extract_agent_name(void);
 STATIC int w_enrollment_resolve_ip(const char **ip_value);
-STATIC char *w_enrollment_load_password(const char *path);
 STATIC int w_enrollment_store_key_entry(const char *line);
 STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
 STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
@@ -632,8 +631,8 @@ STATIC w_enroll_status_t w_enrollment_handle_answer(const hc_enroll_result_t *re
                 *keep_unknown = true;
                 merror("Enrollment was refused as a duplicate after an earlier attempt in this start timed "
                        "out or got no answer. The manager most likely registered this agent from that "
-                       "attempt. Delete the agent on the manager and enroll again with a new enrollment "
-                       "token.");
+                       "attempt. The agent keeps retrying with the same enrollment token; delete the agent "
+                       "on the manager so a retry can succeed.");
             } else {
                 merror("Enrollment rejected by the manager: duplicate agent.%s%s",
                        manager_message ? " " : "", manager_message ? manager_message : "");
@@ -903,13 +902,7 @@ STATIC int w_enrollment_resolve_ip(const char **ip_value) {
     return 0;
 }
 
-/**
- * @brief Loads the enrollment password from `path`, re-read on every call
- *        (#38465 D6: no caching, so rotating the file needs no restart).
- * @return A newly allocated password, or NULL when the file is missing/empty
- *         (mTLS/open mode -- not an error).
- */
-STATIC char *w_enrollment_load_password(const char *path) {
+char *w_enrollment_load_password(const char *path) {
     if (!path) {
         return NULL;
     }

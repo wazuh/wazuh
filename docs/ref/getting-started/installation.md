@@ -441,12 +441,14 @@ A token comes in three shapes, and every installation method below accepts any o
 |---|---|---|
 | Pinned | the default | Fetches the manager's CA, installs only the certificate that matches the pin in the token as the trust anchor |
 | Embedded CA | `--embed-ca` | Installs every CA certificate the token carries as the trust anchor; no fetch |
-| Credential-less | `--no-credential` | Points the agent at the manager and installs the trust anchor, but presents no enrollment credential |
+| Credential-less | `--no-credential` | Enrolls like the shapes above, with the agent's `authd.pass` as its credential if it has one (see below) |
+
+A credential-less token enrolls through the same verified path as the other shapes: the CA is fetched and pin-checked (or embedded), the enrollment is verified against it whatever `<verification_mode>` says, and the anchor is committed only after it succeeds. It carries no enrollment credential, so it presents the enrollment password configured on the agent (`authd.pass`) if there is one, or no credential, which only a manager that accepts credential-less enrollment honours. It does not depend on `<enrollment><enabled>`. A missing or wrong password is retried for about a minute, then the agent exits naming the password.
 
 In a [CA rotation](../modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation) that changes the CA key, pinned tokens minted before the manager's certificates are replaced, and `--embed-ca` tokens minted before the new CA was added, stop working once the certificates are replaced; agents already enrolled with them are not affected. Mint new ones for any still used to enroll agents once every node's certificate has been replaced.
 
 > [!IMPORTANT]
-> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs and starts normally and then fails to register. The agent log names the token id the manager refused.
+> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs, and its first start then fails: `wazuh-agentd` logs `ERROR: Enrollment token <id> has expired (token_expired). A new enrollment token is needed.` (`(code 9023)` instead when authd, not remoted, refused it) and exits with `CRITICAL: Enrollment-token bootstrap failed: enrollment token <id> has expired. Create a new enrollment token on the manager.` The token is discarded; give the agent a new one with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent). A refusal that can clear on its own, such as a group that does not exist on the manager yet, is retried instead; a refusal that cannot (a malformed request, a refused client certificate, a damaged token) ends the start with the manager's reason and keeps the token, so a fixed configuration and a restart can still use it.
 
 ### Installation methods
 
