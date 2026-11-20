@@ -66,7 +66,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Added a workflow that validates the FIM eBPF whodata events of every syscall on several kernels and filesystems. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
-- Limited the rootcheck hidden-process check on Linux to PIDs up to 32768 by default. The new `rootcheck.max_pid` internal option raises the limit up to 4194304. ([#41313](https://github.com/wazuh/wazuh/issues/41313))
+- Limited the rootcheck hidden-process check on Linux to PIDs up to 32768 by default. The new `rootcheck.max_pid` internal option raises the limit up to 4194304. ([#41313](https://github.com/wazuh/wazuh/issues/41313)) ([#41693](https://github.com/wazuh/wazuh/pull/41693))
 
 #### Removed
 

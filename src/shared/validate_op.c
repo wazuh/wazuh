@@ -270,12 +270,18 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
 
     /* strtoll and not atoi: a value past the int range must be refused, not wrapped */
     if (valid) {
-        long long parsed;
+        long long parsed = 0;
         char *end = NULL;
 
-        errno = 0;
-        parsed = strtoll(value, &end, 10);
-        valid = (errno != ERANGE) && (end != value) && (*end == '\0') && (parsed >= min) && (parsed <= max);
+        /* An option written with no value (<module>.<option>=) has always been read as 0
+         * in 4.x, so it is still accepted wherever 0 is within the range. */
+        if (*value != '\0') {
+            errno = 0;
+            parsed = strtoll(value, &end, 10);
+            valid = (errno != ERANGE) && (end != value) && (*end == '\0');
+        }
+
+        valid = valid && (parsed >= min) && (parsed <= max);
         ret = (int)parsed;
     }
 
