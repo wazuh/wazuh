@@ -913,25 +913,32 @@ def read_group_conf(api, name):
 
 
 def configuration_elements(text):
-    """The top-level elements of an agent.conf as (tag, attributes, text, children).
+    """The top-level elements of an agent.conf as (tag, attributes, text, children), in order.
 
     The manager parses an uploaded agent.conf and writes it back in its own layout (indentation,
     attribute quotes, empty elements), so two copies are compared by what they set, not as text.
+    An escaped \\< or \\> is legal in an agent.conf and not in XML: it is set aside for the parser,
+    as the manager does.
     """
     def shape(element):
         return (element.tag, sorted(element.attrib.items()), (element.text or "").strip(),
                 [shape(child) for child in element])
     body = re.sub(r"^\s*<\?xml[^>]*\?>", "", text or "")
+    body = body.replace("\\<", "_escaped_lt_").replace("\\>", "_escaped_gt_")
     return [shape(e) for e in ElementTree.fromstring("<migration-wrapper>%s</migration-wrapper>" % body)]
 
 
 def holds_configuration(current, carried):
-    """Whether an agent.conf holds every element of the carried one."""
+    """Whether an agent.conf holds the elements of the carried one, together and in their order.
+
+    Later blocks override earlier ones, so the same blocks in another order are another
+    configuration.
+    """
     try:
         have, want = configuration_elements(current), configuration_elements(carried)
     except ElementTree.ParseError:
         return carried.strip() in current
-    return all(element in have for element in want)
+    return any(have[start:start + len(want)] == want for start in range(len(have) - len(want) + 1))
 
 
 def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):

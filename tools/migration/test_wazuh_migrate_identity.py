@@ -201,9 +201,13 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             if name in FakeManager.reject_configurations:
                 return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
             # The real endpoint parses the document and stores it in its own layout, not as sent.
-            pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % body).toprettyxml(indent="  ")
-            FakeManager.configurations[name] = "\n".join(
-                line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
+            # An escaped \\< or \\> is set aside for the parser and restored, as the endpoint does.
+            safe = body.replace("\\<", "_custom_open_tag_").replace("\\>", "_custom_close_tag_")
+            pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % safe).toprettyxml(indent="  ")
+            pretty = "\n".join(line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
+            pretty = pretty.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"").replace("&gt;", ">")
+            FakeManager.configurations[name] = pretty.replace(
+                "_custom_open_tag_", "\\<").replace("_custom_close_tag_", "\\>")
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
             parts = urllib.parse.urlsplit(self.path)
@@ -684,17 +688,27 @@ class MigrationToolTest(unittest.TestCase):
                          "a second import does not append the 4.x settings again")
 
     def test_the_default_group_is_compared_by_what_it_sets(self):
-        self.write_group_file("default", "agent.conf",
-                              "<agent_config os='Linux'>\n  <syscheck>\n"
-                              "    <directories>/root/fim test</directories>\n"
-                              "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
+        first = ("<agent_config os='Linux'>\n  <syscheck>\n"
+                 "    <directories>/root/fim test</directories>\n"
+                 "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
+        second = ("<agent_config>\n  <localfile>\n    <log_format>command</log_format>\n"
+                  "    <command>echo \\< 3</command>\n  </localfile>\n</agent_config>\n")
+        self.write_group_file("default", "agent.conf", first + second)
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         stored = FakeManager.configurations["default"]
         self.assertIn('os="Linux"', stored, "the manager rewrote the attribute quotes")
+        self.assertIn("echo \\< 3", stored, "the escaped bracket is kept")
         self.assertEqual(0, self.check(), "the same settings in another layout are the same settings")
+
         FakeManager.configurations["default"] = stored.replace("/root/fim test", "/root/fimtest")
         self.assertEqual(1, self.check(), "a value that differs by a space is another value")
+
+        head, mark, carried = stored.partition("<!-- Carried from the 4.x default group")
+        blocks = carried.split("<agent_config", 2)
+        swapped = "%s<agent_config%s<agent_config%s" % (blocks[0], blocks[2], blocks[1])
+        FakeManager.configurations["default"] = head + mark + swapped
+        self.assertEqual(1, self.check(), "the same blocks in another order are another configuration")
 
     def test_check_reports_a_default_group_without_the_4x_settings(self):
         self.customize_default()
