@@ -659,6 +659,7 @@ void os_ReportdStart(report_filter *r_filter)
         fclose(fileq->fp);
     }
 
+    os_free(fileq->pending_line);
     free(fileq);
 }
 

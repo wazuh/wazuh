@@ -110,8 +110,23 @@ void FreeAlertData(alert_data *al_data) {
     al_data = NULL;
 }
 
+/* Return the line held from the previous call first, then lines from fp */
+static char *read_alert_line(char *str, FILE *fp, char **pending) {
+    if (pending && *pending) {
+        snprintf(str, OS_MAXSTR, "%s", *pending);
+        os_free(*pending);
+        return str;
+    }
+    return fgets(str, OS_MAXSTR, fp);
+}
+
 /* Return alert data for the file specified */
 alert_data *GetAlertData(int flag, FILE *fp) {
+    return GetAlertData_ex(flag, fp, NULL);
+}
+
+/* Return alert data for the file specified, holding the next header in pending if given */
+alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) {
 
     alert_data *al_data;
     os_calloc(1, sizeof(alert_data), al_data);
@@ -122,7 +137,7 @@ alert_data *GetAlertData(int flag, FILE *fp) {
     char str[OS_MAXSTR + 1];
     str[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, fp) != NULL) {
+    while (read_alert_line(str, fp, pending) != NULL) {
         /* The rest of a line longer than the buffer is not a new line */
         int continued = partial;
         partial = strchr(str, '\n') == NULL;
@@ -143,6 +158,10 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                 _r = 0;
                 issyscheck = 0;
             } else if (_r == 2) {
+                if (pending) {
+                    os_strdup(str, *pending);
+                    return (al_data);
+                }
                 if (fseek(fp, -strlen(str), SEEK_CUR) != -1) {
                     return (al_data);
                 } else {
