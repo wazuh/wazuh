@@ -50,6 +50,16 @@ typedef struct _alert_data {
 } alert_data;
 
 alert_data *GetAlertData(int flag, FILE *fp) __attribute__((nonnull));
+
+/**
+ * @brief Read the next alert from fp.
+ * @param flag CRALERT_* flags.
+ * @param fp Alerts stream.
+ * @param pending If not NULL, holds the next alert's header for the next call instead of seeking back; caller frees it.
+ *                If NULL, fp must be seekable.
+ * @return Alert data, or NULL if no complete alert could be read.
+ */
+alert_data *GetAlertData_ex(int flag, FILE *fp, char **pending) __attribute__((nonnull(2)));
 void        FreeAlertData(alert_data *al_data) __attribute__((nonnull));
 
 #endif /* CRALERT_H */
