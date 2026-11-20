@@ -651,7 +651,7 @@ TEST(ShutdownRace, StopSequenceSurvivesADownloadLookupInFlight)
         remoted::http::ResponseMode::Streamable);
 
     HttpServerConfig config;
-    config.port = static_cast<std::uint16_t>(29000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     server->start(config);
@@ -746,7 +746,7 @@ TEST(ShutdownRace, GrantedDownloadLookupAfterStopAcceptingDoesNotUseFreedPool)
         remoted::http::ResponseMode::Streamable);
 
     HttpServerConfig config;
-    config.port = static_cast<std::uint16_t>(30000 + (::getpid() % 5000));
+    config.port = remoted::test::findFreePort();
     config.certificatePath = certOpt->certPath;
     config.privateKeyPath = certOpt->keyPath;
     server->start(config);
