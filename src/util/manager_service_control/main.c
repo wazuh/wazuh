@@ -74,6 +74,12 @@ static bool authorized_caller(uid_t allowed_uid, uid_t caller_uid, uid_t effecti
     return allowed_uid != (uid_t)-1 && (caller_uid == 0 || caller_uid == allowed_uid) && effective_uid == 0;
 }
 
+/* A root caller (the systemd request unit) needs no set-user-ID bit; any other caller only gets root through it. */
+static bool require_setuid(uid_t caller_uid)
+{
+    return caller_uid != 0;
+}
+
 static uid_t manager_uid(void)
 {
     const long initial_size = sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -404,7 +410,7 @@ int main(int argc, char **argv)
     char process_list_path[PATH_MAX];
     resolve_install_paths(executable_path, bin_path, home_path, control_path, process_list_path);
 
-    validate_path(executable_path, S_IFREG, true);
+    validate_path(executable_path, S_IFREG, require_setuid(caller_uid));
     validate_path(home_path, S_IFDIR, false);
     validate_path(bin_path, S_IFDIR, false);
     validate_path(control_path, S_IFREG, false);
