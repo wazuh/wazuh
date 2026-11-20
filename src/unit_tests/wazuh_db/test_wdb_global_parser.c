@@ -3785,6 +3785,74 @@ void test_wdb_parse_global_restore_backup_invalid_syntax(void **state) {
     os_free(query);
 }
 
+/* A snapshot of the wrong type is refused: it must not be read as "omitted", which restores the newest backup */
+void test_wdb_parse_global_restore_backup_snapshot_not_a_string(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global backup restore {\"snapshot\":5}", query);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: backup restore {\"snapshot\":5}");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid backup JSON: 'snapshot' must be a string.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_backup);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, 'snapshot' must be a string");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+/* A save_pre_restore_state of the wrong type is refused instead of being read as false */
+void test_wdb_parse_global_restore_backup_pre_restore_not_a_boolean(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global backup restore {\"snapshot\":\"global.db-backup-TIMESTAMP\",\"save_pre_restore_state\":\"yes\"}", query);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: backup restore {\"snapshot\":\"global.db-backup-TIMESTAMP\",\"save_pre_restore_state\":\"yes\"}");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid backup JSON: 'save_pre_restore_state' must be a boolean.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_backup);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, 'save_pre_restore_state' must be a boolean");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
 void test_wdb_parse_global_restore_backup_success_missing_snapshot(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int result = OS_INVALID;
@@ -4354,6 +4422,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_backup_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_restore_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_invalid_syntax, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_snapshot_not_a_string, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_pre_restore_not_a_boolean, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_missing_snapshot, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_true, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_restore_backup_success_pre_restore_false, test_setup, test_teardown),

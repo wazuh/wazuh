@@ -142,7 +142,10 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 > lists it: the `global.db-backup` prefix, a `.gz` suffix, only letters, digits and `-_.:`, no `..`. Any
 > other name is rejected with `err Invalid snapshot name` before any pre-restore backup is taken; the
 > same check applies to the most recent file chosen when `snapshot` is omitted. When `backup/db/` holds
-> no backup at all the answer is `err Unable to found a snapshot to restore`.
+> no backup at all the answer is `err Unable to found a snapshot to restore`. A key that is present with
+> the wrong type is refused, never read as omitted: a `snapshot` that is not a string answers
+> `err Invalid JSON data, 'snapshot' must be a string`, and a `save_pre_restore_state` that is not a
+> boolean answers `err Invalid JSON data, 'save_pre_restore_state' must be a boolean`; nothing is restored.
 
 > **Note on `insert-agent`:** `id` (number), `name` (string) and `date_add` (number) are required; `ip`,
 > `register_ip`, `internal_key`, `reenroll_secret` and `group` are optional strings. A missing required

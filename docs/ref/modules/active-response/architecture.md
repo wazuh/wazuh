@@ -187,7 +187,10 @@ credentials and merged into the payload delivered to agents (and written to thei
 the manager can read onto an agent. The pattern accepts one concrete index of the
 `wazuh-events-v5-` or `wazuh-findings-v5-` family — a rolled-over index or a data stream's
 `.ds-` backing index included — in lowercase `[a-z0-9._-]`, so nothing the indexer would expand
-into more than that index (`,`, `*`, `?`, `<date math>`, `cluster:`) gets through. A response
+into more than that family member (`,`, `*`, `?`, `<date math>`, `cluster:`) gets through. A
+reference may also name the data stream itself (`wazuh-events-v5-security`): a stream cannot be
+read by id, so an event not found under the given name is looked up with an ids query on that
+same name. A response
 from a monitor over any other index is discarded at validation.
 
 The indexer's own template (`dynamic: strict`) rejects unknown field names and nothing else: it

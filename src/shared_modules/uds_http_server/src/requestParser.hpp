@@ -117,6 +117,18 @@ namespace wazuh::uds_http
             return m_rejectStatus;
         }
 
+        /**
+         * @brief Whether the request verb is one a route can be registered under.
+         *
+         * Method has no value for HEAD, OPTIONS, TRACE and the other verbs the parser recognises,
+         * so request().method reads Get for them; routing must consult this first, or such a
+         * request would run the GET handler of its path.
+         */
+        bool methodSupported() const noexcept
+        {
+            return m_methodSupported;
+        }
+
         /// @brief The request built so far. Only final once the verdict is Complete.
         HttpRequest& request() noexcept
         {
@@ -151,6 +163,7 @@ namespace wazuh::uds_http
         Limits m_limits;
         std::uint64_t m_declaredContentLength {0};
         int m_rejectStatus {0};
+        bool m_methodSupported {true};
     };
 
 } // namespace wazuh::uds_http

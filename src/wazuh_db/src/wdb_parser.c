@@ -1590,10 +1590,22 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
-        char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
+        cJSON* j_snapshot = cJSON_GetObjectItem(j_parameters, "snapshot");
         cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
-        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : false;
-        result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+
+        /* A key that is present with the wrong type is a malformed request, not an omitted key:
+         * answering it as "restore the most recent backup" would replace the live database. */
+        if (j_snapshot && !cJSON_IsString(j_snapshot)) {
+            mdebug1("Invalid backup JSON: 'snapshot' must be a string.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, 'snapshot' must be a string");
+        } else if (j_save_pre_restore_state && !cJSON_IsBool(j_save_pre_restore_state)) {
+            mdebug1("Invalid backup JSON: 'save_pre_restore_state' must be a boolean.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, 'save_pre_restore_state' must be a boolean");
+        } else {
+            char* snapshot = cJSON_GetStringValue(j_snapshot);
+            bool save_pre_restore_state = cJSON_IsTrue(j_save_pre_restore_state);
+            result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+        }
     }
 
     cJSON_Delete(j_parameters);

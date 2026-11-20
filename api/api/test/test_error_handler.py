@@ -13,7 +13,7 @@ from connexion.exceptions import HTTPException, ProblemException, Unauthorized
 from connexion.lifecycle import ConnexionRequest
 from api.error_handler import _cleanup_detail_field, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
-    expect_failed_error_handler, recursion_error_handler, ERROR_CONTENT_TYPE
+    expect_failed_error_handler, recursion_error_handler, unicode_decode_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import ExpectFailedException
 
@@ -177,3 +177,19 @@ async def test_recursion_error_handler_pretty(mock_build, query_params, expected
 
     mock_build.assert_called_once_with(pretty=expected_pretty)
     assert result == expected_response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('query_params', [{}, {'pretty': 'true'}])
+async def test_unicode_decode_error_handler(query_params):
+    """A body that is not valid UTF-8 is a 400 with error 1911, in the problem shape, not a bare 500."""
+    request = MagicMock(spec=ConnexionRequest)
+    request.query_params = query_params
+    exc = UnicodeDecodeError('utf-8', b'{"name":"\xff"}', 9, 10, 'invalid start byte')
+
+    response = await unicode_decode_error_handler(request, exc)
+
+    assert response.status_code == 400
+    assert response.content_type == ERROR_CONTENT_TYPE
+    assert json.loads(response.body) == {'title': 'Bad Request', 'detail': 'Error parsing body request to UTF-8',
+                                         'error': 1911}

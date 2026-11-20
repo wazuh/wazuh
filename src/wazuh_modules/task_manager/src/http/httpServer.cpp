@@ -13,6 +13,7 @@
 #include "metrics/metricNames.hpp"
 #include "taskManagerLog.hpp"
 
+#include <uds_http_server/jsonNestingDepth.hpp>
 #include <uds_http_server/udsHttpServerFactory.hpp>
 #include <wazuh_metrics/jsonDump.hpp>
 
@@ -83,6 +84,17 @@ namespace task_manager::http
                             {
                                 responder->send(
                                     HttpResponse::json(400, R"({"error":"invalid_json","message":"empty request"})"));
+                                return;
+                            }
+
+                            // Before a DOM exists: the handlers serialise the payload they store, and
+                            // dump() recurses once per level, so a deep enough body would overflow this
+                            // thread's stack and take the whole of modulesd down.
+                            if (wazuh::uds_http::exceedsNestingDepth(request->body))
+                            {
+                                responder->send(HttpResponse::json(
+                                    400,
+                                    R"({"error":"invalid_json","message":"body nests deeper than the allowed limit"})"));
                                 return;
                             }
 

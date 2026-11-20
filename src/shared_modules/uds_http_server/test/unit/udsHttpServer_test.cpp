@@ -137,6 +137,36 @@ TEST(UdsHttpServerTest, WrongMethodAnswers405WithAllowHeader)
     EXPECT_EQ("POST", response.header("Allow"));
 }
 
+// A verb that has no Method value must not run the GET handler of the path: 405 with Allow where the
+// path exists, 404 where it does not.
+TEST(UdsHttpServerTest, VerbsWithoutAMethodValueNeverReachAGetHandler)
+{
+    const auto path = uniqueSocketPath("verbs");
+    auto server = makeUdsHttpServer();
+    std::atomic<int> calls {0};
+    server->addRoute(Method::Get,
+                     "/status",
+                     [&calls](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         ++calls;
+                         responder->send(HttpResponse::json(200, "{}"));
+                     });
+    server->start(configFor(path));
+
+    for (const auto* verb : {"HEAD", "OPTIONS", "TRACE", "PROPFIND"})
+    {
+        const auto response = sendRaw(path, peerRequest(verb, "/status", ""));
+        EXPECT_EQ(405, response.status) << verb;
+        EXPECT_EQ("GET", response.header("Allow")) << verb;
+    }
+    EXPECT_EQ(404, sendRaw(path, peerRequest("OPTIONS", "/nope", "")).status);
+    EXPECT_EQ(0, calls.load());
+
+    // Control: the registered verb still reaches it
+    EXPECT_EQ(200, sendRaw(path, peerRequest("GET", "/status", "")).status);
+    EXPECT_EQ(1, calls.load());
+}
+
 TEST(UdsHttpServerTest, RoutingIgnoresTheQueryString)
 {
     const auto path = uniqueSocketPath("query");

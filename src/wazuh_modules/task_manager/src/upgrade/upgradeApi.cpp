@@ -13,6 +13,7 @@
 #include "taskManagerLog.hpp"
 
 #include <json.hpp>
+#include <uds_http_server/jsonNestingDepth.hpp>
 
 #include <utility>
 
@@ -58,6 +59,13 @@ namespace task_manager::upgrade
         try
         {
             if (!request)
+            {
+                send(responder, buildFailureResponse(UpgradeError::ParsingError, {}));
+                return;
+            }
+
+            // Checked on the raw text: nlohmann recurses once per level when it copies or serialises.
+            if (wazuh::uds_http::exceedsNestingDepth(request->body))
             {
                 send(responder, buildFailureResponse(UpgradeError::ParsingError, {}));
                 return;

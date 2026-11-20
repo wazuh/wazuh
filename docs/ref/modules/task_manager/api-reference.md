@@ -61,7 +61,7 @@ and `504` when a handler has not answered within the transport's 300 s response 
 
 | Status | `error` | When |
 |---|---|---|
-| `400` | `invalid_json` | the body is not valid JSON (a valid non-object body is treated as `{}`) |
+| `400` | `invalid_json` | the body is not valid JSON (a valid non-object body is treated as `{}`), or it nests objects and arrays deeper than 256 levels (`body nests deeper than the allowed limit`) |
 | `400` | `parsing_error` | a required field is missing, empty or out of range — the message names it |
 | `404` | `not_found` | `/v1/manager-tasks/get` for an id with no row |
 | `413` | `payload_too_large` | the serialized `payload` exceeds `max_payload_bytes` (message `payload exceeds max_payload_bytes (<limit>)` on the agent-task routes, `payload exceeds max_payload_bytes` on `/v1/manager-tasks`) |

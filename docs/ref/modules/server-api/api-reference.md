@@ -580,7 +580,7 @@ Errors follow a structured JSON response format.
 
 | HTTP Code | Meaning           | Notes                    |
 |-----------|-------------------|--------------------------|
-| 400       | Bad Request       | Invalid parameters       |
+| 400       | Bad Request       | Invalid parameters. A request body that is not valid UTF-8 carries error `1911` (`Error parsing body request to UTF-8`), on JSON and XML operations alike |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied a single-resource or mutating call (list endpoints answer `200` with empty results instead), or the client IP is blocked after too many failed logins (`6000`) |
 | 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |

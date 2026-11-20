@@ -136,6 +136,31 @@ TEST_F(StatefulEndpointE2ETest, AnAllSkippedSessionAnswersNoOp)
     EXPECT_TRUE(m_events->syncOps().empty());
 }
 
+// The agent chooses the index name: it must not reach the log raw, or a newline in it forges a line
+// of another daemon, and one line per skipped document lets the agent write to the log at will.
+TEST_F(StatefulEndpointE2ETest, SkippedIndexNamesAreEscapedAndLoggedOncePerSession)
+{
+    ValueSpec forged;
+    forged.index = "evil\n2026/01/01 00:00:00 authd: ERROR: forged \x1b[31m";
+    std::vector<ValueSpec> values(5, forged);
+    for (std::size_t i = 0; i < values.size(); ++i)
+    {
+        values[i].id = "doc-" + std::to_string(i);
+    }
+
+    const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, values);
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
+
+    EXPECT_EQ(200, response.status) << response.body;
+    EXPECT_TRUE(m_events->syncOps().empty());
+    EXPECT_TRUE(LogRecorder::sawMessageContaining(
+        "Skipping bulk entry for agent 001: index 'evil\\x0a2026/01/01 00:00:00 authd: ERROR: forged "
+        "\\x1b[31m' does not belong to the wazuh-states-* family."));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("evil\n2026"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining(
+        "Skipped 4 more bulk entries of agent 001 in this session, for the reasons logged above."));
+}
+
 TEST_F(StatefulEndpointE2ETest, ADocumentWithADottedIdentityIsSkippedAndTheRestIsIndexed)
 {
     // Over the real endpoint: agent 001 sends one honest document and one carrying a dotted
