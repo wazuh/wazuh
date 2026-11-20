@@ -251,6 +251,21 @@ TEST_F(JsonRuntime, AssignmentCopyMove)
     ASSERT_NO_THROW(Json doc2 = std::move(doc););
 }
 
+TEST_F(JsonRuntime, ExistsReportsTheInvalidPointer)
+{
+    const Json doc {R"({"key":"value"})"};
+
+    try
+    {
+        doc.exists("key");
+        FAIL() << "An invalid pointer did not throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "Invalid pointer path 'key'");
+    }
+}
+
 TEST_F(JsonRuntime, Exists)
 {
     // One level deep
@@ -2603,6 +2618,31 @@ TEST_F(JsonSettersTest, Erase)
     ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
 }
 
+TEST_F(JsonSettersTest, EraseTakesTheWholeLastTokenAsTheMemberName)
+{
+    using namespace std::string_view_literals;
+
+    Json jObj {R"({"a":1,"a\u0000b":2,"nested":{"a":1,"a\u0000b":2},"arr":[0,1,2]})"};
+
+    ASSERT_TRUE(jObj.erase("/a\0b"sv));
+    ASSERT_EQ(jObj, Json {R"({"a":1,"nested":{"a":1,"a\u0000b":2},"arr":[0,1,2]})"});
+    // The member named by the part before the NUL is not a match
+    ASSERT_FALSE(jObj.erase("/a\0b"sv));
+    ASSERT_TRUE(jObj.exists("/a"));
+
+    ASSERT_TRUE(jObj.erase("/nested/a\0b"sv));
+    ASSERT_EQ(jObj, Json {R"({"a":1,"nested":{"a":1},"arr":[0,1,2]})"});
+
+    // Tokens without a NUL and array indexes behave as before
+    ASSERT_TRUE(jObj.erase("/arr/1"));
+    ASSERT_FALSE(jObj.erase("/arr/2"));
+    ASSERT_FALSE(jObj.erase("/arr/x"));
+    ASSERT_FALSE(jObj.erase("/a/b"));
+    ASSERT_FALSE(jObj.erase("/missing/a"));
+    ASSERT_TRUE(jObj.erase("/nested/a"));
+    ASSERT_EQ(jObj, Json {R"({"a":1,"nested":{},"arr":[0,2]})"});
+}
+
 TEST_F(JsonSettersTest, MergeObjRootRecursive)
 {
     Json jObjSrc {R"({
@@ -3014,6 +3054,33 @@ TEST_F(JsonSettersTest, MergeRefFailCases)
 
     // Merging into a non-object non-array
     ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge_obj", "/key1"), std::runtime_error);
+}
+
+TEST_F(JsonSettersTest, MergeRefErrorsNameTheSourcePointer)
+{
+    Json jObj {R"({"dst":{"a":1}})"};
+
+    try
+    {
+        jObj.merge(json::NOT_RECURSIVE, "/missing", "/dst");
+        FAIL() << "A missing source did not throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "Path '/missing' not found");
+    }
+
+    try
+    {
+        jObj.merge(json::NOT_RECURSIVE, "missing", "/dst");
+        FAIL() << "An invalid source pointer did not throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "Invalid pointer path 'missing'");
+    }
+
+    ASSERT_EQ(jObj, Json {R"({"dst":{"a":1}})"});
 }
 
 // json getJson test
