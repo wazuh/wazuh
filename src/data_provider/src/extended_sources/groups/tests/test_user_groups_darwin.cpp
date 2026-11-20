@@ -598,6 +598,22 @@ TEST_F(UserGroupsProviderDarwinTest, UnreadableUserGuidsReportNoGroupsAndAreNotC
     EXPECT_EQ(env.collect(false).size(), 2u);
 }
 
+TEST_F(UserGroupsProviderDarwinTest, AccountWithoutGuidIsNotMatchedByAnEmptyGuidEntry)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        // A group that lists an empty GUID must not match an account that has no GUID.
+        out["share"].uuids.insert("");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0]["gid"], 20);
+}
+
 TEST_F(UserGroupsProviderDarwinTest, AccountWithoutGuidIsStillFoundByName)
 {
     DirectoryCase env;

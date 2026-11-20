@@ -94,7 +94,7 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_
 
     for (const auto& group : m_groups)
     {
-        const bool listed = group.members.names.count(lowerName) != 0 || !uuid.empty() && group.members.uuids.count(uuid) != 0;
+        const bool listed = group.members.names.count(lowerName) != 0 || (!uuid.empty() && group.members.uuids.count(uuid) != 0);
 
         if (listed && group.gid != primaryGid)
         {
