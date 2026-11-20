@@ -982,7 +982,7 @@ components:
           format: int32
           default: 0
           minimum: 0
-          maximum: 5
+          maximum: 6
 
     AgentAddBody:
       type: object

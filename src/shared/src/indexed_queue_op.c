@@ -243,6 +243,29 @@ int indexed_queue_upsert_ex(w_indexed_queue_t *queue, const char *key, void *dat
     }
 }
 
+int indexed_queue_upsert_ex_nowait(w_indexed_queue_t *queue, const char *key, void *data) {
+    if (!queue || !key || !data) {
+        return -1;
+    }
+
+    w_mutex_lock(&queue->mutex);
+
+    int result = 1;
+    w_indexed_queue_entry_t *entry = rbtree_get(queue->index, key);
+    if (entry) {
+        if (queue->dispose) {
+            queue->dispose(entry->data);
+        }
+        entry->data = data;
+        entry->queue_node->data = data;
+    } else if (result = indexed_queue_push(queue, key, data), result == 0) {
+        w_cond_signal(&queue->available);
+    }
+
+    w_mutex_unlock(&queue->mutex);
+    return result;
+}
+
 void *indexed_queue_get(const w_indexed_queue_t *queue, const char *key) {
     if (!queue || !key) {
         return NULL;
