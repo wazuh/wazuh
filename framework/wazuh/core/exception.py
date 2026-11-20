@@ -303,7 +303,8 @@ class WazuhException(Exception):
                },
         1903: {'message': 'The manager service-control helper could not be run',
                'remediation': 'Check that `bin/wazuh-manager-service-control` is installed as `root:wazuh-manager` '
-                              'with mode 4750, or restart the manager on the node with `systemctl restart '
+                              'with mode 4750 or, when systemd runs it, that `var/run` is writable by the '
+                              '`wazuh-manager` group; or restart the manager on the node with `systemctl restart '
                               'wazuh-manager`'
                },
         1904: {'message': 'The manager service-control helper refused the {action} request ({detail})',
