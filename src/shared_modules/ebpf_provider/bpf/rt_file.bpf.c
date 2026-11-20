@@ -181,7 +181,8 @@ struct
  *                                 cgroup_allow_map are submitted.
  *
  * Each program checks this (cgroup_wanted()) before resolving the event's path,
- * so a discarded event costs no path walk either.
+ * so a discarded event costs no path walk either. A handle can also list file
+ * names (name_wanted()), checked right after and just as early.
  *
  * A filtered-out event is NOT counted as a drop. Drops mean "the consumer
  * wanted this and lost it"; a filter miss means "the consumer never asked".
@@ -211,6 +212,9 @@ struct
  * path is never taken. */
 #define FILTER_CFG_KEY_V1_SUBSYS 2
 
+/* Non-zero when this handle filters on file names (name_filter_map). */
+#define FILTER_CFG_KEY_NAMES 3
+
 /* An upper bound for the verifier, not a kernel limit. CGROUP_SUBSYS_COUNT is
  * build-dependent (15 on the hosts measured); anything at or above this is
  * refused rather than read. */
@@ -224,7 +228,7 @@ struct
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __type(key, __u32);
     __type(value, __u32);
-    __uint(max_entries, 3);
+    __uint(max_entries, 4);
 } filter_cfg SEC(".maps");
 
 struct
@@ -234,6 +238,21 @@ struct
     __type(value, __u8);
     __uint(max_entries, 4096);
 } cgroup_allow_map SEC(".maps");
+
+/* A zero-padded name, so equal names are equal keys. */
+struct rt_name_key
+{
+    char name[RT_NAME_FILTER_LEN];
+};
+
+/* Name -> RT_NAME_FILE | RT_NAME_PARENT. */
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, struct rt_name_key);
+    __type(value, __u8);
+    __uint(max_entries, RT_NAME_FILTER_MAX);
+} name_filter_map SEC(".maps");
 
 extern int LINUX_KERNEL_VERSION __kconfig;
 
@@ -407,6 +426,39 @@ statfunc bool cgroup_wanted(__u64* cgroup_id)
 {
     *cgroup_id = current_container_cgroup_id();
     return event_is_wanted(*cgroup_id);
+}
+
+/* True when the dentry's name is listed with `flag`. Each call zeroes its own
+ * key: the read below does not clear the bytes after the NUL. A name that does
+ * not fit the key is a miss, since the read would truncate it into what could
+ * be a listed name. */
+statfunc bool name_listed(struct dentry* dentry, __u8 flag)
+{
+    struct rt_name_key key = {};
+
+    if (!dentry)
+        return false;
+    struct qstr d_name = BPF_CORE_READ(dentry, d_name);
+    if (!d_name.name || d_name.len >= RT_NAME_FILTER_LEN)
+        return false;
+    if (bpf_probe_read_kernel_str(key.name, sizeof(key.name), d_name.name) <= 0)
+        return false;
+
+    __u8* flags = bpf_map_lookup_elem(&name_filter_map, &key);
+    return flags && (*flags & flag);
+}
+
+/* The name filter: everything passes unless this handle listed names. An event
+ * passes when the file's name is listed as a file, or its parent directory's
+ * name is listed as a parent. */
+statfunc bool name_wanted(struct dentry* dentry)
+{
+    __u32 key = FILTER_CFG_KEY_NAMES;
+    __u32* on = bpf_map_lookup_elem(&filter_cfg, &key);
+
+    if (!on || !*on)
+        return true;
+    return name_listed(dentry, RT_NAME_FILE) || name_listed(BPF_CORE_READ(dentry, d_parent), RT_NAME_PARENT);
 }
 
 /* Per-event work this handle's consumer has opted out of. Read after the filter
@@ -797,7 +849,7 @@ int kprobe__vfs_open(struct pt_regs* ctx)
         return 0;
 
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
 
     struct vfsmount* mnt = NULL;
@@ -832,7 +884,7 @@ int BPF_PROG(file_open_dpath, struct file* file)
         return 0;
 
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(BPF_CORE_READ(file, f_path.dentry)))
         return 0;
 
     char* full_path = bpf_map_lookup_elem(&dpath_map, &(__u32) {0});
@@ -862,11 +914,11 @@ int BPF_PROG(file_open_walk, struct file* file)
     if (!f_inode || !is_regular_file(f_inode))
         return 0;
 
+    struct dentry* dentry = BPF_CORE_READ(file, f_path.dentry);
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
 
-    struct dentry* dentry = BPF_CORE_READ(file, f_path.dentry);
     struct vfsmount* mnt = BPF_CORE_READ(file, f_path.mnt);
     const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
     if (!full_path)
@@ -911,7 +963,7 @@ int BPF_PROG(path_unlink_dpath, struct path* path, struct dentry* dentry)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
     const char* full_path = rt_lsm_dpath(path, dentry);
     if (!full_path)
@@ -929,7 +981,7 @@ int BPF_PROG(path_unlink_walk, struct path* path, struct dentry* dentry)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
     struct vfsmount* mnt = BPF_CORE_READ(path, mnt);
     if (!mnt)
@@ -952,7 +1004,7 @@ statfunc int path_rename_dpath_event(struct path* dir, struct dentry* dentry,
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
     const char* full_path = rt_lsm_dpath(dir, dentry);
     if (!full_path)
@@ -984,7 +1036,7 @@ statfunc int path_rename_walk_event(struct path* dir, struct dentry* dentry,
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
     struct vfsmount* mnt = BPF_CORE_READ(dir, mnt);
     if (!mnt)
@@ -1077,7 +1129,7 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
         return 0;
 
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
 
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
@@ -1114,7 +1166,7 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
         return 0;
 
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(dentry))
         return 0;
 
     struct vfsmount* mnt = get_write_mnt(BPF_CORE_READ(d_inode, i_sb));
@@ -1181,7 +1233,7 @@ statfunc int vfs_rename_event(struct pt_regs* ctx, bool old)
         return 0;
 
     __u64 cgroup_id = 0;
-    if (!cgroup_wanted(&cgroup_id))
+    if (!cgroup_wanted(&cgroup_id) || !name_wanted(old ? old_dentry : new_dentry))
         return 0;
 
     __u64 inode = 0, dev = 0;

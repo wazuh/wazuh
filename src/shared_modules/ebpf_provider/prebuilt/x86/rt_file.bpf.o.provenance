@@ -2,8 +2,11 @@ arch=x86
 vmlinux_btf=7.0 kernel BTF dump (bpftool btf dump file /sys/kernel/btf/vmlinux format c, Ubuntu 24.04.5, 7.0.0-42-generic)
 clang=Ubuntu clang version 18.1.3 (1ubuntu1)
 load_verified=bpftool prog loadall, Ubuntu x86_64 7.0.0-42-generic, all 14 programs pinned;
-  the provider's kernel tests pass with it on that host.
-notes=rebuilt because bpf/rt_file.bpf.c changed: each program checks the cgroup
-  allowlist before resolving the event's path. Same 8 program sections and 14
+  the provider's kernel tests pass with it on that host with the LSM d_path,
+  LSM walk and kprobe programs, and on AlmaLinux 8.10 (4.18.0-553, LSM walk,
+  cgroup v1) and CentOS 8.5 (4.18.0-348, kprobe, cgroup v1).
+notes=rebuilt because bpf/rt_file.bpf.c and include/rt_event_contract.h
+  changed: each program checks an optional per-handle file-name filter
+  before resolving the event's path. Same 8 program sections and 14
   programs as the object it replaces; same header as the previous build.
   Current size is recorded in the check_files manifests.

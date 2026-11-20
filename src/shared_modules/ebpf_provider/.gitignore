@@ -12,4 +12,5 @@ rt_engine_filter_test
 rt_engine_creds_test
 rt_engine_skip_test
 rt_engine_paths_test
+rt_engine_names_test
 rt_engine_loader_test
