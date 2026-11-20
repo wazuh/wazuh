@@ -432,9 +432,13 @@ namespace
             EXPECT_CALL(*group, getgrouplist(_, _, _, _)).Times(0);
         }
 
-        nlohmann::json collect()
+        nlohmann::json collect(bool resetCache = true)
         {
-            UserGroupsProvider::resetCache();
+            if (resetCache)
+            {
+                UserGroupsProvider::resetCache();
+            }
+
             UserGroupsProvider provider(group, passwd, od, uuid);
             return provider.collect({600});
         }
@@ -514,8 +518,24 @@ TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryReportsNoGroupsAndIsNotC
 
     EXPECT_TRUE(env.collect().empty());
 
-    // The failed scan left nothing behind: the next one reads the directory again.
-    EXPECT_EQ(env.collect().size(), 2u);
+    // The cache is left as the failed scan found it: had the empty answer been stored, this
+    // second scan, run within the cache window, would return it instead of reading the directory.
+    EXPECT_EQ(env.collect(false).size(), 2u);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, MemberListedWithDifferentCaseIsReported)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("MEMBER");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
 }
 
 TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesIncludeGroupsReachedThroughNesting)

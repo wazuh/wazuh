@@ -24,6 +24,16 @@ static std::string toUpper(std::string value)
     return value;
 }
 
+// Account names are not case sensitive on macOS, so a group listing "Bob" lists the user "bob".
+static std::string toLower(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+    {
+        return std::tolower(c);
+    });
+    return value;
+}
+
 DirectMemberships::DirectMemberships(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
                                      std::shared_ptr<IODUtilsWrapper> odWrapper,
                                      std::shared_ptr<IUUIDWrapper> uuidWrapper)
@@ -58,6 +68,10 @@ void DirectMemberships::load()
             std::set<std::string> uuids;
             std::transform(members.uuids.begin(), members.uuids.end(), std::inserter(uuids, uuids.end()), toUpper);
             members.uuids = std::move(uuids);
+
+            std::set<std::string> names;
+            std::transform(members.names.begin(), members.names.end(), std::inserter(names, names.end()), toLower);
+            members.names = std::move(names);
             m_groups.push_back({grp->gr_gid, std::move(members)});
         }
     }
@@ -84,11 +98,12 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_
     }
 
     const auto uuid = uuidOf(uid);
+    const auto lowerName = toLower(userName);
     std::vector<gid_t> others;
 
     for (const auto& group : m_groups)
     {
-        const bool listed = group.members.names.count(userName) != 0 || group.members.uuids.count(uuid) != 0;
+        const bool listed = group.members.names.count(lowerName) != 0 || group.members.uuids.count(uuid) != 0;
 
         if (listed && group.gid != primaryGid)
         {
