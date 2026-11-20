@@ -25,6 +25,7 @@
 #define MANAGER_SERVICE_CONTROL_BIN "bin/wazuh-manager-service-control"
 #define MANAGER_SERVICE_CONTROL_STATUS_FD 3
 #define MANAGER_SERVICE_CONTROL_TIMEOUT_MS 5000
+#define MANAGER_SERVICE_CONTROL_REQUEST "var/run/wazuh-manager-service-control."
 /* The control socket serves one client at a time: a client that connects and sends nothing must not
  * hold it (and every restart or reload behind it) for longer than this. */
 #define WM_CONTROL_RECV_TIMEOUT_S 3
@@ -219,6 +220,25 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
 #else
 #if !defined(CLIENT) && defined(__linux__)
     (void)service;
+    /* Under systemd the manager runs with NoNewPrivileges, so the set-user-ID helper cannot gain root: a path
+     * unit runs it as root once the request file exists. */
+    if (wm_control_check_systemd()) {
+        char request[sizeof(MANAGER_SERVICE_CONTROL_REQUEST) + 16];
+        snprintf(request, sizeof(request), MANAGER_SERVICE_CONTROL_REQUEST "%s", action);
+
+        const int fd = open(request, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0660);
+        if (fd < 0) {
+            mterror(WM_CONTROL_LOGTAG, "Cannot create service control request '%s': %s (%d)", request, strerror(errno), errno);
+            os_strdup("err Cannot write service control request", *output);
+            return strlen(*output);
+        }
+        close(fd);
+
+        mtinfo(WM_CONTROL_LOGTAG, "Requested '%s' from systemd (request '%s')", action, request);
+        os_strdup("ok accepted", *output);
+        return strlen(*output);
+    }
+
     int status_pipe[2];
     if (pipe(status_pipe) < 0) {
         mterror(WM_CONTROL_LOGTAG, "Cannot create service control status pipe for %s: %s (%d)", action, strerror(errno), errno);

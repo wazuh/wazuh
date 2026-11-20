@@ -52,6 +52,14 @@ static void test_caller_requires_allowed_real_uid_and_root_effective_uid(void **
     assert_false(authorized_caller((uid_t)-1, manager, 0));
 }
 
+static void test_setuid_required_only_for_non_root_callers(void **state)
+{
+    (void)state;
+    assert_false(require_setuid(0));
+    assert_true(require_setuid(1000));
+    assert_true(require_setuid(1001));
+}
+
 static void test_privileged_path_policy(void **state)
 {
     (void)state;
@@ -141,6 +149,7 @@ int main(void)
         cmocka_unit_test(test_help_option_succeeds),
         cmocka_unit_test(test_actions_are_strictly_allowlisted),
         cmocka_unit_test(test_caller_requires_allowed_real_uid_and_root_effective_uid),
+        cmocka_unit_test(test_setuid_required_only_for_non_root_callers),
         cmocka_unit_test(test_privileged_path_policy),
         cmocka_unit_test(test_service_states),
         cmocka_unit_test(test_install_paths_are_derived_independently),
