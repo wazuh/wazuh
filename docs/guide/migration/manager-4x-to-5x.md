@@ -111,8 +111,9 @@ sudo /var/wazuh-manager/framework/python/bin/python3 wazuh-migrate-identity.py c
 
 `export` replaces the identity part of the backup below and keeps a copy of `ossec.conf`,
 `local_internal_options.conf` and `api.yaml` in the bundle; rules, decoders and lists are still yours
-to copy. `import` replaces every command of [Step 3](#3-restore-the-identity-data): leave the manager
-running and run none of them. On the 5.0 host the tool runs as root with the Python the manager
+to copy. `import` replaces the commands of [Step 3](#3-restore-the-identity-data): leave the manager
+running and run none of them, except the copy of the rootcheck files into the `default` group, which
+the tool leaves to you while 4.x agents remain. On the 5.0 host the tool runs as root with the Python the manager
 bundles, which no other user can reach. The bundle holds the agent keys, so move it as carefully as
 `client.keys`.
 
