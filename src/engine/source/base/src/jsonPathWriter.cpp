@@ -17,16 +17,17 @@ namespace json
 
 // The index is keyed by the address of each object's member array. The pool allocator never frees a block while the
 // document lives (Free is a no-op and a reallocation either grows the block in place or moves it to fresh memory),
-// so an address seen once can never name another object's member array later: an entry left behind by an overwritten
-// object is never matched again.
-static_assert(std::is_same_v<rapidjson::Document::AllocatorType, rapidjson::MemoryPoolAllocator<>>,
-              "PathWriter relies on the pool allocator never reusing addresses");
+// so an address that was retired can never name another object's member array later: an entry left behind by an
+// overwritten object is never matched again. The assertion only ties the writer to the pool of the engine documents;
+// the property itself is the pool's.
+static_assert(std::is_base_of_v<rapidjson::MemoryPoolAllocator<json::BaseAllocator>, json::Document::AllocatorType>,
+              "PathWriter relies on the pool allocator of json::Document never reusing a retired address");
 
 namespace
 {
 
-using Member = rapidjson::Value::Member;
-using Token = rapidjson::Pointer::Token;
+using Member = json::Value::Member;
+using Token = json::Pointer::Token;
 
 using internal::compareNames;
 
@@ -36,7 +37,7 @@ std::string_view nameOf(const Member& member)
 }
 
 // Same transformation as Json's asMemberTokens: every token is read as an object member name.
-std::vector<Token> asMemberTokens(const rapidjson::Pointer& pointer)
+std::vector<Token> asMemberTokens(const json::Pointer& pointer)
 {
     std::vector<Token> tokens(pointer.GetTokens(), pointer.GetTokens() + pointer.GetTokenCount());
     for (auto& token : tokens)
@@ -46,27 +47,26 @@ std::vector<Token> asMemberTokens(const rapidjson::Pointer& pointer)
     return tokens;
 }
 
-const Token* tokensBegin(const rapidjson::Pointer& pointer)
+const Token* tokensBegin(const json::Pointer& pointer)
 {
     return pointer.GetTokens();
 }
 
-const Token* tokensEnd(const rapidjson::Pointer& pointer)
+const Token* tokensEnd(const json::Pointer& pointer)
 {
     return pointer.GetTokens() + pointer.GetTokenCount();
 }
 
-// The pointer of a relative path, built once: a single return of a prvalue is elided (rapidjson::Pointer has no move
+// The pointer of a relative path, built once: a single return of a prvalue is elided (json::Pointer has no move
 // constructor, so returning a named pointer would copy it). The empty path never reads relPath.data(), and a path
 // that does not start with '/' is not parsed: both give the empty pointer, and checkRelativePointer() tells them apart.
-rapidjson::Pointer relativePointer(std::string_view relPath)
+json::Pointer relativePointer(std::string_view relPath)
 {
-    return relPath.empty() || relPath[0] != '/' ? rapidjson::Pointer()
-                                                : rapidjson::Pointer(relPath.data(), relPath.size());
+    return relPath.empty() || relPath[0] != '/' ? json::Pointer() : json::makePointer(relPath);
 }
 
 // A relative path is valid when it is empty or starts with '/' and is a valid JSON pointer (no URI fragment form)
-void checkRelativePointer(const rapidjson::Pointer& pointer, std::string_view relPath)
+void checkRelativePointer(const json::Pointer& pointer, std::string_view relPath)
 {
     if (relPath.empty() || (relPath[0] == '/' && pointer.IsValid()))
     {
@@ -246,7 +246,7 @@ void PathWriter::forget(const Value& target)
 
 void PathWriter::set(std::string_view pointerPath, const Json& value)
 {
-    const auto pointer = rapidjson::Pointer(pointerPath.data(), pointerPath.size());
+    const auto pointer = json::makePointer(pointerPath);
     if (!pointer.IsValid())
     {
         m_doc.set(pointerPath, value);
@@ -258,7 +258,7 @@ void PathWriter::set(std::string_view pointerPath, const Json& value)
     target.CopyFrom(value.m_document, m_doc.m_document.GetAllocator());
 }
 
-void PathWriter::setStringAt(Value& from, const rapidjson::Pointer& pointer, std::string_view value)
+void PathWriter::setStringAt(Value& from, const json::Pointer& pointer, std::string_view value)
 {
     const auto* data = value.data() ? value.data() : "";
     Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_doc.m_document.GetAllocator());
@@ -269,7 +269,7 @@ void PathWriter::setStringAt(Value& from, const rapidjson::Pointer& pointer, std
 
 void PathWriter::setString(std::string_view value, std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.setString(value, path);
@@ -281,7 +281,7 @@ void PathWriter::setString(std::string_view value, std::string_view path)
 
 void PathWriter::setStringAsMembers(std::string_view value, std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.setStringAsMembers(value, path);
@@ -298,7 +298,7 @@ void PathWriter::setStringAsMembers(std::string_view value, std::string_view pat
 
 void PathWriter::setNullAsMembers(std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.setNullAsMembers(path);
@@ -312,7 +312,7 @@ void PathWriter::setNullAsMembers(std::string_view path)
     target = v.SetNull();
 }
 
-void PathWriter::setObjectAt(Value& from, const rapidjson::Pointer& pointer)
+void PathWriter::setObjectAt(Value& from, const json::Pointer& pointer)
 {
     auto& target = create(from, tokensBegin(pointer), tokensEnd(pointer));
     forget(target);
@@ -322,7 +322,7 @@ void PathWriter::setObjectAt(Value& from, const rapidjson::Pointer& pointer)
 
 void PathWriter::setObject(std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.setObject(path);
@@ -334,7 +334,7 @@ void PathWriter::setObject(std::string_view path)
 
 void PathWriter::setArray(std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.setArray(path);
@@ -347,7 +347,7 @@ void PathWriter::setArray(std::string_view path)
     target = v.SetArray();
 }
 
-void PathWriter::appendStringAt(Value& from, const rapidjson::Pointer& pointer, std::string_view value)
+void PathWriter::appendStringAt(Value& from, const json::Pointer& pointer, std::string_view value)
 {
     auto& allocator = m_doc.m_document.GetAllocator();
     Value v(value.data(), static_cast<rapidjson::SizeType>(value.size()), allocator);
@@ -374,7 +374,7 @@ void PathWriter::appendStringAt(Value& from, const rapidjson::Pointer& pointer, 
 
 void PathWriter::appendString(std::string_view value, std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.appendString(value, path);
@@ -393,7 +393,7 @@ void PathWriter::appendString(std::string_view value, std::string_view path)
     appendStringAt(m_doc.m_document, pointer, value);
 }
 
-void PathWriter::appendJsonAt(Value& from, const rapidjson::Pointer& pointer, const Json& value)
+void PathWriter::appendJsonAt(Value& from, const json::Pointer& pointer, const Json& value)
 {
     auto& allocator = m_doc.m_document.GetAllocator();
     Value rapidValue {value.m_document, allocator};
@@ -419,7 +419,7 @@ void PathWriter::appendJsonAt(Value& from, const rapidjson::Pointer& pointer, co
 
 void PathWriter::appendJson(const Json& value, std::string_view path)
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         m_doc.appendJson(value, path);
@@ -429,14 +429,14 @@ void PathWriter::appendJson(const Json& value, std::string_view path)
     appendJsonAt(m_doc.m_document, pointer, value);
 }
 
-bool PathWriter::existsAt(Value& from, const rapidjson::Pointer& pointer) const
+bool PathWriter::existsAt(Value& from, const json::Pointer& pointer) const
 {
     return get(from, tokensBegin(pointer), tokensEnd(pointer)) != nullptr;
 }
 
 bool PathWriter::exists(std::string_view pointerPath) const
 {
-    const auto pointer = rapidjson::Pointer(pointerPath.data(), pointerPath.size());
+    const auto pointer = json::makePointer(pointerPath);
     if (!pointer.IsValid())
     {
         return m_doc.exists(pointerPath);
@@ -444,7 +444,7 @@ bool PathWriter::exists(std::string_view pointerPath) const
     return existsAt(m_doc.m_document, pointer);
 }
 
-bool PathWriter::isObjectAt(Value& from, const rapidjson::Pointer& pointer) const
+bool PathWriter::isObjectAt(Value& from, const json::Pointer& pointer) const
 {
     const auto* value = get(from, tokensBegin(pointer), tokensEnd(pointer));
     return value != nullptr && value->IsObject();
@@ -452,7 +452,7 @@ bool PathWriter::isObjectAt(Value& from, const rapidjson::Pointer& pointer) cons
 
 bool PathWriter::isObject(std::string_view path) const
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         return m_doc.isObject(path);
@@ -460,7 +460,7 @@ bool PathWriter::isObject(std::string_view path) const
     return isObjectAt(m_doc.m_document, pointer);
 }
 
-bool PathWriter::isArrayAt(Value& from, const rapidjson::Pointer& pointer) const
+bool PathWriter::isArrayAt(Value& from, const json::Pointer& pointer) const
 {
     const auto* value = get(from, tokensBegin(pointer), tokensEnd(pointer));
     return value != nullptr && value->IsArray();
@@ -468,7 +468,7 @@ bool PathWriter::isArrayAt(Value& from, const rapidjson::Pointer& pointer) const
 
 bool PathWriter::isArray(std::string_view path) const
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         return m_doc.isArray(path);
@@ -476,7 +476,7 @@ bool PathWriter::isArray(std::string_view path) const
     return isArrayAt(m_doc.m_document, pointer);
 }
 
-std::optional<size_t> PathWriter::sizeAt(Value& from, const rapidjson::Pointer& pointer) const
+std::optional<size_t> PathWriter::sizeAt(Value& from, const json::Pointer& pointer) const
 {
     const auto* value = get(from, tokensBegin(pointer), tokensEnd(pointer));
     if (value != nullptr)
@@ -499,7 +499,7 @@ std::optional<size_t> PathWriter::sizeAt(Value& from, const rapidjson::Pointer& 
 
 size_t PathWriter::size(std::string_view path) const
 {
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (pointer.IsValid())
     {
         const auto result = sizeAt(m_doc.m_document, pointer);
@@ -515,7 +515,7 @@ size_t PathWriter::size(std::string_view path) const
 std::optional<Json> PathWriter::getJson(std::string_view path) const
 {
     std::optional<Json> retval {std::nullopt};
-    const auto pointer = rapidjson::Pointer(path.data(), path.size());
+    const auto pointer = json::makePointer(path);
     if (!pointer.IsValid())
     {
         return m_doc.getJson(path);

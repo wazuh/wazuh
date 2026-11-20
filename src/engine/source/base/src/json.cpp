@@ -1974,7 +1974,7 @@ struct MemberIndex
     }
 };
 
-void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, Allocator& allocator);
+void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator);
 
 // Merges one source member into the object dst once its member in dst (or MemberEnd) is known. Returns true if the
 // member was added.
@@ -1982,7 +1982,7 @@ bool mergeMember(json::Value& dst,
                  json::Value::MemberIterator found,
                  json::Value::ConstMemberIterator srcIt,
                  bool isRecursive,
-                 Allocator& allocator)
+                 json::Allocator& allocator)
 {
     if (found != dst.MemberEnd())
     {
@@ -2011,7 +2011,7 @@ bool mergeMember(json::Value& dst,
                                            const json::Value& src,
                                            json::Value::ConstMemberIterator srcIt,
                                            bool isRecursive,
-                                           Allocator& allocator)
+                                           json::Allocator& allocator)
 {
     MemberIndex index(dst);
     for (; srcIt != src.MemberEnd(); ++srcIt)
@@ -2029,7 +2029,7 @@ bool mergeMember(json::Value& dst,
     }
 }
 
-void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, Allocator& allocator)
+void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator)
 {
     if (dst.GetType() != src.GetType())
     {
@@ -2229,7 +2229,7 @@ size_t Json::removeDuplicateKeys()
 
 size_t Json::eraseMembersEqualTo(std::string_view path, const Json& value)
 {
-    const auto pp = rapidjson::Pointer(path.data(), path.size());
+    const auto pp = json::makePointer(path);
     if (!pp.IsValid())
     {
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
