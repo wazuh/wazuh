@@ -45,9 +45,6 @@ void AR_Init()
 int AR_ReadConfig(const char *cfgfile)
 {
     FILE *fp;
-    int modules = 0;
-
-    modules |= CAR;
 
     /* Clean ar file */
     fp = wfopen(DEFAULTAR, "w");
@@ -79,8 +76,9 @@ int AR_ReadConfig(const char *cfgfile)
         return (OS_INVALID);
     }
 
-    /* Read configuration */
-    if (ReadConfig(modules, cfgfile, ar_commands, active_responses) < 0) {
+    /* Read every <command> first, so an <active-response> finds its command wherever it is defined */
+    if (ReadConfig(CAR_COMMANDS, cfgfile, ar_commands, active_responses) < 0 ||
+        ReadConfig(CAR, cfgfile, ar_commands, active_responses) < 0) {
         return (OS_INVALID);
     }
 

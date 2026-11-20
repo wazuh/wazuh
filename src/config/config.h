@@ -21,6 +21,7 @@
 #define CCLIENT       0000000200
 #define CMAIL         0000000400
 #define CAR           0000001000
+#define CAR_COMMANDS  0000002000
 #define CSYSLOGD      0000004000
 #define CAGENT_CONFIG 0000010000
 #define CAGENTLESS    0000020000
@@ -43,7 +44,7 @@
                             (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     ) |\
                             (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    ) |\
                             (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
-                            (modules & CAR           ) | (modules & CSYSLOGD      ) |\
+                            (modules & CAR           ) | (modules & CAR_COMMANDS  ) | (modules & CSYSLOGD      ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
                             (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
