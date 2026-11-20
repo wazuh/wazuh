@@ -532,19 +532,32 @@ static void expect_hostsdeny_access(int ret) {
     will_return(__wrap_access, ret);
 }
 
-// File present, lock taken, both files opened. The caller's input is not
-// closed here: the function under test fcloses both streams.
-static void expect_hostsdeny_copy(const char *content) {
-    expect_hostsdeny_access(0);
-    will_return(__wrap_acquire_ar_lock, 0);
-
+// The function under test fcloses every stream handed to it
+static void expect_hostsdeny_read(const char *content) {
     hosts_deny_in = fmemopen((void *)content, strlen(content), "r");
     assert_non_null(hosts_deny_in);
     expect_wfopen(HOSTS_DENY, "r", hosts_deny_in);
+}
 
+// File present and read without the lock. No lock is queued: a content without
+// a match must not take it.
+static void expect_hostsdeny_prescan(const char *content) {
+    expect_hostsdeny_access(0);
+    expect_hostsdeny_read(content);
+}
+
+// Prescan finds a match, lock taken, both files opened
+static void expect_hostsdeny_copy_to(const char *content, FILE *copy) {
+    expect_hostsdeny_prescan(content);
+    will_return(__wrap_acquire_ar_lock, 0);
+    expect_hostsdeny_read(content);
+    expect_wfopen(TEMP_HOSTS_DENY, "w", copy);
+}
+
+static void expect_hostsdeny_copy(const char *content) {
     FILE *copy = fopen(temp_copy_path, "w");
     assert_non_null(copy);
-    expect_wfopen(TEMP_HOSTS_DENY, "w", copy);
+    expect_hostsdeny_copy_to(content, copy);
 }
 
 static void expect_hostsdeny_move(int ret) {
@@ -575,15 +588,26 @@ void test_remove_legacy_hostsdeny_rule_exact_match_only(void **state) {
     assert_int_equal(lock_releases, 1);
 }
 
-// A substring hit is not a match, and the file is not replaced (no OS_MoveFile
-// is queued, so calling it fails the test)
+// A substring hit is not a match: no lock, no copy, no OS_MoveFile (none is
+// queued, so calling any of them fails the test)
 void test_remove_legacy_hostsdeny_rule_substring_only_is_kept(void **state) {
     (void)state;
 
-    expect_hostsdeny_copy("ALL:9.9.9.99\n");
+    expect_hostsdeny_prescan("ALL:9.9.9.99\nsshd: 9.9.9.9\n");
 
     assert_false(remove_legacy_hostsdeny_rule("9.9.9.9", "block-ip"));
-    assert_int_equal(lock_releases, 1);
+    assert_int_equal(lock_releases, 0);
+}
+
+// Unreadable file: nothing is locked or replaced
+void test_remove_legacy_hostsdeny_rule_prescan_read_failure(void **state) {
+    (void)state;
+
+    expect_hostsdeny_access(0);
+    expect_wfopen(HOSTS_DENY, "r", NULL);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 0);
 }
 
 // The line was written with the address as received; a canonical spelling of
@@ -622,18 +646,62 @@ void test_remove_legacy_hostsdeny_rule_missing_file(void **state) {
 void test_remove_legacy_hostsdeny_rule_lock_failure(void **state) {
     (void)state;
 
-    expect_hostsdeny_access(0);
+    expect_hostsdeny_prescan("ALL:192.0.2.66\n");
     will_return(__wrap_acquire_ar_lock, OS_INVALID);
 
     assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 0);
 }
 
 void test_remove_legacy_hostsdeny_rule_read_failure(void **state) {
     (void)state;
 
-    expect_hostsdeny_access(0);
+    expect_hostsdeny_prescan("ALL:192.0.2.66\n");
     will_return(__wrap_acquire_ar_lock, 0);
     expect_wfopen(HOSTS_DENY, "r", NULL);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 1);
+}
+
+void test_remove_legacy_hostsdeny_rule_temp_open_failure(void **state) {
+    (void)state;
+
+    expect_hostsdeny_prescan("ALL:192.0.2.66\n");
+    will_return(__wrap_acquire_ar_lock, 0);
+    expect_hostsdeny_read("ALL:192.0.2.66\n");
+    expect_wfopen(TEMP_HOSTS_DENY, "w", NULL);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 1);
+}
+
+// A line longer than the stdio buffer is written straight through and the
+// write fails: the truncated copy must not replace the file
+void test_remove_legacy_hostsdeny_rule_copy_write_failure(void **state) {
+    static char content[16384];
+    (void)state;
+
+    memset(content, 0, sizeof(content));
+    strcpy(content, "ALL:192.0.2.66\n# ");
+    memset(content + strlen(content), 'x', 8192);
+    strcat(content, "\n");
+
+    FILE *full = fopen("/dev/full", "w");
+    assert_non_null(full);
+    expect_hostsdeny_copy_to(content, full);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 1);
+}
+
+// A short kept line stays buffered until fclose(), which then fails
+void test_remove_legacy_hostsdeny_rule_copy_close_failure(void **state) {
+    (void)state;
+
+    FILE *full = fopen("/dev/full", "w");
+    assert_non_null(full);
+    expect_hostsdeny_copy_to("ALL:192.0.2.66\nALL:192.0.2.67\n", full);
 
     assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
     assert_int_equal(lock_releases, 1);
@@ -674,8 +742,8 @@ void test_block_ip_macos_main_stock_install_falls_back_to_route(void **state) {
     expect_value(__wrap_access, __type, F_OK);
     will_return(__wrap_access, -1);
 
-    // Nothing touches /etc/hosts.deny on a block: an access() or wfopen() on it
-    // has no queued expectation and fails the test
+    // Nothing touches /etc/hosts.deny on a block: an access() on it has no
+    // queued expectation and fails the test
 
     // route succeeds
     char *route_path = strdup("/sbin/route");
@@ -741,7 +809,7 @@ void test_block_ip_macos_main_disable_cleanup_failure_keeps_result(void **state)
     (void)state;
 
     expect_main_disable("192.0.2.66");
-    expect_hostsdeny_access(0);
+    expect_hostsdeny_prescan("ALL:192.0.2.66\n");
     will_return(__wrap_acquire_ar_lock, 0);
     expect_wfopen(HOSTS_DENY, "r", NULL);
     expect_pf_declines_route_deletes("delete host 192.0.2.66: not in table\n");
@@ -779,6 +847,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_lock_failure, setup_hostsdeny, teardown_hostsdeny),
         cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_read_failure, setup_hostsdeny, teardown_hostsdeny),
         cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_move_failure, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_prescan_read_failure, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_temp_open_failure, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_copy_write_failure, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_copy_close_failure, setup_hostsdeny, teardown_hostsdeny),
         cmocka_unit_test(test_block_ip_macos_main_stock_install_falls_back_to_route),
         cmocka_unit_test_setup_teardown(test_block_ip_macos_main_disable_removes_legacy_entry_and_runs_route, setup_hostsdeny, teardown_hostsdeny),
         cmocka_unit_test_setup_teardown(test_block_ip_macos_main_disable_cleanup_failure_keeps_result, setup_hostsdeny, teardown_hostsdeny),

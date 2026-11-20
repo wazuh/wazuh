@@ -254,6 +254,33 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
 #define DEFAULT_HOSTS_DENY_PATH "/etc/hosts.deny"
 #define TEMP_HOSTS_DENY_PATH "active-response/bin/temp-hosts-deny"
 
+static bool is_legacy_rule(const char *line, const char *rule, const char *canonical_rule) {
+    return hosts_deny_rule_matches(line, rule) ||
+           (canonical_rule[0] != '\0' && hosts_deny_rule_matches(line, canonical_rule));
+}
+
+// Read without the lock, so an unblock only waits on it when there is a line to remove
+static bool has_legacy_rule(const char *rule, const char *canonical_rule, const char *argv0) {
+    char log_msg[OS_MAXSTR];
+    char output_buf[OS_MAXSTR - 25];
+    bool found = false;
+    FILE *fp = wfopen(DEFAULT_HOSTS_DENY_PATH, "r");
+
+    if (!fp) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for reading", DEFAULT_HOSTS_DENY_PATH);
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "unblock", log_msg);
+        return false;
+    }
+
+    while (!found && fgets(output_buf, sizeof(output_buf), fp)) {
+        found = is_legacy_rule(output_buf, rule, canonical_rule);
+    }
+
+    fclose(fp);
+    return found;
+}
+
 // Earlier versions appended "ALL:<ip>", with the address as received, which
 // macOS never enforces. Removes that exact line; true if one was removed.
 bool remove_legacy_hostsdeny_rule(const char *srcip, const char *argv0) {
@@ -284,6 +311,10 @@ bool remove_legacy_hostsdeny_rule(const char *srcip, const char *argv0) {
         snprintf(canonical_rule, sizeof(canonical_rule), "ALL:%s", canonical_ip);
     }
 
+    if (!has_legacy_rule(rule, canonical_rule, argv0)) {
+        return false;
+    }
+
     if (acquire_ar_lock(&lock_ctx) == OS_INVALID) {
         return false;
     }
@@ -308,8 +339,7 @@ bool remove_legacy_hostsdeny_rule(const char *srcip, const char *argv0) {
     }
 
     while (fgets(output_buf, sizeof(output_buf), host_deny_fp)) {
-        if (hosts_deny_rule_matches(output_buf, rule) ||
-            (canonical_rule[0] != '\0' && hosts_deny_rule_matches(output_buf, canonical_rule))) {
+        if (is_legacy_rule(output_buf, rule, canonical_rule)) {
             removed = true;
             continue;
         }
