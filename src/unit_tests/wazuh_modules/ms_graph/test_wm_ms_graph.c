@@ -4262,12 +4262,13 @@ void test_wm_ms_graph_scan_relationships_next_page_out_of_host_bookmark(void **s
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
 
     queue_fd = 0;
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
-    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
-    will_return(__wrap_wm_sendmsg, 1);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg_with_reconnect, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg_with_reconnect, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg_with_reconnect, loc, LOCALFILE_MQ);
+    expect_string(__wrap_wm_sendmsg_with_reconnect, tag, WM_MS_GRAPH_LOGTAG);
+    will_return(__wrap_wm_sendmsg_with_reconnect, 1);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Ignoring next page URL out of 'graph.microsoft.com'. Skipping the remaining pages for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2'.");
