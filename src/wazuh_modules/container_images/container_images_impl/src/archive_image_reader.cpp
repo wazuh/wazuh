@@ -318,6 +318,33 @@ namespace
     using containerimages::oci::collectDigests;
     using containerimages::oci::isAttestationManifest;
 
+    /// @brief Add the names an index entry carries in its annotations to a descriptor.
+    void addEntryNames(ImageDescriptor& descriptor, const nlohmann::json& entry)
+    {
+        const auto annotations {entry.is_object() ? entry.find("annotations") : entry.end()};
+
+        if (!entry.is_object() || annotations == entry.end())
+        {
+            return;
+        }
+
+        const auto imageName {stringField(*annotations, ANNOTATION_IMAGE_NAME)};
+        const auto refName {stringField(*annotations, ANNOTATION_REF_NAME)};
+
+        // The containerd annotation holds the whole reference. The OCI one holds either a
+        // whole reference or, as the layout writers usually do, only the tag.
+        addImageName(descriptor, imageName);
+
+        if (refName.find_first_of(":/@") != std::string::npos)
+        {
+            addImageName(descriptor, refName);
+        }
+        else if (containerimages::isSafeTag(refName))
+        {
+            addImageTag(descriptor, refName);
+        }
+    }
+
     /// @brief Collect the descriptors an OCI manifest, or an index of manifests, points to.
     ///
     /// @param visited Digests already walked in this traversal, shared across every entry
@@ -363,7 +390,21 @@ namespace
 
         if (!visited.insert(digest).second)
         {
-            logDebug("Index entry already visited, skipping to avoid a cycle: " + digest);
+            // `docker save a:1 a:stable` writes one entry per tag for the same manifest: the
+            // names of the repeated entry belong to the manifest already collected. An index
+            // digest has no descriptor, so a cycle is still skipped.
+            const auto known {std::find_if(descriptors.begin(), descriptors.end(),
+                                           [&digest](const ImageDescriptor & descriptor)
+            {
+                return descriptor.manifestDigest == digest;
+            })};
+
+            if (known != descriptors.end())
+            {
+                addEntryNames(*known, entry);
+            }
+
+            logDebug("Index entry already visited, not walked again: " + digest);
             return;
         }
 
@@ -407,26 +448,7 @@ namespace
         descriptor.indexDigests = parentIndexDigests;
         descriptor.config = parseJson(metadata(configKey));
 
-        const auto annotations {entry.is_object() ? entry.find("annotations") : entry.end()};
-
-        if (entry.is_object() && annotations != entry.end())
-        {
-            const auto imageName {stringField(*annotations, ANNOTATION_IMAGE_NAME)};
-            const auto refName {stringField(*annotations, ANNOTATION_REF_NAME)};
-
-            // The containerd annotation holds the whole reference. The OCI one holds either a
-            // whole reference or, as the layout writers usually do, only the tag.
-            addImageName(descriptor, imageName);
-
-            if (refName.find_first_of(":/@") != std::string::npos)
-            {
-                addImageName(descriptor, refName);
-            }
-            else if (containerimages::isSafeTag(refName))
-            {
-                addImageTag(descriptor, refName);
-            }
-        }
+        addEntryNames(descriptor, entry);
 
         for (const auto& layer : arrayField(document, "layers"))
         {

@@ -148,6 +148,14 @@ namespace
             std::string writeOciLayout(const std::string& annotations =
                                            R"({"org.opencontainers.image.ref.name":"example:latest"})")
             {
+                return writeOciLayoutEntries({annotations});
+            }
+
+            /// @brief Write an OCI image layout directory whose index lists the same manifest once per
+            ///        entry, as `docker save a:1 a:stable` does.
+            /// @param annotations Raw annotations object of each index entry.
+            std::string writeOciLayoutEntries(const std::vector<std::string>& annotations)
+            {
                 const auto layout {m_root / "layout"};
                 std::filesystem::create_directories(layout / "blobs" / "sha256");
 
@@ -166,9 +174,15 @@ namespace
                 write(layout / "blobs" / "sha256" / CONFIG_DIGEST, CONFIG_BLOB);
                 write(layout / "blobs" / "sha256" / MANIFEST_DIGEST,
                       R"({"config":{"digest":"sha256:)" + CONFIG_DIGEST + R"("},"layers":[)" + layerDescriptors + "]}");
-                write(layout / "index.json",
-                      R"({"manifests":[{"digest":"sha256:)" + MANIFEST_DIGEST + R"(","annotations":)" +
-                      annotations + "}]}");
+                std::string entries;
+
+                for (const auto& entryAnnotations : annotations)
+                {
+                    entries += (entries.empty() ? "" : ",");
+                    entries += R"({"digest":"sha256:)" + MANIFEST_DIGEST + R"(","annotations":)" + entryAnnotations + "}";
+                }
+
+                write(layout / "index.json", R"({"manifests":[)" + entries + "]}");
 
                 return layout.string();
             }
@@ -1539,6 +1553,41 @@ TEST_F(PackageExtractionTest, AnUnchangedArchiveReportsTheNameAndTagsItHasNow)
     ASSERT_TRUE(oci.names.has_value());
     EXPECT_EQ(oci.names->name, "docker.io/library/b");
     EXPECT_EQ(oci.names->tags, std::vector<std::string>({"3"}));
+}
+
+TEST_F(PackageExtractionTest, IndexEntriesOfTheSameManifestMergeTheirTagsIntoOneImage)
+{
+    // `docker save a:1 a:stable` writes one index entry per tag, all for the same manifest.
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    ArchiveImageReader reader {builder.writeOciLayoutEntries(
+        {
+            R"({"io.containerd.image.name":"docker.io/library/a:1","org.opencontainers.image.ref.name":"1"})",
+            R"({"io.containerd.image.name":"docker.io/library/a:stable","org.opencontainers.image.ref.name":"stable"})"})};
+    const auto references {reader.discover().records};
+
+    ASSERT_EQ(references.size(), 1U);
+    EXPECT_EQ(references.front().name, "docker.io/library/a");
+    EXPECT_EQ(references.front().tags, std::vector<std::string>({"1", "stable"}));
+}
+
+TEST_F(PackageExtractionTest, AnUnchangedImageReportsTheTagsOfEveryIndexEntryOfItsManifest)
+{
+    ImageBuilder builder;
+    builder.addLayer(tarMember(DPKG_STATUS_PATH, dpkgStanza("curl", "7.0")) + tarEnd());
+
+    const auto known {"sha256:" + ImageBuilder::CONFIG_DIGEST};
+    const auto result {ArchiveImageReader(builder.writeOciLayoutEntries(
+        {
+            R"({"io.containerd.image.name":"docker.io/library/a:1","org.opencontainers.image.ref.name":"1"})",
+            R"({"io.containerd.image.name":"docker.io/library/a:stable","org.opencontainers.image.ref.name":"stable"})"}),
+        known).discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Unchanged);
+    ASSERT_TRUE(result.names.has_value());
+    EXPECT_EQ(result.names->name, "docker.io/library/a");
+    EXPECT_EQ(result.names->tags, std::vector<std::string>({"1", "stable"}));
 }
 
 TEST_F(PackageExtractionTest, AnImageListingMoreNamesThanTheLimitKeepsTheFirstOnes)
