@@ -31,7 +31,13 @@
 #if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
 #include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+
+// Local to this file: other users of these headers keep the real calls
+#define ReadFile wrap_ReadFile
+#define PeekNamedPipe wrap_PeekNamedPipe
 #endif
 
 static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
@@ -41,7 +47,12 @@ static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 typedef struct ThreadInfo {
 #ifdef WIN32
     CHAR * output;
-    HANDLE pipe;
+    size_t length;
+    size_t capacity;
+    HANDLE pipe;            // Read end, owned by the state: closed when the last owner releases it
+    volatile LONG stop;
+    volatile LONG refs;     // Owners left: the reader and wm_exec()
+    volatile LONG failure;  // WM_READER_* outcome, written by the reader before it exits
 #else
     pthread_mutex_t mutex;
     pthread_cond_t finished;
@@ -71,16 +82,99 @@ void wm_children_pool_init() {
 
 // Windows version -------------------------------------------------------------
 
+// Reader shutdown timings
+#define WM_READER_JOIN_MS 1000
+#define WM_READER_STOP_MS 1000
+
+// How often the reader looks for new output and for a stop request
+#define WM_EXEC_POLL_MS 20
+
+// Consecutive empty polls that only yield the CPU before the reader starts sleeping
+#define WM_EXEC_SPIN_POLLS 8
+
+// Pipe buffer size requested from the system: a quota hint, not memory committed up front
+#define WM_EXEC_PIPE_SIZE (1024 * 1024)
+
+// Size of the buffer used to read and drop output that cannot be kept
+#define WM_EXEC_DISCARD_SIZE 4096
+
+// Reader outcomes: the output kept so far is still returned
+#define WM_READER_OK 0
+#define WM_READER_LIMIT 1
+#define WM_READER_NOMEM 2
+
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
+
+static void wm_reader_release(ThreadInfo * rinfo) {
+    if (InterlockedDecrement(&rinfo->refs) == 0) {
+        free(rinfo->output);
+        CloseHandle(rinfo->pipe);
+        free(rinfo);
+    }
+}
+
+// Tells the reader to exit at its next poll, even if the pipe is still held open
+STATIC void wm_reader_request_stop(ThreadInfo * rinfo) {
+    InterlockedExchange(&rinfo->stop, 1);
+}
+
+static void wm_log_reader_wait_failure(void) {
+    int winerror = GetLastError();
+
+    merror("at wm_exec(): WaitForSingleObject(reader)(%d): %s", winerror, win_strerror(winerror));
+}
+
+// Returns false if the reader did not exit: it is then left to release the state when it does.
+
+static bool wm_stop_reader(HANDLE hThread, ThreadInfo * rinfo) {
+    DWORD result = WaitForSingleObject(hThread, WM_READER_JOIN_MS);
+
+    if (result == WAIT_OBJECT_0) {
+        return true;
+    }
+
+    wm_reader_request_stop(rinfo);
+
+    if (result == WAIT_FAILED) {
+        wm_log_reader_wait_failure();
+        return false;
+    }
+
+    result = WaitForSingleObject(hThread, WM_READER_STOP_MS);
+
+    switch (result) {
+    case WAIT_OBJECT_0:
+        // The pipe was still open after the command ended or was terminated: the output may be incomplete
+        mdebug1("at wm_exec(): Stopped reading the command output before its end.");
+        return true;
+
+    case WAIT_TIMEOUT:
+        return false;
+
+    default:
+        wm_log_reader_wait_failure();
+        return false;
+    }
+}
+
+// Falls back to the child alone when it is not in a job
+
+static void wm_terminate_process(HANDLE hJob, HANDLE hProcess) {
+    if (hJob == NULL || !TerminateJobObject(hJob, 1)) {
+        TerminateProcess(hProcess, 1);
+    }
+}
 
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs, const char * add_path) {
     HANDLE hThread = NULL;
+    HANDLE hJob = NULL;
+    HANDLE hPipe = NULL;
+    ThreadInfo * rinfo = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
-    ThreadInfo tinfo = { 0 };
     int retval = 0;
     int winerror = 0;
 
@@ -121,7 +215,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
         // Create stdout pipe and make it inheritable
 
-        if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
+        if (!CreatePipe(&hPipe, &sinfo.hStdOutput, NULL, WM_EXEC_PIPE_SIZE)) {
             winerror = GetLastError();
             merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
@@ -132,7 +226,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
             winerror = GetLastError();
             merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
-            CloseHandle(tinfo.pipe);
+            CloseHandle(hPipe);
             CloseHandle(sinfo.hStdOutput);
             return -1;
         }
@@ -146,6 +240,9 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       wm_task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
                       IDLE_PRIORITY_CLASS;
 
+    // Start suspended so the process joins its job before it can spawn children
+    dwCreationFlags |= CREATE_SUSPENDED;
+
     size_t size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, NULL, 0);
     wchar_t *wcommand;
     os_calloc(size, sizeof(wchar_t), wcommand);
@@ -158,7 +255,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         mwarn("Cannot run '%s': %s (%d)", command, win_strerror(winerror), winerror);
         os_free(wcommand);
         if (output) {
-            CloseHandle(tinfo.pipe);
+            CloseHandle(hPipe);
             CloseHandle(sinfo.hStdOutput);
         }
         return -1;
@@ -166,12 +263,65 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
     os_free(wcommand);
 
+    // Close our copy of the write end at once, so no later child can inherit it
+
     if (output) {
         CloseHandle(sinfo.hStdOutput);
+    }
+
+    // Job creation is best effort: on failure only the direct child is terminated on timeout
+    hJob = CreateJobObjectW(NULL, NULL);
+
+    if (hJob == NULL) {
+        winerror = GetLastError();
+        mdebug1("at wm_exec(): CreateJobObject(%d): %s", winerror, win_strerror(winerror));
+    } else {
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = { 0 };
+
+        // Lets a descendant that asks for it leave the job; only the extended limit information accepts this flag
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
+
+        if (!SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
+            winerror = GetLastError();
+            mdebug1("at wm_exec(): SetInformationJobObject(%d): %s", winerror, win_strerror(winerror));
+            CloseHandle(hJob);
+            hJob = NULL;
+        } else if (!AssignProcessToJobObject(hJob, pinfo.hProcess)) {
+            winerror = GetLastError();
+            mdebug1("at wm_exec(): AssignProcessToJobObject(%d): %s", winerror, win_strerror(winerror));
+            CloseHandle(hJob);
+            hJob = NULL;
+        }
+    }
+
+    if (ResumeThread(pinfo.hThread) == (DWORD)-1) {
+        winerror = GetLastError();
+        merror("at wm_exec(): ResumeThread(%d): %s", winerror, win_strerror(winerror));
+        wm_terminate_process(hJob, pinfo.hProcess);
+
+        if (hJob != NULL) {
+            CloseHandle(hJob);
+        }
+
+        if (output) {
+            CloseHandle(hPipe);
+        }
+
+        CloseHandle(pinfo.hProcess);
+        CloseHandle(pinfo.hThread);
+        return -1;
+    }
+
+    if (output) {
+        // The reader may outlive this function, so it owns its data
+
+        os_calloc(1, sizeof(ThreadInfo), rinfo);
+        rinfo->pipe = hPipe;
+        rinfo->refs = 2;
 
         // Create reading thread
 
-        hThread = w_create_thread(NULL, 0, Reader, &tinfo, 0, NULL);
+        hThread = w_create_thread(NULL, 0, Reader, rinfo, 0, NULL);
     }
 
     switch (WaitForSingleObject(pinfo.hProcess, secs ? (unsigned)(secs * 1000) : INFINITE)) {
@@ -185,36 +335,59 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         break;
 
     case WAIT_TIMEOUT:
-        TerminateProcess(pinfo.hProcess, 1);
+        wm_terminate_process(hJob, pinfo.hProcess);
         retval = WM_ERROR_TIMEOUT;
         break;
 
     default:
         winerror = GetLastError();
         merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
-        TerminateProcess(pinfo.hProcess, 1);
+        wm_terminate_process(hJob, pinfo.hProcess);
         retval = -1;
     }
 
     if (output) {
         // Output
 
-        if (WaitForSingleObject(hThread, 1000) == WAIT_TIMEOUT) {
-            TerminateThread(hThread, 1);
-            WaitForSingleObject(hThread, INFINITE);
-        }
+        if (wm_stop_reader(hThread, rinfo)) {
+            if (rinfo->failure == WM_READER_LIMIT) {
+                mwarn("String limit reached.");
+            } else if (rinfo->failure == WM_READER_NOMEM) {
+                merror("at wm_exec(): Cannot allocate memory for the command output.");
+            }
 
-        if (retval >= 0) {
-            *output = tinfo.output ? tinfo.output : strdup("");
+            if (retval >= 0) {
+                if (rinfo->output) {
+                    // Best effort: a failed shrink keeps the original buffer
+                    char * shrunk = (char *)realloc(rinfo->output, rinfo->length + 1);
+                    *output = shrunk ? shrunk : rinfo->output;
+                    rinfo->output = NULL;
+                } else {
+                    *output = strdup("");
+                }
+            }
         } else {
-            free(tinfo.output);
+            // The reader frees the state when it exits; nothing it may still use is touched here
+            mwarn("at wm_exec(): Could not collect the command output.");
+            if (retval >= 0) {
+                *output = NULL;
+            }
+
+            // A timeout that fired is still reported as one
+            if (retval == 0) {
+                retval = -1;
+            }
         }
 
+        wm_reader_release(rinfo);
         CloseHandle(hThread);
-        CloseHandle(tinfo.pipe);
     }
 
     // Cleanup
+
+    if (hJob != NULL) {
+        CloseHandle(hJob);
+    }
 
     CloseHandle(pinfo.hProcess);
     CloseHandle(pinfo.hThread);
@@ -222,27 +395,110 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     return retval;
 }
 
+// Makes room in the output buffer for up to avail more bytes, within the size limit.
+// Returns how many bytes can be read into the buffer, or 0 with the outcome set if none can.
+
+static size_t wm_reader_reserve(ThreadInfo * tinfo, size_t avail) {
+    size_t room = WM_STRING_MAX - tinfo->length;
+    size_t nextsize;
+
+    if (room == 0) {
+        tinfo->failure = WM_READER_LIMIT;
+        return 0;
+    }
+
+    if (avail < room) {
+        room = avail;
+    }
+
+    nextsize = tinfo->length + room;
+
+    if (nextsize + 1 > tinfo->capacity) {
+        size_t newcap = tinfo->capacity ? tinfo->capacity : WM_BUFFER_MAX * 4;
+
+        while (newcap < nextsize + 1) {
+            newcap *= 2;
+        }
+
+        if (newcap > WM_STRING_MAX + 1) {
+            newcap = WM_STRING_MAX + 1;
+        }
+
+        char * newbuf = (char *)realloc(tinfo->output, newcap);
+
+        if (newbuf == NULL) {
+            tinfo->failure = WM_READER_NOMEM;
+            return 0;
+        }
+
+        tinfo->output = newbuf;
+        tinfo->capacity = newcap;
+    }
+
+    return room;
+}
+
+// Waits for more output: yields for a few empty polls in a row, then sleeps
+// so a quiet command costs little while a busy one is read without delay
+
+static void wm_reader_idle(unsigned * empty_polls) {
+    if (*empty_polls < WM_EXEC_SPIN_POLLS) {
+        (*empty_polls)++;
+        Sleep(0);
+    } else {
+        Sleep(WM_EXEC_POLL_MS);
+    }
+}
+
 // Reading thread's start point
 
 DWORD WINAPI Reader(LPVOID args) {
     ThreadInfo * tinfo = (ThreadInfo *)args;
-    CHAR buffer[WM_BUFFER_MAX + 1];
-    DWORD length = 0;
+    CHAR discard[WM_EXEC_DISCARD_SIZE];
+    DWORD avail;
     DWORD nbytes;
+    unsigned empty_polls = 0;
 
-    while (ReadFile(tinfo->pipe, buffer, 1024, &nbytes, NULL), nbytes > 0) {
-        int nextsize = length + nbytes;
+    // Reads only when the pipe has data, so it never blocks and sees stop. A failed peek means the data ended.
+    // No logging: wm_exec() reports the outcome.
 
-        if (nextsize <= WM_STRING_MAX) {
-            tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
-            memcpy(tinfo->output + length, buffer, nbytes);
-            length = nextsize;
-            tinfo->output[length] = '\0';
-        } else {
-            mwarn("String limit reached.");
+    while (!tinfo->stop && PeekNamedPipe(tinfo->pipe, NULL, 0, NULL, &avail, NULL)) {
+        CHAR * dest = discard;
+        size_t room = sizeof(discard);
+
+        if (avail == 0) {
+            wm_reader_idle(&empty_polls);
+            continue;
+        }
+
+        // Once the output cannot be kept, keep draining so the command does not block on a full pipe
+        if (tinfo->failure == WM_READER_OK) {
+            size_t space = wm_reader_reserve(tinfo, avail);
+
+            if (space > 0) {
+                dest = tinfo->output + tinfo->length;
+                room = space;
+            }
+        }
+
+        if (!ReadFile(tinfo->pipe, dest, avail < room ? avail : (DWORD)room, &nbytes, NULL)) {
             break;
         }
+
+        if (nbytes == 0) {
+            wm_reader_idle(&empty_polls);
+            continue;
+        }
+
+        empty_polls = 0;
+
+        if (dest != discard) {
+            tinfo->length += nbytes;
+            tinfo->output[tinfo->length] = '\0';
+        }
     }
+
+    wm_reader_release(tinfo);
 
     return 0;
 }
@@ -329,6 +585,97 @@ static void* reader(void *args);   // Reading thread's start point
 // short step; the steps double from there so a long wait does not spin.
 #define WM_EXEC_REAP_STEP_MIN_MS 1
 #define WM_EXEC_REAP_STEP_MAX_MS 100
+
+extern char ** environ;
+
+// sigaction() rejects numbers that are not signals on the system
+#ifndef NSIG
+#define NSIG 65
+#endif
+
+/**
+ * @brief Check that a directory can be entered.
+ * @param dir Directory to check.
+ * @return 0 if it can, or -1 with errno set.
+ */
+static int wm_exec_check_dir(const char * dir) {
+    struct stat dir_stat;
+
+    if (stat(dir, &dir_stat) < 0) {
+        return -1;
+    }
+
+    if (!S_ISDIR(dir_stat.st_mode)) {
+        errno = ENOTDIR;
+        return -1;
+    }
+
+    return access(dir, X_OK);
+}
+
+/**
+ * @brief Build a copy of the environment with add_path prepended to PATH.
+ *
+ * The child of a multithreaded process must not allocate memory nor call setenv() before
+ * exec, so the parent builds the environment and the child only switches to it.
+ *
+ * @param add_path Directory to prepend to PATH.
+ * @return Environment to free with wm_exec_free_environ(), or NULL to keep the current one.
+ */
+static char ** wm_exec_path_environ(const char * add_path) {
+    const char * env_path = getenv("PATH");
+    char new_path[OS_SIZE_6144];
+    int written;
+
+    if (env_path == NULL) {
+        written = snprintf(new_path, sizeof(new_path), "%s", add_path);
+    } else if (strlen(env_path) >= sizeof(new_path)) {
+        merror("Unable to add '%s' to PATH: PATH environment variable too large.", add_path);
+        return NULL;
+    } else {
+        written = snprintf(new_path, sizeof(new_path), "%s:%s", add_path, env_path);
+    }
+
+    if (written < 0) {
+        merror("Unable to add '%s' to PATH: %s (%d).", add_path, strerror(errno), errno);
+        return NULL;
+    } else if ((size_t)written >= sizeof(new_path)) {
+        merror("Unable to add '%s' to PATH: new PATH environment variable too large.", add_path);
+        return NULL;
+    }
+
+    size_t count = 0;
+
+    while (environ != NULL && environ[count] != NULL) {
+        count++;
+    }
+
+    // The new PATH goes first, which is where wm_exec_free_environ() expects it
+    char ** new_environ = NULL;
+    size_t n = 0;
+    os_calloc(count + 2, sizeof(char *), new_environ);
+    os_calloc(strlen(new_path) + sizeof("PATH="), sizeof(char), new_environ[n]);
+    snprintf(new_environ[n++], strlen(new_path) + sizeof("PATH="), "PATH=%s", new_path);
+
+    for (size_t i = 0; i < count; i++) {
+        if (strncmp(environ[i], "PATH=", 5) != 0) {
+            new_environ[n++] = environ[i];
+        }
+    }
+
+    return new_environ;
+}
+
+/**
+ * @brief Free an environment built by wm_exec_path_environ(). The other entries belong to environ.
+ * @param new_environ Environment to free.
+ */
+static void wm_exec_free_environ(char ** new_environ) {
+    if (new_environ != NULL) {
+        os_free(new_environ[0]);
+        os_free(new_environ);
+    }
+}
 
 /**
  * @brief Wait for the reader thread to stop reading. The caller holds tinfo->mutex.
@@ -468,7 +815,15 @@ STATIC int wm_exec_exit_code(int status) {
 
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
+    return wm_exec_in_dir(command, output, exitcode, secs, add_path, NULL);
+}
+
+// Execute command from work_dir with timeout of secs
+
+int wm_exec_in_dir(char *command, char **output, int *exitcode, int secs, const char * add_path, const char * work_dir)
+{
     char ** argv;
+    char ** new_environ = NULL;
     pid_t pid;
     int pipe_fd[2];
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, false, false };
@@ -479,6 +834,18 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
     if (exitcode) {
         *exitcode = 0;
+    }
+
+    // The child cannot log, so check the directory here to report why the command did not run
+    if (work_dir != NULL && wm_exec_check_dir(work_dir) < 0) {
+        merror("Unable to change working directory to '%s': %s (%d)", work_dir, strerror(errno), errno);
+
+        // Same exit code as a command the child cannot run, which callers check
+        if (exitcode) {
+            *exitcode = EXECVE_ERROR;
+        }
+
+        return -1;
     }
 
     // Create pipe for child's stdout
@@ -504,9 +871,49 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 #endif
     }
 
+    // The child must not log nor take locks before exec: another thread may have held one at
+    // fork(). Everything it needs is prepared here.
+
+    argv = w_strtok(command);
+
+    if (argv[0] == NULL) {
+        mdebug1("Invalid command: '%s'", command);
+
+        if (exitcode) {
+            *exitcode = EXECVE_ERROR;
+        }
+
+        if (output) {
+            close(pipe_fd[0]);
+            close(pipe_fd[1]);
+        }
+
+        free_strarray(argv);
+        return -1;
+    }
+
+    if (add_path != NULL) {
+        new_environ = wm_exec_path_environ(add_path);
+    }
+
+    // Block signals across fork(), so the child never runs the daemon's handlers
+
+    sigset_t blocked_signals;
+    sigset_t previous_signals;
+    sigset_t no_signals;
+    sigfillset(&blocked_signals);
+    sigemptyset(&no_signals);
+    pthread_sigmask(SIG_BLOCK, &blocked_signals, &previous_signals);
+
     // Fork
 
-    switch (pid = fork()) {
+    pid = fork();
+
+    if (pid != 0) {
+        pthread_sigmask(SIG_SETMASK, &previous_signals, NULL);
+    }
+
+    switch (pid) {
     case -1:
 
         // Error
@@ -518,52 +925,41 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             close(pipe_fd[1]);
         }
 
+        free_strarray(argv);
+        wm_exec_free_environ(new_environ);
         return -1;
 
     case 0:
 
-        // Child
+        // Child: no logging nor locks until exec
 
-        // Add environment variable if exists
+        // Reset handled signals to their default action, as exec would, so that a signal ends
+        // the child instead of running the daemon's handler. Ignored signals stay ignored.
+        for (int sig = 1; sig < NSIG; sig++) {
+            struct sigaction action;
 
-        if (add_path != NULL) {
-
-            char * new_path = NULL;
-            os_calloc(OS_SIZE_6144, sizeof(char), new_path);
-            char *env_path = getenv("PATH");
-
-            if (!env_path) {
-                snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
-            } else if (strlen(env_path) >= OS_SIZE_6144) {
-                merror("at wm_exec(): PATH environment variable too large.");
-            } else {
-                const int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
-
-                if (bytes_written >= OS_SIZE_6144) {
-                    merror("at wm_exec(): New environment variable too large.");
-                }
-                else if (bytes_written < 0) {
-                    merror("at wm_exec(): New environment variable error: %d (%s).", errno, strerror(errno));
-                }
+            if (sigaction(sig, NULL, &action) == 0 && action.sa_handler != SIG_IGN && action.sa_handler != SIG_DFL) {
+                memset(&action, 0, sizeof(action));
+                action.sa_handler = SIG_DFL;
+                sigemptyset(&action.sa_mask);
+                sigaction(sig, &action, NULL);
             }
-
-            if (setenv("PATH", new_path, 1) < 0) {
-                merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
-            }
-
-            char * new_env = getenv("PATH");
-            if (new_env != NULL) {
-                mdebug1("New 'PATH' environment variable set: '%s'", new_env);
-            }
-            os_free(new_path);
         }
 
-        argv = w_strtok(command);
+        // The command starts with no signal blocked, whatever the calling thread blocks
+        pthread_sigmask(SIG_SETMASK, &no_signals, NULL);
+
+        // The parent also does this, so the group exists whichever side runs first
+        setpgid(0, 0);
+
+        if (work_dir != NULL && chdir(work_dir) < 0) {
+            _exit(EXECVE_ERROR);
+        }
 
         int fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
-            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+            _exit(EXECVE_ERROR);
         }
 
         dup2(fd, STDIN_FILENO);
@@ -580,8 +976,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         close(fd);
 
-        setsid();
         if (nice(wm_task_nice)) {}
+
+        if (new_environ != NULL) {
+            environ = new_environ;
+        }
+
         execvp(argv[0], argv);
         _exit(EXECVE_ERROR);
 
@@ -590,6 +990,16 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     default:
 
         // Parent
+
+        // The command leads its own process group before anything can signal it
+        setpgid(pid, pid);
+
+        if (new_environ != NULL) {
+            mdebug1("New 'PATH' environment variable set: '%s'", new_environ[0] + strlen("PATH="));
+        }
+
+        free_strarray(argv);
+        wm_exec_free_environ(new_environ);
 
         wm_append_sid(pid);
 
@@ -606,11 +1016,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 w_mutex_unlock(&tinfo.mutex);
 
                 // The write end was already closed above. Nobody will read the command's
-                // output, so do not leave it running nor unreaped. The child may not have
-                // made its own process group yet, so signal it directly as well.
+                // output, so do not leave it running nor unreaped.
                 close(pipe_fd[0]);
                 kill(-pid, SIGKILL);
-                kill(pid, SIGKILL);
                 waitpid(pid, &status, 0);
                 wm_remove_sid(pid);
 
@@ -674,7 +1082,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             default:
                 if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                     retval = -1;
                 }
 
@@ -719,7 +1127,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
                 } else { // Command finished
                     if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                        mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                        mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                         retval = -1;
                     } else {
                         retval = 0;
@@ -746,7 +1154,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
                 default:
                     if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                        mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                        mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                         retval = -1;
                     }
 
@@ -763,7 +1171,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             default:
                 if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    mdebug1("Invalid command: '%s' (exit code %d)", command, EXECVE_ERROR);
                     retval = -1;
                 } else {
                     retval = 0;

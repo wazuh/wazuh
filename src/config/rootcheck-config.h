@@ -17,6 +17,10 @@
 #define RK_CONF_UNPARSED -2
 #define RK_CONF_UNDEFINED -1
 
+/* Bounds of rootcheck.max_pid */
+#define RC_MAX_PID_DEFAULT 32768
+#define RC_MAX_PID_MAX     4194304
+
 typedef struct _rkconfig {
     const char *workdir;
     char *basedir;
@@ -38,6 +42,7 @@ typedef struct _rkconfig {
     int disabled;
     short skip_nfs;
     int tsleep;
+    int max_pid;    /* Highest PID checked by the Linux hidden process scan */
 
     int time;
     int queue;

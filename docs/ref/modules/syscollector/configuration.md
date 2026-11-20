@@ -54,6 +54,8 @@ Syscollector is configured in the agent's `ossec.conf` file using the `<wodle na
 | `browser_extensions` | `yes` | Browser add-ons |
 | `hotfixes` | `yes` | Windows updates (Windows only) |
 
+On Linux, `packages` (per-user Python and Node.js packages) and `browser_extensions` look inside each directory under `/home`. A home directory that is an automount point not mounted at scan time is skipped instead of mounted (Linux kernel 3.12 or later, or a distribution kernel with the same support, such as RHEL 7), so its contents are only reported while it is mounted: its packages and extensions are removed from the inventory, along with their vulnerability detection results, while it is not mounted, and reported again once it is.
+
 ### Advanced Options
 
 | Option | Default | Range | Description |

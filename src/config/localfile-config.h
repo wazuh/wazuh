@@ -241,6 +241,7 @@ typedef struct _logreader {
     int exists;
     unsigned int age;
     char *age_str;
+    char mysql_last_time[36];  ///< Timestamp of the last mysql_log entry, for the lines in the same second
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 

@@ -17,6 +17,10 @@ int __wrap_audit_get_rule_list(int fd);
 
 int __wrap_audit_restart();
 
+int __wrap_audit_stop();
+
+int __wrap_audit_start();
+
 int __wrap_audit_set_db_consistency();
 
 int __wrap_search_audit_rule(const char *path, int perms, const char *key);

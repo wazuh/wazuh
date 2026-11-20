@@ -51,6 +51,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data, const cJSON* 
                                         cJSON* changed_attributes);
 void create_windows_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
+void fim_db_remove_wildcard_entry(void * data, void * ctx);
 void process_delete_event(void * data, void * ctx);
 void fim_db_process_missing_entry(void * data, void * ctx);
 void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t *configuration, cJSON *attributes);
@@ -3715,43 +3716,169 @@ void test_fim_process_missing_entry(void **state){
 
 static void test_fim_process_wildcard_removed_no_data(void **state) {
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    // The directory itself has no row, so the files under it are searched.
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     char buff[OS_SIZE_128] = {0};
     snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
     expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-
-    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
-    will_return(__wrap_fim_db_get_path, NULL);
-
 
     fim_process_wildcard_removed(directory0);
 }
 
 static void test_fim_process_wildcard_removed_failure(void **state) {
-    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
-    file->elements = 1;
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
 
-    char buff[OS_SIZE_128] = {0};
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
+    char buff[OS_SIZE_128] = {0};
     snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
     expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
-    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
-    will_return(__wrap_fim_db_get_path, NULL);
+    will_return(__wrap_fim_db_file_pattern_search, FIMDB_ERR);
 
     fim_process_wildcard_removed(directory0);
+}
 
-    free(file);
+static void test_fim_process_wildcard_removed_report_changes(void **state) {
+    directory_t config = { 0 };
+    char pattern[OS_SIZE_128] = {0};
+
+#ifdef TEST_WINAGENT
+    config.path = "c:\\a\\removed\\dir";
+#else
+    config.path = "/a/removed/dir";
+#endif
+    config.options = CHECK_SEECHANGES;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_string(__wrap_fim_diff_process_delete_file, filename, config.path);
+    will_return(__wrap_fim_diff_process_delete_file, 0);
+
+    expect_string(__wrap_fim_db_get_path, file_path, config.path);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
+
+    snprintf(pattern, OS_SIZE_128, "%s%c%%", config.path, PATH_SEP);
+    expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
+    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
+
+    fim_process_wildcard_removed(&config);
+}
+
+// OSList_InsertData() of one entry, then fim_configuration_directory() over the list
+static void expect_list_insert_and_lookup(void) {
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+#ifndef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+}
+
+// OSList_Destroy() of the list
+static void expect_list_destroy(void) {
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+}
+
+static void test_fim_db_remove_wildcard_entry_nested_config(void **state) {
+    OSList *saved_directories = syscheck.directories;
+    directory_t removed = { 0 };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .type = FIM_DELETE };
+    get_data_ctx ctx = { .event = &evt_data, .config = &removed };
+
+#ifdef TEST_WINAGENT
+    removed.path = "c:\\a\\removed";
+    char *nested_path = "c:\\a\\removed\\sub";
+    char *file = "c:\\a\\removed\\sub\\file";
+#else
+    removed.path = "/a/removed";
+    char *nested_path = "/a/removed/sub";
+    char *file = "/a/removed/sub/file";
+#endif
+    ctx.path = removed.path;
+
+    // Only the nested entry has report_changes: its options must be used.
+    directory_t *nested = fim_create_directory(nested_path, CHECK_SEECHANGES, NULL, 512, NULL, 1024, 0);
+    expect_list_insert_and_lookup();
+    syscheck.directories = OSList_Create();
+    OSList_InsertData(syscheck.directories, NULL, nested);
+
+    expect_string(__wrap_fim_diff_process_delete_file, filename, file);
+    will_return(__wrap_fim_diff_process_delete_file, 0);
+    expect_string(__wrap_fim_db_get_path, file_path, file);
+    will_return(__wrap_fim_db_get_path, FIMDB_OK);
+
+    fim_db_remove_wildcard_entry(file, &ctx);
+
+    expect_list_destroy();
+    OSList_Destroy(syscheck.directories);
+    free_directory(nested);
+    syscheck.directories = saved_directories;
+}
+
+static void test_fim_db_remove_wildcard_entry_parent_config(void **state) {
+    OSList *saved_directories = syscheck.directories;
+    directory_t removed = { 0 };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .type = FIM_DELETE };
+    get_data_ctx ctx = { .event = &evt_data, .config = &removed };
+
+#ifdef TEST_WINAGENT
+    removed.path = "c:\\a\\removed";
+    char *parent_path = "c:\\a";
+    char *file = "c:\\a\\removed\\file";
+#else
+    removed.path = "/a/removed";
+    char *parent_path = "/a";
+    char *file = "/a/removed/file";
+#endif
+    ctx.path = removed.path;
+    removed.options = CHECK_SEECHANGES;
+
+    // An entry above the removed directory must not replace its options.
+    directory_t *parent = fim_create_directory(parent_path, 0, NULL, 512, NULL, 1024, 0);
+    expect_list_insert_and_lookup();
+    syscheck.directories = OSList_Create();
+    OSList_InsertData(syscheck.directories, NULL, parent);
+
+    expect_string(__wrap_fim_diff_process_delete_file, filename, file);
+    will_return(__wrap_fim_diff_process_delete_file, 0);
+    expect_string(__wrap_fim_db_get_path, file_path, file);
+    will_return(__wrap_fim_db_get_path, FIMDB_OK);
+
+    fim_db_remove_wildcard_entry(file, &ctx);
+
+    expect_list_destroy();
+    OSList_Destroy(syscheck.directories);
+    free_directory(parent);
+    syscheck.directories = saved_directories;
 }
 
 static void test_fim_process_wildcard_removed_data_exists(void **state) {
@@ -3759,36 +3886,11 @@ static void test_fim_process_wildcard_removed_data_exists(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    fim_data_t *fim_data = *state;
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
 
-    fim_data->fentry->file_entry.path = strdup("file");
-    fim_data->fentry->file_entry.data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-    char pattern[100];
-    snprintf(pattern, PATH_MAX, "%s%c%%", directory0->path, PATH_SEP);
-    expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
-    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
+    // The removed entry is a file: no search under it.
     expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+    will_return(__wrap_fim_db_get_path, FIMDB_OK);
 
     fim_process_wildcard_removed(directory0);
 }
@@ -3907,10 +4009,10 @@ static void test_update_wildcards_config_remove_config() {
 
     // Remove configuration loop
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
-    will_return(__wrap_fim_db_get_path, NULL);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
-    will_return(__wrap_fim_db_get_path, NULL);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern2);
     will_return(__wrap_fim_db_file_pattern_search, 0);
@@ -4648,7 +4750,10 @@ int main(void) {
         /* fim_process_wildcard_removed */
         cmocka_unit_test(test_fim_process_wildcard_removed_no_data),
         cmocka_unit_test(test_fim_process_wildcard_removed_failure),
-        cmocka_unit_test_setup_teardown(test_fim_process_wildcard_removed_data_exists, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_fim_process_wildcard_removed_report_changes),
+        cmocka_unit_test(test_fim_process_wildcard_removed_data_exists),
+        cmocka_unit_test(test_fim_db_remove_wildcard_entry_nested_config),
+        cmocka_unit_test(test_fim_db_remove_wildcard_entry_parent_config),
 
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),

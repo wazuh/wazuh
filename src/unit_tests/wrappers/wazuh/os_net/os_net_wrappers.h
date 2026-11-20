@@ -27,6 +27,9 @@ int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_si
 
 int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size);
 
+/* errno set by a failing __wrap_OS_ConnectUnixDomain call, 0 to leave errno untouched */
+extern int test_os_connect_unix_errno;
+
 int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size);
 
 int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg);

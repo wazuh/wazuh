@@ -465,7 +465,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
 void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_path, const char *ciscat_binary) {
 
     char *command = NULL;
-    int status, child_status;
+    int status;
     char *output = NULL;
     char msg[OS_MAXSTR];
     wm_scan_data *scan_info = NULL;
@@ -564,71 +564,47 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
     snprintf(msg, OS_MAXSTR, "Starting CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
-    // Execute the scan
+    // Execute the scan. CIS-CAT Pro V3 must run from its own directory.
 
-    pid_t pid;
+    const char * work_dir = NULL;
 
-    switch(pid = fork(), pid) {
-        case -1:
-            mterror_exit(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
+    if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY)) {
+        work_dir = path;
+        mtdebug2(WM_CISCAT_LOGTAG, "Working directory: %s", path);
+    }
+
+    mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
+
+    switch (wm_exec_in_dir(command, &output, &status, eval->timeout, java_path, work_dir)) {
         case 0:
-            // Child process
-            setsid();
-
-            if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY)) {
-                if (chdir(path) < 0) {
-                    ciscat->flags.error = 1;
-                    mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
-                    os_free(command);
-                    _exit(EXIT_FAILURE);
-                }
+            if (status == 0) {
+                mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+            } else {
+                ciscat->flags.error = 1;
+                mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
             }
-
-            mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
-            mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
-
-            switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
-                case 0:
-                    if (status == 0) {
-                        mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
-                    } else {
-                        ciscat->flags.error = 1;
-                        mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                        mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                    }
-                    break;
-                case WM_ERROR_TIMEOUT:
-                    ciscat->flags.error = 1;
-                    mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
-                    break;
-                default:
-                    ciscat->flags.error = 1;
-                    mterror(WM_CISCAT_LOGTAG, "Internal error. Exiting...");
-                    os_free(command);
-                    _exit(EXIT_FAILURE);
-            }
-            os_free(output);
-            os_free(command);
-            _exit(0);
-
+            break;
+        case WM_ERROR_TIMEOUT:
+            ciscat->flags.error = 1;
+            mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
+            break;
         default:
-            // Parent process
-            wm_append_sid(pid);
+            ciscat->flags.error = 1;
 
-            switch(waitpid(pid, &child_status, 0)) {
-                case -1:
-                    mterror(WM_CISCAT_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
-                    break;
-                default:
-                    if (WEXITSTATUS(child_status) == 1){
-                        eval->flags.error = 1;
-                        os_free(output);
-                        os_free(command);
-                        return;
-                    }
+            // Tell why the command could not be run in the most likely case. Other errors, such as
+            // a failed fork(), may not happen again, so the evaluation runs at the next interval.
+            char binary_path[PATH_MAX];
+            snprintf(binary_path, sizeof(binary_path), "%s/%s", path, ciscat_binary);
+
+            if (access(binary_path, X_OK) < 0) {
+                // Retrying would fail the same way until the setup is fixed
+                eval->flags.error = 1;
+                mterror(WM_CISCAT_LOGTAG, "Unable to run '%s': %s (%d). Disabling content '%s'.", binary_path, strerror(errno), errno, eval->path);
+            } else {
+                mterror(WM_CISCAT_LOGTAG, "Internal error executing '%s'.", eval->path);
             }
-
-            wm_remove_sid(pid);
+            break;
     }
 
     os_free(output);

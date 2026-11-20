@@ -14,6 +14,16 @@
 
 #define RC_ENOENT_SUSPECT (-2)
 #define RC_SYS_MAX_DEPTH 256
+#define RC_SYS_MAX_READ_SIZE (1024 * 1024 * 1024)
+
+#ifdef O_NOFOLLOW
+#define RC_SYS_O_NOFOLLOW O_NOFOLLOW
+#else
+#define RC_SYS_O_NOFOLLOW 0
+#endif
+#ifndef O_NONBLOCK
+#define O_NONBLOCK 0
+#endif
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
@@ -91,20 +101,30 @@ static int read_sys_file(const char *file_name, int do_read)
     /* Check if the size from stats is the same as when we read the file */
     if (S_ISREG(statbuf.st_mode) && do_read) {
         char buf[OS_SIZE_1024];
-        int fd;
+        int fd = -1;
         ssize_t nr;
         long int total = 0;
 
-        fd = open(file_name, O_RDONLY, 0);
+        if (statbuf.st_size > RC_SYS_MAX_READ_SIZE) {
+            mtdebug1(ARGV0, "Skipping size check of '%s': file too large.", file_name);
+        } else {
+            fd = open(file_name, O_RDONLY | O_NONBLOCK | RC_SYS_O_NOFOLLOW, 0);
+        }
 
         /* It may not necessarily open */
         if (fd >= 0) {
-            while ((nr = read(fd, buf, sizeof(buf))) > 0) {
+            struct stat fd_stat;
+            const int same_file = fstat(fd, &fd_stat) == 0 && S_ISREG(fd_stat.st_mode) &&
+                                  fd_stat.st_dev == statbuf.st_dev && fd_stat.st_ino == statbuf.st_ino;
+
+            while (same_file && total <= statbuf.st_size && (nr = read(fd, buf, sizeof(buf))) > 0) {
                 total += nr;
             }
             close(fd);
 
-            if (strcmp(file_name, "/dev/bus/usb/.usbfs/devices") == 0) {
+            if (!same_file) {
+                mtdebug2(ARGV0, "Skipping size check of '%s': file changed.", file_name);
+            } else if (strcmp(file_name, "/dev/bus/usb/.usbfs/devices") == 0) {
                 /* Ignore .usbfs/devices */
             } else if (total != statbuf.st_size) {
                 struct stat statbuf2;
@@ -404,6 +424,11 @@ static int read_sys_dir(const char *dir_name, int do_read)
             break;
         }
         i++;
+    }
+
+    /* Content written by other users is not checked */
+    if (statbuf.st_mode & S_IWOTH) {
+        do_read = 0;
     }
 #endif
 

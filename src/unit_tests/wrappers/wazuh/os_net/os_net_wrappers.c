@@ -34,12 +34,20 @@ int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size) {
     return mock();
 }
 
+int test_os_connect_unix_errno = 0;
+
 int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);
     check_expected(type);
     check_expected(max_msg_size);
 
-    return mock();
+    int ret = mock();
+
+    if (ret < 0 && test_os_connect_unix_errno != 0) {
+        errno = test_os_connect_unix_errno;
+    }
+
+    return ret;
 }
 
 int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg) {

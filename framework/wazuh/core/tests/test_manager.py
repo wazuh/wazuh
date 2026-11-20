@@ -228,9 +228,9 @@ def test_parse_execd_output(error_flag, error_msg):
             parse_execd_output(json_response)
 
 
-@patch('wazuh.core.manager.configuration.api_conf', new={'experimental_features': True})
+@patch('wazuh.core.manager.configuration.api_conf', new={'experimental_features': True, 'drop_privileges': False})
 def test_get_api_config():
-    """Checks that get_api_config method is returning current api_conf dict."""
+    """Checks that get_api_config method is returning current api_conf dict without the ignored options."""
     result = get_api_conf()
     assert result == {'experimental_features': True}
 
