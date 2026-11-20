@@ -101,7 +101,7 @@ w_enroll_status_t try_enroll_to_server(void);
 
 /**
  * Function that makes the request to the API for the request of uninstallation permissions.
- * @return true if validation is granted, false if denied
+ * @return false if the manager grants the permission, true otherwise (denied or error)
  * @param token API token used for the request
  * @param host host and port used for the request
  * @param ssl_verify Enable SSL verification
@@ -123,9 +123,17 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
  * @param uninstall_auth_login API user and password separated by colon
  * @param uninstall_auth_host host and port used for the request
  * @param ssl_verify Enable SSL verification
- * @return true if validation is granted, false if denied
+ * @return false if the manager grants the permission, true otherwise (denied or error)
  * */
 bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify);
+
+/**
+ * Command-line entry point of the uninstallation validation for the Windows agent, used by the MSI.
+ * Accepts the same options as wazuh-agentd on Linux, as "--name=value" or "--name value":
+ * --uninstall-auth-host, --uninstall-auth-token, --uninstall-auth-login and --uninstall-ssl-verify.
+ * @return 0 if the manager grants the uninstallation, 1 otherwise (denied, error or bad arguments)
+ * */
+int w_uninstall_validation_cli(int argc, char **argv);
 
 // Thread to rotate internal log
 #ifdef WIN32

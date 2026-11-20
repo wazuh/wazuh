@@ -49,6 +49,11 @@
         <Property Id="CERTIFICATE" Secure="yes"/>
         <Property Id="PEM" Secure="yes"/>
         <Property Id="KEY" Secure="yes"/>
+        <!-- anti_tampering/package_uninstallation: credentials for the uninstallation validation -->
+        <Property Id="VALIDATION_HOST" Secure="yes"/>
+        <Property Id="VALIDATION_TOKEN" Secure="yes" Hidden="yes"/>
+        <Property Id="VALIDATION_LOGIN" Secure="yes" Hidden="yes"/>
+        <Property Id="VALIDATION_SSL_VERIFY" Secure="yes"/>
 
         <Property Id="OS_VERSION" Secure="yes"/>
 
@@ -124,6 +129,8 @@
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
+        <CustomAction Id="SetCustomActionDataValidateUninstall" Return="check" Property="ValidateUninstall" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[VALIDATION_HOST]&quot;/+/&quot;[VALIDATION_TOKEN]&quot;/+/&quot;[VALIDATION_LOGIN]&quot;/+/&quot;[VALIDATION_SSL_VERIFY]&quot;" HideTarget="yes" />
+        <CustomAction Id="ValidateUninstall" BinaryKey="InstallerScripts" VBScriptCall="ValidateUninstall" Return="check" Execute="deferred" Impersonate="no" HideTarget="yes" />
         <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
         <CustomAction Id="CheckPendingConflict" BinaryKey="InstallerScripts" VBScriptCall="CheckPendingConflict" Return="check" Execute="immediate"/>
 
@@ -207,6 +214,10 @@
 
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallFinalize">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
+
+            <!-- anti_tampering/package_uninstallation: ask the manager before anything is removed, on uninstallation only (not on upgrade) -->
+            <Custom Action="SetCustomActionDataValidateUninstall" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="ValidateUninstall" After="SetCustomActionDataValidateUninstall">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
