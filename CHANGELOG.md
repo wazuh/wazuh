@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-modulesd` logging the expected retries of the indexer connector queues of the inventory and vulnerability states as warnings or errors: after a `409`, `413` or `429` answer from the indexer, and when the queue stops. A `409` or `429` that persists for a minute is still reported, with the reason given by the indexer. ([#41542](https://github.com/wazuh/wazuh/pull/41542))
 - Hardened how the vulnerability scanner processes syscollector deltas. ([#41388](https://github.com/wazuh/wazuh/pull/41388))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on systems with glibc older than 2.34, which left `wazuh-clusterd` stopped after a manager restart. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
+- Fixed the vulnerability scanner filling the disk with the local mirror of the detections (`queue/indexer/db`) when `index-status` is `no`, as it has to be with the indexer disabled. The mirror is no longer kept in that case, an existing one is removed, and enabling the indexing again triggers a re-scan of the agents, including the disconnected ones. ([#41543](https://github.com/wazuh/wazuh/pull/41543))
 
 #### Changed
 
