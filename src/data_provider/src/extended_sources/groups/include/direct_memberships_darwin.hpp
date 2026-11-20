@@ -34,7 +34,7 @@ class DirectMemberships
         /// @brief Groups of one account: the primary gid first, then the others by ascending gid
         /// without repeats, so the list does not change from one scan to the next.
         /// @return Empty when the directory could not be read, which is not the same as no groups.
-        std::vector<gid_t> groupsOf(const std::string& userName, uid_t uid, gid_t primaryGid);
+        std::vector<gid_t> groupsOf(const std::string& userName, gid_t primaryGid);
 
     private:
         struct Group
@@ -48,7 +48,7 @@ class DirectMemberships
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
         std::vector<Group> m_groups;
-        std::map<uid_t, std::string> m_guidByUid;
+        std::map<std::string, std::string> m_guidByName;
         bool m_loaded {false};
         bool m_readable {false};
 };

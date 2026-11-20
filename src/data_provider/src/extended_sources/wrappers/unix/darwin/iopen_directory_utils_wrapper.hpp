@@ -12,7 +12,6 @@
 #include <map>
 #include <set>
 #include <string>
-#include <sys/types.h>
 #include "json.hpp"
 
 /// @brief Direct members of one group record, as OpenDirectory stores them.
@@ -105,13 +104,13 @@ class IODUtilsWrapper
         /// not to be trusted, it does not mean the groups have no members.
         virtual bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup) = 0;
 
-        /// @brief Reads the GUID of every local user from its directory record, keyed by uid.
+        /// @brief Reads the GUID of every local user from its directory record, keyed by record name.
         ///
         /// The groups list their members by these GUIDs, so reading both from the same directory node
         /// keeps them consistent. mbr_uid_to_uuid() is not used for this: with the membership service
         /// unavailable it still succeeds and answers with a made-up UUID, not the account's own.
         ///
-        /// @param guidByUid Output map of uid to GUID; an account whose record has no GUID is left out.
+        /// @param guidByName Output map of record name (every name the record holds) to GUID; an account whose record has no GUID is left out.
         /// @return True when the directory was read, false when it could not be.
-        virtual bool genUserGuids(std::map<uid_t, std::string>& guidByUid) = 0;
+        virtual bool genUserGuids(std::map<std::string, std::string>& guidByName) = 0;
 };

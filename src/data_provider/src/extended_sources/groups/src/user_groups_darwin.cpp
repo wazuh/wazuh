@@ -71,7 +71,7 @@ std::vector<gid_t> UserGroupsProvider::getUserGroups(uid_t uid, const char* user
     }
 
     // Cache miss - read the direct memberships
-    auto groups = m_directMemberships.groupsOf(username, uid, gid);
+    auto groups = m_directMemberships.groupsOf(username, gid);
 
     // An unreadable directory is not cached, so the next scan reads it again.
     if (groups.empty())

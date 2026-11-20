@@ -94,10 +94,10 @@ namespace od
     /// @return True when the directory was read, false when it could not be.
     bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup);
 
-    /// @brief Reads the GUID of every local user from its directory record, keyed by uid.
+    /// @brief Reads the GUID of every local user from its directory record, keyed by record name.
     ///
-    /// @param guidByUid Output map of uid to GUID; an account whose record has no GUID is left out.
+    /// @param guidByName Output map of record name (every name the record holds) to GUID; an account whose record has no GUID is left out.
     /// @return True when the directory was read, false when it could not be.
-    bool genUserGuids(std::map<uid_t, std::string>& guidByUid);
+    bool genUserGuids(std::map<std::string, std::string>& guidByName);
 
 } // namespace od

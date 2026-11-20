@@ -52,12 +52,22 @@ void DirectMemberships::load()
     m_loaded = true;
 
     std::map<std::string, ODGroupMembers> membersByGroup;
-    m_readable = m_odWrapper->genGroupMembers(membersByGroup) && m_odWrapper->genUserGuids(m_guidByUid);
+    m_readable = m_odWrapper->genGroupMembers(membersByGroup) && m_odWrapper->genUserGuids(m_guidByName);
 
     if (!m_readable)
     {
         return;
     }
+
+    // Names are not case sensitive on macOS, so the keys are folded as the member names are.
+    std::map<std::string, std::string> folded;
+
+    for (const auto& [name, guid] : m_guidByName)
+    {
+        folded[toLower(name)] = guid;
+    }
+
+    m_guidByName = std::move(folded);
 
     for (auto& [name, members] : membersByGroup)
     {
@@ -76,7 +86,7 @@ void DirectMemberships::load()
     }
 }
 
-std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_t uid, gid_t primaryGid)
+std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, gid_t primaryGid)
 {
     load();
 
@@ -85,11 +95,12 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_
         return {};
     }
 
-    // An account whose record has no GUID cannot be listed by GUID, only by name.
-    const auto guid = m_guidByUid.find(uid);
-    const std::string uuid = guid != m_guidByUid.end() ? toUpper(guid->second) : std::string {};
-
     const auto lowerName = toLower(userName);
+
+    // An account whose record has no GUID cannot be listed by GUID, only by name.
+    const auto guid = m_guidByName.find(lowerName);
+    const std::string uuid = guid != m_guidByName.end() ? toUpper(guid->second) : std::string {};
+
     std::vector<gid_t> others;
 
     for (const auto& group : m_groups)

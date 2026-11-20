@@ -17,8 +17,6 @@
 #include <string>
 #include <utility>
 
-#include "uid_text_darwin.hpp"
-
 namespace od
 {
     /// @brief Runs a query against the local OpenDirectory node.
@@ -485,7 +483,7 @@ namespace od
         }
     }
 
-    bool genUserGuids(std::map<uid_t, std::string>& guidByUid)
+    bool genUserGuids(std::map<std::string, std::string>& guidByName)
     {
         @autoreleasepool
         {
@@ -493,43 +491,43 @@ namespace od
             NSArray* results = queryLocalNode(kODRecordTypeUsers,
                                               kODAttributeTypeUniqueID,
                                               nil,
-                                              @[kODAttributeTypeUniqueID, kODAttributeTypeGUID]);
+                                              @[kODAttributeTypeRecordName, kODAttributeTypeGUID]);
 
             if (results == nil)
             {
                 return false;
             }
 
-            std::map<uid_t, std::string> collected;
+            std::map<std::string, std::string> collected;
 
             for (ODRecord * re in results)
             {
-                NSError* uidErr = nullptr;
+                NSError* nameErr = nullptr;
                 NSError* guidErr = nullptr;
-                NSArray* uids = [re valuesForAttribute:kODAttributeTypeUniqueID error:&uidErr];
+                NSArray* names = [re valuesForAttribute:kODAttributeTypeRecordName error:&nameErr];
                 NSArray* guids = [re valuesForAttribute:kODAttributeTypeGUID error:&guidErr];
 
-                if (uidErr != nullptr || guidErr != nullptr)
+                if (nameErr != nullptr || guidErr != nullptr)
                 {
                     return false;
                 }
 
                 // An account without a GUID cannot be listed by GUID, so there is nothing to match.
-                if ([uids count] == 0 || [guids count] == 0)
+                if ([guids count] == 0)
                 {
                     continue;
                 }
 
-                // A UniqueID that is not a plain uid must not land on a real account's uid.
-                uid_t uid = 0;
-
-                if (parseUidText(toStdString([uids[0] description]), uid))
+                // The accounts are joined by name, as the system does for a group membership: the
+                // record names are unique in the node, unlike a uid text, which can be written in
+                // several ways.
+                for (id name in names)
                 {
-                    collected[uid] = toStdString([guids[0] description]);
+                    collected[toStdString([name description])] = toStdString([guids[0] description]);
                 }
             }
 
-            guidByUid = std::move(collected);
+            guidByName = std::move(collected);
             return true;
         }
     }

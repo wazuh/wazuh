@@ -102,12 +102,12 @@ class ODUtilsWrapper : public IODUtilsWrapper
             return od::genGroupMembers(membersByGroup);
         }
 
-        /// @brief Reads the GUID of every local user from its directory record, keyed by uid.
+        /// @brief Reads the GUID of every local user from its directory record, keyed by record name.
         ///
-        /// @param guidByUid Output map of uid to GUID.
+        /// @param guidByName Output map of record name to GUID.
         /// @return True when the directory was read, false when it could not be.
-        bool genUserGuids(std::map<uid_t, std::string>& guidByUid) override
+        bool genUserGuids(std::map<std::string, std::string>& guidByName) override
         {
-            return od::genUserGuids(guidByUid);
+            return od::genUserGuids(guidByName);
         }
 };

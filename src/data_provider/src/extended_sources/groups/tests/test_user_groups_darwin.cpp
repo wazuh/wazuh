@@ -44,7 +44,7 @@ class MockPasswdWrapper : public IPasswdWrapperDarwin
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
         using GroupMembersMap = std::map<std::string, ODGroupMembers>;
-        using UserGuidMap = std::map<uid_t, std::string>;
+        using UserGuidMap = std::map<std::string, std::string>;
 
         using StringBoolMap = std::map<std::string, bool>;
         using StringJsonMap = std::map<std::string, nlohmann::json>;
@@ -58,7 +58,7 @@ class MockODUtilsWrapper : public IODUtilsWrapper
         MOCK_METHOD(void, genPasswordData, (StringJsonMap& passwordData), (override));
         MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string>& disabledUsers), (override));
         MOCK_METHOD(bool, genGroupMembers, (GroupMembersMap& membersByGroup), (override));
-        MOCK_METHOD(bool, genUserGuids, (UserGuidMap& guidByUid), (override));
+        MOCK_METHOD(bool, genUserGuids, (UserGuidMap& guidByName), (override));
 };
 
 // Answers the directory read the provider does once: each added user is listed by name in one
@@ -450,9 +450,9 @@ TEST_F(UserGroupsProviderDarwinTest, GroupThatOnlyNestsAnotherGroupIsNotReported
 TEST_F(UserGroupsProviderDarwinTest, MemberListedOnlyByGuidIsReported)
 {
     DirectoryCase env;
-    EXPECT_CALL(*env.od, genUserGuids(_)).WillRepeatedly(Invoke([](std::map<uid_t, std::string>& out)
+    EXPECT_CALL(*env.od, genUserGuids(_)).WillRepeatedly(Invoke([](std::map<std::string, std::string>& out)
     {
-        out[600] = "abcdefab-cdef-abcd-efab-cdef00000001";
+        out["Member"] = "abcdefab-cdef-abcd-efab-cdef00000001";
         return true;
     }));
     EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
