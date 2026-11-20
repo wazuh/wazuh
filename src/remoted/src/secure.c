@@ -1996,7 +1996,7 @@ void * save_control_thread(void * control_msg_queue)
                 cJSON * connection_status = agent_info ? cJSON_GetObjectItem(agent_info->child, "connection_status") : NULL;
 
                 // Never connected agents and earlier disconnection reasons are kept
-                if (cJSON_IsString(connection_status)
+                if (connection_status && cJSON_IsString(connection_status)
                     && (strcmp(connection_status->valuestring, AGENT_CS_ACTIVE) == 0 || strcmp(connection_status->valuestring, AGENT_CS_PENDING) == 0)) {
                     if (OS_SUCCESS != wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", &wdb_sock, status_code)) {
                         mwarn("Unable to set connection status as disconnected for agent: %s", ctrl_msg_data->key->id);
