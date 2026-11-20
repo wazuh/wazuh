@@ -159,6 +159,9 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                     return (OS_INVALID);
                 }
                 OS_ClearNode(chld_node);
+            } else if (*node[i]->content) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_agent_config_report) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
@@ -167,6 +170,9 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                     return (OS_INVALID);
                 }
                 OS_ClearNode(chld_node);
+            } else if (*node[i]->content) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_agent_enrollment) == 0) {
             /* Recorded on the tag, not inside the branch below: OS_GetElementsbyNode()
