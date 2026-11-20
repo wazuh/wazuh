@@ -204,6 +204,32 @@ def test_validate_cdb_list_ko():
         validate_cdb_list("test:key:testvalue\n")
 
 
+@pytest.mark.parametrize("content", [
+    'test_key:test_value\n',
+    '"test:key":test_value\n',
+    '"test:key":"test:value"\n',
+    '"C:\\Windows\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe":"Test Path"\n',
+    '"C:\\Windows\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe":Test Path\n',
+    'key:\n',
+    'key:""\n',
+])
+def test_validate_cdb_list_accepts_quoted_windows_paths(content):
+    """Quoted CDB keys can contain Windows path characters. See issue #31082."""
+    validate_cdb_list(content)
+
+
+@pytest.mark.parametrize("content", [
+    '"test:key":test:value\n',
+    'test:key:test_value\n',
+    'C:\\Windows\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe:"Test Path"\n',
+    'C:\\Windows\\Microsoft.NET\\Framework\\v2.0.50727\\csc.exe:Test Path\n',
+])
+def test_validate_cdb_list_rejects_ambiguous_colons(content):
+    """An unquoted drive-letter colon cannot be told apart from the key separator."""
+    with pytest.raises(WazuhError, match=r'\b1800\b'):
+        validate_cdb_list(content)
+
+
 @patch('wazuh.core.cdb_list.chmod')
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
 def test_create_list_file(mock_delete, mock_chmod):
