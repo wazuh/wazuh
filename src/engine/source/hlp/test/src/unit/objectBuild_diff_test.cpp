@@ -1200,9 +1200,6 @@ TEST(ObjectBuildDiff, KvErrorsAndLimits)
     };
     const auto maxDepth = json::Json::MAX_DEPTH;
     const std::vector<Row> rows {
-        // invalid pointer escape: the exception is the behaviour to keep
-        {"escape alone", "a~x=1", true, false},
-        {"escape after 200 pairs", validPairs(200) + " a~x=1", true, false},
         // a key with more than MAX_DEPTH dots fails, one dot below the cap does not
         {"too deep alone", deepKey(maxDepth + 1) + "=1", false, true},
         {"too deep after pairs", validPairs(200) + " " + deepKey(maxDepth + 1) + "=1", false, true},
@@ -1220,7 +1217,11 @@ TEST(ObjectBuildDiff, KvErrorsAndLimits)
         SCOPED_TRACE(row.name);
         const auto out = compareAll(Kind::Kv, KV_OPTIONS, row.text, row.name);
         tally.add(out);
-        ASSERT_TRUE(out.equal) << row.name;
+        EXPECT_TRUE(out.equal) << row.name;
+        if (!out.equal)
+        {
+            continue;
+        }
         EXPECT_EQ(out.threw, row.throws) << row.name;
         EXPECT_EQ(out.failed, row.fails) << row.name;
         if (row.fails && !row.throws && row.text.find("k.k") != std::string::npos)
@@ -1234,6 +1235,29 @@ TEST(ObjectBuildDiff, KvErrorsAndLimits)
     }
     EXPECT_EQ(tally.compared, rows.size());
     EXPECT_EQ(tally.productive, 2u);
+}
+
+// Not part of the differential: the legacy copy predates the rejection of invalid pointer escapes.
+TEST(ObjectBuildDiff, KvInvalidPointerEscapeFailsTheParse)
+{
+    const std::string expected =
+        "parse_kv: key 'a~x' has an invalid JSON Pointer escape ('~' must be followed by '0' or '1')";
+    for (const std::string& text : {std::string {"a~x=1"}, validPairs(200) + " a~x=1"})
+    {
+        for (const std::string& target : {TARGET, std::string {}})
+        {
+            for (const bool trace : {true, false})
+            {
+                SCOPED_TRACE(fmt::format("target='{}' trace={} input: {}", target, trace, text));
+                const hlp::Params params {"diffParser", target, hlp::Stop {}, KV_OPTIONS};
+                const auto run = exec(hlp::parsers::getKVParser(params), text, trace);
+                EXPECT_FALSE(run.threw) << run.what;
+                EXPECT_TRUE(run.failed);
+                EXPECT_EQ(run.error, trace ? expected : std::string {});
+                EXPECT_EQ(run.event, "{}");
+            }
+        }
+    }
 }
 
 TEST(ObjectBuildDiff, XmlGenerated)
