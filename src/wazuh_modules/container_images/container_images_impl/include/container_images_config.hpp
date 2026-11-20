@@ -22,20 +22,19 @@ namespace containerimages
     /// @brief The kinds of image source the configuration grammar accepts.
     ///
     /// The three entry types are fixed here so that adding a source later adds behaviour
-    /// only: the configuration does not change again. Only Archive is implemented at this
-    /// stage; the other two are accepted and reported as unimplemented.
+    /// only: the configuration does not change again.
     enum class ReferenceType
     {
         Registry,   ///< `<ref>`: an image in a remote registry.
         Archive,    ///< `<archive>`: a saved image archive or an OCI image layout on disk.
-        EngineStore ///< `<local>`: an image in the local container engine store.
+        EngineStore ///< `<local>`: every image held by a container engine on this host. The location is the engine's name.
     };
 
     /// @brief One configured image source.
     struct ConfiguredReference
     {
         ReferenceType type {ReferenceType::Archive};
-        std::string location; ///< Path or image reference, as written in the configuration.
+        std::string location; ///< Path or image reference, as written in the configuration. The engine name for `<local>`.
     };
 
     /// @brief Configuration name of a reference type, also stored as the reference type of
@@ -148,6 +147,9 @@ namespace containerimages
         std::vector<RegistryCredentials> registryAuth;  ///< Per-registry credential key names.
         std::string caBundle;                           ///< Certificate bundle. Detected when empty.
         RegistryLimits limits;
+
+        // Local container engines.
+        std::string dockerSocket;                       ///< Socket of the Docker engine `<local>docker` names. Empty when none is configured.
 
         // Persistence.
         std::string dbPath {"queue/container_images/db/container_images.db"}; ///< Local inventory DB.

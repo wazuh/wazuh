@@ -49,10 +49,17 @@ typedef struct wm_container_images_t {
     wm_container_images_registry_t *registries;  // Per-registry credential key names
     int registries_count;               // Number of configured registries
     char *ca_bundle;                    // Certificate bundle path; detected when unset
+    char *docker_socket;                // Socket `<local>docker` reads from, taken from the runtime engine block; NULL when none
 } wm_container_images_t;
 
 // Parse XML configuration
 int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+
+// Bind the `<local>` entries a block of <images> added (from first_reference on) to the engine configured in
+// the same <container_security>: `security_children` are the children of that element. `<local>docker` takes the
+// socket of its Docker engine block, written either as `<container_instances><type>docker</type>` or as `<docker>`,
+// and any other name, an absent or disabled engine, or a platform without engines drops that entry with one warning.
+void wm_container_images_bind_local(const OS_XML *xml, xml_node **security_children, wm_container_images_t *module, int first_reference);
 
 // Handle a <container_security> child that is not <images>. Where runtime security reads the block
 // (runtime_supported) the child is its own and is stepped over without validation; elsewhere it is

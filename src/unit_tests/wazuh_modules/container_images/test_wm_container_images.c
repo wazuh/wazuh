@@ -46,6 +46,7 @@ static void wmodule_cleanup(wmodule *module) {
 
         if (data) {
             os_free(data->ca_bundle);
+            os_free(data->docker_socket);
         }
 
         os_free(module->data);
@@ -1156,6 +1157,25 @@ void test_dump_omits_the_region_when_none_is_configured(void **state) {
     cJSON_Delete(dump);
 }
 
+void test_dump_names_the_docker_socket_of_a_local_reference(void **state) {
+    const char *string = "<references><local>docker</local></references>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    os_strdup("/run/d.sock", data->docker_socket);
+
+    cJSON *dump = wm_container_images_dump(data);
+    cJSON *images = cJSON_GetObjectItem(dump, "container_images");
+    cJSON *local = cJSON_GetObjectItem(cJSON_GetObjectItem(images, "references"), "local");
+
+    assert_string_equal(cJSON_GetObjectItem(images, "docker_socket")->valuestring, "/run/d.sock");
+    assert_string_equal(cJSON_GetArrayItem(local, 0)->valuestring, "docker");
+
+    cJSON_Delete(dump);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_defaults, setup_test_read, teardown_test_read),
@@ -1212,6 +1232,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_aws_tags_on_another_amazon_host_are_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_dump_names_the_keys_and_never_a_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_dump_omits_the_region_when_none_is_configured, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_dump_names_the_docker_socket_of_a_local_reference, setup_test_read, teardown_test_read),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

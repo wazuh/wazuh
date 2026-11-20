@@ -394,6 +394,43 @@ namespace containerimages
         return record;
     }
 
+    std::vector<ImageReferenceRecord> ContainerImagesDB::loadStoredEngine(const std::string& sourceType,
+                                                                          const std::string& engine)
+    {
+        std::vector<ImageReferenceRecord> records;
+
+        // Same refusal as loadStored: the values reach a SQL string.
+        if (sourceType.find('\'') != std::string::npos || engine.find_first_of("'%_") != std::string::npos)
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Refusing to read back an engine whose name is not quotable.");
+            return records;
+        }
+
+        std::vector<std::string> locations;
+
+        const auto locationCallback = [&locations](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            locations.push_back(stringOf(row, "reference_value"));
+        };
+
+        auto query = SelectQuery::builder()
+                     .table(REFERENCES_TABLE)
+                     .columnList({"reference_value"})
+                     .rowFilter("WHERE reference_type = '" + sourceType + "' AND reference_value LIKE '" + engine + "/%'")
+                     .build();
+        m_dbSync->selectRows(query.query(), locationCallback);
+
+        for (const auto& location : locations)
+        {
+            if (auto record {loadStored(sourceType, location)})
+            {
+                records.push_back(std::move(*record));
+            }
+        }
+
+        return records;
+    }
+
     void ContainerImagesDB::syncReferences(const std::vector<ImageReferenceRecord>& references,
                                            const DeltaCallback& onDelta)
     {

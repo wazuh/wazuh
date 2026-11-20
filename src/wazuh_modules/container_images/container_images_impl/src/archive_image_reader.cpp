@@ -15,6 +15,8 @@
 #include "layer_composer.hpp"
 #include "layer_reader.hpp"
 #include "oci_metadata.hpp"
+#include "platform_selection.hpp"
+#include "registry_byte_stream.hpp"
 #include "registry_reference.hpp"
 
 #include <algorithm>
@@ -576,10 +578,40 @@ namespace
     /// than one row without one, so the first image is kept deterministically and the
     /// rest are named in a warning instead of silently colliding into the same row on
     /// every scan.
-    void keepPrimaryDescriptor(std::vector<ImageDescriptor>& descriptors, const std::string& location)
+    ///
+    /// @param preferAgentPlatform For an image exported by a container engine, whose several entries are the
+    ///        platforms of one image rather than several images: the one matching the agent is kept, as the
+    ///        registry reader selects it, else the first, and the choice is logged at debug level only.
+    void keepPrimaryDescriptor(std::vector<ImageDescriptor>& descriptors, const std::string& location, const bool preferAgentPlatform = false)
     {
         if (descriptors.size() <= 1)
         {
+            return;
+        }
+
+        if (preferAgentPlatform)
+        {
+            const auto platformOf = [](const ImageDescriptor & descriptor)
+            {
+                return containerimages::Platform {containerimages::oci::stringField(descriptor.config, "os"),
+                                                  containerimages::oci::stringField(descriptor.config, "architecture"),
+                                                  containerimages::oci::stringField(descriptor.config, "variant")};
+            };
+
+            const auto target {containerimages::detectTargetPlatform()};
+            const auto match {std::find_if(descriptors.begin(), descriptors.end(), [&](const ImageDescriptor & descriptor)
+            {
+                return containerimages::platformMatches(platformOf(descriptor), target);
+            })};
+            const auto chosen {match != descriptors.end() ? match : descriptors.begin()};
+
+            logDebug("Image '" + location + "' holds " + std::to_string(descriptors.size()) + " platforms; using " +
+                     platformOf(*chosen).describe() + (match != descriptors.end()
+                                                       ? ", the agent's."
+                                                       : ", the first, since none matches " + target.describe() + "."));
+
+            std::swap(descriptors.front(), *chosen);
+            descriptors.resize(1);
             return;
         }
 
@@ -727,16 +759,63 @@ namespace
 
         return false;
     }
+
+    /// @brief Why a pass over a streamed archive did not complete, empty for a file and for a transfer that did.
+    std::string transferFailure(containerimages::IByteStream& stream)
+    {
+        const auto* transfer {dynamic_cast<containerimages::IBlobStream*>(&stream)};
+
+        return transfer != nullptr && transfer->failed() ? transfer->error() : std::string {};
+    }
+
+    /// @brief Opens the archive at @p path once per pass.
+    containerimages::ArchiveOpener fileOpener(const std::filesystem::path& path)
+    {
+        return [path]() -> std::unique_ptr<containerimages::IByteStream>
+        {
+            auto file {std::make_unique<containerimages::FileByteStream>(path)};
+
+            if (!file->isOpen())
+            {
+                return nullptr;
+            }
+
+            return file;
+        };
+    }
 } // namespace
 
 namespace containerimages
 {
+    ImageNames imageNamesOf(const std::vector<std::string>& references)
+    {
+        ImageDescriptor descriptor;
+
+        for (const auto& reference : references)
+        {
+            addImageName(descriptor, reference);
+        }
+
+        return {std::move(descriptor.name), std::move(descriptor.tags)};
+    }
+
     ArchiveImageReader::ArchiveImageReader(std::string location,
                                            std::string knownConfigDigest,
                                            const std::atomic<bool>* stopRequested)
         : m_location {std::move(location)}
         , m_knownConfigDigest {std::move(knownConfigDigest)}
         , m_stopRequested {stopRequested}
+    {
+    }
+
+    ArchiveImageReader::ArchiveImageReader(std::string location,
+                                           std::string knownConfigDigest,
+                                           const std::atomic<bool>* stopRequested,
+                                           ArchiveOpener opener)
+        : m_location {std::move(location)}
+        , m_knownConfigDigest {std::move(knownConfigDigest)}
+        , m_stopRequested {stopRequested}
+        , m_opener {std::move(opener)}
     {
     }
 
@@ -761,6 +840,11 @@ namespace containerimages
                 return ImageReadResult::failed();
             }
 
+            if (m_opener)
+            {
+                return readSavedArchive(m_opener);
+            }
+
             if (std::filesystem::is_directory(path, errorCode))
             {
                 return readDirectory(path);
@@ -768,7 +852,7 @@ namespace containerimages
 
             if (std::filesystem::is_regular_file(path, errorCode))
             {
-                return readSavedArchive(path);
+                return readSavedArchive(fileOpener(path));
             }
 
             logWarn("Archive reference is neither a file nor a directory: " + m_location);
@@ -879,7 +963,7 @@ namespace containerimages
         return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
     }
 
-    ImageReadResult ArchiveImageReader::readSavedArchive(const std::filesystem::path& path)
+    ImageReadResult ArchiveImageReader::readSavedArchive(const ArchiveOpener& open)
     {
         // A tar is read from start to end, while the layer order comes from the metadata
         // inside it, so the archive is read twice: once for the metadata, once for the
@@ -887,15 +971,15 @@ namespace containerimages
         std::map<std::string, std::string> metadataFiles;
 
         {
-            FileByteStream file {path};
+            const auto file {open()};
 
-            if (!file.isOpen())
+            if (!file)
             {
                 logWarn("Could not open the saved image archive '" + m_location + "'.");
                 return ImageReadResult::failed();
             }
 
-            LayerByteStream archive {file};
+            LayerByteStream archive {*file};
             bool metadataCapLogged {false};
             const auto complete {LayerReader::read(archive, [&](const LayerEntry & entry, IByteStream & content)
             {
@@ -932,6 +1016,12 @@ namespace containerimages
                 return true;
             })};
 
+            if (const auto failure {transferFailure(*file)}; !failure.empty())
+            {
+                logWarn("Could not read the saved image archive '" + m_location + "': " + failure + ".");
+                return ImageReadResult::failed();
+            }
+
             if (!complete)
             {
                 logWarn("Saved image archive '" + m_location + "' is malformed or truncated.");
@@ -953,7 +1043,7 @@ namespace containerimages
             return ImageReadResult::failed();
         }
 
-        keepPrimaryDescriptor(descriptors, m_location);
+        keepPrimaryDescriptor(descriptors, m_location, static_cast<bool>(m_opener));
 
         // The configuration blob digest identifies the image's contents, so an image still
         // reporting the digest already stored cannot have different packages. Reading its
@@ -973,8 +1063,15 @@ namespace containerimages
         std::map<std::string, LayerSnapshot> snapshots;
 
         {
-            FileByteStream file {path};
-            LayerByteStream archive {file};
+            const auto file {open()};
+
+            if (!file)
+            {
+                logWarn("Could not open the saved image archive '" + m_location + "' again for its layers.");
+                return ImageReadResult::failed();
+            }
+
+            LayerByteStream archive {*file};
 
             const auto layersComplete {LayerReader::read(archive, [&](const LayerEntry & entry, IByteStream & content)
             {
@@ -1007,6 +1104,14 @@ namespace containerimages
                 snapshots[entry.path] = std::move(snapshot);
                 return true;
             })};
+
+            // A transfer that broke would otherwise read as an archive that ends early, and the
+            // packages of the layers it never delivered would be reported as gone.
+            if (const auto failure {transferFailure(*file)}; !failure.empty())
+            {
+                logWarn("Could not read the layers of the saved image archive '" + m_location + "': " + failure + ".");
+                return ImageReadResult::failed();
+            }
 
             if (!layersComplete)
             {

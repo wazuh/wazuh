@@ -337,6 +337,7 @@ int Read_ContainerSecurityImages(const OS_XML *xml, xml_node *node, void *d1, vo
     for (int i = 0; children[i]; i++) {
         wmodule *cur_wmodule;
         xml_node **images = NULL;
+        int first_reference;
 
         if (!children[i]->element) {
             merror(XML_ELEMNULL);
@@ -351,16 +352,23 @@ int Read_ContainerSecurityImages(const OS_XML *xml, xml_node *node, void *d1, vo
 
         cur_wmodule = get_container_images_module(wmodules);
         images = OS_GetElementsbyNode(xml, children[i]);
+        first_reference = cur_wmodule->data ? ((wm_container_images_t *)cur_wmodule->data)->references_count : 0;
 #ifdef CLIENT
         if (wm_container_images_read(xml, images, cur_wmodule) < 0) {
             retval = OS_INVALID;
+        } else {
+            wm_container_images_bind_local(xml, children, cur_wmodule->data, first_reference);
         }
 #else
         // The manager does not run the module, but it must still validate a block pushed
         // through a shared agent.conf instead of accepting it and letting the agent be
         // the one to reject it.
-        if (agent_cfg && wm_container_images_read(xml, images, cur_wmodule) < 0) {
-            retval = OS_INVALID;
+        if (agent_cfg) {
+            if (wm_container_images_read(xml, images, cur_wmodule) < 0) {
+                retval = OS_INVALID;
+            } else {
+                wm_container_images_bind_local(xml, children, cur_wmodule->data, first_reference);
+            }
         }
 #endif
         OS_ClearNode(images);

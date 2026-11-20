@@ -91,7 +91,20 @@ namespace
     /// implementation is constructed.
     std::vector<containerimages::RegistryCredentials> g_registryAuth;
     std::string g_caBundle;
+    std::string g_dockerSocket;
 } // namespace
+
+void container_images_set_engine_options(const char* dockerSocket)
+{
+    try
+    {
+        g_dockerSocket = dockerSocket != nullptr ? dockerSocket : "";
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
+    }
+}
 
 void container_images_set_registry_options(const char** registryHosts,
                                            const char** registryUserKeys,
@@ -154,6 +167,7 @@ void container_images_init(const unsigned int interval,
         config.enabled = enabled;
         config.registryAuth = g_registryAuth;
         config.caBundle = g_caBundle;
+        config.dockerSocket = g_dockerSocket;
 
         for (unsigned int i = 0; i < referencesCount; ++i)
         {
