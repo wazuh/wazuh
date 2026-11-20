@@ -81,9 +81,9 @@ case "$1" in
         fi
     }
 
-    # /etc/init.d/wazuh-manager stays on a systemd host too: it is a conffile, so deleting it leaves
-    # dpkg --verify reporting it missing, and systemd ignores an init script whose name a native
-    # unit (/usr/lib/systemd/system/wazuh-manager.service) already has.
+    # /etc/init.d/wazuh-manager stays on a systemd host too: it is a file of the package, so deleting
+    # it leaves dpkg --verify reporting it missing, and systemd ignores an init script whose name a
+    # native unit (/usr/lib/systemd/system/wazuh-manager.service) already has.
 
     if [ ! -f ${OSMYSHELL} ]; then
         if [ -f "/bin/false" ]; then

@@ -134,11 +134,13 @@ override_dh_fixperms:
 # back as the last content step, so dpkg's conffile prompt would ask about a file
 # the postinst overwrites from that snapshot anyway. dh_installdeb lists every
 # file under /etc as a conffile by itself (compat >= 3), so the configuration
-# directory's entries are taken out of the generated list; the init script in
-# /etc/init.d stays one.
+# directory's entries are taken out of the generated list. So is the init
+# script: the 4.x package deletes its own /etc/init.d/wazuh-manager while dpkg
+# keeps it registered, and a conffile here would stop the installation on a
+# host that had 4.x at dpkg's "deleted since installation" prompt.
 override_dh_installdeb:
 	dh_installdeb
-	[ ! -f $(TARGET_DIR)/DEBIAN/conffiles ] || sed -i '\#^$(CONF_DIR)/#d' $(TARGET_DIR)/DEBIAN/conffiles
+	[ ! -f $(TARGET_DIR)/DEBIAN/conffiles ] || sed -i -e '\#^$(CONF_DIR)/#d' -e '\#^/etc/init.d/wazuh-manager$$#d' $(TARGET_DIR)/DEBIAN/conffiles
 	[ -s $(TARGET_DIR)/DEBIAN/conffiles ] || rm -f $(TARGET_DIR)/DEBIAN/conffiles
 
 # The manager is installed neither enabled nor started; `systemctl enable --now wazuh-manager` is
