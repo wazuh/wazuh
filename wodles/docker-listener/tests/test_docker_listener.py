@@ -205,18 +205,28 @@ def test_DockerListener_send_msg_ko(mock_socket, mock_stderr, exception_code, ex
     mock_stderr.assert_called_once()
 
 
-@pytest.mark.parametrize('init_body, message', [
-    ("raise ImportError('no sdk')\n", "'docker' module needs to be installed"),
-    ("raise AttributeError('incompatible urllib3')\n",
+@pytest.mark.parametrize('docker_dir, init_body, message', [
+    (False, None, "'docker' module needs to be installed"),
+    (True, None, "'docker' module needs to be installed"),
+    (True, "raise ImportError(\"cannot import name 'DEFAULT_CIPHERS' from 'urllib3.util.ssl_'\")\n",
+     "'docker' module could not be imported: ImportError: cannot import name 'DEFAULT_CIPHERS'"),
+    (True, "import missing_dependency_of_docker\n",
+     "'docker' module could not be imported: ModuleNotFoundError: No module named 'missing_dependency_of_docker'"),
+    (True, "raise AttributeError('incompatible urllib3')\n",
      "'docker' module could not be imported: AttributeError: incompatible urllib3"),
 ])
-def test_docker_import_failure_exits_with_a_message(tmp_path, init_body, message):
-    """Test a missing SDK and a broken one both exit 1 with a message, not a traceback."""
-    (tmp_path / 'docker').mkdir()
-    (tmp_path / 'docker' / '__init__.py').write_text(init_body)
+def test_docker_import_failure_exits_with_a_message(tmp_path, docker_dir, init_body, message):
+    """Test a missing SDK (absent, or a namespace directory) and a broken one exit 1 with the right message.
+
+    Runs without site-packages (-S), so an SDK installed on the test host does not get in the way.
+    """
+    if docker_dir:
+        (tmp_path / 'docker').mkdir()
+        if init_body is not None:
+            (tmp_path / 'docker' / '__init__.py').write_text(init_body)
     script = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'DockerListener.py')
 
-    result = subprocess.run([sys.executable, script], env={**os.environ, 'PYTHONPATH': str(tmp_path)},
+    result = subprocess.run([sys.executable, '-S', script], env={**os.environ, 'PYTHONPATH': str(tmp_path)},
                             capture_output=True, text=True)
 
     assert result.returncode == 1

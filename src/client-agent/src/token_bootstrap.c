@@ -39,8 +39,8 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
 /* Whether the explicit-'none' warning was already issued; a variable of its own so unit tests can reset it. */
 STATIC bool g_token_none_warned = false;
 
-/* The kind of pending result the caller's window is counting, so a change of kind restarts it. */
-STATIC w_token_bootstrap_result_t g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
+/* Whether the previous result was a manager refusal, so a run of them logs at info only once. */
+STATIC bool g_token_refused_before = false;
 /* Why the last W_TOKEN_BOOTSTRAP_PENDING was returned, for the message when its window runs out.
  * An int so unit tests can reset it without the enum. */
 enum {
@@ -1304,13 +1304,21 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * is sent to investigate a manager that is behaving perfectly. */
         token_report_fail(report, "Could not copy the current agent key aside before enrolling, "
                           "so the enrollment was not attempted: %s (%d).", strerror(errno), errno);
+        OPENSSL_cleanse(enroll_request.password, sizeof(enroll_request.password));
+        OPENSSL_cleanse(enroll_request.enroll_key_hex, sizeof(enroll_request.enroll_key_hex));
         w_enroll_request_destroy(&built_request);
         token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
 
-    if (!hc_enroll(&enroll_config, &enroll_request, &enroll_result) || enroll_result.http_code == 0) {
+    const bool enroll_sent = hc_enroll(&enroll_config, &enroll_request, &enroll_result);
+
+    /* Used only to sign the request, so wiped on every exit. The kid stays, for the logs. */
+    OPENSSL_cleanse(enroll_request.password, sizeof(enroll_request.password));
+    OPENSSL_cleanse(enroll_request.enroll_key_hex, sizeof(enroll_request.enroll_key_hex));
+
+    if (!enroll_sent || enroll_result.http_code == 0) {
         char tls_alert[96];
         const bool tls_rejected = (enroll_result.http_code == 0
                 && w_enrollment_tls_rejection(enroll_result.transport_error, tls_alert, sizeof(tls_alert)));
@@ -1704,9 +1712,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * agent, enrollment disabled. w_enrollment_process_response() already logged the manager's
          * reason; the token is kept and the request repeated, verified as before. */
         if (report.refused) {
-            minfo("Token bootstrap: the manager refused the enrollment; retrying with the same "
-                  "enrollment token.");
-            return W_TOKEN_BOOTSTRAP_TRANSIENT;
+            return W_TOKEN_BOOTSTRAP_REFUSED;
         }
 
         /* Bounded like a pending token (w_token_bootstrap_bound_pending()): a missing or wrong
@@ -1756,25 +1762,37 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
 w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result,
                                                            time_t *pending_since, time_t now) {
     const bool password = (result == W_TOKEN_BOOTSTRAP_PENDING_PASSWORD);
+    const bool refused_before = g_token_refused_before;
 
-    /* A later episode, or one of the other kind, must not inherit the time an earlier one spent.
-     * TRANSIENT does not end an episode: a 5xx or a timeout between two pending answers would
+    g_token_refused_before = (result == W_TOKEN_BOOTSTRAP_REFUSED);
+
+    /* TRANSIENT does not end an episode: a 5xx or a timeout between two pending answers would
      * otherwise restart the window for ever. */
     if (result == W_TOKEN_BOOTSTRAP_TRANSIENT) {
         return result;
     }
 
+    /* A manager refusal does: the manager judged the request, and an hour of disabled enrollment
+     * must not use up the window a later pending answer gets. Unbounded, so logged once per run. */
+    if (result == W_TOKEN_BOOTSTRAP_REFUSED) {
+        *pending_since = 0;
+
+        if (refused_before) {
+            mdebug1("Token bootstrap: the manager still refuses the enrollment; retrying.");
+        } else {
+            minfo("Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
+        }
+
+        return W_TOKEN_BOOTSTRAP_TRANSIENT;
+    }
+
     if (result != W_TOKEN_BOOTSTRAP_PENDING && !password) {
         *pending_since = 0;
-        g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
         return result;
     }
 
-    if (g_token_pending_kind != W_TOKEN_BOOTSTRAP_DONE && g_token_pending_kind != result) {
-        *pending_since = 0;
-    }
-    g_token_pending_kind = result;
-
+    /* One window for both kinds: answers that alternate between them must still run out. */
     if (*pending_since == 0) {
         *pending_since = now;
     }

@@ -359,7 +359,7 @@ int __wrap_fchmod(int fd, mode_t mode) {
  * preserves the real move so the rest of the suite keeps exercising a real file on disk. */
 extern int __real_w_move_file_nofollow(const char *src, const char *dst);
 extern bool g_token_none_warned;
-extern w_token_bootstrap_result_t g_token_pending_kind;
+extern bool g_token_refused_before;
 extern int g_token_pending_cause;
 static bool g_anchor_chown_recorded_before_move = false;
 
@@ -540,7 +540,7 @@ static int setup_test(void **state) {
     memset(&keys, 0, sizeof(keys));
     w_enrollment_clear_outcome_unknown();
     g_token_none_warned = false;
-    g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
+    g_token_refused_before = false;
     g_token_pending_cause = 0;
 
     memset(&g_fetch_config, 0, sizeof(g_fetch_config));
@@ -1267,11 +1267,8 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__minfo, formatted_msg);
-    expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
-                  "enrollment token.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_REFUSED);
     assert_int_equal(g_enroll_call_count, 1);
 
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
@@ -1414,11 +1411,8 @@ static void test_missing_group_is_retried_and_keeps_the_token(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment rejected by the manager: invalid request. Invalid Group(s) Name(s)");
-    expect_string(__wrap__minfo, formatted_msg,
-                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
-                  "enrollment token.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_REFUSED);
     assert_int_equal(g_enroll_call_count, 1);
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
@@ -1475,7 +1469,7 @@ static void test_enrollment_key_unavailable_is_retried_without_a_limit(void **st
     write_token_file(true, true, NULL);
     expect_enroll_answer(401, "{\"error\":{\"code\":\"enrollment_key_unavailable\",\"message\":\"Invalid client authentication\"}}");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_REFUSED);
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
@@ -1655,17 +1649,65 @@ static void test_bound_pending_gives_up_after_the_window(void **state) {
                      W_TOKEN_BOOTSTRAP_PERMANENT);
 }
 
-/* A change of pending kind starts a new window. */
-static void test_bound_pending_restarts_when_the_pending_kind_changes(void **state) {
+/* Both pending kinds share one window: answers that alternate between them still run out. */
+static void test_bound_pending_window_is_shared_by_both_pending_kinds(void **state) {
     (void) state;
     time_t since = 0;
 
     assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
                      W_TOKEN_BOOTSTRAP_TRANSIENT);
-    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING_PASSWORD, &since,
-                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S),
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING_PASSWORD, &since, 1030),
                      W_TOKEN_BOOTSTRAP_TRANSIENT);
-    assert_int_equal(since, 1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S);
+    assert_int_equal(since, 1000);
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since,
+                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+}
+
+/* A manager refusal ends the pending episode: a long one must not use up a later window. */
+static void test_bound_pending_resets_on_a_manager_refusal(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_REFUSED, &since, 1030),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 0);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 4600),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 4600);
+}
+
+/* A run of refusals logs at info once, then at debug, and a new run logs at info again. */
+static void test_bound_pending_logs_a_run_of_refusals_once(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_REFUSED, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Token bootstrap: the manager still refuses the enrollment; retrying.");
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_REFUSED, &since, 1005),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1010),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: the manager refused the enrollment; retrying with the same "
+                  "enrollment token.");
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_REFUSED, &since, 1020),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
 }
 
 /* A 5xx or a timeout between two pending answers does not restart the window. */
@@ -3498,7 +3540,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_bound_pending_window_survives_transient_results, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bound_pending_resets_on_a_final_result, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bound_pending_password_gives_up_naming_the_password, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_bound_pending_restarts_when_the_pending_kind_changes, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bound_pending_window_is_shared_by_both_pending_kinds, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bound_pending_resets_on_a_manager_refusal, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bound_pending_logs_a_run_of_refusals_once, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_explicit_none_warns_and_still_enrolls_verified, setup_test,
                                         teardown_test),

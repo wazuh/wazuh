@@ -49,9 +49,11 @@ typedef enum {
                                     *   must never re-enroll but is still worth retrying: the fix
                                     *   is on the manager). Also any 401 whose class could not be
                                     *   read, which is the fail-safe reading (design §2.9 rule 3).
-                                    *   The token bootstrap retries `invalid_request` for a window
-                                    *   only (credential-less tokens) and never `invalid_signature`
-                                    *   (the token's own key failing). */
+                                    *   The token bootstrap retries `enrollment_key_unavailable`
+                                    *   without a limit; `invalid_request` and `invalid_signature`
+                                    *   for a window on a credential-less token (authd.pass missing
+                                    *   or wrong), and never on a credential-bearing one (its own
+                                    *   key failing); any other or no class for a window. */
     W_ENROLL_ERR_AUTH_FATAL,      /**< Nothing the agent can retry into success. From the wire that
                                     *   is the manager refusing an enrollment token whose signature
                                     *   it already VERIFIED (w_enrollment_token_refusal()): a 401

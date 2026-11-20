@@ -258,7 +258,10 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * (w_token_enroll_report_t.unexplained) is PENDING, with a reason of its own when it runs out.
  *
  * The refusals from /enroll that the manager's state can change (see
- * w_token_enroll_report_t.refused) are TRANSIENT, without a window. Any other refusal is
+ * w_token_enroll_report_t.refused) are W_TOKEN_BOOTSTRAP_REFUSED: retried like TRANSIENT, without
+ * a window, and ending any pending window (the manager judged the request, so the token got
+ * through). w_token_bootstrap_bound_pending() turns it into TRANSIENT, so a caller that passes
+ * every result through it never sees it. Any other refusal is
  * PERMANENT with the manager's reason: the token itself, a malformed request, a refused signature
  * or client certificate. Only a refusal of the token itself deletes the token file.
  */
@@ -267,7 +270,8 @@ typedef enum {
     W_TOKEN_BOOTSTRAP_TRANSIENT,
     W_TOKEN_BOOTSTRAP_PERMANENT,
     W_TOKEN_BOOTSTRAP_PENDING,
-    W_TOKEN_BOOTSTRAP_PENDING_PASSWORD
+    W_TOKEN_BOOTSTRAP_PENDING_PASSWORD,
+    W_TOKEN_BOOTSTRAP_REFUSED
 } w_token_bootstrap_result_t;
 
 /** How long a first start keeps retrying a token the manager does not accept yet. Checked after
@@ -330,12 +334,14 @@ const char *w_agent_token_bootstrap_failure(void);
 /**
  * @brief Turns a W_TOKEN_BOOTSTRAP_PENDING or W_TOKEN_BOOTSTRAP_PENDING_PASSWORD result into
  *        TRANSIENT while the pending window lasts, and into PERMANENT (with a logged error) once it
- *        has run out.
+ *        has run out. Both kinds share one window. W_TOKEN_BOOTSTRAP_REFUSED becomes TRANSIENT,
+ *        logged at info for the first refusal of a run of them and at debug after.
  *
  * @param result What w_agent_token_bootstrap() returned. Anything else is returned as is.
  * @param pending_since Owned by the caller, 0 before the first call. Set on the first pending
- *        result. Reset by DONE, PERMANENT or a change of pending kind, never by TRANSIENT: a 5xx or
- *        a timeout between two pending answers must not restart the window.
+ *        result. Reset by DONE, PERMANENT or REFUSED, never by TRANSIENT (a 5xx or a timeout
+ *        between two pending answers must not restart the window) nor by a switch between the two
+ *        pending kinds (alternating answers must not either).
  * @param now Monotonic seconds (w_get_monotonic_time()), so a clock step cannot stretch the window.
  * @return W_TOKEN_BOOTSTRAP_DONE, W_TOKEN_BOOTSTRAP_TRANSIENT or W_TOKEN_BOOTSTRAP_PERMANENT.
  */

@@ -24,17 +24,25 @@ try:
 finally:
     sys.path.remove(WODLES_DIR)
 
+DOCKER_MISSING = "'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n"
+
 try:
     import docker
-    # A docker/ directory elsewhere on the path imports as a namespace package; treat it as a missing SDK.
-    if not hasattr(docker, 'from_env'):
-        raise ImportError("'docker' resolves to a directory, not the Docker SDK")
-except ImportError:
-    sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
+except ModuleNotFoundError as e:
+    # Only the SDK itself missing; a dependency it cannot find is a broken install.
+    if e.name == 'docker':
+        sys.stderr.write(DOCKER_MISSING)
+    else:
+        sys.stderr.write(f"'docker' module could not be imported: {type(e).__name__}: {e}\n")
     sys.exit(1)
 except Exception as e:
-    # Installed but broken (for example an incompatible requests or urllib3): name the cause.
+    # Installed but broken (for example docker 4.x with urllib3 2.x): name the cause.
     sys.stderr.write(f"'docker' module could not be imported: {type(e).__name__}: {e}\n")
+    sys.exit(1)
+
+# A docker/ directory elsewhere on the path imports as a namespace package; treat it as a missing SDK.
+if not hasattr(docker, 'from_env'):
+    sys.stderr.write(DOCKER_MISSING)
     sys.exit(1)
 
 
