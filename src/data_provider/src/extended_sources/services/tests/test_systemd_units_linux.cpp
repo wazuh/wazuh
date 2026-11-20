@@ -1277,6 +1277,229 @@ TEST(SystemdUnitsProviderTest, KeepsMaskedUnitWithRelativeDevNullLink)
     EXPECT_EQ(unitsJson[0]["unit_file_state"], "masked");
 }
 
+// Same layout as a check against systemd 259 (systemctl show on the loaded instance): an
+// enabled instance is reported from its template, with the specifiers expanded and the
+// instance's, template's and prefix drop-ins applied in systemd's order.
+TEST(SystemdUnitsProviderTest, ReportsEnabledInstanceFromItsTemplate)
+{
+    TempDir dir;
+    const auto etc = dir.path() / "etc";
+    const auto lib = dir.path() / "lib";
+    const std::string instance {"ith-tpl@a\\x2db-c.service"};
+
+    for (const auto& subdir :
+            {
+                etc / "multi-user.target.wants", etc / "ith-tpl@.service.d", etc / (instance + ".d"),
+                lib / "ith-.service.d", lib / "ith-@.service.d", lib / "ith-@a\\x2db-c.service.d"
+            })
+    {
+        std::filesystem::create_directories(subdir);
+    }
+
+    const auto templatePath = lib / "ith-tpl@.service";
+    std::ofstream(templatePath) << "[Unit]\nDescription=ITH n=%n N=%N p=%p P=%P i=%i I=%I j=%j J=%J f=%f pct=%% H=%H\n"
+                                "[Service]\nUser=tpl-file\n";
+    std::filesystem::create_symlink(templatePath, etc / "multi-user.target.wants" / instance);
+    std::ofstream(etc / "ith-tpl@.service.d" / "10-a.conf") << "[Service]\nUser=from-template-dir\n";
+    std::ofstream(etc / (instance + ".d") / "10-a.conf") << "[Service]\nUser=from-instance-dir\n";
+    std::ofstream(lib / "ith-.service.d" / "20-b.conf") << "[Unit]\nSourcePath=/from-prefix-dir\n";
+    std::ofstream(lib / "ith-@.service.d" / "20-b.conf") << "[Unit]\nSourcePath=/from-prefix-template-dir\n";
+    std::ofstream(lib / "ith-@a\\x2db-c.service.d" / "20-b.conf") << "[Unit]\nSourcePath=/from-prefix-instance-dir\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({etc.string(), lib.string()}));
+    const auto unitsJson = provider.collect();
+
+    char host[256] {};
+    ASSERT_EQ(::gethostname(host, sizeof(host) - 1), 0);
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["id"], "ith-tpl@a\\x2db-c");
+    EXPECT_EQ(unitsJson[0]["description"],
+              "ITH n=ith-tpl@a\\x2db-c.service N=ith-tpl@a\\x2db-c p=ith-tpl P=ith/tpl i=a\\x2db-c I=a-b/c j=tpl J=tpl "
+              "f=/a-b/c pct=% H=" + std::string(host));
+    EXPECT_EQ(unitsJson[0]["user"],            "from-instance-dir");
+    EXPECT_EQ(unitsJson[0]["source_path"],     "/from-prefix-dir");
+    EXPECT_EQ(unitsJson[0]["fragment_path"],   templatePath.string());
+    // The link is outside /etc and /run, like a vendor one (see InstanceLinkStateFollowsLinkLocation).
+    EXPECT_EQ(unitsJson[0]["unit_file_state"], "static");
+    EXPECT_EQ(unitsJson[0]["active_state"],    "inactive");
+    EXPECT_EQ(unitsJson[0]["object_path"],     SystemdUnitsProvider::unitObjectPath(instance));
+}
+
+// An enabled instance is skipped when it is loaded (ListUnits reports it), when its template is
+// not installed, or when its template is masked.
+TEST(SystemdUnitsProviderTest, SkipsLoadedOrOrphanedEnabledInstances)
+{
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "getty.target.wants");
+    const auto getty = dir.path() / "getty@.service";
+    const auto masked = dir.path() / "masked@.service";
+    std::ofstream(getty) << "[Unit]\nDescription=Getty on %I\n";
+    std::filesystem::create_symlink("/dev/null", masked);
+
+    for (const auto& name :
+            {"getty@tty1.service", "getty@tty2.service", "orphan@x.service", "masked@x.service"
+            })
+    {
+        std::filesystem::create_symlink(getty, dir.path() / "getty.target.wants" / name);
+    }
+
+    LoadedUnit loadedTty1 {"getty@tty1.service"};
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {loadedTty1}, {{getty.string(), "static"}, {masked.string(), "masked"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({dir.path().string()}));
+    const auto unitsJson = provider.collect();
+
+    std::map<std::string, std::string> descriptions;
+
+    for (const auto& unit : unitsJson)
+    {
+        descriptions[unit["id"]] = unit["description"];
+    }
+
+    EXPECT_EQ(descriptions, (std::map<std::string, std::string> {{"getty@tty1", "desc"}, {"getty@tty2", "Getty on tty2"}}));
+}
+
+// Measured on systemd 259: a link under /etc is "enabled", under /run "enabled-runtime", and a
+// link shipped in a vendor directory "static".
+TEST(SystemdUnitsProviderTest, InstanceLinkStateFollowsLinkLocation)
+{
+    EXPECT_EQ(SystemdUnitsProvider::instanceLinkState("/etc/systemd/system/getty.target.wants/getty@tty1.service"), "enabled");
+    EXPECT_EQ(SystemdUnitsProvider::instanceLinkState("/run/systemd/system/multi-user.target.wants/a@b.service"), "enabled-runtime");
+    EXPECT_EQ(SystemdUnitsProvider::instanceLinkState("/usr/lib/systemd/system/multi-user.target.wants/a@b.service"), "static");
+}
+
+// Links in .requires and .upholds directories enable an instance too, and the same instance
+// linked from several places is reported once.
+TEST(SystemdUnitsProviderTest, FindsEnabledInstancesInEveryLinkDirectory)
+{
+    TempDir dir;
+    const auto etc = dir.path() / "etc";
+    const auto lib = dir.path() / "lib";
+
+    for (const auto& subdir :
+            {
+                etc / "a.target.requires", etc / "b.target.upholds", lib / "c.target.wants", lib / "not-a-link-dir"
+            })
+    {
+        std::filesystem::create_directories(subdir);
+    }
+
+    const auto templatePath = lib / "app@.service";
+    std::ofstream(templatePath) << "[Unit]\nDescription=App %i\n";
+    std::filesystem::create_symlink(templatePath, etc / "a.target.requires" / "app@one.service");
+    std::filesystem::create_symlink(templatePath, etc / "b.target.upholds" / "app@two.service");
+    std::filesystem::create_symlink(templatePath, lib / "c.target.wants" / "app@one.service");
+    std::filesystem::create_symlink(templatePath, lib / "not-a-link-dir" / "app@three.service");
+    std::filesystem::create_symlink(templatePath, lib / "c.target.wants" / "app@.socket");
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({etc.string(), lib.string()}));
+    std::map<std::string, std::string> descriptions;
+
+    for (const auto& unit : provider.collect())
+    {
+        descriptions[unit["id"]] = unit["description"];
+    }
+
+    EXPECT_EQ(descriptions, (std::map<std::string, std::string> {{"app@one", "App one"}, {"app@two", "App two"}}));
+}
+
+// Measured on systemd 259: an assignment with a specifier systemd cannot resolve is ignored,
+// keeping the previous value ("Failed to resolve unit specifiers ..., ignoring"). Before 236,
+// unknown specifiers were kept literal.
+class SystemdUnknownSpecifierTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
+{
+};
+
+TEST_P(SystemdUnknownSpecifierTest, FollowsTheVersionRule)
+{
+    const auto& [version, description, user] = GetParam();
+    TempDir dir;
+    const auto unitPath = dir.path() / "spec.service";
+    std::ofstream(unitPath) << "[Unit]\nDescription=first\nDescription=bad %Z here\nDescription=j=%j\n"
+                            "[Service]\nUser=nobody\nUser=%Z\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}}, UnitFilesOutcome::Reply, version);
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+    const auto unitsJson = provider.collect();
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["description"], description);
+    EXPECT_EQ(unitsJson[0]["user"],        user);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdUnknownSpecifierTest,
+    ::testing::Values(
+        // %j is unknown before 239: literal before 236, rejected from 236.
+        std::make_tuple("219", "j=%j", "%Z"),
+        std::make_tuple("237", "first", "nobody"),
+        std::make_tuple("259.5-0ubuntu3.4", "j=spec", "nobody")));
+
+// Values measured on systemd 259 for the system manager.
+TEST(SystemdUnitsProviderTest, ExpandsSystemManagerSpecifiers)
+{
+    TempDir dir;
+    const auto unitPath = dir.path() / "paths.service";
+    std::ofstream(unitPath) << "[Unit]\nDescription=t=%t u=%u U=%U h=%h S=%S E=%E C=%C L=%L T=%T V=%V g=%g G=%G "
+                            "D=%D d=%d y=%y Y=%Y\n";
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{unitPath.string(), "static"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+    const auto unitsJson = provider.collect();
+    const auto realPath = std::filesystem::canonical(unitPath);
+
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["description"],
+              "t=/run u=root U=0 h=/root S=/var/lib E=/etc C=/var/cache L=/var/log T=/tmp V=/var/tmp g=root G=0 "
+              "D=/usr/share d=/run/credentials/paths.service y=" + realPath.string() + " Y=" + realPath.parent_path().string());
+}
+
+// %f as systemd's unit_name_path_unescape(): repeated and trailing slashes removed, and a NUL
+// byte rejects the assignment.
+TEST(SystemdUnitsProviderTest, ExpandsPathSpecifierLikeSystemd)
+{
+    TempDir dir;
+    std::filesystem::create_directories(dir.path() / "x.target.wants");
+    const auto templatePath = dir.path() / "fs@.service";
+    std::ofstream(templatePath) << "[Unit]\nDescription=f=%f\n";
+
+    for (const auto& name :
+            {"fs@a--b.service", "fs@a-.service", "fs@-.service", "fs@x\\x00y.service"
+            })
+    {
+        std::filesystem::create_symlink(templatePath, dir.path() / "x.target.wants" / name);
+    }
+
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SetUpUnitFilesMock(mockDbusWrapper, {}, {{templatePath.string(), "indirect"}});
+
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings({dir.path().string()}));
+    std::map<std::string, std::string> descriptions;
+
+    for (const auto& unit : provider.collect())
+    {
+        descriptions[unit["id"]] = unit["description"];
+    }
+
+    EXPECT_EQ(descriptions, (std::map<std::string, std::string>
+    {
+        {"fs@a--b", "f=/a/b"}, {"fs@a-", "f=/a"}, {"fs@-", "f=/"}, {"fs@x\\x00y", "fs@x\\x00y.service"}
+    }));
+}
+
 // Without systemd there are no units to report, so a missing bus is not an error.
 TEST(SystemdUnitsProviderTest, ReturnsNoUnitsWithoutSystemd)
 {
@@ -1298,18 +1521,33 @@ TEST(SystemdUnitsProviderTest, ReportsLoadedUnitsWhenUnitFilesFailPersistently)
 {
     const auto settings = TestSettings();
 
-    for (unsigned int attempt = 1; attempt < SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES; ++attempt)
+    for (unsigned int attempt = 1; attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES; ++attempt)
     {
         auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
         SetUpUnitFilesMock(mockDbusWrapper, {{"cron.service"}}, {}, UnitFilesOutcome::NoReply);
-        EXPECT_THROW(SystemdUnitsProvider(mockDbusWrapper, settings).collect(), std::runtime_error);
+
+        try
+        {
+            SystemdUnitsProvider(mockDbusWrapper, settings).collect();
+            ADD_FAILURE() << "attempt " << attempt << " did not throw";
+        }
+        catch (const std::runtime_error& e)
+        {
+            // The last skipped scan says what the next ones will report.
+            const bool announcesFallback = std::string(e.what()).find("only the loaded services") != std::string::npos;
+            EXPECT_EQ(announcesFallback, attempt == SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES) << e.what();
+        }
     }
 
-    auto failingMock = std::make_shared<MockDBusWrapper>();
-    SetUpUnitFilesMock(failingMock, {{"cron.service"}}, {}, UnitFilesOutcome::NoReply);
-    const auto unitsJson = SystemdUnitsProvider(failingMock, settings).collect();
-    ASSERT_EQ(unitsJson.size(), 1u);
-    EXPECT_EQ(unitsJson[0]["id"], "cron");
+    // Then the loaded units are reported, without further errors.
+    for (int scan = 0; scan < 2; ++scan)
+    {
+        auto failingMock = std::make_shared<MockDBusWrapper>();
+        SetUpUnitFilesMock(failingMock, {{"cron.service"}}, {}, UnitFilesOutcome::NoReply);
+        const auto unitsJson = SystemdUnitsProvider(failingMock, settings).collect();
+        ASSERT_EQ(unitsJson.size(), 1u);
+        EXPECT_EQ(unitsJson[0]["id"], "cron");
+    }
 
     // A complete collection starts the count again.
     auto workingMock = std::make_shared<MockDBusWrapper>();
@@ -1322,12 +1560,13 @@ TEST(SystemdUnitsProviderTest, ReportsLoadedUnitsWhenUnitFilesFailPersistently)
     EXPECT_THROW(SystemdUnitsProvider(failingAgainMock, settings).collect(), std::runtime_error);
 }
 
-// With nothing listed there is nothing to report, so the scan is skipped however long it fails.
-TEST(SystemdUnitsProviderTest, KeepsThrowingWhenListUnitsFailsPersistently)
+// A bus that never answers must not freeze the inventory either: after the skipped scans, no
+// services are reported.
+TEST(SystemdUnitsProviderTest, ReportsNoUnitsWhenListUnitsFailsPersistently)
 {
     const auto settings = TestSettings();
 
-    for (unsigned int attempt = 1; attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES + 1; ++attempt)
+    for (unsigned int attempt = 1; attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES + 2; ++attempt)
     {
         auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
         DBusConnection* conn = reinterpret_cast<DBusConnection*>(0x1);
@@ -1341,7 +1580,23 @@ TEST(SystemdUnitsProviderTest, KeepsThrowingWhenListUnitsFailsPersistently)
 
         SystemdUnitsProvider provider(mockDbusWrapper, settings);
 
-        EXPECT_THROW(provider.collect(), std::runtime_error);
+        if (attempt <= SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES)
+        {
+            try
+            {
+                provider.collect();
+                ADD_FAILURE() << "attempt " << attempt << " did not throw";
+            }
+            catch (const std::runtime_error& e)
+            {
+                const bool announcesFallback = std::string(e.what()).find("report no services") != std::string::npos;
+                EXPECT_EQ(announcesFallback, attempt == SystemdUnitsProvider::MAX_CONSECUTIVE_FAILURES) << e.what();
+            }
+        }
+        else
+        {
+            EXPECT_TRUE(provider.collect().empty());
+        }
     }
 }
 

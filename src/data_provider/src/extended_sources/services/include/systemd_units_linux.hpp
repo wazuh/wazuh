@@ -11,6 +11,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <istream>
 #include <memory>
 #include <string>
@@ -91,19 +92,29 @@ class SystemdUnitsProvider
         /// @return A JSON object containing the collected systemd units information.
         /// @throws std::runtime_error if systemd is running but its units or unit files could not
         /// be listed, so the caller keeps its previous inventory instead of reporting the missing
-        /// units as deleted. If only the unit files fail, after MAX_CONSECUTIVE_FAILURES failed
-        /// collections in a row it returns the loaded units instead, so a persistent failure does
-        /// not stop them from being updated.
+        /// units as deleted. After MAX_CONSECUTIVE_FAILURES failed collections in a row it returns
+        /// what could be listed instead (the loaded units, or none), so a persistent failure does
+        /// not freeze the inventory; the last failure that throws says so.
         nlohmann::json collect();
 
-        /// @brief Failed collections in a row after which collect() stops throwing.
+        /// @brief Failed collections in a row that throw before collect() reports what it can.
         static constexpr unsigned int MAX_CONSECUTIVE_FAILURES {3};
 
         /// @brief Reads [Unit] Description and SourcePath, and [Service] User, from a unit file.
         /// @param input Stream with the unit file contents.
         /// @param values Values from previously parsed files (the fragment before its drop-ins).
+        /// @param expand Expands the specifiers of a value in place; returning false ignores the
+        /// assignment, as systemd does when it cannot resolve them. Empty: values kept literal.
         /// @return The values updated with this file; the last assignment wins.
-        static UnitFileValues parseUnitFile(std::istream& input, UnitFileValues values = {});
+        static UnitFileValues parseUnitFile(std::istream& input,
+                                            UnitFileValues values = {},
+                                            const std::function<bool(std::string&)>& expand = {});
+
+        /// @brief Unit file state systemd reports for an instance enabled through a link.
+        /// @param linkPath Path of the link in a .wants, .requires or .upholds directory.
+        /// @return "enabled" under /etc, "enabled-runtime" under /run, "static" elsewhere (a
+        /// link shipped in a vendor directory).
+        static std::string instanceLinkState(const std::string& linkPath);
 
         /// @brief Builds the D-Bus object path systemd uses for a unit name.
         /// @param unitName Full unit name, e.g. "cron.service".

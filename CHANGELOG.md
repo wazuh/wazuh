@@ -262,4 +262,4 @@
 | [#41165](https://github.com/wazuh/wazuh/issues/41165) | Fixed the "Ensure sudo is installed." check passing when sudo is not installed and failing on aarch64 in the AlmaLinux 8, 9 and 10, Amazon Linux 2023, CentOS 8, 9 and 10, and Oracle Linux 9 and 10 SCA policies. The check now queries the local rpm database instead of `dnf`. |
 | [#41622](https://github.com/wazuh/wazuh/issues/41622) | Fixed who-data falling back to real-time on EL hosts without `service`. |
 | [#41621](https://github.com/wazuh/wazuh/issues/41621) | Fixed the FIM who-data Audit plugin configuration file having a looser owner and mode than the CIS benchmarks require. The agent now sets it to root:root and 0640 or stricter on every start. |
-| [#41671](https://github.com/wazuh/wazuh/issues/41671) | Fixed the Linux services inventory reporting services with a unit file as installed or deleted when systemd loaded or unloaded them. |
+| [#41671](https://github.com/wazuh/wazuh/issues/41671) | Fixed the Linux services inventory reporting installed services as installed or deleted when systemd loaded or unloaded them. |
