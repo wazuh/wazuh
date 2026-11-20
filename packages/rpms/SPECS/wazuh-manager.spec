@@ -115,8 +115,14 @@ cp -pr %{_sysconfdir}/wazuh-manager/. ${RPM_BUILD_ROOT}%{_sysconfdir}/wazuh-mana
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager-rh.init
 install -m 0755 src/init/templates/wazuh-manager-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-manager
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager.service
-install -m 0644 src/init/templates/wazuh-manager.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-manager.service \
+  src/init/templates/wazuh-manager-service-control@.service \
+  src/init/templates/wazuh-manager-service-control-restart.path \
+  src/init/templates/wazuh-manager-service-control-reload.path
+install -m 0644 src/init/templates/wazuh-manager.service \
+  src/init/templates/wazuh-manager-service-control@.service \
+  src/init/templates/wazuh-manager-service-control-restart.path \
+  src/init/templates/wazuh-manager-service-control-reload.path ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
@@ -484,6 +490,10 @@ fi
 
 if [ -d /run/systemd/system ]; then
   rm -f %{_initrddir}/wazuh-manager
+else
+  # Without systemd no unit runs wazuh-manager-service-control as root: the Server API's restart and
+  # reload reach root through its setuid bit.
+  chmod 4750 %{_localstatedir}/bin/wazuh-manager-service-control
 fi
 
 # No install-time certificate check any more. The credential resolver invoked at the end of this
@@ -820,6 +830,10 @@ if [ -n "${REAL_CONF_DIR}" ] && [ ! -L ${CONF_DIR}/certs ]; then
   (cd -P -- ${CONF_DIR}/certs 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}/certs" ] && fix_certs) || true
 fi
 
+# Copies left in /etc/systemd/system (a source installation) override the units this package ships.
+rm -f %{_sysconfdir}/systemd/system/wazuh-manager-service-control@.service \
+  %{_sysconfdir}/systemd/system/wazuh-manager-service-control-restart.path \
+  %{_sysconfdir}/systemd/system/wazuh-manager-service-control-reload.path
 if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-manager.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -850,6 +864,9 @@ rm -fr %{buildroot}
 %license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
+/usr/lib/systemd/system/wazuh-manager-service-control@.service
+/usr/lib/systemd/system/wazuh-manager-service-control-restart.path
+/usr/lib/systemd/system/wazuh-manager-service-control-reload.path
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
 %attr(440, root, wazuh-manager) %{_localstatedir}/VERSION.json
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api
@@ -873,7 +890,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
-%attr(4750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-service-control
+# %%post sets 4750 on a host without systemd.
+%attr(750, root, wazuh-manager) %verify(not mode) %{_localstatedir}/bin/wazuh-manager-service-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-db
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
@@ -990,6 +1008,7 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/run
+%dir %attr(700, wazuh-manager, wazuh-manager) %{_localstatedir}/var/run/service-control
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/upgrade
 
 %files -n wazuh-manager-debuginfo -f debugfiles.list

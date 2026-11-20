@@ -175,6 +175,20 @@ runInit()
         # root:root 0644, as the DEB and RPM packages install it (the redirection above follows umask).
         chown root:root ${SERVICE_UNIT_PATH}
         chmod 0644 ${SERVICE_UNIT_PATH}
+        if [ "X${type}" = "Xmanager" ]; then
+            # The units that run wazuh-manager-service-control as root for the Server API's restart and
+            # reload. The manager unit sets NoNewPrivileges, so the helper's setuid bit is of no use under it.
+            for unit_file in wazuh-manager-service-control@.service wazuh-manager-service-control-restart.path \
+                wazuh-manager-service-control-reload.path; do
+                if [ "X${RHEL_SYSTEMD_LAYOUT}" = "Xyes" ]; then
+                    rm -f /etc/systemd/system/${unit_file}
+                fi
+                GenerateService ${unit_file} > ${SERVICE_UNIT_PATH%/*}/${unit_file}
+                chown root:root ${SERVICE_UNIT_PATH%/*}/${unit_file}
+                chmod 0644 ${SERVICE_UNIT_PATH%/*}/${unit_file}
+            done
+            chmod 0750 ${INSTALLDIR}/bin/wazuh-manager-service-control
+        fi
         systemctl daemon-reload
         # Read by install.sh's closing hints: the start command it prints is the unit's.
         SERVICE_SYSTEMD_UNIT="wazuh-$type"

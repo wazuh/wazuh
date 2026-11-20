@@ -7556,10 +7556,12 @@ paths:
       summary: "Restart nodes"
       description: "Restart all nodes in the cluster or a list of them. This operation is answered while a core daemon is down (no error 1017), so a node can be
       recovered remotely. Each node hands the action to the manager's control module; when its control
-      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node runs
-      the service-control helper itself and logs a WARNING. A refusal by the helper, including the
-      configuration and credentials check it runs first, is a failed item with error 1904 and the manager
-      keeps running; a helper that cannot be run is error 1903."
+      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node does it
+      itself and logs a WARNING. When the node runs in wazuh-manager.service it writes a request that systemd
+      hands to the service-control helper; a request that cannot be written is error 1903, and a refusal by the
+      configuration and credentials check the helper runs first is only logged, with the manager kept running.
+      Otherwise the node runs the helper: a refusal, the check included, is a failed item with error
+      1904 and the manager keeps running; a helper that cannot be run is error 1903."
       operationId: api.controllers.cluster_controller.put_restart
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7609,10 +7611,12 @@ paths:
       description: "Restart Wazuh manager daemons in all nodes in the cluster or a list of them, keeping active
       agent connections. This operation is answered while a core daemon is down (no error 1017), so a node can be
       recovered remotely. Each node hands the action to the manager's control module; when its control
-      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node runs
-      the service-control helper itself and logs a WARNING. A refusal by the helper, including the
-      configuration and credentials check it runs first, is a failed item with error 1904 and the manager
-      keeps running; a helper that cannot be run is error 1903."
+      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node does it
+      itself and logs a WARNING. When the node runs in wazuh-manager.service it writes a request that systemd
+      hands to the service-control helper; a request that cannot be written is error 1903, and a refusal by the
+      configuration and credentials check the helper runs first is only logged, with the manager kept running.
+      Otherwise the node runs the helper: a refusal, the check included, is a failed item with error
+      1904 and the manager keeps running; a helper that cannot be run is error 1903."
       operationId: api.controllers.cluster_controller.put_reload
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'

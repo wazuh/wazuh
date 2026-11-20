@@ -226,6 +226,9 @@ remove_service_units() {
             [ -d "${service_dir}" ] || continue
             find "${service_dir}" -maxdepth 2 \( \
                 -name 'wazuh-manager.service' -o \
+                -name 'wazuh-manager-service-control@.service' -o \
+                -name 'wazuh-manager-service-control-restart.path' -o \
+                -name 'wazuh-manager-service-control-reload.path' -o \
                 -name 'wazuh-agent.service' -o \
                 -name 'wazuh-local.service' \
             \) -exec rm -f {} + 2>/dev/null || true

@@ -646,17 +646,22 @@ While one of the core daemons (`wazuh-manager-modulesd`, `wazuh-manager-analysis
 (`GET /cluster/status`, `GET /cluster/healthcheck`, `GET /cluster/{node_id}/status`) and
 `PUT /cluster/restart` and `PUT /cluster/reload` keep working, so a node can be inspected and restarted
 remotely. They work without `wazuh-manager-modulesd` too: when its control socket (`control.sock`) does not
-exist or refuses the connection, the node runs `bin/wazuh-manager-service-control restart|reload` itself
-(the helper modulesd would run) and logs a `WARNING` naming the socket error. The node waits up to 5
-seconds for the helper to accept, then up to 4 more for the configuration and credentials check it runs
-before handing the action to systemd. A refusal in either is a failed item `1904` (*The manager
-service-control helper refused the restart request*, with its exit code and reason, such as `the manager
-configuration or credentials check failed; the manager was not restarted`), and the manager keeps running; a
-helper that cannot be run is `1903`. A failure the node no longer waits for (a longer check, or `systemctl`
-itself) is logged as an `ERROR` in `api.log` (`cluster.log` on a worker): `The manager restart run by
+exist or refuses the connection, the node does what modulesd would and logs a `WARNING` naming the socket
+error. When it runs in `wazuh-manager.service` it creates the request file `var/run/service-control/restart` (or
+`reload`), which makes systemd run `bin/wazuh-manager-service-control` as root, and answers without waiting
+for it; a request file that cannot be created is `1903`. A refusal by the configuration and credentials
+check the helper runs first is then not an API error: the manager keeps running and the reason is in
+`wazuh-manager.log` and in the journal of `wazuh-manager-service-control@restart.service` (or `@reload`).
+Otherwise (no systemd, or a manager started by hand, where the helper refuses with `unauthorized caller`
+because it has no setuid bit on a systemd host) the node runs the helper itself and waits up to 5 seconds for it to accept, then up to 4
+more for that check. A refusal in either is a failed item `1904` (*The manager service-control helper
+refused the restart request*, with its exit code and reason, such as `the manager configuration or
+credentials check failed; the manager was not restarted`), and the manager keeps running; a helper that
+cannot be run is `1903`. A failure the node no longer waits for (a longer check, or the action itself) is
+logged as an `ERROR` in `api.log` (`cluster.log` on a worker): `The manager restart run by
 wazuh-manager-service-control failed (exit code 1): …`. While modulesd runs, the request goes through its
-control socket instead, which answers as soon as the helper accepts. See
-[the control module](../control/README.md#manager-restart-and-reload).
+control socket instead, which answers as soon as the request file is written (in the unit) or the helper
+accepts. See [the control module](../control/README.md#manager-restart-and-reload).
 
 These codes are the framework's catalog (`framework/wazuh/core/exception.py`). The API process has a
 separate, startup-only catalog (`api/api/api_exception.py`) whose codes overlap numerically: `2000`

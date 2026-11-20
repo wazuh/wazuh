@@ -1,0 +1,13 @@
+[Unit]
+Description=Wazuh manager service control (%i)
+# No start rate limit: a start it refused would fail the path unit, and no later request would run.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+# Consumed before the action, so a request written while it runs triggers it once more.
+ExecStartPre=-/bin/rm -f WAZUH_HOME_TMP/var/run/service-control/%i
+ExecStart=WAZUH_HOME_TMP/bin/wazuh-manager-service-control %i
+# The check (up to 40 s for the control lock, then testconfig), a reload's wait of up to 60 s for the
+# manager to settle, then the stop (45 s, twice) and the start (180 s).
+TimeoutStartSec=420
