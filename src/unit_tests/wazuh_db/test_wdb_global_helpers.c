@@ -3256,6 +3256,121 @@ void test_wdb_disconnect_agents_success(void **state) {
     memset(test_payload, '\0', OS_MAXSTR);
 }
 
+/* Tests wdb_get_disconnected_agents */
+
+void test_wdb_get_disconnected_agents_wdbc_query_error(void **state) {
+    const char *query_str = "global get-disconnected-agents 0 6 100 200";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    int *array = wdb_get_disconnected_agents(CONNECTION_CLOSED, 100, 200, NULL);
+
+    assert_null(array);
+}
+
+void test_wdb_get_disconnected_agents_wdbc_parse_error(void **state) {
+    const char *query_str = "global get-disconnected-agents 0 6 100 200";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    int *array = wdb_get_disconnected_agents(CONNECTION_CLOSED, 100, 200, NULL);
+
+    assert_null(array);
+}
+
+void test_wdb_get_disconnected_agents_success(void **state) {
+    const char *query_str = "global get-disconnected-agents 0 6 100 200";
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int *array = wdb_get_disconnected_agents(CONNECTION_CLOSED, 100, 200, NULL);
+
+    assert_non_null(array);
+    assert_int_equal(1, array[0]);
+    assert_int_equal(2, array[1]);
+    assert_int_equal(-1, array[2]);
+
+    os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_get_disconnected_agents_empty(void **state) {
+    const char *query_str = "global get-disconnected-agents 0 6 100 200";
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok []");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int *array = wdb_get_disconnected_agents(CONNECTION_CLOSED, 100, 200, NULL);
+
+    // An empty result is not an error
+    assert_non_null(array);
+    assert_int_equal(-1, array[0]);
+
+    os_free(array);
+    __real_cJSON_Delete(test_json);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
 /* Tests wdb_parse_chunk_to_int */
 
 void test_wdb_parse_chunk_to_int_ok(void **state) {
@@ -4225,6 +4340,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_get_disconnected_agents */
+        cmocka_unit_test_setup_teardown(test_wdb_get_disconnected_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_disconnected_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_disconnected_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_disconnected_agents_empty, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_parse_chunk_to_int */
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),

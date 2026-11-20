@@ -134,6 +134,7 @@ typedef struct _global_agent_t {
     uint64_t get_agent_info_queries;
     uint64_t get_agents_by_connection_status_queries;
     uint64_t get_all_agents_queries;
+    uint64_t get_disconnected_agents_queries;
     uint64_t get_distinct_groups_queries;
     uint64_t get_groups_integrity_queries;
     uint64_t recalculate_agent_group_hashes_queries;
@@ -156,6 +157,7 @@ typedef struct _global_agent_t {
     struct timeval get_agent_info_time;
     struct timeval get_agents_by_connection_status_time;
     struct timeval get_all_agents_time;
+    struct timeval get_disconnected_agents_time;
     struct timeval get_distinct_groups_time;
     struct timeval get_groups_integrity_time;
     struct timeval recalculate_agent_group_hashes_time;
@@ -979,6 +981,19 @@ void w_inc_global_agent_disconnect_agents();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_disconnect_agents_time(struct timeval time);
+
+/**
+ * @brief Increment get-disconnected-agents global agent queries counter
+ *
+ */
+void w_inc_global_agent_get_disconnected_agents();
+
+/**
+ * @brief Increment get-disconnected-agents global agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_agent_get_disconnected_agents_time(struct timeval time);
 
 /**
  * @brief Increment sync-agent-info-get global agent queries counter

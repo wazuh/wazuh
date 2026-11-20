@@ -149,6 +149,7 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_queries = 1;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.disconnect_agents_queries = 2;
+    wdb_state.queries_breakdown.global_breakdown.agent.get_disconnected_agents_queries = 3;
     wdb_state.queries_breakdown.global_breakdown.agent.sync_agent_info_get_queries = 1;
     wdb_state.queries_breakdown.global_breakdown.agent.sync_agent_info_set_queries = 2;
     wdb_state.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_queries = 0;
@@ -425,6 +426,8 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-agents-by-connection-status")->valueint, 0);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "disconnect-agents"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "disconnect-agents")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-disconnected-agents"));
+    assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-disconnected-agents")->valueint, 3);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "sync-agent-info-get"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "sync-agent-info-get")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "sync-agent-info-set"));
@@ -652,6 +655,8 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agents-by-connection-status")->valueint, 1002);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "disconnect-agents"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "disconnect-agents")->valueint, 412);
+    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-disconnected-agents"));
+    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-disconnected-agents")->valueint, 0);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "sync-agent-info-get"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "sync-agent-info-get")->valueint, 548);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "sync-agent-info-set"));
