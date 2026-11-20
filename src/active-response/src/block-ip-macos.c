@@ -14,12 +14,13 @@
 
 /**
  * macOS-specific block-ip implementation
- * Method chain: pf (Packet Filter) -> hosts.deny -> route (blackhole fallback)
+ * Method chain: pf (Packet Filter) -> route (blackhole fallback)
+ * hosts.deny is not used: macOS has no TCP wrappers.
  */
 
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0);
-firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0);
+bool remove_legacy_hostsdeny_rule(const char *srcip, const char *argv0);
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -74,15 +75,17 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // macOS method chain, same pattern as the other Unix/BSD platforms:
-    // pf -> hosts.deny -> route (blackhole), so a stock install with neither
-    // pf enabled nor /etc/hosts.deny present still has a working fallback.
+    // pf -> route (blackhole), so a stock install without pf enabled still blocks
     const firewall_method_t methods[] = {
         {"pf", try_pf_macos, false},
-        {"hostsdeny", try_hostsdeny_macos, false},
         {"route", try_route_macos, false},
         {NULL, NULL, false}  // Sentinel
     };
+
+    // Outside the chain: it must neither stop it before route nor change the result
+    if (action == DISABLE_COMMAND) {
+        remove_legacy_hostsdeny_rule(srcip, argv[0]);
+    }
 
     int result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
 
@@ -243,19 +246,26 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
 }
 
 // ============================================================================
-// macOS: hosts.deny (TCP wrappers) implementation
+// macOS: hosts.deny entries left by an earlier version
 // ============================================================================
 
 #define HOSTSDENY_LOCK_PATH "active-response/bin/block-ip-hostsdeny-lock"
 #define HOSTSDENY_LOCK_FILE "active-response/bin/block-ip-hostsdeny-lock/pid"
 #define DEFAULT_HOSTS_DENY_PATH "/etc/hosts.deny"
+#define TEMP_HOSTS_DENY_PATH "active-response/bin/temp-hosts-deny"
 
-firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // TCP wrappers work for both IPv4 and IPv6
-    char hosts_deny_rule[COMMANDSIZE_4096];
+// Earlier versions appended "ALL:<ip>", with the address as received, which
+// macOS never enforces. Removes that exact line; true if one was removed.
+bool remove_legacy_hostsdeny_rule(const char *srcip, const char *argv0) {
+    char rule[COMMANDSIZE_4096];
+    char canonical_rule[COMMANDSIZE_4096];
+    char canonical_ip[NI_MAXHOST];
     char log_msg[OS_MAXSTR];
     char output_buf[OS_MAXSTR - 25];
     FILE *host_deny_fp = NULL;
+    FILE *temp_host_deny_fp = NULL;
+    bool removed = false;
+    bool write_fail = false;
     lock_context_t lock_ctx = {
         .lock_path = HOSTSDENY_LOCK_PATH,
         .lock_pid_path = HOSTSDENY_LOCK_FILE,
@@ -263,142 +273,83 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         .acquired = false
     };
 
-    // macOS uses standard hosts.deny format
-    memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
-    snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL:%s", srcip);
-
-    // Check if hosts.deny file exists
+    // Absent on a stock install: nothing to clean up
     if (access(DEFAULT_HOSTS_DENY_PATH, F_OK) < 0) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "File '%s' not found", DEFAULT_HOSTS_DENY_PATH);
-        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check", log_msg);
-        return FIREWALL_NOT_AVAILABLE;
+        return false;
     }
 
-    // Acquire lock
+    snprintf(rule, sizeof(rule), "ALL:%s", srcip);
+    canonical_rule[0] = '\0';
+    if (canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip)) && strcmp(canonical_ip, srcip) != 0) {
+        snprintf(canonical_rule, sizeof(canonical_rule), "ALL:%s", canonical_ip);
+    }
+
     if (acquire_ar_lock(&lock_ctx) == OS_INVALID) {
-        return FIREWALL_EXECUTION_FAILED;
+        return false;
     }
 
-    if (action == ENABLE_COMMAND) {
-        // Open file for reading to check for duplicates
-        host_deny_fp = wfopen(DEFAULT_HOSTS_DENY_PATH, "r");
-        if (!host_deny_fp) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for reading", DEFAULT_HOSTS_DENY_PATH);
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "add", log_msg);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-
-        // Check for duplicates
-        memset(output_buf, '\0', OS_MAXSTR - 25);
-        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (strstr(output_buf, srcip) != NULL) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "IP %s already exists in '%s'", srcip, DEFAULT_HOSTS_DENY_PATH);
-                log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "add", log_msg);
-                fclose(host_deny_fp);
-                release_ar_lock(&lock_ctx);
-                return FIREWALL_SUCCESS;  // Already exists, consider it success
-            }
-        }
-        fclose(host_deny_fp);
-
-        // Open again to append rule
-        host_deny_fp = wfopen(DEFAULT_HOSTS_DENY_PATH, "a");
-        if (!host_deny_fp) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for appending", DEFAULT_HOSTS_DENY_PATH);
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "add", log_msg);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-
-        if (fprintf(host_deny_fp, "%s\n", hosts_deny_rule) <= 0) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Unable to write rule to '%s'", DEFAULT_HOSTS_DENY_PATH);
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "add", log_msg);
-            fclose(host_deny_fp);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-        fclose(host_deny_fp);
-
-    } else {
-        // DISABLE_COMMAND: Remove IP from hosts.deny
-        FILE *temp_host_deny_fp = NULL;
-        char temp_hosts_deny_path[COMMANDSIZE_4096];
-        bool write_fail = false;
-
-        memset(temp_hosts_deny_path, '\0', COMMANDSIZE_4096);
-        snprintf(temp_hosts_deny_path, COMMANDSIZE_4096 - 1, "%s", "active-response/bin/temp-hosts-deny");
-
-        host_deny_fp = wfopen(DEFAULT_HOSTS_DENY_PATH, "r");
-        if (!host_deny_fp) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for reading", DEFAULT_HOSTS_DENY_PATH);
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-
-        // Create the temporary file
-        temp_host_deny_fp = wfopen(temp_hosts_deny_path, "w");
-        if (!temp_host_deny_fp) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Could not create temporary file '%s'", temp_hosts_deny_path);
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
-            fclose(host_deny_fp);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-
-        // Copy all lines except those containing the srcip
-        bool entry_found = false;
-        memset(output_buf, '\0', OS_MAXSTR - 25);
-        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (strstr(output_buf, srcip) == NULL) {
-                if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
-                    memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR - 1, "Unable to write to temporary file");
-                    log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
-                    write_fail = true;
-                    break;
-                }
-            } else {
-                entry_found = true;
-            }
-            memset(output_buf, '\0', OS_MAXSTR - 25);
-        }
-
-        fclose(host_deny_fp);
-        fclose(temp_host_deny_fp);
-
-        // Not the method that blocked it. Decline before the move: the copy is
-        // identical, and replacing the file would change its inode and mode.
-        if (!write_fail && !entry_found) {
-            log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "skip", "address not listed in hosts.deny");
-            unlink(temp_hosts_deny_path);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_INVALID_STATE;
-        }
-
-        // Replace original file with temp file
-        if (write_fail || OS_MoveFile(temp_hosts_deny_path, DEFAULT_HOSTS_DENY_PATH) != 0) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Unable to update file '%s'", DEFAULT_HOSTS_DENY_PATH);
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
-            unlink(temp_hosts_deny_path);
-            release_ar_lock(&lock_ctx);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-
-        unlink(temp_hosts_deny_path);
+    host_deny_fp = wfopen(DEFAULT_HOSTS_DENY_PATH, "r");
+    if (!host_deny_fp) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for reading", DEFAULT_HOSTS_DENY_PATH);
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "unblock", log_msg);
+        release_ar_lock(&lock_ctx);
+        return false;
     }
 
+    temp_host_deny_fp = wfopen(TEMP_HOSTS_DENY_PATH, "w");
+    if (!temp_host_deny_fp) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Could not create temporary file '%s'", TEMP_HOSTS_DENY_PATH);
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "unblock", log_msg);
+        fclose(host_deny_fp);
+        release_ar_lock(&lock_ctx);
+        return false;
+    }
+
+    while (fgets(output_buf, sizeof(output_buf), host_deny_fp)) {
+        if (hosts_deny_rule_matches(output_buf, rule) ||
+            (canonical_rule[0] != '\0' && hosts_deny_rule_matches(output_buf, canonical_rule))) {
+            removed = true;
+            continue;
+        }
+
+        size_t len = strlen(output_buf);
+        if (fwrite(output_buf, 1, len, temp_host_deny_fp) != len) {
+            write_fail = true;
+            break;
+        }
+    }
+
+    fclose(host_deny_fp);
+    if (fclose(temp_host_deny_fp) != 0) {
+        write_fail = true;
+    }
+
+    // Leave the file alone when nothing matched: replacing it changes its inode and mode
+    if (!write_fail && !removed) {
+        unlink(TEMP_HOSTS_DENY_PATH);
+        release_ar_lock(&lock_ctx);
+        return false;
+    }
+
+    if (write_fail || OS_MoveFile(TEMP_HOSTS_DENY_PATH, DEFAULT_HOSTS_DENY_PATH) != 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Unable to update file '%s'", DEFAULT_HOSTS_DENY_PATH);
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "unblock", log_msg);
+        unlink(TEMP_HOSTS_DENY_PATH);
+        release_ar_lock(&lock_ctx);
+        return false;
+    }
+
+    unlink(TEMP_HOSTS_DENY_PATH);
     release_ar_lock(&lock_ctx);
-    return FIREWALL_SUCCESS;
+
+    memset(log_msg, '\0', OS_MAXSTR);
+    snprintf(log_msg, OS_MAXSTR - 1, "Removed the entry for %s that an earlier version added to '%s'", srcip,
+             DEFAULT_HOSTS_DENY_PATH);
+    log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "unblock", log_msg);
+    return true;
 }
 
 // ============================================================================

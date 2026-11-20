@@ -17,16 +17,18 @@
 #include "active_responses.h"
 #include "firewall_helpers.h"
 
+#include "../wrappers/common.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 /* block-ip-macos.c is compiled directly into this target (see CMakeLists.txt)
  * with its `main` renamed at compile time, so these symbols aren't declared
  * in any shared header -- redeclare the ones under test here. */
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0);
-firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_route_macos(const char *srcip, int action, int ip_version, const char *argv0);
+bool remove_legacy_hostsdeny_rule(const char *srcip, const char *argv0);
 int block_ip_macos_main(int argc, char **argv);
 
 /* setup_and_check_message/get_srcip_from_json/send_keys_and_check_message are
@@ -46,6 +48,18 @@ const char *__wrap_get_srcip_from_json(__attribute__((unused)) const cJSON *inpu
 
 int __wrap_send_keys_and_check_message(__attribute__((unused)) char **argv, __attribute__((unused)) char **keys) {
     return mock_type(int);
+}
+
+// The hosts.deny lock is a mkdir under the install dir; counted so the tests can
+// check every path that took it also released it.
+static int lock_releases = 0;
+
+int __wrap_acquire_ar_lock(__attribute__((unused)) lock_context_t *ctx) {
+    return mock_type(int);
+}
+
+void __wrap_release_ar_lock(__attribute__((unused)) lock_context_t *ctx) {
+    lock_releases++;
 }
 
 // try_route_macos now drains wfd->file_out (W_BIND_STDERR) before wpclose,
@@ -246,8 +260,8 @@ void test_try_route_macos_enable_already_blocked_is_success(void **state) {
 }
 
 // route(8) exits non-zero (ESRCH -> "not in table") when a DISABLE is
-// requested for a route that's already gone -- same no-op-is-success
-// treatment try_hostsdeny_macos already gives a duplicate/missing entry.
+// requested for a route that's already gone -- the end state is the one asked
+// for, so it is a success.
 // Verified against Apple's route.tproj/route.c: route_strerror() maps ESRCH
 // to the literal string "not in table".
 void test_try_route_macos_disable_not_in_table_is_success(void **state) {
@@ -265,8 +279,8 @@ void test_try_route_macos_disable_not_in_table_is_success(void **state) {
 }
 
 // ============================================================================
-// try_pf_macos / try_hostsdeny_macos: the decline paths that reproduce the
-// stock-install symptom, which is what the route fallback triggers on.
+// try_pf_macos: the decline path that reproduces the stock-install symptom,
+// which is what the route fallback triggers on.
 // ============================================================================
 
 void test_try_pf_macos_disabled_is_invalid_state(void **state) {
@@ -291,16 +305,6 @@ void test_try_pf_macos_disabled_is_invalid_state(void **state) {
     assert_int_equal(result, FIREWALL_INVALID_STATE);
 
     fclose(info_stream);
-}
-
-void test_try_hostsdeny_macos_missing_file_is_not_available(void **state) {
-    expect_string(__wrap_access, __name, "/etc/hosts.deny");
-    expect_value(__wrap_access, __type, F_OK);
-    will_return(__wrap_access, -1);
-
-    firewall_result_t result = try_hostsdeny_macos("192.168.1.100", ENABLE_COMMAND, 4, "block-ip");
-
-    assert_int_equal(result, FIREWALL_NOT_AVAILABLE);
 }
 
 // ============================================================================
@@ -491,11 +495,163 @@ void test_try_route_macos_zero_exit_with_stderr_is_failure(void **state) {
 }
 
 // ============================================================================
-// block_ip_macos_main: exercises the actual pf -> hostsdeny -> route table
-// wired up in main() itself, the one piece #39192's fix touches that no
-// other test in this file invokes -- everything above tests the individual
-// try_*_macos functions or (in test_firewall_helpers.c) a stubbed-out chain,
-// neither of which runs the real methods[] literal through execute_firewall_chain.
+// remove_legacy_hostsdeny_rule: earlier versions appended "ALL:<ip>" to
+// /etc/hosts.deny, which macOS never enforces. Unblock removes that exact line.
+// ============================================================================
+
+#define HOSTS_DENY "/etc/hosts.deny"
+#define TEMP_HOSTS_DENY "active-response/bin/temp-hosts-deny"
+
+static char temp_copy_path[64];
+static FILE *hosts_deny_in = NULL;
+
+// The real file behind the mocked temp-file wfopen(), read back after the call
+static int setup_hostsdeny(void **state) {
+    (void)state;
+    test_mode = 1;
+    lock_releases = 0;
+    hosts_deny_in = NULL;
+    snprintf(temp_copy_path, sizeof(temp_copy_path), "/tmp/test_block_ip_macos_XXXXXX");
+    int fd = mkstemp(temp_copy_path);
+    assert_true(fd >= 0);
+    close(fd);
+    return 0;
+}
+
+static int teardown_hostsdeny(void **state) {
+    (void)state;
+    test_mode = 0;
+    unlink(temp_copy_path);
+    teardown_wfds(state);
+    return 0;
+}
+
+static void expect_hostsdeny_access(int ret) {
+    expect_string(__wrap_access, __name, HOSTS_DENY);
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, ret);
+}
+
+// File present, lock taken, both files opened. The caller's input is not
+// closed here: the function under test fcloses both streams.
+static void expect_hostsdeny_copy(const char *content) {
+    expect_hostsdeny_access(0);
+    will_return(__wrap_acquire_ar_lock, 0);
+
+    hosts_deny_in = fmemopen((void *)content, strlen(content), "r");
+    assert_non_null(hosts_deny_in);
+    expect_wfopen(HOSTS_DENY, "r", hosts_deny_in);
+
+    FILE *copy = fopen(temp_copy_path, "w");
+    assert_non_null(copy);
+    expect_wfopen(TEMP_HOSTS_DENY, "w", copy);
+}
+
+static void expect_hostsdeny_move(int ret) {
+    expect_string(__wrap_OS_MoveFile, src, TEMP_HOSTS_DENY);
+    expect_string(__wrap_OS_MoveFile, dst, HOSTS_DENY);
+    will_return(__wrap_OS_MoveFile, ret);
+}
+
+static void assert_copy_equals(const char *expected) {
+    char buffer[256] = {0};
+    FILE *fp = fopen(temp_copy_path, "r");
+    assert_non_null(fp);
+    size_t len = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    fclose(fp);
+    buffer[len] = '\0';
+    assert_string_equal(buffer, expected);
+}
+
+// Lines that merely contain the address, or name it in another form, are kept
+void test_remove_legacy_hostsdeny_rule_exact_match_only(void **state) {
+    (void)state;
+
+    expect_hostsdeny_copy("ALL:9.9.9.99\nALL:9.9.9.9\nsshd: 9.9.9.9\nALL:19.9.9.9\n");
+    expect_hostsdeny_move(0);
+
+    assert_true(remove_legacy_hostsdeny_rule("9.9.9.9", "block-ip"));
+    assert_copy_equals("ALL:9.9.9.99\nsshd: 9.9.9.9\nALL:19.9.9.9\n");
+    assert_int_equal(lock_releases, 1);
+}
+
+// A substring hit is not a match, and the file is not replaced (no OS_MoveFile
+// is queued, so calling it fails the test)
+void test_remove_legacy_hostsdeny_rule_substring_only_is_kept(void **state) {
+    (void)state;
+
+    expect_hostsdeny_copy("ALL:9.9.9.99\n");
+
+    assert_false(remove_legacy_hostsdeny_rule("9.9.9.9", "block-ip"));
+    assert_int_equal(lock_releases, 1);
+}
+
+// The line was written with the address as received; a canonical spelling of
+// the same address is removed too
+void test_remove_legacy_hostsdeny_rule_ipv6_raw_and_canonical(void **state) {
+    (void)state;
+
+    expect_hostsdeny_copy("ALL:2001:0DB8::0001\nALL:2001:db8::1\nALL:2001:db8::10\n");
+    expect_hostsdeny_move(0);
+
+    assert_true(remove_legacy_hostsdeny_rule("2001:0DB8::0001", "block-ip"));
+    assert_copy_equals("ALL:2001:db8::10\n");
+}
+
+// Trailing whitespace and CRLF do not hide the line
+void test_remove_legacy_hostsdeny_rule_trailing_whitespace(void **state) {
+    (void)state;
+
+    expect_hostsdeny_copy("ALL:192.0.2.66 \r\nALL:192.0.2.67\n");
+    expect_hostsdeny_move(0);
+
+    assert_true(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_copy_equals("ALL:192.0.2.67\n");
+}
+
+// Stock install: no file, no lock, nothing opened
+void test_remove_legacy_hostsdeny_rule_missing_file(void **state) {
+    (void)state;
+
+    expect_hostsdeny_access(-1);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 0);
+}
+
+void test_remove_legacy_hostsdeny_rule_lock_failure(void **state) {
+    (void)state;
+
+    expect_hostsdeny_access(0);
+    will_return(__wrap_acquire_ar_lock, OS_INVALID);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+}
+
+void test_remove_legacy_hostsdeny_rule_read_failure(void **state) {
+    (void)state;
+
+    expect_hostsdeny_access(0);
+    will_return(__wrap_acquire_ar_lock, 0);
+    expect_wfopen(HOSTS_DENY, "r", NULL);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 1);
+}
+
+void test_remove_legacy_hostsdeny_rule_move_failure(void **state) {
+    (void)state;
+
+    expect_hostsdeny_copy("ALL:192.0.2.66\n");
+    expect_hostsdeny_move(-1);
+
+    assert_false(remove_legacy_hostsdeny_rule("192.0.2.66", "block-ip"));
+    assert_int_equal(lock_releases, 1);
+}
+
+// ============================================================================
+// block_ip_macos_main: runs the real pf -> route methods[] literal in main()
+// through execute_firewall_chain, which the tests above don't.
 // ============================================================================
 
 void test_block_ip_macos_main_stock_install_falls_back_to_route(void **state) {
@@ -518,12 +674,10 @@ void test_block_ip_macos_main_stock_install_falls_back_to_route(void **state) {
     expect_value(__wrap_access, __type, F_OK);
     will_return(__wrap_access, -1);
 
-    // hostsdeny declines: /etc/hosts.deny not present (stock install)
-    expect_string(__wrap_access, __name, "/etc/hosts.deny");
-    expect_value(__wrap_access, __type, F_OK);
-    will_return(__wrap_access, -1);
+    // Nothing touches /etc/hosts.deny on a block: an access() or wfopen() on it
+    // has no queued expectation and fails the test
 
-    // route succeeds: the #39192 fallback this whole PR is about
+    // route succeeds
     char *route_path = strdup("/sbin/route");
     expect_string(__wrap_get_binary_path, command, "route");
     will_return(__wrap_get_binary_path, route_path);
@@ -540,6 +694,60 @@ void test_block_ip_macos_main_stock_install_falls_back_to_route(void **state) {
     assert_string_equal(wpopenv_captured_argv(0), "/sbin/route");  // route_path itself is already os_free()d inside try_route_macos by this point
     assert_string_equal(wpopenv_captured_argv(2), "add");
     assert_string_equal(wpopenv_captured_argv(3), "192.168.1.100");
+}
+
+static void expect_main_disable(const char *srcip) {
+    will_return(__wrap_setup_and_check_message, cJSON_CreateObject());
+    will_return(__wrap_setup_and_check_message, DISABLE_COMMAND);
+    will_return(__wrap_get_srcip_from_json, srcip);
+}
+
+// pf declines (/dev/pf not accessible) and route deletes the blackhole route
+static void expect_pf_declines_route_deletes(const char *route_stderr) {
+    expect_string(__wrap_get_binary_path, command, "pfctl");
+    will_return(__wrap_get_binary_path, strdup("/sbin/pfctl"));
+    will_return(__wrap_get_binary_path, 0);
+    expect_string(__wrap_access, __name, "/dev/pf");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
+
+    expect_string(__wrap_get_binary_path, command, "route");
+    will_return(__wrap_get_binary_path, strdup("/sbin/route"));
+    will_return(__wrap_get_binary_path, 0);
+    will_return(__wrap_wpopenv, make_wfd(route_stderr));
+    will_return(__wrap_wpclose, 0);
+}
+
+// Removing a leftover hosts.deny line must not stop the unblock before route
+void test_block_ip_macos_main_disable_removes_legacy_entry_and_runs_route(void **state) {
+    char *argv[] = {"block-ip", NULL};
+    (void)state;
+
+    expect_main_disable("192.0.2.66");
+    expect_hostsdeny_copy("ALL:192.0.2.66\n");
+    expect_hostsdeny_move(0);
+    expect_pf_declines_route_deletes("");
+
+    assert_int_equal(block_ip_macos_main(1, argv), OS_SUCCESS);
+    assert_copy_equals("");
+    assert_string_equal(wpopenv_captured_argv(0), "/sbin/route");
+    assert_string_equal(wpopenv_captured_argv(2), "delete");
+    assert_string_equal(wpopenv_captured_argv(3), "192.0.2.66");
+}
+
+// A cleanup that fails does not change the unblock's result
+void test_block_ip_macos_main_disable_cleanup_failure_keeps_result(void **state) {
+    char *argv[] = {"block-ip", NULL};
+    (void)state;
+
+    expect_main_disable("192.0.2.66");
+    expect_hostsdeny_access(0);
+    will_return(__wrap_acquire_ar_lock, 0);
+    expect_wfopen(HOSTS_DENY, "r", NULL);
+    expect_pf_declines_route_deletes("delete host 192.0.2.66: not in table\n");
+
+    assert_int_equal(block_ip_macos_main(1, argv), OS_SUCCESS);
+    assert_int_equal(lock_releases, 1);
 }
 
 int main(void) {
@@ -563,8 +771,17 @@ int main(void) {
         cmocka_unit_test_teardown(test_try_pf_macos_disable_address_in_table_succeeds, teardown_wfds),
         cmocka_unit_test_teardown(test_try_route_macos_spawn_never_exec_is_failure, teardown_wfds),
         cmocka_unit_test_teardown(test_try_route_macos_zero_exit_with_stderr_is_failure, teardown_wfds),
-        cmocka_unit_test(test_try_hostsdeny_macos_missing_file_is_not_available),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_exact_match_only, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_substring_only_is_kept, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_ipv6_raw_and_canonical, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_trailing_whitespace, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_missing_file, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_lock_failure, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_read_failure, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_remove_legacy_hostsdeny_rule_move_failure, setup_hostsdeny, teardown_hostsdeny),
         cmocka_unit_test(test_block_ip_macos_main_stock_install_falls_back_to_route),
+        cmocka_unit_test_setup_teardown(test_block_ip_macos_main_disable_removes_legacy_entry_and_runs_route, setup_hostsdeny, teardown_hostsdeny),
+        cmocka_unit_test_setup_teardown(test_block_ip_macos_main_disable_cleanup_failure_keeps_result, setup_hostsdeny, teardown_hostsdeny),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
