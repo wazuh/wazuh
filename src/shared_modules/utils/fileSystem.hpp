@@ -12,6 +12,7 @@
 #ifndef _FILESYSTEM_HELPER_HPP
 #define _FILESYSTEM_HELPER_HPP
 
+#include "filesystemHelper.h"
 #include <cstdint>
 #include <filesystem>
 
@@ -71,6 +72,16 @@ class RealFileSystemT
         static std::uintmax_t file_size(const std::filesystem::path& path)
         {
             return std::filesystem::file_size(path);
+        }
+
+        /**
+         * @brief Is an automount point that is not mounted yet
+         * @param path Path to check
+         * @return True if looking inside the path would make the automounter mount it
+         */
+        static bool is_unmounted_automount_point(const std::filesystem::path& path)
+        {
+            return Utils::isUnmountedAutomountPoint(path.string());
         }
 
         /**

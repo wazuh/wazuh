@@ -307,6 +307,61 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
  * lowering it leaves running processes above the new value */
 #define RC_PID_LIMIT 4194303
 
+/* Bound of the sweep: rootcheck.max_pid, already capped by rc_read_max_pid() */
+static pid_t rc_sweep_limit(void)
+{
+    if (rootcheck.max_pid <= 0) {
+        return RC_MAX_PID_DEFAULT;
+    }
+    return (pid_t)rootcheck.max_pid;
+}
+
+int rc_read_max_pid(void)
+{
+    int value = getDefine_Int_default("rootcheck", "max_pid", RC_MAX_PID_DEFAULT, RC_MAX_PID_MAX, RK_CONF_UNDEFINED);
+    int from_default = (value == RK_CONF_UNDEFINED);
+
+    if (from_default) {
+        value = RC_MAX_PID_DEFAULT;
+    }
+
+    /* 4194304 is accepted as a pid_max value, but the last PID is one below */
+    rootcheck.max_pid = (value > RC_PID_LIMIT) ? RC_PID_LIMIT : value;
+
+    return from_default;
+}
+
+long rc_kernel_pid_max(void)
+{
+    FILE *fp;
+    long pid_max = 0;
+
+    fp = wfopen("/proc/sys/kernel/pid_max", "r");
+    if (fp) {
+        if (fscanf(fp, "%ld", &pid_max) != 1) {
+            pid_max = 0;
+        }
+        fclose(fp);
+    }
+
+    return pid_max;
+}
+
+void rc_log_max_pid(int from_default, long pid_max)
+{
+    if (from_default) {
+        mtinfo(ARGV0, "Hidden process check: checking PIDs up to %d (default, 'rootcheck.max_pid' not set).", rootcheck.max_pid);
+    } else {
+        mtinfo(ARGV0, "Hidden process check: checking PIDs up to %d ('rootcheck.max_pid').", rootcheck.max_pid);
+    }
+
+    /* pid_max is one above the highest PID the kernel assigns */
+    if (pid_max - 1 > rootcheck.max_pid) {
+        mtinfo(ARGV0, "Hidden process check: PIDs from %d to %ld are not checked. Raise 'rootcheck.max_pid' up to %ld to check them.",
+               rootcheck.max_pid + 1, pid_max - 1, pid_max);
+    }
+}
+
 #define RC_BIT_SET(map, n) ((map)[(n) >> 3] |= (unsigned char)(1 << ((n) & 7)))
 #define RC_BIT_GET(map, n) (((map)[(n) >> 3] >> ((n) & 7)) & 1)
 
@@ -392,7 +447,7 @@ static int rc_is_thread(int pid)
  * snapshot of /proc and ps. Returns -1 if /proc cannot be read */
 static int scan_all_pids_linux(const char *ps, int *_errors, int *_total)
 {
-    pid_t max_pid = RC_PID_LIMIT;
+    pid_t max_pid = rc_sweep_limit();
     size_t map_size = ((size_t)max_pid >> 3) + 1;
     unsigned char *listed = NULL;
     unsigned char *ps_seen = NULL;
@@ -527,6 +582,13 @@ void check_rc_pids()
 
 #ifdef __linux__
     if (noproc || scan_all_pids_linux(ps, &_errors, &_total) < 0) {
+        static int fallback_reported = 0;
+
+        if (!fallback_reported && rootcheck.max_pid > max_pid) {
+            mtwarn(ARGV0, "Hidden process check: /proc cannot be read, checking PIDs up to %d instead of %d.",
+                   (int)max_pid, rootcheck.max_pid);
+            fallback_reported = 1;
+        }
         loop_all_pids(ps, max_pid, &_errors, &_total);
     }
 #else
