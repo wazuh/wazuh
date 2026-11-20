@@ -293,13 +293,13 @@ File check interval for detecting log file changes.
 
 ### logcollector.ip_update_interval
 
-How often Logcollector refreshes the cached host IP address it exposes to its output-format
-placeholders (`src/shared/src/log_builder.c`).
+How often Logcollector refreshes the host IP address that the `$(host_ip)` placeholder of
+`<out_format>` prints (`src/shared/src/log_builder.c`).
 
 - **Default value:** `60` (seconds)
-- **Allowed values:** Integer from `0` to `3600`; `0` never refreshes the address after start
+- **Allowed values:** Integer from `0` to `3600`; `0` never resolves the address, so `$(host_ip)` is always `0.0.0.0`
 - **Format:** `logcollector.ip_update_interval=60`
-- **Note:** Agent only; the manager reads no `logcollector.*` key
+- **Note:** Agent only; the manager reads no `logcollector.*` key. The address is only resolved when some `<out_format>` uses `$(host_ip)`; it is checked on each `logcollector.vcheck_files` cycle, so a change can take up to that long more to show. The address is the source address the host would use to reach the Internet (a route lookup toward `1.1.1.1` and `2606:4700::1111`; no packet is sent), IPv4 first and IPv6 if there is no IPv4 route. On Linux the IPv6 address is the stable one, not a temporary (privacy) address; on Windows and macOS the system may pick a temporary one, which rotates. Without any route it is `0.0.0.0`
 
 ### logcollector.open_attempts
 

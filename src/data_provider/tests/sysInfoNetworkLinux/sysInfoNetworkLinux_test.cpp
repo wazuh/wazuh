@@ -9,11 +9,13 @@
  */
 #include <arpa/inet.h>
 #include <filesystem>
+#include <fstream>
 #include <ifaddrs.h>
 #include <memory>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <sstream>
 #include "sysInfoNetworkLinux_test.h"
 #include "network/networkInterfaceLinux.h"
 #include "network/networkFamilyDataAFactory.h"
@@ -222,7 +224,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_STATE_IS_UP)
     iface.ifa_name = ifaceName;
     iface.ifa_flags = IFF_UP;
 
-    EXPECT_EQ("up", NetworkLinuxInterface(&iface, ifaceName).state());
+    EXPECT_EQ("up", NetworkLinuxInterface(&iface, ifaceName, nullptr, nullptr).state());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_STATE_WITHOUT_ADMIN_FLAG_IS_DOWN)
@@ -233,7 +235,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_STATE_WITHOUT_ADMIN_FLAG_IS_DOWN)
     iface.ifa_name = ifaceName;
     iface.ifa_flags = 0;
 
-    EXPECT_EQ("down", NetworkLinuxInterface(&iface, ifaceName).state());
+    EXPECT_EQ("down", NetworkLinuxInterface(&iface, ifaceName, nullptr, nullptr).state());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_STATE_KEEPS_PLACEHOLDER_WHEN_OPERSTATE_UNREADABLE)
@@ -244,7 +246,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_STATE_KEEPS_PLACEHOLDER_WHEN_OPERSTATE_UNRE
     iface.ifa_name = ifaceName;
     iface.ifa_flags = IFF_UP;
 
-    EXPECT_EQ(UNKNOWN_VALUE, NetworkLinuxInterface(&iface, ifaceName).state());
+    EXPECT_EQ(UNKNOWN_VALUE, NetworkLinuxInterface(&iface, ifaceName, nullptr, nullptr).state());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_ACCESSORS_FALL_BACK_WHEN_THE_INTERFACE_HAS_NO_SYS_ENTRY)
@@ -256,7 +258,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_ACCESSORS_FALL_BACK_WHEN_THE_INTERFACE_HAS_
     iface.ifa_name = ifaceName;
     iface.ifa_flags = IFF_UP;
 
-    const NetworkLinuxInterface wrapper(&iface, ifaceName);
+    const NetworkLinuxInterface wrapper(&iface, ifaceName, nullptr, nullptr);
 
     EXPECT_EQ(UNKNOWN_VALUE, wrapper.type());
     EXPECT_EQ(UNKNOWN_VALUE, wrapper.MAC());
@@ -270,7 +272,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_ACCESSORS_FALL_BACK_WHEN_THE_INTERFACE_HAS_
 
 TEST_F(SysInfoNetworkLinuxTest, Test_CONSTRUCTOR_REJECTS_A_NULL_INTERFACE)
 {
-    EXPECT_THROW(NetworkLinuxInterface(nullptr, ""), std::runtime_error);
+    EXPECT_THROW(NetworkLinuxInterface(nullptr, "", nullptr, nullptr), std::runtime_error);
 }
 
 // The cases below drive NetworkLinuxInterface over the host's real interfaces. The wrapper reads
@@ -318,7 +320,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_REAL_INTERFACES_EXPOSE_CONSISTENT_VALUES)
         }
 
         ++visited;
-        NetworkLinuxInterface iface(entry, Utils::substrOnFirstOccurrence(entry->ifa_name, ":"));
+        NetworkLinuxInterface iface(entry, Utils::substrOnFirstOccurrence(entry->ifa_name, ":"), nullptr, nullptr);
 
         EXPECT_FALSE(iface.name().empty());
         EXPECT_TRUE(iface.adapter().empty());
@@ -379,7 +381,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_LOOPBACK_IS_REPORTED_AS_A_LOOPBACK_INTERFAC
         }
 
         found = true;
-        NetworkLinuxInterface iface(entry, Utils::substrOnFirstOccurrence(entry->ifa_name, ":"));
+        NetworkLinuxInterface iface(entry, Utils::substrOnFirstOccurrence(entry->ifa_name, ":"), nullptr, nullptr);
 
         EXPECT_EQ("loopback", iface.type());
         EXPECT_EQ("up", iface.state());
@@ -403,7 +405,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_STATS_ARE_READ_FOR_THE_LOOPBACK_INTERFACE)
         }
 
         // Loopback sends exactly what it receives, which makes the counters self-checking.
-        const auto stats { NetworkLinuxInterface(entry, Utils::substrOnFirstOccurrence(entry->ifa_name, ":")).stats() };
+        const auto stats { NetworkLinuxInterface(entry, Utils::substrOnFirstOccurrence(entry->ifa_name, ":"), nullptr, nullptr).stats() };
         EXPECT_EQ(stats.rxBytes, stats.txBytes);
         EXPECT_EQ(stats.rxPackets, stats.txPackets);
         EXPECT_EQ(0u, stats.rxErrors);
@@ -429,7 +431,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_BROADCAST_IS_DERIVED_WHEN_THE_INTERFACE_HAS
     iface.ifa_netmask = reinterpret_cast<sockaddr*>(&netmask);
     iface.ifa_ifu.ifu_broadaddr = nullptr;
 
-    EXPECT_EQ("192.168.1.255", NetworkLinuxInterface(&iface, ifaceName).broadcast());
+    EXPECT_EQ("192.168.1.255", NetworkLinuxInterface(&iface, ifaceName, nullptr, nullptr).broadcast());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_IPV6_ACCESSORS_READ_THE_SOCKET_ADDRESS)
@@ -453,7 +455,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_IPV6_ACCESSORS_READ_THE_SOCKET_ADDRESS)
     iface.ifa_netmask = reinterpret_cast<sockaddr*>(&netmask);
     iface.ifa_ifu.ifu_broadaddr = reinterpret_cast<sockaddr*>(&broadcast);
 
-    const NetworkLinuxInterface wrapper(&iface, ifaceName);
+    const NetworkLinuxInterface wrapper(&iface, ifaceName, nullptr, nullptr);
 
     EXPECT_EQ(AF_INET6, wrapper.family());
     EXPECT_EQ("fe80::250:56ff:fec0:8", wrapper.addressV6());
@@ -649,13 +651,13 @@ TEST_F(SysInfoNetworkLinuxTest, Test_DhcpUsesTheFlagsOfTheAddress)
     };
     const auto flags { std::make_shared<const IPv4AddressFlags>(addressFlags) };
 
-    EXPECT_EQ(1u, NetworkLinuxInterface(&leased.entry, "wztest0", flags).dhcp());
-    EXPECT_EQ(0u, NetworkLinuxInterface(&fixed.entry, "wztest0", flags).dhcp());
+    EXPECT_EQ(1u, NetworkLinuxInterface(&leased.entry, "wztest0", flags, nullptr).dhcp());
+    EXPECT_EQ(0u, NetworkLinuxInterface(&fixed.entry, "wztest0", flags, nullptr).dhcp());
     // Not in the dump, or no dump at all.
-    EXPECT_EQ(0u, NetworkLinuxInterface(&other.entry, "wztest0", flags).dhcp());
-    EXPECT_EQ(0u, NetworkLinuxInterface(&leased.entry, "wztest0").dhcp());
+    EXPECT_EQ(0u, NetworkLinuxInterface(&other.entry, "wztest0", flags, nullptr).dhcp());
+    EXPECT_EQ(0u, NetworkLinuxInterface(&leased.entry, "wztest0", nullptr, nullptr).dhcp());
     // The flags belong to the link, not to the label.
-    EXPECT_EQ(0u, NetworkLinuxInterface(&leased.entry, "wztest1", flags).dhcp());
+    EXPECT_EQ(0u, NetworkLinuxInterface(&leased.entry, "wztest1", flags, nullptr).dhcp());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_DhcpTellsTheSameAddressApartByPrefix)
@@ -672,8 +674,8 @@ TEST_F(SysInfoNetworkLinuxTest, Test_DhcpTellsTheSameAddressApartByPrefix)
         })
     };
 
-    EXPECT_EQ(0u, NetworkLinuxInterface(&vip.entry, "wztest0", flags).dhcp());
-    EXPECT_EQ(1u, NetworkLinuxInterface(&leased.entry, "wztest0", flags).dhcp());
+    EXPECT_EQ(0u, NetworkLinuxInterface(&vip.entry, "wztest0", flags, nullptr).dhcp());
+    EXPECT_EQ(1u, NetworkLinuxInterface(&leased.entry, "wztest0", flags, nullptr).dhcp());
 }
 
 namespace
@@ -734,14 +736,14 @@ namespace
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperRejectsNullEntry)
 {
-    EXPECT_THROW(NetworkLinuxInterface(nullptr, "wztest0"), std::runtime_error);
+    EXPECT_THROW(NetworkLinuxInterface(nullptr, "wztest0", nullptr, nullptr), std::runtime_error);
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsIPv4Entry)
 {
     FakeAddressEntry fake { "wztest0:lease" };
     fake.setIPv4("10.77.0.2", "255.255.255.0", "10.77.0.255");
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     // The link name is the one given, not the address label held by the entry.
     EXPECT_EQ("wztest0", wrapper.name());
@@ -758,7 +760,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperDerivesBroadcastFromMask)
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv4("10.77.1.5", "255.255.0.0");
 
-    EXPECT_EQ("10.77.255.255", NetworkLinuxInterface(&fake.entry, "wztest0").broadcast());
+    EXPECT_EQ("10.77.255.255", NetworkLinuxInterface(&fake.entry, "wztest0", nullptr, nullptr).broadcast());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperBroadcastUnknownWithoutMask)
@@ -767,14 +769,14 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperBroadcastUnknownWithoutMask)
     fake.setIPv4("10.77.1.5", "255.255.0.0");
     fake.entry.ifa_netmask = nullptr;
 
-    EXPECT_EQ(" ", NetworkLinuxInterface(&fake.entry, "wztest0").broadcast());
+    EXPECT_EQ(" ", NetworkLinuxInterface(&fake.entry, "wztest0", nullptr, nullptr).broadcast());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsIPv6Entry)
 {
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv6("fd77::2", "ffff:ffff:ffff:ffff::", "fd77::ffff");
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     EXPECT_EQ(AF_INET6, wrapper.family());
     EXPECT_EQ("fd77::2", wrapper.addressV6());
@@ -787,13 +789,13 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperIPv6WithoutBroadcast)
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv6("fd77::2", "ffff:ffff:ffff:ffff::");
 
-    EXPECT_EQ("", NetworkLinuxInterface(&fake.entry, "wztest0").broadcastV6());
+    EXPECT_EQ("", NetworkLinuxInterface(&fake.entry, "wztest0", nullptr, nullptr).broadcastV6());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_WrapperEntryWithoutAddresses)
 {
     FakeAddressEntry fake { "wztest0" };
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     EXPECT_EQ(AF_PACKET, wrapper.family());
     EXPECT_EQ("", wrapper.address());
@@ -807,7 +809,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperLinkWithoutSystemData)
 {
     FakeAddressEntry fake { "wztest0" };
     fake.setIPv4("10.77.0.2", "255.255.255.0");
-    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, nullptr };
 
     // A link the system does not list has no route, counters or sysfs attributes.
     EXPECT_EQ(" ", wrapper.gateway());
@@ -838,7 +840,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsLoopbackAttributes)
 
     FakeAddressEntry fake { "lo" };
     fake.setIPv4("127.0.0.1", "255.0.0.0");
-    const NetworkLinuxInterface wrapper { &fake.entry, "lo" };
+    const NetworkLinuxInterface wrapper { &fake.entry, "lo", nullptr, nullptr };
 
     EXPECT_GT(wrapper.mtu(), 0u);
     EXPECT_EQ("00:00:00:00:00:00", wrapper.MAC());
@@ -846,4 +848,215 @@ TEST_F(SysInfoNetworkLinuxTest, Test_WrapperReadsLoopbackAttributes)
     EXPECT_NO_THROW(wrapper.type());
     // The loopback interface is always listed in /proc/net/dev; reading it must not throw.
     EXPECT_NO_THROW(wrapper.stats());
+}
+
+namespace
+{
+    // One /proc/net/route row, padded to 127 columns like the kernel prints it.
+    std::string routeRow(const std::string& iface, const std::string& destination, const std::string& gateway, const std::string& metric)
+    {
+        auto row { iface + "\t" + destination + "\t" + gateway + "\t0003\t0\t0\t" + metric + "\t00000000\t0\t0\t0" };
+        row.resize(127, ' ');
+        return row + "\n";
+    }
+
+    const std::string ROUTE_HEADER
+    {
+        "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT                                                       \n"
+    };
+
+    IPv4Gateways parseTable(const std::string& table)
+    {
+        std::istringstream stream { table };
+        return NetworkLinuxInterface::parseGatewaysV4(stream);
+    }
+
+    // The per-interface parse the wrapper constructor ran before the table was shared, with stoul so it also runs on 32-bit.
+    IPv4Gateway parsePerInterface(const std::string& table, const std::string& ifName)
+    {
+        IPv4Gateway retVal;
+
+        for (auto& line : Utils::split(table, '\n'))
+        {
+            line = Utils::rightTrim(line);
+            Utils::replaceAll(line, "\t", " ");
+            line = Utils::trimRepeated(line, ' ');
+            const auto fields { Utils::split(line, ' ') };
+
+            if (GatewayFileFields::Size == fields.size() &&
+                    fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
+            {
+                auto address { static_cast<uint32_t>(std::stoul(fields.at(GatewayFileFields::Gateway), 0, 16)) };
+                retVal.metric = fields.at(GatewayFileFields::Metric);
+
+                if (address)
+                {
+                    retVal.gateway = Utils::NetworkHelper::IAddressToBinary(AF_INET, reinterpret_cast<in_addr*>(&address));
+                    break;
+                }
+            }
+        }
+
+        return retVal;
+    }
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_FirstGatewayRowWins)
+{
+    const auto gateways { parseTable(ROUTE_HEADER +
+                                     routeRow("eth0", "00000000", "010011AC", "100") +
+                                     routeRow("eth0", "0000000A", "020011AC", "200")) };
+
+    EXPECT_EQ("172.17.0.1", gateways.at("eth0").gateway);
+    EXPECT_EQ("100", gateways.at("eth0").metric);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_MetricOfLastRowWithoutGateway)
+{
+    const auto gateways { parseTable(ROUTE_HEADER +
+                                     routeRow("eth0", "000011AC", "00000000", "100") +
+                                     routeRow("eth0", "000012AC", "00000000", "200")) };
+
+    EXPECT_EQ(" ", gateways.at("eth0").gateway);
+    EXPECT_EQ("200", gateways.at("eth0").metric);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_GatewayRowSetsItsMetric)
+{
+    const auto gateways { parseTable(ROUTE_HEADER +
+                                     routeRow("eth0", "000011AC", "00000000", "0") +
+                                     routeRow("eth0", "00000000", "010011AC", "100") +
+                                     routeRow("eth0", "000012AC", "00000000", "200")) };
+
+    EXPECT_EQ("172.17.0.1", gateways.at("eth0").gateway);
+    EXPECT_EQ("100", gateways.at("eth0").metric);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_OneParseForAllInterfaces)
+{
+    const auto gateways { parseTable(ROUTE_HEADER +
+                                     routeRow("eth0", "00000000", "010011AC", "100") +
+                                     routeRow("eth1", "0000A8C0", "00000000", "0") +
+                                     routeRow("eth1", "00000000", "0101A8C0", "600") +
+                                     routeRow("*", "0000000B", "00000000", "0") +
+                                     routeRow("dum0", "0100000B", "00000000", "0")) };
+
+    ASSERT_EQ(4u, gateways.size());
+    EXPECT_EQ("172.17.0.1", gateways.at("eth0").gateway);
+    EXPECT_EQ("192.168.1.1", gateways.at("eth1").gateway);
+    EXPECT_EQ("600", gateways.at("eth1").metric);
+    EXPECT_EQ(" ", gateways.at("*").gateway);
+    EXPECT_EQ(" ", gateways.at("dum0").gateway);
+    EXPECT_EQ("0", gateways.at("dum0").metric);
+    EXPECT_EQ(0u, gateways.count("lo"));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_SkipsHeaderAndMalformedLines)
+{
+    const std::string table
+    {
+        ROUTE_HEADER +
+        "\n" +
+        "eth0\t00000000\t010011AC\t0003\n" +
+        "eth0\t00000000\tZZ0011AC\t0003\t0\t0\t100\t00000000\t0\t0\t0\n" +
+        "eth0\t00000000\t1010011AC\t0003\t0\t0\t100\t00000000\t0\t0\t0\n" +
+        "eth0\t00000000\t010011AC\t0003\t0\t0\t100\t00000000\t0\t0\t0\textra\n" +
+        "eth1 00000000  0101A8C0 0003 0 0 50 00000000 0 0 0\r\n"
+    };
+
+    IPv4Gateways gateways;
+    ASSERT_NO_THROW(gateways = parseTable(table));
+
+    EXPECT_EQ(1u, gateways.size());
+    EXPECT_EQ("192.168.1.1", gateways.at("eth1").gateway);
+    EXPECT_EQ("50", gateways.at("eth1").metric);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_HighLastOctet)
+{
+    // Larger than a 32-bit long can hold, which made 32-bit agents fail the whole listing.
+    const auto gateways { parseTable(ROUTE_HEADER + routeRow("eth0", "00000000", "FE00000A", "0")) };
+
+    EXPECT_EQ("10.0.0.254", gateways.at("eth0").gateway);
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_EmptyInput)
+{
+    EXPECT_TRUE(parseTable("").empty());
+    EXPECT_TRUE(parseTable(ROUTE_HEADER).empty());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_MatchesPerInterfaceParse)
+{
+    std::vector<std::string> tables
+    {
+        ROUTE_HEADER +
+        routeRow("eth0", "000011AC", "00000000", "0") +
+        routeRow("eth0", "00000000", "010011AC", "100") +
+        routeRow("eth1", "0000A8C0", "00000000", "5") +
+        routeRow("eth1", "0001A8C0", "00000000", "7") +
+        routeRow("eth2", "00000000", "0102A8C0", "1") +
+        routeRow("eth2", "00000000", "0202A8C0", "2") +
+        routeRow("eth0", "0000000A", "020011AC", "300")
+    };
+
+    std::ifstream hostTable { "/proc/net/route" };
+
+    if (hostTable.is_open())
+    {
+        tables.emplace_back(std::string { std::istreambuf_iterator<char> { hostTable }, std::istreambuf_iterator<char> {} });
+    }
+
+    const std::vector<std::string> names { "eth0", "eth1", "eth2", "eth3", "lo", "wztest0" };
+
+    for (const auto& table : tables)
+    {
+        const auto gateways { parseTable(table) };
+
+        for (const auto& name : names)
+        {
+            const auto expected { parsePerInterface(table, name) };
+            const auto it { gateways.find(name) };
+            const auto actual { gateways.end() != it ? it->second : IPv4Gateway {} };
+
+            EXPECT_EQ(expected.gateway, actual.gateway) << name;
+            EXPECT_EQ(expected.metric, actual.metric) << name;
+        }
+
+        for (const auto& entry : gateways)
+        {
+            const auto expected { parsePerInterface(table, entry.first) };
+
+            EXPECT_EQ(expected.gateway, entry.second.gateway) << entry.first;
+            EXPECT_EQ(expected.metric, entry.second.metric) << entry.first;
+        }
+    }
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_WrapperAnswersFromSharedMap)
+{
+    FakeAddressEntry fake { "wztest0" };
+    fake.setIPv4("10.77.0.2", "255.255.255.0");
+    const auto gateways { std::make_shared<const IPv4Gateways>(IPv4Gateways { { "wztest0", { "10.77.0.1", "100" } } }) };
+    const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, gateways };
+
+    EXPECT_EQ("10.77.0.1", wrapper.gateway());
+    EXPECT_EQ("100", wrapper.metrics());
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV4_WrapperWithoutRouteIsUnknown)
+{
+    FakeAddressEntry fake { "wztest0" };
+    const auto otherInterface { std::make_shared<const IPv4Gateways>(IPv4Gateways { { "wztest1", { "10.77.0.1", "100" } } }) };
+
+    // Without the map, with an empty one, or with only other interfaces in it, the entry has no IPv4 route.
+    const std::vector<std::shared_ptr<const IPv4Gateways>> maps { nullptr, std::make_shared<const IPv4Gateways>(), otherInterface };
+
+    for (const auto& gateways : maps)
+    {
+        const NetworkLinuxInterface wrapper { &fake.entry, "wztest0", nullptr, gateways };
+
+        EXPECT_EQ(" ", wrapper.gateway());
+        EXPECT_EQ("", wrapper.metrics());
+    }
 }
