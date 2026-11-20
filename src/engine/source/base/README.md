@@ -82,6 +82,7 @@ Use it in code that writes or looks up many members of the same object in one go
 |---|---|
 | Writes | `set`, `setString`, `setStringAsMembers`, `setNullAsMembers`, `setObject`, `setArray`, `appendString`, `appendJson` |
 | Reads | `exists`, `isObject`, `isArray`, `size`, `getJson` |
+| Relative to an anchor | `root`, `find`, `ensure`, the anchor overloads of `setString`, `setObject`, `appendString`, `appendJson`, `exists`, `isObject`, `isArray` and `size`, and `wrapInArray` (see "Anchors") |
 | Diagnostics | `indexedObjects()`: number of index entries currently held (diagnostics and tests) |
 
 **Rules of use** (from the header):
@@ -91,6 +92,7 @@ Use it in code that writes or looks up many members of the same object in one go
 3. A writer is not shared between threads.
 4. The result of an operation is the result of the `Json` method of the same name; if in doubt, `Json` is the reference.
 5. A value written through the writer is never the target document itself.
+6. An anchor is used only with the writer that created it, and only while it is valid. The writer rejects an anchor created by another live writer; it does not check whether an anchor is still valid (see **Anchors** below).
 
 Objects at or below the threshold are scanned exactly like `Json` does, and constructing a writer allocates nothing: the index of an object is built the first time that object is looked up above the threshold (reads included). That first lookup costs more than the single scan `Json` would do, so keep one writer for the whole construction of a document instead of creating one per operation; index entries live until the writer is destroyed. The writer is neither copyable nor movable.
 
@@ -104,6 +106,36 @@ json::Json doc;
     }
     const bool hasUser = writer.exists("/user"); // read through the writer, not through doc
 }                                                // scope end: doc is free to use directly again
+```
+
+**Anchors.** An operation that takes an absolute path resolves it from the root of the document on every call, so its cost grows with the length of the path. Code that walks a tree and writes under the node it is visiting can resolve that node once, keep it as a `PathWriter::Anchor` (opaque, copyable and small; created only by `root()`, `find()` and `ensure()`), and pass paths relative to it: the overloads that take an anchor run the same code as the absolute ones, starting at the anchored node instead of at the root.
+
+- **Guarantee.** For an anchor that names the node of absolute path A and a valid relative path R, `op(anchor, R)` leaves the same document, returns the same value and throws the same exception type as `op(A + R)`, with A written as a plain JSON pointer (`/a/b`), not in the URI fragment form (`#/a/b`), where a `%` in R would be read as an escape.
+- **Relative path.** It is valid when it is empty (the anchored node itself) or starts with `/` and is a valid JSON pointer. The URI fragment form (`#/a`) is not valid. Every overload that takes an anchor, the reads included, throws `std::runtime_error` on an invalid relative path.
+- **`find` and `ensure`.** `find(from, relPath)` resolves without creating anything and returns `std::nullopt` if the path does not exist. `ensure(from, relPath)` creates the node and whatever is missing on the way, exactly what a write to that path would create; an existing target is not touched, and a new node is null until something is written into it.
+- **`wrapInArray(from, relPath)`.** Replaces the value by an array whose only element is that value. The value is moved, not copied, so it takes constant time and an indexed object keeps its index entry. It returns `false`, leaving the document untouched, if the path does not exist.
+- **Owner.** An anchor is used only with the writer that created it, and only while that writer is alive. Every overload that takes an anchor throws `std::runtime_error`, before reading or changing anything, if the anchor was created by another live writer. A writer is told apart by its address, so an anchor that outlives its writer is not detected (rule 4 below).
+
+Validity of an anchor over time is the caller's responsibility; **the writer does not check it**:
+
+1. An anchor is valid while the immediate container of its node does not reallocate. It stops being valid when a member is added to the parent object, an element is appended to the parent array, the parent changes type (a write through it turns an array into an object, or the reverse, and destroys its elements), or an ancestor is overwritten. Writing inside the anchored node (adding members to it, turning it into an object or an array in place) does not invalidate it.
+2. The anchor of the root is valid for as long as the writer lives.
+3. After `wrapInArray`, an anchor to the wrapped node is still valid and names the same path, which now holds the array; anchors to its former descendants point to live memory but name the path below element 0.
+4. No anchor is valid after the writer that created it is destroyed.
+
+Using an anchor after it stopped being valid is not supported and has no guaranteed outcome: the write may be lost or may land in the live document.
+
+```cpp
+json::Json doc;
+json::PathWriter writer(doc);
+const auto root = writer.root();
+const auto host = writer.ensure(root, "/host");              // resolved once, created if missing
+writer.setString(host, "web-01", "/name");                   // relative to /host
+writer.setObject(host, "/os");                               // writing inside the anchor keeps it valid
+if (const auto os = writer.find(host, "/os"))                // child anchor, nullopt if absent
+{
+    writer.setString(*os, "linux", "/type");
+}
 ```
 
 ## JSON Merge and Bulk Erase
