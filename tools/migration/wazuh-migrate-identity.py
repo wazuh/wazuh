@@ -42,6 +42,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.dom.minidom
 import xml.etree.ElementTree as ElementTree
 
 TOOL_VERSION = "3.0.0"
@@ -912,35 +913,35 @@ def read_group_conf(api, name):
     return answer.get("__raw", "")
 
 
-def configuration_elements(text):
-    """The top-level elements of an agent.conf as (tag, attributes, text, children), in order.
+def as_the_manager_stores(agent_conf):
+    """An agent.conf in the layout PUT /groups/{group}/configuration saves it in.
 
-    The manager parses an uploaded agent.conf and writes it back in its own layout (indentation,
-    attribute quotes, empty elements), so two copies are compared by what they set, not as text.
-    An escaped \\< or \\> is legal in an agent.conf and not in XML: it is set aside for the parser,
-    as the manager does. The manager also stores &amp; as a bare &, which is encoded again here.
+    The manager does not keep the document it is sent: it parses it and writes it back with its
+    own indentation, attribute quotes and entities (upload_group_configuration() in
+    framework/wazuh/core/configuration.py, whose steps these are). Raises on a document the
+    manager would refuse.
     """
-    def shape(element):
-        # Around child elements the text is layout; in a leaf it is the value, spaces included.
-        value = (element.text or "").strip() if len(element) else element.text or ""
-        return (element.tag, sorted(element.attrib.items()), value, [shape(child) for child in element])
-    body = re.sub(r"^\s*<\?xml[^>]*\?>", "", text or "")
-    body = body.replace("\\<", "_escaped_lt_").replace("\\>", "_escaped_gt_")
-    body = re.sub(r"&(?!(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);)", "&amp;", body)
-    return [shape(e) for e in ElementTree.fromstring("<migration-wrapper>%s</migration-wrapper>" % body)]
+    aside = (("\\<", "_custom_open_tag_"), ("\\>", "_custom_close_tag_"),
+             ("&lt;", "_custom_amp_lt_"), ("&gt;", "_custom_amp_gt_"))
+    text = re.sub(r"^\s*<\?xml[^>]*\?>", "", agent_conf)
+    for literal, name in aside:
+        text = text.replace(literal, name)
+    pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % text).toprettyxml(indent="  ")
+    pretty = "\n".join(line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
+    pretty = re.sub(r"(?:(?<=\\) +)", "", pretty.replace("&amp;", "&").replace("&lt;", "<")
+                    .replace("&quot;", "\"").replace("&gt;", ">").replace("\\\n", "\\"))
+    for literal, name in aside:
+        pretty = pretty.replace(name, literal)
+    return pretty
 
 
 def holds_configuration(current, carried):
-    """Whether an agent.conf holds the elements of the carried one, together and in their order.
-
-    Later blocks override earlier ones, so the same blocks in another order are another
-    configuration.
-    """
+    """Whether the agent.conf the manager holds contains the carried one, as it would store it."""
     try:
-        have, want = configuration_elements(current), configuration_elements(carried)
-    except ElementTree.ParseError:
+        carried = as_the_manager_stores(carried)
+    except Exception:  # not XML: the manager refused it too, so it is nowhere to be found
         return carried.strip() in current
-    return any(have[start:start + len(want)] == want for start in range(len(have) - len(want) + 1))
+    return "\n%s" % carried in "\n%s\n" % current.rstrip("\n")
 
 
 def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):

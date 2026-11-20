@@ -20,6 +20,7 @@ import http.server
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sqlite3
 import ssl
@@ -123,6 +124,22 @@ def build_target_conf(root):
     return root
 
 
+def stored_by_the_manager(file_content):
+    """What PUT /groups/{group}/configuration saves: the steps of upload_group_configuration() in
+    framework/wazuh/core/configuration.py, kept apart from the tool's own copy of them."""
+    custom_entities = {"_custom_open_tag_": "\\<", "_custom_close_tag_": "\\>",
+                       "_custom_amp_lt_": "&lt;", "_custom_amp_gt_": "&gt;"}
+    for character, replacement in custom_entities.items():
+        file_content = file_content.replace(replacement, character)
+    document = xml.dom.minidom.parseString("<root>\n%s\n</root>" % file_content)
+    pretty_xml = "\n".join(filter(lambda x: x.strip(), document.toprettyxml(indent="  ").split("\n")[2:-2])) + "\n"
+    pretty_xml = re.sub(r"(?:(?<=\\) +)", "", pretty_xml.replace("&amp;", "&").replace("&lt;", "<")
+                        .replace("&quot;", "\"").replace("&gt;", ">").replace("\\\n", "\\"))
+    for character, replacement in custom_entities.items():
+        pretty_xml = pretty_xml.replace(character, replacement)
+    return pretty_xml
+
+
 class FakeManager(http.server.BaseHTTPRequestHandler):
     """The endpoints the tool uses, plus a record of every call."""
 
@@ -200,14 +217,7 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             name = self.path.split("/")[2]
             if name in FakeManager.reject_configurations:
                 return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
-            # The real endpoint parses the document and stores it in its own layout, not as sent.
-            # An escaped \\< or \\> is set aside for the parser and restored, as the endpoint does.
-            safe = body.replace("\\<", "_custom_open_tag_").replace("\\>", "_custom_close_tag_")
-            pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % safe).toprettyxml(indent="  ")
-            pretty = "\n".join(line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
-            pretty = pretty.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"").replace("&gt;", ">")
-            FakeManager.configurations[name] = pretty.replace(
-                "_custom_open_tag_", "\\<").replace("_custom_close_tag_", "\\>")
+            FakeManager.configurations[name] = stored_by_the_manager(body)
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
             parts = urllib.parse.urlsplit(self.path)
@@ -692,19 +702,22 @@ class MigrationToolTest(unittest.TestCase):
                  "    <directories>/root/fim test</directories>\n"
                  "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
         second = ("<agent_config>\n  <localfile>\n    <log_format>command</log_format>\n"
-                  "    <command>echo \\< 3 &amp;&amp; true</command>\n  </localfile>\n</agent_config>\n")
+                  "    <command>echo \\< 3 &amp;&amp; grep '&gt;' x</command>\n  </localfile>\n</agent_config>\n")
         self.write_group_file("default", "agent.conf", first + second)
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         stored = FakeManager.configurations["default"]
         self.assertIn('os="Linux"', stored, "the manager rewrote the attribute quotes")
-        self.assertIn("echo \\< 3 && true", stored, "the escaped bracket is kept, the ampersands decoded")
+        self.assertIn("echo \\< 3 && grep '&gt;' x", stored,
+                      "the escaped bracket and &gt; are kept, the ampersands decoded")
         self.assertEqual(0, self.check(), "the same settings in another layout are the same settings")
 
         FakeManager.configurations["default"] = stored.replace("/root/fim test", "/root/fimtest")
         self.assertEqual(1, self.check(), "a value that differs by a space is another value")
         FakeManager.configurations["default"] = stored.replace("/root/fim test<", "/root/fim test <")
         self.assertEqual(1, self.check(), "so is one with a trailing space")
+        FakeManager.configurations["default"] = stored.replace("grep '&gt;' x", "grep '>' x")
+        self.assertEqual(1, self.check(), "and a literal > where the 4.x file had &gt;")
 
         head, mark, carried = stored.partition("<!-- Carried from the 4.x default group")
         blocks = carried.split("<agent_config", 2)
