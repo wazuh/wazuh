@@ -53,6 +53,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the MS Graph module applying `only_future_events` only to the first tenant it scanned after a start, and the MS Graph and Office 365 modules sending the same events again at every scan while the API returned a URL out of the configured host. ([#41564](https://github.com/wazuh/wazuh/pull/41564))
 - Fixed the AWS module logging a missing `boto3` module as an unknown error. It now exits with code 4 and logs that `boto3` is required. ([#41674](https://github.com/wazuh/wazuh/pull/41674))
 - Fixed `wazuh-modulesd` occasionally exiting right after it starts on Linux systems with glibc older than 2.34. ([#41510](https://github.com/wazuh/wazuh/pull/41510))
+- Hardened how FIM creates its Auditd health check and plugin configuration files. ([#41694](https://github.com/wazuh/wazuh/pull/41694))
 
 ### Ruleset
 

@@ -28,10 +28,13 @@
 #define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
 #define AUDIT_WAIT_STEPS            50         // Checks while waiting for Auditd to exit or its plugin to listen (10 s in total)
 #define AUDIT_WAIT_STEP_US          200000     // Delay between those checks
-#define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
+#define AUDIT_CONF_DIR              "tmp"
+#define AUDIT_CONF_NAME             "af_wazuh.conf"
+#define AUDIT_CONF_FILE             AUDIT_CONF_DIR "/" AUDIT_CONF_NAME
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
+#define AUDIT_HEALTHCHECK_NAME      "audit_hc"
+#define AUDIT_HEALTHCHECK_FILE      AUDIT_HEALTHCHECK_DIR "/" AUDIT_HEALTHCHECK_NAME
 
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG

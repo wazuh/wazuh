@@ -530,7 +530,8 @@ FILE * wfopen(const char * pathname, const char * mode);
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
- * @param mode Open mode: "w" or "wb" to truncate, "a" or "ab" to append.
+ * @param mode Open mode: "w" or "wb" to truncate, "a" or "ab" to append, "wx" or "wbx" to create a new
+ *             file, failing with EEXIST if the name exists, even as a symlink.
  * @return File pointer on success, NULL on error (sets errno).
  */
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
