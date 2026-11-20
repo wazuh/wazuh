@@ -44,6 +44,11 @@ static const std::vector<std::string> UPGRADE_SQL_STATEMENTS
 {
     // host.os.distribution.release was replaced by host.os.display_version.
     "ALTER TABLE dbsync_osinfo RENAME COLUMN os_distribution_release TO os_display_version;",
+    // macOS user.groups and group.users became direct memberships, which shrinks most stored rows.
+    // Dropping the scan baseline of both tables makes the next scan refill them without an event
+    // per row. On other platforms that scan's user and group changes go unreported too.
+    "UPDATE table_metadata SET last_sync_time = 0 "
+    "WHERE table_name IN ('scan_baseline:dbsync_users', 'scan_baseline:dbsync_groups');",
 };
 
 constexpr auto HW_SQL_STATEMENT
