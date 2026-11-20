@@ -3813,6 +3813,169 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_get_disconnected_agents */
+
+void test_wdb_parse_global_get_disconnected_agents_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-disconnected-agents";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-disconnected-agents");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-disconnected-agents.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-disconnected-agents");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-disconnected-agents'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_disconnected_agents_last_id_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-disconnected-agents ";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-disconnected-agents ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments last id not found.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments last id not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_disconnected_agents_keepalive_to_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-disconnected-agents 0 6 100";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-disconnected-agents 0 6 100");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments keepalive to not found.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments keepalive to not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_disconnected_agents_query_fail(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-disconnected-agents 0 6 100 200";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-disconnected-agents 0 6 100 200");
+    expect_value(__wrap_wdb_global_get_disconnected_agents, last_agent_id, 0);
+    expect_value(__wrap_wdb_global_get_disconnected_agents, status_code, 6);
+    expect_value(__wrap_wdb_global_get_disconnected_agents, keepalive_from, 100);
+    expect_value(__wrap_wdb_global_get_disconnected_agents, keepalive_to, 200);
+    will_return(__wrap_wdb_global_get_disconnected_agents, WDBC_ERROR);
+    will_return(__wrap_wdb_global_get_disconnected_agents, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting disconnected agents from global.db.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting disconnected agents from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_disconnected_agents_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-disconnected-agents 3 6 100 200";
+    cJSON* root = cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
+    cJSON_AddItemToArray(root, json_agent);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-disconnected-agents 3 6 100 200");
+    expect_value(__wrap_wdb_global_get_disconnected_agents, last_agent_id, 3);
+    expect_value(__wrap_wdb_global_get_disconnected_agents, status_code, 6);
+    expect_value(__wrap_wdb_global_get_disconnected_agents, keepalive_from, 100);
+    expect_value(__wrap_wdb_global_get_disconnected_agents, keepalive_to, 200);
+    will_return(__wrap_wdb_global_get_disconnected_agents, WDBC_DUE);
+    will_return(__wrap_wdb_global_get_disconnected_agents, root);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_disconnected_agents_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "due [{\"id\":10}]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_get_all_agents */
 
 void test_wdb_parse_global_get_all_agents_syntax_error(void **state)
@@ -5338,6 +5501,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_keepalive_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_sync_status_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_get_disconnected_agents */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_disconnected_agents_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_disconnected_agents_last_id_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_disconnected_agents_keepalive_to_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_disconnected_agents_query_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_disconnected_agents_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_all_agents_argument_error, test_setup, test_teardown),

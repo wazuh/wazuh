@@ -15,6 +15,7 @@
 
 static int mon_send_agent_msg(char *agent, char *msg);
 int sock = -1;
+time_t last_disconnection_threshold = 0;
 
 void monitor_send_deletion_msg(char *agent) {
     char str[OS_SIZE_1024];
@@ -46,22 +47,43 @@ void monitor_send_disconnection_msg(char *agent) {
     }
 }
 
-void monitor_agents_disconnection(){
-    int *agents_array;
+static void monitor_add_agents_to_alert(const int *agents_array) {
     char str_agent_id[12];
 
-    //The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
-    agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time,
-                                         "synced", &sock);
-    if (mond.monitor_agents != 0 && agents_array) {
-        for (int i = 0; agents_array[i] != -1; i++) {
-            snprintf(str_agent_id, 12, "%d", agents_array[i]);
-            if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
-                mdebug1("Can't add agent ID '%d' to the alerts hash table", agents_array[i]);
-            }
+    for (int i = 0; agents_array[i] != -1; i++) {
+        snprintf(str_agent_id, 12, "%d", agents_array[i]);
+        if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
+            mdebug1("Can't add agent ID '%d' to the alerts hash table", agents_array[i]);
         }
     }
+}
+
+void monitor_agents_disconnection(){
+    int *agents_array;
+    time_t threshold = time(0) - mond.global.agents_disconnection_time;
+
+    //The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
+    agents_array = wdb_disconnect_agents(threshold, "synced", &sock);
+    if (mond.monitor_agents != 0 && agents_array) {
+        monitor_add_agents_to_alert(agents_array);
+    }
     os_free(agents_array);
+
+    if (mond.monitor_agents != 0) {
+        // Agents disconnected on a closed connection skip the query above. Take the ones it would have
+        // disconnected since the previous sweep, so that each last_keepalive falls into a single window.
+        time_t keepalive_from = last_disconnection_threshold ? last_disconnection_threshold
+                                                             : threshold - mond.global.agents_disconnection_time;
+
+        agents_array = wdb_get_disconnected_agents(CONNECTION_CLOSED, keepalive_from, threshold, &sock);
+        if (agents_array) {
+            monitor_add_agents_to_alert(agents_array);
+            last_disconnection_threshold = threshold;
+        } else {
+            mdebug1("Unable to get the agents with a closed connection from Wazuh DB");
+        }
+        os_free(agents_array);
+    }
 }
 
 void monitor_agents_alert(){

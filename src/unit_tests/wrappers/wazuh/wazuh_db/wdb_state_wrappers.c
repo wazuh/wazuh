@@ -188,6 +188,14 @@ void __wrap_w_inc_global_agent_disconnect_agents_time(__attribute__((unused))str
     function_called();
 }
 
+void __wrap_w_inc_global_agent_get_disconnected_agents() {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_get_disconnected_agents_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
 void __wrap_w_inc_global_agent_sync_agent_info_get() {
     function_called();
 }
