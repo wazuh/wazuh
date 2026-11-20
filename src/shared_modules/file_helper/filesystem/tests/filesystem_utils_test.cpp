@@ -8,6 +8,7 @@
 #include <deque>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -27,6 +28,14 @@ constexpr auto PATH_TO_EXPAND_3 {"/tmp/wazuh_test/prefix_*_data/prefix*"};
 constexpr auto PATH_TO_EXPAND_4 {"/tmp/wazuh_test/prefix_*_data/*_1"};
 constexpr auto PATH_TO_EXPAND_5 {"/tmp/wazuh_test/prefix_?_data/*_1"};
 constexpr auto PATH_TO_EXPAND_6 {"/tmp/wazuh_test/prefix_*_data/prefix?*1"};
+
+constexpr auto PATH_LEADING_WILDCARD {"*/wazuh_test/dummy"};
+constexpr auto PATH_RELATIVE_WILDCARD {"dum*"};
+constexpr auto PATH_LITERAL_MISSING {"/tmp/wazuh_test/missing"};
+constexpr auto PATH_MISSING_BASE {"/x/*/missing"};
+constexpr auto PATH_MISSING_SUFFIX {"/tmp/wazuh_test/prefix_*_data/missing"};
+constexpr auto PATH_UNDER_ROOT {"/tm?/wazuh_test/dum*"};
+constexpr auto PATH_UNDER_FILE {"/tmp/wazuh_test/dummy.txt/*"};
 #else
 constexpr auto EXPANDED_PATH_1 {"C:\\tmp\\wazuh_test\\prefix_1_data\\prefix1_1"};
 constexpr auto EXPANDED_PATH_2 {"C:\\tmp\\wazuh_test\\prefix_1_data\\prefix1_2"};
@@ -41,6 +50,14 @@ constexpr auto PATH_TO_EXPAND_3 {"C:\\tmp\\wazuh_test\\prefix_*_data\\prefix*"};
 constexpr auto PATH_TO_EXPAND_4 {"C:\\tmp\\wazuh_test\\prefix_*_data\\*_1"};
 constexpr auto PATH_TO_EXPAND_5 {"C:\\tmp\\wazuh_test\\prefix_?_data\\*_1"};
 constexpr auto PATH_TO_EXPAND_6 {"C:\\tmp\\wazuh_test\\prefix_*_data\\prefix?*1"};
+
+constexpr auto PATH_LEADING_WILDCARD {"*\\wazuh_test\\dummy"};
+constexpr auto PATH_RELATIVE_WILDCARD {"dum*"};
+constexpr auto PATH_LITERAL_MISSING {"C:\\tmp\\wazuh_test\\missing"};
+constexpr auto PATH_MISSING_BASE {"C:\\x\\*\\missing"};
+constexpr auto PATH_MISSING_SUFFIX {"C:\\tmp\\wazuh_test\\prefix_*_data\\missing"};
+constexpr auto PATH_UNDER_ROOT {"C:\\tm?\\wazuh_test\\dum*"};
+constexpr auto PATH_UNDER_FILE {"C:\\tmp\\wazuh_test\\dummy.txt\\*"};
 #endif
 
 struct FsElement
@@ -262,6 +279,80 @@ TEST_F(FileSystemTest, FilesystemExpandWildcardWithQuestionMark2)
     EXPECT_TRUE(m_outputMap.at(EXPANDED_PATH_1) == 1);
     EXPECT_TRUE(m_outputMap.at(EXPANDED_PATH_3) == 1);
     EXPECT_EQ(m_output.size(), PATH_MATCH_SIZE);
+}
+
+TEST_F(FileSystemTest, FilesystemExpandLeadingWildcardThrows)
+{
+    SetupFilesystemWrapperExpectations();
+
+    EXPECT_THROW(m_fsUtils->expand_absolute_path(PATH_LEADING_WILDCARD, m_output), std::runtime_error);
+    EXPECT_THROW(m_fsUtils->expand_absolute_path(PATH_RELATIVE_WILDCARD, m_output), std::runtime_error);
+    EXPECT_TRUE(m_output.empty());
+}
+
+TEST_F(FileSystemTest, FilesystemExpandExistingLiteralPath)
+{
+    SetupFilesystemWrapperExpectations();
+
+    m_fsUtils->expand_absolute_path(EXPANDED_PATH_6, m_output);
+
+    ASSERT_EQ(m_output.size(), 1u);
+    EXPECT_EQ(m_output.front(), EXPANDED_PATH_6);
+}
+
+TEST_F(FileSystemTest, FilesystemExpandMissingLiteralPath)
+{
+    SetupFilesystemWrapperExpectations();
+
+    m_fsUtils->expand_absolute_path(PATH_LITERAL_MISSING, m_output);
+
+    EXPECT_TRUE(m_output.empty());
+}
+
+TEST_F(FileSystemTest, FilesystemExpandMissingBaseDirectory)
+{
+    SetupFilesystemWrapperExpectations();
+
+    m_fsUtils->expand_absolute_path(PATH_MISSING_BASE, m_output);
+
+    EXPECT_TRUE(m_output.empty());
+}
+
+TEST_F(FileSystemTest, FilesystemExpandMatchesWithMissingSuffix)
+{
+    // Neither matched directory holds "missing".
+    SetupFilesystemWrapperExpectations();
+
+    m_fsUtils->expand_absolute_path(PATH_MISSING_SUFFIX, m_output);
+
+    EXPECT_TRUE(m_output.empty());
+}
+
+TEST_F(FileSystemTest, FilesystemExpandWildcardUnderRoot)
+{
+    SetupFilesystemWrapperExpectations();
+    constexpr auto PATH_MATCH_SIZE {2u};
+
+    m_fsUtils->expand_absolute_path(PATH_UNDER_ROOT, m_output);
+
+    for (const auto& item : m_output)
+    {
+        m_outputMap[item]++;
+    }
+
+    EXPECT_TRUE(m_outputMap.at(EXPANDED_PATH_5) == 1);
+    EXPECT_TRUE(m_outputMap.at(EXPANDED_PATH_6) == 1);
+    EXPECT_EQ(m_output.size(), PATH_MATCH_SIZE);
+}
+
+TEST_F(FileSystemTest, FilesystemExpandWildcardUnderFile)
+{
+    SetupFilesystemWrapperExpectations();
+    EXPECT_CALL(*m_mockWrapper, list_directory(::testing::_)).Times(0);
+
+    m_fsUtils->expand_absolute_path(PATH_UNDER_FILE, m_output);
+
+    EXPECT_TRUE(m_output.empty());
 }
 
 int main(int argc, char** argv)
