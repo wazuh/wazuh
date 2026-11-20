@@ -37,6 +37,7 @@ typedef enum global_db_access {
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_DISCONNECT_AGENTS,
+    WDB_GET_DISCONNECTED_AGENTS,
     WDB_GET_DISTINCT_AGENT_GROUP
 } global_db_access;
 
@@ -298,6 +299,20 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
  * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
  */
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
+
+/**
+ * @brief Return an array containing the ID of every disconnected agent with the given status code
+ * and a last_keepalive within [keepalive_from, keepalive_to).
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent is covered.
+ * The array is heap-allocated memory that must be freed by the caller.
+ *
+ * @param [in] status_code The status code of the agents.
+ * @param [in] keepalive_from Lower bound of the last keepalive, included.
+ * @param [in] keepalive_to Upper bound of the last keepalive, excluded.
+ * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the array, on success. NULL on error.
+ */
+int* wdb_get_disconnected_agents(int status_code, int keepalive_from, int keepalive_to, int *sock);
 
 /**
  * @brief Get the agent first registration date.

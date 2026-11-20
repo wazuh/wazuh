@@ -332,6 +332,20 @@ cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t 
     return mock_ptr_type(cJSON*);
 }
 
+cJSON* __wrap_wdb_global_get_disconnected_agents(__attribute__((unused)) wdb_t *wdb,
+                                                 int last_agent_id,
+                                                 int status_code,
+                                                 int keepalive_from,
+                                                 int keepalive_to,
+                                                 wdbc_result* status) {
+    check_expected(last_agent_id);
+    check_expected(status_code);
+    check_expected(keepalive_from);
+    check_expected(keepalive_to);
+    *status = mock();
+    return mock_ptr_type(cJSON*);
+}
+
 int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     check_expected_ptr(wdb);
     check_expected(agent_id);

@@ -30,6 +30,13 @@ int* __wrap_wdb_disconnect_agents(int keepalive, const char *sync_status, __attr
     return mock_ptr_type(int*);
 }
 
+int* __wrap_wdb_get_disconnected_agents(int status_code, int keepalive_from, int keepalive_to, __attribute__((unused)) int *sock) {
+    check_expected(status_code);
+    check_expected(keepalive_from);
+    check_expected(keepalive_to);
+    return mock_ptr_type(int*);
+}
+
 cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int *sock) {
     check_expected(id);
     return mock_ptr_type(cJSON*);

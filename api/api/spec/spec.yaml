@@ -3420,6 +3420,9 @@ components:
                                 get-all-agents:
                                   type: integer
                                   format: int32
+                                get-disconnected-agents:
+                                  type: integer
+                                  format: int32
                                 get-groups-integrity:
                                   type: integer
                                   format: int32
@@ -3744,6 +3747,9 @@ components:
                                   type: integer
                                   format: int32
                                 get-all-agents:
+                                  type: integer
+                                  format: int32
+                                get-disconnected-agents:
                                   type: integer
                                   format: int32
                                 get-groups-integrity:

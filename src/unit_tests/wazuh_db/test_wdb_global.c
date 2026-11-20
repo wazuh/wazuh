@@ -6972,6 +6972,146 @@ void test_wdb_global_get_agents_to_disconnect_err(void **state)
     assert_null(result);
 }
 
+/* Tests wdb_global_get_disconnected_agents */
+
+static void expect_get_disconnected_agents_binds(int last_id, int status_code, int keepalive_from, int keepalive_to, int failed_index)
+{
+    int values[] = {last_id, status_code, keepalive_from, keepalive_to};
+
+    for (int i = 0; i < 4; i++) {
+        expect_value(__wrap_sqlite3_bind_int, index, i + 1);
+        expect_value(__wrap_sqlite3_bind_int, value, values[i]);
+        if (i + 1 == failed_index) {
+            will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+            will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+            expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+            return;
+        }
+        will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    }
+}
+
+void test_wdb_global_get_disconnected_agents_transaction_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 0, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_disconnected_agents_cache_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 0, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_disconnected_agents_bind1_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_get_disconnected_agents_binds(0, CONNECTION_CLOSED, 100, 200, 1);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 0, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_disconnected_agents_bind4_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_get_disconnected_agents_binds(0, CONNECTION_CLOSED, 100, 200, 4);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 0, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
+void test_wdb_global_get_disconnected_agents_ok(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON* root = __real_cJSON_CreateArray();
+    for (int i=1; i<=3; i++){
+        cJSON* json_agent = cJSON_CreateObject();
+        cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
+        cJSON_AddItemToArray(root, json_agent);
+    }
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_get_disconnected_agents_binds(0, CONNECTION_CLOSED, 100, 200, 0);
+    wrap_wdb_exec_stmt_sized_success_call(root, STMT_MULTI_COLUMN);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 0, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_OK);
+    assert_ptr_equal(result, root);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_global_get_disconnected_agents_due(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON* root = __real_cJSON_CreateArray();
+    cJSON* json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(7));
+    cJSON_AddItemToArray(root, json_agent);
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_get_disconnected_agents_binds(6, CONNECTION_CLOSED, 100, 200, 0);
+    wrap_wdb_exec_stmt_sized_socket_full_call(root, STMT_MULTI_COLUMN);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 6, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_DUE);
+    assert_ptr_equal(result, root);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_global_get_disconnected_agents_err(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_get_disconnected_agents_binds(0, CONNECTION_CLOSED, 100, 200, 0);
+    wrap_wdb_exec_stmt_sized_failed_call(STMT_MULTI_COLUMN);
+
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_disconnected_agents(data->wdb, 0, CONNECTION_CLOSED, 100, 200, &status);
+
+    assert_int_equal(status, WDBC_ERROR);
+    assert_null(result);
+}
+
 void test_wdb_global_get_agents_to_disconnect_invalid_elements(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -10542,6 +10682,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_invalid_elements,
                                         test_setup,
                                         test_teardown),
+        /* Tests wdb_global_get_disconnected_agents */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_bind1_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_bind4_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_disconnected_agents_err, test_setup, test_teardown),
         /* Tests wdb_global_get_all_agents */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_all_agents_cache_fail, test_setup, test_teardown),
