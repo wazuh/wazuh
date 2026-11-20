@@ -289,7 +289,7 @@ File check interval for detecting log file changes.
 - **Default value:** `2` (seconds)
 - **Allowed values:** Integer from `1` to `120`
 - **Format:** `logcollector.loop_timeout=2`
-- **Note:** Controls how frequently Logcollector checks monitored files for changes
+- **Note:** Controls how frequently Logcollector checks monitored files for changes. Each check reads everything new, so a lower value makes smaller bursts into the output queue (see [`logcollector.queue_size`](#logcollectorqueue_size))
 
 ### logcollector.ip_update_interval
 
@@ -371,7 +371,9 @@ Size of the internal output queue for log events.
 - **Default value:** `1024`
 - **Allowed values:** Integer from `128` to `220000`
 - **Format:** `logcollector.queue_size=1024`
-- **Note:** Larger queue sizes improve burst handling but increase memory usage
+- **Note:** Larger queue sizes improve burst handling but increase memory usage. A full queue holds a copy of each queued line, so it costs roughly the size of those lines
+- **When the queue is full:** There is one queue per target (`agent` or a `<socket>` target), drained by one sender thread. A line that does not fit is dropped. The drop is counted in the `drops` of that target in `wazuh-logcollector.state` and reported in `ossec.log` as `Target '<target>' message queue is full (<size>). <n> log line(s) lost since the last warning.`, at most once a minute per target
+- **Sizing for read bursts:** The queue can fill without any manager outage. Every `logcollector.loop_timeout` seconds an input thread reads everything new in a file, up to `logcollector.max_lines` lines, and queues it at once. A pass therefore adds about `lines per second for the target × loop_timeout` lines. With the defaults, a target that receives more than about 500 lines per second can overflow on every pass. The sender drains the queue during the pass, so the real limit is somewhat higher, and a sender that is held up lowers it. Set `queue_size` to at least the peak lines per second for the target times `loop_timeout`, with margin. A backlog read at startup (`only-future-events` set to `no`) is the same case, with a pass of up to `max_lines` lines per file. A larger queue moves the limit, it does not remove it
 
 ### logcollector.sample_log_length
 
