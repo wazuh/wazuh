@@ -42,6 +42,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.dom.minidom
 import xml.etree.ElementTree as ElementTree
 
 TOOL_VERSION = "3.0.0"
@@ -912,6 +913,41 @@ def read_group_conf(api, name):
     return answer.get("__raw", "")
 
 
+# As the manager's XML_DECLARATION_REGEX: a declaration is legal only at the start of a document.
+XML_DECLARATION = re.compile(r"\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>")
+
+
+def as_the_manager_stores(agent_conf):
+    """An agent.conf in the layout PUT /groups/{group}/configuration saves it in.
+
+    The manager does not keep the document it is sent: it parses it and writes it back with its
+    own indentation, attribute quotes and entities (upload_group_configuration() in
+    framework/wazuh/core/configuration.py, whose steps these are). Raises on a document the
+    manager would refuse.
+    """
+    aside = (("\\<", "_custom_open_tag_"), ("\\>", "_custom_close_tag_"),
+             ("&lt;", "_custom_amp_lt_"), ("&gt;", "_custom_amp_gt_"))
+    text = XML_DECLARATION.sub("", agent_conf, count=1)
+    for literal, name in aside:
+        text = text.replace(literal, name)
+    pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % text).toprettyxml(indent="  ")
+    pretty = "\n".join(line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
+    pretty = re.sub(r"(?:(?<=\\) +)", "", pretty.replace("&amp;", "&").replace("&lt;", "<")
+                    .replace("&quot;", "\"").replace("&gt;", ">").replace("\\\n", "\\"))
+    for literal, name in aside:
+        pretty = pretty.replace(name, literal)
+    return pretty
+
+
+def holds_configuration(current, carried):
+    """Whether the agent.conf the manager holds contains the carried one, as it would store it."""
+    try:
+        carried = as_the_manager_stores(carried)
+    except Exception:  # not XML: the manager refused it too, so it is nowhere to be found
+        return carried.strip() in current
+    return "\n%s" % carried in "\n%s\n" % current.rstrip("\n")
+
+
 def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     """Appends the 4.x default group's settings to the 5.0 one's.
 
@@ -924,9 +960,10 @@ def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     if not default or not default.get("customized"):
         return None
     install_group_files(bundle, default, target_conf_dir, dry_run)
-    carried = default["agent_conf"].strip()
+    # Appended after the 5.0 file, where a declaration of its own would be refused.
+    carried = XML_DECLARATION.sub("", default["agent_conf"], count=1).strip()
     current = read_group_conf(api, DEFAULT_GROUP)
-    if carried in current:
+    if holds_configuration(current, carried):
         log("  group    %-20s 4.x agent.conf already merged" % DEFAULT_GROUP)
         return None
     log("  group    %-20s merge the 4.x agent.conf after the 5.0 one" % DEFAULT_GROUP)
@@ -1186,7 +1223,7 @@ def command_check(args):
 
     default = manifest.get("default_group")
     if default and default.get("customized"):
-        merged = default["agent_conf"].strip() in read_group_conf(api, DEFAULT_GROUP)
+        merged = holds_configuration(read_group_conf(api, DEFAULT_GROUP), default["agent_conf"])
         log("default   4.x agent.conf %s" % ("merged" if merged else "NOT merged"))
         if not merged:
             problems.append("the default group's agent.conf does not hold the 4.x settings the"

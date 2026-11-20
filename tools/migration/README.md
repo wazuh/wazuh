@@ -11,7 +11,9 @@ It implements the identity half of
 not touch the configuration: `ossec.conf` has no mechanical translation to `wazuh-manager.conf`, and
 that guide covers it separately.
 
-Standard library only, so it runs on either host without installing anything.
+Standard library only, so it runs on either host without installing anything: with the system
+`python3` on the 4.x host, and on the 5.0 host with the Python the manager bundles
+(`/var/wazuh-manager/framework/python/bin/python3`), as root.
 
 ## The shape of it
 
@@ -90,7 +92,7 @@ and every agent key. Against a loopback `--api-url` the tool trusts the CA the m
 
 One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds the
 passwords of an existing `rbac.db` (its version upgrade copies every user with its hash,
-`check_database_integrity()` in `framework/wazuh/rbac/orm.py`), so from the next start the `wazuh` and `wazuh-internal-client` passwords are the 4.x ones
+`check_database_integrity()` in `framework/wazuh/rbac/orm.py`), so from the moment the import ends the `wazuh` and `wazuh-internal-client` passwords are the 4.x ones
 the database carries, and the two values in `credentials.env` are stale. The import says so. Either
 set both users back to the published values with `rbac_control change-password` after the restart,
 or keep the 4.x passwords and give `check` the 4.x one explicitly.
@@ -146,7 +148,8 @@ Everything that can refuse runs before the first write.
 - The source is not a 4.x installation, or the target is not a 5.0 one.
 - The 4.x manager is still running. Its files would be read underneath live daemons.
 - The source registry reports a `db_version` this tool has not been checked against.
-- The target already holds agents, which an import would collide with by id.
+- The target already holds agents, which an import would collide with by id. One agent is enough,
+  such as the one a 5.0 OVA enrolls on its own host.
 - The bundle is truncated, or comes from a bundle version this tool does not read. Version 2
   bundles (tool 2.x) are imported with a notice: they carry neither the default group nor the SCA
   policy files.

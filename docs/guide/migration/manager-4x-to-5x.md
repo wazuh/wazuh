@@ -21,7 +21,7 @@ indexer.
 | API users, roles and policies (`rbac.db`) | Kept, including passwords, which then replace the ones the 5.0 install generated. | [Step 3](#api-users-roles-and-policies) |
 | Manager configuration | Rewritten by hand into `wazuh-manager.conf`. | Step 4 |
 | TLS material | Not carried automatically. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager at install or given to it, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
-| Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
+| Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the 4.x indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
 | Agent labels | Removed in 5.0 on both sides. A `<labels>` block in an `agent.conf` is carried with the file but ignored, and `agent.labels.*` no longer reaches events, rules or dashboards. Group membership (`wazuh.agent.groups`) is the closest replacement. | [Groups](#groups) |
 | Agent `000`, the manager monitoring its own host | Removed. Nothing collects the server host's logs, file integrity, SCA or inventory until an agent is installed on it. | [Monitoring the server host](../../ref/getting-started/installation.md#monitoring-the-server-host) |
 | Frequency and correlation rules (`frequency`, `timeframe`, `if_matched_sid`), such as 5712 and 5763 for SSH brute force | Removed. Each finding keeps the severity of the single event it matched, so repeated failures never escalate: a brute force produces many `low` findings. | [Repeated events](rules-4x-to-5x.md#alerting-on-repeated-events) |
@@ -45,16 +45,19 @@ indexer.
   The agent listener certificate's subjectAltName must carry every address agents dial, which for
   a migration is the address the 4.x fleet already uses. See
   [Step 2](#certificates-and-credentials).
-- **Credentials.** The `wazuh-manager` password on the indexer, written to
-  `/etc/wazuh-manager/local.env` before the first start. It must pass the 5.0 password policy, which
-  limits the characters it may use and requires all four character classes. One the 4.x
-  assistant generated usually fails it. The manager generates its own Server API passwords and
+- **Indexer.** The 5.0 manager needs a 5.0 indexer; it cannot use the 4.x one. See
+  [Step 2](#certificates-and-credentials).
+- **Credentials.** The `wazuh-manager` password on the 5.0 indexer. The manager reads it by itself
+  when the indexer runs on the same host; otherwise it is written to
+  `/etc/wazuh-manager/local.env` before the first start. The manager generates its own Server API passwords and
   publishes them in `/etc/wazuh-manager/export/credentials.env`. See
   [Step 2](#certificates-and-credentials).
-- **Tools.** The `sqlite3` command-line tool on the 5.0 host for [Step 3](#3-restore-the-identity-data).
-  It is not part of the manager packages and is often absent on a minimal server; the Python the
-  manager bundles (`/var/wazuh-manager/framework/python/bin/python3`, module `sqlite3`) runs the same
-  statements when you would rather not install it.
+- **Tools.** The manual procedure needs the `sqlite3` command-line tool on the 5.0 host for
+  [Step 3](#3-restore-the-identity-data). It is not part of the manager packages and is often absent
+  on a minimal server; the Python the manager bundles
+  (`/var/wazuh-manager/framework/python/bin/python3`, module `sqlite3`) runs the same statements when
+  you would rather not install it. The migration tool needs only Python 3, and that same bundled
+  Python runs it on the 5.0 host.
 
 ## 1. Back up the 4.x manager
 
@@ -92,7 +95,29 @@ The two methods do not keep the same things:
 
 Use the manual steps only if you need the registration dates or the 4.x version and OS before the
 agents reconnect. Neither method carries the API users, roles and policies unless you ask for them.
-Its `import` and `check` commands address the 5.0 manager through two directories:
+
+The tool has one command for each of the three steps:
+
+```bash
+# Step 1, on the 4.x manager, stopped
+sudo python3 wazuh-migrate-identity.py export /root/wazuh-4x-bundle
+
+# Step 3, on the 5.0 manager, running and out of the fleet's reach
+sudo /var/wazuh-manager/framework/python/bin/python3 wazuh-migrate-identity.py import /root/wazuh-4x-bundle
+
+# Step 5, once the manager is open to the fleet
+sudo /var/wazuh-manager/framework/python/bin/python3 wazuh-migrate-identity.py check /root/wazuh-4x-bundle
+```
+
+`export` replaces the identity part of the backup below and keeps a copy of `ossec.conf`,
+`local_internal_options.conf` and `api.yaml` in the bundle; rules, decoders and lists are still yours
+to copy. `import` replaces the commands of [Step 3](#3-restore-the-identity-data): leave the manager
+running and run none of them, except the copy of the rootcheck files into the `default` group, which
+the tool leaves to you while 4.x agents remain. On the 5.0 host the tool runs as root with the Python the manager
+bundles, which no other user can reach. The bundle holds the agent keys, so move it as carefully as
+`client.keys`.
+
+The `import` and `check` commands address the 5.0 manager through two directories:
 `--target-dir` (the installation, default `/var/wazuh-manager`) and `--target-conf-dir` (the
 configuration directory, default `/etc/wazuh-manager`), which is where `authd.pass` is installed and
 `certs/root-ca.pem` is read from.
@@ -195,9 +220,11 @@ what the manager owns is generated; its certificates are issued at installation 
 get right.
 
 **The indexer password.** The one credential the manager cannot invent is its `wazuh-manager` account on the
-indexer. When a 5.0 indexer runs on the same host it publishes the password and the manager reads it; for an
-indexer kept from the 4.x deployment, write it to `local.env` after installing the package and before the first
-start (the package leaves the manager stopped):
+indexer. When a 5.0 indexer runs on the same host it publishes the password and the manager reads it; for a
+5.0 indexer on another host, name it in `<indexer><hosts>`
+([Configure the indexer address](../../ref/getting-started/installation.md#configure-the-indexer-address)), copy
+the value from its `/etc/wazuh-indexer/export/credentials.env` and write it to `local.env` after installing the
+package and before the first start (the package leaves the manager stopped):
 
 ```bash
 sudo sh -c 'umask 077; [ -e /etc/wazuh-manager/local.env ] || : > /etc/wazuh-manager/local.env'
@@ -208,20 +235,28 @@ printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on t
 The first command creates `local.env` (`root:root`, `0600`) only when it does not exist yet, and `tee -a`
 appends, so values already staged there are kept.
 
+**The indexer has to be a 5.0 one.** A 4.x indexer has no `wazuh-manager` user and none of the indices the 5.0
+manager reads its content and settings from. Pointed at one, with that user created by hand, the manager starts
+and then fails every synchronization:
+
+```console
+wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'standard': ... no such index [wazuh-threatintel-policies]
+wazuh-manager-analysisd: WARNING: [RemoteConfig] Failed to synchronize remote settings: ... no such index [.wazuh-settings]
+```
+
 The value must pass the policy for supplied passwords: 12 to 64 characters, only from
 `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one lowercase letter, one uppercase letter, one digit and one
-symbol from that set. **A password the 4.x installation assistant generated usually fails it**: the generator
-draws from `A-Za-z0-9.*+?` and always adds one of `.*+?`, and `*` and `?` are outside the set. The manager then
-refuses to start:
+symbol from that set. **A password the 4.x installation assistant generated usually fails it**, so do not reuse
+one: the generator draws from `A-Za-z0-9.*+?` and always adds one of `.*+?`, and `*` and `?` are outside the set.
+The manager then refuses to start:
 
 ```console
 INVALID WAZUH_INDEXER_MANAGER_PASSWORD: may only use A-Z a-z 0-9 and . , _ + : @ % ^ = ~ - (set in /etc/wazuh-manager/local.env:1)
 Invalid credentials. Exiting
 ```
 
-So rotate that account's password on the indexer first, with the Wazuh installation assistant's passwords tool,
-to one inside the set, and write the new value here. Validation is of presence and format only; a wrong password
-passes it and fails as a `401` when the manager first talks to the indexer.
+Validation is of presence and format only; a wrong password passes it and fails as a `401` when the manager
+first talks to the indexer.
 
 **The API passwords.** The manager generates the `wazuh` and `wazuh-internal-client` passwords when the package is
 installed and publishes them in `/etc/wazuh-manager/export/credentials.env`, readable by root only; nothing prints
@@ -250,11 +285,12 @@ A cluster must give every node the same CA, through either of the last two, beca
 synchronized between nodes and an agent that fails over to a node under a different CA refuses it.
 
 **The indexer's trust.** The connector trusts `certs/indexer-ca.pem` and authenticates with the `wazuh-manager`
-user and the indexer password; it presents no client certificate unless the configuration names one. For a 4.x
-indexer, stage the 4.x CA (the one `wazuh-certs-tool` created) as `indexer-ca.pem`:
+user and the indexer password; it presents no client certificate unless the configuration names one. A 5.0
+indexer on the same host is imported by the install. For one on another host, stage its
+`/etc/wazuh-indexer/export/ca.pem` as `indexer-ca.pem`:
 
 ```bash
-sudo install -m 0640 -o root -g wazuh-manager root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
 ```
 
 Stage it after installing the package, before the first start: the `wazuh-manager` group exists only from then,
@@ -262,7 +298,7 @@ and nothing re-owns a file staged later, so every file in `certs/` must already 
 file with any other group or mode refuses the start (`UNSAFE /etc/wazuh-manager/certs/indexer-ca.pem: group is
 root, not wazuh-manager`, `Unsafe credentials. Exiting`). Staged without an import marker, it is validated at
 every start and never replaced. An indexer that requires client certificates needs a pair with `extendedKeyUsage`
-`clientAuth`, which the 4.x node certificate lacks; see
+`clientAuth`; see
 [Configured file names](../../ref/getting-started/credentials.md#configured-file-names).
 
 Two requirements come from the fleet rather than from whoever signs:
@@ -271,8 +307,10 @@ Two requirements come from the fleet rather than from whoever signs:
   already have in their `ossec.conf`, plus the cluster VIP and any NAT address. When the manager issues the
   listener certificate itself it names every global address of the host's interfaces; set
   `WAZUH_MANAGER_REMOTED_CERT_SANS` in `local.env` to name them yourself, which replaces the discovery rather than
-  adding to it. Nothing checks the list against the fleet, and a certificate that lacks an address fails only when
-  an agent dials it. A pair is never reissued on its own: to reissue one, remove both of its files and run
+  adding to it. On a new host installed under a provisional name or address, the discovery names those, not what
+  the fleet dials, so set the variable before installing. Nothing checks the list against the fleet, and a
+  certificate that lacks an address fails only when an agent dials it: a 5.0 agent refuses the manager, and a
+  remote upgrade aborts or leaves the agent unable to connect ([Step 7](#7-upgrade-the-agents-to-50)). A pair is never reissued on its own: to reissue one, remove both of its files and run
   `--install` with the CA and its key in `ca/` ([Server pairs](../../ref/getting-started/credentials.md#server-pairs)).
 - **Keep the CA and its key.** It is what every 5.0 agent verifies the manager against and what enrollment tokens
   pin, so replacing it later invalidates both. Back up `/etc/wazuh-manager/ca/` before anything else.
@@ -355,6 +393,26 @@ throughout.
 
 Stopping the agents works too. On a fleet of any size the two variables are the cheaper guarantee,
 and they need nothing of the endpoints.
+
+A manager that is already installed and running, as on the OVA and the AMI, cannot take the variables.
+Set `<remote><https><bind_addr>` to `127.0.0.1` and `<remote><legacy><enabled>` to `no` in
+`/etc/wazuh-manager/wazuh-manager.conf` and restart it, or keep the host on a network the fleet does
+not reach until [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry).
+
+**An agent on the server host waits until the end.** An agent installed on the manager's own host
+([Monitoring the server host](../../ref/getting-started/installation.md#monitoring-the-server-host)),
+which the OVA and the AMI enroll on their first boot, takes id `001` on an empty registry: the id of
+the first agent the 4.x manager enrolled. Enroll it after Step 5. If it is already there, stop it and
+delete it through the API before restoring the registry. When the 4.x fleet has an agent with that
+id, also wait for the id to be released: the manager keeps a deleted id reserved until the deletion finishes, `authd.purge_delay` seconds later
+(120 by default), and refuses it meanwhile:
+
+```console
+The agent ID cannot be reused yet: 001
+```
+
+Re-enroll that agent with a token once the migration is verified. It takes a new id, so the tool's
+`check` names it from then on as an agent that was not in the bundle.
 
 Once the installation finishes, start the manager for the first time. It checks its passwords
 again, creates its databases and comes up with every daemon running:
@@ -634,9 +692,12 @@ curl -sk "https://localhost:55000/groups" -H "Authorization: Bearer $TOKEN"
 ```
 
 Every agent appears with its 4.x id, name, version, groups and registration date, as
-`disconnected` until it reconnects. If you used the migration tool instead of the SQL in Step 3, two of
+`disconnected` until it reconnects. If you used the migration tool instead of the SQL in Step 3, three of
 those differ: `dateAdd` is the moment the tool inserted the agent (`POST /agents/insert` accepts no
-registration date), and version and OS stay empty until the agent's first keepalive. Its `check`
+registration date), version and OS stay empty until the agent's first keepalive, and the status until
+then is `never_connected`. After an `import --with-rbac` the API answers to the 4.x passwords as soon as
+the import ends, so `check` is refused with the published one: run the two `rbac_control` commands of
+[Step 3](#api-users-roles-and-policies) first, or give it the 4.x password with `--api-password-file`. Its `check`
 command compares the manager against the bundle and names any agent missing, renamed, present
 without having been in the bundle, or whose groups differ from the 4.x ones (a group missing, an
 extra one such as `default`, or a different order). It also checks that the `default` group holds
@@ -678,7 +739,15 @@ migrated fleet:
     the upgrade channel, immediately before the `upgrade` command, and the agent's installer picks
     it up. On by default (`<remote><legacy><ca_delivery>`). It never fails an upgrade: if the CA
     cannot be sent the upgrade proceeds and the manager logs that step alone, which is worth
-    checking before declaring the migration done. See
+    checking before declaring the migration done. A listener certificate without the address the
+    agents dial is another matter, so check its subjectAltName before upgrading the fleet. On
+    Linux the agent's installer checks the delivered CA against the manager at that address
+    before installing anything, aborts, and the agent stays on 4.x (`Upgrade failed. Delivered
+    CA ... does not verify the manager's certificate at <address>:1517` in the agent's
+    `upgrade.log`, `reported upgrade result (error 2: Upgrade failed)` on the manager). The check
+    is skipped where it cannot run, and the Windows installer does not make it: there the agent
+    is upgraded and then refuses the manager. Reissue the pair with that address
+    ([Step 2](#certificates-and-credentials)) and launch the upgrade again. See
     [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
     A 4.x agent does not fetch its task: `wazuh-manager-remoted` hands it over on its next poll of
     the pending tasks, every `remoted.legacy_task_polling_interval` seconds (default `900`), so an
@@ -850,12 +919,15 @@ was renamed to `WAZUH_SSL_VERIFICATION` with no alias, and the old spelling is r
 
 - **Alerts.** The 5.0 manager indexes events into `wazuh-events-v5-*`; findings, the 5.0 replacement
   for alerts, are produced from them in the indexer, into `wazuh-findings-v5-*`. The
-  4.x `wazuh-alerts-4.x-*` indices are not read or migrated; keep them in the indexer for as long as
-  you need to consult them, and expect dashboards built on them to need new index patterns.
-- **Inventory, FIM, SCA, vulnerabilities.** Both versions write `wazuh-states-*`, so the two
-  generations sit side by side under one pattern: 4.x appends its cluster name to the index, 5.0
-  does not. 5.0 populates its own indices from each agent once that agent runs 5.0, and never reads
-  or updates the 4.x ones. Check the suffix before concluding an index is current.
+  4.x `wazuh-alerts-4.x-*` indices are not read or migrated; keep the 4.x indexer, or a snapshot of
+  those indices, for as long as you need to consult them, and expect dashboards built on them to
+  need new index patterns.
+- **Inventory, FIM, SCA, vulnerabilities.** 5.0 populates its own `wazuh-states-*` indices from each
+  agent once that agent runs 5.0, and never reads or updates the 4.x ones, which stay in the 4.x
+  indexer. Both versions use that name, so if you restore a snapshot of the 4.x indices into the 5.0
+  indexer the two generations sit side by side under one pattern: 4.x appends its cluster name to
+  the index, 5.0 does not. Check the suffix before concluding an index is current, or restore them
+  under another name.
 - **Agent ids.** Because ids are preserved, historical documents in the 4.x indices and new
   documents in the 5.0 ones refer to the same agent by the same id. Re-enrolling agents instead
   of carrying `client.keys` breaks that: ids are reassigned in enrollment order.
