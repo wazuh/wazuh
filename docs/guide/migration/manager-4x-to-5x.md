@@ -206,19 +206,6 @@ A package fresh install beside a 4.x manager prints the same block with `ERROR: 
 than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it.`
 as its error line.
 
-On a Debian-based host, removing the 4.x package deletes `/etc/init.d/wazuh-manager`, which `dpkg`
-still records as one of its configuration files, so installing the 5.0 package on the same host stops
-at a prompt:
-
-```console
-Configuration file '/etc/init.d/wazuh-manager'
- ==> Deleted (by you or by a script) since installation.
- ==> Package distributor has shipped an updated version.
-```
-
-Without a terminal the installation waits there, or fails with `end of file on stdin at conffile
-prompt` and leaves the package unconfigured. Pass `--force-confnew` to `dpkg` to install the 5.0 file.
-
 A 4.x **agent** on the same host does not trip these checks, but its package does block the manager
 package: the 4.x `wazuh-agent` DEB and RPM declare `Conflicts: wazuh-manager`, so `dpkg` and `rpm` refuse to
 install the 5.0 `wazuh-manager` package while it is installed. Upgrade the agent to 5.x first (the 5.x agent
