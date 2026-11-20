@@ -86,7 +86,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,remove \
                             -Wl,--wrap,FOREVER -Wl,--wrap,indexed_queue_pop_ex  -Wl,--wrap,indexed_queue_pop_ex \
-                            -Wl,--wrap,save_controlmsg")
+                            -Wl,--wrap,save_controlmsg -Wl,--wrap,wdb_update_agent_connection_status")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \

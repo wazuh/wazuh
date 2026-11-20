@@ -446,6 +446,56 @@ void test_w_get_key_hash_success(void **state){
     os_free(keys);
 }
 
+// Test OS_DeleteSocket
+static keyentry * run_OS_DeleteSocket(int entry_sock, int sock, int found)
+{
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+    keys->keytree_sock = rbtree_init();
+
+    keyentry *entry = NULL;
+    os_calloc(1, sizeof(keyentry), entry);
+    entry->id = "001";
+    entry->sock = entry_sock;
+
+    char strsock[16];
+    snprintf(strsock, sizeof(strsock), "%d", sock);
+
+    expect_value(__wrap_rbtree_get, tree, keys->keytree_sock);
+    expect_string(__wrap_rbtree_get, key, strsock);
+    will_return(__wrap_rbtree_get, found ? entry : NULL);
+
+    keyentry *closed = OS_DeleteSocket(keys, sock);
+
+    assert_int_equal(entry->sock, found && entry_sock == sock ? -1 : entry_sock);
+
+    os_free(entry);
+    rbtree_destroy(keys->keytree_sock);
+    os_free(keys);
+
+    return closed;
+}
+
+void test_OS_DeleteSocket_current_socket(void **state)
+{
+    keyentry *closed = run_OS_DeleteSocket(5, 5, 1);
+
+    assert_non_null(closed);
+    assert_string_equal(closed->id, "001");
+
+    OS_FreeKey(closed);
+}
+
+void test_OS_DeleteSocket_replaced_socket(void **state)
+{
+    assert_null(run_OS_DeleteSocket(7, 5, 1));
+}
+
+void test_OS_DeleteSocket_not_found(void **state)
+{
+    assert_null(run_OS_DeleteSocket(5, 5, 0));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -470,7 +520,11 @@ int main(void)
         // Test w_get_key_hash
         cmocka_unit_test(test_w_get_key_hash_empty_parameters),
         cmocka_unit_test(test_w_get_key_hash_empty_value),
-        cmocka_unit_test(test_w_get_key_hash_success)
+        cmocka_unit_test(test_w_get_key_hash_success),
+        // Test OS_DeleteSocket
+        cmocka_unit_test(test_OS_DeleteSocket_current_socket),
+        cmocka_unit_test(test_OS_DeleteSocket_replaced_socket),
+        cmocka_unit_test(test_OS_DeleteSocket_not_found)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

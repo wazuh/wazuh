@@ -70,10 +70,11 @@ int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unu
     return mock();
 }
 
-int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
+int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock, agent_status_code_t status_code) {
     check_expected(id);
     check_expected(connection_status);
     check_expected(sync_status);
+    check_expected(status_code);
     return mock();
 }
 

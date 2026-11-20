@@ -5371,6 +5371,7 @@ void test_save_controlmsg_shutdown(void **state)
     expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
     expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
+    expect_value(__wrap_wdb_update_agent_connection_status, status_code, HC_SHUTDOWN_RECV);
     will_return(__wrap_wdb_update_agent_connection_status, OS_SUCCESS);
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
@@ -5413,6 +5414,7 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
     expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
+    expect_value(__wrap_wdb_update_agent_connection_status, status_code, HC_SHUTDOWN_RECV);
     will_return(__wrap_wdb_update_agent_connection_status, OS_INVALID);
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to set connection status as disconnected for agent: 001");

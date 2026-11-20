@@ -39,6 +39,7 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
         if (keyid >= 0 && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
+            keys->keyentries[keyid]->shutdown_received = old_keys->keyentries[i]->shutdown_received;
             keys->keyentries[keyid]->crypto_method = old_keys->keyentries[i]->crypto_method;
             memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_storage));
 
@@ -659,6 +660,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     os_calloc(1, sizeof(keyentry), copy);
 
     copy->post_startup = key->post_startup;
+    copy->shutdown_received = key->shutdown_received;
     copy->rcvd = key->rcvd;
     copy->local = key->local;
     copy->keyid = key->keyid;
@@ -717,10 +719,10 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
 }
 
 // Delete socket number from keystore
-int OS_DeleteSocket(keystore * keys, int sock) {
+keyentry * OS_DeleteSocket(keystore * keys, int sock) {
     char strsock[16] = "";
     keyentry * entry;
-    int retval = 0;
+    keyentry * closed = NULL;
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     w_mutex_lock(&keys->keytree_sock_mutex);
@@ -730,16 +732,15 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
         if (sock == entry->sock) {
             entry->sock = -1;
+            closed = OS_DupKeyEntry(entry);
         }
 
         w_mutex_unlock(&entry->mutex);
         rbtree_delete(keys->keytree_sock, strsock);
-    } else {
-        retval = -1;
     }
 
     w_mutex_unlock(&keys->keytree_sock_mutex);
-    return retval;
+    return closed;
 }
 
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {

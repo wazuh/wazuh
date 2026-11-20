@@ -929,6 +929,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     key->id = strdup("009");
     key->sock = 1;
     key->keyid = 1;
+    key->shutdown_received = true;
 
     keys.keyentries[0] = key;
 
@@ -986,6 +987,9 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     expect_value(__wrap_OS_FreeKey, key, key);
 
     HandleSecureMessage(&message, control_msg_queue);
+
+    // A control message other than a shutdown means the agent is alive again
+    assert_false(key->shutdown_received);
 
     // Expect the control message to be added to the queue
     w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
@@ -1367,6 +1371,9 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     HandleSecureMessage(&message, control_msg_queue);
 
+    // The idle socket is no longer the agent's, so closing it reports no disconnection
+    assert_int_equal(key->sock, -1);
+
     os_free(key->id);
     os_free(key->name);
     os_free(key->ip);
@@ -1466,6 +1473,8 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
 
     HandleSecureMessage(&message, control_msg_queue);
+
+    assert_int_equal(key->sock, -1);
 
     os_free(key->id);
     os_free(key->ip);
@@ -2548,6 +2557,84 @@ void test_close_sock_claim_rejected(void** state)
     assert_int_equal(_close_sock(&keys, UNASSOC_SOCK, 7), 0);
 }
 
+static void expect_close_current_sock(keyentry* closed_key)
+{
+    expect_value(__wrap_nb_claim_close, sock, UNASSOC_SOCK);
+    expect_value(__wrap_nb_claim_close, counter, NB_CLOSE_ANY);
+    will_return(__wrap_nb_claim_close, 1);
+
+    expect_value(__wrap_rem_setCounter, fd, UNASSOC_SOCK);
+    expect_value(__wrap_rem_setCounter, counter, global_counter);
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, UNASSOC_SOCK);
+    will_return(__wrap_OS_DeleteSocket, closed_key);
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_nb_close_socket, sock, UNASSOC_SOCK);
+    will_return(__wrap_nb_close_socket, 0);
+    will_return(__wrap_nb_close_socket, 0);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [" UNASSOC_SOCK_STR "]");
+}
+
+// Closing the agent's current socket queues its disconnection.
+void test_close_sock_current_socket(void** state)
+{
+    keyentry* closed_key = NULL;
+    os_calloc(1, sizeof(keyentry), closed_key);
+    closed_key->id = strdup("001");
+
+    global_counter = 0;
+    control_msg_queue = indexed_queue_init(10);
+
+    expect_close_current_sock(closed_key);
+
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
+
+    w_ctrl_msg_data_t* node = indexed_queue_pop(control_msg_queue);
+    assert_non_null(node);
+    assert_true(node->is_closed);
+    assert_ptr_equal(node->key, closed_key);
+    assert_null(node->message);
+    assert_true(indexed_queue_empty(control_msg_queue));
+
+    os_free(closed_key->id);
+    os_free(closed_key);
+    os_free(node);
+    indexed_queue_free(control_msg_queue);
+    control_msg_queue = NULL;
+}
+
+// A full queue drops the disconnection instead of blocking the caller.
+void test_close_sock_current_socket_queue_full(void** state)
+{
+    keyentry* closed_key = NULL;
+    os_calloc(1, sizeof(keyentry), closed_key);
+    closed_key->id = strdup("001");
+    int other_agent_data = 0;
+
+    global_counter = 0;
+    control_msg_queue = indexed_queue_init(1);
+    assert_int_equal(indexed_queue_push(control_msg_queue, "002", &other_agent_data), 0);
+
+    expect_close_current_sock(closed_key);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Control message queue full, the disconnection of agent '001' was not saved.");
+    expect_value(__wrap_OS_FreeKey, key, closed_key);
+
+    _close_sock(&keys, UNASSOC_SOCK, NB_CLOSE_ANY);
+
+    assert_ptr_equal(indexed_queue_pop(control_msg_queue), &other_agent_data);
+    assert_true(indexed_queue_empty(control_msg_queue));
+
+    os_free(closed_key->id);
+    os_free(closed_key);
+    indexed_queue_free(control_msg_queue);
+    control_msg_queue = NULL;
+}
+
 void test_HandleSecureMessage_tcp_associate_first_time(void** state)
 {
     global_counter = 0;
@@ -3090,6 +3177,8 @@ int main(void)
         cmocka_unit_test(test_close_sock_associated),
         cmocka_unit_test(test_close_sock_close_fails),
         cmocka_unit_test(test_close_sock_claim_rejected),
+        cmocka_unit_test(test_close_sock_current_socket),
+        cmocka_unit_test(test_close_sock_current_socket_queue_full),
         cmocka_unit_test(test_HandleSecureMessage_tcp_associate_first_time),
         cmocka_unit_test(test_HandleSecureMessage_tcp_associate_already_associated),
         cmocka_unit_test(test_HandleSecureMessage_tcp_associate_addsocket_error),
