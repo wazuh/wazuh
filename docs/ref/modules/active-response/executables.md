@@ -71,16 +71,16 @@ address (`getaddrinfo` without name resolution), otherwise `Invalid IP address: 
 | Priority | Method | Tool | Command Example |
 |----------|--------|------|-----------------|
 | 1 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
-| 2 | hosts.deny | edit file | `ALL:192.168.1.100` (appended to `/etc/hosts.deny`) |
-| 3 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
+| 2 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
 
 **macOS-Specific Details**:
 - **PF Table**: Uses table name `wazuh_fwtable`
 - **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`. Best effort: a failure here is not reported.
 - **Table Precondition**: The `wazuh_fwtable` table and its block rules are a one-time setup owned by the administrator, the same way `wazuh_blacklist` is for `npf` on NetBSD. `block-ip` does not use a PF anchor file, never edits `/etc/pf.conf` and never reloads the packet filter ruleset: if the table is absent it declines and the next method in the chain is tried. The macOS package does not apply or announce it — `install.sh`'s notice runs at package build time, not on the endpoint — so it has to be applied by hand.
-- **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
-- **hosts.deny matching**: unlike the Unix/Linux binary, the macOS one matches by substring: a file with any line containing the address counts as already blocked, and the unblock removes every line containing it
-- **Unblocking**: Each method declines when the address is not the one it holds (`pf` reports `0/1 addresses deleted.`, `hosts.deny` finds no matching line), so the unblock walks the chain until it reaches the method that actually applied the block. Without this a block applied by `route` would never be lifted once `pf` or `hosts.deny` became available.
+- **Fallback**: Falls back to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled) still blocks the address
+- **No hosts.deny**: unlike the Unix/Linux binary, the macOS one does not use `/etc/hosts.deny`. macOS has no TCP wrappers, so a line there blocks nothing, even when the file exists
+- **hosts.deny entries left by a 5.0.0 pre-release**: pre-releases appended `ALL:<IP>` to `/etc/hosts.deny` when the file existed and reported the address as blocked. An unblock removes that line if it is still there, only when it is exactly `ALL:<IP>`, with the address as received or in its canonical form; a line of your own that merely contains the address is kept. Finding one or not does not change the result of the unblock, which still goes through the chain. A line whose unblock never came (`wazuh-execd` killed, or a stateless response) stays until the same address is blocked and unblocked again, or until you delete it by hand
+- **Unblocking**: `pf` declines when the address is not in its table (`pfctl` reports `0/1 addresses deleted.`), so the unblock reaches `route`. Without this a block applied by `route` would never be lifted once `pf` became available.
 - **route results**: `route` exits 0 whatever happens, so the result is read from its stderr; `File exists` on a block and `not in table` on an unblock count as success.
 - **Permissions**: Requires root privileges
 
