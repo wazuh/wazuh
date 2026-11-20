@@ -7,21 +7,24 @@
  */
 
 CREATE TABLE 'cloudwatch_logs' (
+    aws_account_id 'text' NOT NULL,
     aws_region 'text' NOT NULL,
     aws_log_group 'text' NOT NULL,
     aws_log_stream 'text' NOT NULL,
     next_token 'text',
     start_time 'integer',
     end_time 'integer',
-    PRIMARY KEY (aws_region, aws_log_group, aws_log_stream));
+    PRIMARY KEY (aws_account_id, aws_region, aws_log_group, aws_log_stream));
 
 INSERT INTO 'cloudwatch_logs' (
+    aws_account_id,
     aws_region,
     aws_log_group,
     aws_log_stream,
     next_token,
     start_time,
     end_time) VALUES (
+    '123456789123',
     'us-east-1',
     'test_log_group',
     'test_stream',
