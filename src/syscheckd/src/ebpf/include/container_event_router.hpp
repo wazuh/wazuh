@@ -78,6 +78,12 @@
 
 namespace fim_container_events
 {
+    using container_attribution::CgroupClass;
+    using container_attribution::CgroupContainerMap;
+    using container_attribution::CgroupDeltaEvent;
+    using container_attribution::CgroupListDelta;
+    using container_attribution::CgroupMapStats;
+    using container_attribution::CgroupResolution;
 
     struct RouterStats
     {

@@ -1,6 +1,5 @@
 /*
- * Wazuh Syscheckd — cgroup_id -> container_id attribution for the eBPF drain
- * (#37396).
+ * Wazuh — cgroup_id -> container_id attribution for eBPF event consumers.
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -63,7 +62,7 @@
 #include <utility>
 #include <vector>
 
-namespace fim_container_events
+namespace container_attribution
 {
 
     enum class CgroupClass
@@ -675,6 +674,6 @@ namespace fim_container_events
             CgroupMapStats m_stats;
     };
 
-} // namespace fim_container_events
+} // namespace container_attribution
 
 #endif /* _CGROUP_CONTAINER_MAP_HPP */

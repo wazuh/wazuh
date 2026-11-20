@@ -44,22 +44,6 @@ target_link_libraries(container_event_staging_test
 add_test(NAME container_event_staging_test
          COMMAND container_event_staging_test)
 
-# cgroup_id -> container_id attribution for the drain (#37532 / #37396). Also
-# header-only and I/O-free: resolution is fed in by the owner rather than
-# queried here, which is what makes the inode-reuse cases testable at all.
-add_executable(cgroup_container_map_test cgroup_container_map_test.cpp)
-
-target_link_libraries(cgroup_container_map_test
-    debug gtestd
-    debug gtest_maind
-    optimized gtest
-    optimized gtest_main
-    pthread
-)
-
-add_test(NAME cgroup_container_map_test
-         COMMAND cgroup_container_map_test)
-
 # The policy joining the two above (#37532 / #37396): what the drain does with
 # an event, and what it does with reported loss. Kept out of the drain itself so
 # it is reachable without a kernel, a BPF object or root.
@@ -172,7 +156,7 @@ target_compile_definitions(container_reporting_test PRIVATE WAZUH_UNIT_TESTING)
 target_link_libraries(container_reporting_test
     debug gtestd debug gtest_maind
     optimized gtest optimized gtest_main
-    wazuh container_baseline rt_engine fimdb pthread)
+    wazuh container_baseline container_attribution rt_engine fimdb pthread)
 target_link_options(container_reporting_test PRIVATE
     -Wl,--wrap=fim_collect_container_monitored_paths
     -Wl,--wrap=fim_free_container_monitored_paths
