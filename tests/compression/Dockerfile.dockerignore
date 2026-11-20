@@ -1,0 +1,12 @@
+.git
+src/external
+src/external-precompiled
+src/**/build
+src/build
+**/*.o
+**/*.a
+**/*.so
+**/*.so.*
+**/__pycache__
+src/compression-test-driver
+src/wazuh-*

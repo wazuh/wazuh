@@ -125,6 +125,7 @@ cJSON *getMonitorGlobalOptions(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
+    cJSON_AddStringToObject(monconf, "compression_method", mond.global.compression_method == W_LOG_COMPRESSION_ZSTD ? "zstd" : "gzip");
     cJSON_AddNumberToObject(monconf,"agents_disconnection_time",mond.global.agents_disconnection_time);
     cJSON_AddNumberToObject(monconf,"agents_disconnection_alert_time",mond.global.agents_disconnection_alert_time);
 
@@ -186,6 +187,7 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->emailidsname = NULL;
 
     /* Setting default agent's global configuration */
+    mond->global.compression_method = W_LOG_COMPRESSION_GZIP;
     mond->global.agents_disconnection_time = 900;
     mond->global.agents_disconnection_alert_time = 0;
 

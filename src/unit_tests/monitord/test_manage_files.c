@@ -48,6 +48,19 @@ void __wrap_OS_CompressLog(const char *logfile) {
     check_expected(logfile);
 }
 
+int __wrap_OS_CompressLogZstd(const char *logfile) {
+    check_expected(logfile);
+    return 0;
+}
+
+static void expect_compression(const char *tag, const char *path) {
+    if (mond.global.compression_method == W_LOG_COMPRESSION_ZSTD && strcmp(tag, "firewall") != 0) {
+        expect_string(__wrap_OS_CompressLogZstd, logfile, path);
+    } else {
+        expect_string(__wrap_OS_CompressLog, logfile, path);
+    }
+}
+
 /* helpers */
 
 /* expect_string() keeps the pointer, so expected paths must outlive the helper. */
@@ -75,7 +88,7 @@ static void expect_manage_log(const char *logdir, const char *tag, const char *e
 
     path = next_path();
     snprintf(path, sizeof(path_pool[0]), "%s.%s", base, ext);
-    expect_string(__wrap_OS_CompressLog, logfile, path);
+    expect_compression(tag, path);
 
     for (int i = 0;; i++) {
         path = next_path();
@@ -96,7 +109,7 @@ static void expect_manage_log(const char *logdir, const char *tag, const char *e
         }
 
         expect_FileSize(path, 1024);
-        expect_string(__wrap_OS_CompressLog, logfile, path);
+        expect_compression(tag, path);
     }
 }
 
@@ -114,6 +127,7 @@ static int setup_compress(void **state) {
     path_pool_used = 0;
     test_mode = 1;
     mond.compress = 1;
+    mond.global.compression_method = W_LOG_COMPRESSION_GZIP;
     return 0;
 }
 
@@ -121,12 +135,14 @@ static int setup_no_compress(void **state) {
     path_pool_used = 0;
     test_mode = 1;
     mond.compress = 0;
+    mond.global.compression_method = W_LOG_COMPRESSION_GZIP;
     return 0;
 }
 
 static int teardown(void **state) {
     test_mode = 0;
     mond.compress = 0;
+    mond.global.compression_method = W_LOG_COMPRESSION_GZIP;
     return 0;
 }
 
@@ -171,8 +187,23 @@ void test_manage_files_no_compress(void **state) {
     manage_files(CDAY, CMON, CYEAR);
 }
 
+void test_manage_files_zstd_rotated(void **state) {
+    const rot_state_t rot[] = {ROT_FULL, ROT_FULL, ROT_END};
+    mond.global.compression_method = W_LOG_COMPRESSION_ZSTD;
+    expect_manage_files(rot);
+    manage_files(CDAY, CMON, CYEAR);
+}
+
+void test_manage_files_zstd_no_compress(void **state) {
+    mond.global.compression_method = W_LOG_COMPRESSION_ZSTD;
+    expect_manage_files(NULL);
+    manage_files(CDAY, CMON, CYEAR);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_manage_files_zstd_rotated, setup_compress, teardown),
+        cmocka_unit_test_setup_teardown(test_manage_files_zstd_no_compress, setup_no_compress, teardown),
         cmocka_unit_test_setup_teardown(test_manage_files_compress_rotated, setup_compress, teardown),
         cmocka_unit_test_setup_teardown(test_manage_files_compress_base_only, setup_compress, teardown),
         cmocka_unit_test_setup_teardown(test_manage_files_compress_gap, setup_compress, teardown),

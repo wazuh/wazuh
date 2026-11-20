@@ -35,7 +35,7 @@ set_target_properties(
     LINKER_LANGUAGE C
 )
 
-target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} ${SRC_FOLDER}/external/zstd/lib/libzstd.a -lpthread)
 target_link_libraries(MAILD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 #include wrappers
@@ -53,7 +53,7 @@ list(APPEND monitord_tests_flags "-Wl,--wrap,SendMSG -Wl,--wrap,wdb_find_agent\
                                   -Wl,--wrap,w_rotate_log -Wl,--wrap,stat ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND monitord_tests_names "test_manage_files")
-list(APPEND monitord_tests_flags "-Wl,--wrap,OS_SignLog -Wl,--wrap,OS_CompressLog -Wl,--wrap,IsFile -Wl,--wrap,FileSize\
+list(APPEND monitord_tests_flags "-Wl,--wrap,OS_SignLog -Wl,--wrap,OS_CompressLog -Wl,--wrap,OS_CompressLogZstd -Wl,--wrap,IsFile -Wl,--wrap,FileSize\
                                   -Wl,--wrap,wfopen")
 
 list(APPEND monitord_tests_names "test_moncom")

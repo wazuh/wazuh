@@ -28,8 +28,11 @@ typedef struct __eps {
     bool maximum_found;
 } _eps;
 
+typedef enum { W_LOG_COMPRESSION_GZIP = 0, W_LOG_COMPRESSION_ZSTD } w_log_compression;
+
 /* Configuration structure */
 typedef struct __Config {
+    w_log_compression compression_method;
     u_int8_t logall;
     u_int8_t logall_json;
     u_int8_t stats;
