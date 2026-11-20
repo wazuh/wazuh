@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "file_entry_reader.hpp"
 #include "igroup_wrapper.hpp"
 
 #include <grp.h>
@@ -41,6 +42,15 @@ class GroupWrapperLinux : public IGroupWrapperLinux
         int getgrent_r(struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const override
         {
             return ::getgrent_r(resultbuf, buffer, buflen, result);
+        }
+
+        /// @brief Reads the next group entry from a group file (such as /etc/group).
+        int fgetgrent_r(FILE* stream, struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const override
+        {
+            return readFileEntry(stream, [&]()
+            {
+                return ::fgetgrent_r(stream, resultbuf, buffer, buflen, result);
+            });
         }
 
         /// @brief Retrieves the next group entry from the group database.

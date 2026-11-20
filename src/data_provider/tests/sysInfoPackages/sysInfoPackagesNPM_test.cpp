@@ -10,6 +10,7 @@
  */
 
 #include "sysInfoPackagesNPM_test.hpp"
+#include "scopedTestDirectory.hpp"
 
 using testing::_;
 using testing::Return;
@@ -235,4 +236,34 @@ TEST_F(NPMTest, getPackages_OversizedPackageJsonIsSkipped)
     });
 
     EXPECT_FALSE(callbackCalled);
+}
+
+TEST_F(NPMTest, getPackages_UnmountedAutomountedHomeIsNotExplored)
+{
+    const ScopedTestDirectory directory {"wazuh_npm_automount"};
+    const auto& base {directory.path()};
+    std::filesystem::create_directories(base / "home" / "alice" / ".npm-global" / "lib");
+    std::filesystem::create_directories(base / "home" / "bob" / ".npm-global" / "lib");
+
+    // The expansion asks the file system about each home directory; bob's home is not mounted
+    EXPECT_CALL(*npm, is_unmounted_automount_point(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*npm, is_unmounted_automount_point(std::filesystem::path(base / "home" / "bob"))).WillOnce(Return(true));
+    EXPECT_CALL(*npm, exists(base / "home" / "alice" / ".npm-global" / "lib" / "node_modules")).WillOnce(Return(false));
+    EXPECT_CALL(*npm, exists(base / "home" / "bob" / ".npm-global" / "lib" / "node_modules")).Times(0);
+
+    std::set<std::string> folders = {(base / "home" / "*" / ".npm-global" / "lib").string()};
+    npm->getPackages(folders, [](nlohmann::json&) {});
+}
+
+TEST_F(NPMTest, DefaultHomePatternsHaveTheHomeAsFirstWildcard)
+{
+    // The collector only checks the first wildcard level for automount points that are not mounted
+    // yet, so a per-user pattern with another wildcard before the home would mount every home again
+    for (const auto& pattern : UNIX_NPM_DEFAULT_BASE_DIRS)
+    {
+        if (pattern.rfind("/home/", 0) == 0)
+        {
+            EXPECT_EQ(pattern.rfind("/home/*/", 0), 0u) << pattern;
+        }
+    }
 }

@@ -16,6 +16,21 @@
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
 
 /**
+ * @brief Get an integer definition with a fallback default value.
+ *
+ * Tries the local defines file first, then the main defines file.
+ * If neither contains the option, returns @p default_val instead of exiting.
+ *
+ * @param high_name Module name (e.g. "rootcheck").
+ * @param low_name  Option name (e.g. "max_pid").
+ * @param min       Minimum accepted value.
+ * @param max       Maximum accepted value.
+ * @param default_val Value returned when the option is not found in any file.
+ * @return The option value, or @p default_val when absent.
+ */
+int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val) __attribute__((nonnull(1, 2)));
+
+/**
  * @brief Read a run-time definition as a string, for values that the caller parses.
  *
  * Exits if the definition is not found.

@@ -15,6 +15,12 @@
 
 #include "shared.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifndef WIN32
 
 #ifdef __MACH__
@@ -77,11 +83,45 @@ void gettime(struct timespec * ts) {
     ts->tv_nsec = (li.QuadPart % 10000000) * 100;
 }
 
+typedef ULONGLONG (WINAPI * w_tick_count64_t)(void);
+
+// Extends a 32-bit tick count, which wraps every ~49.7 days, to 64 bits.
+STATIC ULONGLONG w_extend_tick_count(DWORD * last, ULONGLONG * high, DWORD tick) {
+    if (tick < *last) {
+        *high += 1ULL << 32;
+    }
+
+    *last = tick;
+    return *high | tick;
+}
+
+// Milliseconds since boot. GetTickCount64() needs Vista or later, so it is resolved at run time and the agent
+// still loads on XP and Server 2003, where the 32-bit GetTickCount() is extended instead.
+static ULONGLONG w_tick_count_ms(void) {
+    static pthread_mutex_t tick_mutex = PTHREAD_MUTEX_INITIALIZER;
+    static DWORD tick_last = 0;
+    static ULONGLONG tick_high = 0;
+    HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
+    w_tick_count64_t tick_count64 = kernel32 ? (w_tick_count64_t)(void (*)(void)) GetProcAddress(kernel32, "GetTickCount64") : NULL;
+    ULONGLONG ms;
+
+    if (tick_count64 != NULL) {
+        return tick_count64();
+    }
+
+    // Read inside the lock: a tick read outside it could be stored after a newer one and count a false wrap.
+    w_mutex_lock(&tick_mutex);
+    ms = w_extend_tick_count(&tick_last, &tick_high, GetTickCount());
+    w_mutex_unlock(&tick_mutex);
+
+    return ms;
+}
+
 #endif
 
 time_t w_get_monotonic_time(void) {
 #ifdef WIN32
-    return (time_t)(GetTickCount64() / 1000);
+    return (time_t)(w_tick_count_ms() / 1000);
 #elif defined(__MACH__)
     clock_serv_t cclock;
     mach_timespec_t mts;
