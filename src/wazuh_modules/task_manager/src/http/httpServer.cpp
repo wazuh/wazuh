@@ -118,10 +118,12 @@ namespace task_manager::http
 
         // Agent tasks. Data class: these carry producer-authored payloads and are the only routes
         // whose volume can be driven by something outside the manager, so they are the ones that
-        // should shed first under memory pressure.
+        // should shed first under memory pressure. The WPK authorization lookup rides with them:
+        // its caller treats a shed request as a retryable failure, never as a refusal.
         route(Method::Post, "/v1/tasks", RouteClass::Data, &ApiHandlers::createAgentTask);
         route(Method::Post, "/v1/tasks/bulk", RouteClass::Data, &ApiHandlers::createAgentTasksBulk);
         route(Method::Post, "/v1/tasks/pending", RouteClass::Data, &ApiHandlers::takePendingAgentTasks);
+        route(Method::Post, "/v1/tasks/wpk-authorization", RouteClass::Data, &ApiHandlers::authorizeWpkDownload);
 
         // Manager tasks. Control class: other daemons depend on these -- authd's deletion record
         // is created here -- so they must never be shed by agent-task pressure.

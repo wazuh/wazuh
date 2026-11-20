@@ -178,7 +178,10 @@ namespace task_manager::http
                              NotifyFn notifyManagerTask,
                              std::shared_ptr<metrics::TaskMetrics> metrics,
                              const int maxPayloadBytes,
-                             const int maxTasksPerPoll)
+                             const int maxTasksPerPoll,
+                             const std::chrono::seconds agentTaskTtl,
+                             const std::chrono::seconds cleanupInterval,
+                             std::function<Timestamp()> now)
         : m_store {store}
         , m_registry {registry}
         , m_cache {cache}
@@ -186,6 +189,9 @@ namespace task_manager::http
         , m_metrics {std::move(metrics)}
         , m_maxPayloadBytes {maxPayloadBytes}
         , m_maxTasksPerPoll {maxTasksPerPoll}
+        , m_agentTaskTtl {agentTaskTtl}
+        , m_cleanupInterval {cleanupInterval}
+        , m_now {now ? std::move(now) : std::function<Timestamp()> {nowSeconds}}
     {
     }
 
@@ -386,6 +392,49 @@ namespace task_manager::http
         }
 
         return ApiResponse::ok(nlohmann::json {{"tasks", std::move(out)}});
+    }
+
+    ApiResponse ApiHandlers::authorizeWpkDownload(const nlohmann::json& body)
+    {
+        const auto agentId {optionalString(body, "agent_id")};
+        if (!agentId.has_value() || agentId->empty())
+        {
+            return ApiResponse::error(400, "parsing_error", "agent_id is required");
+        }
+
+        const auto wpkFile {optionalString(body, "wpk_file")};
+        if (!wpkFile.has_value() || wpkFile->empty())
+        {
+            return ApiResponse::error(400, "parsing_error", "wpk_file is required");
+        }
+
+        // The negative cache is deliberately not consulted: it only records that nothing is
+        // PENDING, and a delivered task is exactly the one an agent is about to download.
+        // A pending row is handed out until the cleanup pass expires it, at most agentTaskTtl +
+        // cleanupInterval after creation, and the node that hands it out authorizes agentTaskTtl
+        // more. A node that did not deliver it cannot tell that it was delivered elsewhere, so it
+        // keeps the row open for that whole span and never closes before the delivering node.
+        const auto now {m_now()};
+        const auto ttl {static_cast<Timestamp>(m_agentTaskTtl.count())};
+        const auto createdNotBefore {now - 2 * ttl - static_cast<Timestamp>(m_cleanupInterval.count())};
+        const auto tasks {m_store.openAgentTasks(*agentId, REMOTE_UPGRADE_TASK_TYPE, createdNotBefore, now - ttl)};
+
+        for (const auto& task : tasks)
+        {
+            const auto payload = nlohmann::json::parse(task.payload, nullptr, false);
+            if (payload.is_discarded() || !payload.is_object())
+            {
+                continue;
+            }
+
+            const auto file {payload.find("wpk_file")};
+            if (file != payload.end() && file->is_string() && file->get_ref<const std::string&>() == *wpkFile)
+            {
+                return ApiResponse::ok(nlohmann::json {{"task_id", task.taskId}});
+            }
+        }
+
+        return ApiResponse::ok(nlohmann::json {{"task_id", nullptr}});
     }
 
     ApiResponse ApiHandlers::createManagerTask(const nlohmann::json& body)

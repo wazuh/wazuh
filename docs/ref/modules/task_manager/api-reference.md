@@ -15,6 +15,7 @@ The [README](README.md#http-interface) summarises the surface; this page is the 
 | `POST` | `/v1/tasks` | Data | [Create an agent task](#post-v1tasks) |
 | `POST` | `/v1/tasks/bulk` | Data | [Create a batch of agent tasks](#post-v1tasksbulk) |
 | `POST` | `/v1/tasks/pending` | Data | [Take an agent's pending tasks](#post-v1taskspending) |
+| `POST` | `/v1/tasks/wpk-authorization` | Data | [Look up the task authorizing a WPK download](#post-v1taskswpk-authorization) |
 | `POST` | `/v1/manager-tasks` | Control | [Create a manager task](#post-v1manager-tasks) |
 | `POST` | `/v1/manager-tasks/get` | Control | [Get a manager task by id](#post-v1manager-tasksget) |
 | `POST` | `/v1/manager-tasks/by-agent` | Control | [Get an agent's manager task of one type](#post-v1manager-tasksby-agent) |
@@ -26,15 +27,15 @@ The [README](README.md#http-interface) summarises the surface; this page is the 
 | `GET` | `/v1/metrics` | Control | The metrics dump — see [Metrics](metrics.md) |
 
 Every path is versioned, the two `GET`s included; an unversioned or unknown path answers `404`
-`{"error":"Unknown endpoint","code":404}`, and a known path with the wrong method `405`. All twelve routes are registered on every start; the
+`{"error":"Unknown endpoint","code":404}`, and a known path with the wrong method `405`. All thirteen routes are registered on every start; the
 upgrade routes stay registered with `<upgrade_enabled>no</upgrade_enabled>` and refuse every agent
 instead.
 
 **Classes** are the transport's shedding contract ([uds_http_server](../utils/uds-http-server/README.md)):
 
 - **Data** — the agent-task routes carry producer-authored payloads whose volume something outside
-  the manager can drive, so they are charged the in-flight byte budget and shed first (`503`) under
-  memory pressure.
+  the manager can drive (`/v1/tasks/wpk-authorization` is a read-only lookup with a two-field body), so they are
+  charged the in-flight byte budget and shed first (`503`) under memory pressure.
 - **Control** — other daemons depend on these (authd's deletion record is created here), so agent-task
   pressure never sheds them; each is bounded by its own body and session cap instead.
 - **Liveness** — `/v1/health` keeps answering under any pressure.
@@ -107,6 +108,27 @@ at most `max_tasks_per_poll` of them, or `{"tasks": []}`. `payload` is the JSON 
 stored, not a string. **Handing a task out marks it delivered** — a read with a side effect; delivery
 retries are the caller's (remoted's) job. An agent known to have nothing pending is answered from the
 negative cache without touching the database.
+
+### `POST /v1/tasks/wpk-authorization`
+
+| Field | Required | Rule |
+|---|---|---|
+| `agent_id` | yes | non-empty string |
+| `wpk_file` | yes | non-empty string |
+
+A missing or empty field, or a non-string one, answers `400` `parsing_error`. Answers `200`
+`{"task_id": "<id>"}` or `{"task_id": null}`.
+
+The `task_id` is that of the agent's most recent `remote_upgrade` task (`create_time` descending, ties
+broken by `task_id` descending) that is either `delivered` and delivered at most `task_ttl` seconds ago
+(and still present: the cleanup pass deletes delivered rows 24 h after delivery), or `pending` or
+`expired` and created at most `2 * task_ttl + cleanup_interval` seconds ago (see
+[Agent upgrades](agent-upgrades.md)), and whose `payload.wpk_file` equals the
+requested name exactly. Rows whose payload is not an object with a string `wpk_file` are ignored.
+
+Read-only: it marks nothing delivered and neither reads nor changes the negative cache of
+`/v1/tasks/pending`. It is a Data route, so under memory pressure it is answered `503` before the
+Control routes; a caller must treat any answer other than `200` as a failure, never as a refusal.
 
 ## Manager tasks
 

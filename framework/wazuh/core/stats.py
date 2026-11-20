@@ -150,6 +150,7 @@ _REMOTED_METRIC_GROUPS = {
         'not_found': 'remoted.download.not_found',
         'open_error': 'remoted.download.open_error',
         'bytes_total': 'remoted.download.bytes.total',
+        'wpk_auth_unavailable': 'remoted.download.wpk_auth_unavailable',
     },
     # The listener's own certificate: days to expiry (negative once expired) and whether the CA
     # `GET /cacerts` hands out signs it. Both pulls read 0 while the listener is down.
