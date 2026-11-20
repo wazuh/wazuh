@@ -2,12 +2,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <future>
 #include <mutex>
 #include <optional>
 #include <regex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -1048,4 +1050,88 @@ TEST_F(WorkerTest, TesterWorkerRecoversAfterIdFailure)
     std::string eventId;
     ASSERT_EQ(outEvent->getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
     EXPECT_TRUE(std::regex_match(eventId, uuidV4Regex())) << eventId;
+}
+
+// An exception while processing a test event reaches the caller as an error; the tester keeps serving.
+TEST_F(WorkerTest, TesterWorkerReturnsErrorWhenIngestTestThrows)
+{
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
+    test::Options opts(test::Options::TraceLevel::NONE, {}, "env1");
+
+    std::mutex resultMutex;
+    std::array<std::optional<base::RespOrError<test::Output>>, 2> results;
+    std::array<int, 2> invocations {0, 0};
+    std::array<std::promise<void>, 2> done;
+    std::array<std::future<void>, 2> doneFuture {done[0].get_future(), done[1].get_future()};
+    auto makeCallback = [&](std::size_t idx)
+    {
+        return [&, idx](base::RespOrError<test::Output>&& output)
+        {
+            std::lock_guard<std::mutex> lock(resultMutex);
+            results[idx].emplace(std::move(output));
+            if (++invocations[idx] == 1)
+            {
+                done[idx].set_value();
+            }
+        };
+    };
+    auto first =
+        std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"test": 1})"), opts, makeCallback(0));
+    auto second =
+        std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"test": 2})"), opts, makeCallback(1));
+
+    expectEnvironmentBuild("asset/test/0");
+    EXPECT_CALL(*m_mockController, subscribe(_, _)).Times(0);
+    EXPECT_CALL(*m_mockController, ingestGet(_))
+        .Times(2)
+        .WillOnce(Throw(std::runtime_error("boom")))
+        .WillOnce([](base::Event&& ev) { return ev; });
+    EXPECT_CALL(*m_mockController, unsubscribeAll()).Times(1);
+
+    std::atomic<int> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](test::EventTest& ev, int64_t) -> bool
+            {
+                const auto c = callCount.fetch_add(1);
+                if (c == 0)
+                {
+                    ev = first;
+                    return true;
+                }
+                if (c == 1)
+                {
+                    ev = second;
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return false;
+            });
+
+    TesterWorker worker(m_envBuilder, mockQueue);
+    const router::test::EntryPost entryPost {"env1", cm::store::NamespaceId {"policy_name_0"}, 1000};
+    ASSERT_FALSE(worker.get()->addEntry(entryPost, false).has_value());
+    ASSERT_FALSE(worker.get()->enableEntry("env1").has_value());
+
+    worker.start();
+    const auto status0 = doneFuture[0].wait_for(std::chrono::seconds(2));
+    const auto status1 = doneFuture[1].wait_for(std::chrono::seconds(2));
+    worker.stop();
+    ASSERT_EQ(status0, std::future_status::ready) << "The first tester callback was not invoked";
+    ASSERT_EQ(status1, std::future_status::ready) << "The second tester callback was not invoked";
+
+    std::lock_guard<std::mutex> lock(resultMutex);
+    EXPECT_EQ(invocations[0], 1);
+    EXPECT_EQ(invocations[1], 1);
+    ASSERT_TRUE(results[0].has_value());
+    ASSERT_TRUE(results[1].has_value());
+    ASSERT_TRUE(base::isError(*results[0]));
+    EXPECT_NE(base::getError(*results[0]).message.find("Failed processing the test event: boom"), std::string::npos)
+        << base::getError(*results[0]).message;
+    ASSERT_FALSE(base::isError(*results[1]));
+    const auto& outEvent = base::getResponse<test::Output>(*results[1]).event();
+    ASSERT_NE(outEvent, nullptr);
+    std::string eventId;
+    ASSERT_EQ(outEvent->getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
+    EXPECT_FALSE(eventId.empty());
 }
