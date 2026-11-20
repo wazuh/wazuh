@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <cstring>
+#include <filesystem>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -30,7 +31,6 @@
 #include <tuple>
 #include <utility>
 #include <vector>
-#include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "networkHelper.h"
 
@@ -743,7 +743,9 @@ class NetworkLinuxAddressResolver final
         // without /proc/net/if_inet6 there is nothing to ask.
         static IPv6Gateways dumpIPv6DefaultGatewaysIfEnabled(const std::string& interfacesPath)
         {
-            if (!Utils::existsRegular(interfacesPath))
+            std::error_code ec;
+
+            if (!std::filesystem::is_regular_file(interfacesPath, ec))
             {
                 return {};
             }
