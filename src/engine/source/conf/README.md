@@ -218,7 +218,7 @@ A range is checked even when the module that reads the key is disabled.
 | Effective value outside its range | `load()` throws `std::runtime_error`, handled as above |
 | Bad range at registration (empty, negative for `size_t`, default outside) | `addUnit` throws `std::logic_error` |
 | Missing file | `FileLoader` logs a warning and returns an empty map |
-| Refused or unreadable file (link, hard link, not regular, foreign owner, group/world-writable) | `FileLoader` logs an error and returns an empty map; `-t` still exits `0` |
+| Refused or unreadable file (link, hard link, not regular, foreign owner, group/world-writable) | `FileLoader` logs an error and returns an empty map; `-t` prints it on stderr and still exits `0` |
 | Invalid env var at `get()` time (only without `load()`) | Warning logged, falls through to next source |
 | Invalid file value at `get()` time (only without `load()`) | Warning logged, falls through to default |
 | Unknown key at `get()` time | Throws `std::runtime_error` |

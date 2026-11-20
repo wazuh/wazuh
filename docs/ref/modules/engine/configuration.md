@@ -69,7 +69,9 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 - `wazuh-manager-analysisd -t` (run by every `wazuh-manager-control start`, `restart`, `reload` and `check`) loads
   this file the same way and applies the same type and range checks, so a bad `analysisd.*` value is refused
   before the manager is stopped. It reads the environment of the shell that runs it, while the `wazuh-manager`
-  systemd unit starts the engine with no environment.
+  systemd unit starts the engine with no environment. It writes no log file: a refused file, an invalid line or
+  any other warning or error from the load is printed to stderr, which `wazuh-manager-control` relays, and does not
+  change its exit code.
 - In standalone mode the file is never loaded: only the environment variable and the default apply.
 - `Mode` in the tables tells where a setting is read: `both`, `manager` (only when the engine runs inside
   `wazuh-manager`) or `standalone` (only in standalone mode, so only its environment variable can set it).
