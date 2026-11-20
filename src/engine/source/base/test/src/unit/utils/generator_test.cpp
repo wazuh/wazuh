@@ -216,6 +216,27 @@ int fakePartialFailureThenKnown(unsigned char* buf, int n)
     return 1;
 }
 
+// The initial buffer succeeds; its first refill writes partially and fails; later draws use KNOWN_PREFIX.
+int fakeRefillFailureThenKnown(unsigned char* buf, int n)
+{
+    const auto call = recordCall(n);
+    if (call == 0)
+    {
+        std::memset(buf, 0xaa, static_cast<size_t>(n));
+        return 1;
+    }
+    if (call == 1)
+    {
+        std::memset(buf, 0xee, static_cast<size_t>(std::min(n, 5)));
+        return 0;
+    }
+    for (int i = 0; i < n; ++i)
+    {
+        buf[i] = KNOWN_PREFIX[static_cast<size_t>(i) % KNOWN_PREFIX.size()];
+    }
+    return 1;
+}
+
 // Unpadded base64url decoder (RFC 4648 §5), independent from the production encoder.
 std::optional<std::vector<uint8_t>> decodeBase64Url(const std::string& in)
 {
@@ -1020,6 +1041,54 @@ TEST(GeneratorTest, UUIDv4FailureThrowsAndRetries)
     EXPECT_EQ(g_fakeCalls.load(), 3);
 }
 
+TEST(GeneratorTest, UUIDv4RefillFailureThrowsAndRetries)
+{
+    resetFakeState();
+    RandSourceGuard guard(&fakeRefillFailureThenKnown);
+
+    bool initialIdsMatch = true;
+    int callsAfter256 = -1;
+    bool refillThrew = false;
+    bool refillThrewOther = false;
+    int callsAfterFailure = -1;
+    std::string recovered;
+    onFreshThread(
+        [&]()
+        {
+            for (int i = 0; i < 256; ++i)
+            {
+                const auto id = safeGenerateUUIDv4();
+                initialIdsMatch = initialIdsMatch && id == "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+            }
+            callsAfter256 = g_fakeCalls.load();
+
+            try
+            {
+                generateUUIDv4();
+            }
+            catch (const std::runtime_error&)
+            {
+                refillThrew = true;
+            }
+            catch (...)
+            {
+                refillThrewOther = true;
+            }
+            callsAfterFailure = g_fakeCalls.load();
+            recovered = safeGenerateUUIDv4();
+        });
+
+    EXPECT_TRUE(initialIdsMatch);
+    EXPECT_EQ(callsAfter256, 1);
+    EXPECT_TRUE(refillThrew);
+    EXPECT_FALSE(refillThrewOther);
+    EXPECT_EQ(callsAfterFailure, 2);
+    EXPECT_EQ(g_fakeCalls.load(), 3);
+    EXPECT_EQ(fakeSizes(), (std::vector<int> {4096, 4096, 4096}));
+    // Recovery must use a new draw, neither the initial 0xaa bytes nor the partial failed 0xee bytes.
+    EXPECT_EQ(recovered, "10325476-98ba-4cfe-8123-456710325476");
+}
+
 TEST(GeneratorTest, UUIDv4NewStateAfterFork)
 {
     int fds[2];
@@ -1060,7 +1129,13 @@ TEST(GeneratorTest, UUIDv4NewStateAfterFork)
                     const auto grandchildId = safeGenerateUUIDv4();
                     ::_exit(!grandchildId.empty() && writeLine(fds[1], grandchildId) ? 0 : 1);
                 }
-                ::_exit(exitedOk(waitChild(grandchild)) ? 0 : 1);
+                if (!exitedOk(waitChild(grandchild)))
+                {
+                    ::_exit(1);
+                }
+                // Write after the grandchild exits, preserving the order of the pipe records.
+                const auto childNext = safeGenerateUUIDv4();
+                ::_exit(!childNext.empty() && writeLine(fds[1], childNext) ? 0 : 1);
             }
             forked = true;
             status = waitChild(child);
@@ -1073,17 +1148,21 @@ TEST(GeneratorTest, UUIDv4NewStateAfterFork)
 
     ASSERT_TRUE(forked);
     ASSERT_TRUE(exitedOk(status)) << "child failed or timed out";
-    ASSERT_EQ(lines.size(), 2U);
+    ASSERT_EQ(lines.size(), 3U);
 
     const auto& childId = lines[0];
     const auto& grandchildId = lines[1];
+    const auto& childNext = lines[2];
     ASSERT_TRUE(isWellFormedUuidV4(parentFirst)) << parentFirst;
     ASSERT_TRUE(isWellFormedUuidV4(parentNext)) << parentNext;
     ASSERT_TRUE(isWellFormedUuidV4(childId)) << childId;
     ASSERT_TRUE(isWellFormedUuidV4(grandchildId)) << grandchildId;
+    ASSERT_TRUE(isWellFormedUuidV4(childNext)) << childNext;
 
     // Without the fork handler the child would serve the next slot of the buffer it inherited: the parent's next id
     EXPECT_NE(childId, parentNext);
+    // Likewise, a grandchild reusing its inherited buffer would serve the child's next id.
+    EXPECT_NE(grandchildId, childNext);
     EXPECT_NE(grandchildId, parentNext);
     EXPECT_NE(grandchildId, childId);
     EXPECT_NE(childId, parentFirst);
