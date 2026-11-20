@@ -15,6 +15,7 @@
 
 #include <cstring>
 #include <string>
+#include <utility>
 
 namespace od
 {
@@ -25,7 +26,7 @@ namespace od
     static NSArray* queryLocalNode(ODRecordType recordType,
                                    ODAttributeType attribute,
                                    id queryValues,
-                                   ODAttributeType returnAttributes)
+                                   id returnAttributes)
     {
         ODSession* session = [ODSession defaultSession];
         NSError* err = nullptr;
@@ -429,6 +430,55 @@ namespace od
                 }
             }
 
+            return true;
+        }
+    }
+
+    bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup)
+    {
+        @autoreleasepool
+        {
+            // Every group has a gid, so a null value matches all of them, as in genEntries().
+            NSArray* results = queryLocalNode(kODRecordTypeGroups,
+                                              kODAttributeTypePrimaryGroupID,
+                                              nil,
+                                              @[kODAttributeTypeGroupMembership, kODAttributeTypeGroupMembers]);
+
+            if (results == nil)
+            {
+                return false;
+            }
+
+            std::map<std::string, ODGroupMembers> collected;
+
+            for (ODRecord * re in results)
+            {
+                NSError* namesErr = nullptr;
+                NSError* uuidsErr = nullptr;
+                NSArray* names = [re valuesForAttribute:kODAttributeTypeGroupMembership error:&namesErr];
+                NSArray* uuids = [re valuesForAttribute:kODAttributeTypeGroupMembers error:&uuidsErr];
+
+                // A partial member list would drop a group from a user, so an unreadable group
+                // fails the whole read instead of passing as a group with fewer members.
+                if (namesErr != nullptr || uuidsErr != nullptr)
+                {
+                    return false;
+                }
+
+                auto& members = collected[toStdString([re recordName])];
+
+                for (id name in names)
+                {
+                    members.names.insert(toStdString([name description]));
+                }
+
+                for (id uuid in uuids)
+                {
+                    members.uuids.insert(toStdString([uuid description]));
+                }
+            }
+
+            membersByGroup = std::move(collected);
             return true;
         }
     }

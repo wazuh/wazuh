@@ -92,4 +92,13 @@ class ODUtilsWrapper : public IODUtilsWrapper
         {
             return od::genDisabledUsers(disabledUsers);
         }
+
+        /// @brief Reads the direct members of every local group in a single query.
+        ///
+        /// @param membersByGroup Output map of group record name to its direct members.
+        /// @return True when the directory was read, false when it could not be.
+        bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup) override
+        {
+            return od::genGroupMembers(membersByGroup);
+        }
 };

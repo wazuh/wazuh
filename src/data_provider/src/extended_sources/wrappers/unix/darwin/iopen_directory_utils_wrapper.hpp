@@ -14,6 +14,16 @@
 #include <string>
 #include "json.hpp"
 
+/// @brief Direct members of one group record, as OpenDirectory stores them.
+///
+/// A group lists a member by name (`GroupMembership`), by the member's GUID (`GroupMembers`), or
+/// both. Groups nested inside it (`NestedGroups`) are not members and are never listed here.
+struct ODGroupMembers
+{
+    std::set<std::string> names;
+    std::set<std::string> uuids;
+};
+
 // Interface for the open directory utils wrapper
 class IODUtilsWrapper
 {
@@ -82,4 +92,15 @@ class IODUtilsWrapper
         /// @return True when the directory was read, false when it could not be: an empty set then
         /// means the membership is unknown rather than nobody being disabled.
         virtual bool genDisabledUsers(std::set<std::string>& disabledUsers) = 0;
+
+        /// @brief Reads the direct members of every local group in a single query.
+        ///
+        /// Only what the group record lists is returned: members by name and by GUID, without
+        /// expanding nested groups. getgrent() cannot be used for this, its `gr_mem` leaves out
+        /// the members a group lists only by GUID.
+        ///
+        /// @param membersByGroup Output map of group record name to its direct members.
+        /// @return True when the directory was read, false when it could not be: the map is then
+        /// not to be trusted, it does not mean the groups have no members.
+        virtual bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup) = 0;
 };
