@@ -434,13 +434,25 @@ TEST_F(WorkerTest, RouterWorkerRecoversAfterIdFailure)
 
     std::mutex payloadMutex;
     std::vector<std::string> rawPayloads;
+    std::vector<std::string> processedPayloads;
     ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
     EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>()))
-        .WillRepeatedly(
+        .Times(1)
+        .WillOnce(
             [&](const std::string& payload)
             {
                 std::lock_guard<std::mutex> lock(payloadMutex);
                 rawPayloads.push_back(payload);
+            });
+
+    expectEnvironmentBuild("asset/wazuh/0");
+    EXPECT_CALL(*m_mockController, ingest(_))
+        .Times(1)
+        .WillOnce(
+            [&](base::Event&& ev)
+            {
+                std::lock_guard<std::mutex> lock(payloadMutex);
+                processedPayloads.push_back(ev->str());
             });
 
     auto agentJson = std::make_shared<json::Json>(R"({"agent":{"id":"001","name":"test"}})");
@@ -465,6 +477,10 @@ TEST_F(WorkerTest, RouterWorkerRecoversAfterIdFailure)
             });
 
     RouterWorker worker(m_envBuilder, mockQueue, m_mockRawIndexer, nullptr);
+    const router::prod::EntryPost entryPost {"Production", cm::store::NamespaceId {"policy_name_0"}, 99};
+    ASSERT_FALSE(worker.get()->addEntry(entryPost, false).has_value());
+    ASSERT_FALSE(worker.get()->enableEntry("Production").has_value());
+
     worker.start();
     const auto status = processedFuture.wait_for(std::chrono::seconds(2));
     worker.stop();
@@ -475,10 +491,16 @@ TEST_F(WorkerTest, RouterWorkerRecoversAfterIdFailure)
 
     std::lock_guard<std::mutex> lock(payloadMutex);
     ASSERT_EQ(rawPayloads.size(), 1U);
+    ASSERT_EQ(processedPayloads.size(), 1U);
     json::Json raw(rawPayloads.front().c_str());
     std::string eventId;
     ASSERT_EQ(raw.getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
     EXPECT_TRUE(std::regex_match(eventId, uuidV4Regex())) << eventId;
+
+    const json::Json processedEvent(processedPayloads.front().c_str());
+    std::string processedEventId;
+    ASSERT_EQ(processedEvent.getString(processedEventId, "/wazuh/event/id"), json::RetGet::Success);
+    EXPECT_EQ(processedEventId, eventId);
 }
 
 TEST_F(WorkerTest, RouterWorkerGetReturnsRouter)
