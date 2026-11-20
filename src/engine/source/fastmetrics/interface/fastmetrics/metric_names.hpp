@@ -32,6 +32,7 @@ constexpr auto ROUTER_EPS_30M = "router.eps.30m";
 constexpr auto ROUTER_EVENTS_PROCESSED = "router.events.processed";
 constexpr auto ROUTER_EVENTS_DROPPED = "router.events.dropped";
 constexpr auto ROUTER_EVENTS_MALFORMED = "router.events.malformed";
+constexpr auto ROUTER_EVENTS_ID_FAILED = "router.events.id_failed";
 
 // Agent cache metrics
 constexpr auto AGENT_CACHE_ENTRIES = "agent.cache.entries";

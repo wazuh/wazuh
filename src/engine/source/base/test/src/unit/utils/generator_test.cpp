@@ -20,6 +20,7 @@
 #include <string>
 #include <thread>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <fcntl.h>
@@ -215,6 +216,27 @@ int fakePartialFailureThenKnown(unsigned char* buf, int n)
     return 1;
 }
 
+// The initial buffer succeeds; its first refill writes partially and fails; later draws use KNOWN_PREFIX.
+int fakeRefillFailureThenKnown(unsigned char* buf, int n)
+{
+    const auto call = recordCall(n);
+    if (call == 0)
+    {
+        std::memset(buf, 0xaa, static_cast<size_t>(n));
+        return 1;
+    }
+    if (call == 1)
+    {
+        std::memset(buf, 0xee, static_cast<size_t>(std::min(n, 5)));
+        return 0;
+    }
+    for (int i = 0; i < n; ++i)
+    {
+        buf[i] = KNOWN_PREFIX[static_cast<size_t>(i) % KNOWN_PREFIX.size()];
+    }
+    return 1;
+}
+
 // Unpadded base64url decoder (RFC 4648 §5), independent from the production encoder.
 std::optional<std::vector<uint8_t>> decodeBase64Url(const std::string& in)
 {
@@ -389,6 +411,71 @@ std::string safeGenerateDocId()
     {
         return {};
     }
+}
+
+// Generates one UUID in a child process context; never throws.
+std::string safeGenerateUUIDv4()
+{
+    try
+    {
+        return generateUUIDv4();
+    }
+    catch (...)
+    {
+        return {};
+    }
+}
+
+// Byte i of every call is i % 256, so each identifier of a draw comes from a known slice of the buffer.
+int fakeIndexPattern(unsigned char* buf, int n)
+{
+    recordCall(n);
+    for (int i = 0; i < n; ++i)
+    {
+        buf[i] = static_cast<unsigned char>(i % 256);
+    }
+    return 1;
+}
+
+// Every byte is 0xff, so only the version and variant masks shape the identifier.
+int fakeFillFF(unsigned char* buf, int n)
+{
+    recordCall(n);
+    std::memset(buf, 0xff, static_cast<size_t>(n));
+    return 1;
+}
+
+// 8-4-4-4-12 lowercase hexadecimal, version 4, variant [89ab].
+bool isWellFormedUuidV4(const std::string& id)
+{
+    if (id.size() != UUID_V4_LENGTH)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < id.size(); ++i)
+    {
+        const auto c = id[i];
+        if (i == 8 || i == 13 || i == 18 || i == 23)
+        {
+            if (c != '-')
+            {
+                return false;
+            }
+        }
+        else if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+        {
+            return false;
+        }
+    }
+    return id[14] == '4' && (id[19] == '8' || id[19] == '9' || id[19] == 'a' || id[19] == 'b');
+}
+
+// Runs fn on a new thread, whose per-thread generator state has not been initialized yet.
+template<typename Fn>
+void onFreshThread(Fn&& fn)
+{
+    std::thread t(std::forward<Fn>(fn));
+    t.join();
 }
 
 constexpr size_t THREADS = 16;
@@ -785,4 +872,351 @@ TEST(GeneratorTest, DocIdForkFromThreadWithoutState)
     ASSERT_TRUE(isWellFormedDocId(grandchildId)) << grandchildId;
     EXPECT_TRUE(isValidResourceId(grandchildId));
     EXPECT_NE(prefixOf(grandchildId), prefixOf(workerId));
+}
+
+TEST(GeneratorTest, UUIDv4FormatOverManyIds)
+{
+    // 10 000 identifiers span at least 39 refills of the per-thread buffer
+    for (size_t i = 0; i < 10000; ++i)
+    {
+        const auto id = generateUUIDv4();
+        ASSERT_TRUE(isWellFormedUuidV4(id)) << id;
+        ASSERT_TRUE(isValidResourceId(id)) << id;
+    }
+}
+
+TEST(GeneratorTest, UUIDv4UniqueAcrossThreads)
+{
+    std::vector<std::unordered_set<std::string>> perThread(THREADS);
+    std::vector<std::thread> threads;
+    for (size_t t = 0; t < THREADS; ++t)
+    {
+        threads.emplace_back(
+            [&perThread, t]()
+            {
+                auto& ids = perThread[t];
+                ids.reserve(IDS_PER_THREAD);
+                for (size_t i = 0; i < IDS_PER_THREAD; ++i)
+                {
+                    ids.insert(safeGenerateUUIDv4());
+                }
+            });
+    }
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    std::unordered_set<std::string> all;
+    all.reserve(THREADS * IDS_PER_THREAD);
+    for (auto& ids : perThread)
+    {
+        ASSERT_EQ(ids.size(), IDS_PER_THREAD);
+        all.merge(ids);
+    }
+    EXPECT_EQ(all.size(), THREADS * IDS_PER_THREAD);
+    EXPECT_EQ(all.count(""), 0U);
+}
+
+TEST(GeneratorTest, UUIDv4KnownSourceVectors)
+{
+    {
+        resetFakeState();
+        RandSourceGuard guard(&fakeIndexPattern);
+        std::vector<std::string> ids;
+        onFreshThread(
+            [&ids]()
+            {
+                for (int i = 0; i < 257; ++i)
+                {
+                    ids.push_back(safeGenerateUUIDv4());
+                }
+            });
+
+        ASSERT_EQ(ids.size(), 257U);
+        EXPECT_EQ(ids[0], "00010203-0405-4607-8809-0a0b0c0d0e0f");
+        EXPECT_EQ(ids[1], "10111213-1415-4617-9819-1a1b1c1d1e1f");
+        EXPECT_EQ(ids[255], "f0f1f2f3-f4f5-46f7-b8f9-fafbfcfdfeff");
+        // The 257th identifier comes from a new draw, which starts the pattern again
+        EXPECT_EQ(ids[256], ids[0]);
+        EXPECT_EQ(g_fakeCalls.load(), 2);
+    }
+
+    resetFakeState();
+    RandSourceGuard guard(&fakeFillFF);
+    std::string id;
+    onFreshThread([&id]() { id = safeGenerateUUIDv4(); });
+    // Only the version (4) and variant (10xx) bits are cleared
+    EXPECT_EQ(id, "ffffffff-ffff-4fff-bfff-ffffffffffff");
+}
+
+TEST(GeneratorTest, UUIDv4SourceDraws)
+{
+    resetFakeState();
+    RandSourceGuard guard(&fakeCounter);
+
+    std::string first;
+    std::string last;
+    int callsAfter256 = -1;
+    onFreshThread(
+        [&]()
+        {
+            first = safeGenerateUUIDv4();
+            for (int i = 1; i < 256; ++i)
+            {
+                safeGenerateUUIDv4();
+            }
+            callsAfter256 = g_fakeCalls.load();
+            last = safeGenerateUUIDv4();
+        });
+
+    // One 4096-byte draw serves 256 identifiers; the 257th draws again
+    EXPECT_EQ(callsAfter256, 1);
+    EXPECT_EQ(g_fakeCalls.load(), 2);
+    EXPECT_EQ(fakeSizes(), (std::vector<int> {4096, 4096}));
+    EXPECT_EQ(first, "01010101-0101-4101-8101-010101010101");
+    EXPECT_EQ(last, "02020202-0202-4202-8202-020202020202");
+}
+
+TEST(GeneratorTest, UUIDv4FailureThrowsAndRetries)
+{
+    {
+        resetFakeState();
+        RandSourceGuard guard(&fakePartialFailureThenKnown);
+        bool firstThrew = false;
+        bool firstThrewOther = false;
+        int callsAfterFailure = -1;
+        std::string second;
+        onFreshThread(
+            [&]()
+            {
+                try
+                {
+                    generateUUIDv4();
+                }
+                catch (const std::runtime_error&)
+                {
+                    firstThrew = true;
+                }
+                catch (...)
+                {
+                    firstThrewOther = true;
+                }
+                callsAfterFailure = g_fakeCalls.load();
+                second = safeGenerateUUIDv4();
+            });
+
+        EXPECT_TRUE(firstThrew);
+        EXPECT_FALSE(firstThrewOther);
+        EXPECT_EQ(callsAfterFailure, 1);
+        // The next call draws again and uses only the bytes of that draw, none left by the failed one
+        EXPECT_EQ(g_fakeCalls.load(), 2);
+        EXPECT_EQ(fakeSizes(), (std::vector<int> {4096, 4096}));
+        EXPECT_EQ(second, "10325476-98ba-4cfe-8123-456710325476");
+    }
+
+    // A source that keeps failing makes every call throw, and every call tries the source again
+    resetFakeState();
+    RandSourceGuard guard(&fakeFailure);
+    int throws = 0;
+    onFreshThread(
+        [&throws]()
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                try
+                {
+                    generateUUIDv4();
+                }
+                catch (const std::runtime_error&)
+                {
+                    ++throws;
+                }
+                catch (...)
+                {
+                }
+            }
+        });
+    EXPECT_EQ(throws, 3);
+    EXPECT_EQ(g_fakeCalls.load(), 3);
+}
+
+TEST(GeneratorTest, UUIDv4RefillFailureThrowsAndRetries)
+{
+    resetFakeState();
+    RandSourceGuard guard(&fakeRefillFailureThenKnown);
+
+    bool initialIdsMatch = true;
+    int callsAfter256 = -1;
+    bool refillThrew = false;
+    bool refillThrewOther = false;
+    int callsAfterFailure = -1;
+    std::string recovered;
+    onFreshThread(
+        [&]()
+        {
+            for (int i = 0; i < 256; ++i)
+            {
+                const auto id = safeGenerateUUIDv4();
+                initialIdsMatch = initialIdsMatch && id == "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+            }
+            callsAfter256 = g_fakeCalls.load();
+
+            try
+            {
+                generateUUIDv4();
+            }
+            catch (const std::runtime_error&)
+            {
+                refillThrew = true;
+            }
+            catch (...)
+            {
+                refillThrewOther = true;
+            }
+            callsAfterFailure = g_fakeCalls.load();
+            recovered = safeGenerateUUIDv4();
+        });
+
+    EXPECT_TRUE(initialIdsMatch);
+    EXPECT_EQ(callsAfter256, 1);
+    EXPECT_TRUE(refillThrew);
+    EXPECT_FALSE(refillThrewOther);
+    EXPECT_EQ(callsAfterFailure, 2);
+    EXPECT_EQ(g_fakeCalls.load(), 3);
+    EXPECT_EQ(fakeSizes(), (std::vector<int> {4096, 4096, 4096}));
+    // Recovery must use a new draw, neither the initial 0xaa bytes nor the partial failed 0xee bytes.
+    EXPECT_EQ(recovered, "10325476-98ba-4cfe-8123-456710325476");
+}
+
+TEST(GeneratorTest, UUIDv4NewStateAfterFork)
+{
+    int fds[2];
+    ASSERT_EQ(::pipe(fds), 0);
+
+    // A fresh thread forks, so the parent's first two identifiers come from the same buffer whatever earlier tests
+    // generated on the main thread
+    std::string parentFirst;
+    std::string parentNext;
+    std::optional<int> status;
+    bool forked = false;
+    onFreshThread(
+        [&]()
+        {
+            parentFirst = safeGenerateUUIDv4();
+            const pid_t child = ::fork();
+            if (child == -1)
+            {
+                return;
+            }
+            if (child == 0)
+            {
+                // Child: generates, forks a grandchild that generates too, and waits for it
+                ::close(fds[0]);
+                const auto childId = safeGenerateUUIDv4();
+                if (childId.empty() || !writeLine(fds[1], childId))
+                {
+                    ::_exit(1);
+                }
+
+                const pid_t grandchild = ::fork();
+                if (grandchild == -1)
+                {
+                    ::_exit(1);
+                }
+                if (grandchild == 0)
+                {
+                    const auto grandchildId = safeGenerateUUIDv4();
+                    ::_exit(!grandchildId.empty() && writeLine(fds[1], grandchildId) ? 0 : 1);
+                }
+                if (!exitedOk(waitChild(grandchild)))
+                {
+                    ::_exit(1);
+                }
+                // Write after the grandchild exits, preserving the order of the pipe records.
+                const auto childNext = safeGenerateUUIDv4();
+                ::_exit(!childNext.empty() && writeLine(fds[1], childNext) ? 0 : 1);
+            }
+            forked = true;
+            status = waitChild(child);
+            parentNext = safeGenerateUUIDv4();
+        });
+
+    ::close(fds[1]);
+    const auto lines = readLines(fds[0]);
+    ::close(fds[0]);
+
+    ASSERT_TRUE(forked);
+    ASSERT_TRUE(exitedOk(status)) << "child failed or timed out";
+    ASSERT_EQ(lines.size(), 3U);
+
+    const auto& childId = lines[0];
+    const auto& grandchildId = lines[1];
+    const auto& childNext = lines[2];
+    ASSERT_TRUE(isWellFormedUuidV4(parentFirst)) << parentFirst;
+    ASSERT_TRUE(isWellFormedUuidV4(parentNext)) << parentNext;
+    ASSERT_TRUE(isWellFormedUuidV4(childId)) << childId;
+    ASSERT_TRUE(isWellFormedUuidV4(grandchildId)) << grandchildId;
+    ASSERT_TRUE(isWellFormedUuidV4(childNext)) << childNext;
+
+    // Without the fork handler the child would serve the next slot of the buffer it inherited: the parent's next id
+    EXPECT_NE(childId, parentNext);
+    // Likewise, a grandchild reusing its inherited buffer would serve the child's next id.
+    EXPECT_NE(grandchildId, childNext);
+    EXPECT_NE(grandchildId, parentNext);
+    EXPECT_NE(grandchildId, childId);
+    EXPECT_NE(childId, parentFirst);
+    EXPECT_NE(grandchildId, parentFirst);
+}
+
+TEST(GeneratorTest, UUIDv4ForkFromThreadWithoutState)
+{
+    int fds[2];
+    ASSERT_EQ(::pipe(fds), 0);
+
+    // Fresh auxiliary process, forked while this test has no thread alive, so the scenario does not depend on the
+    // order in which gtest runs the tests
+    const pid_t helper = ::fork();
+    ASSERT_NE(helper, -1);
+    if (helper == 0)
+    {
+        ::close(fds[0]);
+
+        // A worker generates and ends
+        std::string workerId;
+        std::thread worker([&workerId]() { workerId = safeGenerateUUIDv4(); });
+        worker.join();
+        if (workerId.empty() || !writeLine(fds[1], workerId))
+        {
+            ::_exit(1);
+        }
+
+        // The main thread, which did not generate here, forks; the grandchild generates
+        const pid_t grandchild = ::fork();
+        if (grandchild == -1)
+        {
+            ::_exit(1);
+        }
+        if (grandchild == 0)
+        {
+            const auto grandchildId = safeGenerateUUIDv4();
+            ::_exit(!grandchildId.empty() && writeLine(fds[1], grandchildId) ? 0 : 1);
+        }
+        ::_exit(exitedOk(waitChild(grandchild)) ? 0 : 1);
+    }
+
+    ::close(fds[1]);
+    const auto status = waitChild(helper);
+    const auto lines = readLines(fds[0]);
+    ::close(fds[0]);
+
+    ASSERT_TRUE(exitedOk(status)) << "auxiliary process failed or timed out";
+    ASSERT_EQ(lines.size(), 2U);
+
+    const auto& workerId = lines[0];
+    const auto& grandchildId = lines[1];
+    ASSERT_TRUE(isWellFormedUuidV4(workerId)) << workerId;
+    ASSERT_TRUE(isWellFormedUuidV4(grandchildId)) << grandchildId;
+    EXPECT_TRUE(isValidResourceId(grandchildId));
+    EXPECT_NE(grandchildId, workerId);
 }

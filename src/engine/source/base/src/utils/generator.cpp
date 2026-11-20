@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <climits>
 #include <cstring>
@@ -27,6 +28,9 @@ constexpr size_t DOC_ID_RAW_SIZE = 8 + DOC_ID_PREFIX_SIZE;
 
 static_assert((DOC_ID_RAW_SIZE * 8 + 5) / 6 == DOC_ID_LENGTH, "DOC_ID_LENGTH must match the unpadded base64url size");
 
+/// Random bytes behind one UUID version 4 (122 random bits once the version and variant bits are set).
+constexpr size_t UUID_V4_RAW_SIZE = 16;
+
 /**
  * @brief Per-thread state of generateDocId().
  *
@@ -42,12 +46,67 @@ struct DocIdState
 
 thread_local DocIdState t_state {};
 
+/// Size, in bytes, of the per-thread buffer of random bytes behind generateUUIDv4() (256 identifiers per refill).
+constexpr size_t UUID_BUFFER_SIZE = 4096;
+
+static_assert(UUID_BUFFER_SIZE % UUID_V4_RAW_SIZE == 0, "the buffer must hold a whole number of identifiers");
+
+/// Per-thread state of generateUUIDv4(): trivial and constant-initialized, so that onForkChild() can reset it.
+/// t_uuidPos == UUID_BUFFER_SIZE means that the buffer holds nothing usable.
+thread_local std::array<uint8_t, UUID_BUFFER_SIZE> t_uuidBuffer {};
+thread_local size_t t_uuidPos = UUID_BUFFER_SIZE;
+
 std::once_flag g_atforkOnce;
 
-/// Child-side fork handler: forces a new prefix in the child (async-signal-safe: one store, nothing else).
+/// Child-side fork handler: forces a new doc-id prefix and new UUID state in the child (async-signal-safe: stores
+/// only).
 void onForkChild()
 {
     t_state.init = false;
+    t_uuidPos = UUID_BUFFER_SIZE;
+}
+
+/**
+ * @brief Registers onForkChild() once per process.
+ *
+ * @throws std::runtime_error if the handler cannot be registered; the once_flag is left unconsumed, so the next call
+ *         retries.
+ */
+void ensureForkHandler()
+{
+    std::call_once(g_atforkOnce,
+                   []()
+                   {
+                       if (pthread_atfork(nullptr, nullptr, &onForkChild) != 0)
+                       {
+                           throw std::runtime_error("generators: cannot register the fork handler");
+                       }
+                   });
+}
+
+/**
+ * @brief Writes 16 random bytes as a UUID version 4: sets the version (4) and variant (10xx) bits, then encodes the
+ * bytes as lowercase hexadecimal in the 8-4-4-4-12 layout.
+ */
+std::string formatUuidV4(uint8_t bytes[UUID_V4_RAW_SIZE])
+{
+    constexpr char hexDigits[] = "0123456789abcdef";
+
+    bytes[6] = static_cast<uint8_t>((bytes[6] & 0x0F) | 0x40);
+    bytes[8] = static_cast<uint8_t>((bytes[8] & 0x3F) | 0x80);
+
+    std::string out(UUID_V4_LENGTH, '-');
+    size_t o = 0;
+    for (size_t i = 0; i < UUID_V4_RAW_SIZE; ++i)
+    {
+        if (o == 8 || o == 13 || o == 18 || o == 23)
+        {
+            ++o;
+        }
+        out[o++] = hexDigits[bytes[i] >> 4];
+        out[o++] = hexDigits[bytes[i] & 0x0F];
+    }
+    return out;
 }
 
 /**
@@ -122,15 +181,7 @@ std::string generateDocId()
     auto& state = t_state;
     if (!state.init)
     {
-        std::call_once(g_atforkOnce,
-                       []()
-                       {
-                           if (pthread_atfork(nullptr, nullptr, &onForkChild) != 0)
-                           {
-                               // Leaves the once_flag unconsumed: the next call retries.
-                               throw std::runtime_error("generateDocId: cannot register the fork handler");
-                           }
-                       });
+        ensureForkHandler();
 
         uint8_t tmp[DOC_ID_PREFIX_SIZE];
         fillRandom(tmp, sizeof(tmp));
@@ -139,6 +190,23 @@ std::string generateDocId()
     }
 
     return encodeDocId(state.last, state.prefix, base::utils::time::systemEpochNanos());
+}
+
+std::string generateUUIDv4()
+{
+    if (t_uuidPos == UUID_BUFFER_SIZE)
+    {
+        ensureForkHandler();
+
+        // On failure t_uuidPos stays at the end, so the unspecified content of the buffer is never used.
+        fillRandom(t_uuidBuffer.data(), UUID_BUFFER_SIZE);
+        t_uuidPos = 0;
+    }
+
+    uint8_t bytes[UUID_V4_RAW_SIZE];
+    std::memcpy(bytes, t_uuidBuffer.data() + t_uuidPos, UUID_V4_RAW_SIZE);
+    t_uuidPos += UUID_V4_RAW_SIZE;
+    return formatUuidV4(bytes);
 }
 
 namespace detail
