@@ -28,6 +28,7 @@ import tempfile
 import threading
 import unittest
 import urllib.parse
+import xml.dom.minidom
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -199,9 +200,10 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             name = self.path.split("/")[2]
             if name in FakeManager.reject_configurations:
                 return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
-            # The real endpoint stores the document re-indented, not as it was sent.
-            FakeManager.configurations[name] = "".join(
-                "  " + line if line.strip() else line for line in body.splitlines(keepends=True))
+            # The real endpoint parses the document and stores it in its own layout, not as sent.
+            pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % body).toprettyxml(indent="  ")
+            FakeManager.configurations[name] = "\n".join(
+                line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
             parts = urllib.parse.urlsplit(self.path)
@@ -670,7 +672,7 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         merged = FakeManager.configurations["default"]
-        self.assertTrue("".join(merged.split()).startswith("".join(FakeManager.STOCK_DEFAULT.split())),
+        self.assertTrue(merged.lstrip().startswith("<!-- Shared agent configuration of this group. -->"),
                         "the 5.0 default is kept")
         self.assertIn("<directories>/root/fim-test</directories>", merged,
                       "the 4.x settings applied to every agent")
@@ -680,6 +682,19 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(1, self.do_import("--force"))
         self.assertEqual(merged, FakeManager.configurations["default"],
                          "a second import does not append the 4.x settings again")
+
+    def test_the_default_group_is_compared_by_what_it_sets(self):
+        self.write_group_file("default", "agent.conf",
+                              "<agent_config os='Linux'>\n  <syscheck>\n"
+                              "    <directories>/root/fim test</directories>\n"
+                              "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
+        self.assertEqual(0, self.export())
+        self.assertEqual(0, self.do_import())
+        stored = FakeManager.configurations["default"]
+        self.assertIn('os="Linux"', stored, "the manager rewrote the attribute quotes")
+        self.assertEqual(0, self.check(), "the same settings in another layout are the same settings")
+        FakeManager.configurations["default"] = stored.replace("/root/fim test", "/root/fimtest")
+        self.assertEqual(1, self.check(), "a value that differs by a space is another value")
 
     def test_check_reports_a_default_group_without_the_4x_settings(self):
         self.customize_default()

@@ -912,9 +912,26 @@ def read_group_conf(api, name):
     return answer.get("__raw", "")
 
 
+def configuration_elements(text):
+    """The top-level elements of an agent.conf as (tag, attributes, text, children).
+
+    The manager parses an uploaded agent.conf and writes it back in its own layout (indentation,
+    attribute quotes, empty elements), so two copies are compared by what they set, not as text.
+    """
+    def shape(element):
+        return (element.tag, sorted(element.attrib.items()), (element.text or "").strip(),
+                [shape(child) for child in element])
+    body = re.sub(r"^\s*<\?xml[^>]*\?>", "", text or "")
+    return [shape(e) for e in ElementTree.fromstring("<migration-wrapper>%s</migration-wrapper>" % body)]
+
+
 def holds_configuration(current, carried):
-    """Whether an agent.conf holds the carried one. The manager re-indents what it is given."""
-    return "".join(carried.split()) in "".join(current.split())
+    """Whether an agent.conf holds every element of the carried one."""
+    try:
+        have, want = configuration_elements(current), configuration_elements(carried)
+    except ElementTree.ParseError:
+        return carried.strip() in current
+    return all(element in have for element in want)
 
 
 def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
