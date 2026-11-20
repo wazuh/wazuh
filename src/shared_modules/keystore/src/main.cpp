@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
                 std::cout << formattedStr << "\n";
             }
         });
-    Log::setModuleLogFn(LogFn {"wazuh-keystore"});
+    Log::setModuleLogFn(LogFn {"wazuh-manager-keystore"});
 
     try
     {

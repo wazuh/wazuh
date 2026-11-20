@@ -195,3 +195,32 @@ async def recursion_error_handler(request: ConnexionRequest, exc: RecursionError
     return build_recursion_error_response(
         pretty=request.query_params.get('pretty', 'false') == 'true'
     )
+
+
+async def unicode_decode_error_handler(request: ConnexionRequest, exc: UnicodeDecodeError) -> ConnexionResponse:
+    """Handler for a request body that is not valid UTF-8.
+
+    A JSON body is decoded while it is validated, outside the controllers that answer 1911 for the
+    XML operations; without this handler the decoding error surfaces as a bare 500.
+
+    Parameters
+    ----------
+    request : ConnexionRequest
+        Incoming request.
+    exc : UnicodeDecodeError
+        Raised exception.
+
+    Returns
+    -------
+    Response
+        Status code 400 with error 1911.
+    """
+    problem = {
+        "title": "Bad Request",
+        "detail": "Error parsing body request to UTF-8",
+        "error": 1911,
+    }
+
+    return json_response(data=problem,
+                         pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=400, content_type=ERROR_CONTENT_TYPE)

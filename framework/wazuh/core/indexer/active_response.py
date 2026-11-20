@@ -562,15 +562,55 @@ class ActiveResponseHelpers:
         async with get_indexer_client() as client:
             for index, doc_ids in docs_by_index.items():
                 resp = await client.mget(index=index, body={"ids": list(doc_ids)})
+                found = {}
                 for event in resp.get("docs", []):
                     # `found` without `_source` is an index that does not store it: the reference
                     # then reads as not visible and expires with the grace window.
                     if event.get("found") and "_source" in event:
-                        idx = event["_index"]
-                        doc_id = event["_id"]
-                        events.setdefault(idx, {})[doc_id] = event["_source"]
+                        found[event["_id"]] = event["_source"]
+
+                # A data stream cannot be read by id: under its name mget finds nothing, although
+                # the document is in one of its backing indices. A reference that names the stream
+                # (or an alias) is looked up with an ids query instead, under the same allow-listed
+                # name, so it resolves rather than being held for the grace window and discarded.
+                missing = doc_ids - found.keys()
+                if missing and not index.startswith(".ds-"):
+                    found.update(await ActiveResponseHelpers._search_events_by_id(client, index, missing))
+
+                # Keyed by the name the response carries, which is what the caller looks up.
+                if found:
+                    events.setdefault(index, {}).update(found)
 
         return events
+
+    @staticmethod
+    async def _search_events_by_id(client: Any, index: str, doc_ids: Set[str]) -> Dict[str, Any]:
+        """Look events up by id through a search, for a name mget cannot read by id.
+
+        Parameters
+        ----------
+        client : Any
+            Indexer client.
+        index : str
+            Allow-listed index, data stream or alias name.
+        doc_ids : Set[str]
+            Ids not found by mget.
+
+        Returns
+        -------
+        Dict[str, Any]
+            {doc_id: event_source} for the documents found. Empty when the search fails: the
+            references then read as not visible, as before.
+        """
+        try:
+            resp = await client.search(
+                index=index,
+                body={"query": {"ids": {"values": sorted(doc_ids)}}, "size": len(doc_ids)},
+            )
+            return {hit["_id"]: hit["_source"] for hit in resp["hits"]["hits"] if "_source" in hit}
+        except Exception as e:
+            ActiveResponseHelpers.logger.debug(f"Could not search events by id in `{index}`: {e}")
+            return {}
 
 
 class ActiveResponseBuilder:

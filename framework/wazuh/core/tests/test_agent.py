@@ -1445,3 +1445,17 @@ def test_create_upgrade_tasks(mock_upgrade, eligible_agents, expected_calls, tas
                                 {'data': [{'error': 0}]}, {'data': [{'error': 0}]}, {'data': [{'error': 0}]}]
     create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test', request_time=123456789)
     mock_upgrade.assert_has_calls(expected_calls, any_order=False)
+
+
+@pytest.mark.parametrize('given, expected', [
+    ('custom.wpk', os.path.join(common.WAZUH_PATH, 'var', 'upgrade', 'custom.wpk')),
+    ('var/upgrade/custom.wpk', 'var/upgrade/custom.wpk'),
+    ('/var/wazuh-manager/var/upgrade/custom.wpk', '/var/wazuh-manager/var/upgrade/custom.wpk'),
+    ('/tmp/custom.wpk', '/tmp/custom.wpk'),
+])
+def test_upgrade_parameters_resolves_a_bare_wpk_name(given, expected):
+    """A file_path with no directory part names a file in var/upgrade/; any other spelling is sent as given."""
+    from wazuh.core.agent import _upgrade_parameters
+
+    assert _upgrade_parameters([1], file_path=given)['file_path'] == expected
+    assert 'file_path' not in _upgrade_parameters([1])

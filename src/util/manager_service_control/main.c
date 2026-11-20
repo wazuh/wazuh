@@ -366,10 +366,18 @@ static bool run_check(const char *control_path)
     return waited == pid && check_passed(status);
 }
 
+/* The refusal names the action that was asked for: a refused reload did not restart anything either. */
+static const char *check_failed_message(const char *action)
+{
+    return strcmp(action, "reload") == 0
+               ? "the manager configuration or credentials check failed; the manager was not reloaded"
+               : "the manager configuration or credentials check failed; the manager was not restarted";
+}
+
 static void execute_systemctl(const char *control_path, const char *action)
 {
     if (!run_check(control_path)) {
-        fail("the manager configuration or credentials check failed; the manager was not restarted");
+        fail(check_failed_message(action));
     }
 
     become_root();

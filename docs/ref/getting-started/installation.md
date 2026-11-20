@@ -199,13 +199,12 @@ refused as unsafe. With the CA's certificate staged but not its key, the install
 /etc/wazuh-manager/ca` (and the same for `apid.pem`); staging the pairs afterwards resolves it, and the start needs
 no rerun of `--install`.
 
-On a Debian package install you can stage `certs/` before installing as well, with `-g root`: create it with
+On a DEB or RPM package install you can stage `certs/` before installing as well, with `-g root` (the
+`wazuh-manager` group does not exist yet): create it with
 `sudo install -d -m 0750 -o root -g root /etc/wazuh-manager/certs` and install each file `root:root` `0640`. The
-package's `postinst` sets `/etc/wazuh-manager` to `root:wazuh-manager` `0770`, `certs/` to `root:wazuh-manager`
-`0750` and every `certs/*.pem` to `root:wazuh-manager` `0640` before the credential resolver runs; `ca/` and
-`local.env` are left as staged. The RPM package re-owns the `*.pem` files only after its resolver has run, which
-then refuses them as unsafe (`group is root, not wazuh-manager`) and issues nothing: on RPM systems, stage `certs/`
-after installing.
+package sets `/etc/wazuh-manager` to `root:wazuh-manager` `0770`, `certs/` to `root:wazuh-manager` `0750` and every
+regular `certs/*.pem` file to `root:wazuh-manager` `0640` before the credential resolver runs (DEB `postinst`, RPM
+`%post`); `ca/` and `local.env` are left as staged.
 
 If the install already minted a CA before you staged yours, remove `ca/root-ca.key` and
 `ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and replace `certs/root-ca.pem` and the pairs

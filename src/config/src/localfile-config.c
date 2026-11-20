@@ -42,6 +42,10 @@ STATIC int w_logcollector_get_macos_log_type(const char * content);
  */
 w_exp_type_t w_check_regex_type(xml_node * node, const char * element);
 
+/* Reserved ("_"-prefixed) labels skipped by Read_Localfile() since the last Localfile_TakeReservedLabels().
+ * Only verify-agent-conf reads it, from its single thread. */
+static unsigned int reserved_labels_skipped = 0;
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -249,6 +253,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                         if (node[i]->values[j][0] == '_'){
                             mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
                             flags.system = 1;
+                            reserved_labels_skipped++;
                         }
                         key_value = node[i]->values[j];
                     } else {
@@ -258,16 +263,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
 
-            // Skip labels with "_"
-            if (flags.system == 1)
-                continue;
+            // Skip labels with "_": the warning above was logged; move on to the next element
+            if (flags.system != 1) {
+                if (!key_value) {
+                    merror("Expected 'key' attribute for label.");
+                    return (OS_INVALID);
+                }
 
-            if (!key_value) {
-                merror("Expected 'key' attribute for label.");
-                return (OS_INVALID);
+                logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, flags, 1);
             }
-
-            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, flags, 1);
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
@@ -884,6 +888,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     return (0);
+}
+
+unsigned int Localfile_TakeReservedLabels(void) {
+    unsigned int skipped = reserved_labels_skipped;
+    reserved_labels_skipped = 0;
+    return skipped;
 }
 
 int Test_Localfile(const char * path){

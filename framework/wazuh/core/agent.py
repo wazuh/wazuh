@@ -1783,7 +1783,14 @@ def _upgrade_parameters(
 
     Unset parameters are omitted rather than sent as null: the module reads a present key of the
     wrong type as a parse error, so sending ``"version": null`` would fail the whole request.
+
+    A ``file_path`` with no directory part names a file in ``var/upgrade/``, the only directory custom
+    WPKs are delivered from: it is sent as that path, as the ``agent_upgrade`` CLI does. Any other
+    spelling is sent as given, for the module to judge.
     """
+    if file_path and not path.dirname(file_path):
+        file_path = path.join(common.WAZUH_PATH, 'var', 'upgrade', file_path)
+
     parameters = {
         "agents": agents_chunk,
         "version": unify_wazuh_upgrade_version_format(version),

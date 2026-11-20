@@ -58,6 +58,78 @@ namespace
         return value ? value->string_view() : std::string_view {};
     }
 
+    /// Longest prefix of a session-supplied string a log line carries.
+    constexpr std::size_t MAX_LOGGED_NAME_BYTES {64};
+
+    /**
+     * @brief A session-supplied string made safe for a log line.
+     *
+     * The agent controls these strings, so they are never written raw: every byte outside printable
+     * ASCII, and the backslash, is written as \xNN (no forged line through a newline, no terminal
+     * escape, no invalid UTF-8 in the log), and the text is cut at MAX_LOGGED_NAME_BYTES.
+     */
+    std::string forLog(std::string_view text)
+    {
+        static constexpr char HEX[] {"0123456789abcdef"};
+
+        std::string out;
+        const auto shown = text.substr(0, MAX_LOGGED_NAME_BYTES);
+        out.reserve(shown.size() + 3);
+        for (const char raw : shown)
+        {
+            const auto c = static_cast<unsigned char>(raw);
+            if (c >= 0x20 && c < 0x7f && c != '\\')
+            {
+                out.push_back(raw);
+            }
+            else
+            {
+                out.append("\\x");
+                out.push_back(HEX[c >> 4]);
+                out.push_back(HEX[c & 0x0f]);
+            }
+        }
+        if (text.size() > shown.size())
+        {
+            out.append("...");
+        }
+        return out;
+    }
+
+    /**
+     * @brief Lets each kind of per-document warning be logged once per session.
+     *
+     * A session may carry thousands of documents an agent built to be skipped: one line each would
+     * let it write to the manager log at will. The first document of each kind is logged with its
+     * reason; the rest only count, and the caller reports that count in one line.
+     */
+    class OncePerSession final
+    {
+    public:
+        /// @return true the first time @p kind is seen in this session.
+        bool first(const unsigned kind) noexcept
+        {
+            const auto bit = 1U << kind;
+            if ((m_seen & bit) != 0)
+            {
+                ++m_repeats;
+                return false;
+            }
+            m_seen |= bit;
+            return true;
+        }
+
+        /// @return Occurrences that were not logged.
+        std::size_t repeats() const noexcept
+        {
+            return m_repeats;
+        }
+
+    private:
+        unsigned m_seen {0};
+        std::size_t m_repeats {0};
+    };
+
     /**
      * @brief Checksum-of-checksums, ported from the legacy facade (inventorySyncFacade.hpp:434-503).
      *
@@ -148,6 +220,7 @@ namespace invsync::sync
          * "stage" from interleaving. (Per-DOCUMENT problems, by contrast, are skip-with-WARN below
          * and never fail the request.)
          */
+        OncePerSession skipLog;
         for (const auto* value : *payload->values())
         {
             const auto operation = value->operation();
@@ -190,30 +263,38 @@ namespace invsync::sync
             const auto rawIndex = viewOf(value->index());
             if (!isAgentScopedStateIndex(rawIndex))
             {
-                LOGFN_WARN(logFn(),
-                           "Skipping bulk entry for agent %s: index '%.*s' does not belong to the wazuh-states-* "
-                           "family.",
-                           session.agentId.c_str(),
-                           static_cast<int>(rawIndex.size()),
-                           rawIndex.data());
+                if (skipLog.first(0))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: index '%s' does not belong to the wazuh-states-* "
+                               "family.",
+                               session.agentId.c_str(),
+                               forLog(rawIndex).c_str());
+                }
                 ++skipped;
                 continue;
             }
             if (rawIndex == VULNERABILITIES_INDEX)
             {
-                LOGFN_WARN(logFn(),
-                           "Rejecting agent write to '%s' (agent %s): agents may clean it, never write it.",
-                           std::string {VULNERABILITIES_INDEX}.c_str(),
-                           session.agentId.c_str());
+                if (skipLog.first(1))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Rejecting agent write to '%s' (agent %s): agents may clean it, never write it.",
+                               std::string {VULNERABILITIES_INDEX}.c_str(),
+                               session.agentId.c_str());
+                }
                 ++skipped;
                 continue;
             }
 
             if (viewOf(value->id()).empty())
             {
-                LOGFN_WARN(logFn(),
-                           "Skipping bulk entry for agent %s: DataValue is missing the required 'id' field.",
-                           session.agentId.c_str());
+                if (skipLog.first(2))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: DataValue is missing the required 'id' field.",
+                               session.agentId.c_str());
+                }
                 ++skipped;
                 continue;
             }
@@ -234,11 +315,15 @@ namespace invsync::sync
             // the whole group commit -- every co-batched session with it, on every re-POST.
             if (elementId.size() > MAX_DOCUMENT_ID_BYTES)
             {
-                LOGFN_WARN(logFn(),
-                           "Skipping bulk entry for agent %s: its _id is %zu bytes, over the indexer's %zu-byte limit.",
-                           session.agentId.c_str(),
-                           elementId.size(),
-                           MAX_DOCUMENT_ID_BYTES);
+                if (skipLog.first(3))
+                {
+                    LOGFN_WARN(
+                        logFn(),
+                        "Skipping bulk entry for agent %s: its _id is %zu bytes, over the indexer's %zu-byte limit.",
+                        session.agentId.c_str(),
+                        elementId.size(),
+                        MAX_DOCUMENT_ID_BYTES);
+                }
                 ++skipped;
                 continue;
             }
@@ -250,9 +335,13 @@ namespace invsync::sync
                 // and trailing garbage; the object-root requirement closes the rest.
                 if (value->data() == nullptr)
                 {
-                    LOGFN_WARN(logFn(),
-                               "Skipping bulk entry for agent %s: DataValue is missing the 'data' field for Upsert.",
-                               session.agentId.c_str());
+                    if (skipLog.first(4))
+                    {
+                        LOGFN_WARN(
+                            logFn(),
+                            "Skipping bulk entry for agent %s: DataValue is missing the 'data' field for Upsert.",
+                            session.agentId.c_str());
+                    }
                     ++skipped;
                     continue;
                 }
@@ -265,10 +354,13 @@ namespace invsync::sync
                 // modulesd down.
                 if (common::exceedsNestingDepth(rawData))
                 {
-                    LOGFN_WARN(logFn(),
-                               "Skipping bulk entry for agent %s: DataValue body nests deeper than %zu levels.",
-                               session.agentId.c_str(),
-                               common::MAX_JSON_NESTING_DEPTH);
+                    if (skipLog.first(5))
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Skipping bulk entry for agent %s: DataValue body nests deeper than %zu levels.",
+                                   session.agentId.c_str(),
+                                   common::MAX_JSON_NESTING_DEPTH);
+                    }
                     ++skipped;
                     continue;
                 }
@@ -276,9 +368,12 @@ namespace invsync::sync
                 nlohmann::json document = nlohmann::json::parse(rawData, nullptr, /*allow_exceptions=*/false);
                 if (document.is_discarded() || !document.is_object())
                 {
-                    LOGFN_WARN(logFn(),
-                               "Skipping bulk entry for agent %s: DataValue body is not a JSON object.",
-                               session.agentId.c_str());
+                    if (skipLog.first(6))
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Skipping bulk entry for agent %s: DataValue body is not a JSON object.",
+                                   session.agentId.c_str());
+                    }
                     ++skipped;
                     continue;
                 }
@@ -290,10 +385,13 @@ namespace invsync::sync
                 // their own subtree and are left alone.
                 if (common::dottedNameReachesWazuh(document))
                 {
-                    LOGFN_WARN(logFn(),
-                               "Skipping bulk entry for agent %s: DataValue body has a dotted member name that "
-                               "would expand into the wazuh.* fields.",
-                               session.agentId.c_str());
+                    if (skipLog.first(7))
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Skipping bulk entry for agent %s: DataValue body has a dotted member name that "
+                                   "would expand into the wazuh.* fields.",
+                                   session.agentId.c_str());
+                    }
                     ++skipped;
                     continue;
                 }
@@ -310,10 +408,13 @@ namespace invsync::sync
                 }
                 catch (const nlohmann::json::exception& e)
                 {
-                    LOGFN_WARN(logFn(),
-                               "Skipping bulk entry for agent %s: DataValue body cannot be serialized: %s.",
-                               session.agentId.c_str(),
-                               e.what());
+                    if (skipLog.first(8))
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Skipping bulk entry for agent %s: DataValue body cannot be serialized: %s.",
+                                   session.agentId.c_str(),
+                                   e.what());
+                    }
                     ++skipped;
                     continue;
                 }
@@ -340,6 +441,15 @@ namespace invsync::sync
 
         // DataContext items are deliberately NOT indexed: they exist to feed the vulnerability
         // scanner's context (the scan lane consumes them when it lands).
+
+        if (skipLog.repeats() > 0)
+        {
+            LOGFN_WARN(logFn(),
+                       "Skipped %zu more bulk entr%s of agent %s in this session, for the reasons logged above.",
+                       skipLog.repeats(),
+                       skipLog.repeats() == 1 ? "y" : "ies",
+                       session.agentId.c_str());
+        }
 
         if (m_docsIndexed)
         {
@@ -380,16 +490,19 @@ namespace invsync::sync
         // Dedup with a set, like the legacy Context::dataCleanIndices: an agent may repeat an
         // index and each one must be deleted exactly once.
         std::set<std::string> indices;
+        OncePerSession ignoredLog;
         for (const auto* item : *session.session->payload_as_Cleans()->items())
         {
             const auto index = viewOf(item->index());
             if (index.empty() || !isAgentScopedStateIndex(index))
             {
-                LOGFN_WARN(logFn(),
-                           "Cleans from agent %s: ignoring index '%.*s' (not in the wazuh-states-* family).",
-                           session.agentId.c_str(),
-                           static_cast<int>(index.size()),
-                           index.data());
+                if (ignoredLog.first(0))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Cleans from agent %s: ignoring index '%s' (not in the wazuh-states-* family).",
+                               session.agentId.c_str(),
+                               forLog(index).c_str());
+                }
                 continue;
             }
             indices.emplace(index);
@@ -496,7 +609,7 @@ namespace invsync::sync
                            "Metadata/groups session from agent %s: ignoring declared index '%s' (not in the "
                            "wazuh-states-* family).",
                            session.agentId.c_str(),
-                           index.c_str());
+                           forLog(index).c_str());
                 continue;
             }
             indices.push_back(index);

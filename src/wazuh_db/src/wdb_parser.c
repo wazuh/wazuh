@@ -18,6 +18,24 @@
 #include "wdb.h"
 #include "cJSON.h"
 #include "wdb_state.h"
+#include <strings.h>
+
+/**
+ * @brief Tell whether a `global sql` statement is a plain SELECT, the only kind that cannot write.
+ *
+ * Leading whitespace is skipped; anything else (a comment, WITH, PRAGMA, any DML or DDL) counts as a
+ * possible write. A false "not a SELECT" only costs one recalculation of the group hash.
+ *
+ * @param sql The statement as the client sent it.
+ * @return true if it starts with SELECT, false otherwise.
+ */
+static bool wdb_global_sql_is_select(const char *sql) {
+    while (isspace((unsigned char)*sql)) {
+        sql++;
+    }
+
+    return strncasecmp(sql, "SELECT", 6) == 0;
+}
 
 sqlite3 * wdb_global_pre(void **wdb_ctx)
 {
@@ -53,6 +71,9 @@ sqlite3 * wdb_global_pre(void **wdb_ctx)
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
+        /* wdb_global_post() gets no context on this path: release the entry here, or the global.db
+         * mutex stays held and every later global query blocks. */
+        wdb_pool_leave(wdb);
         return NULL;
     }
 
@@ -162,6 +183,16 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_sql_time(diff);
+
+                /* The group-hash cache is computed from the agent rows' group_hash, which a statement
+                 * changes by updating that column or by inserting, replacing or deleting agents, under
+                 * any quoting, alias or WITH clause, so telling from the text which tables a statement
+                 * touches would be fragile. Clear it after anything but a plain SELECT instead, and
+                 * even when the statement failed: UPDATE OR FAIL keeps the rows it changed before the
+                 * error. */
+                if (!wdb_global_sql_is_select(sql)) {
+                    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+                }
                 if (data) {
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -1559,10 +1590,22 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         return OS_INVALID;
     } else {
-        char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
+        cJSON* j_snapshot = cJSON_GetObjectItem(j_parameters, "snapshot");
         cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
-        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : false;
-        result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+
+        /* A key that is present with the wrong type is a malformed request, not an omitted key:
+         * answering it as "restore the most recent backup" would replace the live database. */
+        if (j_snapshot && !cJSON_IsString(j_snapshot)) {
+            mdebug1("Invalid backup JSON: 'snapshot' must be a string.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, 'snapshot' must be a string");
+        } else if (j_save_pre_restore_state && !cJSON_IsBool(j_save_pre_restore_state)) {
+            mdebug1("Invalid backup JSON: 'save_pre_restore_state' must be a boolean.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, 'save_pre_restore_state' must be a boolean");
+        } else {
+            char* snapshot = cJSON_GetStringValue(j_snapshot);
+            bool save_pre_restore_state = cJSON_IsTrue(j_save_pre_restore_state);
+            result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+        }
     }
 
     cJSON_Delete(j_parameters);

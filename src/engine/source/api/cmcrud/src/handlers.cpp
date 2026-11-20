@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <mutex>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -499,6 +500,17 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             // ============================================================
             const bool shouldPromote = loadInTester && hasIntegrations && isEnabled;
             const bool shouldDeleteOldTest = loadInTester && (!hasIntegrations || !isEnabled);
+
+            // Replacing the persistent test session reads it, deletes it, renames the temporary one
+            // into its place and deletes the namespace it had. Two requests interleaving those steps
+            // for one session each end up deleting the other's work or leaving their own temporary
+            // namespace behind, so the swap is serialised. Validation above is not: its names are unique.
+            static std::mutex testSessionSwapMutex;
+            std::unique_lock<std::mutex> testSessionSwapLock {testSessionSwapMutex, std::defer_lock};
+            if (loadInTester)
+            {
+                testSessionSwapLock.lock();
+            }
 
             if (shouldPromote)
             {

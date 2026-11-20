@@ -41,6 +41,13 @@ somewhere else.
 Adding a type is one descriptor plus either a route or a handler. It is not a change to the
 executor, the scheduler, the store or the schema — `TASK_TYPE` is opaque to storage.
 
+**A type not in this table is accepted but never run.** Its rows stay `pending` until the next start
+of the module retires them (see [Ownership and stuck tasks](#ownership-and-stuck-tasks)), so each
+such type has an admission bound of its own: 100 pending rows, or the request's own positive
+`max_pending`. Beyond it the create answers `503 queue_full`, as for the built-in bounds. The default
+of 100 is a code constant, not an internal option; it exists so that a producer sending a misspelt
+type cannot grow the table without limit until a restart.
+
 **Isolation is a concurrency cap, not a dedicated thread.** A 300-second vulnerability scan must not
 sit in front of a bulk deletion, and a cap of one on `vd_scan` guarantees that. Only the two log
 rotations actually conflict — they rewrite the same files — so only they share a group, and the
@@ -253,6 +260,10 @@ the orphaned documents this feature exists to prevent.
 | `wazuh_modules.manager_task_max_pending_deletes` | 20000 | 0–1000000 | Admission bound on pending deletions. `0` removes the bound |
 | `wazuh_modules.manager_task_max_pending_scans` | 64 | 0–1000000 | Admission bound on pending on-demand scans. `0` removes the bound |
 | `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner's configuration reader, not by this module; an out-of-range value fails `wazuh-manager-modulesd -t` all the same |
+
+A type this build does not register is bounded by the request's positive `max_pending`, or 100
+pending rows without one — see
+[Task types](#task-types).
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's
 deletion behind it in the consumer's per-agent queue; with both deadlines equal, the deletion would

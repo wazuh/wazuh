@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
+import asyncio
 import base64
 import binascii
 import hashlib
@@ -39,7 +40,7 @@ from api.middlewares import charge_unauthenticated_request, charge_authenticated
     CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED, warn_rate_limited, RATE_LIMIT_WARNING_INTERVAL_SECONDS, \
     RATE_LIMIT_CODE_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
-from api.api_exception import ExpectFailedException, PayloadTooLargeException
+from api.api_exception import ExpectFailedException, MaxRequestsException, PayloadTooLargeException
 
 def build_request(path='/agents', method='POST', content_length=None, receive=None):
     """Build a real starlette request, so what the middlewares read from the socket is observable.
@@ -1789,6 +1790,102 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
             mock_block_ip.assert_not_called()
         dispatch_mock.assert_awaited_once_with(mock_req)
         assert ret_response == response
+
+def _login_scope_request(user: str = 'wazuh') -> Request:
+    """A real login request (dict scope) carrying Basic credentials for `user`."""
+    request = build_request(path=LOGIN_ENDPOINT)
+    request.scope['headers'].append((b'authorization', _basic(user).encode()))
+    return request
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('refusal', [
+    MaxRequestsException(code=6006),
+    MaxRequestsException(code=6001),
+    WazuhInternalError(1000),
+    asyncio.CancelledError(),
+])
+async def test_check_block_ip_middleware_releases_non_credential_refusals(refusal):
+    """A login refused for anything but its credentials (login queue full, rate limit, an error after
+       authentication, a cancelled request) never counts towards the lockout, however many arrive at once."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for _ in range(10):
+            with pytest.raises(type(refusal)):
+                await middleware.dispatch(request=_login_scope_request(), call_next=AsyncMock(side_effect=refusal))
+
+        assert mock_ip_stats == {}
+        assert mock_ip_block == set()
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_block_ip_middleware_counts_credential_failures():
+    """A login that fails its credentials (401) keeps its attempt and ends up blocking the user."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for _ in range(3):
+            with pytest.raises(Unauthorized):
+                await middleware.dispatch(request=_login_scope_request(),
+                                          call_next=AsyncMock(side_effect=OAuthProblem(detail='bad')))
+
+        assert mock_ip_stats[('ip', 'wazuh')]['attempts'] == 3
+        assert ('ip', 'wazuh') in mock_ip_block
+        with pytest.raises(ProblemException) as exc_info:
+            await middleware.dispatch(request=_login_scope_request(), call_next=AsyncMock())
+        assert exc_info.value.status == 403
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_block_ip_middleware_releases_an_attempt_once():
+    """A login the controller already settled is not released a second time when it fails afterwards."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 5}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    previous_failures = {('ip', 'wazuh'): {'attempts': 2, 'timestamp': 10}, ('ip', None): {'attempts': 2, 'timestamp': 10}}
+
+    async def handler_settles_then_fails(request):
+        await settle_login_attempt(request)
+        raise WazuhInternalError(1000)
+
+    with patch("api.middlewares.ip_stats", new=deepcopy(previous_failures)) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()), \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        with pytest.raises(WazuhInternalError):
+            await middleware.dispatch(request=_login_scope_request(), call_next=handler_settles_then_fails)
+
+        assert mock_ip_stats == previous_failures
+
+
+@pytest.mark.asyncio
+async def test_check_block_ip_middleware_does_not_release_from_a_later_window():
+    """A login whose window expired while it was in flight releases nothing: the entry now under its key
+       counts other requests' failed attempts."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 5}}
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    later_window = {('ip', 'wazuh'): {'attempts': 1, 'timestamp': 400}, ('ip', None): {'attempts': 1, 'timestamp': 400}}
+
+    async def handler_outlives_its_window(request):
+        # block_time went by and a failed attempt of another request opened a new window.
+        mock_ip_stats.clear()
+        mock_ip_stats.update(deepcopy(later_window))
+        raise WazuhInternalError(1000)
+
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()), \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        with freeze_time(datetime(1970, 1, 1, 0, 0, 10)), pytest.raises(WazuhInternalError):
+            await middleware.dispatch(request=_login_scope_request(), call_next=handler_outlives_its_window)
+
+        assert mock_ip_stats == later_window
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("expect_value", ['test-value', '100-continue'])

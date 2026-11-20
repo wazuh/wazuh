@@ -10,8 +10,10 @@
 
 #include "httpServer.hpp"
 
+#include "metrics/metricNames.hpp"
 #include "taskManagerLog.hpp"
 
+#include <uds_http_server/jsonNestingDepth.hpp>
 #include <uds_http_server/udsHttpServerFactory.hpp>
 #include <wazuh_metrics/jsonDump.hpp>
 
@@ -82,6 +84,17 @@ namespace task_manager::http
                             {
                                 responder->send(
                                     HttpResponse::json(400, R"({"error":"invalid_json","message":"empty request"})"));
+                                return;
+                            }
+
+                            // Before a DOM exists: the handlers serialise the payload they store, and
+                            // dump() recurses once per level, so a deep enough body would overflow this
+                            // thread's stack and take the whole of modulesd down.
+                            if (wazuh::uds_http::exceedsNestingDepth(request->body))
+                            {
+                                responder->send(HttpResponse::json(
+                                    400,
+                                    R"({"error":"invalid_json","message":"body nests deeper than the allowed limit"})"));
                                 return;
                             }
 
@@ -256,19 +269,19 @@ namespace task_manager::http
         // so reading them on demand costs nothing and keeps the library free of a metrics
         // dependency. The lambdas capture `this`, which outlives the metrics manager.
         metrics.registerPull(
-            "task_manager.http.live_sessions",
+            metrics::names::HTTP_LIVE_SESSIONS,
             [this] { return m_server ? m_server->diagnostics().liveSessions : 0; },
             "Open connections on the task manager socket",
             "connections");
 
         metrics.registerPull(
-            "task_manager.http.inflight_requests",
+            metrics::names::HTTP_INFLIGHT_REQUESTS,
             [this] { return m_server ? m_server->diagnostics().budgetInFlightCount : 0; },
             "Requests currently holding a budget reservation",
             "requests");
 
         metrics.registerPull(
-            "task_manager.http.inflight_bytes",
+            metrics::names::HTTP_INFLIGHT_BYTES,
             [this] { return m_server ? m_server->diagnostics().budgetInFlightBytes : 0; },
             "Bytes reserved from the in-flight budget",
             "bytes");

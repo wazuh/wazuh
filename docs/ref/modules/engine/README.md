@@ -1123,6 +1123,11 @@ instead, so a test call can never delete content a route runs.
 > - building the policy only to validate it (`load_in_tester: false`) checks a file output's channel name but
 >   creates nothing.
 >
+> A test run returns the output event in a response format that nests far less deep than the parsers
+> accept (about 30 levels of objects and arrays). An event deeper than that is still processed, but the run
+> answers a request error whose message starts `The output event cannot be shown in the response`, instead of
+> the event.
+>
 > The policies the Wazuh Indexer sends carry no `outputs`, so the dashboard's logtest writes nothing. When you
 > call the API by hand, leave `policy.outputs` empty. The Wazuh dashboard's logtest runs on the engine bundled
 > with wazuh-indexer, not on this manager's engine, against the session wazuh-indexer creates for each space:

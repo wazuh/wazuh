@@ -54,6 +54,21 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 %global _defaultlicensedir /usr/share/licenses
 %global _docdir_fmt %%{NAME}
 
+# fix_certs(), the shell function %%post and %%posttrans both define: run inside certs/, it makes
+# the directory 0750 and every regular *.pem root:wazuh-manager 0640, and refuses a directory that
+# is not root's. One body, so the two scriptlets cannot drift apart.
+%define wazuh_manager_fix_certs\
+fix_certs() {\
+  [ "$(stat -c %%u .)" = 0 ] || return 1\
+  chmod 0750 .\
+  for CERT_FILE in *.pem; do\
+    if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then\
+      chown -h root:wazuh-manager "${CERT_FILE}" > /dev/null 2>&1 || true\
+      chmod 0640 "${CERT_FILE}" > /dev/null 2>&1 || true\
+    fi\
+  done\
+}
+
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
 Requires: wazuh-manager = %{_version}-%{_release}
@@ -491,8 +506,17 @@ fi
 # time the operator starts the service -- so the check belongs at start, where it is made. Warning
 # here about a state that no longer exists is what trains operators to ignore installer output.
 
-# The certificates' ownership is set by %files and the resolver, and re-applied in %posttrans after
-# the upgrade-preserve restore.
+# Every certificate and key is root's and readable through wazuh-manager. %%files sets that for the
+# directory only: a file staged in certs/ before the install (cp creates it root:root 0644) keeps
+# its ownership, and the resolver below refuses it as UNSAFE and issues nothing. So it is
+# re-applied here, before the resolver runs, as the DEB postinst does, and again in %%posttrans
+# after the upgrade-preserve restore (cp -a keeps the preserved ownership). The configuration
+# directory is writable by wazuh-manager, so the account could put its own directory (or a link to
+# one) in place of certs/: in_conf_dir() refuses a link, and the owner check refuses a directory
+# that is not root's. Inside a root-owned 0750 directory nobody else can swap an entry, so the
+# chown and chmod below run as root. fix_certs() is the same function %%posttrans uses.
+%{wazuh_manager_fix_certs}
+in_conf_dir ${CONF_DIR}/certs fix_certs || true
 
 rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 
@@ -804,17 +828,8 @@ done
 # wazuh-manager, so the account could put its own directory (or a link to one) in place of certs/:
 # the link check and pwd -P refuse a link, and the owner check refuses a directory that is not
 # root's. Inside a root-owned 0750 directory nobody else can swap an entry, so the chown and chmod
-# below run as root.
-fix_certs() {
-  [ "$(stat -c %%u .)" = 0 ] || return 1
-  chmod 0750 .
-  for CERT_FILE in *.pem; do
-    if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then
-      chown -h root:wazuh-manager "${CERT_FILE}" > /dev/null 2>&1 || true
-      chmod 0640 "${CERT_FILE}" > /dev/null 2>&1 || true
-    fi
-  done
-}
+# below run as root. %%post applied the same before the resolver ran.
+%{wazuh_manager_fix_certs}
 REAL_CONF_DIR=$(cd -P ${CONF_DIR} 2> /dev/null && pwd -P) || REAL_CONF_DIR=""
 if [ -n "${REAL_CONF_DIR}" ] && [ ! -L ${CONF_DIR}/certs ]; then
   (cd -P -- ${CONF_DIR}/certs 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}/certs" ] && fix_certs) || true

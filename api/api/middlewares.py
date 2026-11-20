@@ -10,6 +10,7 @@ import logging
 import base64
 import jwt
 import asyncio
+import anyio
 
 from typing import Optional
 
@@ -88,6 +89,8 @@ LOGIN_USERNAME_MAX_LENGTH = 64
 # How many times `max_login_attempts` a client may fail across all user names before it is blocked
 # for all of them
 LOGIN_CLIENT_ATTEMPTS_FACTOR = 10
+# ASGI scope key of the marker `CheckBlockedIP` sets on a counted login, so its attempt is released at most once.
+LOGIN_ATTEMPT_SCOPE_KEY = 'wazuh.login_attempt'
 
 # A client over its rate limit gets a 429 per request, and a blocked one a 403 per login; the WARNING naming it is
 # written at most once per this many seconds for each key (see `warn_rate_limited` and `check_blocked_ip`), with the
@@ -464,7 +467,7 @@ def _login_attempt_limits(request: Request, max_login_attempts: int) -> dict:
             (client, None): max_login_attempts * LOGIN_CLIENT_ATTEMPTS_FACTOR}
 
 
-async def check_blocked_ip(request: Request):
+async def check_blocked_ip(request: Request) -> dict:
     """Blocks/unblocks the clients that are requesting an API token, counting the attempt.
 
     Attempts are counted per client key and user (see `get_login_attempt_key`), so an IPv6 client
@@ -481,6 +484,11 @@ async def check_blocked_ip(request: Request):
     ----------
     request : Request
         HTTP request.
+
+    Returns
+    -------
+    dict
+        The window each key's attempt was counted in (its entry's timestamp), for `settle_login_attempt`.
     """
     global ip_block, ip_stats
     access_conf = configuration.api_conf['access']
@@ -517,13 +525,28 @@ async def check_blocked_ip(request: Request):
             if ip_stats[key]['attempts'] >= limit:
                 ip_block.add(key)
 
+        return {key: ip_stats[key]['timestamp'] for key in limits}
+
+
+def _login_attempt_marker(request: Request) -> Optional[dict]:
+    """The marker `CheckBlockedIP` leaves in the ASGI scope of a login it counted, or None.
+
+    It is a dict, so the shallow scope copies connexion makes downstream still share it with the
+    controller's request."""
+    scope = getattr(request, 'scope', None)
+    return scope.get(LOGIN_ATTEMPT_SCOPE_KEY) if isinstance(scope, dict) else None
+
 
 async def settle_login_attempt(request: Request):
-    """Release the attempt reserved by `check_blocked_ip` for a successful login.
+    """Release the attempt reserved by `check_blocked_ip` for a login that was not a credential failure.
 
-    Only failed login attempts should count towards `max_login_attempts`, so a
-    successful authentication releases the attempt that was counted at the gate
-    before credential validation ran.
+    Only failed credential checks count towards `max_login_attempts`: a successful authentication
+    (the login controllers) and a login refused before or after its credentials were judged
+    (`CheckBlockedIP`: 6006 login queue full, 6001 rate limit, any other non-401 error, a cancelled
+    request) release
+    the attempt that was counted at the gate. An attempt is released at most once per request, and
+    only from the window it was counted in: if that entry expired while the request was in flight,
+    the entry now under the key holds other requests' attempts and is left alone.
 
     Parameters
     ----------
@@ -531,11 +554,21 @@ async def settle_login_attempt(request: Request):
         HTTP request.
     """
     global ip_block, ip_stats
+    marker = _login_attempt_marker(request)
     limits = _login_attempt_limits(request, configuration.api_conf['access']['max_login_attempts'])
 
     async with ip_lock:
+        # Marked only once the lock is held, and nothing below awaits: a release interrupted while it
+        # waited for the lock has released nothing, so it must not look settled.
+        if marker is not None:
+            if marker['settled']:
+                return
+            marker['settled'] = True
+        windows = marker.get('windows') if marker is not None else None
         for key, limit in limits.items():
             if key not in ip_stats:
+                continue
+            if isinstance(windows, dict) and windows.get(key) != ip_stats[key]['timestamp']:
                 continue
 
             attempts = ip_stats[key]['attempts'] - 1
@@ -824,14 +857,38 @@ class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
 
 
 class CheckBlockedIP(BaseHTTPMiddleware):
-    """Rate Limits Middleware."""
+    """Login lockout middleware: counts every login attempt at the gate, and releases it again
+    unless the request ended in a credential failure (`Unauthorized`, a 401)."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """"Update and check if the client IP is locked."""
-        if request.url.path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
-           and request.method in {'GET', 'POST'}:
-            await check_blocked_ip(request)
-        return await call_next(request)
+        """"Update and check if the client IP is locked.
+
+        A login refused for any other reason (the login queue being full, 6006; the authenticated
+        rate limit, 6001; an error after the credentials were accepted) did not fail its
+        credentials, so its attempt is released: otherwise concurrent logins with the right
+        password lock their own user out. The 6005 rate limit is only raised above this layer for
+        a request that already failed authentication, which stays counted.
+        """
+        if request.url.path not in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
+           or request.method not in {'GET', 'POST'}:
+            return await call_next(request)
+
+        windows = await check_blocked_ip(request)
+        request.scope[LOGIN_ATTEMPT_SCOPE_KEY] = {'settled': False, 'windows': windows}
+        try:
+            return await call_next(request)
+        except Unauthorized:
+            raise
+        except Exception:
+            await settle_login_attempt(request)
+            raise
+        except asyncio.CancelledError:
+            # A cancelled login (the client went away, the request timed out) did not fail its
+            # credentials either. The release waits for `ip_lock`, and a cancel scope delivers the
+            # cancellation again at every await, so it runs shielded.
+            with anyio.CancelScope(shield=True):
+                await settle_login_attempt(request)
+            raise
 
 
 class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):

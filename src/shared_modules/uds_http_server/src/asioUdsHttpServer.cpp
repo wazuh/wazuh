@@ -815,7 +815,9 @@ namespace wazuh::uds_http
                         continue;
                     }
                     pathMatch = &route;
-                    if (route.method == m_parser.request().method)
+                    // A verb with no Method value (HEAD, OPTIONS, TRACE...) reads as Get in the request:
+                    // it must not run the GET handler of this path.
+                    if (m_parser.methodSupported() && route.method == m_parser.request().method)
                     {
                         return &route;
                     }

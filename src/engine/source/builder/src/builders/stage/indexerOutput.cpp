@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "indexerOutput.hpp"
 
+#include <algorithm>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <unordered_map>
+
+#include <base/logging.hpp>
 
 #include "builders/utils.hpp"
 
@@ -15,6 +20,7 @@ namespace builder::builders
 namespace
 {
 constexpr std::string_view INDEX_PREFIX = "wazuh-events-v5-";
+constexpr size_t MAX_INDEX_NAME_SIZE = 255;
 
 /**
  * @brief Parses an index name of the form wazuh-events-v5-(?:[a-z0-9.-]+|\$\{[^}]+\})*
@@ -59,7 +65,48 @@ std::optional<std::map<std::string, std::string>> parseIndexName(std::string_vie
 
     return placeholders;
 }
+
+/**
+ * @brief Whether an event field value may take the place of a placeholder in an index name.
+ *
+ * The value becomes part of a name the connector writes into a bulk action line and a URL, so it is held to the
+ * characters the name itself may use, plus '_'. Anything else (a quote, a slash, a space, an upper-case letter) is
+ * refused, never escaped.
+ */
+bool isIndexNameValue(std::string_view value)
+{
+    return std::all_of(
+        value.begin(),
+        value.end(),
+        [](const char c)
+        { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_'; });
+}
 } // namespace
+
+std::shared_ptr<NotIndexedLogThrottle> notIndexedLogThrottleFor(const std::string& operationName)
+{
+    static std::mutex mutex;
+    static std::unordered_map<std::string, std::weak_ptr<NotIndexedLogThrottle>> throttles;
+
+    std::lock_guard lock {mutex};
+    if (auto it = throttles.find(operationName); it != throttles.end())
+    {
+        if (auto throttle = it->second.lock(); throttle)
+        {
+            return throttle;
+        }
+    }
+
+    // Names of outputs no longer built would otherwise stay here forever
+    for (auto it = throttles.begin(); it != throttles.end();)
+    {
+        it = it->second.expired() ? throttles.erase(it) : std::next(it);
+    }
+
+    auto throttle = std::make_shared<NotIndexedLogThrottle>();
+    throttles[operationName] = throttle;
+    return throttle;
+}
 
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,
@@ -136,9 +183,6 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
-    const auto failureTrace2 = fmt::format("{} -> Couldn't get field {} from event", name, "{}");
-    const auto failureTrace3 = fmt::format("{} -> Index name '{}' exceeds 255 characters limit", name, "{}");
 
     // Get shared ptr
     auto wic = iConnector.lock();
@@ -147,24 +191,66 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
         throw std::runtime_error("Indexer connector is not available");
     }
 
+    // The index name and the field values are user content: they are never used as a format string. An event that
+    // cannot be indexed is a failure of the operation with the cause in the trace; outside test mode it is also
+    // reported by a rate-limited warning (without the event).
+    auto notIndexedLog = notIndexedLogThrottleFor(name);
+
     return base::Term<base::EngineOp>::create(
         name,
-        [indexName,
-         placeholderPPVec,
-         wic,
-         successTrace,
-         failureTrace,
-         failureTrace2,
-         failureTrace3,
-         isTestMode = buildCtx->isTestMode()](base::Event event) -> base::result::Result<base::Event>
+        [name, indexName, placeholderPPVec, wic, successTrace, notIndexedLog, isTestMode = buildCtx->isTestMode()](
+            base::Event event) -> base::result::Result<base::Event>
         {
+            // An event that cannot be indexed. `trace` builds the cause for the trace of a test session and `log` the
+            // one for the manager log, which must not carry event content (the expanded index name is built from
+            // field values, of any size). Each is called only when its text is used.
+            auto fail = [&](auto&& trace, auto&& log) -> base::result::Result<base::Event>
+            {
+                if (isTestMode)
+                {
+                    return base::result::makeFailure(event, name + " -> " + trace());
+                }
+
+                if (const auto suppressed = notIndexedLog->record(); suppressed)
+                {
+                    if (*suppressed == 0)
+                    {
+                        LOG_WARNING("[builder] Event not indexed by '{}': {}", name, log());
+                    }
+                    else
+                    {
+                        LOG_WARNING("[builder] Event not indexed by '{}': {} ({} more events not indexed by this "
+                                    "output since the previous report)",
+                                    name,
+                                    log(),
+                                    *suppressed);
+                    }
+                }
+                return base::result::makeFailure(event);
+            };
+
             std::string finalIndexName = indexName;
             for (const auto& [placeholder, jsonPathPP] : placeholderPPVec)
             {
                 std::string fieldValue;
                 if (event->getString(fieldValue, jsonPathPP) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace2, placeholder));
+                    // The placeholder comes from the asset, not from the event
+                    const auto cause = [&placeholder = placeholder]()
+                    {
+                        return "Couldn't get field " + placeholder + " from event";
+                    };
+                    return fail(cause, cause);
+                }
+
+                if (!isIndexNameValue(fieldValue))
+                {
+                    // Neither cause carries the value: it is event content, of any size
+                    const auto cause = [&placeholder = placeholder]()
+                    {
+                        return "Field " + placeholder + " holds characters not allowed in an index name";
+                    };
+                    return fail(cause, cause);
                 }
 
                 // Replace all occurrences of the placeholder in the indexName
@@ -176,12 +262,27 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                 }
             }
 
-            if (finalIndexName.size() > 255)
+            if (finalIndexName.size() > MAX_INDEX_NAME_SIZE)
             {
-                RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace3, finalIndexName));
+                return fail([&]() { return "Index name '" + finalIndexName + "' exceeds 255 characters limit"; },
+                            [&]()
+                            {
+                                return "Index name exceeds 255 characters limit ("
+                                       + std::to_string(finalIndexName.size()) + " characters)";
+                            });
             }
 
             wic->index(finalIndexName, event->str());
+
+            // The failures suppressed after the last warning, reported once its window is over
+            if (!isTestMode)
+            {
+                if (const auto suppressed = notIndexedLog->pending(); suppressed)
+                {
+                    LOG_WARNING(
+                        "[builder] {} more events not indexed by '{}' since the previous report", *suppressed, name);
+                }
+            }
 
             RETURN_SUCCESS(isTestMode, event, successTrace);
         });

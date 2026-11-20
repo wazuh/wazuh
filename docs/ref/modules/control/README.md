@@ -133,7 +133,7 @@ restart or reload to systemd the helper runs [`wazuh-manager-control check`](../
 — the configuration, the credentials and every daemon's `-t`, without stopping or starting anything — as
 `root`, with the cleared environment. When the check fails the helper calls no `systemctl`, prints
 `wazuh-manager-service-control: the manager configuration or credentials check failed; the manager was not restarted`
-on standard error and exits `1`: the manager keeps running on its previous configuration, and the check's own
+(`… was not reloaded` for a reload) on standard error and exits `1`: the manager keeps running on its previous configuration, and the check's own
 `wazuh-manager-control: ERROR: …` lines are in `logs/wazuh-manager.log` — the validator's verdict, the
 credential verdict, or, for a daemon whose `-t` refuses, one line naming the daemon and the last line of its
 test output, for example

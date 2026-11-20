@@ -939,7 +939,13 @@ static void process_message(struct client *client) {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
+        if (config.worker_node) {
+            /* The master that issued the key already logged it at INFO */
+            mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, source);
+        } else {
+            /* The audit line a forwarded enrollment leaves on the master (local-server.c), worded alike */
+            minfo("Agent key generated for agent '%s' (requested by %s)", client->agentname, source);
+        }
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);

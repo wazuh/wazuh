@@ -454,7 +454,10 @@ namespace task_manager::http
             {
                 return notAnInteger("max_pending");
             }
-            request.maxPending = maxPending.value_or(storage::UNBOUNDED);
+            // Never unbounded by default. Nothing claims a row of an unknown type and only the next
+            // start retires it, so an absent, zero or negative max_pending gets the fixed default.
+            // A request may still name its own positive bound, however large (test producers do).
+            request.maxPending = maxPending.has_value() && *maxPending > 0 ? *maxPending : UNKNOWN_TYPE_MAX_PENDING;
         }
 
         const auto outcome {m_store.createManagerTask(request)};

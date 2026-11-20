@@ -196,13 +196,27 @@ inline json::Json adaptDecoder(const json::Json& document)
                     {
                         throw std::runtime_error("Decoder normalize array contains invalid element, not an object");
                     }
+                    // Only one parse|XXX is allowed per block. A second one is refused, as it is at the
+                    // top level of the decoder: keeping the first and dropping the rest would store a
+                    // decoder that silently does less than the one that was written.
+                    size_t blockParseKeyCount = 0;
                     for (const auto& [key, value] : *fullElemOpt)
                     {
                         if (key.find("parse|") == 0)
                         {
-                            orderedObj.set(fmt::format("/{}", key), value);
-                            break; // Only one parse|XXX expected
+                            ++blockParseKeyCount;
+                            if (blockParseKeyCount == 1)
+                            {
+                                orderedObj.set(fmt::format("/{}", key), value);
+                            }
                         }
+                    }
+
+                    if (blockParseKeyCount > 1)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Decoder normalize block contains multiple parse| keys ({}). Only one is allowed",
+                            blockParseKeyCount));
                     }
                 }
 

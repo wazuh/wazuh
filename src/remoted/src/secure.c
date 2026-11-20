@@ -66,33 +66,93 @@ _Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET
 #define STATIC static
 #endif
 
-static _Atomic time_t s_last_events_drop_warn = 0;
-static _Atomic size_t s_pending_events_drop = 0;
+/* Dropped events, counted per cause and reported in at most one warning per 90-second window. */
+typedef struct {
+    _Atomic time_t last;    /* when the last warning was emitted; 0: none yet */
+    _Atomic size_t pending; /* drops not yet reported in a warning */
+    _Atomic time_t since;   /* when the first of the pending drops happened; 0: none pending */
+} rem_events_drop_log_t;
+
+static rem_events_drop_log_t s_events_queue_drop_log = {.last = 0, .pending = 0, .since = 0};
+static rem_events_drop_log_t s_engine_drop_log = {.last = 0, .pending = 0, .since = 0};
 
 /**
- * @brief Increment the pending-drop counter and emit a rate-limited warning.
+ * @brief Take the period the pending drops of a cause span, in seconds, and start a new one.
  *
- * At most one warning per 90-second window is printed. The CAS on
- * s_last_events_drop_warn ensures exactly one thread wins the print slot when
- * multiple handler threads discard events simultaneously.
+ * The count and the start of the period are two atomics, taken one after the other: a drop landing
+ * between the two can leave a count with no start, or a start slightly older than its count. The
+ * period is then the shortest one a line can state, 1 second, or a few seconds long; it never
+ * reaches back over drops a previous line reported.
+ *
+ * @param drops The cause's counters.
+ * @param now Current time.
+ * @return Seconds since the first pending drop, at least 1.
  */
-static void maybe_log_events_queue_drop(void) {
-    atomic_fetch_add_explicit(&s_pending_events_drop, 1, memory_order_relaxed);
+static long rem_events_dropped_span(rem_events_drop_log_t *drops, time_t now) {
+    time_t since = atomic_exchange_explicit(&drops->since, 0, memory_order_relaxed);
+    return (since > 0 && now > since) ? (long)(now - since) : 1;
+}
+
+/**
+ * @brief Count one dropped event and emit a rate-limited warning.
+ *
+ * At most one warning per 90-second window is printed per cause. The CAS on
+ * the cause's last field ensures exactly one thread wins the print slot when
+ * multiple threads drop events simultaneously.
+ *
+ * @param drops The cause's counters.
+ * @param what Start of the warning, before the count ("Events queue discarded").
+ * @param why End of the warning, after the period, without the full stop ("" or ": <reason>").
+ */
+static void rem_log_events_dropped(rem_events_drop_log_t *drops, const char *what, const char *why) {
+    atomic_fetch_add_explicit(&drops->pending, 1, memory_order_relaxed);
 
     time_t now  = time(NULL);
-    time_t last = atomic_load_explicit(&s_last_events_drop_warn, memory_order_relaxed);
+    time_t none = 0;
+    atomic_compare_exchange_strong_explicit(&drops->since, &none, now, memory_order_relaxed, memory_order_relaxed);
+
+    time_t last = atomic_load_explicit(&drops->last, memory_order_relaxed);
     if (now - last >= 90 &&
-        atomic_compare_exchange_strong_explicit(&s_last_events_drop_warn, &last, now,
+        atomic_compare_exchange_strong_explicit(&drops->last, &last, now,
                                                 memory_order_relaxed, memory_order_relaxed)) {
-        size_t count = atomic_exchange_explicit(&s_pending_events_drop, 0, memory_order_relaxed);
-        /* The count covers the time since the previous warning, which can be far longer than the
-         * window; the first warning covers everything since the start. */
+        size_t count = atomic_exchange_explicit(&drops->pending, 0, memory_order_relaxed);
+        /* The first warning covers everything since the start; a later one names the period its
+         * own drops span, which starts at the first of them, not at the previous line: the drops
+         * in between may have been reported already by rem_flush_events_dropped(). */
         if (last == 0) {
-            mwarn("Events queue discarded %zu event(s) so far.", count);
+            atomic_store_explicit(&drops->since, 0, memory_order_relaxed);
+            mwarn("%s %zu event(s) so far%s.", what, count, why);
         } else {
-            mwarn("Events queue discarded %zu event(s) in the last %ld s.", count, (long)(now - last));
+            mwarn("%s %zu event(s) in the last %ld s%s.", what, count, rem_events_dropped_span(drops, now), why);
         }
     }
+}
+
+/**
+ * @brief Report the drops a cause still holds unreported, without waiting for another drop.
+ *
+ * Called when the cause is over (the engine accepted a batch again): the warning above is only
+ * emitted by a later drop, so without this the last drops of an outage would never reach the log.
+ * The period it prints starts at the first drop it counts, not at the previous warning, and it leaves
+ * the 90-second window alone: a report of what is over must not delay the warning of a new outage.
+ * One relaxed atomic load while there is nothing to report.
+ */
+static void rem_flush_events_dropped(rem_events_drop_log_t *drops, const char *what, const char *why) {
+    /* Runs after every delivered batch: only read the counter while there is nothing to report. */
+    if (atomic_load_explicit(&drops->pending, memory_order_relaxed) == 0) {
+        return;
+    }
+
+    size_t count = atomic_exchange_explicit(&drops->pending, 0, memory_order_relaxed);
+    if (count > 0) {
+        time_t now = time(NULL);
+        mwarn("%s %zu event(s) in the last %ld s%s.", what, count, rem_events_dropped_span(drops, now), why);
+    }
+}
+
+/* An event the events queue refused on the way in. */
+static void maybe_log_events_queue_drop(void) {
+    rem_log_events_dropped(&s_events_queue_drop_log, "Events queue discarded", "");
 }
 
 /* Global variables */
@@ -2055,10 +2115,11 @@ static uint64_t mono_ms(void) {
     return (uint64_t)ts.tv_sec * 1000ull + ts.tv_nsec / 1000000ull;
 }
 
-// Drop-only consumer: free each queued item without building a bulk
+// Drop-only consumer: free each queued item without building a bulk. The warning is throttled like
+// the events queue's own: while the engine is down every queued event comes through here.
 static void drop_consumer(void *data, void *user) {
     (void)user;
-    mwarn("Dropped event: unable to connect with analysisd");
+    rem_log_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
     rem_inc_recv_events_failed();
     dispose_evt_item((evt_item_t *)data);
 }
@@ -2135,6 +2196,7 @@ void *dispach_events_thread(void *arg) {
     uhttp_client_t *cli = NULL;
     int    fail_streak = 0;
     uint64_t reopen_at = 0; // circuit breaker reopen time (ms monotonic)
+    bool engine_offline = false; // a POST failed and none has succeeded since
 
     for (;;) {
         uint64_t now = mono_ms();
@@ -2189,9 +2251,17 @@ void *dispach_events_thread(void *arg) {
             int rc = uhttp_post(cli, ctx.bulk.buf, ctx.bulk.len, &res);
             if (rc != 0) {
                 // POST failed: discard this batch (already in ctx.bulk) and go offline
-                mwarn("analysisd offline? POST failed (rc=%d, http=%ld, curl=%d). "
-                      "Dropping events until recovery.",
-                      rc, res.http_status, res.curl_code);
+                // Warn once per outage: every retry fails the same way until the engine is back,
+                // and the dropped events are reported by the throttled warning.
+                if (!engine_offline) {
+                    mwarn("analysisd offline? POST failed (rc=%d, http=%ld, curl=%d). "
+                          "Dropping events until recovery.",
+                          rc, res.http_status, res.curl_code);
+                    engine_offline = true;
+                } else {
+                    mdebug1("analysisd still offline: POST failed (rc=%d, http=%ld, curl=%d).",
+                            rc, res.http_status, res.curl_code);
+                }
 
                 uhttp_client_free(cli);
                 cli = NULL;
@@ -2202,6 +2272,11 @@ void *dispach_events_thread(void *arg) {
                 reopen_at = mono_ms() + backoff;
 
                 // From now on (until reopened), the loop will drain with drop_consumer.
+            } else {
+                // The engine answered: report the drops the throttled warning still owes. A client
+                // handle alone proves nothing, it is created without connecting.
+                engine_offline = false;
+                rem_flush_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
             }
         }
 

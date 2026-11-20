@@ -198,6 +198,7 @@ namespace wazuh::uds_http
             commitPendingHeader();
 
             owner->m_request.method = methodFrom(parser.method);
+            owner->m_methodSupported = isSupported(parser.method);
             owner->m_declaredContentLength = parser.content_length;
 
             // Chunked bodies are refused rather than supported. The peer always sends
@@ -251,8 +252,22 @@ namespace wazuh::uds_http
                 case HTTP_PATCH: return Method::Patch;
                 default: break;
             }
-            // Any other verb is one no route can match, so routing answers 405 for it.
+            // Any other verb has no Method value: isSupported() is false for it, and routing answers
+            // 404 or 405 without matching a route.
             return Method::Get;
+        }
+
+        static bool isSupported(std::uint8_t method)
+        {
+            switch (method)
+            {
+                case HTTP_GET:
+                case HTTP_POST:
+                case HTTP_PUT:
+                case HTTP_DELETE:
+                case HTTP_PATCH: return true;
+                default: return false;
+            }
         }
 
         /**

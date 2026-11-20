@@ -51,6 +51,38 @@ eTester::Session toSession(const ::router::test::Entry& entry, const std::weak_p
     return session;
 }
 
+/// Start of the request error a test run answers when its output event does not fit the response format.
+constexpr auto OUTPUT_NOT_SHOWABLE {
+    "The output event cannot be shown in the response (it may nest deeper than the response format allows)"};
+
+/**
+ * @brief Build the response of a test run.
+ *
+ * The output event travels as a protobuf Struct, whose JSON form nests far less deep than the parsers
+ * accept. An event that converts into the Struct can still be refused when the response is
+ * serialised, so that step is checked here too: both are properties of the tested input and are
+ * answered as a request error, not as an internal one.
+ *
+ * @tparam Res Response type of the handler.
+ * @param eResponse Response carrying the run result.
+ * @return The HTTP response.
+ */
+template<typename Res>
+httplib::Response runResponse(const Res& eResponse)
+{
+    const auto serialized = eMessage::eMessageToJson<Res>(eResponse);
+    if (std::holds_alternative<base::Error>(serialized))
+    {
+        return adapter::userErrorResponse<Res>(
+            fmt::format("{}: {}", OUTPUT_NOT_SHOWABLE, std::get<base::Error>(serialized).message));
+    }
+
+    httplib::Response response;
+    response.status = httplib::StatusCode::OK_200;
+    response.set_content(std::get<std::string>(serialized), "application/json");
+    return response;
+}
+
 /**
  * @brief Transform a router::test::Output to a eTester::Result
  *
@@ -65,8 +97,8 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(output.event()->str());
     if (std::holds_alternative<base::Error>(structOrErr))
     {
-        throw std::runtime_error(fmt::format("Error converting event JSON to protobuf Struct: {}",
-                                             std::get<base::Error>(structOrErr).message));
+        throw std::runtime_error(
+            fmt::format("{}: {}", OUTPUT_NOT_SHOWABLE, std::get<base::Error>(structOrErr).message));
     }
     *result.mutable_output() = std::get<google::protobuf::Struct>(structOrErr);
 
@@ -750,7 +782,19 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         }
 
         ResponseType eResponse {};
-        auto eResult = fromOutput(base::getResponse(response));
+        // The response carries the event as a protobuf Struct, which nests far less deep than the
+        // parsers accept: an event it cannot hold is a property of the tested input, answered as such
+        // instead of escaping as an uncaught 500.
+        eTester::Result eResult {};
+        try
+        {
+            eResult = fromOutput(base::getResponse(response));
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(e.what());
+            return;
+        }
 
         // Validate the final output event against WCS schema (informational, non-blocking)
         if (auto schemaValidatorLocked = wSchemaValidator.lock())
@@ -764,7 +808,7 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 
         eResponse.mutable_result()->CopyFrom(std::move(eResult));
         eResponse.set_status(eEngine::ReturnStatus::OK);
-        res = adapter::userResponse(eResponse);
+        res = runResponse(eResponse);
     };
 }
 
@@ -946,7 +990,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             }
         }
 
-        auto eResult = fromOutput(base::getResponse(response));
+        // The response carries the event as a protobuf Struct, which nests far less deep than the
+        // parsers accept: an event it cannot hold is a property of the tested input, answered as such
+        // instead of escaping as an uncaught 500.
+        eTester::Result eResult {};
+        try
+        {
+            eResult = fromOutput(base::getResponse(response));
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(e.what());
+            return;
+        }
 
         // Validate the final output event against WCS schema (informational, non-blocking).
         if (auto schemaValidatorLocked = wSchemaValidator.lock())
@@ -960,7 +1016,7 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         eResponse.mutable_result()->CopyFrom(std::move(eResult));
         eResponse.set_status(eEngine::ReturnStatus::OK);
-        res = adapter::userResponse(eResponse);
+        res = runResponse(eResponse);
     };
 }
 
