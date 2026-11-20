@@ -6803,3 +6803,89 @@ TEST_F(SyscollectorImpTest, SyncModule_VDFeedNotReadyLogsDeferredEvenPastToleran
 
     Syscollector::instance().destroy();
 }
+
+TEST(ScanErrorLogTest, LogsARepeatedErrorOnceUntilTheTaskSucceeds)
+{
+    ScanErrorLog scanErrors;
+
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    // Another task, or another message, is a new error.
+    EXPECT_EQ(scanErrors.failed("scanPackages", "bus down"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_DEBUG);
+
+    // After a successful run the same error is logged as an error again.
+    scanErrors.succeeded("scanServices");
+    EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_ERROR);
+}
+
+// A scan that fails the same way on every interval (for example the services scan while the
+// system bus does not answer) logs one error, not one per scan.
+TEST_F(SyscollectorImpTest, RepeatedScanFailureIsLoggedAsErrorOnce)
+{
+    const std::string failure {"Unable to list the systemd units, services scan skipped"};
+    std::mutex logMutex;
+    std::vector<std::pair<modules_log_level_t, std::string>> logs;
+    const std::function<void(const modules_log_level_t, const std::string&)> captureLogFunction
+    {
+        [&logMutex, &logs](modules_log_level_t level, const std::string & message)
+        {
+            std::lock_guard<std::mutex> lock {logMutex};
+            logs.emplace_back(level, message);
+        }
+    };
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    std::atomic<int> servicesCalls {0};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(testing::Invoke([&servicesCalls, &failure]() -> nlohmann::json
+    {
+        ++servicesCalls;
+        throw std::runtime_error {failure};
+    }));
+
+    std::function<void(const std::string&)> callbackDataDelta {[](const std::string&) {}};
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, false, false, false, false, false, false, false, true, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::lock_guard<std::mutex> lock {logMutex};
+    const auto count = [&logs, &failure](modules_log_level_t level)
+    {
+        return std::count_if(logs.begin(), logs.end(), [&](const auto & entry)
+        {
+            return entry.first == level && entry.second == failure;
+        });
+    };
+
+    ASSERT_GE(servicesCalls.load(), 2);
+    EXPECT_EQ(count(LOG_ERROR), 1);
+    EXPECT_EQ(count(LOG_DEBUG), servicesCalls.load() - 1);
+}

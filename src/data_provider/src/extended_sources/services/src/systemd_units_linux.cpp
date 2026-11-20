@@ -84,15 +84,7 @@ namespace
 
     std::string trim(const std::string& value)
     {
-        const auto first = value.find_first_not_of(" \t\r");
-
-        if (first == std::string::npos)
-        {
-            return {};
-        }
-
-        const auto last = value.find_last_not_of(" \t\r");
-        return value.substr(first, last - first + 1);
+        return Utils::trim(value, " \t\r");
     }
 
     void parseUnitLine(const std::string& line,
@@ -160,9 +152,13 @@ namespace
         return {DEFAULT_UNIT_SEARCH_PATHS, "/run/systemd/system", consecutiveFailures};
     }
 
-    // Unit name an alias symlink points to, or empty if the path is not an alias. Older
-    // systemd lists aliases with their target's state instead of "alias".
-    std::string aliasTarget(const std::filesystem::path& path)
+    // Unit name an alias link points to, or empty if the path is not an alias. As in systemd,
+    // a link is an alias only if it points to another name inside the unit directories (its
+    // own directory or a search path). A link to a file elsewhere ("app.service" ->
+    // "/opt/app/app-v2.service") is a linked unit file: a unit of its own, under the link's
+    // name. systemd 259 lists both with the "alias" state, and older versions list aliases
+    // with their target's state, so the link itself decides.
+    std::string aliasTarget(const std::filesystem::path& path, const std::vector<std::string>& searchPaths)
     {
         std::error_code ec;
 
@@ -171,14 +167,27 @@ namespace
             return {};
         }
 
-        const auto target = std::filesystem::read_symlink(path, ec);
+        auto target = std::filesystem::read_symlink(path, ec);
 
         if (ec || target == "/dev/null" || target.filename() == path.filename())
         {
             return {};
         }
 
-        return target.filename().string();
+        if (target.is_relative())
+        {
+            target = path.parent_path() / target;
+        }
+
+        const auto targetDir = target.lexically_normal().parent_path();
+        bool insideUnitDirs = targetDir == path.parent_path().lexically_normal();
+
+        for (const auto& searchPath : searchPaths)
+        {
+            insideUnitDirs = insideUnitDirs || targetDir == std::filesystem::path(searchPath).lexically_normal();
+        }
+
+        return insideUnitDirs ? target.filename().string() : std::string {};
     }
 
     enum class ReadResult
@@ -516,6 +525,25 @@ namespace
                                                 unsigned int systemdVersion,
                                                 const HostFacts& facts)
     {
+        // First systemd release whose unit specifier tables have each specifier; earlier ones
+        // treat it as unknown. Taken from unit-printf.c and specifier.h of each release.
+        static const std::map<char, unsigned int> SINCE
+        {
+            {'C', 236}, {'L', 236}, {'S', 236},
+            {'E', 239}, {'J', 239}, {'T', 239}, {'V', 239}, {'j', 239},
+            {'G', 240}, {'g', 240},
+            {'B', 246}, {'W', 246}, {'a', 246}, {'l', 246}, {'o', 246}, {'w', 246},
+            {'A', 249}, {'M', 249},
+            {'Y', 251}, {'d', 251}, {'q', 251}, {'y', 251},
+            {'D', 256}
+        };
+        const auto since = SINCE.find(specifier);
+
+        if (since != SINCE.end() && !supportedSince(systemdVersion, since->second))
+        {
+            return std::nullopt;
+        }
+
         const auto prefix = unitPrefix(unitName);
         const auto instance = unitInstance(unitName);
         const auto dash = prefix.rfind('-');
@@ -631,14 +659,8 @@ namespace
             case 'A':
                 return osValue("IMAGE_VERSION");
 
-            // Added with prefix drop-ins.
             case 'j':
             case 'J':
-                if (!supportedSince(systemdVersion, PREFIX_DROP_INS_VERSION))
-                {
-                    return std::nullopt;
-                }
-
                 return specifier == 'j' ? std::optional<std::string> {lastComponent} :
                        unescapeUnitText(lastComponent);
 
@@ -807,7 +829,8 @@ namespace
                 {
                     const auto name = linkIt->path().filename().string();
 
-                    if (!unitInstance(name).empty() && seen.insert(name).second)
+                    // Only a link enables an instance; systemd ignores a regular file there.
+                    if (!unitInstance(name).empty() && linkIt->is_symlink(linkEc) && seen.insert(name).second)
                     {
                         instances.emplace_back(name, linkIt->path().string());
                     }
@@ -931,24 +954,29 @@ nlohmann::json SystemdUnitsProvider::collect()
     }
     else if (std::filesystem::is_directory(m_settings.runtimeDirectory, ec))
     {
-        // Reporting only what was listed would report the missing units as deleted, so the scan
-        // is skipped and the previous inventory kept. A failure that persists must not freeze
-        // the inventory, so after MAX_CONSECUTIVE_FAILURES skipped scans what systemd lists is
-        // reported; the last skipped scan says so, and later ones log nothing.
+        // Nothing was listed, so there is nothing to report: the scan is skipped and the last
+        // inventory kept until systemd answers. Reporting no units would report every service
+        // as deleted, and as installed again once the bus answers. The message is the same on
+        // every scan, so Syscollector logs it as an error once.
+        if (status == CollectionStatus::Failed)
+        {
+            throw std::runtime_error {"Unable to list the systemd units, services scan skipped; the last services inventory is kept until systemd answers"};
+        }
+
+        // Reporting only the loaded units would report the unloaded ones as deleted, so the scan
+        // is skipped, unless the failure persists: the loaded units still have to be updated.
+        // The last skipped scan says what the next ones report.
         const auto failures = std::min(m_settings.consecutiveFailures->load() + 1, MAX_CONSECUTIVE_FAILURES + 1);
         m_settings.consecutiveFailures->store(failures);
 
         if (failures <= MAX_CONSECUTIVE_FAILURES)
         {
-            const bool unitsFailed = status == CollectionStatus::Failed;
-            std::string message {unitsFailed ? "Unable to list the systemd units" : "Unable to list the systemd unit files"};
-            message += ", services scan skipped (" + std::to_string(failures) + " of " +
-                       std::to_string(MAX_CONSECUTIVE_FAILURES) + ")";
+            std::string message {"Unable to list the systemd unit files, services scan skipped (" +
+                                 std::to_string(failures) + " of " + std::to_string(MAX_CONSECUTIVE_FAILURES) + ")"};
 
             if (failures == MAX_CONSECUTIVE_FAILURES)
             {
-                message += unitsFailed ? "; until systemd answers, the next scans report no services"
-                           : "; until systemd answers, the next scans report only the loaded services";
+                message += "; until systemd answers, the next scans report only the loaded services";
             }
 
             throw std::runtime_error {message};
@@ -1223,15 +1251,11 @@ bool SystemdUnitsProvider::appendUnloadedUnitFiles(DBusConnection* conn,
     {
         // A masked unit is a link to /dev/null, whatever form the link takes.
         const auto target = Utils::startsWith(state, "masked") ? std::string {} :
-                            aliasTarget(path);
+                            aliasTarget(path, m_settings.unitSearchPaths);
 
         if (!target.empty())
         {
             aliasesByTarget[target].push_back(std::filesystem::path(path).filename().string());
-            aliasPaths.insert(path);
-        }
-        else if (state == "alias")
-        {
             aliasPaths.insert(path);
         }
     }

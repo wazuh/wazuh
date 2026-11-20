@@ -92,12 +92,13 @@ class SystemdUnitsProvider
         /// @return A JSON object containing the collected systemd units information.
         /// @throws std::runtime_error if systemd is running but its units or unit files could not
         /// be listed, so the caller keeps its previous inventory instead of reporting the missing
-        /// units as deleted. After MAX_CONSECUTIVE_FAILURES failed collections in a row it returns
-        /// what could be listed instead (the loaded units, or none), so a persistent failure does
-        /// not freeze the inventory; the last failure that throws says so.
+        /// units as deleted. If the units cannot be listed it always throws, with the same
+        /// message. If only the unit files fail, after MAX_CONSECUTIVE_FAILURES failed
+        /// collections in a row it returns the loaded units, so they keep being updated; the
+        /// last failure that throws says so.
         nlohmann::json collect();
 
-        /// @brief Failed collections in a row that throw before collect() reports what it can.
+        /// @brief Failed unit file listings in a row that throw before the loaded units are reported.
         static constexpr unsigned int MAX_CONSECUTIVE_FAILURES {3};
 
         /// @brief Reads [Unit] Description and SourcePath, and [Service] User, from a unit file.
