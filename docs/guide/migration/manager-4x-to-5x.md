@@ -322,7 +322,7 @@ Two requirements come from the fleet rather than from whoever signs:
   adding to it. On a new host installed under a provisional name or address, the discovery names those, not what
   the fleet dials, so set the variable before installing. Nothing checks the list against the fleet, and a
   certificate that lacks an address fails only when an agent dials it: a 5.0 agent refuses the manager, and a
-  remote upgrade aborts ([Step 7](#7-upgrade-the-agents-to-50)). A pair is never reissued on its own: to reissue one, remove both of its files and run
+  remote upgrade aborts or leaves the agent unable to connect ([Step 7](#7-upgrade-the-agents-to-50)). A pair is never reissued on its own: to reissue one, remove both of its files and run
   `--install` with the CA and its key in `ca/` ([Server pairs](../../ref/getting-started/credentials.md#server-pairs)).
 - **Keep the CA and its key.** It is what every 5.0 agent verifies the manager against and what enrollment tokens
   pin, so replacing it later invalidates both. Back up `/etc/wazuh-manager/ca/` before anything else.
@@ -751,12 +751,14 @@ migrated fleet:
     the upgrade channel, immediately before the `upgrade` command, and the agent's installer picks
     it up. On by default (`<remote><legacy><ca_delivery>`). It never fails an upgrade: if the CA
     cannot be sent the upgrade proceeds and the manager logs that step alone, which is worth
-    checking before declaring the migration done. What does stop an upgrade is a listener
-    certificate without the address the agent dials: the agent's installer checks the delivered CA
-    against the manager at that address before installing anything, aborts, and the agent stays
-    on 4.x (`Upgrade failed. Delivered CA ... does not verify the manager's certificate at
-    <address>:1517` in the agent's `upgrade.log`, `reported upgrade result (error 2: Upgrade
-    failed)` on the manager). Reissue the pair with that address
+    checking before declaring the migration done. A listener certificate without the address the
+    agents dial is another matter, so check its subjectAltName before upgrading the fleet. On
+    Linux the agent's installer checks the delivered CA against the manager at that address
+    before installing anything, aborts, and the agent stays on 4.x (`Upgrade failed. Delivered
+    CA ... does not verify the manager's certificate at <address>:1517` in the agent's
+    `upgrade.log`, `reported upgrade result (error 2: Upgrade failed)` on the manager). The check
+    is skipped where it cannot run, and the Windows installer does not make it: there the agent
+    is upgraded and then refuses the manager. Reissue the pair with that address
     ([Step 2](#certificates-and-credentials)) and launch the upgrade again. See
     [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
     A 4.x agent does not fetch its task: `wazuh-manager-remoted` hands it over on its next poll of
