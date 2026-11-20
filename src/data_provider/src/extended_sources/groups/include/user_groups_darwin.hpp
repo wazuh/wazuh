@@ -17,6 +17,8 @@
 #include "igroup_wrapper.hpp"
 #include "ipasswd_wrapper.hpp"
 #include "iopen_directory_utils_wrapper.hpp"
+#include "iuuid_wrapper.hpp"
+#include "direct_memberships_darwin.hpp"
 
 #define EXPECTED_GROUPS_MAX 64
 
@@ -25,7 +27,8 @@ class UserGroupsProvider
     public:
         explicit UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
                                     std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
-                                    std::shared_ptr<IODUtilsWrapper> odWrapper);
+                                    std::shared_ptr<IODUtilsWrapper> odWrapper,
+                                    std::shared_ptr<IUUIDWrapper> uuidWrapper);
         UserGroupsProvider();
         nlohmann::json collect(const std::set<uid_t>& uids = {});
 
@@ -41,6 +44,7 @@ class UserGroupsProvider
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
+        DirectMemberships m_directMemberships;
 
         struct UserInfo
         {

@@ -12,6 +12,7 @@
 #include "group_wrapper.hpp"
 #include "passwd_wrapper.hpp"
 #include "open_directory_utils_wrapper.hpp"
+#include "uuid_wrapper.hpp"
 
 // Thread-local cache for user group mappings (uid -> list of gids)
 static thread_local std::unordered_map<uid_t, std::vector<gid_t>> s_userGroupsCache;
@@ -20,17 +21,20 @@ static constexpr std::chrono::seconds CACHE_TIMEOUT{60};
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
                                        std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
-                                       std::shared_ptr<IODUtilsWrapper> odWrapper)
+                                       std::shared_ptr<IODUtilsWrapper> odWrapper,
+                                       std::shared_ptr<IUUIDWrapper> uuidWrapper)
     : m_groupWrapper(std::move(groupWrapper))
     , m_passwdWrapper(std::move(passwdWrapper))
     , m_odWrapper(std::move(odWrapper))
+    , m_directMemberships(m_groupWrapper, m_odWrapper, std::move(uuidWrapper))
 {
 }
 
 UserGroupsProvider::UserGroupsProvider()
-    : m_groupWrapper(std::make_shared<GroupWrapperDarwin>())
-    , m_passwdWrapper(std::make_shared<PasswdWrapperDarwin>())
-    , m_odWrapper(std::make_shared<ODUtilsWrapper>())
+    : UserGroupsProvider(std::make_shared<GroupWrapperDarwin>(),
+                         std::make_shared<PasswdWrapperDarwin>(),
+                         std::make_shared<ODUtilsWrapper>(),
+                         std::make_shared<UUIDWrapper>())
 {
 }
 
@@ -68,17 +72,13 @@ std::vector<gid_t> UserGroupsProvider::getUserGroups(uid_t uid, const char* user
         }
     }
 
-    // Cache miss - get groups from system
-    int ngroups = m_groupWrapper->getgroupcount(username, gid);
-    std::vector<gid_t> groups(ngroups);
+    // Cache miss - read the direct memberships
+    auto groups = m_directMemberships.groupsOf(username, uid, gid);
 
-    if (m_groupWrapper->getgrouplist(username, gid, groups.data(), &ngroups) < 0)
+    // An unreadable directory is not cached, so the next scan reads it again.
+    if (groups.empty())
     {
-        groups.clear();
-    }
-    else
-    {
-        groups.resize(ngroups);
+        return groups;
     }
 
     // Store in cache
