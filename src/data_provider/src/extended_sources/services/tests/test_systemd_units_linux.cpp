@@ -581,6 +581,44 @@ TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
     EXPECT_THROW(provider.collect(), std::runtime_error);
 }
 
+// libdbus reports a missing socket as FileNotFound and a socket nobody listens on as NoServer.
+class SystemdBusErrorTest : public ::testing::TestWithParam<std::tuple<const char*, bool>> {};
+
+TEST_P(SystemdBusErrorTest, TreatsAMissingBusAsAbsent)
+{
+    const auto [errorName, noBus] {GetParam()};
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+    SystemdUnitsProvider provider(mockDbusWrapper, TestSettings());
+
+    EXPECT_CALL(*mockDbusWrapper, error_init(_));
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _))
+    .WillOnce(DoAll(Invoke([name = errorName](DBusBusType, DBusError * err)
+    {
+        *err = {};
+        err->name = name;
+    }),
+    Return(nullptr)));
+    EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Invoke([](auto) {}));
+
+    if (noBus)
+    {
+        EXPECT_EQ(provider.collect(), nlohmann::json::array());
+    }
+    else
+    {
+        EXPECT_THROW(provider.collect(), std::runtime_error);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdBusErrorTest,
+    ::testing::Values(
+        std::make_tuple(DBUS_ERROR_FILE_NOT_FOUND, true),
+        std::make_tuple(DBUS_ERROR_NO_SERVER, false),
+        std::make_tuple(DBUS_ERROR_ACCESS_DENIED, false)));
+
 TEST(SystemdUnitsProviderTest, FailsWhenMessageCreationFails)
 {
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
