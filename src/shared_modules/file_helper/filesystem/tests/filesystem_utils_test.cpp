@@ -36,6 +36,14 @@ constexpr auto PATH_MISSING_BASE {"/x/*/missing"};
 constexpr auto PATH_MISSING_SUFFIX {"/tmp/wazuh_test/prefix_*_data/missing"};
 constexpr auto PATH_UNDER_ROOT {"/tm?/wazuh_test/dum*"};
 constexpr auto PATH_UNDER_FILE {"/tmp/wazuh_test/dummy.txt/*"};
+
+constexpr auto WILDCARD_NAMED_DIR_1 {"/tmp/wazuh_test/a*b"};
+constexpr auto WILDCARD_NAMED_DIR_2 {"/tmp/wazuh_test/q?x"};
+constexpr auto WILDCARD_NAMED_ENTRY_1 {"/tmp/wazuh_test/a*b/x"};
+constexpr auto WILDCARD_NAMED_ENTRY_2 {"/tmp/wazuh_test/q?x/x"};
+constexpr auto PATH_ALL_ENTRIES {"/tmp/wazuh_test/*"};
+constexpr auto PATH_UNDER_WILDCARD_NAMED {"/tmp/wazuh_test/*/x"};
+constexpr auto PATH_PREFIX_1_DATA {"/tmp/wazuh_test/prefix_1_data"};
 #else
 constexpr auto EXPANDED_PATH_1 {"C:\\tmp\\wazuh_test\\prefix_1_data\\prefix1_1"};
 constexpr auto EXPANDED_PATH_2 {"C:\\tmp\\wazuh_test\\prefix_1_data\\prefix1_2"};
@@ -354,6 +362,85 @@ TEST_F(FileSystemTest, FilesystemExpandWildcardUnderFile)
 
     EXPECT_TRUE(m_output.empty());
 }
+
+TEST_F(FileSystemTest, FilesystemExpandSkipsEntryWhoseExistsThrows)
+{
+    SetupFilesystemWrapperExpectations();
+    EXPECT_CALL(*m_mockWrapper, exists(std::filesystem::path(PATH_PREFIX_1_DATA)))
+    .WillRepeatedly(::testing::Throw(std::filesystem::filesystem_error(
+                                         "exists failed", std::make_error_code(std::errc::permission_denied))));
+
+    m_fsUtils->expand_absolute_path(PATH_TO_EXPAND_2, m_output);
+
+    EXPECT_THAT(m_output, ::testing::UnorderedElementsAre(EXPANDED_PATH_3, EXPANDED_PATH_4));
+}
+
+TEST_F(FileSystemTest, FilesystemExpandSkipsEntryWhoseIsDirectoryThrows)
+{
+    SetupFilesystemWrapperExpectations();
+    EXPECT_CALL(*m_mockWrapper, is_directory(std::filesystem::path(PATH_PREFIX_1_DATA)))
+    .WillRepeatedly(::testing::Throw(std::filesystem::filesystem_error(
+                                         "is_directory failed", std::make_error_code(std::errc::permission_denied))));
+
+    m_fsUtils->expand_absolute_path(PATH_TO_EXPAND_2, m_output);
+
+    EXPECT_THAT(m_output, ::testing::UnorderedElementsAre(EXPANDED_PATH_3, EXPANDED_PATH_4));
+}
+
+TEST_F(FileSystemTest, FilesystemExpandSkipsEntryWhoseListDirectoryThrows)
+{
+    SetupFilesystemWrapperExpectations();
+    EXPECT_CALL(*m_mockWrapper, list_directory(std::filesystem::path(PATH_PREFIX_1_DATA)))
+    .WillRepeatedly(::testing::Throw(std::filesystem::filesystem_error(
+                                         "list_directory failed", std::make_error_code(std::errc::permission_denied))));
+
+    m_fsUtils->expand_absolute_path(PATH_TO_EXPAND_2, m_output);
+
+    EXPECT_THAT(m_output, ::testing::UnorderedElementsAre(EXPANDED_PATH_3, EXPANDED_PATH_4));
+}
+
+TEST_F(FileSystemTest, FilesystemExpandSkipsLiteralWhoseExistsThrows)
+{
+    SetupFilesystemWrapperExpectations();
+    EXPECT_CALL(*m_mockWrapper, exists(std::filesystem::path(EXPANDED_PATH_1)))
+    .WillRepeatedly(::testing::Throw(std::filesystem::filesystem_error(
+                                         "exists failed", std::make_error_code(std::errc::permission_denied))));
+
+    m_fsUtils->expand_absolute_path(PATH_TO_EXPAND_4, m_output);
+
+    EXPECT_THAT(m_output, ::testing::ElementsAre(EXPANDED_PATH_3));
+}
+
+#ifndef _WIN32
+// '*' and '?' are valid in unix file names, and a matched name must not be read as a pattern again.
+TEST_F(FileSystemTest, FilesystemExpandEntryNamedWithWildcardCharacters)
+{
+    m_fsElements.push_back({WILDCARD_NAMED_ENTRY_1, true});
+    m_fsElements.push_back({WILDCARD_NAMED_ENTRY_2, true});
+    SetupFilesystemWrapperExpectations();
+
+    m_fsUtils->expand_absolute_path(PATH_ALL_ENTRIES, m_output);
+
+    EXPECT_THAT(m_output,
+                ::testing::UnorderedElementsAre(EXPANDED_PATH_5,
+                                                EXPANDED_PATH_6,
+                                                PATH_PREFIX_1_DATA,
+                                                "/tmp/wazuh_test/prefix_2_data",
+                                                WILDCARD_NAMED_DIR_1,
+                                                WILDCARD_NAMED_DIR_2));
+}
+
+TEST_F(FileSystemTest, FilesystemExpandSuffixUnderEntryNamedWithWildcardCharacters)
+{
+    m_fsElements.push_back({WILDCARD_NAMED_ENTRY_1, true});
+    m_fsElements.push_back({WILDCARD_NAMED_ENTRY_2, true});
+    SetupFilesystemWrapperExpectations();
+
+    m_fsUtils->expand_absolute_path(PATH_UNDER_WILDCARD_NAMED, m_output);
+
+    EXPECT_THAT(m_output, ::testing::UnorderedElementsAre(WILDCARD_NAMED_ENTRY_1, WILDCARD_NAMED_ENTRY_2));
+}
+#endif
 
 int main(int argc, char** argv)
 {

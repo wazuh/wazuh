@@ -784,6 +784,8 @@ TEST_F(PolicyParserTest, PolicyIdAlreadyLoadedSkipsThePolicyFile)
         "checks": [{"id": "2", "title": "Second", "condition": "all", "rules": ["f:/etc/group"]}]
     })"));
     EXPECT_FALSE(second.ParsePolicy(j));
+    EXPECT_TRUE(second.SkippedAsDuplicate());
+    EXPECT_FALSE(first.SkippedAsDuplicate());
 
     EXPECT_EQ(j["policies"].size(), 1);
     ASSERT_EQ(j["checks"].size(), 1);

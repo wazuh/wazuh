@@ -136,15 +136,16 @@ namespace
         return paths;
     }
 
-    /// Combines per-path results as 4.x did: Found on the first found path, else Invalid/NotRun (first reason
-    /// kept), else NotFound; negation applies once to the combined result.
+    /// Combines per-path results as 4.x did: Found on the first found path, else Invalid/NotRun, else NotFound.
+    /// Invalid outranks NotRun; the reason is that of the path that set the result (first on a tie).
+    /// Negation applies once to the combined result.
     template<typename CheckPathFunc>
     RuleResult EvaluatePathList(const PolicyEvaluationContext& ctx,
                                 std::string& unresolvedReason,
                                 CheckPathFunc&& checkPath)
     {
         auto combined = RuleResult::NotFound;
-        std::string firstUnresolvedReason;
+        std::string combinedReason;
 
         for (const auto& path : SplitPathList(ctx.rule))
         {
@@ -159,21 +160,17 @@ namespace
 
             if (result == RuleResult::Invalid || result == RuleResult::NotRun)
             {
-                if (firstUnresolvedReason.empty())
-                {
-                    firstUnresolvedReason = unresolvedReason;
-                }
-
-                if (combined != RuleResult::Invalid)
+                if (combined == RuleResult::NotFound || (combined == RuleResult::NotRun && result == RuleResult::Invalid))
                 {
                     combined = result;
+                    combinedReason = unresolvedReason;
                 }
             }
         }
 
         if (combined == RuleResult::Invalid || combined == RuleResult::NotRun)
         {
-            unresolvedReason = std::move(firstUnresolvedReason);
+            unresolvedReason = std::move(combinedReason);
             return combined;
         }
 

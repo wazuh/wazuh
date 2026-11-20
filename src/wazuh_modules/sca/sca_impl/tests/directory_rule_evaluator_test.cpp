@@ -1001,3 +1001,16 @@ TEST_F(DirRuleEvaluatorTest, ListWithoutMatchAndAMissingDirectoryIsUnresolved)
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
     EXPECT_EQ(evaluator.GetUnresolvedReason(), "Path 'missing/' does not exist");
 }
+
+TEST_F(DirRuleEvaluatorTest, ListWithSeveralUnresolvedDirectoriesReportsTheFirstReason)
+{
+    m_ctx.pattern = std::string("conf -> r:^Listen");
+    m_ctx.rule = "missing1/,missing2/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("missing1/"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("missing2/"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), "Path 'missing1/' does not exist");
+}

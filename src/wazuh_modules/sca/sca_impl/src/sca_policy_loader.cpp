@@ -63,7 +63,7 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int
                 {
                     policies.emplace_back(std::move(policy));
                 }
-                else
+                else if (!parser.SkippedAsDuplicate())
                 {
                     LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + pol.path);
                 }

@@ -493,3 +493,18 @@ TEST_F(FileRuleEvaluatorTest, ListWithoutMatchAndAMissingFileIsUnresolvedWithIts
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
     EXPECT_EQ(evaluator.GetUnresolvedReason(), "File '/missing' does not exist or is not a regular file");
 }
+
+TEST_F(FileRuleEvaluatorTest, ListWithSeveralUnresolvedFilesReportsTheFirstReason)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.rule = "/first,/second";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/first"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/second"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/second")))
+    .WillOnce(::testing::Throw(std::runtime_error("I/O error")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), "File '/first' does not exist or is not a regular file");
+}

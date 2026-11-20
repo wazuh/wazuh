@@ -142,6 +142,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                                                  "Duplicate policy id '" + policyId +
                                                  "': already used by another policy file. Skipping policy file '" +
                                                  m_filename.string() + "'.");
+                m_skippedAsDuplicate = true;
                 return nullptr;
             }
         }
