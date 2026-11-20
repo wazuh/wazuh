@@ -42,41 +42,16 @@ constexpr size_t DOC_ID_PREFIX_SIZE = 12;
 void fillRandom(uint8_t* out, size_t n);
 
 /**
- * @brief Generates a random UUID version 4 (thread-safe).
+ * @brief Generates a random UUID version 4 (thread-safe): 36 lowercase characters in the 8-4-4-4-12 layout.
+ *
+ * The 16 bytes behind each identifier are taken from a per-thread buffer of 4096 bytes that is filled with
+ * fillRandom() when it runs out; the version and variant bits are then set as RFC 4122 requires. A child process
+ * after fork() discards the buffer it inherited and fills a new one before its first identifier.
+ *
+ * @throws std::runtime_error if the random source fails (the next call on the calling thread retries) or if the
+ *         fork handler cannot be registered. It never falls back to a weaker source.
  */
-inline std::string generateUUIDv4()
-{
-    // Hexadecimal digits as a compile-time constant
-    constexpr char hexDigits[] = "0123456789abcdef";
-
-    thread_local std::random_device rd;
-    thread_local std::mt19937 gen(rd());
-    thread_local std::uniform_int_distribution<> hex_dist(0, 15);
-    thread_local std::uniform_int_distribution<> variant_dist(8, 11); // UUID variant: 8, 9, a, or b
-
-    std::string uuid;
-    uuid.reserve(UUID_V4_LENGTH);
-
-    for (size_t i = 0; i < UUID_V4_LENGTH; ++i)
-    {
-        switch (i)
-        {
-            case 8:
-            case 13:
-            case 18:
-            case 23: uuid.push_back('-'); break;
-            case 14:
-                uuid.push_back('4'); // UUID version 4
-                break;
-            case 19:
-                uuid.push_back(hexDigits[variant_dist(gen)]); // UUID variant
-                break;
-            default: uuid.push_back(hexDigits[hex_dist(gen)]); break;
-        }
-    }
-
-    return uuid;
-}
+std::string generateUUIDv4();
 
 /**
  * @brief Generates a document identifier for an indexer write (thread-safe, lock-free after the first call of each
