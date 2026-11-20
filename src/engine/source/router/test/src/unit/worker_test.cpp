@@ -14,6 +14,7 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <base/utils/timeUtils.hpp>
@@ -108,6 +109,43 @@ struct RouterCapture
     bool eventIngested {false};
     std::promise<void> done;
 };
+
+// Random source that always fails, as RAND_bytes does when the DRBG cannot be seeded.
+int failingRandSource(unsigned char* /*buf*/, int /*n*/)
+{
+    return 0;
+}
+
+// Replaces the random source behind the event id generator; restores the previous one when the test ends.
+class RandSourceGuard
+{
+public:
+    explicit RandSourceGuard(base::utils::generators::detail::RandBytesFn fn)
+        : m_previous(base::utils::generators::detail::exchangeRandBytesForTesting(fn))
+    {
+    }
+
+    ~RandSourceGuard() { base::utils::generators::detail::exchangeRandBytesForTesting(m_previous); }
+
+    RandSourceGuard(const RandSourceGuard&) = delete;
+    RandSourceGuard& operator=(const RandSourceGuard&) = delete;
+
+private:
+    base::utils::generators::detail::RandBytesFn m_previous;
+};
+
+// Puts the real random source back; called by a mock queue on the worker thread before it hands out an event.
+void restoreRandSource()
+{
+    base::utils::generators::detail::exchangeRandBytesForTesting(nullptr);
+}
+
+// 8-4-4-4-12 lowercase hexadecimal, version 4.
+const std::regex& uuidV4Regex()
+{
+    static const std::regex re(R"(^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$)");
+    return re;
+}
 } // namespace
 
 /***************************
@@ -301,6 +339,146 @@ TEST_F(WorkerTest, RouterWorkerCountsMalformedEvent)
     worker.stop();
 
     EXPECT_EQ(malformedAdds.load(), static_cast<int>(lines.size()));
+}
+
+// An event whose id cannot be generated is dropped before its raw copy and counted in router.events.id_failed.
+TEST_F(WorkerTest, RouterWorkerDropsEventWhenIdFails)
+{
+    RandSourceGuard failing(&failingRandSource);
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
+
+    auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
+    auto* mockMetrics = dynamic_cast<fastmetrics::MockManager*>(&manager);
+    ASSERT_NE(mockMetrics, nullptr);
+
+    constexpr int kEvents = 3;
+    auto idFailedCounter = std::make_shared<NiceMock<fastmetrics::MockCounter>>();
+    auto processedCounter = std::make_shared<NiceMock<fastmetrics::MockCounter>>();
+    std::atomic<int> idFailedAdds {0};
+    std::promise<void> allDropped;
+    auto allDroppedFuture = allDropped.get_future();
+    EXPECT_CALL(*idFailedCounter, add(1u))
+        .WillRepeatedly(
+            [&](uint64_t)
+            {
+                if (idFailedAdds.fetch_add(1) + 1 == kEvents)
+                {
+                    allDropped.set_value();
+                }
+            });
+    EXPECT_CALL(*processedCounter, add(_)).Times(0);
+    EXPECT_CALL(*mockMetrics, getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_ID_FAILED, _, _))
+        .WillRepeatedly(Return(idFailedCounter));
+    EXPECT_CALL(*mockMetrics, getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED, _, _))
+        .WillRepeatedly(Return(processedCounter));
+
+    ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
+    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>())).Times(0);
+    EXPECT_CALL(*m_mockRawIndexer, index(A<std::string_view>())).Times(0);
+    EXPECT_CALL(*m_mockRawIndexer, index(A<const char*>())).Times(0);
+
+    auto agentJson = std::make_shared<json::Json>(R"({"agent":{"id":"001","name":"test"}})");
+    std::atomic<int> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](IngestEvent& ev, int64_t) -> bool
+            {
+                if (callCount.fetch_add(1) < kEvents)
+                {
+                    ev = IngestEvent {agentJson, R"(1:[100] (agent) any->syslog {"message":"test"})"};
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return false;
+            });
+
+    RouterWorker worker(m_envBuilder, mockQueue, m_mockRawIndexer, nullptr);
+    worker.start();
+    const auto status = allDroppedFuture.wait_for(std::chrono::seconds(2));
+    worker.stop();
+
+    ASSERT_EQ(status, std::future_status::ready) << "router.events.id_failed was not incremented for every event";
+    EXPECT_EQ(idFailedAdds.load(), kEvents);
+}
+
+// After a failure the worker keeps running: once the source works again, the next event gets an id and is processed.
+TEST_F(WorkerTest, RouterWorkerRecoversAfterIdFailure)
+{
+    RandSourceGuard failing(&failingRandSource);
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
+
+    auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
+    auto* mockMetrics = dynamic_cast<fastmetrics::MockManager*>(&manager);
+    ASSERT_NE(mockMetrics, nullptr);
+
+    auto idFailedCounter = std::make_shared<NiceMock<fastmetrics::MockCounter>>();
+    auto processedCounter = std::make_shared<NiceMock<fastmetrics::MockCounter>>();
+    std::atomic<int> idFailedAdds {0};
+    std::atomic<int> processedAdds {0};
+    std::promise<void> processed;
+    auto processedFuture = processed.get_future();
+    EXPECT_CALL(*idFailedCounter, add(1u)).WillRepeatedly([&](uint64_t) { idFailedAdds.fetch_add(1); });
+    EXPECT_CALL(*processedCounter, add(1u))
+        .WillRepeatedly(
+            [&](uint64_t)
+            {
+                if (processedAdds.fetch_add(1) == 0)
+                {
+                    processed.set_value();
+                }
+            });
+    EXPECT_CALL(*mockMetrics, getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_ID_FAILED, _, _))
+        .WillRepeatedly(Return(idFailedCounter));
+    EXPECT_CALL(*mockMetrics, getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED, _, _))
+        .WillRepeatedly(Return(processedCounter));
+
+    std::mutex payloadMutex;
+    std::vector<std::string> rawPayloads;
+    ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
+    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>()))
+        .WillRepeatedly(
+            [&](const std::string& payload)
+            {
+                std::lock_guard<std::mutex> lock(payloadMutex);
+                rawPayloads.push_back(payload);
+            });
+
+    auto agentJson = std::make_shared<json::Json>(R"({"agent":{"id":"001","name":"test"}})");
+    std::atomic<int> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](IngestEvent& ev, int64_t) -> bool
+            {
+                const auto c = callCount.fetch_add(1);
+                if (c < 2)
+                {
+                    if (c == 1)
+                    {
+                        // On the worker thread, after the first event has failed
+                        restoreRandSource();
+                    }
+                    ev = IngestEvent {agentJson, R"(1:[100] (agent) any->syslog {"message":"test"})"};
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return false;
+            });
+
+    RouterWorker worker(m_envBuilder, mockQueue, m_mockRawIndexer, nullptr);
+    worker.start();
+    const auto status = processedFuture.wait_for(std::chrono::seconds(2));
+    worker.stop();
+
+    ASSERT_EQ(status, std::future_status::ready) << "The event after the failure was not processed";
+    EXPECT_EQ(idFailedAdds.load(), 1);
+    EXPECT_EQ(processedAdds.load(), 1);
+
+    std::lock_guard<std::mutex> lock(payloadMutex);
+    ASSERT_EQ(rawPayloads.size(), 1U);
+    json::Json raw(rawPayloads.front().c_str());
+    std::string eventId;
+    ASSERT_EQ(raw.getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
+    EXPECT_TRUE(std::regex_match(eventId, uuidV4Regex())) << eventId;
 }
 
 TEST_F(WorkerTest, RouterWorkerGetReturnsRouter)
@@ -716,4 +894,127 @@ TEST_F(WorkerTest, TesterWorkerSkipsNullEvent)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     worker.stop();
     // Should not crash
+}
+
+// A failure to generate the event id reaches the caller as an error; the test event is not run and the worker lives.
+TEST_F(WorkerTest, TesterWorkerReturnsErrorWhenIdFails)
+{
+    RandSourceGuard failing(&failingRandSource);
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
+
+    auto event = std::make_shared<json::Json>(R"({"test": true})");
+    test::Options opts(test::Options::TraceLevel::NONE, {}, "env1");
+
+    std::mutex resultMutex;
+    std::optional<base::RespOrError<test::Output>> result;
+    std::promise<void> done;
+    auto doneFuture = done.get_future();
+    auto testEventData = std::make_shared<test::TestingTuple>(std::move(event),
+                                                              opts,
+                                                              [&](base::RespOrError<test::Output>&& output)
+                                                              {
+                                                                  {
+                                                                      std::lock_guard<std::mutex> lock(resultMutex);
+                                                                      result.emplace(std::move(output));
+                                                                  }
+                                                                  done.set_value();
+                                                              });
+
+    EXPECT_CALL(*m_mockController, ingestGet(_)).Times(0);
+
+    std::atomic<int> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](test::EventTest& ev, int64_t) -> bool
+            {
+                if (callCount.fetch_add(1) == 0)
+                {
+                    ev = testEventData;
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return false;
+            });
+
+    TesterWorker worker(m_envBuilder, mockQueue);
+    worker.start();
+    const auto status = doneFuture.wait_for(std::chrono::seconds(2));
+    worker.stop();
+    ASSERT_EQ(status, std::future_status::ready) << "The tester callback was not invoked";
+
+    std::lock_guard<std::mutex> lock(resultMutex);
+    ASSERT_TRUE(result.has_value());
+    ASSERT_TRUE(base::isError(*result));
+    EXPECT_NE(base::getError(*result).message.find("event id"), std::string::npos) << base::getError(*result).message;
+}
+
+// After a failure the tester keeps serving: once the source works again, the next test event runs with an id.
+TEST_F(WorkerTest, TesterWorkerRecoversAfterIdFailure)
+{
+    RandSourceGuard failing(&failingRandSource);
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
+    test::Options opts(test::Options::TraceLevel::NONE, {}, "env1");
+
+    std::mutex resultMutex;
+    std::vector<base::RespOrError<test::Output>> results;
+    std::promise<void> done;
+    auto doneFuture = done.get_future();
+    auto collect = [&](base::RespOrError<test::Output>&& output)
+    {
+        std::lock_guard<std::mutex> lock(resultMutex);
+        results.push_back(std::move(output));
+        if (results.size() == 2)
+        {
+            done.set_value();
+        }
+    };
+    auto first = std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"test": 1})"), opts, collect);
+    auto second = std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"test": 2})"), opts, collect);
+
+    expectEnvironmentBuild("asset/test/0");
+    EXPECT_CALL(*m_mockController, subscribe(_, _)).Times(0);
+    EXPECT_CALL(*m_mockController, ingestGet(_)).Times(1).WillOnce([](base::Event&& ev) { return ev; });
+    EXPECT_CALL(*m_mockController, unsubscribeAll()).Times(1);
+
+    std::atomic<int> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](test::EventTest& ev, int64_t) -> bool
+            {
+                const auto c = callCount.fetch_add(1);
+                if (c == 0)
+                {
+                    ev = first;
+                    return true;
+                }
+                if (c == 1)
+                {
+                    // On the worker thread, after the first test event has failed
+                    restoreRandSource();
+                    ev = second;
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return false;
+            });
+
+    TesterWorker worker(m_envBuilder, mockQueue);
+    const router::test::EntryPost entryPost {"env1", cm::store::NamespaceId {"policy_name_0"}, 1000};
+    ASSERT_FALSE(worker.get()->addEntry(entryPost, false).has_value());
+    ASSERT_FALSE(worker.get()->enableEntry("env1").has_value());
+
+    worker.start();
+    const auto status = doneFuture.wait_for(std::chrono::seconds(2));
+    worker.stop();
+    ASSERT_EQ(status, std::future_status::ready) << "The tester callback was not invoked twice";
+
+    std::lock_guard<std::mutex> lock(resultMutex);
+    ASSERT_EQ(results.size(), 2U);
+    EXPECT_TRUE(base::isError(results[0]));
+    ASSERT_FALSE(base::isError(results[1]));
+    const auto& outEvent = base::getResponse<test::Output>(results[1]).event();
+    ASSERT_NE(outEvent, nullptr);
+    std::string eventId;
+    ASSERT_EQ(outEvent->getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
+    EXPECT_TRUE(std::regex_match(eventId, uuidV4Regex())) << eventId;
 }
