@@ -134,8 +134,9 @@ TEST_F(ScaPolicyLoaderTest, DuplicatePolicyIsSkippedWithoutAGenericParseFailureW
     };
 
     EXPECT_EQ(loader.LoadPolicies(30, true, [](auto, auto) {}, yamlToJson).size(), 1);
-    ASSERT_EQ(warnings.size(), 1);
-    EXPECT_THAT(warnings[0], ::testing::HasSubstr("Duplicate policy id 'same'"));
+    // The policies hold no checks, so the loader also reports nothing to synchronize.
+    EXPECT_THAT(warnings, ::testing::ElementsAre(::testing::HasSubstr("Duplicate policy id 'same'"),
+                                                 ::testing::HasSubstr("No policies and checks found to synchronize")));
 }
 
 TEST_F(ScaPolicyLoaderTest, UnparsablePolicyKeepsTheGenericParseFailureWarning)
@@ -157,8 +158,8 @@ TEST_F(ScaPolicyLoaderTest, UnparsablePolicyKeepsTheGenericParseFailureWarning)
     auto yamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json {{"checks", nlohmann::json::array()}}; };
 
     EXPECT_EQ(loader.LoadPolicies(30, true, [](auto, auto) {}, yamlToJson).size(), 0);
-    ASSERT_EQ(warnings.size(), 1);
-    EXPECT_THAT(warnings[0], ::testing::HasSubstr("Failed to parse policy from"));
+    EXPECT_THAT(warnings, ::testing::ElementsAre(::testing::HasSubstr("Failed to parse policy from"),
+                                                 ::testing::HasSubstr("No policies and checks found to synchronize")));
 }
 
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
