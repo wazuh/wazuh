@@ -3108,7 +3108,10 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
         // like a session another synchronization is already sending: nothing sent, nothing to
         // record, and not a failure, so the plain lane's session still counts.
         m_logFunction(LOG_DEBUG, "VD synchronization held until the vulnerability inventory is resent as a first scan.");
-        return {.success = true, .sessionSkipped = true};
+        SyncModuleResult held;
+        held.success = true;
+        held.sessionSkipped = true;
+        return held;
     }
     else
     {
@@ -3186,7 +3189,7 @@ void Syscollector::holdVDLaneForRearm()
             !updateMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, VD_REARM_PENDING))
     {
         m_logFunction(LOG_WARNING, "Could not record that the vulnerability inventory has to be resent as a first scan "
-                      "when Vulnerability Detector synchronization is enabled again.");
+                      "when Vulnerability Detector synchronization is enabled.");
         return;
     }
 
@@ -3234,7 +3237,7 @@ void Syscollector::rearmVDLaneIfPending()
         return;
     }
 
-    m_logFunction(LOG_INFO, "Vulnerability Detector synchronization is enabled again. Resending the vulnerability "
+    m_logFunction(LOG_DEBUG, "Vulnerability Detector synchronization is enabled. Resending the vulnerability "
                   "inventory as a first scan.");
 
     // Before anything is queued: synchronizeVDTables() picks VDFIRST only while this is unset.
