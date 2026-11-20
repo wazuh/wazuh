@@ -460,6 +460,8 @@ Memory values are in bytes. `host.memory.usage` is computed by Syscollector as `
 | `login_tty` | `login.tty` |
 | `login_type` | `login.type` |
 
+On macOS, `user.groups` holds the groups that list the account as a member, plus its primary group, not the groups it reaches through nested groups. A group that nests `everyone` therefore does not change every account. `group.users` follows the same rule.
+
 On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2` database and any session open at scan time, and is `null` where the host records none. `user.auth_failures.count` counts the `btmp` records, including the rotated generation, that are newer than the account's last login, and is `-1` (not collected) where the host keeps no usable record of either; `user.auth_failures.timestamp` is `null` when no failure is counted.
 
 ```json
