@@ -135,6 +135,14 @@ since the last warning.`), under the same once-a-minute limit. Size it as
 `peak EPS × required outage window`: the default tolerates ≈100 s at 20 eps (measured: 33% of a
 3-minute outage's events lost).
 
+The same queue also overflows on a read burst, with no outage at all. Each input thread reads
+everything new in its files once per `logcollector.loop_timeout` (2 s) and queues it at once, so
+size it for `peak lines/s for the target × loop_timeout` as well (see
+[`logcollector.queue_size`](../logcollector/configuration.md#logcollectorqueue_size)). Measured on
+a macOS agent at about 1,000 lines/s for 7 minutes (about 420,000 lines): the default queue lost
+1,511 to 23,621 lines in 7 of 7 runs, `logcollector.queue_size=32768` lost 0 in 3 of 3 runs, and
+`logcollector.loop_timeout=1` lost 0 in 2 of 2 runs.
+
 **Overloaded `/stateful`.** A session that outlives `downstream_stateful_response_timeout` is
 still applied by the sync server after remoted answered `503`; that `503` carries
 `Retry-After` (`downstream_stateful_retry_after`, 20 s) so the agent's re-send lands after it
