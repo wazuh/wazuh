@@ -2075,6 +2075,22 @@ static void test_report_invalid_tag_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+static void test_report_plain_value_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
+        "<stats_report>yes</stats_report>";
+
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'stats_report': yes.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ssl_full_verification_mode),
@@ -2169,6 +2185,7 @@ int main(void) {
         cmocka_unit_test(test_report_enabled_rejects_a_non_boolean),
         cmocka_unit_test(test_report_interval_beyond_a_day_is_rejected),
         cmocka_unit_test(test_report_invalid_tag_is_rejected),
+        cmocka_unit_test(test_report_plain_value_is_rejected),
         cmocka_unit_test(test_time_reconnect_is_deprecated),
         cmocka_unit_test(test_max_retries_is_deprecated),
         cmocka_unit_test(test_retry_interval_is_deprecated),
