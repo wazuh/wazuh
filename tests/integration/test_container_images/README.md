@@ -25,7 +25,7 @@ fixed number of seconds and hoping a scan finished. These tests avoid that entir
   `daemons_handler` restarts the agent per case; and the image fixture the case asks for
   (`prepare_local_image`, `prepare_saved_archive`, `prepare_layered_image`,
   `prepare_whiteout_image`, `prepare_unsupported_image`, `prepare_rpm_sqlite_image`,
-  `prepare_rpm_ndb_image`) builds a fresh input, points the configured `<archive>` reference at
+  `prepare_rpm_ndb_image`, `prepare_rpm_bdb_image`, `prepare_dpkg_distroless_image`, `prepare_os_release_image`) builds a fresh input, points the configured `<archive>` reference at
   it, and removes it afterwards. No state leaks between cases.
 
 ## Layout
@@ -38,7 +38,7 @@ test_container_images/
 │   ├── patterns.py               # log anchors the monitors wait on
 │   ├── db.py                     # reads the module's SQLite tables
 │   └── registry.py               # a TLS registry served locally, answering as ghcr.io
-├── test_configuration/           # parsing of the <container_images> block
+├── test_configuration/           # parsing of the <container_security><images> section
 │   ├── test_container_images_configuration.py
 │   └── data/{configuration_templates,test_cases}/
 ├── test_inventory/               # scan -> store -> update detection
@@ -59,11 +59,12 @@ two framework files are part of this change set and must be installed with `wazu
 | # | Scenario | Configuration | Expected result |
 |---|----------|---------------|-----------------|
 | C1 | Module disabled | `enabled=no` | **PASS** when `Module is disabled.` is logged and no scan starts. |
-| C2 | Default values | empty `<container_images>` block | **PASS** when the module logs `Module initialized.` (it came up on defaults). |
+| C2 | Default values | empty `<images>` section inside `<container_security>` | **PASS** when the module logs `Module initialized.` (it came up on defaults). |
 | C3a | Invalid `enabled` | `enabled=''` and `enabled=maybe` | **PASS** when `Invalid content for tag 'enabled'` is logged; the block is rejected. |
 | C3b | Invalid `scan_on_start` | `scan_on_start=''` | **PASS** when `Invalid content for tag 'scan_on_start'` is logged. |
 | C3c | Invalid `interval` | `interval=''` and `interval=1y` | **PASS** when `Invalid interval` is logged. |
 | C3d | Empty `<archive>` reference | `<archive></archive>` | **PASS** when `Empty 'archive' reference` is logged. |
+| C4 | Retired top-level block | `<container_images>` at the top level | **PASS** when the `'container_images' is no longer supported` warning naming `<container_security><images>` is logged by `wazuh-modulesd`. Each daemon that reads the configuration logs it once. |
 
 Failure of any of these means the parser accepted a value it should reject, or did not emit the
 expected message (e.g. a wording change in the module that the pattern must be updated for).
@@ -73,13 +74,16 @@ expected message (e.g. a wording change in the module that the pattern must be u
 | # | Scenario | Input | Expected result |
 |---|----------|-------|-----------------|
 | I1 | Scan on start stores the inventory | `scan_on_start=yes`, one `<archive>` OCI layout with a dpkg database | **PASS** when `Scan ended.` is logged, the references table has ≥1 row, and `curl` and `tar` are stored with the versions the database holds. |
-| I2 | Image update detected on next scan | `interval=5s`, one `<archive>` OCI layout | **PASS** when, after the image is rebuilt between scans, the next scan logs a reference *modification* and the stored `image_config_digest` changes. |
+| I2 | Image update detected on next scan | `interval=5s`, one `<archive>` OCI layout | **PASS** when, after the image is rebuilt between scans, the next scan logs a reference *modification* and the stored `image_id` changes. |
 | I3 | Saved archive is inventoried | one `<archive>` saved image archive with an apk database | **PASS** when the reference is stored with type `archive` and its apk packages are stored. |
 | I4 | The later layer wins | an image whose second layer upgrades a package | **PASS** when the upgraded package is stored once, with the version of the last layer, and the untouched package is still stored. |
 | I5 | A deleted database contributes nothing | an image whose second layer deletes the dpkg database and adds an apk one | **PASS** when the package of the deleted database is absent and the apk package is stored. |
-| I6 | Unsupported package format | an image whose only database is an RPM Berkeley DB one | **PASS** when the reference is stored, no package row exists, and the format is reported with a warning. |
+| I6 | Unsupported package format | an image whose only database is a pacman one | **PASS** when the reference is stored, no package row exists, and the format is reported with a warning. |
 | I7 | RPM sqlite database | an image whose only database is `var/lib/rpm/rpmdb.sqlite` | **PASS** when the reference is stored and the rpm packages are stored, with the epoch preserved on the version that carries one. |
 | I8 | RPM ndb database | an image whose only database is `usr/lib/sysimage/rpm/Packages.db` | **PASS** when the reference is stored and the rpm packages are stored. |
+| I9 | Image operating system | an image with `usr/lib/os-release`, and one with none | **PASS** when the first stores `os_id`, `os_name`, `os_version` and `os_codename` from the file, and the second is stored with empty `os_*` columns and reported once as having no operating system. |
+| I10 | RPM Berkeley DB database | an image whose only database is `var/lib/rpm/Packages`, a Berkeley DB file holding three packages | **PASS** when the reference is stored and the three rpm packages are stored, with the epoch preserved on the two that carry one (an explicit zero included). |
+| I11 | dpkg `status.d` directory | an image with no `var/lib/dpkg/status`, and one file per package under `var/lib/dpkg/status.d/` with a `.md5sums` file next to each | **PASS** when the reference is stored and exactly one package per package file is stored. |
 
 Expected **failures** (i.e. what a regression would look like):
 
@@ -95,6 +99,7 @@ Expected **failures** (i.e. what a regression would look like):
   markers are ignored → layer precedence regression.
 - I6 fails if an unsupported format costs the reference instead of costing its packages, or if the
   empty inventory is silent → format-detection regression.
+- I10 fails if the Berkeley DB file is not read, or its bookkeeping record is stored as a package. I11 fails if the `status.d` files are not read, or the checksum files are stored as packages.
 - I7 and I8 fail if the rpm database is not read, if the wrong database format is picked, or if the
   version loses its epoch → rpm extraction regression. I7 also fails if the write-ahead log mode a
   real `rpmdb.sqlite` carries is not handled, which shows up as zero packages.

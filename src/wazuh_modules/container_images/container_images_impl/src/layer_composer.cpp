@@ -11,9 +11,11 @@
 #include "layer_composer.hpp"
 #include "ci_logging_helper.hpp"
 #include "layer_reader.hpp"
-#include "package_db_parser.hpp"
+#include "os_release_parser.hpp"
+#include "packageDbParser.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <iterator>
 #include <string>
 #include <utility>
@@ -24,6 +26,21 @@ namespace
     // megabytes; past this the file is not inventoried rather than read into memory,
     // because the size comes from the image being scanned.
     constexpr std::uint64_t MAX_DATABASE_SIZE {64 * 1024 * 1024};
+
+    // Ceiling for an os-release file, which is a few hundred bytes. The size comes from the
+    // image being scanned, so a file past this is not read.
+    constexpr std::uint64_t MAX_OS_RELEASE_SIZE {64 * 1024};
+
+    /// A package database the module recognizes but does not parse.
+    ///
+    /// Recognizing them is what lets the module tell "this image uses a format we do not
+    /// support yet" apart from "this image has no packages".
+    struct UnsupportedPackageDb
+    {
+        std::string path;   ///< In-image path or directory prefix that identifies the format.
+        bool isPrefix;      ///< True when the format is identified by a directory rather than a file.
+        std::string format; ///< Format name, for the log line.
+    };
 
     void logDebug(const std::string& message)
     {
@@ -46,24 +63,54 @@ namespace
         return path == directory || (path.size() > directory.size() && path.rfind(directory + "/", 0) == 0);
     }
 
-    /// @brief The parser that owns a tracked path, or nullptr when the path is not tracked.
-    const containerimages::IPackageDbParser* parserFor(const std::string& path)
+    /// @brief True if @p path is one of the locations of the `os-release` file.
+    bool isOsReleasePath(const std::string& path)
     {
-        for (const auto& database : containerimages::knownPackageDatabases())
-        {
-            if (database.path == path)
-            {
-                return database.parser.get();
-            }
-        }
+        const auto& paths {containerimages::osReleasePaths()};
+        return std::find(paths.begin(), paths.end(), path) != paths.end();
+    }
 
-        return nullptr;
+    /// @brief Remove from @p files every path that is @p directory or lies under it.
+    void eraseUnder(std::map<std::string, std::string>& files, const std::string& directory)
+    {
+        for (auto file = files.begin(); file != files.end();)
+        {
+            file = isUnderDirectory(file->first, directory) ? files.erase(file) : std::next(file);
+        }
+    }
+
+    const std::vector<UnsupportedPackageDb>& unsupportedPackageDatabases()
+    {
+        static const std::vector<UnsupportedPackageDb> DATABASES = []
+        {
+            std::vector<UnsupportedPackageDb> databases
+            {
+                {"var/lib/pacman/local/", true, "pacman"},
+                {"var/db/pkg/", true, "portage"},
+                {"var/db/xbps/", true, "xbps"},
+                {"usr/share/clear/bundles/", true, "swupd"},
+            };
+
+            // The Berkeley DB format rpm used before 4.16 needs libdb, which is only read
+            // on Linux. Named by file, not by directory, so the sqlite and ndb databases in
+            // the same directory stay parsable.
+            if (!PackageDb::BERKELEY_DB_SUPPORTED)
+            {
+                const std::string format {"rpm Berkeley DB (not supported on this platform)"};
+                databases.push_back({"var/lib/rpm/Packages", false, format});
+                databases.push_back({"usr/lib/sysimage/rpm/Packages", false, format});
+            }
+
+            return databases;
+        }();
+
+        return DATABASES;
     }
 
     /// @brief Name of the unimplemented format a path belongs to, empty when it is none.
     std::string unsupportedFormatFor(const std::string& path)
     {
-        for (const auto& database : containerimages::unsupportedPackageDatabases())
+        for (const auto& database : unsupportedPackageDatabases())
         {
             const auto matches {database.isPrefix ? path.rfind(database.path, 0) == 0 : path == database.path};
 
@@ -74,6 +121,27 @@ namespace
         }
 
         return {};
+    }
+
+    /// @brief The package record the module stores for a package the shared parser read.
+    containerimages::ImagePackageRecord toImagePackage(PackageDb::Package&& package)
+    {
+        containerimages::ImagePackageRecord record;
+        record.name = std::move(package.name);
+        record.version = std::move(package.version);
+        record.architecture = std::move(package.architecture);
+        record.type = std::move(package.type);
+        record.vendor = std::move(package.vendor);
+        record.installed = std::move(package.installed);
+        record.category = std::move(package.category);
+        record.description = std::move(package.description);
+        record.priority = std::move(package.priority);
+        record.multiarch = std::move(package.multiarch);
+        record.source = std::move(package.source);
+        record.packageDbPath = std::move(package.packageDbPath);
+        record.size = package.size;
+
+        return record;
     }
 
     /// @brief Read the content of a tar entry into a string.
@@ -94,8 +162,9 @@ namespace containerimages
     LayerSnapshot readLayerSnapshot(IByteStream& layer)
     {
         LayerSnapshot snapshot;
+        std::uint64_t statusDBytes {0};
 
-        snapshot.complete = LayerReader::read(layer, [&snapshot](const LayerEntry & entry, IByteStream & content)
+        snapshot.complete = LayerReader::read(layer, [&snapshot, &statusDBytes](const LayerEntry & entry, IByteStream & content)
         {
             if (entry.isOpaqueDirectory)
             {
@@ -109,10 +178,31 @@ namespace containerimages
                 return true;
             }
 
-            // A path a parser owns is never reported as unsupported. The two rpm formats
-            // this module reads sit in the same directory as the one it does not, so the
-            // registered paths are consulted first.
-            if (!entry.isRegularFile || parserFor(entry.path) == nullptr)
+            if (isOsReleasePath(entry.path))
+            {
+                snapshot.osReleasesReplaced.insert(entry.path);
+
+                // Only a regular file has content to read. A link is not followed: the file it
+                // names is read at its own path when the layer carries it.
+                if (!entry.isRegularFile)
+                {
+                    return true;
+                }
+
+                if (entry.size > MAX_OS_RELEASE_SIZE)
+                {
+                    logWarn("File '" + entry.path + "' is larger than the supported size, skipping it.");
+                    return true;
+                }
+
+                snapshot.osReleases[entry.path] = readContent(content, entry.size);
+                return true;
+            }
+
+            // A path the shared parser reads is never reported as unsupported. The rpm
+            // formats it reads sit in the same directory as the one it may not, so the
+            // parser's paths are consulted first.
+            if (!entry.isRegularFile || !PackageDb::isDatabasePath(entry.path))
             {
                 const auto unsupported {unsupportedFormatFor(entry.path)};
 
@@ -130,6 +220,19 @@ namespace containerimages
             {
                 logWarn("Package database '" + entry.path + "' is larger than the supported size, skipping it.");
                 return true;
+            }
+
+            // The dpkg status.d directory holds one small file per package and any number of
+            // them, so the layer's share of them is bounded as one database would be.
+            if (PackageDb::isStatusDEntry(entry.path))
+            {
+                statusDBytes += entry.size;
+
+                if (statusDBytes > MAX_DATABASE_SIZE)
+                {
+                    logWarn("The dpkg status.d directory is larger than the supported size, skipping '" + entry.path + "'.");
+                    return true;
+                }
             }
 
             snapshot.databases[entry.path] = readContent(content, entry.size);
@@ -157,6 +260,8 @@ namespace containerimages
             {
                 format = isUnderDirectory(format->first, directory) ? m_unsupportedFormats.erase(format) : std::next(format);
             }
+
+            eraseUnder(m_osReleases, directory);
         }
 
         // A deletion marker removes the path it names and, when that path is a directory,
@@ -172,12 +277,27 @@ namespace containerimages
             {
                 format = isUnderDirectory(format->first, whiteout) ? m_unsupportedFormats.erase(format) : std::next(format);
             }
+
+            eraseUnder(m_osReleases, whiteout);
+        }
+
+        // An os-release this layer replaces by a link, or by a file it cannot read, leaves
+        // nothing of the earlier one: keeping it would report the distribution the layer
+        // replaced.
+        for (const auto& path : snapshot.osReleasesReplaced)
+        {
+            m_osReleases.erase(path);
         }
 
         // What this layer provides wins over the earlier layers.
         for (const auto& [path, content] : snapshot.databases)
         {
             m_databases[path] = content;
+        }
+
+        for (const auto& [path, content] : snapshot.osReleases)
+        {
+            m_osReleases[path] = content;
         }
 
         for (const auto& [path, format] : snapshot.unsupportedFormats)
@@ -203,42 +323,79 @@ namespace containerimages
         return formats;
     }
 
-    std::vector<ImagePackageRecord> LayerComposer::packages() const
+    ImageOperatingSystem LayerComposer::operatingSystem() const
     {
-        std::vector<ImagePackageRecord> packages;
-        std::set<const IPackageDbParser*> handled;
-
-        // Databases are visited in the preference order of the registry, not in path
-        // order, so an image that carries two of them reports the preferred one first.
-        // Two registered locations sharing the same parser (the two apk database paths)
-        // are alternate locations of the same conceptual database, not two distinct
-        // ones: an image that happens to carry a real file at both collides on the
-        // packages table's primary key (name + version + architecture + type) and
-        // reports the same packages twice. Once a parser has produced its records from
-        // its preferred location, its other locations are skipped.
-        for (const auto& location : knownPackageDatabases())
+        for (const auto& path : osReleasePaths())
         {
-            const auto database {m_databases.find(location.path)};
+            const auto file {m_osReleases.find(path)};
 
-            if (database == m_databases.end() || location.parser == nullptr)
+            if (file == m_osReleases.end())
             {
                 continue;
             }
 
-            if (!handled.insert(location.parser.get()).second)
+            auto os {parseOsRelease(file->second)};
+
+            // A file that states nothing recognizable does not stop the fallback location
+            // from being tried.
+            if (!os.empty())
             {
-                logDebug("Skipping '" + location.path +
+                return os;
+            }
+        }
+
+        return {};
+    }
+
+    std::vector<ImagePackageRecord> LayerComposer::packages(const std::string& image, const std::atomic<bool>* stop) const
+    {
+        PackageDb::BerkeleyDbOptions options;
+
+        if (stop != nullptr)
+        {
+            options.stop = [stop]
+            {
+                return stop->load();
+            };
+        }
+
+        auto read {PackageDb::read(m_databases, options)};
+        const auto where {image.empty() ? std::string {} : "Image '" + image + "': "};
+
+        for (const auto& database : read.databases)
+        {
+            if (database.skipped)
+            {
+                logDebug("Skipping '" + database.path +
                          "': another location for the same package database was already used.");
-                continue;
             }
+            else if (!database.error.empty())
+            {
+                // A read cut short by a shutdown is not a fault of the database.
+                (stop != nullptr && stop->load() ? logDebug : logWarn)(where + "package database '" + database.path +
+                                                                       "' could not be read: " + database.error + ".");
+            }
+            else
+            {
+                // A limit that cannot be set is a fact about this process, the same for every database
+                // and every image, so it is said once.
+                static std::atomic<bool> limitWarned {false};
 
-            auto parsed {location.parser->parse(database->second, location.path)};
+                if (!database.warning.empty() && !limitWarned.exchange(true))
+                {
+                    logWarn("Package databases of images are read without the memory limit: " + database.warning + ".");
+                }
 
-            logDebug("Parsed " + std::to_string(parsed.size()) + " packages from '" + location.path + "'.");
+                logDebug("Parsed " + std::to_string(database.packages) + " packages from '" + database.path + "'.");
+            }
+        }
 
-            packages.insert(packages.end(),
-                            std::make_move_iterator(parsed.begin()),
-                            std::make_move_iterator(parsed.end()));
+        std::vector<ImagePackageRecord> packages;
+        packages.reserve(read.packages.size());
+
+        for (auto& package : read.packages)
+        {
+            packages.push_back(toImagePackage(std::move(package)));
         }
 
         return packages;

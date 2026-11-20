@@ -15,6 +15,9 @@
 #include "layer_composer.hpp"
 #include "layer_reader.hpp"
 #include "oci_metadata.hpp"
+#include "platform_selection.hpp"
+#include "registry_byte_stream.hpp"
+#include "registry_reference.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -41,9 +44,9 @@ namespace
     // reference type and a follow-up issue.
     const std::string CONTAINERD_MARKER {"io.containerd.content.v1.content"};
 
-    // Annotations that name an image in an index. The OCI one carries only the tag, while
-    // the containerd one carries the whole reference, which is the name the image is really
-    // known by, so it is preferred and both are reported.
+    // Annotations that name an image in an index. The containerd one carries the whole
+    // reference. The OCI one carries either a whole reference or, as layout writers usually
+    // write it, only the tag. Both feed the image's name and tags (see addImageName).
     const std::string ANNOTATION_IMAGE_NAME {"io.containerd.image.name"};
     const std::string ANNOTATION_REF_NAME {"org.opencontainers.image.ref.name"};
 
@@ -68,6 +71,11 @@ namespace
     // image); this bounds how much a crafted archive can make the reader hold in memory
     // between the first pass and the second.
     constexpr std::size_t MAX_METADATA_FILES {256};
+
+    void logInfo(const std::string& message)
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, message);
+    }
 
     void logDebug(const std::string& message)
     {
@@ -111,16 +119,80 @@ namespace
         return InputFormat::Unknown;
     }
 
+    /// Most names read for one image, which bounds the tags kept. A manifest can list as many as its
+    /// size limit allows, and every tag is compared against the ones already kept.
+    constexpr std::size_t MAX_IMAGE_TAGS {64};
+
     /// @brief One image found in the metadata, with everything needed to read its layers.
     struct ImageDescriptor
     {
         std::string manifestDigest;
         std::string configDigest;
-        std::string tag;
-        std::vector<std::string> tags;
+        std::vector<std::string> indexDigests; ///< Indexes the manifest was reached through, outermost first.
+        std::string name;              ///< Normalised `registry/repository`, empty when the image names none.
+        std::vector<std::string> tags; ///< Tags of that name, without duplicates, at most MAX_IMAGE_TAGS.
+        std::size_t namesRead {0};     ///< Names offered to addImageName, counted against MAX_IMAGE_TAGS.
         nlohmann::json config {nlohmann::json::object()};
         std::vector<std::string> layerKeys; ///< Layer keys in manifest order.
     };
+
+    /// @brief Add a tag to the descriptor unless it is empty or already there.
+    void addImageTag(ImageDescriptor& descriptor, const std::string& tag)
+    {
+        if (!tag.empty() && std::find(descriptor.tags.begin(), descriptor.tags.end(), tag) == descriptor.tags.end())
+        {
+            descriptor.tags.push_back(tag);
+        }
+    }
+
+    /// @brief Add a name the archive gives its image: the first one normalised is the image's
+    ///        name, and the tag of every name that normalises to it is kept once.
+    ///
+    /// A saved image can carry several names (`nginx:1` and `nginx:latest`, even under different
+    /// repositories). The shared block has one name and a list of tags, so a name on another
+    /// repository than the first is not reported. Only the first MAX_IMAGE_TAGS names are read.
+    void addImageName(ImageDescriptor& descriptor, const std::string& text)
+    {
+        if (text.empty())
+        {
+            return;
+        }
+
+        if (descriptor.namesRead >= MAX_IMAGE_TAGS)
+        {
+            if (descriptor.namesRead == MAX_IMAGE_TAGS)
+            {
+                logDebug("An image lists more than " + std::to_string(MAX_IMAGE_TAGS) +
+                         " names, the ones past that are not reported.");
+                ++descriptor.namesRead;
+            }
+
+            return;
+        }
+
+        ++descriptor.namesRead;
+
+        containerimages::NormalizedImageName normalized;
+
+        if (!containerimages::normalizeImageName(text, normalized))
+        {
+            logDebug("Ignoring the image name '" + text.substr(0, 128) + "': it is not a well-formed reference.");
+            return;
+        }
+
+        if (descriptor.name.empty())
+        {
+            descriptor.name = normalized.name;
+        }
+
+        if (normalized.name != descriptor.name)
+        {
+            logDebug("Ignoring the image name '" + text.substr(0, 128) + "': the image is reported as '" + descriptor.name + "'.");
+            return;
+        }
+
+        addImageTag(descriptor, normalized.tag);
+    }
 
     /// @brief Reads a metadata file by key. Returns an empty string when it is absent.
     ///
@@ -243,7 +315,35 @@ namespace
     }
 
     using containerimages::oci::applyConfigMetadata;
+    using containerimages::oci::collectDigests;
     using containerimages::oci::isAttestationManifest;
+
+    /// @brief Add the names an index entry carries in its annotations to a descriptor.
+    void addEntryNames(ImageDescriptor& descriptor, const nlohmann::json& entry)
+    {
+        const auto annotations {entry.is_object() ? entry.find("annotations") : entry.end()};
+
+        if (!entry.is_object() || annotations == entry.end())
+        {
+            return;
+        }
+
+        const auto imageName {stringField(*annotations, ANNOTATION_IMAGE_NAME)};
+        const auto refName {stringField(*annotations, ANNOTATION_REF_NAME)};
+
+        // The containerd annotation holds the whole reference. The OCI one holds either a
+        // whole reference or, as the layout writers usually do, only the tag.
+        addImageName(descriptor, imageName);
+
+        if (refName.find_first_of(":/@") != std::string::npos)
+        {
+            addImageName(descriptor, refName);
+        }
+        else if (containerimages::isSafeTag(refName))
+        {
+            addImageTag(descriptor, refName);
+        }
+    }
 
     /// @brief Collect the descriptors an OCI manifest, or an index of manifests, points to.
     ///
@@ -256,6 +356,7 @@ namespace
     void collectOciDescriptors(const MetadataFetch& metadata,
                                const nlohmann::json& entry,
                                const int depth,
+                               const std::vector<std::string>& parentIndexDigests,
                                std::set<std::string>& visited,
                                int& nodesVisited,
                                std::vector<ImageDescriptor>& descriptors)
@@ -289,7 +390,21 @@ namespace
 
         if (!visited.insert(digest).second)
         {
-            logDebug("Index entry already visited, skipping to avoid a cycle: " + digest);
+            // `docker save a:1 a:stable` writes one entry per tag for the same manifest: the
+            // names of the repeated entry belong to the manifest already collected. An index
+            // digest has no descriptor, so a cycle is still skipped.
+            const auto known {std::find_if(descriptors.begin(), descriptors.end(),
+                                           [&digest](const ImageDescriptor & descriptor)
+            {
+                return descriptor.manifestDigest == digest;
+            })};
+
+            if (known != descriptors.end())
+            {
+                addEntryNames(*known, entry);
+            }
+
+            logDebug("Index entry already visited, not walked again: " + digest);
             return;
         }
 
@@ -300,9 +415,12 @@ namespace
 
         if (!nested.empty())
         {
+            auto indexDigests {parentIndexDigests};
+            indexDigests.push_back(digest);
+
             for (const auto& child : nested)
             {
-                collectOciDescriptors(metadata, child, depth + 1, visited, nodesVisited, descriptors);
+                collectOciDescriptors(metadata, child, depth + 1, indexDigests, visited, nodesVisited, descriptors);
             }
 
             return;
@@ -327,28 +445,10 @@ namespace
         ImageDescriptor descriptor;
         descriptor.manifestDigest = digest;
         descriptor.configDigest = configDigest;
+        descriptor.indexDigests = parentIndexDigests;
         descriptor.config = parseJson(metadata(configKey));
 
-        const auto annotations {entry.is_object() ? entry.find("annotations") : entry.end()};
-
-        if (entry.is_object() && annotations != entry.end())
-        {
-            const auto imageName {stringField(*annotations, ANNOTATION_IMAGE_NAME)};
-            const auto refName {stringField(*annotations, ANNOTATION_REF_NAME)};
-
-            // The whole reference is the display name when the index carries it; the tag-only
-            // annotation is the fallback, and both are kept when they differ.
-            descriptor.tag = imageName.empty() ? refName : imageName;
-
-            for (const auto& name : {imageName, refName})
-            {
-                if (!name.empty() && std::find(descriptor.tags.begin(), descriptor.tags.end(), name) ==
-                        descriptor.tags.end())
-                {
-                    descriptor.tags.push_back(name);
-                }
-            }
-        }
+        addEntryNames(descriptor, entry);
 
         for (const auto& layer : arrayField(document, "layers"))
         {
@@ -384,7 +484,7 @@ namespace
         {
             try
             {
-                collectOciDescriptors(metadata, entry, 0, visited, nodesVisited, descriptors);
+                collectOciDescriptors(metadata, entry, 0, {}, visited, nodesVisited, descriptors);
             }
             catch (const std::exception& ex)
             {
@@ -427,17 +527,12 @@ namespace
                 descriptor.configDigest = digestFromKey(configKey);
             }
 
-            for (const auto& tag : arrayField(entry, "RepoTags"))
+            for (const auto& repoTag : arrayField(entry, "RepoTags"))
             {
-                if (tag.is_string())
+                if (repoTag.is_string())
                 {
-                    descriptor.tags.push_back(tag.get<std::string>());
+                    addImageName(descriptor, repoTag.get<std::string>());
                 }
-            }
-
-            if (!descriptor.tags.empty())
-            {
-                descriptor.tag = descriptor.tags.front();
             }
 
             for (const auto& layer : arrayField(entry, "Layers"))
@@ -465,6 +560,12 @@ namespace
         return descriptors;
     }
 
+    /// @brief Every digest the image of a descriptor is known by.
+    std::vector<std::string> digestsOf(const ImageDescriptor& descriptor)
+    {
+        return collectDigests(descriptor.indexDigests, descriptor.manifestDigest, descriptor.configDigest);
+    }
+
     /// @brief Every layer key the descriptors refer to, without duplicates.
     std::set<std::string> layerKeysOf(const std::vector<ImageDescriptor>& descriptors)
     {
@@ -478,6 +579,17 @@ namespace
         return keys;
     }
 
+    /// @brief How a descriptor is named in a log line: `name:tag`, or its manifest digest when it has no name.
+    std::string displayName(const ImageDescriptor& descriptor)
+    {
+        if (descriptor.name.empty())
+        {
+            return descriptor.manifestDigest;
+        }
+
+        return descriptor.tags.empty() ? descriptor.name : descriptor.name + ":" + descriptor.tags.front();
+    }
+
     /// @brief Turn descriptors and layer snapshots into inventory records.
     /// @brief Keep exactly one descriptor per reference.
     ///
@@ -488,10 +600,40 @@ namespace
     /// than one row without one, so the first image is kept deterministically and the
     /// rest are named in a warning instead of silently colliding into the same row on
     /// every scan.
-    void keepPrimaryDescriptor(std::vector<ImageDescriptor>& descriptors, const std::string& location)
+    ///
+    /// @param preferAgentPlatform For an image exported by a container engine, whose several entries are the
+    ///        platforms of one image rather than several images: the one matching the agent is kept, as the
+    ///        registry reader selects it, else the first, and the choice is logged at debug level only.
+    void keepPrimaryDescriptor(std::vector<ImageDescriptor>& descriptors, const std::string& location, const bool preferAgentPlatform = false)
     {
         if (descriptors.size() <= 1)
         {
+            return;
+        }
+
+        if (preferAgentPlatform)
+        {
+            const auto platformOf = [](const ImageDescriptor & descriptor)
+            {
+                return containerimages::Platform {containerimages::oci::stringField(descriptor.config, "os"),
+                                                  containerimages::oci::stringField(descriptor.config, "architecture"),
+                                                  containerimages::oci::stringField(descriptor.config, "variant")};
+            };
+
+            const auto target {containerimages::detectTargetPlatform()};
+            const auto match {std::find_if(descriptors.begin(), descriptors.end(), [&](const ImageDescriptor & descriptor)
+            {
+                return containerimages::platformMatches(platformOf(descriptor), target);
+            })};
+            const auto chosen {match != descriptors.end() ? match : descriptors.begin()};
+
+            logDebug("Image '" + location + "' holds " + std::to_string(descriptors.size()) + " platforms; using " +
+                     platformOf(*chosen).describe() + (match != descriptors.end()
+                                                       ? ", the agent's."
+                                                       : ", the first, since none matches " + target.describe() + "."));
+
+            std::swap(descriptors.front(), *chosen);
+            descriptors.resize(1);
             return;
         }
 
@@ -499,11 +641,11 @@ namespace
 
         for (std::size_t i = 1; i < descriptors.size(); ++i)
         {
-            const auto& name {descriptors[i].tag.empty() ? descriptors[i].manifestDigest : descriptors[i].tag};
+            const auto name {displayName(descriptors[i])};
             skipped += skipped.empty() ? name : ", " + name;
         }
 
-        const auto& kept {descriptors.front().tag.empty() ? descriptors.front().manifestDigest : descriptors.front().tag};
+        const auto kept {displayName(descriptors.front())};
 
         logWarn("Reference '" + location + "' names " + std::to_string(descriptors.size()) +
                 " images; only '" + kept + "' is inventoried under this reference. Skipped: " + skipped +
@@ -515,7 +657,8 @@ namespace
     std::vector<containerimages::ImageReferenceRecord> buildRecords(const std::vector<ImageDescriptor>& descriptors,
                                                                     const LayerFetch& layers,
                                                                     const std::string& sourceType,
-                                                                    const std::string& location)
+                                                                    const std::string& location,
+                                                                    const std::atomic<bool>* stopRequested)
     {
         std::vector<containerimages::ImageReferenceRecord> records;
 
@@ -525,7 +668,8 @@ namespace
             record.source = {sourceType, location};
             record.manifestDigest = descriptor.manifestDigest;
             record.configDigest = descriptor.configDigest;
-            record.tag = descriptor.tag;
+            record.digests = digestsOf(descriptor);
+            record.name = descriptor.name;
             record.tags = descriptor.tags;
             applyConfigMetadata(descriptor.config, record);
 
@@ -536,7 +680,13 @@ namespace
                 composer.apply(layers(key));
             }
 
-            record.packages = composer.packages();
+            record.packages = composer.packages(location, stopRequested);
+            record.operatingSystem = composer.operatingSystem();
+
+            if (record.operatingSystem.empty())
+            {
+                logInfo("Image at '" + location + "' has no operating system: its layers carry no os-release file.");
+            }
 
             if (record.packages.empty())
             {
@@ -631,13 +781,63 @@ namespace
 
         return false;
     }
+
+    /// @brief Why a pass over a streamed archive did not complete, empty for a file and for a transfer that did.
+    std::string transferFailure(containerimages::IByteStream& stream)
+    {
+        const auto* transfer {dynamic_cast<containerimages::IBlobStream*>(&stream)};
+
+        return transfer != nullptr && transfer->failed() ? transfer->error() : std::string {};
+    }
+
+    /// @brief Opens the archive at @p path once per pass.
+    containerimages::ArchiveOpener fileOpener(const std::filesystem::path& path)
+    {
+        return [path]() -> std::unique_ptr<containerimages::IByteStream>
+        {
+            auto file {std::make_unique<containerimages::FileByteStream>(path)};
+
+            if (!file->isOpen())
+            {
+                return nullptr;
+            }
+
+            return file;
+        };
+    }
 } // namespace
 
 namespace containerimages
 {
-    ArchiveImageReader::ArchiveImageReader(std::string location, std::string knownConfigDigest)
+    ImageNames imageNamesOf(const std::vector<std::string>& references)
+    {
+        ImageDescriptor descriptor;
+
+        for (const auto& reference : references)
+        {
+            addImageName(descriptor, reference);
+        }
+
+        return {std::move(descriptor.name), std::move(descriptor.tags)};
+    }
+
+    ArchiveImageReader::ArchiveImageReader(std::string location,
+                                           std::string knownConfigDigest,
+                                           const std::atomic<bool>* stopRequested)
         : m_location {std::move(location)}
         , m_knownConfigDigest {std::move(knownConfigDigest)}
+        , m_stopRequested {stopRequested}
+    {
+    }
+
+    ArchiveImageReader::ArchiveImageReader(std::string location,
+                                           std::string knownConfigDigest,
+                                           const std::atomic<bool>* stopRequested,
+                                           ArchiveOpener opener)
+        : m_location {std::move(location)}
+        , m_knownConfigDigest {std::move(knownConfigDigest)}
+        , m_stopRequested {stopRequested}
+        , m_opener {std::move(opener)}
     {
     }
 
@@ -662,6 +862,11 @@ namespace containerimages
                 return ImageReadResult::failed();
             }
 
+            if (m_opener)
+            {
+                return readSavedArchive(m_opener);
+            }
+
             if (std::filesystem::is_directory(path, errorCode))
             {
                 return readDirectory(path);
@@ -669,7 +874,7 @@ namespace containerimages
 
             if (std::filesystem::is_regular_file(path, errorCode))
             {
-                return readSavedArchive(path);
+                return readSavedArchive(fileOpener(path));
             }
 
             logWarn("Archive reference is neither a file nor a directory: " + m_location);
@@ -721,7 +926,8 @@ namespace containerimages
         {
             logDebug("Reference '" + m_location + "' still reports " + m_knownConfigDigest +
                      ", so its layers were not read again.");
-            return ImageReadResult::unchanged();
+            return ImageReadResult::unchanged(digestsOf(descriptors.front()),
+                                              containerimages::ImageNames {descriptors.front().name, descriptors.front().tags});
         }
 
         // Every layer is read once, even when two manifests of a multi-platform image
@@ -776,10 +982,10 @@ namespace containerimages
             return snapshot == snapshots.end() ? LayerSnapshot {} : snapshot->second;
         }};
 
-        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location));
+        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
     }
 
-    ImageReadResult ArchiveImageReader::readSavedArchive(const std::filesystem::path& path)
+    ImageReadResult ArchiveImageReader::readSavedArchive(const ArchiveOpener& open)
     {
         // A tar is read from start to end, while the layer order comes from the metadata
         // inside it, so the archive is read twice: once for the metadata, once for the
@@ -787,15 +993,15 @@ namespace containerimages
         std::map<std::string, std::string> metadataFiles;
 
         {
-            FileByteStream file {path};
+            const auto file {open()};
 
-            if (!file.isOpen())
+            if (!file)
             {
                 logWarn("Could not open the saved image archive '" + m_location + "'.");
                 return ImageReadResult::failed();
             }
 
-            LayerByteStream archive {file};
+            LayerByteStream archive {*file};
             bool metadataCapLogged {false};
             const auto complete {LayerReader::read(archive, [&](const LayerEntry & entry, IByteStream & content)
             {
@@ -832,6 +1038,12 @@ namespace containerimages
                 return true;
             })};
 
+            if (const auto failure {transferFailure(*file)}; !failure.empty())
+            {
+                logWarn("Could not read the saved image archive '" + m_location + "': " + failure + ".");
+                return ImageReadResult::failed();
+            }
+
             if (!complete)
             {
                 logWarn("Saved image archive '" + m_location + "' is malformed or truncated.");
@@ -853,7 +1065,7 @@ namespace containerimages
             return ImageReadResult::failed();
         }
 
-        keepPrimaryDescriptor(descriptors, m_location);
+        keepPrimaryDescriptor(descriptors, m_location, static_cast<bool>(m_opener));
 
         // The configuration blob digest identifies the image's contents, so an image still
         // reporting the digest already stored cannot have different packages. Reading its
@@ -865,15 +1077,23 @@ namespace containerimages
         {
             logDebug("Reference '" + m_location + "' still reports " + m_knownConfigDigest +
                      ", so its layers were not read again.");
-            return ImageReadResult::unchanged();
+            return ImageReadResult::unchanged(digestsOf(descriptors.front()),
+                                              containerimages::ImageNames {descriptors.front().name, descriptors.front().tags});
         }
 
         const auto wanted {layerKeysOf(descriptors)};
         std::map<std::string, LayerSnapshot> snapshots;
 
         {
-            FileByteStream file {path};
-            LayerByteStream archive {file};
+            const auto file {open()};
+
+            if (!file)
+            {
+                logWarn("Could not open the saved image archive '" + m_location + "' again for its layers.");
+                return ImageReadResult::failed();
+            }
+
+            LayerByteStream archive {*file};
 
             const auto layersComplete {LayerReader::read(archive, [&](const LayerEntry & entry, IByteStream & content)
             {
@@ -907,6 +1127,14 @@ namespace containerimages
                 return true;
             })};
 
+            // A transfer that broke would otherwise read as an archive that ends early, and the
+            // packages of the layers it never delivered would be reported as gone.
+            if (const auto failure {transferFailure(*file)}; !failure.empty())
+            {
+                logWarn("Could not read the layers of the saved image archive '" + m_location + "': " + failure + ".");
+                return ImageReadResult::failed();
+            }
+
             if (!layersComplete)
             {
                 logWarn("Saved image archive '" + m_location + "' is malformed or truncated (layer pass).");
@@ -919,6 +1147,6 @@ namespace containerimages
             return snapshot == snapshots.end() ? LayerSnapshot {} : snapshot->second;
         }};
 
-        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location));
+        return ImageReadResult::success(buildRecords(descriptors, layers, sourceType(), m_location, m_stopRequested));
     }
 } // namespace containerimages

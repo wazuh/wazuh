@@ -19,6 +19,7 @@ for the deterministic "Scan ended." log line through a FileMonitor and only then
 database. That log line is emitted exactly once per scan, so the wait is bounded and
 race-free.
 """
+import base64
 import gzip
 import hashlib
 import io
@@ -45,8 +46,21 @@ DPKG_STATUS_PATH = 'var/lib/dpkg/status'
 APK_DB_PATH = 'lib/apk/db/installed'
 RPM_SQLITE_DB_PATH = 'var/lib/rpm/rpmdb.sqlite'
 RPM_NDB_DB_PATH = 'usr/lib/sysimage/rpm/Packages.db'
-# The Berkeley DB format rpm used before 4.16, which the module recognizes but does not read.
+# Where most images keep their os-release, with /etc/os-release linked to it.
+OS_RELEASE_PATH = 'usr/lib/os-release'
+DEBIAN_OS_RELEASE = (
+    'PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"\n'
+    'NAME="Debian GNU/Linux"\n'
+    'VERSION_ID="12"\n'
+    'VERSION_CODENAME=bookworm\n'
+    'ID=debian\n'
+)
+# The Berkeley DB format rpm used before 4.16.
 RPM_BDB_PATH = 'var/lib/rpm/Packages'
+# A distroless image keeps one dpkg status file per package in this directory, with no `status` file.
+DPKG_STATUS_D_PATH = 'var/lib/dpkg/status.d'
+# A package format the module recognizes but does not read.
+PACMAN_DB_PATH = 'var/lib/pacman/local/app-1.0/desc'
 
 
 def dpkg_status(packages: list) -> str:
@@ -68,6 +82,27 @@ def dpkg_status(packages: list) -> str:
         )
 
     return '\n'.join(stanzas) + '\n'
+
+
+def dpkg_status_d(packages: list) -> dict:
+    """Build the files of a distroless dpkg ``status.d`` directory, one per (name, version) pair.
+
+    dpkg never ran for these packages, so a file has no ``Status`` line. The ``.md5sums`` file
+    next to each one is a checksum list, not a package.
+    """
+    files = {}
+
+    for name, version in packages:
+        files[f'{DPKG_STATUS_D_PATH}/{name}'] = (
+            f'Package: {name}\n'
+            f'Version: {version}\n'
+            'Architecture: amd64\n'
+            f'Maintainer: Debian {name} Maintainers <team@debian.org>\n'
+            f'Description: short description of {name}\n'
+        )
+        files[f'{DPKG_STATUS_D_PATH}/{name}.md5sums'] = f'd41d8cd98f00b204e9800998ecf8427e  usr/share/doc/{name}/copyright\n'
+
+    return files
 
 
 def apk_installed(packages: list) -> str:
@@ -201,6 +236,21 @@ def rpm_ndb_db(packages: list) -> bytes:
     return header + slots + b'\x00' * (PAGE - 32 - len(slots)) + payloads
 
 
+# A Berkeley DB hash database as rpm 4.11 leaves it: rpm's bookkeeping record, then one header
+# blob per package, here bash 4.2.46-35.el7_9, glibc 0:2.17-326.el7_9 and openssl-libs
+# 1:1.0.2k-25.el7_9. Written once with libdb (hash, 4096-byte pages), then compressed to fit here.
+RPM_BDB_PACKAGES = gzip.decompress(base64.b64decode(
+    'H4sIAAAAAAACA+2awUobURSGzyQ22tokXZhFF4X4AHPVSUwsuBCLBBG6CbbQRSUZRzMYkzBjsfQButOVK7d9h+77CK67EVe2'
+    'dqEIUiiI92ZOmuREQna6+D+4zP3vPffM8O9+7hARWRRRySTomZm80GMiWovRIEu747Sk94+/fV35fhZVWD19DGN6nBzUPsp1'
+    'AAAAAAAAAAAAPAyD2f1HipL/0jfpq7SeAQAAAAAAAAAAjyO8TuqxTxQ/189Edz3+i3WC9W+eT7K+oOiiOsP6j34+1eMl60ve'
+    'z7O+Yr3A+pr7LbL+y+dLrG95vxzpsSnWH4zervtVlxw1V6ScU1Bevbjxuv3lYa0Z7GU3vdAN/Nae32xkm1vZqNorm0+YoPeV'
+    'L59q2dWGq2i9EbY819/yvU36vFDYKOSpXWubzvb/zioMXBW0dsmKddK+1WthrC//HyVN/j9N/Uzp2QCj3P8bcP8PAAAAAAAA'
+    'AKNF2sMhkTYpIu2UiLSvRKSdFpH2jYi0JRFp10SkfScibVVEWt/oZstrhGHd1vkzpDk1q5wdcua70da6N9r2nRot4fYesaMX'
+    '2Z0XdZNunL00/7QHQ7x8Irx8LrzLCO9mhHc54V1ReLcsvHsrvFs3uloJa5RXjsoXKNfx7F6/2pWj+WRK7aipnRvwx3hzB4Ve'
+    'MhAAMAAA'
+))
+
+
 def write_oci_layout(path: str, layers: list, seed: str = 'v1', ref_name: str = 'debian:12') -> None:
     """Write an OCI image layout under ``path``, with the given layers in manifest order.
 
@@ -295,17 +345,25 @@ def reset_module_database() -> None:
         stored.unlink(missing_ok=True)
 
 
+def _images_elements(test_configuration: dict):
+    """Yield the child elements of every ``<images>`` section inside ``<container_security>``."""
+    for section in test_configuration.get('sections', []):
+        if section.get('section') != 'container_security':
+            continue
+
+        for element in section.get('elements', []):
+            if 'images' in element:
+                yield element['images'].get('elements', [])
+
+
 def point_configuration_at(test_configuration: dict, path: str) -> None:
     """Point the configured ``<archive>`` reference at the image the fixture just wrote.
 
     The test cases carry a placeholder path, while the images are written under a fresh
     per-run directory, so the reference is completed here instead of in the case file.
     """
-    for section in test_configuration.get('sections', []):
-        if section.get('section') != 'container_images':
-            continue
-
-        for element in section.get('elements', []):
+    for images in _images_elements(test_configuration):
+        for element in images:
             for reference in element.get('references', {}).get('elements', []):
                 for entry in reference.values():
                     entry['value'] = path
@@ -399,8 +457,8 @@ def prepare_whiteout_image(request: pytest.FixtureRequest, test_configuration: d
 @pytest.fixture()
 def prepare_unsupported_image(request: pytest.FixtureRequest, test_configuration: dict):
     """Lay down an OCI layout whose only package database is one that is not parsed yet."""
-    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm')
-    write_oci_layout(layout_path, [{RPM_BDB_PATH: 'a Berkeley DB hash file'}], ref_name='centos:7')
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-pacman')
+    write_oci_layout(layout_path, [{PACMAN_DB_PATH: 'a pacman package description'}], ref_name='archlinux:latest')
 
     reset_module_database()
     point_configuration_at(test_configuration, layout_path)
@@ -431,6 +489,59 @@ def prepare_rpm_ndb_image(request: pytest.FixtureRequest, test_configuration: di
     layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-ndb')
     database = rpm_ndb_db([('aaa_base', '84.87', '150300.10.20.1', None)])
     write_oci_layout(layout_path, [{RPM_NDB_DB_PATH: database}], ref_name='opensuse/leap:15.5')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_rpm_bdb_image(request: pytest.FixtureRequest, test_configuration: dict):
+    """Lay down an OCI layout whose package database is an rpm Berkeley DB one."""
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-rpm-bdb')
+    write_oci_layout(layout_path, [{RPM_BDB_PATH: RPM_BDB_PACKAGES}], ref_name='centos:7')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_dpkg_distroless_image(request: pytest.FixtureRequest, test_configuration: dict):
+    """Lay down an OCI layout whose dpkg packages are in a ``status.d`` directory, as in a distroless image."""
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-distroless')
+    write_oci_layout(layout_path,
+                     [dpkg_status_d([('base-files', '12.4+deb12u5'), ('tzdata', '2024a-0+deb12u1')])],
+                     ref_name='gcr.io/distroless/static-debian12:latest')
+
+    reset_module_database()
+    point_configuration_at(test_configuration, layout_path)
+
+    yield layout_path
+
+    shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
+
+
+@pytest.fixture()
+def prepare_os_release_image(request: pytest.FixtureRequest, test_metadata: dict, test_configuration: dict):
+    """Lay down an OCI layout with a dpkg layer, and an os-release file when the case asks for one.
+
+    A case without ``os_release`` is an image that ships none, such as a static distroless
+    image, which has to be stored with no operating system rather than refused.
+    """
+    layout_path = os.path.join(LOCAL_IMAGES_ROOT, 'oci-os-release')
+    files = {DPKG_STATUS_PATH: dpkg_status([('curl', '7.88.1-10')])}
+
+    if test_metadata.get('os_release') == 'debian':
+        files[OS_RELEASE_PATH] = DEBIAN_OS_RELEASE
+
+    write_oci_layout(layout_path, [files], ref_name='debian:12')
 
     reset_module_database()
     point_configuration_at(test_configuration, layout_path)
@@ -544,14 +655,14 @@ def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_con
         hosts.write_text(original_hosts)
 
         for key in stored:
-            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                             '-k', key, '-d'], capture_output=True)
 
 
 def _point_ca_bundle_at(test_configuration: dict, path: str) -> None:
     """Replace the ca_bundle placeholder with the generated authority's path."""
-    for section in test_configuration.get('sections', []):
-        for element in section.get('elements', []):
+    for images in _images_elements(test_configuration):
+        for element in images:
             if 'ca_bundle' in element:
                 element['ca_bundle']['value'] = path
 
@@ -568,7 +679,7 @@ def _store_case_credential(kind: str, stored: list) -> None:
     passkey = 'a-secret-token' if kind == 'valid' else 'not-the-token'
 
     for key, value in (('ghcr_user', 'an-owner'), ('ghcr_token', passkey)):
-        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                         '-k', key], input=value, text=True, check=True, capture_output=True)
         stored.append(key)
 
@@ -613,7 +724,7 @@ def _store_ecr_credential(kind: str, stored: list) -> None:
         return
 
     for key, value in zip(ECR_KEYS, pairs[kind]):
-        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                         '-k', key], input=value, text=True, check=True, capture_output=True)
         stored.append(key)
 
@@ -669,7 +780,7 @@ def local_ecr_registry(request: pytest.FixtureRequest, test_metadata: dict, test
         hosts.write_text(original_hosts)
 
         for key in stored:
-            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_security',
                             '-k', key, '-d'], capture_output=True)
 
         shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)

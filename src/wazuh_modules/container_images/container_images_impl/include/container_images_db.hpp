@@ -27,6 +27,13 @@ namespace containerimages
     constexpr auto REFERENCES_TABLE {"dbsync_container_image_references"};
     constexpr auto PACKAGES_TABLE {"dbsync_container_image_packages"};
 
+    /// @brief Name of the state index the packages table is meant for, once it is synchronized.
+    ///
+    /// Proposed, pending agreement with the runtime team. It sits outside the pattern of the host
+    /// packages template (`wazuh-states-inventory-packages*`), so this module never writes the
+    /// index the host collector owns for the same agent. Nothing writes to it yet.
+    constexpr auto IMAGE_PACKAGES_INDEX {"wazuh-states-inventory-image-packages"};
+
     /// @brief Delta reported for a single row, with everything already extracted.
     ///
     /// The row JSON is unwrapped, the document id computed and the payload serialized inside
@@ -81,6 +88,15 @@ namespace containerimages
             /// @return The stored record with its packages, or nothing when the source has
             ///         no inventory stored.
             std::optional<ImageReferenceRecord> loadStored(const std::string& sourceType, const std::string& location);
+
+            /// @brief Read back every image stored for a container engine.
+            ///
+            /// The rows of an engine are keyed `<engine>/<image id>` under the `<local>` reference
+            /// type, one per image, so they are found by that prefix rather than by one location.
+            ///
+            /// @param sourceType  Reference type of the engine references.
+            /// @param engine      Name of the engine, as configured (`docker`).
+            std::vector<ImageReferenceRecord> loadStoredEngine(const std::string& sourceType, const std::string& engine);
 
             /// @brief The CREATE TABLE statements for both tables (exposed for tests/inspection).
             static std::string getCreateStatement();

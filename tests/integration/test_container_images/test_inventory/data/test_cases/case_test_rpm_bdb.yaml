@@ -1,0 +1,9 @@
+- name: rpm_berkeley_db_database_is_inventoried
+  description: An image whose package database is an rpm Berkeley DB one is inventoried with its packages
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-rpm-bdb
+  metadata:
+    package_format: rpm
+    database_format: berkeley_db

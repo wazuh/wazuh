@@ -23,11 +23,11 @@ namespace containerimages
     ///
     /// Not scoped to this module: the family argument is inherently multi-tenant, so a
     /// second module reading a credential later should not have to move the file. Only
-    /// the `container_images` family is written today.
+    /// the `container_security` family is written today.
     constexpr auto CREDENTIAL_STORE_PATH {"queue/credentials/credentials.json"};
 
     /// @brief Family the container images module reads its credentials under.
-    constexpr auto CREDENTIAL_FAMILY {"container_images"};
+    constexpr auto CREDENTIAL_FAMILY {"container_security"};
 
     /// @brief Largest store file that will be read.
     ///

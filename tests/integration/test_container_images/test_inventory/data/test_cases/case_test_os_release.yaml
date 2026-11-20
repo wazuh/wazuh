@@ -1,0 +1,25 @@
+- name: os_release_is_stored_with_the_image
+  description: The distribution named by the os-release of the image is stored with its reference
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-os-release
+  metadata:
+    os_release: debian
+    expected_os_id: debian
+    expected_os_name: Debian GNU/Linux
+    expected_os_version: '12'
+    expected_os_codename: bookworm
+
+- name: image_with_no_os_release_is_stored_with_no_operating_system
+  description: An image that ships no os-release is stored, with empty operating system columns
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-os-release
+  metadata:
+    os_release: none
+    expected_os_id: ''
+    expected_os_name: ''
+    expected_os_version: ''
+    expected_os_codename: ''

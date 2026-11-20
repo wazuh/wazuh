@@ -93,6 +93,22 @@ t8_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_rpm_ndb.yaml')
 t8_params, t8_metadata, t8_ids = configuration.get_test_cases_data(t8_cases_path)
 t8_configurations = configuration.load_configuration_template(config_path, t8_params, t8_metadata)
 
+# T9: the operating system of an image is read from its os-release, and an image with none is stored.
+t9_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_os_release.yaml')
+t9_params, t9_metadata, t9_ids = configuration.get_test_cases_data(t9_cases_path)
+t9_configurations = configuration.load_configuration_template(config_path, t9_params, t9_metadata)
+
+
+# T10: an rpm Berkeley DB database is inventoried.
+t10_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_rpm_bdb.yaml')
+t10_params, t10_metadata, t10_ids = configuration.get_test_cases_data(t10_cases_path)
+t10_configurations = configuration.load_configuration_template(config_path, t10_params, t10_metadata)
+
+# T11: the dpkg status.d directory of a distroless image is inventoried.
+t11_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_dpkg_distroless.yaml')
+t11_params, t11_metadata, t11_ids = configuration.get_test_cases_data(t11_cases_path)
+t11_configurations = configuration.load_configuration_template(config_path, t11_params, t11_metadata)
+
 
 def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60) -> None:
     """Block until the next 'Scan ended.' line. This is the race-free scan barrier."""
@@ -169,7 +185,7 @@ def test_container_images_update_detected_on_next_scan(test_configuration, test_
     _wait_for_scan_ended(log_monitor)
     before = query_table(REFERENCES_TABLE)
     assert before, 'The references table is empty after the first scan.'
-    digest_before = before[0].get('image_config_digest')
+    digest_before = before[0].get('image_id')
 
     # Rebuild the image (new config digest) and wait for the module to MODIFY the reference.
     update_image(seed='v2')
@@ -181,7 +197,7 @@ def test_container_images_update_detected_on_next_scan(test_configuration, test_
 
     after = query_table(REFERENCES_TABLE)
     assert after, 'The references table is empty after the update scan.'
-    digest_after = after[0].get('image_config_digest')
+    digest_after = after[0].get('image_id')
 
     assert digest_after != digest_before, \
         f'The stored config digest did not change after the rebuild ({digest_before!r}).'
@@ -362,3 +378,104 @@ def test_container_images_rpm_ndb_database(test_configuration, test_metadata, pr
     packages = _stored_packages()
     assert packages.get('aaa_base') == '84.87-150300.10.20.1', \
         f'aaa_base is missing or has the wrong version: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t10_configurations, t10_metadata), ids=t10_ids)
+def test_container_images_rpm_berkeley_db_database(test_configuration, test_metadata, prepare_rpm_bdb_image,
+                                                   set_wazuh_configuration, configure_local_internal_options,
+                                                   truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that an image whose package database is an rpm Berkeley DB one, the format
+                 rpm used before 4.16, is inventoried with its packages.
+
+    test_phases:
+        - setup: write an OCI layout holding an rpm Berkeley DB database, configure it, restart daemons.
+        - test: wait for "Scan ended.", then confirm the packages are stored.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference is stored.
+        - The packages of the rpm database are stored with the versions the database holds.
+        - A version carrying an epoch, an explicit zero included, is stored with the epoch preserved.
+
+    expected_result: PASS when the rpm Berkeley DB database is inventoried.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    assert query_table(REFERENCES_TABLE), 'The references table is empty after the scan.'
+
+    packages = _stored_packages()
+    assert packages.get('bash') == '4.2.46-35.el7_9', f'bash is missing or has the wrong version: {packages}.'
+    assert packages.get('glibc') == '0:2.17-326.el7_9', f'An explicit zero epoch was not preserved: {packages}.'
+    assert packages.get('openssl-libs') == '1:1.0.2k-25.el7_9', f'The epoch was not preserved: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t11_configurations, t11_metadata), ids=t11_ids)
+def test_container_images_dpkg_status_directory(test_configuration, test_metadata, prepare_dpkg_distroless_image,
+                                                set_wazuh_configuration, configure_local_internal_options,
+                                                truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that an image with no dpkg status file, but one file per package under
+                 status.d as a distroless image has, is inventoried with its packages.
+
+    test_phases:
+        - setup: write an OCI layout holding a status.d directory, configure it, restart daemons.
+        - test: wait for "Scan ended.", then confirm the packages are stored.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference is stored.
+        - One package is stored per status.d file, with the version the file holds.
+        - The checksum files next to them are not stored as packages.
+
+    expected_result: PASS when the status.d directory is inventoried.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    assert query_table(REFERENCES_TABLE), 'The references table is empty after the scan.'
+
+    packages = _stored_packages()
+    assert packages == {'base-files': '12.4+deb12u5', 'tzdata': '2024a-0+deb12u1'}, \
+        f'The status.d packages were not stored as the files state them: {packages}.'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t9_configurations, t9_metadata), ids=t9_ids)
+def test_container_images_operating_system(test_configuration, test_metadata, prepare_os_release_image,
+                                           set_wazuh_configuration, configure_local_internal_options,
+                                           truncate_monitored_files, daemons_handler):
+    '''
+    description: Check that the distribution an image states in its os-release is stored with its
+                 reference, and that an image with no os-release is stored with no operating
+                 system instead of being refused.
+
+    test_phases:
+        - setup: write an OCI layout, with or without an os-release file, configure it, restart daemons.
+        - test: wait for "Scan ended.", then read the operating system columns of the reference.
+        - teardown: remove the layout, restore configuration and logs, stop daemons.
+
+    assertions:
+        - The reference and its packages are stored in both cases.
+        - The operating system columns hold the values of the os-release, or are empty when there is none.
+        - An image with no os-release is reported once at info level.
+
+    expected_result: PASS when the operating system is stored as the case expects.
+    '''
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    _wait_for_scan_ended(log_monitor)
+
+    references = query_table(REFERENCES_TABLE)
+    assert len(references) == 1, f'Expected one stored reference, found {references}.'
+    assert _stored_packages().get('curl') == '7.88.1-10', 'The packages of the image were not stored.'
+
+    reference = references[0]
+    assert reference['os_id'] == test_metadata['expected_os_id'], f'Unexpected os_id in {reference}.'
+    assert reference['os_name'] == test_metadata['expected_os_name'], f'Unexpected os_name in {reference}.'
+    assert reference['os_version'] == test_metadata['expected_os_version'], f'Unexpected os_version in {reference}.'
+    assert reference['os_codename'] == test_metadata['expected_os_codename'], f'Unexpected os_codename in {reference}.'
+
+    if test_metadata['os_release'] == 'none':
+        warning_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+        warning_monitor.start(callback=callbacks.generate_callback(patterns.CB_NO_OPERATING_SYSTEM), timeout=30)
+        assert warning_monitor.callback_result, 'An image with no os-release was not reported.'

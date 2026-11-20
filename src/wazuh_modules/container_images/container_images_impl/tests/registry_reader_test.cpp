@@ -471,8 +471,8 @@ TEST_F(RegistryReaderTest, AnUnauthenticatedChallengeIsAnsweredWithAnAnonymousTo
 TEST_F(RegistryReaderTest, AConfiguredCredentialIsSentToTheTokenEndpoint)
 {
     m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
-    m_credentials.values["container_images/ghcr_user"] = "owner";
-    m_credentials.values["container_images/ghcr_token"] = "a-secret-token";
+    m_credentials.values["container_security/ghcr_user"] = "owner";
+    m_credentials.values["container_security/ghcr_token"] = "a-secret-token";
 
     m_transport->answers.push_back({"/manifests/1.0", challenge()});
     scriptASuccessfulResolution();
@@ -513,8 +513,8 @@ TEST_F(RegistryReaderTest, ATokenEndpointOutsideTheRegistryIsRefused)
     // The realm arrives in a response header and decides where the credential goes. A
     // realm whose authority is not the reference's registry must not receive it.
     m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
-    m_credentials.values["container_images/ghcr_user"] = "owner";
-    m_credentials.values["container_images/ghcr_token"] = "a-secret-token";
+    m_credentials.values["container_security/ghcr_user"] = "owner";
+    m_credentials.values["container_security/ghcr_token"] = "a-secret-token";
 
     auto hostile {challenge()};
     hostile.headers["www-authenticate"] = R"(Bearer realm="https://ghcr.io@attacker.example/token",service="ghcr.io")";
@@ -540,6 +540,11 @@ TEST_F(RegistryReaderTest, AnUnchangedDigestRetrievesNoImageContents)
 
     EXPECT_EQ(result.status, ReadStatus::Unchanged);
     EXPECT_TRUE(result.records.empty());
+
+    // The name and tag the reference gives the image are handed back with it.
+    ASSERT_TRUE(result.names.has_value());
+    EXPECT_EQ(result.names->name, "ghcr.io/owner/app");
+    EXPECT_EQ(result.names->tags, std::vector<std::string>({"1.0"}));
 
     // The acceptance criterion, asserted rather than inferred: the manifests are read to
     // learn the digest, and no blob is requested at all.
@@ -640,8 +645,8 @@ TEST_F(RegistryReaderTest, ARepeatedRejectionOfTheCredentialIsReportedNotRetried
 {
     // Every manifest request answers 401. The reader must give up rather than loop.
     m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
-    m_credentials.values["container_images/ghcr_user"] = "owner";
-    m_credentials.values["container_images/ghcr_token"] = "a-secret-token";
+    m_credentials.values["container_security/ghcr_user"] = "owner";
+    m_credentials.values["container_security/ghcr_token"] = "a-secret-token";
 
     m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
     m_transport->answers.push_back({"/manifests/", challenge()});
@@ -716,21 +721,21 @@ class RegistryImageNameTest : public RegistryReaderTest
         }
 };
 
-TEST_F(RegistryImageNameTest, ATaggedReferenceIsNamedByItsRepositoryAndTag)
+TEST_F(RegistryImageNameTest, ATaggedReferenceIsNamedByItsRepositoryAndTagsByItsTag)
 {
     const auto record {discovered("ghcr.io/owner/app:1.0")};
 
-    EXPECT_EQ(record.tag, "ghcr.io/owner/app:1.0");
-    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:1.0"}));
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"1.0"}));
 }
 
 TEST_F(RegistryImageNameTest, ARepositoryAndATagThatAreNotWrittenOutAreStillNamed)
 {
-    // No tag written, so latest is assumed, and it is the name the image is stored under.
+    // No tag written, so latest is assumed.
     const auto record {discovered("ghcr.io/owner/app")};
 
-    EXPECT_EQ(record.tag, "ghcr.io/owner/app:latest");
-    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:latest"}));
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"latest"}));
 }
 
 TEST_F(RegistryImageNameTest, TheSameTagInTwoRepositoriesIsTwoNames)
@@ -740,24 +745,24 @@ TEST_F(RegistryImageNameTest, TheSameTagInTwoRepositoriesIsTwoNames)
     m_transport = new ScriptedTransport();
     const auto second {discovered("ghcr.io/other/tool:latest")};
 
-    EXPECT_NE(first.tag, second.tag);
-    EXPECT_EQ(first.tag, "ghcr.io/owner/app:latest");
-    EXPECT_EQ(second.tag, "ghcr.io/other/tool:latest");
+    EXPECT_NE(first.name, second.name);
+    EXPECT_EQ(first.name, "ghcr.io/owner/app");
+    EXPECT_EQ(second.name, "ghcr.io/other/tool");
 }
 
-TEST_F(RegistryImageNameTest, ATagBesideADigestIsKeptInTheName)
+TEST_F(RegistryImageNameTest, ATagBesideADigestIsKeptAsATagAndTheDigestLeavesTheName)
 {
     const auto record {discovered(std::string {"ghcr.io/owner/app:1.4@"} + DIGEST)};
 
-    EXPECT_EQ(record.tag, std::string {"ghcr.io/owner/app:1.4@"} + DIGEST);
-    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:1.4"}));
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"1.4"}));
 }
 
-TEST_F(RegistryImageNameTest, ADigestOnItsOwnIsNamedByItsRepositoryAndDigest)
+TEST_F(RegistryImageNameTest, ADigestOnItsOwnIsNamedByItsRepositoryAndHasNoTag)
 {
     const auto record {discovered(std::string {"ghcr.io/owner/app@"} + DIGEST)};
 
-    EXPECT_EQ(record.tag, std::string {"ghcr.io/owner/app@"} + DIGEST);
+    EXPECT_EQ(record.name, "ghcr.io/owner/app");
     EXPECT_TRUE(record.tags.empty());
 }
 
@@ -842,6 +847,103 @@ TEST_F(RegistryManifestDigestTest, AHeaderThatIsNotADigestIsIgnored)
     EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", manifest).manifestDigest, BARE_MANIFEST_SHA256);
 }
 
+TEST_F(RegistryManifestDigestTest, AReferenceResolvedThroughAnIndexKeepsTheIndexTheManifestAndTheConfigDigest)
+{
+    // A multi-platform tag resolves to an index, and the index digest is what the tag names
+    // and what a runtime may report for the image, so it is kept next to the other two.
+    auto manifestIndex {json(200, index())};
+    manifestIndex.headers["docker-content-digest"] = "sha256:1d1d1d1d";
+
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", manifestIndex});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().digests,
+              std::vector<std::string>({"sha256:1d1d1d1d", "sha256:aaaa1111", "sha256:cccc3333"}));
+    EXPECT_EQ(result.records.front().manifestDigest, "sha256:aaaa1111");
+    EXPECT_EQ(result.records.front().configDigest, "sha256:cccc3333");
+}
+
+TEST_F(RegistryManifestDigestTest, ADigestPinnedIndexIsKeptAsTheIndexDigest)
+{
+    const std::string pinned {"sha256:2f3a4b5c6d7e8f9001122334455667788"};
+
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", json(200, index())});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app@" + pinned);
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().digests,
+              std::vector<std::string>({pinned, "sha256:aaaa1111", "sha256:cccc3333"}));
+}
+
+TEST_F(RegistryManifestDigestTest, ASinglePlatformReferenceKeepsTheManifestAndTheConfigDigest)
+{
+    auto manifest {json(200, BARE_MANIFEST)};
+    manifest.headers["docker-content-digest"] = "sha256:5e5e5e5e";
+
+    EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", manifest).digests,
+              std::vector<std::string>({"sha256:5e5e5e5e", "sha256:cccc3333"}));
+}
+
+TEST_F(RegistryManifestDigestTest, TheShortCutComparesTheConfigDigestAndNothingElse)
+{
+    auto manifestIndex {json(200, index())};
+    manifestIndex.headers["docker-content-digest"] = "sha256:1d1d1d1d";
+
+    // The index and the manifest digests are kept too, but they are not what the short cut
+    // compares: a stored value equal to either one does not skip the image.
+    const std::vector<std::pair<std::string, ReadStatus>> cases
+    {
+        {"sha256:cccc3333", ReadStatus::Unchanged},
+        {"sha256:1d1d1d1d", ReadStatus::Success},
+        {"sha256:aaaa1111", ReadStatus::Success},
+    };
+
+    for (std::size_t attempt = 0; attempt < cases.size(); ++attempt)
+    {
+        if (attempt > 0)
+        {
+            m_transport = new ScriptedTransport();
+        }
+
+        m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+        m_transport->answers.push_back({"/manifests/", manifestIndex});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        EXPECT_EQ(reader("ghcr.io/owner/app:1.0", cases[attempt].first)->discover().status, cases[attempt].second)
+                << cases[attempt].first;
+    }
+}
+
+TEST_F(RegistryManifestDigestTest, AnUnchangedImageReportsTheDigestsItIsKnownByNow)
+{
+    // The configuration is the one stored, but the tag now resolves to a new index: the
+    // short cut still holds, and the current digests are handed back with it.
+    auto manifestIndex {json(200, index())};
+    manifestIndex.headers["docker-content-digest"] = "sha256:2e2e2e2e";
+
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", manifestIndex});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    // The reader owns the transport, so it stays alive while the requests are counted.
+    const auto instance = reader("ghcr.io/owner/app:1.0", "sha256:cccc3333");
+    const auto result {instance->discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Unchanged);
+    EXPECT_TRUE(result.records.empty());
+    EXPECT_EQ(result.digests, std::vector<std::string>({"sha256:2e2e2e2e", "sha256:aaaa1111", "sha256:cccc3333"}));
+    EXPECT_EQ(m_transport->countMatching("/blobs/"), 0u) << "no image contents are read again";
+}
+
 // The token exchange is a request like any other: the first one of every scan against a
 // private repository, and as exposed to throttling and resets as a manifest request.
 class RegistryTokenRetryTest : public RegistryReaderTest
@@ -852,8 +954,8 @@ class RegistryTokenRetryTest : public RegistryReaderTest
             RegistryReaderTest::SetUp();
 
             m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
-            m_credentials.values["container_images/ghcr_user"] = "owner";
-            m_credentials.values["container_images/ghcr_token"] = "a-secret-token";
+            m_credentials.values["container_security/ghcr_user"] = "owner";
+            m_credentials.values["container_security/ghcr_token"] = "a-secret-token";
 
             // Challenged once, then served.
             m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
@@ -970,8 +1072,8 @@ class RegistryCredentialFallbackTest : public RegistryReaderTest
             RegistryReaderTest::SetUp();
 
             m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
-            m_credentials.values["container_images/ghcr_user"] = USER;
-            m_credentials.values["container_images/ghcr_token"] = PASSKEY;
+            m_credentials.values["container_security/ghcr_user"] = USER;
+            m_credentials.values["container_security/ghcr_token"] = PASSKEY;
 
             LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* message)
             {
@@ -2054,6 +2156,34 @@ TEST_F(RegistryLayerContentTest, AStopThatLandsAsTheLayerEndsFailsTheReference)
     EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
 }
 
+TEST_F(RegistryLayerContentTest, TheOperatingSystemOfAnImageIsRead)
+{
+    const auto layer {imagefixtures::tarMember("usr/lib/os-release",
+                                               "NAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.19.1\n") +
+                      imagefixtures::tarEnd()};
+
+    const auto instance = layerReader({serving(layer)});
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().operatingSystem.name, "Alpine Linux");
+    EXPECT_EQ(result.records.front().operatingSystem.id, "alpine");
+    EXPECT_EQ(result.records.front().operatingSystem.version, "3.19.1");
+}
+
+TEST_F(RegistryLayerContentTest, AnImageWithNoOsReleaseIsStoredWithNoOperatingSystem)
+{
+    const auto instance = layerReader({serving(layerWithOnePackage())});
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_TRUE(result.records.front().operatingSystem.empty());
+    EXPECT_EQ(result.records.front().packages.size(), 1u);
+    EXPECT_EQ(warningsMentioning("operating system"), 0u) << "no os-release is not a warning";
+}
+
 TEST_F(RegistryLayerContentTest, AnUnsupportedCompressionIsReportedAndTheLayerSkipped)
 {
     // An xz signature followed by what could be anything: not read as tar, not read as empty.
@@ -2228,8 +2358,8 @@ class EcrReaderTest : public RegistryReaderTest
 
             m_source.now = &m_now;
             m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", {}});
-            m_credentials.values["container_images/ecr_key_id"] = "AKIDEXAMPLE";
-            m_credentials.values["container_images/ecr_secret"] = "example-secret-access-key";
+            m_credentials.values["container_security/ecr_key_id"] = "AKIDEXAMPLE";
+            m_credentials.values["container_security/ecr_secret"] = "example-secret-access-key";
 
             LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* line)
             {
@@ -2483,8 +2613,8 @@ TEST_F(EcrReaderTest, AReplacedCredentialUnderTheSameKeyNamesGetsANewToken)
     ASSERT_EQ(m_source.calls.size(), 1u);
 
     // The same key names now hold other values: the token issued to the old ones is not served.
-    m_credentials.values["container_images/ecr_key_id"] = "AKIDROTATED";
-    m_credentials.values["container_images/ecr_secret"] = "rotated-secret-access-key";
+    m_credentials.values["container_security/ecr_key_id"] = "AKIDROTATED";
+    m_credentials.values["container_security/ecr_secret"] = "rotated-secret-access-key";
 
     EXPECT_EQ(ecrReader(ECR_REFERENCE, second)->discover().status, ReadStatus::Success);
     ASSERT_EQ(m_source.calls.size(), 2u) << "a replaced credential must not be served the old token";
@@ -2661,7 +2791,7 @@ TEST_F(EcrReaderTest, APrivateReferenceWithNoRegistryEntryFailsBeforeAnyRequest)
 
 TEST_F(EcrReaderTest, ACredentialMissingFromTheStoreFailsBeforeAnyRequest)
 {
-    m_credentials.values.erase("container_images/ecr_secret");
+    m_credentials.values.erase("container_security/ecr_secret");
 
     const auto instance = ecrReader(ECR_REFERENCE, m_transport);
     EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
@@ -2789,10 +2919,10 @@ TEST_F(EcrReaderTest, OneFailingEcrReferenceDoesNotStopTheNext)
     auto* good {new ScriptedTransport()};
     scriptResolution(*good);
 
-    m_credentials.values.erase("container_images/ecr_secret");
+    m_credentials.values.erase("container_security/ecr_secret");
     EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
 
-    m_credentials.values["container_images/ecr_secret"] = "example-secret-access-key";
+    m_credentials.values["container_security/ecr_secret"] = "example-secret-access-key";
     EXPECT_EQ(ecrReader(ECR_REFERENCE, good)->discover().status, ReadStatus::Success);
 }
 
@@ -3011,7 +3141,7 @@ TEST_F(EcrReaderTest, AReasonQuotingTheConfiguredCredentialIsNotLogged)
 
 TEST_F(EcrReaderTest, AStoredAccessKeyIdThatIsNotWellFormedIsReportedWithoutBeingEchoed)
 {
-    m_credentials.values["container_images/ecr_key_id"] = "AKIDEXAMPLEWITHBLANK ";
+    m_credentials.values["container_security/ecr_key_id"] = "AKIDEXAMPLEWITHBLANK ";
 
     EcrTokenClient client {[](const EcrPostRequest&, HttpResponse&, std::string&) -> bool
         {
@@ -3035,8 +3165,8 @@ TEST_F(EcrReaderTest, NoLogLineAtAnyLevelCarriesACredentialOrAnythingDerivedFrom
     const std::string password {"PW-REDACTION-0123456789"};
     const auto token {base64("AWS:" + password)};
 
-    m_credentials.values["container_images/ecr_key_id"] = accessKeyId;
-    m_credentials.values["container_images/ecr_secret"] = secretKey;
+    m_credentials.values["container_security/ecr_key_id"] = accessKeyId;
+    m_credentials.values["container_security/ecr_secret"] = secretKey;
 
     // Everything the signer sends is recorded, so the values derived from the credential
     // are known to the test and can be searched for.
@@ -3355,7 +3485,7 @@ TEST_F(EcrReaderTest, ACredentialThatAwsRefusedIsStillReportedWhenTheStoreIsMiss
 {
     // The check of the store comes first and costs nothing, so it is not what is remembered.
     m_shareRefusals = true;
-    m_credentials.values.erase("container_images/ecr_secret");
+    m_credentials.values.erase("container_security/ecr_secret");
 
     EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
     EXPECT_TRUE(m_refusedScopes.empty());
@@ -3584,7 +3714,7 @@ TEST_F(EcrReaderTest, ACallThatMayClearUpIsRetriedUpToTheAttempts)
 }
 
 // What is stored for an ECR image is what is stored for a GHCR one.
-TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageName)
+TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageNameWithoutItsTag)
 {
     scriptResolution(*m_transport);
 
@@ -3592,9 +3722,9 @@ TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageName)
 
     ASSERT_EQ(result.status, ReadStatus::Success);
     ASSERT_EQ(result.records.size(), 1u);
-    EXPECT_EQ(result.records.front().tag, std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().name, std::string {ECR_HOST} + "/my-backend");
     ASSERT_EQ(result.records.front().tags.size(), 1u);
-    EXPECT_EQ(result.records.front().tags.front(), std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().tags.front(), "1.0");
     EXPECT_EQ(result.records.front().source.location, ECR_REFERENCE);
 }
 
@@ -3612,9 +3742,9 @@ TEST_F(EcrReaderTest, ATagFollowedByADigestPullsTheDigestAndKeepsTheTag)
     ASSERT_EQ(result.status, ReadStatus::Success);
     ASSERT_EQ(result.records.size(), 1u);
     EXPECT_EQ(transport->countMatching("/manifests/1.0"), 0u) << "the tag was pulled instead of the digest";
-    EXPECT_EQ(result.records.front().tag, std::string {ECR_HOST} + "/my-backend:1.0@" + digest);
+    EXPECT_EQ(result.records.front().name, std::string {ECR_HOST} + "/my-backend");
     ASSERT_EQ(result.records.front().tags.size(), 1u);
-    EXPECT_EQ(result.records.front().tags.front(), std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().tags.front(), "1.0");
 }
 
 // The layer path is the shared one: nothing ECR-specific reads, bounds or retries a layer.

@@ -286,73 +286,100 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
-int Read_ContainerImages(const OS_XML *xml, xml_node *node, void *d1, void *d2)
+/* The images module is the one wmodule an <images> section feeds. Repeated sections, in ossec.conf
+ * and in agent.conf, reach the same one. */
+static wmodule *get_container_images_module(wmodule **wmodules)
+{
+    wmodule *cur_wmodule = *wmodules;
+
+    while (cur_wmodule) {
+        if (cur_wmodule->tag && strcmp(cur_wmodule->tag, WM_CONTAINER_IMAGES_CONTEXT.name) == 0) {
+            return cur_wmodule;
+        }
+
+        if (!cur_wmodule->next) {
+            break;
+        }
+
+        cur_wmodule = cur_wmodule->next;
+    }
+
+    if (cur_wmodule) {
+        os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+        return cur_wmodule->next;
+    }
+
+    os_calloc(1, sizeof(wmodule), *wmodules);
+    return *wmodules;
+}
+
+/* Reads the <images> section of <container_security>. The rest of the block belongs to runtime
+ * security, which only Linux agents run and which parses its own half of the element. */
+int Read_ContainerSecurityImages(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 {
     wmodule **wmodules = (wmodule**)d1;
     int agent_cfg = d2 ? *(int *)d2 : 0;
 #ifdef CLIENT
     (void)agent_cfg;
 #endif
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+#ifdef __linux__
+    const bool runtime_supported = true;
+#else
+    const bool runtime_supported = false;
+#endif
+    xml_node **children = OS_GetElementsbyNode(xml, node);
+    int retval = 0;
 
-    // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
-        cur_wmodule_exists = *wmodules;
-        int found = 0;
-
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
-                    cur_wmodule = cur_wmodule_exists;
-                    found = 1;
-                    break;
-                }
-            }
-            cur_wmodule_exists = cur_wmodule_exists->next;
-        }
-
-        if(!found) {
-            while (cur_wmodule->next)
-                cur_wmodule = cur_wmodule->next;
-
-            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-            cur_wmodule = cur_wmodule->next;
-        }
-    } else
-        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
-
-    if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (OS_INVALID);
+    if (!children) {
+        return 0;
     }
 
-    // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'", node->element);
-    }
+    for (int i = 0; children[i]; i++) {
+        wmodule *cur_wmodule;
+        xml_node **images = NULL;
+        int first_reference;
 
-    if (!strcmp(node->element, WM_CONTAINER_IMAGES_CONTEXT.name)) {
+        if (!children[i]->element) {
+            merror(XML_ELEMNULL);
+            retval = OS_INVALID;
+            break;
+        }
+
+        if (strcmp(children[i]->element, "images") != 0) {
+            wm_container_images_skip_security_tag(children[i]->element, runtime_supported);
+            continue;
+        }
+
+        cur_wmodule = get_container_images_module(wmodules);
+        images = OS_GetElementsbyNode(xml, children[i]);
+        first_reference = cur_wmodule->data ? ((wm_container_images_t *)cur_wmodule->data)->references_count : 0;
 #ifdef CLIENT
-        if (wm_container_images_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
+        if (wm_container_images_read(xml, images, cur_wmodule) < 0) {
+            retval = OS_INVALID;
+        } else {
+            wm_container_images_bind_local(xml, children, cur_wmodule->data, first_reference);
         }
 #else
         // The manager does not run the module, but it must still validate a block pushed
         // through a shared agent.conf instead of accepting it and letting the agent be
         // the one to reject it.
         if (agent_cfg) {
-            if (wm_container_images_read(xml, children, cur_wmodule) < 0) {
-                OS_ClearNode(children);
-                return OS_INVALID;
+            if (wm_container_images_read(xml, images, cur_wmodule) < 0) {
+                retval = OS_INVALID;
+            } else {
+                wm_container_images_bind_local(xml, children, cur_wmodule->data, first_reference);
             }
         }
 #endif
+        OS_ClearNode(images);
+
+        if (retval == OS_INVALID) {
+            break;
+        }
     }
+
     OS_ClearNode(children);
-    return 0;
+    return retval;
 }
 
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)

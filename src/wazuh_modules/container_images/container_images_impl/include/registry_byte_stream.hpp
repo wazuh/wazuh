@@ -185,6 +185,9 @@ namespace containerimages
             /// @brief Start the transfer, at the first read rather than at construction.
             bool start();
 
+            /// @brief End the transfer when it stays under 1 KiB/s for the request timeout.
+            void armStallDetector();
+
             TransportConfig m_config;
             const std::atomic<bool>* m_stopRequested {nullptr};
             IdleBound m_idle;
@@ -202,6 +205,7 @@ namespace containerimages
             std::uint64_t m_delivered {0};
 
             bool m_started {false};
+            bool m_stallDetectorArmed {false};
             bool m_running {false};
             bool m_paused {false};
             bool m_failed {false};

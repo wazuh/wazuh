@@ -1,12 +1,14 @@
 # Configuration
 
-The Container Images module is configured in the agent `ossec.conf` file using the `<container_images>` section. The configuration is agent-only: the block is parsed in agent builds and ignored by the server/manager.
+The Container Images module is configured in the agent `ossec.conf` file, in the `<images>` section of the `<container_security>` block. The settings are agent-only: a manager reads them only to validate a shared `agent.conf`.
 
 Synchronization options are not available in this stage. State synchronization and manager-side cleanup are planned for later development stages; this stage stores the inventory locally on the agent.
 
-The block is optional. When the block is present, all settings have defaults and the module can be disabled with `<enabled>no</enabled>`.
+The section is optional. Without `<images>` the module is not started. When the section is present, all settings have defaults and the module can be disabled with `<enabled>no</enabled>`.
 
-> **Note:** Images are read from two kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`) and Amazon Elastic Container Registry (public and private). The `<local>` entry type is accepted by the parser and reported as unimplemented.
+All the options on this page go inside `<images>`, which goes inside `<container_security>`. The examples below show the `<images>` section; the fragments for `<registry_auth>` and `<references>` are written inside it.
+
+> **Note:** Images are read from three kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`) and Amazon Elastic Container Registry (public and private). From the Docker engine on the host through `<local>docker`, on Linux agents, which uses the engine configured in the same `<container_security>` block.
 
 ---
 
@@ -15,12 +17,14 @@ The block is optional. When the block is present, all settings have defaults and
 ### Minimal Configuration
 
 ```xml
-<container_images>
-  <enabled>yes</enabled>
-  <references>
-    <archive>/var/tmp/images/myapp.tar</archive>
-  </references>
-</container_images>
+<container_security>
+  <images>
+    <enabled>yes</enabled>
+    <references>
+      <archive>/var/tmp/images/myapp.tar</archive>
+    </references>
+  </images>
+</container_security>
 ```
 
 This enables the module with default settings:
@@ -32,16 +36,37 @@ This enables the module with default settings:
 ### Full Configuration Example
 
 ```xml
-<container_images>
-  <enabled>yes</enabled>
-  <scan_on_start>yes</scan_on_start>
-  <interval>1h</interval>
-  <references>
-    <archive>/var/tmp/images/myapp.tar</archive>
-    <archive>/var/tmp/images/myapp-oci-layout</archive>
-  </references>
-</container_images>
+<container_security>
+  <images>
+    <enabled>yes</enabled>
+    <scan_on_start>yes</scan_on_start>
+    <interval>1h</interval>
+    <references>
+      <archive>/var/tmp/images/myapp.tar</archive>
+      <archive>/var/tmp/images/myapp-oci-layout</archive>
+    </references>
+  </images>
+</container_security>
 ```
+
+### The `<container_security>` Block
+
+`<container_security>` is shared with container runtime security, which reads its own children (`<container_instances>`, `<syscheck>`, `<syscollector>` and the engine sections). The images module reads only `<images>`.
+
+| Platform | `<images>` | Other children of `<container_security>` |
+|----------|------------|------------------------------------------|
+| Linux | Read. | Left to runtime security. They are stepped over here, not validated by the images module, and not reported. |
+| macOS and Windows | Read. | Runtime security is not available. Each runtime child is reported once with `The '<tag>' tag inside 'container_security' is only supported on Linux agents, ignoring it.`, any other child with `No such tag '<tag>' inside 'container_security', ignoring it.`, and the agent keeps running. |
+
+A block that holds only `<images>` is valid. Settings can be split across `ossec.conf` and a shared `agent.conf`, and across several `<container_security>` blocks: every `<images>` section configures the same module. References and registry entries add up, and every other option keeps the last value read.
+
+The top-level `<container_images>` block no longer exists. It is ignored, and each daemon that reads the configuration logs this line once, like any other obsolete setting:
+
+```sql
+wazuh-modulesd: WARNING: (1223): 'container_images' is no longer supported and will be ignored. Image scanning is configured in <container_security><images>.
+```
+
+Move its children, unchanged, into `<container_security><images>`.
 
 ---
 
@@ -64,7 +89,7 @@ This enables the module with default settings:
 | `references/ref` | string | empty | Image in a remote GHCR or Amazon ECR registry, by tag, by digest, or by both. This element can be repeated. |
 | `registry_auth` | section | empty | Container section for per-registry credentials. See [Registry Credentials](#registry-credentials). |
 | `ca_bundle` | string | detected | Path to the certificate bundle used to verify a registry, and the AWS API endpoint a private Amazon ECR token is requested from. Detected at run time when unset. |
-| `references/local` | string | empty | Image in the local container engine store. Accepted and reported as unimplemented. |
+| `references/local` | string | empty | Name of a container engine configured in the same `<container_security>` block. Every image the engine holds is inventoried. Only `docker` is supported, on Linux agents. See [Local Engine References](#local-engine-references). |
 
 ---
 
@@ -93,7 +118,7 @@ The grammar holds three entry types.
 |-------|---------|--------|
 | `<archive>` | Saved image archive or OCI image layout on disk. | Implemented. |
 | `<ref>` | Image in a remote registry. | Implemented for `ghcr.io` and Amazon ECR. |
-| `<local>` | Image in the local container engine store. | Accepted, reported as unimplemented. |
+| `<local>` | Every image held by a container engine on the host. | Implemented for `docker`, on Linux agents. |
 
 ```xml
 <references>
@@ -106,11 +131,52 @@ The grammar holds three entry types.
 </references>
 ```
 
-An unimplemented entry type is reported once per scan and costs nothing else:
+### Local Engine References
+
+`<local>` names a container engine, not an image, and the module inventories every image that engine holds. The engine is the one already configured in the same `<container_security>` block, so its socket is written once and there is no socket option under `<images>`.
+
+```xml
+<container_security>
+  <container_instances>
+    <type>docker</type>
+    <socket_path>/var/run/docker.sock</socket_path>
+  </container_instances>
+  <images>
+    <references>
+      <local>docker</local>
+    </references>
+  </images>
+</container_security>
+```
+
+The engine block is read as runtime security writes it. Both shapes are recognised, in any order inside the block, and the module reads only their `<socket_path>` and `<enabled>`; the rest is validated by runtime security:
+
+| Shape | Docker engine |
+|-------|---------------|
+| `<container_instances>` with `<type>docker</type>` | Today's shape. |
+| `<docker>` | The shape of the proposed runtime configuration. |
+
+An image pulled by digest has no tag, so it is named by the repository its digest names. When the block holds several Docker engine blocks, an enabled one is used, whatever its position, over a disabled one.
+
+| Case | Result |
+|------|--------|
+| The engine block has a `<socket_path>` | That socket. |
+| The engine block has no `<socket_path>` | `/var/run/docker.sock`, the socket runtime security uses by default. |
+| No Docker engine in the block, or it is switched off with `<enabled>no</enabled>` | The `<local>` entry is reported and ignored. The rest of `<images>` keeps running. |
+| `<local>kubernetes</local>` | Reported and ignored: Kubernetes has no image export, name its images with `<ref>`. |
+| Any other name | Reported and ignored: only `docker` is supported. |
+| A second `<local>docker</local>`, in the block or in a later block | Reported and ignored. The socket of the first one is used. |
+| macOS and Windows agents | Reported and ignored: container engines are supported on Linux agents only. |
+
+Each ignored entry logs one warning, for example:
 
 ```sql
-wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: the '<local>' reference 'nginx:1.27' needs container engine support, which is not available yet. Skipping it.
+wazuh-modulesd:container_images: WARNING: The 'local' reference 'docker' at module 'container_images' needs the Docker engine of the same 'container_security' block, and none is configured. Ignoring it.
 ```
+
+The images are read from the Docker Engine API on that socket: `GET /images/json` lists them and `GET /images/{id}/get` exports one as a saved image archive, which is read by the same code as an `<archive>`, streamed and never written to disk. An export is read in two passes (metadata, then layers), so it is requested twice. The limits of a registry image apply to it: the per image byte allowance (`2 GiB`) and the per scan one (`8 GiB`, an image is not started once it is reached; its stored inventory is kept), plus the decompressed layer ceiling.
+
+Each image is one row, keyed `local:docker/<image id>`. The engine reports its names, tags and digests, which are the ones stored: the name and tags are normalised like those of a saved archive, and the digests are the ones the engine pins the name to, then the configuration digest (the image id). An image with no name is inventoried with an empty name and no tags. The row keeps its key when the image is retagged and is rewritten with the new names. An image whose id is already stored is not exported again. An image the engine no longer lists is removed like any reference that goes away. An image the engine reports as larger than the per image allowance is not exported: it is skipped with one warning per image (not per scan) and does not use the scan allowance, and the stream limit stays as a backstop for an engine that under-reports. An image exported with several platforms is read as the one matching the agent, else the first. When the engine cannot be reached (socket missing, daemon stopped, an error answer) the scan keeps everything stored for it and logs one warning, since an unreachable engine says nothing about what it holds.
 
 ### Remote References
 
@@ -172,8 +238,8 @@ A public repository needs no credential. A private one is read with a user name 
 The values are deposited beforehand, with the value read from standard input so it does not appear in the shell history or in the process list:
 
 ```
-echo "owner" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ghcr_user
-echo "$GHCR_TOKEN" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ghcr_token
+echo "owner" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ghcr_user
+echo "$GHCR_TOKEN" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ghcr_token
 ```
 
 The paths above are those of a Linux agent. On a macOS agent the installation directory is `/Library/Ossec`. In both cases the tool locates the installation from its own path, and `WAZUH_AGENT_HOME` overrides it.
@@ -229,11 +295,11 @@ A private ECR repository is read with an AWS access key. The module uses the key
 The values are deposited beforehand with the agent keystore, reading them from standard input so they do not appear in the shell history or in the process list:
 
 ```
-echo "$AWS_ACCESS_KEY_ID" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ecr_key_id
-echo "$AWS_SECRET_ACCESS_KEY" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ecr_secret
+echo "$AWS_ACCESS_KEY_ID" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ecr_key_id
+echo "$AWS_SECRET_ACCESS_KEY" | /var/ossec/bin/wazuh-agent-keystore -f container_security -k ecr_secret
 ```
 
-The command is `wazuh-agent-keystore`, and the family is always `container_images`. Do not pass the value with `-v`: an argument is visible in the shell history and in the process list while the command runs.
+The command is `wazuh-agent-keystore`, and the family is always `container_security`. Do not pass the value with `-v`: an argument is visible in the shell history and in the process list while the command runs.
 
 **Region.** A private host names its own region (`us-east-1` in the example above), and that is used when `<region>` is absent. When `<region>` is configured it overrides the host's: the token is requested from the configured region and one debug line names both regions when they differ. A configured region that is not a valid AWS region skips the entry with a warning. A `<region>` inside an entry for a host that is not an Amazon one, `ghcr.io` for instance, is reported and ignored, and the entry is otherwise applied. When the registry then refuses the token, the warning says so plainly and no second token is requested, because one from the same region would be refused the same way:
 
@@ -393,11 +459,11 @@ The packages of an image come from the package database its layers carry:
 
 | Format | Database path | Status |
 |--------|---------------|--------|
-| dpkg | `var/lib/dpkg/status` | Parsed. Installed packages only. |
+| dpkg | `var/lib/dpkg/status`, `var/lib/dpkg/status.d/` | Parsed. Installed packages only. A distroless image has no `status` file and one file per package under `status.d`, which is read only when there is no `status` file. The `.md5sums` files next to them are not packages. |
 | apk | `lib/apk/db/installed`, `usr/lib/apk/db/installed` | Parsed. The second path is used by Wolfi and Chainguard images. |
 | rpm, sqlite | `var/lib/rpm/rpmdb.sqlite`, `usr/lib/sysimage/rpm/rpmdb.sqlite` | Parsed. The format rpm 4.16 and later use, so the current Red Hat, Fedora and Amazon Linux families. |
 | rpm, ndb | `var/lib/rpm/Packages.db`, `usr/lib/sysimage/rpm/Packages.db` | Parsed. The format the SUSE family uses. |
-| rpm, Berkeley DB | `var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages` | Recognized, not parsed. The format rpm used before 4.16. |
+| rpm, Berkeley DB | `var/lib/rpm/Packages`, `usr/lib/sysimage/rpm/Packages` | Parsed on Linux agents. The format rpm used before 4.16, so Red Hat and CentOS 7, Amazon Linux 2. A Berkeley DB file left next to a sqlite or ndb database is ignored. A damaged file is reported with a warning and costs only that database. On other platforms it is recognized, not parsed, and reported. |
 | pacman | `var/lib/pacman/local/` | Recognized, not parsed yet. |
 | portage | `var/db/pkg/` | Recognized, not parsed yet. |
 | xbps | `var/db/xbps/` | Recognized, not parsed yet. |
@@ -412,7 +478,7 @@ Package versions are stored the way the distribution expresses them, `version-re
 An image whose package format is recognized but not parsed is still inventoried, with zero packages and one warning:
 
 ```sql
-wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: image at '/var/tmp/images/centos.tar' uses the package format(s) rpm, which are recognized but not supported yet. Reporting zero packages.
+wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: image at '/var/tmp/images/archlinux.tar' uses the package format(s) pacman, which are recognized but not supported yet. Reporting zero packages.
 ```
 
 ### Layer Compression
@@ -452,7 +518,7 @@ The Container Images module validates configuration at startup:
 
 An invalid module setting, meaning `enabled`, `scan_on_start` or `interval`, causes a configuration error and rejects the module block.
 
-Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<container_images>` are also logged with a warning and ignored.
+Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<images>` are also logged with a warning and ignored.
 
 The same holds inside `<registry_auth>`: an entry naming no host, an entry whose host is not a bare host name (it carries a scheme, a path or whitespace), an entry naming no keystore key, and an unrecognised element are each reported and skipped, and the rest of the block is still applied. A second entry for a host already configured is reported and ignored, and the first is used, whatever tags either one uses. The host is read in lower case before any rule below looks at it. For an Amazon ECR entry the rules are:
 

@@ -24,8 +24,8 @@ include_directories(${SRC_FOLDER}/external/zstd/lib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/curl/include/) # registry transport
 include_directories(${SRC_FOLDER}/external/openssl/include/) # hash_helper, SigV4 (EVP_Q_mac)
 include_directories(${SRC_FOLDER}/external/sqlite/) # rpm sqlite database backend
-# The rpm header and database format readers are the shared agent package reading. They
-# are header only, so they are compiled here rather than linked, and the module gains no
+# The package database parser (dpkg, apk, rpm) is shared with container runtime security.
+# It is header only, so it is compiled here rather than linked, and the module gains no
 # dependency on libsysinfo.
 include_directories(${SRC_FOLDER}/data_provider/src/packages/)
 include_directories(${SRC_FOLDER}/shared/include/)
@@ -48,6 +48,8 @@ add_library(
   src/aws_sigv4.cpp
   src/container_images_impl.cpp
   src/container_images_db.cpp
+  src/docker_image_source.cpp
+  src/engine_image_reader.cpp
   src/archive_image_reader.cpp
   src/auth_challenge.cpp
   src/ca_bundle.cpp
@@ -56,7 +58,7 @@ add_library(
   src/layer_composer.cpp
   src/layer_reader.cpp
   src/oci_metadata.cpp
-  src/package_db_parser.cpp
+  src/os_release_parser.cpp
   src/platform_selection.cpp
   src/registry_byte_stream.cpp
   src/registry_errors.cpp
@@ -68,6 +70,12 @@ add_library(
   src/retry_policy.cpp)
 
 set_target_properties(ContainerImagesImpl PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+# rpm Berkeley DB databases are read through libdb, which the agent only builds for Linux.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_include_directories(ContainerImagesImpl PRIVATE ${SRC_FOLDER}/external/libdb/build_unix/)
+  target_link_libraries(ContainerImagesImpl PRIVATE ${SRC_FOLDER}/external/libdb/build_unix/libdb.a)
+endif()
 
 target_include_directories(
   ContainerImagesImpl

@@ -14,6 +14,7 @@
 #include "image_inventory_types.hpp"
 
 #include <string>
+#include <vector>
 
 #include <json.hpp>
 
@@ -60,6 +61,23 @@ namespace containerimages::oci
     /// registry reader, so neither may carry a separator, a traversal segment, or a
     /// Windows drive-relative prefix.
     bool isSafeDigest(const std::string& digest);
+
+    /// @brief True when @p digest is a sha256 or sha512 digest in full: the algorithm, a colon, and the
+    /// exact number of lower-case hex digits (64 or 128).
+    ///
+    /// Stricter than @ref isSafeDigest, for a value a container engine supplies and the module turns
+    /// into a key and a request path, where nothing but a real image id should pass.
+    bool isHexDigest(const std::string& digest);
+
+    /// @brief Every digest an image is known by, without empty or repeated entries.
+    ///
+    /// Ordered from the outside in: the indexes the image was resolved through (outermost
+    /// first), then its manifest, then its configuration. The configuration digest is the
+    /// one that identifies the contents; the others are what a tag or a runtime may name
+    /// the same image by.
+    std::vector<std::string> collectDigests(const std::vector<std::string>& indexDigests,
+                                            const std::string& manifestDigest,
+                                            const std::string& configDigest);
 
     /// @brief Fill platform metadata from a parsed configuration blob.
     void applyConfigMetadata(const nlohmann::json& config, ImageReferenceRecord& record);

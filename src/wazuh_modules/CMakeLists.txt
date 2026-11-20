@@ -149,7 +149,7 @@ else()
   # Agent build
   # NOTE: container_images is intentionally NOT link-time linked here. The module
   # is loaded lazily at runtime via so_get_module_handle("container_images") in
-  # wm_container_images.c, only when a <container_images> block is configured.
+  # wm_container_images.c, only when an <images> section of <container_security> is configured.
   # Load-time linking the container_images shared lib (.dll on Windows) forced
   # modulesd to load it (and its wazuhext/C++ deps) at process start even when the
   # module is dormant, which slowed agent startup and broke the enrollment and

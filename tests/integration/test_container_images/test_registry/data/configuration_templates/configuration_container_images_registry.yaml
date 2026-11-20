@@ -1,25 +1,27 @@
 - sections:
-    - section: container_images
+    - section: container_security
       elements:
-        - enabled:
-            value: 'yes'
-        - scan_on_start:
-            value: 'yes'
-        - interval:
-            value: 1h
-        - ca_bundle:
-            value: CA_BUNDLE
-        - references:
+        - images:
             elements:
-              - ref:
-                  value: REFERENCE
-        - registry_auth:
-            elements:
-              - registry:
+              - enabled:
+                  value: 'yes'
+              - scan_on_start:
+                  value: 'yes'
+              - interval:
+                  value: 1h
+              - ca_bundle:
+                  value: CA_BUNDLE
+              - references:
                   elements:
-                    - host:
-                        value: ghcr.io
-                    - user_keystore_key:
-                        value: ghcr_user
-                    - passkey_keystore_key:
-                        value: ghcr_token
+                    - ref:
+                        value: REFERENCE
+              - registry_auth:
+                  elements:
+                    - registry:
+                        elements:
+                          - host:
+                              value: ghcr.io
+                          - user_keystore_key:
+                              value: ghcr_user
+                          - passkey_keystore_key:
+                              value: ghcr_token

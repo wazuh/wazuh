@@ -1,0 +1,9 @@
+- name: dpkg_status_directory_is_inventoried
+  description: An image with no dpkg status file but a status.d directory, as a distroless image has, is inventoried with its packages
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-distroless
+  metadata:
+    package_format: deb
+    database_format: status.d

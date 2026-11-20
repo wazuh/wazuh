@@ -1,6 +1,8 @@
 - sections:
-    - section: container_images
-      elements: []
+    - section: container_security
+      elements:
+        - images:
+            value: ''
 
     - section: syscheck
       elements:
