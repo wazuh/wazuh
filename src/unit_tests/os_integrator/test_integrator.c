@@ -246,8 +246,7 @@ void test_OS_IntegratorD_shell_format_sanitized(__attribute__((unused)) void **s
     expect_fclose((FILE *)1, 0);
 
     will_return(__wrap_wpopenv, wfd);
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, 0);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
 
@@ -316,8 +315,7 @@ void test_OS_IntegratorD_shell_format_keeps_alert(void **state) {
     expect_fclose((FILE *)1, 0);
 
     will_return(__wrap_wpopenv, wfd);
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, 0);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
 
@@ -336,8 +334,7 @@ void test_OS_IntegratorD_shell_format_keeps_alert(void **state) {
     expect_fclose((FILE *)1, 0);
 
     will_return(__wrap_wpopenv, wfd);
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, 0);
+    will_return(__wrap_getline, NULL);
     will_return(__wrap_wpclose, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "Command ran successfully.");
 
