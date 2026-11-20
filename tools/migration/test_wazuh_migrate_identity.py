@@ -131,6 +131,7 @@ def stored_by_the_manager(file_content):
                        "_custom_amp_lt_": "&lt;", "_custom_amp_gt_": "&gt;"}
     for character, replacement in custom_entities.items():
         file_content = file_content.replace(replacement, character)
+    file_content = re.sub(r"\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>", "", file_content, count=1)
     document = xml.dom.minidom.parseString("<root>\n%s\n</root>" % file_content)
     pretty_xml = "\n".join(filter(lambda x: x.strip(), document.toprettyxml(indent="  ").split("\n")[2:-2])) + "\n"
     pretty_xml = re.sub(r"(?:(?<=\\) +)", "", pretty_xml.replace("&amp;", "&").replace("&lt;", "<")
@@ -217,7 +218,11 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             name = self.path.split("/")[2]
             if name in FakeManager.reject_configurations:
                 return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
-            FakeManager.configurations[name] = stored_by_the_manager(body)
+            try:
+                FakeManager.configurations[name] = stored_by_the_manager(body)
+            except Exception as error:  # the endpoint's error 1113
+                return self._send(400, {"title": "Bad Request", "detail": "XML syntax error: %s" % error,
+                                        "error": 1113})
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
             parts = urllib.parse.urlsplit(self.path)
@@ -703,7 +708,7 @@ class MigrationToolTest(unittest.TestCase):
                  "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
         second = ("<agent_config>\n  <localfile>\n    <log_format>command</log_format>\n"
                   "    <command>echo \\< 3 &amp;&amp; grep '&gt;' x</command>\n  </localfile>\n</agent_config>\n")
-        self.write_group_file("default", "agent.conf", first + second)
+        self.write_group_file("default", "agent.conf", "\ufeff<?xml version='1.0'?>\n" + first + second)
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         stored = FakeManager.configurations["default"]

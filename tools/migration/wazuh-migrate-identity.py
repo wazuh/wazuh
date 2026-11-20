@@ -913,6 +913,10 @@ def read_group_conf(api, name):
     return answer.get("__raw", "")
 
 
+# As the manager's XML_DECLARATION_REGEX: a declaration is legal only at the start of a document.
+XML_DECLARATION = re.compile(r"\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>")
+
+
 def as_the_manager_stores(agent_conf):
     """An agent.conf in the layout PUT /groups/{group}/configuration saves it in.
 
@@ -923,7 +927,7 @@ def as_the_manager_stores(agent_conf):
     """
     aside = (("\\<", "_custom_open_tag_"), ("\\>", "_custom_close_tag_"),
              ("&lt;", "_custom_amp_lt_"), ("&gt;", "_custom_amp_gt_"))
-    text = re.sub(r"^\s*<\?xml[^>]*\?>", "", agent_conf)
+    text = XML_DECLARATION.sub("", agent_conf, count=1)
     for literal, name in aside:
         text = text.replace(literal, name)
     pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % text).toprettyxml(indent="  ")
@@ -956,7 +960,8 @@ def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     if not default or not default.get("customized"):
         return None
     install_group_files(bundle, default, target_conf_dir, dry_run)
-    carried = default["agent_conf"].strip()
+    # Appended after the 5.0 file, where a declaration of its own would be refused.
+    carried = XML_DECLARATION.sub("", default["agent_conf"], count=1).strip()
     current = read_group_conf(api, DEFAULT_GROUP)
     if holds_configuration(current, carried):
         log("  group    %-20s 4.x agent.conf already merged" % DEFAULT_GROUP)
