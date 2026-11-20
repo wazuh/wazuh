@@ -830,6 +830,10 @@ if [ -n "${REAL_CONF_DIR}" ] && [ ! -L ${CONF_DIR}/certs ]; then
   (cd -P -- ${CONF_DIR}/certs 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}/certs" ] && fix_certs) || true
 fi
 
+# Copies left in /etc/systemd/system (a source installation) override the units this package ships.
+rm -f %{_sysconfdir}/systemd/system/wazuh-manager-service-control@.service \
+  %{_sysconfdir}/systemd/system/wazuh-manager-service-control-restart.path \
+  %{_sysconfdir}/systemd/system/wazuh-manager-service-control-reload.path
 if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-manager.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -1004,6 +1008,7 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/run
+%dir %attr(700, wazuh-manager, wazuh-manager) %{_localstatedir}/var/run/service-control
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/upgrade
 
 %files -n wazuh-manager-debuginfo -f debugfiles.list

@@ -49,7 +49,7 @@ SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 
 # A request left from before this start (a reboot, a crash) must not restart or reload what it starts.
-ExecStartPre=-/bin/rm -f WAZUH_HOME_TMP/var/run/wazuh-manager-service-control.restart WAZUH_HOME_TMP/var/run/wazuh-manager-service-control.reload
+ExecStartPre=-/bin/rm -f WAZUH_HOME_TMP/var/run/service-control/restart WAZUH_HOME_TMP/var/run/service-control/reload
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop
 # A restart that arrives during a reload makes systemd skip ExecStop and, with KillMode=process,

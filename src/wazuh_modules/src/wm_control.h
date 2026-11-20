@@ -59,6 +59,12 @@ size_t wm_control_dispatch(char *command, char **output);
 bool wm_control_check_systemd();
 
 /**
+ * @brief Check if this process runs in wazuh-manager.service
+ * @return true if a line of /proc/self/cgroup ends in /wazuh-manager.service, false otherwise
+ */
+bool wm_control_in_manager_service();
+
+/**
  * @brief Wait for a Wazuh service to be in active state
  *
  * Waits up to 60 seconds for the service to become active.
