@@ -124,6 +124,30 @@ def hand_back_security_config():
         os.close(fd)
 
 
+def hand_back_ca():
+    """Assign to wazuh the HTTPS CA file that an API run as root could read and wazuh cannot.
+
+    Its directory is writable by the wazuh user, who could move any root-owned file there: the file is
+    only assigned if it holds certificates alone, read through the descriptor that is assigned.
+    """
+    if not (api_conf['https']['enabled'] and api_conf['https']['use_ca']):
+        return
+    try:
+        fd = os.open(api_conf['https']['ca'], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return
+    try:
+        file_stat = os.fstat(fd)
+        if file_stat.st_uid != 0 or not stat.S_ISREG(file_stat.st_mode) or file_stat.st_nlink != 1 \
+                or file_stat.st_size > 1048576:
+            return
+        if re.fullmatch(rb'\s*(?:-----BEGIN CERTIFICATE-----[A-Za-z0-9+/=\s]+-----END CERTIFICATE-----\s*)+',
+                        os.read(fd, 1048576)):
+            os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+    finally:
+        os.close(fd)
+
+
 def configure_ssl(params):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
@@ -481,7 +505,7 @@ if __name__ == '__main__':
     # Drop privileges to wazuh
     if not args.root:
         if os.geteuid() == 0:
-            for hand_back in (hand_back_rotated_logs, hand_back_security_config):
+            for hand_back in (hand_back_rotated_logs, hand_back_security_config, hand_back_ca):
                 try:
                     hand_back()
                 except OSError as e:
