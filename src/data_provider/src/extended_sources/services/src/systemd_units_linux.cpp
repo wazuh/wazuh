@@ -952,12 +952,18 @@ nlohmann::json SystemdUnitsProvider::collect()
     {
         m_settings.consecutiveFailures->store(0);
     }
-    else if (status != CollectionStatus::NoBus && std::filesystem::is_directory(m_settings.runtimeDirectory, ec))
+    else if (std::filesystem::is_directory(m_settings.runtimeDirectory, ec))
     {
         // Nothing was listed, so there is nothing to report: the scan is skipped and the last
         // inventory kept until systemd answers. Reporting no units would report every service
         // as deleted, and as installed again once the bus answers. The message is the same on
-        // every scan, so Syscollector logs it as an error once.
+        // every scan, so Syscollector logs it as an error once a day.
+        if (status == CollectionStatus::NoBus)
+        {
+            // The socket can be missing for a while too, so this is not proof that there is no bus.
+            throw std::runtime_error {"The system bus socket was not found, services scan skipped; the last services inventory is kept until the bus is available"};
+        }
+
         if (status == CollectionStatus::Failed)
         {
             throw std::runtime_error {"Unable to list the systemd units, services scan skipped; the last services inventory is kept until systemd answers"};
