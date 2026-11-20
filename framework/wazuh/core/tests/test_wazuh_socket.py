@@ -2,12 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
+import socket
+import threading
+from struct import pack, unpack
 from unittest.mock import patch, MagicMock
+
 import pytest
 
 from wazuh.core.exception import WazuhException
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, \
-    SOCKET_COMMUNICATION_PROTOCOL_VERSION, create_wazuh_socket_message
+    SOCKET_COMMUNICATION_PROTOCOL_VERSION, create_wazuh_socket_message, daemons, wazuh_sendsync
 
 
 @patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
@@ -179,3 +184,83 @@ def test_create_wazuh_socket_message(origin, command, parameters):
     assert response_message.get('origin') == origin
     assert response_message.get('command') == command
     assert response_message.get('parameters') == parameters
+
+
+@pytest.fixture
+def fake_authd(tmp_path):
+    """Serve the authd framing from a thread, so that an exchange which blocks the event loop fails its
+    test instead of hanging it. Yields a dict: set 'delay' to answer late, read 'requests' for what arrived."""
+    path = str(tmp_path / 'auth')
+    state = {'delay': 0, 'requests': []}
+    stop = threading.Event()
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(path)
+    server.listen()
+    server.settimeout(0.05)
+
+    def serve():
+        while not stop.is_set():
+            try:
+                conn, _ = server.accept()
+            except socket.timeout:
+                continue
+            with conn:
+                size = unpack('<I', conn.recv(4, socket.MSG_WAITALL))[0]
+                state['requests'].append(conn.recv(size, socket.MSG_WAITALL).decode())
+                if not stop.wait(state['delay']):
+                    conn.sendall(pack('<I', 2) + b'ok')
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    with patch.dict(daemons['authd'], path=path):
+        yield state
+    stop.set()
+    thread.join()
+    server.close()
+
+
+@pytest.mark.parametrize('message, received', [('{"function": "add"}', '{"function": "add"}'),
+                                                ({'function': 'add'}, '{"function": "add"}')])
+async def test_wazuh_sendsync(fake_authd, message, received):
+    """The daemon gets the message, as a string or serialized from a dict, and its answer is returned."""
+    assert await wazuh_sendsync('authd', message, timeout=5) == 'ok'
+    assert fake_authd['requests'] == [received]
+
+
+async def test_wazuh_sendsync_does_not_block_the_loop(fake_authd):
+    """While the daemon takes its time to answer, the other tasks of the loop keep running."""
+    fake_authd['delay'] = 0.5
+    ticks = 0
+
+    async def ticker():
+        nonlocal ticks
+        while True:
+            await asyncio.sleep(0.01)
+            ticks += 1
+
+    task = asyncio.create_task(ticker())
+    assert await wazuh_sendsync('authd', 'request', timeout=5) == 'ok'
+    task.cancel()
+    assert ticks >= 10
+
+
+async def test_wazuh_sendsync_timeout(fake_authd):
+    """A daemon that does not answer in time ends the exchange with error 1014."""
+    fake_authd['delay'] = 5
+    with pytest.raises(WazuhException, match='.* 1014 .*no answer from authd in 0.1 seconds'):
+        await wazuh_sendsync('authd', 'request', timeout=0.1)
+
+
+async def test_wazuh_sendsync_ko(tmp_path):
+    """A missing socket is error 1013, one nobody listens on 1121, and anything else 1014."""
+    path = str(tmp_path / 'auth')
+    with patch.dict(daemons['authd'], path=path):
+        with pytest.raises(WazuhException, match='.* 1013 .*'):
+            await wazuh_sendsync('authd', 'request')
+
+        socket.socket(socket.AF_UNIX, socket.SOCK_STREAM).bind(path)
+        with pytest.raises(WazuhException, match='.* 1121 .*'):
+            await wazuh_sendsync('authd', 'request')
+
+    with pytest.raises(WazuhException, match='.* 1014 .*'):
+        await wazuh_sendsync('unknown_daemon', 'request')

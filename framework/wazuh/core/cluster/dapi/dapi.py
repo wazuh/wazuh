@@ -834,6 +834,35 @@ class SendSyncRequestQueue(WazuhRequestQueue):
         if self.server.configuration['node_type'] == 'master':
             await self.server.tasks_event.wait()
 
+    @staticmethod
+    def request_timeout(request: dict, default: float) -> float:
+        """Get how long to wait for the daemon's answer to a request.
+
+        An enrollment carries `deadline_ms`, the instant (milliseconds since the epoch) after which authd discards
+        it instead of applying it. Waiting until then and no longer is what keeps the worker's resend of a request
+        the master gave up on from enrolling the agent twice: the resend carries the same deadline.
+
+        Parameters
+        ----------
+        request : dict
+            SendSync request.
+        default : float
+            Seconds to wait for a request without a deadline. No request waits longer.
+
+        Returns
+        -------
+        float
+            Seconds to wait.
+        """
+        try:
+            deadline_ms = request['message']['arguments']['deadline_ms']
+            if type(deadline_ms) in (int, float) and deadline_ms > 0:  # authd reads anything else as no deadline
+                # At least 1 second, so that authd itself answers an expired request with its own error.
+                return min(default, max(deadline_ms / 1000 - time.time(), 1))
+        except (KeyError, TypeError, OverflowError):
+            pass
+        return default
+
     async def process(self, raw_request: str):
         parsed = self.split_request(raw_request)
         if parsed is None:
@@ -855,10 +884,12 @@ class SendSyncRequestQueue(WazuhRequestQueue):
         try:
             request = json.loads(request, object_hook=c_common.as_wazuh_object)
             self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
-            result = await wazuh_sendsync(**request)
+            result = await wazuh_sendsync(**request, timeout=self.request_timeout(
+                request, self.server.cluster_items['intervals']['communication']['timeout_sendsync_request']))
             task_id = await node.send_string(result.encode())
         except Exception as e:
-            self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
+            # The request is not logged: an enrollment carries the agent's key and its re-enrollment credential.
+            self.logger.error(f"Error in SendSync request from {names[0]}: {str(e)}", exc_info=False)
             with contextlib.suppress(Exception):
                 await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
         else:
