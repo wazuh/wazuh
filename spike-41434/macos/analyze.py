@@ -90,19 +90,46 @@ rms = {r["src"]: r["ts"] for r in rows if r.get("ev") == "rm"}  # src is a uniqu
 print(f"\n## NetworkStatistics\n- {rows[0] if rows else text('nstat.err')[:300]}")
 for hold in (0.3, 3.0):
     tp = [p for p in ports if p["hold"] == hold]
-    hit, closed, ol, cl, listen = 0, 0, [], [], 0
+    hit, closed, ol, cl, listen, ulive, ues = 0, 0, [], [], 0, 0, 0
     for p in tp:
         m = [r for r in descs if r.get("localAddress", "").endswith(f"|{p['port']}") and r.get("processID") == p["pid"]]
         if m:
             hit += 1
             ol.append(m[0]["ts"] - p["t0"])
             listen += p["proto"] == "tcp" and any(r.get("TCPState") == "Listen" for r in m)
+            ulive += m[0].get("uid_live") == p["uid"]  # proc_pidinfo on the PID when the event arrived
+            ex = [r for r in execs.get(p["pid"], []) if r["time"] <= p["t0"]]  # ES exec cache
+            ues += bool(ex) and ex[-1]["teuid"] == p["uid"]
             if m[0]["src"] in rms:
                 closed += 1
                 cl.append(rms[m[0]["src"]] - p["t1"])
     print(f"- held {hold}s: {hit}/{len(tp)} with port and PID ({listen} TCP in Listen state), {closed} with close; "
-          f"open latency {lat(ol)}; close latency {lat(cl)}")
+          f"open latency {lat(ol)}; close latency {lat(cl)}; right user from PID: {ulive} live lookup, {ues} ES exec cache")
 print(f"- {next((r for r in rows if r.get('ev') == 'stats'), {})}")
+
+# Inventory change notifications.
+inv = jl("inv.jsonl")
+acts = jl("inv_truth.jsonl")
+evs = [dict(src=r["src"], ts=r["ts"], key=r["key"]) for r in inv if "ts" in r and "key" in r]
+evs += [dict(src="es", ts=r["recv"], key=f"{r['t']} {r.get('name', '')}") for r in ev if r["t"].startswith(("od_", "btm_"))]
+launchd = {r["tpid"]: r["path"] for r in ev if r["t"] == "exec" and r.get("ppid") == 1}  # services start as launchd children
+evs += [dict(src="es", ts=r["recv"], key=f"launchd {r['t']} {launchd[r['tpid' if r['t'] == 'exec' else 'pid']]}") for r in ev
+        if (r["t"] == "exec" and r["tpid"] in launchd) or (r["t"] == "exit" and r["pid"] in launchd)]
+print(f"\n## Inventory notifications\n- {next((r for r in inv if r.get('src') == 'init'), {})}")
+print(f"- {next((r for r in inv if r.get('src') == 'stats'), {})}")
+if acts and procs:
+    t_idle0, t_idle1 = min(e["ts"] for e in evs) if evs else 0, procs[0]["t0"]
+    idle = [e for e in evs if t_idle0 <= e["ts"] < t_idle1]
+    print(f"- idle noise over {t_idle1 - t_idle0:.0f} s: " + ", ".join(f"{s} {sum(e['src'] == s for e in idle)}" for s in ("fsevents", "scdynamicstore", "route", "notify", "es")))
+print("\n| Inventory | Change | rc | Command time | " + " | ".join(("fsevents", "scdynamicstore", "route", "notify", "es")) + " |\n|---|---|---|---|---|---|---|---|---|")
+for i, a in enumerate(acts):
+    end = acts[i + 1]["t0"] if i + 1 < len(acts) else a["t1"] + 4
+    cells = []
+    for src in ("fsevents", "scdynamicstore", "route", "notify", "es"):
+        want = a["expect"].get(src)
+        hit = [e for e in evs if e["src"] == src and a["t0"] <= e["ts"] < end and want and want in e["key"]]
+        cells.append(f"{(hit[0]['ts'] - a['t0']) * 1000:.0f} ms ({len(hit)})" if hit else ("none" if want else ""))
+    print(f"| {a['inv']} | {a['action']} | {a['rc']} | {(a['t1'] - a['t0']) * 1000:.0f} ms | " + " | ".join(cells) + " |")
 
 for f in ("es_unsigned.txt", "nstat_user.txt", "kqueue.txt", "cpu.txt", "sdk_headers.txt", "openbsm.txt"):
     print(f"\n## {f}\n```\n{text(f)[-2500:]}\n```")

@@ -5,9 +5,11 @@ Runs every macOS candidate against the same scenarios as the Windows PoC and com
 | File | What it does |
 |---|---|
 | `driver.py` | Ground truth: 410 short-lived processes with distinct exit codes, user changes through `sudo`, and 48 fast TCP/UDP ports (IPv4/IPv6, user and root) |
-| `esc.c` | Endpoint Security client: `NOTIFY_EXEC/FORK/EXIT`, plus a probe of the undocumented `RESERVED_*` events |
-| `nstat.c` | `NetworkStatistics` private framework (loaded with `dlopen`): socket add, description and removal in real time |
+| `esc.c` | Endpoint Security client: `NOTIFY_EXEC/FORK/EXIT`, OpenDirectory and BTM events, plus a probe of the undocumented `RESERVED_*` events |
+| `nstat.c` | `NetworkStatistics` private framework (loaded with `dlopen`): socket add, description and removal in real time, with the user resolved from the PID |
 | `ports.c` | libproc port scan with PID and uid, at a given interval |
+| `inv.c` | Inventory change notifier: FSEvents, `SCDynamicStore`, the `PF_ROUTE` socket and Darwin notify keys |
+| `inv_driver.py` | Inventory changes: network, packages (app, pkg, Homebrew), services, users, groups and browser extensions |
 | `kq.c` | kqueue `NOTE_EXIT`/`NOTE_EXITSTATUS` on a child and a non-child |
 | `run.sh` | Builds everything, runs the collectors and the driver, checks OpenBSM, and writes `out/summary.md` |
 | `analyze.py` | Compares every collector with the ground truth |

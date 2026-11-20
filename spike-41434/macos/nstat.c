@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <dispatch/dispatch.h>
 #include <dlfcn.h>
+#include <libproc.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
@@ -90,7 +91,14 @@ int main(void) {
         int id = ++seq; // source pointers get reused, so tag each source
         printf("{\"ev\":\"add\",\"ts\":%.6f,\"src\":%d}\n", now(), id);
         SetDescBlock(s, ^(CFDictionaryRef d) {
-            printf("{\"ev\":\"desc\",\"ts\":%.6f,\"src\":%d", now(), id);
+            // No uid in the description: resolve it from the PID right away (-1 if the process is gone).
+            CFNumberRef pn = CFDictionaryGetValue(d, CFSTR("processID"));
+            int pid = 0;
+            struct proc_bsdshortinfo bi;
+            if (pn)
+                CFNumberGetValue(pn, kCFNumberIntType, &pid);
+            int ok = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &bi, sizeof bi) == sizeof bi;
+            printf("{\"ev\":\"desc\",\"ts\":%.6f,\"src\":%d,\"uid_live\":%d", now(), id, ok ? (int)bi.pbsi_uid : -1);
             CFDictionaryApplyFunction(d, kv, NULL);
             printf("}\n");
         });

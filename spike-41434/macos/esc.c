@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
         switch ((int)m->event_type) {
         case ES_EVENT_TYPE_NOTIFY_EXEC:
             tk = m->event.exec.target->audit_token;
-            printf("\"t\":\"exec\",\"tpid\":%d,\"teuid\":%u,\"path\":\"%s\"}\n", audit_token_to_pid(tk), audit_token_to_euid(tk),
-                   m->event.exec.target->executable->path.data);
+            printf("\"t\":\"exec\",\"tpid\":%d,\"teuid\":%u,\"ppid\":%d,\"path\":\"%s\"}\n", audit_token_to_pid(tk),
+                   audit_token_to_euid(tk), m->event.exec.target->ppid, m->event.exec.target->executable->path.data);
             break;
         case ES_EVENT_TYPE_NOTIFY_FORK:
             printf("\"t\":\"fork\",\"child\":%d}\n", audit_token_to_pid(m->event.fork.child->audit_token));
@@ -57,6 +57,20 @@ int main(int argc, char **argv) {
                    in->proto);
             break;
         }
+#define NAMED(ev, f) printf("\"t\":\"" #ev "\",\"name\":\"%.*s\"}\n", (int)m->event.ev->f.length, m->event.ev->f.data)
+        case ES_EVENT_TYPE_NOTIFY_OD_CREATE_USER: NAMED(od_create_user, user_name); break;
+        case ES_EVENT_TYPE_NOTIFY_OD_DELETE_USER: NAMED(od_delete_user, user_name); break;
+        case ES_EVENT_TYPE_NOTIFY_OD_CREATE_GROUP: NAMED(od_create_group, group_name); break;
+        case ES_EVENT_TYPE_NOTIFY_OD_DELETE_GROUP: NAMED(od_delete_group, group_name); break;
+        case ES_EVENT_TYPE_NOTIFY_OD_GROUP_ADD: NAMED(od_group_add, group_name); break;
+        case ES_EVENT_TYPE_NOTIFY_OD_GROUP_REMOVE: NAMED(od_group_remove, group_name); break;
+        case ES_EVENT_TYPE_NOTIFY_OD_ATTRIBUTE_SET: NAMED(od_attribute_set, record_name); break;
+        case ES_EVENT_TYPE_NOTIFY_BTM_LAUNCH_ITEM_ADD:
+            printf("\"t\":\"btm_add\",\"name\":\"%s\"}\n", m->event.btm_launch_item_add->item->item_url.data);
+            break;
+        case ES_EVENT_TYPE_NOTIFY_BTM_LAUNCH_ITEM_REMOVE:
+            printf("\"t\":\"btm_remove\",\"name\":\"%s\"}\n", m->event.btm_launch_item_remove->item->item_url.data);
+            break;
         default:
             printf("\"t\":\"ev%d\",\"path\":\"%s\"}\n", m->event_type, m->process->executable->path.data);
         }
@@ -66,8 +80,12 @@ int main(int argc, char **argv) {
     printf("{\"t\":\"init\",\"es_new_client\":\"%s\"}\n", r < 7 ? names[r] : "?");
     if (r != ES_NEW_CLIENT_RESULT_SUCCESS)
         return 1;
-    es_event_type_t ev[] = {ES_EVENT_TYPE_NOTIFY_EXEC, ES_EVENT_TYPE_NOTIFY_FORK, ES_EVENT_TYPE_NOTIFY_EXIT, NOTIFY_BIND, NOTIFY_CONNECT};
-    for (int i = 0; i < 5; i++)
+    es_event_type_t ev[] = {ES_EVENT_TYPE_NOTIFY_EXEC, ES_EVENT_TYPE_NOTIFY_FORK, ES_EVENT_TYPE_NOTIFY_EXIT, NOTIFY_BIND, NOTIFY_CONNECT,
+                            ES_EVENT_TYPE_NOTIFY_OD_CREATE_USER, ES_EVENT_TYPE_NOTIFY_OD_DELETE_USER, ES_EVENT_TYPE_NOTIFY_OD_CREATE_GROUP,
+                            ES_EVENT_TYPE_NOTIFY_OD_DELETE_GROUP, ES_EVENT_TYPE_NOTIFY_OD_GROUP_ADD, ES_EVENT_TYPE_NOTIFY_OD_GROUP_REMOVE,
+                            ES_EVENT_TYPE_NOTIFY_OD_ATTRIBUTE_SET, ES_EVENT_TYPE_NOTIFY_BTM_LAUNCH_ITEM_ADD,
+                            ES_EVENT_TYPE_NOTIFY_BTM_LAUNCH_ITEM_REMOVE};
+    for (int i = 0; i < (int)(sizeof ev / sizeof *ev); i++)
         printf("{\"t\":\"subscribe\",\"event\":%d,\"ok\":%d}\n", ev[i], es_subscribe(client, &ev[i], 1) == ES_RETURN_SUCCESS);
     for (es_event_type_t e = 148; e < 157; e++) { // probe RESERVED_* types (not the AUTH 151/153), then drop them again
         if (e == 151 || e == 153)

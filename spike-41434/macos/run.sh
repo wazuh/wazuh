@@ -5,6 +5,7 @@ O=$PWD/out; mkdir -p "$O"
 { sw_vers; uname -m; csrutil status; } > "$O/env.txt" 2>&1
 
 clang -O2 -o ports ports.c && clang -O2 -o nstat nstat.c -framework CoreFoundation && clang -O2 -o kq kq.c
+clang -O2 -o inv inv.c -framework CoreServices -framework SystemConfiguration
 clang -O2 -o esc esc.c -lEndpointSecurity -lbsm
 
 # Endpoint Security, own client: unsigned (no entitlement), then ad-hoc signed with the entitlement (works only with SIP off).
@@ -19,12 +20,20 @@ sudo ./esc_ent > "$O/es.jsonl" 2> "$O/es.err" &
 sudo ./ports 1000 > "$O/ports_1000.jsonl" &
 sudo ./ports 100 > "$O/ports_100.jsonl" &
 sudo ./nstat > "$O/nstat.jsonl" 2> "$O/nstat.err" &
-sleep 5
+# Inventory fixtures: a tiny pkg, an app bundle plist, the per-user LaunchAgents folder.
+mkdir -p pkgroot "$HOME/Library/LaunchAgents" && echo poc > pkgroot/wzpoc.txt
+pkgbuild --quiet --root pkgroot --identifier com.wazuh.wzpoc --version 1.0 --install-location /usr/local/share/wzpoc wzpoc.pkg
+printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleName</key><string>WzPoc</string></dict></plist>' > Info.plist
+sudo ./inv /Applications /private/var/db/receipts /opt/homebrew/Cellar /usr/local/Cellar /opt/local/var/macports/registry \
+  /Library/LaunchDaemons /Library/LaunchAgents "$HOME/Library/LaunchAgents" "$HOME/Library/Application Support" \
+  /private/var/db/dslocal/nodes/Default "$HOME/Applications" > "$O/inv.jsonl" 2> "$O/inv.err" &
+sleep 10
 python3 driver.py > "$O/truth.jsonl"
+HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_ENV_HINTS=1 python3 inv_driver.py > "$O/inv_truth.jsonl"
 curl -s -o /dev/null https://example.com  # one outbound connect for event 154
 sleep 3
-ps -o pid,user,time,rss,command -p "$(pgrep -d, -x 'esc_ent|ports|nstat')" > "$O/cpu.txt"
-sudo pkill -TERM -x ports; sudo pkill -TERM -x nstat; sudo pkill -TERM -x esc_ent
+ps -o pid,user,time,rss,command -p "$(pgrep -d, -x 'esc_ent|ports|nstat|inv')" > "$O/cpu.txt"
+sudo pkill -TERM -x ports; sudo pkill -TERM -x nstat; sudo pkill -TERM -x esc_ent; sudo pkill -TERM -x inv
 sleep 2
 sudo log show --last 3m --style compact --predicate 'subsystem CONTAINS "endpointsecurity" OR sender == "EndpointSecurity"' | grep -iv 'disconnected' | tail -15 > "$O/es_log.txt" 2>&1
 
