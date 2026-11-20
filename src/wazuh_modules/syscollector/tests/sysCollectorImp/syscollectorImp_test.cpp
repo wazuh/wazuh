@@ -6820,10 +6820,45 @@ TEST(ScanErrorLogTest, LogsARepeatedErrorOnceUntilTheTaskSucceeds)
     EXPECT_EQ(scanErrors.failed("scanServices", "other error"), LOG_ERROR);
 }
 
+// A failure that lasts is logged as an error again once per reminder interval.
+TEST(ScanErrorLogTest, LogsALastingErrorAgainOncePerInterval)
+{
+    ScanErrorLog::Clock::time_point now {};
+    ScanErrorLog scanErrors {[&now]()
+    {
+        return now;
+    }};
+
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    now += ScanErrorLog::REMINDER_INTERVAL - std::chrono::seconds {1};
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    now += std::chrono::seconds {1};
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    // The interval counts from the last error, not from the first failure.
+    now += std::chrono::hours {1};
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    now += ScanErrorLog::REMINDER_INTERVAL;
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+}
+
+// A restarted module logs a repeated error as an error again.
+TEST(ScanErrorLogTest, ClearLogsRepeatedErrorsAgain)
+{
+    ScanErrorLog scanErrors;
+
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_DEBUG);
+    scanErrors.clear();
+    EXPECT_EQ(scanErrors.failed("scanServices", "bus down"), LOG_ERROR);
+}
+
 // A scan that fails the same way on every interval (for example the services scan while the
 // system bus does not answer) logs one error, not one per scan.
 TEST_F(SyscollectorImpTest, RepeatedScanFailureIsLoggedAsErrorOnce)
 {
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping RepeatedScanFailureIsLoggedAsErrorOnce on Windows: an exception thrown on the scan thread aborts the process under Wine";
+#endif
     const std::string failure {"Unable to list the systemd units, services scan skipped"};
     std::mutex logMutex;
     std::vector<std::pair<modules_log_level_t, std::string>> logs;
