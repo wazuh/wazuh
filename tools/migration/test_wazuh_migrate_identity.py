@@ -199,7 +199,9 @@ class FakeManager(http.server.BaseHTTPRequestHandler):
             name = self.path.split("/")[2]
             if name in FakeManager.reject_configurations:
                 return self._send(400, {"title": "Bad Request", "detail": "Wrong XML syntax"})
-            FakeManager.configurations[name] = body
+            # The real endpoint stores the document re-indented, not as it was sent.
+            FakeManager.configurations[name] = "".join(
+                "  " + line if line.strip() else line for line in body.splitlines(keepends=True))
             return self._send(200, {"data": {}, "error": 0})
         if "/group/" in self.path:
             parts = urllib.parse.urlsplit(self.path)
@@ -668,7 +670,7 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         merged = FakeManager.configurations["default"]
-        self.assertTrue(merged.startswith(FakeManager.STOCK_DEFAULT.rstrip()),
+        self.assertTrue("".join(merged.split()).startswith("".join(FakeManager.STOCK_DEFAULT.split())),
                         "the 5.0 default is kept")
         self.assertIn("<directories>/root/fim-test</directories>", merged,
                       "the 4.x settings applied to every agent")

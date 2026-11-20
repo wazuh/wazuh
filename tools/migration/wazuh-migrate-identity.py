@@ -912,6 +912,11 @@ def read_group_conf(api, name):
     return answer.get("__raw", "")
 
 
+def holds_configuration(current, carried):
+    """Whether an agent.conf holds the carried one. The manager re-indents what it is given."""
+    return "".join(carried.split()) in "".join(current.split())
+
+
 def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     """Appends the 4.x default group's settings to the 5.0 one's.
 
@@ -926,7 +931,7 @@ def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     install_group_files(bundle, default, target_conf_dir, dry_run)
     carried = default["agent_conf"].strip()
     current = read_group_conf(api, DEFAULT_GROUP)
-    if carried in current:
+    if holds_configuration(current, carried):
         log("  group    %-20s 4.x agent.conf already merged" % DEFAULT_GROUP)
         return None
     log("  group    %-20s merge the 4.x agent.conf after the 5.0 one" % DEFAULT_GROUP)
@@ -1186,7 +1191,7 @@ def command_check(args):
 
     default = manifest.get("default_group")
     if default and default.get("customized"):
-        merged = default["agent_conf"].strip() in read_group_conf(api, DEFAULT_GROUP)
+        merged = holds_configuration(read_group_conf(api, DEFAULT_GROUP), default["agent_conf"])
         log("default   4.x agent.conf %s" % ("merged" if merged else "NOT merged"))
         if not merged:
             problems.append("the default group's agent.conf does not hold the 4.x settings the"
