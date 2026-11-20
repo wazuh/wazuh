@@ -17,6 +17,12 @@ All notable changes to this project will be documented in this file.
 
 - Fixed the CIS Oracle Linux 10 SCA check 38531 (bootloader password is set) failing on every host, including those with a GRUB2 password, because of a stray quote at the end of its rule. ([#41539](https://github.com/wazuh/wazuh/pull/41539))
 
+### RESTful API
+
+#### Fixed
+
+- Fixed `GET /manager/configuration` returning only the last `allowed-ips` and `denied-ips` entry of each `remote` block. These options are now returned as lists with every entry, also when there is only one. ([#11643](https://github.com/wazuh/wazuh/issues/11643))
+
 ### Other
 
 #### Changed

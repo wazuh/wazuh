@@ -38,7 +38,7 @@ CONF_SECTIONS = MappingProxyType({
     'command': {'type': 'duplicate', 'list_options': []},
     'agentless': {'type': 'duplicate', 'list_options': []},
     'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
-    'remote': {'type': 'duplicate', 'list_options': []},
+    'remote': {'type': 'duplicate', 'list_options': ['allowed-ips', 'denied-ips']},
     'syslog_output': {'type': 'duplicate', 'list_options': []},
     'integration': {'type': 'duplicate', 'list_options': []},
 
