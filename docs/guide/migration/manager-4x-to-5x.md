@@ -935,10 +935,12 @@ was renamed to `WAZUH_SSL_VERIFICATION` with no alias, and the old spelling is r
   4.x `wazuh-alerts-4.x-*` indices are not read or migrated; keep the 4.x indexer, or a snapshot of
   those indices, for as long as you need to consult them, and expect dashboards built on them to
   need new index patterns.
-- **Inventory, FIM, SCA, vulnerabilities.** Both versions write `wazuh-states-*`, so the two
-  generations sit side by side under one pattern: 4.x appends its cluster name to the index, 5.0
-  does not. 5.0 populates its own indices from each agent once that agent runs 5.0, and never reads
-  or updates the 4.x ones. Check the suffix before concluding an index is current.
+- **Inventory, FIM, SCA, vulnerabilities.** 5.0 populates its own `wazuh-states-*` indices from each
+  agent once that agent runs 5.0, and never reads or updates the 4.x ones, which stay in the 4.x
+  indexer. Both versions use that name, so if you restore a snapshot of the 4.x indices into the 5.0
+  indexer the two generations sit side by side under one pattern: 4.x appends its cluster name to
+  the index, 5.0 does not. Check the suffix before concluding an index is current, or restore them
+  under another name.
 - **Agent ids.** Because ids are preserved, historical documents in the 4.x indices and new
   documents in the 5.0 ones refer to the same agent by the same id. Re-enrolling agents instead
   of carrying `client.keys` breaks that: ids are reassigned in enrollment order.
