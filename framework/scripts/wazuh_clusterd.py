@@ -256,7 +256,8 @@ def main():
 
     # Drop privileges to wazuh
     if not args.root:
-        os.setgroups([])
+        if os.geteuid() == 0:
+            os.setgroups([])
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
 

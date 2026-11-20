@@ -346,6 +346,7 @@ def test_get_script_arguments(argument_parser_mock):
 
 @patch('scripts.wazuh_clusterd.sys.exit', side_effect=sys.exit)
 @patch('scripts.wazuh_clusterd.os.getpid', return_value=543)
+@patch('scripts.wazuh_clusterd.os.geteuid', return_value=0)
 @patch('scripts.wazuh_clusterd.os.setgroups')
 @patch('scripts.wazuh_clusterd.os.setgid')
 @patch('scripts.wazuh_clusterd.os.setuid')
@@ -354,7 +355,7 @@ def test_get_script_arguments(argument_parser_mock):
 @patch('scripts.wazuh_clusterd.os.path.exists', return_value=True)
 @patch('builtins.print')
 def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, setgroups_mock,
-              getpid_mock, exit_mock):
+              geteuid_mock, getpid_mock, exit_mock):
     """Check and set the behavior of wazuh_clusterd main function."""
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common, pyDaemonModule
