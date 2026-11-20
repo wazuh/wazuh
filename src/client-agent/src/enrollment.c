@@ -31,7 +31,6 @@
 
 STATIC char *w_enrollment_extract_agent_name(void);
 STATIC int w_enrollment_resolve_ip(const char **ip_value);
-STATIC char *w_enrollment_load_password(const char *path);
 STATIC int w_enrollment_store_key_entry(const char *line);
 STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
 STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
@@ -903,13 +902,7 @@ STATIC int w_enrollment_resolve_ip(const char **ip_value) {
     return 0;
 }
 
-/**
- * @brief Loads the enrollment password from `path`, re-read on every call
- *        (#38465 D6: no caching, so rotating the file needs no restart).
- * @return A newly allocated password, or NULL when the file is missing/empty
- *         (mTLS/open mode -- not an error).
- */
-STATIC char *w_enrollment_load_password(const char *path) {
+char *w_enrollment_load_password(const char *path) {
     if (!path) {
         return NULL;
     }

@@ -496,13 +496,11 @@ TEST_F(FileRuleEvaluatorTest, ListWithoutMatchAndAMissingFileIsUnresolvedWithIts
 
 TEST_F(FileRuleEvaluatorTest, ListWithSeveralUnresolvedFilesReportsTheFirstReason)
 {
-    m_ctx.pattern = std::nullopt;
+    m_ctx.pattern = std::string("r:^root");
     m_ctx.rule = "/first,/second";
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/first"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/second"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/second")))
-    .WillOnce(::testing::Throw(std::runtime_error("I/O error")));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/second"))).WillOnce(::testing::Return(false));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);

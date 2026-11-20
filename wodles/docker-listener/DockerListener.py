@@ -32,6 +32,10 @@ try:
 except ImportError:
     sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
     sys.exit(1)
+except Exception as e:
+    # Installed but broken (for example an incompatible requests or urllib3): name the cause.
+    sys.stderr.write(f"'docker' module could not be imported: {type(e).__name__}: {e}\n")
+    sys.exit(1)
 
 
 def log(msg):

@@ -41,6 +41,14 @@ STATIC bool g_token_none_warned = false;
 
 /* The kind of pending result the caller's window is counting, so a change of kind restarts it. */
 STATIC w_token_bootstrap_result_t g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
+/* Why the last W_TOKEN_BOOTSTRAP_PENDING was returned, for the message when its window runs out.
+ * An int so unit tests can reset it without the enum. */
+enum {
+    TOKEN_PENDING_UNKNOWN_TOKEN = 0,
+    TOKEN_PENDING_CLOCK,
+    TOKEN_PENDING_UNEXPLAINED
+};
+STATIC int g_token_pending_cause = TOKEN_PENDING_UNKNOWN_TOKEN;
 
 /**
  * @brief Reads the one-shot enrollment token file, mirroring
@@ -356,8 +364,9 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
 #endif /* WIN32 */
 
 /* Retries what the manager's state can change; the rest is final. The list is on
- * w_token_enroll_report_t (token_bootstrap.h). Only a credential-less token presents authd.pass, so
- * only it can wait on a password. */
+ * w_token_enroll_report_t (token_bootstrap.h). A credential-less token signs with authd.pass, so
+ * for it a 401 `invalid_request` (no password) or `invalid_signature` (a wrong one) is about the
+ * password, not the token. */
 static void token_enroll_classify_refusal(w_enroll_status_t status, bool has_key,
                                           w_token_enroll_report_t *report) {
     switch (status) {
@@ -369,9 +378,14 @@ static void token_enroll_classify_refusal(w_enroll_status_t status, bool has_key
             report->refused = (report->authd_code == 9014);
             break;
         case W_ENROLL_ERR_AUTH_RETRY:
-            report->credential_pending = !has_key && strcmp(report->auth_class, "invalid_request") == 0;
-            report->refused = !report->credential_pending && strcmp(report->auth_class, "invalid_signature") != 0 &&
-                              !(has_key && strcmp(report->auth_class, "invalid_request") == 0);
+            if (strcmp(report->auth_class, "enrollment_key_unavailable") == 0) {
+                report->refused = true;
+            } else if (strcmp(report->auth_class, "invalid_request") == 0 ||
+                       strcmp(report->auth_class, "invalid_signature") == 0) {
+                report->credential_pending = !has_key;
+            } else {
+                report->unexplained = true;
+            }
             break;
         default:
             break;
@@ -1264,8 +1278,17 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_CREDENTIAL;
         }
-    } else if (built_request.password != NULL) {
-        strncpy(enroll_request.password, built_request.password, sizeof(enroll_request.password) - 1);
+    } else {
+        /* Read here rather than taken from built_request: w_enrollment_build_request() stops at a
+         * re-enrollment secret left by an earlier install and never reads authd.pass, and that
+         * secret is not this request's credential. */
+        char *password = w_enrollment_load_password(agt->enrollment.authorization_pass_path);
+
+        if (password != NULL) {
+            strncpy(enroll_request.password, password, sizeof(enroll_request.password) - 1);
+            memset(password, 0, strlen(password));
+            os_free(password);
+        }
     }
 
     memset(&enroll_result, 0, sizeof(enroll_result));
@@ -1666,7 +1689,14 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
             unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         }
 
-        if (report.pending) {
+        if (report.pending || report.unexplained) {
+            if (report.clock_skew) {
+                g_token_pending_cause = TOKEN_PENDING_CLOCK;
+            } else if (report.unexplained) {
+                g_token_pending_cause = TOKEN_PENDING_UNEXPLAINED;
+            } else {
+                g_token_pending_cause = TOKEN_PENDING_UNKNOWN_TOKEN;
+            }
             return W_TOKEN_BOOTSTRAP_PENDING;
         }
 
@@ -1705,6 +1735,10 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
             token_bootstrap_set_failure("the manager refused the enrollment (HTTP %ld): %.*s; refusing to "
                                         "enroll unverified.", report.http_code, (int)reason_len,
                                         report.manager_message);
+        } else if (enroll_status == W_TOKEN_ENROLL_ERR_ENROLL && report.http_code != 0) {
+            token_bootstrap_set_failure("the manager refused the enrollment (HTTP %ld) without a reason "
+                                        "the agent could read; refusing to enroll unverified.",
+                                        report.http_code);
         } else {
             token_bootstrap_set_failure("%s; refusing to enroll unverified.",
                                         w_agent_token_enroll_strerror(enroll_status));
@@ -1723,7 +1757,13 @@ w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_res
                                                            time_t *pending_since, time_t now) {
     const bool password = (result == W_TOKEN_BOOTSTRAP_PENDING_PASSWORD);
 
-    /* A later episode, or one of the other kind, must not inherit the time an earlier one spent. */
+    /* A later episode, or one of the other kind, must not inherit the time an earlier one spent.
+     * TRANSIENT does not end an episode: a 5xx or a timeout between two pending answers would
+     * otherwise restart the window for ever. */
+    if (result == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        return result;
+    }
+
     if (result != W_TOKEN_BOOTSTRAP_PENDING && !password) {
         *pending_since = 0;
         g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
@@ -1752,11 +1792,25 @@ w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_res
         return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
-    merror("The manager still does not accept the enrollment token after %ld seconds. It may not "
-           "have reached this node, or it was deleted: mint a new token, or restart the agent to "
-           "try again.", (long)(now - *pending_since));
-    token_bootstrap_set_failure("the manager did not accept the enrollment token within %ld seconds.",
-                                (long)(now - *pending_since));
+    if (g_token_pending_cause == TOKEN_PENDING_CLOCK) {
+        merror("The manager still refuses the request's timestamp after %ld seconds: this host's clock "
+               "and the manager's disagree. Correct the clock and restart the agent.",
+               (long)(now - *pending_since));
+        token_bootstrap_set_failure("the manager refused the request's timestamp for %ld seconds (the "
+                                    "clocks disagree).", (long)(now - *pending_since));
+    } else if (g_token_pending_cause == TOKEN_PENDING_UNEXPLAINED) {
+        merror("The manager still refuses the enrollment after %ld seconds without naming a reason. "
+               "Something in front of it (a proxy or load balancer) may be answering instead; check "
+               "the path to the manager and restart the agent.", (long)(now - *pending_since));
+        token_bootstrap_set_failure("the manager refused the enrollment (HTTP 401) without a reason for "
+                                    "%ld seconds.", (long)(now - *pending_since));
+    } else {
+        merror("The manager still does not accept the enrollment token after %ld seconds. It may not "
+               "have reached this node, or it was deleted: mint a new token, or restart the agent to "
+               "try again.", (long)(now - *pending_since));
+        token_bootstrap_set_failure("the manager did not accept the enrollment token within %ld seconds.",
+                                    (long)(now - *pending_since));
+    }
 
     return W_TOKEN_BOOTSTRAP_PERMANENT;
 }

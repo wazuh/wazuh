@@ -129,15 +129,20 @@ typedef struct {
     bool pending;
     /** /enroll refused for a reason the manager's state can change and the same token then
      *  succeeds: a duplicate agent, enrollment disabled, a group that does not exist yet (400 with
-     *  authd's 9014), a manager that could not judge the credential (`enrollment_key_unavailable`),
-     *  or a 401 that names no class. Retried without a limit. Exclusive with transient, pending,
-     *  token_rejected, credential_pending. Every other refusal that is not about the token (any
-     *  other 400, `invalid_signature`, a refused client certificate) sets none of these and is
-     *  final, with manager_message as its reason. */
+     *  authd's 9014), or a manager that could not judge the credential
+     *  (`enrollment_key_unavailable`). Retried without a limit. Exclusive with transient, pending,
+     *  token_rejected, credential_pending, unexplained. Every other refusal that is not about the
+     *  token (any other 400, a credential-bearing token's `invalid_signature` or
+     *  `invalid_request`, a refused client certificate) sets none of these and is final, with
+     *  manager_message as its reason. */
     bool refused;
-    /** A 401 `invalid_request`: no usable credential was presented, which for a credential-less
-     *  token is a missing or wrong authd.pass. Retried for a window like pending, then final. */
+    /** A credential-less token's 401 `invalid_request` or `invalid_signature`: it signs with
+     *  authd.pass, so the password is missing or wrong. Retried for a window like pending, then
+     *  final. */
     bool credential_pending;
+    /** A 401 with no class, or one this agent does not know (an older manager, or a proxy's own
+     *  page). Retried for a window like pending, then final. */
+    bool unexplained;
     /** The pending 401 was `stale_token`: the manager refused the request's timestamp, so the clocks
      *  disagree and the token itself may be fine. Lets wazuh-agent-auth point at the clock rather
      *  than at the token. Meaningful only when pending is set. */
@@ -247,9 +252,10 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
  * `token_unknown` or `stale_token` (see w_token_enroll_report_t.pending). It is retried like
  * TRANSIENT, but only for W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S (see w_token_bootstrap_bound_pending()).
  *
- * W_TOKEN_BOOTSTRAP_PENDING_PASSWORD is the same for a 401 `invalid_request` (a missing or wrong
- * authd.pass, see w_token_enroll_report_t.credential_pending), with the same window; when it runs
- * out the result is PERMANENT, with a reason naming the password.
+ * W_TOKEN_BOOTSTRAP_PENDING_PASSWORD is the same for a missing or wrong authd.pass (see
+ * w_token_enroll_report_t.credential_pending), with the same window; when it runs out the result
+ * is PERMANENT, with a reason naming the password. A 401 that names no known class
+ * (w_token_enroll_report_t.unexplained) is PENDING, with a reason of its own when it runs out.
  *
  * The refusals from /enroll that the manager's state can change (see
  * w_token_enroll_report_t.refused) are TRANSIENT, without a window. Any other refusal is
@@ -328,7 +334,8 @@ const char *w_agent_token_bootstrap_failure(void);
  *
  * @param result What w_agent_token_bootstrap() returned. Anything else is returned as is.
  * @param pending_since Owned by the caller, 0 before the first call. Set on the first pending
- *        result and reset by any other, so an earlier episode never counts against a later one.
+ *        result. Reset by DONE, PERMANENT or a change of pending kind, never by TRANSIENT: a 5xx or
+ *        a timeout between two pending answers must not restart the window.
  * @param now Monotonic seconds (w_get_monotonic_time()), so a clock step cannot stretch the window.
  * @return W_TOKEN_BOOTSTRAP_DONE, W_TOKEN_BOOTSTRAP_TRANSIENT or W_TOKEN_BOOTSTRAP_PERMANENT.
  */

@@ -5,6 +5,7 @@
 import json
 import os
 import socket
+import subprocess
 import sys
 from unittest.mock import call, patch, MagicMock
 
@@ -202,3 +203,22 @@ def test_DockerListener_send_msg_ko(mock_socket, mock_stderr, exception_code, ex
         dl.send_msg("")
     assert err.value.code == exit_code
     mock_stderr.assert_called_once()
+
+
+@pytest.mark.parametrize('init_body, message', [
+    ("raise ImportError('no sdk')\n", "'docker' module needs to be installed"),
+    ("raise AttributeError('incompatible urllib3')\n",
+     "'docker' module could not be imported: AttributeError: incompatible urllib3"),
+])
+def test_docker_import_failure_exits_with_a_message(tmp_path, init_body, message):
+    """Test a missing SDK and a broken one both exit 1 with a message, not a traceback."""
+    (tmp_path / 'docker').mkdir()
+    (tmp_path / 'docker' / '__init__.py').write_text(init_body)
+    script = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'DockerListener.py')
+
+    result = subprocess.run([sys.executable, script], env={**os.environ, 'PYTHONPATH': str(tmp_path)},
+                            capture_output=True, text=True)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+    assert 'Traceback' not in result.stderr

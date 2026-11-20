@@ -188,7 +188,8 @@ enrolled yet, the first start enrolls through the same verified path as the othe
 says, and the anchor is committed and the token removed only once the enrollment succeeded. It
 presents the password configured in the agent's `authd.pass` as its credential when there is one, and
 none otherwise; it does not depend on `<enrollment><enabled>`. A credential-bearing token never
-presents `authd.pass`. `wazuh-agent-auth` given a credential-less token enrolls with no credential.
+presents `authd.pass`. `wazuh-agent-auth` given a credential-less token does the same: it presents
+the agent's `authd.pass` when there is one, verified against the token's CA.
 
 ## Step 3: The agent derives a key and signs a bearer
 
@@ -524,10 +525,12 @@ either retries or exits with `Enrollment-token bootstrap failed: <reason>`:
 
 | Refusal | Bootstrap |
 |---|---|
-| Duplicate agent (`409`), enrollment disabled (`403`, code `0`), a group that does not exist yet (`400`, `9014`), `401` `enrollment_key_unavailable`, a `401` with no readable class | retried with no limit |
-| `401` `token_unknown` or `stale_token` (the node has not synced the token, or the clocks disagree) | retried for about a minute, then exits |
-| `401` `invalid_request` (no credential presented: a credential-less token with a missing or wrong `authd.pass`) | retried for about a minute, then exits naming the password |
-| Any other `400` (a malformed request), `401` `invalid_signature` (the token's own key failed), `401` `invalid_request` on a credential-bearing token, any other `403` (for example a refused client certificate), `401` `unknown_agent` | exits at once with the manager's reason |
+| Duplicate agent (`409`), enrollment disabled (`403`, code `0`), a group that does not exist yet (`400`, `9014`), `401` `enrollment_key_unavailable` | retried with no limit |
+| `401` `token_unknown` (the node has not synced the token) | retried for about a minute, then exits |
+| `401` `stale_token` (the clocks disagree) | retried for about a minute, then exits naming the clock |
+| `401` with no class, or one the agent does not know (for example a proxy's own page) | retried for about a minute, then exits |
+| `401` `invalid_request` or `invalid_signature` on a credential-less token (it signs with `authd.pass`, so the password is missing or wrong) | retried for about a minute, then exits naming the password |
+| Any other `400` (a malformed request), `401` `invalid_signature` or `invalid_request` on a credential-bearing token (its own key failed, or it was not presented), any other `403` (for example a refused client certificate), `401` `unknown_agent` | exits at once with the manager's reason |
 
 The exit never costs the token: fix the cause (the certificate, the password, the configuration) and
 restart the agent.

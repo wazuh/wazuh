@@ -66,6 +66,7 @@ constexpr auto PATH_MISSING_BASE {"C:\\x\\*\\missing"};
 constexpr auto PATH_MISSING_SUFFIX {"C:\\tmp\\wazuh_test\\prefix_*_data\\missing"};
 constexpr auto PATH_UNDER_ROOT {"C:\\tm?\\wazuh_test\\dum*"};
 constexpr auto PATH_UNDER_FILE {"C:\\tmp\\wazuh_test\\dummy.txt\\*"};
+constexpr auto PATH_PREFIX_1_DATA {"C:\\tmp\\wazuh_test\\prefix_1_data"};
 #endif
 
 struct FsElement

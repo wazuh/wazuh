@@ -125,6 +125,7 @@ TEST_F(ScaPolicyLoaderTest, DuplicatePolicyIsSkippedWithoutAGenericParseFailureW
     });
 
     std::vector<sca::PolicyData> policies {{"first.yml", true, false}, {"second.yml", true, false}};
+    ON_CALL(*mockFileSystem, exists(::testing::_)).WillByDefault(::testing::Return(true));
     const SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
 
     auto yamlToJson = [](const std::string&) -> nlohmann::json
@@ -150,6 +151,7 @@ TEST_F(ScaPolicyLoaderTest, UnparsablePolicyKeepsTheGenericParseFailureWarning)
     });
 
     std::vector<sca::PolicyData> policies {{"broken.yml", true, false}};
+    ON_CALL(*mockFileSystem, exists(::testing::_)).WillByDefault(::testing::Return(true));
     const SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
 
     auto yamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json {{"checks", nlohmann::json::array()}}; };

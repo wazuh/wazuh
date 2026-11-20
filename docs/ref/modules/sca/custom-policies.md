@@ -123,7 +123,7 @@ A variable whose value is not a string is ignored. To use a list, write the valu
 > **Note**  
 > The `id` field under `policy` and `checks` must be unique across policy files: the agent stores, synchronizes and indexes policies and checks by their `id` alone. When an `id` is repeated, the policy or check loaded first keeps it and the later one is skipped with a warning (the policy files of the default ruleset folder are loaded before the ones added in `<policies>`, in no defined order within the folder):
 >
-> - A policy file whose `policy.id` is already used by a loaded policy file is not loaded: `Duplicate policy id '<policy id>': already used by another policy file. Skipping policy file '<file>'.`, followed by `Failed to parse policy from  <file>`.
+> - A policy file whose `policy.id` is already used by a loaded policy file is not loaded: `Duplicate policy id '<policy id>': already used by another policy file. Skipping policy file '<file>'.`
 > - A check whose `id` is already used by a loaded check, in an earlier policy or earlier in the same policy, is not loaded; the rest of its policy is: `Duplicate check id '<check id>': already used by policy '<policy id>'. Skipping it in policy '<policy id>' (policy file '<file>').`
 
 ---

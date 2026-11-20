@@ -360,6 +360,7 @@ int __wrap_fchmod(int fd, mode_t mode) {
 extern int __real_w_move_file_nofollow(const char *src, const char *dst);
 extern bool g_token_none_warned;
 extern w_token_bootstrap_result_t g_token_pending_kind;
+extern int g_token_pending_cause;
 static bool g_anchor_chown_recorded_before_move = false;
 
 /* Set by the rollback tests: the anchor's rename is the last step of the commit, and making it
@@ -540,6 +541,7 @@ static int setup_test(void **state) {
     w_enrollment_clear_outcome_unknown();
     g_token_none_warned = false;
     g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
+    g_token_pending_cause = 0;
 
     memset(&g_fetch_config, 0, sizeof(g_fetch_config));
     memset(&g_enroll_config, 0, sizeof(g_enroll_config));
@@ -1423,7 +1425,8 @@ static void test_missing_group_is_retried_and_keeps_the_token(void **state) {
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
-/* Mocks a verified /enroll that answers `code` with `body`; every log line is ignored. */
+/* Mocks a verified /enroll that answers `code` with `body`; every log line is ignored, and a level
+ * the answer never logs at is not required. */
 static void expect_enroll_answer(long code, const char *body) {
     will_return(__wrap_hc_fetch_cacerts, 200L);
     will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
@@ -1433,9 +1436,9 @@ static void expect_enroll_answer(long code, const char *body) {
     will_return(__wrap_hc_enroll, body);
     will_return(__wrap_hc_enroll, 1);
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
-    expect_any_always(__wrap__merror, formatted_msg);
+    expect_any_count(__wrap__mdebug1, formatted_msg, WILL_RETURN_ONCE);
+    expect_any_count(__wrap__minfo, formatted_msg, WILL_RETURN_ONCE);
+    expect_any_count(__wrap__merror, formatted_msg, WILL_RETURN_ONCE);
 }
 
 /* Any 400 but the missing group is a malformed request: repeating it cannot succeed, so the
@@ -1452,7 +1455,8 @@ static void test_other_400_is_permanent_with_the_manager_reason(void **state) {
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
-/* The token's own key failing: a damaged token never succeeds, so retrying it for ever is wrong. */
+/* A credential-bearing token's own key failing: a damaged token never succeeds, so retrying it for
+ * ever is wrong. */
 static void test_invalid_signature_401_is_permanent_and_keeps_the_token(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1475,7 +1479,88 @@ static void test_enrollment_key_unavailable_is_retried_without_a_limit(void **st
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
-/* A missing or wrong authd.pass is retried for the pending window, not for ever. */
+/* A 403 with nothing readable in it still names the status in the reason. */
+static void test_unreadable_403_is_permanent_with_the_status(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_answer(403, "");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_string_equal(w_agent_token_bootstrap_failure(),
+                        "the manager refused the enrollment (HTTP 403) without a reason the agent could "
+                        "read; refusing to enroll unverified.");
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* A 401 with no class, or one this agent does not know, is bounded like a pending token. */
+static void test_unclassified_401_is_pending(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_answer(401, "<html>Unauthorized</html>");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+static void test_unknown_401_class_is_pending_and_gives_up_naming_no_reason(void **state) {
+    (void) state;
+    time_t since = 1000;
+    write_token_file(true, true, NULL);
+    expect_enroll_answer(401, "{\"error\":{\"code\":\"some_new_class\",\"message\":\"Invalid client authentication\"}}");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1075),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_string_equal(w_agent_token_bootstrap_failure(),
+                        "the manager refused the enrollment (HTTP 401) without a reason for 75 seconds.");
+}
+
+/* A stale_token that never clears ends pointing at the clock, not at the token. */
+static void test_stale_token_gives_up_naming_the_clock(void **state) {
+    (void) state;
+    time_t since = 1000;
+    write_token_file(true, false, NULL);
+    expect_enroll_answer(401, "{\"error\":{\"code\":\"stale_token\",\"message\":\"Invalid client authentication\"}}");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1075),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_string_equal(w_agent_token_bootstrap_failure(),
+                        "the manager refused the request's timestamp for 75 seconds (the clocks disagree).");
+}
+
+/* A credential-less token signs with authd.pass, so the manager's invalid_signature means a wrong
+ * password: retried for the pending window, not final at once. */
+static void test_invalid_signature_401_on_a_credential_less_token_is_pending_on_the_password(void **state) {
+    (void) state;
+    write_token_file(true, false, NULL);
+    expect_enroll_answer(401, "{\"error\":{\"code\":\"invalid_signature\",\"message\":\"Invalid client authentication\"}}");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING_PASSWORD);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* A re-enrollment secret left by an earlier install stops w_enrollment_build_request() before it
+ * reads authd.pass; a credential-less token still presents authd.pass, never that secret. */
+static void test_credential_less_token_presents_authd_pass_despite_a_leftover_secret(void **state) {
+    (void) state;
+    write_token_file(true, false, NULL);
+    os_strdup("etc/authd.pass", agt->enrollment.authorization_pass_path);
+    write_file("etc/authd.pass", "fleet-secret\n");
+    write_file(AGENT_REENROLL_SECRET, "001 " REENROLL_SECRET "\n");
+    expect_enroll_answer(400, "{\"error\":{\"code\":9003,\"message\":\"Invalid request body\"}}");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_string_equal(g_enroll_request.password, "fleet-secret");
+    assert_string_equal(g_enroll_request.enroll_kid, "");
+    assert_string_equal(g_enroll_request.enroll_key_hex, "");
+
+    unlink("etc/authd.pass");
+}
+
+/* A missing authd.pass is retried for the pending window, not for ever. */
 static void test_invalid_request_401_is_pending_on_the_password(void **state) {
     (void) state;
     write_token_file(true, false, NULL);
@@ -1583,20 +1668,41 @@ static void test_bound_pending_restarts_when_the_pending_kind_changes(void **sta
     assert_int_equal(since, 1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S);
 }
 
-/* Any result that is not pending ends the episode: an earlier one must not exhaust a later window. */
-static void test_bound_pending_resets_when_the_result_is_not_pending(void **state) {
+/* A 5xx or a timeout between two pending answers does not restart the window. */
+static void test_bound_pending_window_survives_transient_results(void **state) {
     (void) state;
     time_t since = 0;
 
     assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
                      W_TOKEN_BOOTSTRAP_TRANSIENT);
-    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1200),
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1020),
                      W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since,
+                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+}
+
+/* DONE or PERMANENT ends the episode: an earlier one must not exhaust a later window. */
+static void test_bound_pending_resets_on_a_final_result(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_DONE, &since, 1200),
+                     W_TOKEN_BOOTSTRAP_DONE);
     assert_int_equal(since, 0);
 
     assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1300),
                      W_TOKEN_BOOTSTRAP_TRANSIENT);
     assert_int_equal(since, 1300);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PERMANENT, &since, 1310),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(since, 0);
 }
 
 static void test_full_happy_path_via_pin(void **state) {
@@ -3370,6 +3476,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_other_400_is_permanent_with_the_manager_reason, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_invalid_signature_401_is_permanent_and_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enrollment_key_unavailable_is_retried_without_a_limit, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_unreadable_403_is_permanent_with_the_status, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_unclassified_401_is_pending, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_unknown_401_class_is_pending_and_gives_up_naming_no_reason, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_stale_token_gives_up_naming_the_clock, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_invalid_signature_401_on_a_credential_less_token_is_pending_on_the_password, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_credential_less_token_presents_authd_pass_despite_a_leftover_secret, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_invalid_request_401_is_pending_on_the_password, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_invalid_request_401_on_a_credential_bearing_token_is_permanent, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_unknown_is_pending_and_keeps_the_token, setup_test, teardown_test),
@@ -3383,7 +3495,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_bound_pending_retries_within_the_window, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bound_pending_gives_up_after_the_window, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bound_pending_give_up_sets_the_failure, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_bound_pending_resets_when_the_result_is_not_pending, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bound_pending_window_survives_transient_results, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_bound_pending_resets_on_a_final_result, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bound_pending_password_gives_up_naming_the_password, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bound_pending_restarts_when_the_pending_kind_changes, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
