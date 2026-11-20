@@ -929,3 +929,75 @@ TEST_F(DirRuleEvaluatorTest, SymbolicLinkWithAnExactFileNameFoundOnOpenIsSkipped
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
+
+TEST_F(DirRuleEvaluatorTest, ListIsFoundWhenALaterDirectoryExists)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.rule = "/etc/httpd/conf.d, /etc/httpd/modsecurity.d";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/httpd/conf.d"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/httpd/modsecurity.d")))
+    .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("/etc/httpd/modsecurity.d")))
+    .WillOnce(::testing::Return(true));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, NegatedListPassesWhenNoDirectoryExists)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.isNegated = true;
+    m_ctx.rule = "dir1/,dir2/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir1/"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir2/"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, ListContentMatchInTheSecondDirectoryIsFound)
+{
+    m_ctx.pattern = std::string("conf -> r:^Listen");
+    m_ctx.rule = "dir1/,dir2/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir1/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir1/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir1/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir1/conf"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir1/conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir1/conf"), false, ::testing::_))
+    .WillOnce(ReturnContent("ServerName x"));
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir2/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir2/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir2/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir2/conf"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir2/conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir2/conf"), false, ::testing::_))
+    .WillOnce(ReturnContent("Listen 80"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, ListWithoutMatchAndAMissingDirectoryIsUnresolved)
+{
+    m_ctx.pattern = std::string("conf -> r:^Listen");
+    m_ctx.rule = "missing/,dir2/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("missing/"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir2/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir2/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir2/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir2/conf"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir2/conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir2/conf"), false, ::testing::_))
+    .WillOnce(ReturnContent("ServerName x"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), "Path 'missing/' does not exist");
+}

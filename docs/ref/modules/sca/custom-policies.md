@@ -118,22 +118,28 @@ The agent only reads `policy.id` when it loads the file; a policy file needs a `
 |--------------|-----------|------------------|----------------|
 | variable_name| Yes       | String           | Any string     |
 
-A variable whose value is not a string is ignored. To use a list, write the values in one string separated by commas, as in `$pam_d_files` in the example.
+A variable whose value is not a string is ignored. To use a list, write the values in one string separated by commas, as in `$pam_d_files` in the example; a file or directory rule then checks each path of the list (see [Lists in file and directory rules](#lists-in-file-and-directory-rules)).
 
 > **Note**  
-> The `id` field under `policy` and `checks` must be unique across policy files.
+> The `id` field under `policy` and `checks` must be unique across policy files: the agent stores, synchronizes and indexes policies and checks by their `id` alone. When an `id` is repeated, the policy or check loaded first keeps it and the later one is skipped with a warning (the policy files of the default ruleset folder are loaded before the ones added in `<policies>`, in no defined order within the folder):
+>
+> - A policy file whose `policy.id` is already used by a loaded policy file is not loaded: `Duplicate policy id '<policy id>': already used by another policy file. Skipping policy file '<file>'.`, followed by `Failed to parse policy from  <file>`.
+> - A check whose `id` is already used by a loaded check, in an earlier policy or earlier in the same policy, is not loaded; the rest of its policy is: `Duplicate check id '<check id>': already used by policy '<policy id>'. Skipping it in policy '<policy id>' (policy file '<file>').`
 
 ---
 
 ## Variables
 
-Variables are defined in the `variables` section and are prefixed with `$`.
+Variables are defined in the `variables` section and are prefixed with `$`. Each variable is replaced by its value, as text, in every string of the policy file before the rules are read.
 
 Examples:
 
-- `$list_of_files`: `/etc/ssh/sshd_config`, `/etc/sysctl.conf`, `/var/log/dmesg`
-- `$list_of_folders`: `/etc`, `/var`, `/tmp`
-- `$program_name`: `apache2`
+```yaml
+variables:
+  $list_of_files: /etc/ssh/sshd_config,/etc/sysctl.conf,/var/log/dmesg
+  $list_of_folders: /etc,/var,/tmp
+  $program_name: apache2
+```
 
 Example rules using variables:
 
@@ -143,6 +149,18 @@ c:systemctl is-enabled $program_name -> r:^enabled
 ```
 
 There is no limit on the number of variables per rule.
+
+### Lists in file and directory rules
+
+The target of a file (`f:`) or directory (`d:`) rule is a comma-separated list of paths, whether written in the rule or brought by a variable: `f:$list_of_files` above is `f:/etc/ssh/sshd_config,/etc/sysctl.conf,/var/log/dmesg`. Blanks around each path and empty elements are ignored, so a path that contains a comma cannot be checked by these rules. The other rule types take their value whole.
+
+The rule checks the paths in order and combines their results like this:
+
+- **Found** as soon as one path is found (it exists or, with `->`, its content matches); the remaining paths are not checked.
+- Otherwise **invalid** if a path could not be evaluated (for example, a file that does not exist in a content check), with the reason of the first such path. An invalid rule counts as `Not applicable` in the [condition evaluation table](#condition-evaluation-table).
+- Otherwise **not found**.
+
+`not` applies to that combined result: `not f:$list_of_files` passes only when none of the files exists, and `not f:$list_of_files -> r:REGEX` only when every file of the list could be read and none matches.
 
 ---
 

@@ -660,4 +660,153 @@ TEST_F(PolicyParserTest, ComplianceValidation_NonObjectComplianceRemoved)
     EXPECT_FALSE(j["checks"][0].contains("compliance"));
 }
 
+namespace
+{
+    std::vector<std::string>& WarningLogs()
+    {
+        static std::vector<std::string> logs;
+        return logs;
+    }
+
+    void CaptureWarningLogs()
+    {
+        WarningLogs().clear();
+        LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* log)
+        {
+            if (level == LOG_WARNING)
+            {
+                WarningLogs().emplace_back(log);
+            }
+        });
+    }
+
+    YamlToJsonFunc PolicyDocument(const std::string& json)
+    {
+        return [json](const std::string&) -> nlohmann::json
+        {
+            return nlohmann::json::parse(json);
+        };
+    }
+} // namespace
+
+TEST_F(PolicyParserTest, CheckIdAlreadyUsedByAnotherPolicyIsSkipped)
+{
+    CaptureWarningLogs();
+
+    nlohmann::json j;
+
+    PolicyParser first("/etc/sca/first.yml", 30, false, PolicyDocument(R"({
+        "policy": {"id": "first"},
+        "checks": [{"id": 990001, "title": "First", "condition": "all", "rules": ["f:/etc/passwd"]}]
+    })"));
+    ASSERT_TRUE(first.ParsePolicy(j));
+
+    PolicyParser second("/etc/sca/second.yml", 30, false, PolicyDocument(R"({
+        "policy": {"id": "second"},
+        "checks": [
+            {"id": "990001", "title": "Duplicate", "condition": "all", "rules": ["f:/etc/group"]},
+            {"id": 990002, "title": "Second", "condition": "all", "rules": ["f:/etc/group"]}
+        ]
+    })"));
+    const auto secondPolicy = second.ParsePolicy(j);
+
+    ASSERT_TRUE(secondPolicy);
+    ASSERT_EQ(j["policies"].size(), 2);
+    ASSERT_EQ(j["checks"].size(), 2);
+    EXPECT_EQ(j["checks"][0]["id"], "990001");
+    EXPECT_EQ(j["checks"][0]["policy_id"], "first");
+    EXPECT_EQ(j["checks"][0]["title"], "First");
+    EXPECT_EQ(j["checks"][1]["id"], "990002");
+    EXPECT_EQ(j["checks"][1]["policy_id"], "second");
+
+    ASSERT_EQ(WarningLogs().size(), 1);
+    EXPECT_EQ(WarningLogs()[0],
+              "Duplicate check id '990001': already used by policy 'first'. Skipping it in policy 'second' "
+              "(policy file '/etc/sca/second.yml').");
+}
+
+TEST_F(PolicyParserTest, CheckIdRepeatedInTheSamePolicyKeepsTheFirst)
+{
+    CaptureWarningLogs();
+
+    PolicyParser parser("policy.yml", 30, false, PolicyDocument(R"({
+        "policy": {"id": "policy_id"},
+        "checks": [
+            {"id": "check1", "title": "First", "condition": "all", "rules": ["f:/etc/passwd"]},
+            {"id": "check1", "title": "Again", "condition": "all", "rules": ["f:/etc/group"]}
+        ]
+    })"));
+    nlohmann::json j;
+
+    ASSERT_TRUE(parser.ParsePolicy(j));
+    ASSERT_EQ(j["checks"].size(), 1);
+    EXPECT_EQ(j["checks"][0]["title"], "First");
+
+    ASSERT_EQ(WarningLogs().size(), 1);
+    EXPECT_EQ(WarningLogs()[0],
+              "Duplicate check id 'check1': already used by policy 'policy_id'. Skipping it in policy 'policy_id' "
+              "(policy file 'policy.yml').");
+}
+
+TEST_F(PolicyParserTest, CheckRejectedForAnotherReasonDoesNotReserveItsId)
+{
+    CaptureWarningLogs();
+
+    PolicyParser parser("policy.yml", 30, false, PolicyDocument(R"({
+        "policy": {"id": "policy_id"},
+        "checks": [
+            {"id": "check1", "title": "No condition", "rules": ["f:/etc/passwd"]},
+            {"id": "check1", "title": "Valid", "condition": "all", "rules": ["f:/etc/group"]}
+        ]
+    })"));
+    nlohmann::json j;
+
+    ASSERT_TRUE(parser.ParsePolicy(j));
+    ASSERT_EQ(j["checks"].size(), 1);
+    EXPECT_EQ(j["checks"][0]["title"], "Valid");
+    EXPECT_TRUE(WarningLogs().empty());
+}
+
+TEST_F(PolicyParserTest, PolicyIdAlreadyLoadedSkipsThePolicyFile)
+{
+    CaptureWarningLogs();
+
+    nlohmann::json j;
+
+    PolicyParser first("/etc/sca/first.yml", 30, false, PolicyDocument(R"({
+        "policy": {"id": "same"},
+        "checks": [{"id": "1", "title": "First", "condition": "all", "rules": ["f:/etc/passwd"]}]
+    })"));
+    ASSERT_TRUE(first.ParsePolicy(j));
+
+    PolicyParser second("/etc/sca/second.yml", 30, false, PolicyDocument(R"({
+        "policy": {"id": "same"},
+        "checks": [{"id": "2", "title": "Second", "condition": "all", "rules": ["f:/etc/group"]}]
+    })"));
+    EXPECT_FALSE(second.ParsePolicy(j));
+
+    EXPECT_EQ(j["policies"].size(), 1);
+    ASSERT_EQ(j["checks"].size(), 1);
+    EXPECT_EQ(j["checks"][0]["id"], "1");
+
+    ASSERT_EQ(WarningLogs().size(), 1);
+    EXPECT_EQ(WarningLogs()[0],
+              "Duplicate policy id 'same': already used by another policy file. Skipping policy file "
+              "'/etc/sca/second.yml'.");
+}
+
+TEST_F(PolicyParserTest, ListVariableKeepsItsElementsInTheRule)
+{
+    PolicyParser parser("policy.yml", 30, false, PolicyDocument(R"({
+        "variables": {"$list": "/etc/passwd,/etc/group"},
+        "policy": {"id": "policy_id"},
+        "checks": [{"id": "check1", "title": "List", "condition": "all", "rules": ["f:$list -> r:^root"]}]
+    })"));
+    nlohmann::json j;
+
+    ASSERT_TRUE(parser.ParsePolicy(j));
+    ASSERT_EQ(j["checks"].size(), 1);
+    EXPECT_EQ(j["checks"][0]["rules"][0], "f:/etc/passwd,/etc/group -> r:^root");
+}
+
 // NOLINTEND(bugprone-exception-escape)

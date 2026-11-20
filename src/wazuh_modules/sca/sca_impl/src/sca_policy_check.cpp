@@ -103,14 +103,88 @@ namespace
         return matchFound ? RuleResult::Found : RuleResult::NotFound;
     }
 
-    RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
-                                 const std::string& pattern,
-                                 const PolicyEvaluationContext& ctx,
-                                 std::string& unresolvedReason)
+    /// Splits a file/directory rule target on commas (trimmed, empties dropped); a target with no usable element is kept whole.
+    std::vector<std::string> SplitPathList(const std::string& target)
     {
-        // Policies rely on file rules following symbolic links (e.g. /etc/os-release is one on many systems)
-        bool isSymbolicLink = false;
-        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason, true, isSymbolicLink);
+        std::vector<std::string> paths;
+        std::string::size_type start = 0;
+
+        while (start <= target.size())
+        {
+            auto end = target.find(',', start);
+
+            if (end == std::string::npos)
+            {
+                end = target.size();
+            }
+
+            auto path = Utils::trim(target.substr(start, end - start), " \t");
+
+            if (!path.empty())
+            {
+                paths.emplace_back(std::move(path));
+            }
+
+            start = end + 1;
+        }
+
+        if (paths.empty())
+        {
+            paths.emplace_back(target);
+        }
+
+        return paths;
+    }
+
+    /// Combines per-path results as 4.x did: Found on the first found path, else Invalid/NotRun (first reason
+    /// kept), else NotFound; negation applies once to the combined result.
+    template<typename CheckPathFunc>
+    RuleResult EvaluatePathList(const PolicyEvaluationContext& ctx,
+                                std::string& unresolvedReason,
+                                CheckPathFunc&& checkPath)
+    {
+        auto combined = RuleResult::NotFound;
+        std::string firstUnresolvedReason;
+
+        for (const auto& path : SplitPathList(ctx.rule))
+        {
+            unresolvedReason.clear();
+            const auto result = checkPath(path);
+
+            if (result == RuleResult::Found)
+            {
+                combined = RuleResult::Found;
+                break;
+            }
+
+            if (result == RuleResult::Invalid || result == RuleResult::NotRun)
+            {
+                if (firstUnresolvedReason.empty())
+                {
+                    firstUnresolvedReason = unresolvedReason;
+                }
+
+                if (combined != RuleResult::Invalid)
+                {
+                    combined = result;
+                }
+            }
+        }
+
+        if (combined == RuleResult::Invalid || combined == RuleResult::NotRun)
+        {
+            unresolvedReason = std::move(firstUnresolvedReason);
+            return combined;
+        }
+
+        unresolvedReason.clear();
+
+        if (ctx.isNegated)
+        {
+            return combined == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found;
+        }
+
+        return combined;
     }
 } // namespace
 
@@ -144,79 +218,65 @@ RuleResult FileRuleEvaluator::Evaluate()
     // A previous evaluation of this rule must not explain this one
     m_lastUnresolvedReason.clear();
 
-    if (m_ctx.pattern)
+    return EvaluatePathList(m_ctx, m_lastUnresolvedReason, [this](const std::string & path)
     {
-        return CheckFileForContents();
-    }
-
-    return CheckFileExistence();
+        return m_ctx.pattern ? CheckFileForContents(path) : CheckFileExistence(path);
+    });
 }
 
-RuleResult FileRuleEvaluator::CheckFileForContents()
+RuleResult FileRuleEvaluator::CheckFileForContents(const std::string& path)
 {
     const auto& pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking contents of file: '" + m_ctx.rule + "' against pattern:  " + pattern);
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking contents of file: '" + path + "' against pattern:  " + pattern);
 
     if (TryFunc(
                 [&]
-{ return !m_fileSystemWrapper->exists(m_ctx.rule) || !m_fileSystemWrapper->is_regular_file(m_ctx.rule); })
+{ return !m_fileSystemWrapper->exists(path) || !m_fileSystemWrapper->is_regular_file(path); })
     .value_or(false))
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' does not exist or is not a regular file");
-        m_lastUnresolvedReason = "File '" + m_ctx.rule + "' does not exist or is not a regular file";
+        LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + path + "' does not exist or is not a regular file");
+        m_lastUnresolvedReason = "File '" + path + "' does not exist or is not a regular file";
         return RuleResult::Invalid; // Keep simple return for file not found - this is expected behavior
     }
 
-    const auto result =
-        TryFunc([&] { return FindContentInFile(m_fileUtils, pattern, m_ctx, m_lastUnresolvedReason); });
+    // Policies rely on file rules following symbolic links (e.g. /etc/os-release is one on many systems)
+    bool isSymbolicLink = false;
+    const auto result = TryFunc([&]
+    {
+        return FindContentInFile(m_fileUtils, path, pattern, m_ctx, m_lastUnresolvedReason, true, isSymbolicLink);
+    });
 
     if (result.has_value())
     {
-        const auto value = result.value();
-
-        if (value == RuleResult::Invalid)
-        {
-            return RuleResult::Invalid;
-        }
-
-        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
+        return result.value();
     }
-    else
-    {
-        m_lastUnresolvedReason = "Failed to read file contents for '" + m_ctx.rule + "'";
-        return RuleResult::Invalid; // File access error or other exception
-    }
+
+    m_lastUnresolvedReason = "Failed to read file contents for '" + path + "'";
+    return RuleResult::Invalid; // File access error or other exception
 }
 
-RuleResult FileRuleEvaluator::CheckFileExistence()
+RuleResult FileRuleEvaluator::CheckFileExistence(const std::string& path)
 {
-    auto result = RuleResult::NotFound;
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking existence of file: '" + m_ctx.rule + "'");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking existence of file: '" + path + "'");
 
     if (const auto fileOk = TryFunc(
                                 [&]
-{ return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_regular_file(m_ctx.rule); }))
+{ return m_fileSystemWrapper->exists(path) && m_fileSystemWrapper->is_regular_file(path); }))
     {
         if (fileOk.value())
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' exists");
-            result = RuleResult::Found;
+            LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + path + "' exists");
+            return RuleResult::Found;
         }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' does not exist or is not a regular file");
-        }
-    }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule '" + m_ctx.rule + "' could not be resolved");
-        m_lastUnresolvedReason = "File system access error for '" + m_ctx.rule + "'";
-        return RuleResult::Invalid; // File system access error
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + path + "' does not exist or is not a regular file");
+        return RuleResult::NotFound;
     }
 
-    return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
+    LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule '" + path + "' could not be resolved");
+    m_lastUnresolvedReason = "File system access error for '" + path + "'";
+    return RuleResult::Invalid; // File system access error
 }
 
 CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
@@ -367,31 +427,29 @@ RuleResult DirRuleEvaluator::Evaluate()
     // A previous evaluation of this rule must not explain this one
     m_lastUnresolvedReason.clear();
 
-    if (m_ctx.pattern)
+    return EvaluatePathList(m_ctx, m_lastUnresolvedReason, [this](const std::string & path)
     {
-        return CheckDirectoryForContents();
-    }
-
-    return CheckDirectoryExistence();
+        return m_ctx.pattern ? CheckDirectoryForContents(path) : CheckDirectoryExistence(path);
+    });
 }
 
-RuleResult DirRuleEvaluator::CheckDirectoryForContents()
+RuleResult DirRuleEvaluator::CheckDirectoryForContents(const std::string& path)
 {
-    LoggingHelper::getInstance().log(LOG_DEBUG,  "Processing directory rule:  '" + m_ctx.rule + "'");
+    LoggingHelper::getInstance().log(LOG_DEBUG,  "Processing directory rule:  '" + path + "'");
 
-    if (!TryFunc([&] { return m_fileSystemWrapper->exists(m_ctx.rule); }).value_or(false))
+    if (!TryFunc([&] { return m_fileSystemWrapper->exists(path); }).value_or(false))
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Path '" + m_ctx.rule + "' does not exist");
-        m_lastUnresolvedReason = "Path '" + m_ctx.rule + "' does not exist";
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Path '" + path + "' does not exist");
+        m_lastUnresolvedReason = "Path '" + path + "' does not exist";
         return RuleResult::Invalid;
     }
 
-    auto resolved = TryFunc([&] { return m_fileSystemWrapper->canonical(m_ctx.rule); });
+    auto resolved = TryFunc([&] { return m_fileSystemWrapper->canonical(path); });
 
     if (!resolved)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + m_ctx.rule + "' could not be resolved");
-        m_lastUnresolvedReason = "Directory '" + m_ctx.rule + "' could not be resolved";
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + path + "' could not be resolved");
+        m_lastUnresolvedReason = "Directory '" + path + "' could not be resolved";
         return RuleResult::Invalid;
     }
 
@@ -526,7 +584,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                                     LoggingHelper::getInstance().log(
                                         LOG_DEBUG,
                                         "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
-                                    return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
+                                    return RuleResult::Found;
                                 }
 
                                 // A file that could not be evaluated is remembered, not reported yet:
@@ -551,7 +609,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                             LoggingHelper::getInstance().log(LOG_DEBUG,
                                                              "Pattern '" + pattern + "' was found in directory '" +
                                                              rootPath.string() + "'");
-                            return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
+                            return RuleResult::Found;
                         }
                     }
                 }
@@ -582,14 +640,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                     if (result.has_value())
                     {
-                        const auto value = result.value();
-
-                        if (value == RuleResult::Invalid)
-                        {
-                            return RuleResult::Invalid;
-                        }
-
-                        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
+                        return result.value();
                     }
                     else
                     {
@@ -603,7 +654,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                 if (file.filename().string() == pattern)
                 {
                     LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
-                    return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
+                    return RuleResult::Found;
                 }
             }
         }
@@ -623,36 +674,29 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
     }
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was not found in directory '" + rootPath.string() + "'");
-    return m_ctx.isNegated ? RuleResult::Found : RuleResult::NotFound;
+    return RuleResult::NotFound;
 }
 
-RuleResult DirRuleEvaluator::CheckDirectoryExistence()
+RuleResult DirRuleEvaluator::CheckDirectoryExistence(const std::string& path)
 {
-    auto result = RuleResult::NotFound;
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing directory rule. Checking existence of directory: '" + m_ctx.rule + "'");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing directory rule. Checking existence of directory: '" + path + "'");
 
     if (const auto dirOk = TryFunc(
-                               [&] { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_directory(m_ctx.rule); }))
+                               [&] { return m_fileSystemWrapper->exists(path) && m_fileSystemWrapper->is_directory(path); }))
     {
         if (dirOk.value())
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + m_ctx.rule + "' exists");
-            result = RuleResult::Found;
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + path + "' exists");
+            return RuleResult::Found;
         }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + m_ctx.rule + "' does not exist or is not a directory");
-        }
-    }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule " + m_ctx.rule + " could not be resolved");
-        m_lastUnresolvedReason = "Directory access error for '" + m_ctx.rule + "'";
-        return RuleResult::Invalid;
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + path + "' does not exist or is not a directory");
+        return RuleResult::NotFound;
     }
 
-    return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
+    LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and directory rule '" + path + "' could not be resolved");
+    m_lastUnresolvedReason = "Directory access error for '" + path + "'";
+    return RuleResult::Invalid;
 }
 
 ProcessRuleEvaluator::ProcessRuleEvaluator(PolicyEvaluationContext ctx,

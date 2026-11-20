@@ -404,3 +404,92 @@ TEST_F(FileRuleEvaluatorTest, ExactLineStopsReadingAtTheFirstMatch)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
+
+TEST_F(FileRuleEvaluatorTest, ListIsFoundWhenALaterFileExists)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.rule = "/etc/passwd, /etc/group";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+    EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST_F(FileRuleEvaluatorTest, ListStopsAtTheFirstFileFound)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.rule = "/etc/passwd,/etc/group";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/group"))).Times(0);
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(FileRuleEvaluatorTest, ListIsNotFoundWhenNoFileExists)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.rule = "/etc/passwd,,/etc/group,";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(FileRuleEvaluatorTest, NegatedListPassesOnlyWhenNoFileExists)
+{
+    m_ctx.pattern = std::nullopt;
+    m_ctx.isNegated = true;
+    m_ctx.rule = "/etc/passwd,/etc/group";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(FileRuleEvaluatorTest, ListContentMatchInAnyFileIsFound)
+{
+    m_ctx.pattern = std::string("r:^root");
+    m_ctx.rule = "/missing,/etc/group,/etc/passwd";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/missing"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("/etc/group"), true, ::testing::_))
+    .WillOnce(ReturnContent("wheel:x:10:"));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/etc/passwd"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("/etc/passwd"), true, ::testing::_))
+    .WillOnce(ReturnContent("root:x:0:0"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+    EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST_F(FileRuleEvaluatorTest, ListWithoutMatchAndAMissingFileIsUnresolvedWithItsReason)
+{
+    m_ctx.pattern = std::string("r:^root");
+    m_ctx.rule = "/etc/group,/missing";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("/etc/group"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("/etc/group"), true, ::testing::_))
+    .WillOnce(ReturnContent("wheel:x:10:"));
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("/missing"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), "File '/missing' does not exist or is not a regular file");
+}

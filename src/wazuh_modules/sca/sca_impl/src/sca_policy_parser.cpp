@@ -10,6 +10,7 @@
 #include <memory>
 #include <json.hpp>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "logging_helper.hpp"
@@ -129,6 +130,41 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
         return nullptr;
     }
 
+    // Policies and checks are keyed by id alone; the first policy file loaded keeps a repeated id.
+    if (const auto loadedPolicies = policiesAndChecks.find("policies");
+            !policyId.empty() && loadedPolicies != policiesAndChecks.end() && loadedPolicies->is_array())
+    {
+        for (const auto& loadedPolicy : *loadedPolicies)
+        {
+            if (loadedPolicy.contains("id") && loadedPolicy["id"].is_string() && loadedPolicy["id"] == policyId)
+            {
+                LoggingHelper::getInstance().log(LOG_WARNING,
+                                                 "Duplicate policy id '" + policyId +
+                                                 "': already used by another policy file. Skipping policy file '" +
+                                                 m_filename.string() + "'.");
+                return nullptr;
+            }
+        }
+    }
+
+    // Check id -> id of the policy that defines it, for the checks of the policies loaded before this one
+    std::unordered_map<std::string, std::string> loadedCheckIds;
+
+    if (const auto loadedChecks = policiesAndChecks.find("checks");
+            loadedChecks != policiesAndChecks.end() && loadedChecks->is_array())
+    {
+        for (const auto& loadedCheck : *loadedChecks)
+        {
+            if (loadedCheck.contains("id") && loadedCheck["id"].is_string())
+            {
+                const auto loadedPolicyId = loadedCheck.contains("policy_id") && loadedCheck["policy_id"].is_string()
+                                            ? loadedCheck["policy_id"].get<std::string>()
+                                            : std::string {};
+                loadedCheckIds.emplace(loadedCheck["id"].get<std::string>(), loadedPolicyId);
+            }
+        }
+    }
+
     if (m_jsonDocument.contains("requirements") && m_jsonDocument["requirements"].is_object())
     {
         try
@@ -240,6 +276,16 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 check.id = checkId;
                 checkLabel = "'" + checkId + "'";
 
+                // A repeated check id would share the first check's state, so it is skipped.
+                if (const auto loadedCheck = loadedCheckIds.find(checkId); loadedCheck != loadedCheckIds.end())
+                {
+                    LoggingHelper::getInstance().log(LOG_WARNING,
+                                                     "Duplicate check id '" + checkId + "': already used by policy '" +
+                                                     loadedCheck->second + "'. Skipping it in policy '" + policyId +
+                                                     "' (policy file '" + m_filename.string() + "').");
+                    continue;
+                }
+
                 if (checkNode.contains("condition") && checkNode["condition"].is_string())
                 {
                     check.condition = checkNode["condition"].get<std::string>();
@@ -283,6 +329,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 ValidateComplianceKeys(checkWithValidRules, checkId);
 
                 checks.push_back(std::move(check));
+                loadedCheckIds.emplace(checkId, policyId);
                 checkWithValidRules["policy_id"] = policyId;
                 policiesAndChecks["checks"].push_back(checkWithValidRules);
             }
