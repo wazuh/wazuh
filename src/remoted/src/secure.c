@@ -1997,9 +1997,12 @@ void * save_control_thread(void * control_msg_queue)
 
                 // Never connected agents and earlier disconnection reasons are kept
                 if (cJSON_IsString(connection_status)
-                    && (strcmp(connection_status->valuestring, AGENT_CS_ACTIVE) == 0 || strcmp(connection_status->valuestring, AGENT_CS_PENDING) == 0)
-                    && OS_SUCCESS != wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", &wdb_sock, status_code)) {
-                    mwarn("Unable to set connection status as disconnected for agent: %s", ctrl_msg_data->key->id);
+                    && (strcmp(connection_status->valuestring, AGENT_CS_ACTIVE) == 0 || strcmp(connection_status->valuestring, AGENT_CS_PENDING) == 0)) {
+                    if (OS_SUCCESS != wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq_status" : "synced", &wdb_sock, status_code)) {
+                        mwarn("Unable to set connection status as disconnected for agent: %s", ctrl_msg_data->key->id);
+                    } else {
+                        mdebug1("Agent '%s' set as disconnected: its connection was closed (status code %d).", ctrl_msg_data->key->id, status_code);
+                    }
                 }
 
                 cJSON_Delete(agent_info);
