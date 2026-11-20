@@ -5,11 +5,62 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/client-agent/https_client/**"
+      # --- CI plumbing: this workflow and what its steps execute.
       - ".github/workflows/5_testcomponent_https_client-rtr.yml"
-      - ".github/actions/**"
+      # actions/setup-python `python-version-file`: the interpreter that runs src/build.py
+      - ".github/workflows/.python-version"
+      - ".github/actions/install_build_deps/**"
+      - ".github/actions/reinstall_cmake/**"
+      # run by reinstall_cmake/action.yml (`sudo tools/devContainer/reinstall-cmake.sh`)
+      - "tools/devContainer/reinstall-cmake.sh"
+      # Not listed: .github/actions/upload_s3_artifact. It only uploads the coverage report after
+      # build.py has given its verdict, and the agent package workflows list it and run it on a PR.
+      # --- The driver. `python build.py --readytoreview <module>` imports ci/{build_tools,run_check,
+      # utils}.py and reads ci/input/astyle.config (run_check.py runAStyleCheck) and
+      # ci/input/test_tool_config.json (run_check.py runReadyToReview). ci/input/rtr_input.json is
+      # read by nothing; ci/tests/ runs only for syscheckd (5_testcomponent_syscheck-rtr.yml).
+      - "src/build.py"
+      - "src/ci/*.py"
+      - "src/ci/input/astyle.config"
+      - "src/ci/input/test_tool_config.json"
+      # --- Configure path and dependency inputs of `make deps` + `make TARGET=agent|winagent TEST=1`
+      # (src/ci/build_tools.py makeDeps/makeTarget). The build compiles the whole agent, but only the
+      # module's own checks run: the paths below are what those checks compile, link and execute. A
+      # compile break elsewhere in the agent tree is 5_testunit_linux-win.yml's to catch (src/**).
+      - "src/Makefile"
+      # included by src/Makefile: the ref of every external dependency
+      - "src/deps.lock.mk"
+      - "src/CMakeLists.txt"
+      # include(WazuhRpath)/include(WazuhJemalloc) in src/CMakeLists.txt, WazuhExternalFlags in external/
+      - "src/cmake/**"
+      # add_subdirectory(external): libwazuhext, googletest, flatc
+      - "src/external/CMakeLists.txt"
+      # file(READ ../VERSION.json) in src/CMakeLists.txt
+      - "VERSION.json"
+      # src/Makefile GIT_REFS_LIST: the refs `make deps` tries for the indexer templates
+      - "tools/get_git_refs.sh"
+      # winagent: the version resource compiled into every DLL (RESOURCE_OBJ_DLL, src/CMakeLists.txt)
+      - "src/win32/version.rc"
+      # --- The module (ctest -L https_client), registered by client-agent/CMakeLists.txt
+      # (add_subdirectory(https_client)).
+      - "src/client-agent/https_client/**"
+      - "src/client-agent/CMakeLists.txt"
+      # compiled into libhttps_client (https_client/CMakeLists.txt add_library) with its header
+      - "src/shared/src/os_cert_bundle.c"
+      - "src/shared/include/os_cert_bundle.h"
+      # every header included from outside: the JWT helpers (src/jwtSigner.cpp, src/enrollSigner.cpp,
+      # tests/), src/moduleLog.hpp, src/stopToken.hpp, tests/unit/statelessStream_test.cpp,
+      # tests/unit/syncFrame_test.cpp
+      - "src/shared_modules/utils/jwt/**"
+      - "src/shared_modules/utils/loggerHelper.h"
+      - "src/shared_modules/utils/monotonicCondition.hpp"
+      - "src/shared_modules/common/**"
+      - "src/shared_modules/sync_protocol/include/sync_session_wire.hpp"
+      # --- Never a trigger: prose inside the trees above.
+      - "!src/shared_modules/common/COPYING"
+      # demo/ is a Docker harness no CMake file registers; cppcheck still scans its C source
+      - "!src/client-agent/https_client/demo/**"
+      - "src/client-agent/https_client/demo/*.c"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

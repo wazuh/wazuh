@@ -14,12 +14,17 @@
 #include <algorithm>
 #include <cerrno>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 // Reasonable upper bound for getpw_r buffer
 constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
+
+// The local account databases, as opposed to the ones a directory client serves through NSS.
+constexpr auto LOCAL_PASSWD_FILE {"/etc/passwd"};
+constexpr auto LOCAL_GROUP_FILE {"/etc/group"};
 
 namespace
 {
@@ -41,13 +46,14 @@ namespace
         public:
             explicit NssBuffer(size_t size)
                 : m_size(size)
-                , m_data(std::make_unique<char[]>(size))
+                , m_data(new char[size])
             {
             }
 
             // Calls a reentrant passwd/group function, doubling the buffer while it answers
-            // ERANGE. The enumeration functions keep their position on ERANGE, so the retry
-            // reads the same entry.
+            // ERANGE. The enumeration functions keep their position on ERANGE, and the file
+            // wrappers go back to the start of the line where glibc does not, so the retry reads
+            // the same entry.
             template<typename Lookup>
             int call(Lookup&& lookup)
             {
@@ -56,7 +62,7 @@ namespace
                 while (ret == ERANGE && m_size < MAX_NSS_BUF_SIZE)
                 {
                     m_size = std::min(m_size * 2, MAX_NSS_BUF_SIZE);
-                    m_data = std::make_unique<char[]>(m_size);
+                    m_data.reset(new char[m_size]);
                     ret = lookup(m_data.get(), m_size);
                 }
 
@@ -174,7 +180,7 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
             return m_groupWrapper->getgrgid_r(gid, &grp, buf, size, &grpResult);
         });
 
-        if (lookup == 0 && grpResult != nullptr)
+        if (lookup == 0 && grpResult != nullptr && grpResult->gr_name != nullptr)
         {
             name = grpResult->gr_name;
             gidToName.emplace(gid, name);
@@ -227,7 +233,7 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids
     const bool singleGid = (!allGroups && gids.size() == 1);
     nlohmann::json result = singleGid ? nlohmann::json::array() : nlohmann::json::object();
 
-    NssBuffer groupBuf {initialBufSize(m_sysWrapper->sysconf(_SC_GETPW_R_SIZE_MAX))};
+    NssBuffer groupBuf {initialBufSize(m_sysWrapper->sysconf(_SC_GETGR_R_SIZE_MAX))};
 
     std::map<gid_t, std::set<std::string>> gidToUsernames;
 
@@ -281,7 +287,7 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids
 
     while ((pwd = m_passwdWrapper->getpwent()) != nullptr)
     {
-        if (allGroups || gids.count(pwd->pw_gid))
+        if (pwd->pw_name != nullptr && (allGroups || gids.count(pwd->pw_gid)))
         {
             gidToUsernames[pwd->pw_gid].insert(pwd->pw_name);
         }
@@ -345,6 +351,89 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
     std::unordered_map<std::string, std::vector<gid_t>> memberGids;
     bool membershipLoaded = false;
 
+    // The enumeration has every membership an account has in /etc/group. The ones it has in a
+    // directory are there only if the directory client lists the members of its groups: some
+    // enumerate them without members (SSSD's ignore_group_members, for instance), others do not
+    // enumerate at all, while initgroups still answers. So getgrouplist() is still asked about
+    // a directory account that no group outside /etc/group lists, and about a local account
+    // when no group outside /etc/group lists anyone.
+    std::unordered_set<std::string> localUsers;
+    std::unordered_set<gid_t> localGroups;
+    std::unordered_set<std::string> listedByDirectoryGroup;
+    bool directoryGroupsListMembers = false;
+
+    // An enumeration that stops on an error instead of ENOENT (a source asking to try again, an
+    // entry larger than the buffer cap), or local account files not read to their end, leave the
+    // memberships incomplete, so in that scan every account is asked about with getgrouplist(),
+    // as before the enumeration was used. A source that is unavailable is skipped by glibc and
+    // ends the enumeration as usual; getgrouplist() would not reach it either.
+    bool membershipComplete = true;
+
+    // Reads the local account files and tells whether both were read to their end. A file cut
+    // short leaves local accounts or groups out, and a local group missing from the set would pass
+    // for a directory group that lists members. A file that cannot be opened is not read by
+    // nss_files either, so none of its entries reach the enumeration.
+    const auto loadLocalAccounts = [&]()
+    {
+        struct passwd localPwd {};
+        struct passwd* localPwdResult = nullptr;
+        NssBuffer localPwdBuf {MAX_GETPW_R_BUF_SIZE};
+        int passwdRet = ENOENT;
+
+        if (auto* file = m_sysWrapper->fopen(LOCAL_PASSWD_FILE, "r"); file != nullptr)
+        {
+            const auto nextLocalUser = [&]()
+            {
+                passwdRet = localPwdBuf.call([&](char* buf, size_t size)
+                {
+                    return m_passwdWrapper->fgetpwent_r(file, &localPwd, buf, size, &localPwdResult);
+                });
+                return passwdRet == 0 && localPwdResult != nullptr;
+            };
+
+            while (nextLocalUser())
+            {
+                if (localPwdResult->pw_name != nullptr)
+                {
+                    localUsers.emplace(localPwdResult->pw_name);
+                }
+            }
+
+            m_sysWrapper->fclose(file);
+        }
+
+        group localGrp {};
+        group* localGrpResult = nullptr;
+        NssBuffer localGrpBuf {MAX_GETPW_R_BUF_SIZE};
+        int groupFileRet = ENOENT;
+
+        if (auto* file = m_sysWrapper->fopen(LOCAL_GROUP_FILE, "r"); file != nullptr)
+        {
+            const auto nextLocalGroup = [&]()
+            {
+                groupFileRet = localGrpBuf.call([&](char* buf, size_t size)
+                {
+                    return m_groupWrapper->fgetgrent_r(file, &localGrp, buf, size, &localGrpResult);
+                });
+                return groupFileRet == 0 && localGrpResult != nullptr;
+            };
+
+            while (nextLocalGroup())
+            {
+                localGroups.emplace(localGrpResult->gr_gid);
+            }
+
+            m_sysWrapper->fclose(file);
+        }
+
+        const auto readToEnd = [](int ret)
+        {
+            return ret == 0 || ret == ENOENT;
+        };
+
+        return readToEnd(passwdRet) && readToEnd(groupFileRet);
+    };
+
     const auto loadMembership = [&]()
     {
         if (membershipLoaded)
@@ -354,17 +443,21 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
 
         membershipLoaded = true;
         s_groupNamesCache.clear();
+        const bool localAccountsRead = loadLocalAccounts();
 
         struct group grp {};
         struct group* grpResult = nullptr;
         NssBuffer groupBuf {MAX_GETPW_R_BUF_SIZE};
 
+        int groupRet = 0;
+
         const auto nextGroupEntry = [&]()
         {
-            return groupBuf.call([&](char* buf, size_t size)
+            groupRet = groupBuf.call([&](char* buf, size_t size)
             {
                 return m_groupWrapper->getgrent_r(&grp, buf, size, &grpResult);
-            }) == 0 && grpResult != nullptr;
+            });
+            return groupRet == 0 && grpResult != nullptr;
         };
 
         m_groupWrapper->setgrent();
@@ -377,13 +470,22 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
                 s_groupNamesCache.emplace(grpResult->gr_gid, grpResult->gr_name);
             }
 
+            const bool directoryGroup = localGroups.count(grpResult->gr_gid) == 0;
+
             for (char** member = grpResult->gr_mem; member != nullptr && *member != nullptr; ++member)
             {
                 memberGids[*member].push_back(grpResult->gr_gid);
+
+                if (directoryGroup)
+                {
+                    directoryGroupsListMembers = true;
+                    listedByDirectoryGroup.emplace(*member);
+                }
             }
         }
 
         m_groupWrapper->endgrent();
+        membershipComplete = localAccountsRead && (groupRet == 0 || groupRet == ENOENT);
     };
 
     auto processUser = [&](const struct passwd * pwdInfo)
@@ -423,11 +525,20 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
 
         removeRepeats();
 
-        // A directory client can enumerate its groups without their members (SSSD with
-        // ignore_group_members, for instance) while initgroups still answers. A user that no
-        // enumerated group lists beyond its primary one is asked about with getgrouplist(), so
-        // those memberships are not lost.
-        if (groups.size() == 1 && user.name != nullptr)
+        // getgrouplist() is asked about a directory account no directory group lists (also when
+        // a local group lists it), and about a local account when no directory group lists
+        // anyone, since the enumeration may be missing their directory memberships.
+        bool askInitgroups = false;
+
+        if (user.name != nullptr)
+        {
+            askInitgroups = !membershipComplete
+                            || (localUsers.count(user.name) != 0
+                                ? !directoryGroupsListMembers
+                                : listedByDirectoryGroup.count(user.name) == 0);
+        }
+
+        if (askInitgroups)
         {
             std::vector<gid_t> initGroups(EXPECTED_GROUPS_MAX);
             int nGroups = EXPECTED_GROUPS_MAX;

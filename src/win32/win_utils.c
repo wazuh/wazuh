@@ -15,8 +15,6 @@
 #include "logcollector.h"
 #include "execd.h"
 #include "wmodules.h"
-#include "sysInfo.h"
-#include "sym_load.h"
 #include "os_net.h"
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
@@ -67,10 +65,6 @@ void wm_lifecycle_lock_init(void)
  * while stop_wmodules() is still joining module threads, so a slow shutdown
  * doesn't look hung to the SCM (issue 38428, defect #7). */
 extern void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms);
-
-void *sysinfo_module = NULL;
-sysinfo_networks_func sysinfo_network_ptr = NULL;
-sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
 /** Prototypes **/
 int Start_win32_Syscheck();
@@ -339,12 +333,6 @@ int local_start()
     while (debug_level != 0) {
         nowDebug();
         debug_level--;
-    }
-
-    if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
-    {
-        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
-        sysinfo_network_ptr = so_get_function_sym(sysinfo_module, "sysinfo_networks");
     }
 
     /* Initialize logging module*/
@@ -625,10 +613,6 @@ int local_start()
         sleep(1);
     }
 
-    if (sysinfo_module){
-        so_free_library(sysinfo_module);
-    }
-
     WSACleanup();
     return (0);
 }
@@ -851,84 +835,6 @@ int StartMQPredicated(__attribute__((unused)) const char *path, __attribute__((u
 int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) bool (fn_ptr)())
 {
     return (0);
-}
-
-char *get_agent_ip_legacy_win32()
-{
-    char agent_ip[IPSIZE + 1] = { '\0' };
-    cJSON *object;
-
-    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        const int error_code = sysinfo_network_ptr(&object);
-        if (error_code == 0) {
-            if (object) {
-                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                if (iface) {
-                    const int size_ids = cJSON_GetArraySize(iface);
-                    for (int i = 0; i < size_ids; ++i){
-                        const cJSON *element = cJSON_GetArrayItem(iface, i);
-                        if(!element) {
-                            continue;
-                        }
-                        const char * gateway = cJSON_GetStringValue(cJSON_GetObjectItem(element, "gateway"));
-                        const char * gateway6 = cJSON_GetStringValue(cJSON_GetObjectItem(element, "gateway6"));
-                        const int has_gateway = gateway && 0 != strcmp(gateway, " ");
-                        const int has_gateway6 = gateway6 && *gateway6 != '\0' && 0 != strcmp(gateway6, " ");
-
-                        if (has_gateway || has_gateway6) {
-
-                            const char * primaryIpType = NULL;
-                            const char * secondaryIpType = NULL;
-
-                            if (has_gateway6 || strchr(gateway, ':') != NULL) {
-                                // Any IPv6 gateway makes the IPv6 IP prioritary
-                                primaryIpType = "IPv6";
-                                secondaryIpType = "IPv4";
-                            } else {
-                                // Assume gateway is IPv4. IPv4 IP will be prioritary
-                                primaryIpType = "IPv4";
-                                secondaryIpType = "IPv6";
-                            }
-
-                            const cJSON * ip = cJSON_GetObjectItem(element, primaryIpType);
-                            if (!ip) {
-                                ip = cJSON_GetObjectItem(element, secondaryIpType);
-                                if (!ip) {
-                                    continue;
-                                }
-                            }
-                            const int size_proto_interfaces = cJSON_GetArraySize(ip);
-                            for (int j = 0; j < size_proto_interfaces; ++j) {
-                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
-                                if(!element_ip) {
-                                    continue;
-                                }
-                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
-                                if (address && cJSON_GetStringValue(address))
-                                {
-                                    strncpy(agent_ip, address->valuestring, IPSIZE);
-                                    break;
-                                }
-                            }
-                            if (*agent_ip != '\0') {
-                                break;
-                            }
-                        }
-                    }
-                }
-                sysinfo_free_result_ptr(&object);
-            }
-        }
-        else {
-            merror("Unable to get system network information. Error code: %d.", error_code);
-        }
-    }
-
-    if (strchr(agent_ip, ':') != NULL) {
-        OS_ExpandIPv6(agent_ip, IPSIZE);
-    }
-
-    return strdup(agent_ip);
 }
 
 #endif

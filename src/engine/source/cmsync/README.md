@@ -106,6 +106,7 @@ An internal class (defined in `cmsync.cpp`) that tracks the state of a single sy
 
 1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy(consumerIdToValidate=STANDARD_RULESET_CONSUMER_ID)`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
    - If the consumer is not ready (returns `std::nullopt`), download is skipped and `std::nullopt` is returned (sync cycle aborts gracefully).
+   - A download the indexer can only answer in part throws before anything is imported, so soft validation never sees an incomplete set: the connector asks the indexer to refuse partial PIT and search answers, and `getPolicy` refuses a walk that ends before its announced total (see the wiconnector README, *Point-In-Time (PIT) Pagination*). Without that, a policy referencing an asset that was never downloaded imported fine and only failed later, at the route build, with `Resource with UUID '<uuid>' does not exist`.
 2. **Enrich** — placeholder for adding local-only assets (outputs, default filters) that don't come from the indexer.
 
 The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`, regenerated while it already exists). If the import throws, `downloadNamespace()` deletes the namespace; if the route update then fails, `synchronize()` deletes it.
@@ -120,6 +121,8 @@ The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`, regenerat
 ### Retry With Back-off
 
 Remote operations (`existsPolicy`, `isConsumerReadyForSync`, `getPolicyHashAndEnabled`, `getPolicy`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt (`analysisd.cmsync_indexer_connector_max_retries`, default 3, and `analysisd.cmsync_indexer_connector_retry_interval`, default 5, read in `main.cpp`). The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and splits inter-retry sleep into 1-second chunks for responsive cancellation.
+
+An indexer node that stops during a download is one of these retried failures. Depending on when it leaves, an attempt fails with `Search request failed with status 500: … search_phase_execution_exception` (the next page), `Failed to create PIT. … Status code: 503` (a new attempt while its shards are unavailable) or `Policy download for space '<space>' ended after <n> of <total> documents`; once the health monitor sees the cluster red, with `No available server`. After the last attempt the space is `FAILED` and keeps its deployed route.
 
 ### Early Retry While a Space Has No Route
 

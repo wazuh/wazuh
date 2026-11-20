@@ -15,7 +15,6 @@
 #include <string.h>
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/common.h"
-#include "../../data_provider/include/sysInfo.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "startup_gate_op.h"
 #include "os_win.h"
@@ -23,87 +22,13 @@
 
 #ifdef TEST_WINAGENT
 
-extern sysinfo_networks_func sysinfo_network_ptr;
-extern sysinfo_free_result_func sysinfo_free_result_ptr;
-
 static agent global_config = { 0 };
-static int test_case_selector = 0;
-static int error_code_sysinfo_network = 0;
 
 /* Every frame goes to the HTTPS module: the legacy egress is gone (#38030). */
 int __wrap_w_https_client_submit_event(const char *frame, size_t length) {
     check_expected(frame);
     check_expected(length);
     return mock();
-}
-
-int mock_sysinfo_networks_func(cJSON **object) {
-
-    static const char *ip_update_success =
-    "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
-    static const char *ipv6_gw_ipv4_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
-    static const char *ipv6_gw_ipv6_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *ipv4_gw_ipv4_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
-    static const char *ipv4_gw_ipv6_addr_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *dual_stack_gw_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"gateway6\":\"fe80::1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ], \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *ipv6_only_gw_update_success =
-    "{ \"iface\": [ { \"gateway\":\" \", \"gateway6\":\"fe80::1\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *ipv4_only_gw_update_success =
-    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"gateway6\":\" \", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ], \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
-    static const char *iface_bad_name = "{\"iface_fail\":[]}";
-    static const char *iface_no_elements = "{\"iface\":[]";
-    static const char *gateway_unknown = "{ \"iface\": [ { \"gateway\":\"unknown\" } ] }";
-    const char *json_string = NULL;
-
-    switch (test_case_selector) {
-    case 1:
-        json_string = ip_update_success;
-        break;
-    case 2:
-        json_string = iface_bad_name;
-        break;
-    case 3:
-        json_string = iface_no_elements;
-        break;
-    case 4:
-        json_string = gateway_unknown;
-        break;
-    case 5:
-        json_string = ipv6_gw_ipv4_addr_update_success;
-        break;
-    case 6:
-        json_string = ipv6_gw_ipv6_addr_update_success;
-        break;
-    case 7:
-        json_string = ipv4_gw_ipv4_addr_update_success;
-        break;
-    case  8:
-        json_string = ipv4_gw_ipv6_addr_update_success;
-        break;
-    case 9:
-        json_string = dual_stack_gw_update_success;
-        break;
-    case 10:
-        json_string = ipv6_only_gw_update_success;
-        break;
-    case 11:
-        json_string = ipv4_only_gw_update_success;
-        break;
-    }
-
-    *object = cJSON_Parse(json_string);
-
-    return error_code_sysinfo_network;
-}
-
-void mock_sysinfo_free_result_func(cJSON **object) {
-    cJSON_free(*object);
-    return;
 }
 
 /* Defined in win_utils.c; in the real agent it's called from
@@ -115,155 +40,9 @@ extern void wm_lifecycle_lock_init(void);
 
 static int setup_group(void **state) {
     agt = &global_config;
-    sysinfo_network_ptr = mock_sysinfo_networks_func;
-    sysinfo_free_result_ptr = mock_sysinfo_free_result_func;
     wm_lifecycle_lock_init();
 
     return 0;
-}
-
-static void test_get_agent_ip_legacy_win32_update_ip_success(void **state) {
-
-    char *agent_ip = { "\0" };
-    char *address = { "111.222.333.444" };
-    error_code_sysinfo_network = 0;
-    test_case_selector = 1;
-
-    agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-}
-
-static void test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv6_success(void ** state) {
-
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 6;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv4_success(void ** state) {
-
-    const char * address = {"111.222.333.444"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 5;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv4_success(void ** state) {
-
-    const char * address = {"111.222.333.444"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 7;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv6_success(void ** state) {
-
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 8;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success(void ** state) {
-
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 9;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success(void ** state) {
-
-    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 10;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_ipv4_only_gateway_ipv4_success(void ** state) {
-
-    const char * address = {"111.222.333.444"};
-    error_code_sysinfo_network = 0;
-    test_case_selector = 11;
-
-    char * agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-    os_free(agent_ip);
-}
-
-static void test_get_agent_ip_legacy_win32_sysinfo_error(void **state) {
-
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
-    error_code_sysinfo_network = 2;
-    test_case_selector = 1;
-    expect_string(__wrap__merror, formatted_msg, "Unable to get system network information. Error code: 2.");
-    agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-}
-
-static void test_get_agent_ip_legacy_win32_iface_bad_name(void **state) {
-
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
-    error_code_sysinfo_network = 0;
-    test_case_selector = 2;
-
-    agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-}
-
-static void test_get_agent_ip_legacy_win32_iface_no_elements(void **state) {
-
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
-    error_code_sysinfo_network = 0;
-    test_case_selector = 3;
-
-    agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
-}
-
-static void test_get_agent_ip_legacy_win32_gateway_unknown(void **state) {
-
-    char *agent_ip = { "\0" };
-    char *address = { "\0" };
-    error_code_sysinfo_network = 0;
-    test_case_selector = 4;
-
-    agent_ip = get_agent_ip_legacy_win32();
-
-    assert_string_equal(agent_ip, address);
 }
 
 static void test_SendMSGAction_mutex_abandoned(void **state) {
@@ -674,16 +453,6 @@ static void test_stop_wmodules_joins_a_spawned_thread(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ip_success), cmocka_unit_test(test_get_agent_ip_legacy_win32_sysinfo_error),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_iface_bad_name),    cmocka_unit_test(test_get_agent_ip_legacy_win32_iface_no_elements),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_gateway_unknown),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv6_success),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ipv6_gateway_ipv4_success),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv4_success),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_update_ipv4_gateway_ipv6_success),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_dual_stack_gateway_ipv6_success),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_ipv6_only_gateway_ipv6_success),
-        cmocka_unit_test(test_get_agent_ip_legacy_win32_ipv4_only_gateway_ipv4_success),
         cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
         cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
         cmocka_unit_test(test_SendMSGAction_multi_escape),

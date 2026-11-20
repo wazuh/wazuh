@@ -149,9 +149,14 @@ char * get_agent_id_from_name(const char *agent_name);
 **/
 cJSON* w_force_options_to_json(authd_force_options_t *force_options);
 
-/* Get the primary IP address of the host */
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
-char *getPrimaryIP();
-#endif
+/**
+ * @brief Get the primary IP address of the host
+ *
+ * It is the source address the host uses to reach the Internet, from a route lookup without sending
+ * any packet. IPv4 is tried first, and IPv6 if there is no IPv4 route.
+ *
+ * @return Allocated string with the address (IPv6 expanded), or NULL if no family has a route.
+ */
+char *getPrimaryIP(void);
 
 #endif /* AGENT_OP_H */

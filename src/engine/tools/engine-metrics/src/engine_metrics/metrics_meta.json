@@ -143,5 +143,13 @@
   "agent.cache.evictions": {
     "category": "cache",
     "unit": "count"
+  },
+  "indexer.events.requeued": {
+    "category": "events",
+    "unit": "count"
+  },
+  "indexer.events.deduplicated": {
+    "category": "events",
+    "unit": "count"
   }
 }

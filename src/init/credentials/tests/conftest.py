@@ -157,7 +157,7 @@ home = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 control = json.load(open(os.path.join(home, "stub-control.json")))
 args = sys.argv[1:]
 if args[-1] == "dump":
-    # The effective configuration with the schema's defaults, rooted at the sandbox's <CONF>; `conf_dump` overrides
+    # The effective configuration as generated (no indexer client pair), rooted at the sandbox's <CONF>; `conf_dump` overrides
     # dotted keys, `dump_exit` fails the call, `dump_raw` replaces the output, `dump_sleep` delays it (seconds). Not
     # logged: --check must leave the sandbox's tree as it found it.
     if control.get("dump_sleep"):
@@ -172,8 +172,7 @@ if args[-1] == "dump":
         "auth": {"disabled": False, "ssl_manager_cert": os.path.join(certs, "remoted.pem"),
                  "ssl_manager_key": os.path.join(certs, "remoted-key.pem"), "ssl_agent_ca": ""},
         "indexer": {"ssl": {"certificate_authorities": [os.path.join(certs, "indexer-ca.pem")],
-                            "certificate": os.path.join(certs, "indexer-connector.pem"),
-                            "key": os.path.join(certs, "indexer-connector-key.pem")}},
+                            "certificate": "", "key": ""}},
     }
     for dotted, value in control.get("conf_dump", {}).items():
         *parents, last = dotted.split(".")
@@ -345,11 +344,27 @@ class Sandbox:
             os.unlink(os.path.join(self.conf, "ca", r.CA_KEY))
         return state.cert_bytes
 
+    client_pair = False     # see configure_client_pair()
+    _settings = {}
+
     def control(self, **settings):
         """Set the stubs' behaviour: role, conf_exit, conf_dump, dump_exit, dump_raw, dump_sleep, keystore_fail,
         rbac_fail_times."""
+        self._settings = settings
+        written = dict(settings)
+        if self.client_pair:
+            dump = dict(settings.get("conf_dump", {}))
+            dump.setdefault("indexer.ssl.certificate", os.path.join(self.certs, "indexer-connector.pem"))
+            dump.setdefault("indexer.ssl.key", os.path.join(self.certs, "indexer-connector-key.pem"))
+            written["conf_dump"] = dump
         with open(os.path.join(self.home, "stub-control.json"), "w") as handle:
-            json.dump(settings, handle)
+            json.dump(written, handle)
+
+    def configure_client_pair(self):
+        """Name an indexer client pair in the configuration (certs/indexer-connector{,-key}.pem), which the generated
+        one does not: from here on every `dump` carries it unless `conf_dump` sets the two options itself."""
+        self.client_pair = True
+        self.control(**self._settings)
 
     def api_yaml(self, text, mode=0o660):
         """<home>/api/configuration/api.yaml as the installer leaves it: the account's group may write it."""

@@ -20,9 +20,14 @@ int* __wrap_wdb_disconnect_agents(int keepalive, const char* sync_status, __attr
     return mock_ptr_type(int*);
 }
 
+void (*wdb_get_agent_info_hook)(int id) = NULL;
+
 cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int* sock)
 {
     check_expected(id);
+    if (wdb_get_agent_info_hook) {
+        wdb_get_agent_info_hook(id);
+    }
     return mock_ptr_type(cJSON*);
 }
 

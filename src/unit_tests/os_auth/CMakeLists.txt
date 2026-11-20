@@ -107,7 +107,8 @@ target_link_libraries(
 target_link_libraries(
     test_main-server
     "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_get_monotonic_time -Wl,--wrap,SSL_read -Wl,--wrap,SSL_get_error \
-     -Wl,--wrap,OS_IsValidIP -Wl,--wrap,getDefine_Int_default"
+     -Wl,--wrap,OS_IsValidIP -Wl,--wrap,getDefine_Int_default \
+     -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,w_request_agent_add_clustered"
 )
 
 add_test(NAME test_main-server COMMAND test_main-server)

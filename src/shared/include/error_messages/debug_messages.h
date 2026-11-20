@@ -193,6 +193,7 @@
 #define FIM_DIFF_MEMORY_REACHED             "(6379): The diff of '%s' exceeded its memory limit and was discarded."
 #define FIM_DIFF_NO_JOB                     "(6380): Could not limit the memory of the diff process. Error code: %d"
 #define FIM_DIFF_CHILD_EXIT                 "(6381): The diff process ended with exit code %d and signal %d."
+#define FIM_AUDIT_PLUGIN_SYMLINK            "(6382): The Audit plugin configuration file '%s' is a symbolic link, its permissions are left as they are."
 
 /* Modules messages */
 #define WM_UPGRADE_MODULE_FINISHED           "(8154): Module Agent Upgrade finished."

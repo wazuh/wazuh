@@ -4,21 +4,36 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
+      # `make TARGET=winagent` compiles every agent module, so the blanket src/** is the real
+      # closure once the other product, the other platforms, the test trees and the trees this
+      # build never reads are taken out below.
       - "src/**"
       - ".github/workflows/5_testcomponent_windows-files.yml"
+      # python-version-file of the Windows job
+      - ".github/workflows/.python-version"
       - ".github/actions/reinstall_cmake/**"
+      # Run by reinstall_cmake (reinstall_cmake/action.yml:29)
+      - "tools/devContainer/reinstall-cmake.sh"
       # Wraps every compiler of the winagent build (setup-sccache, PATH masquerade)
       - ".github/actions/setup-sccache/**"
-      # Hands the built binaries to the Windows test job, which runs against what it fetches
       # The build job hands its binaries to the test job through S3: upload_s3_artifact and
       # download_s3_artifact are both on the result path.
       - ".github/actions/upload_s3_artifact/**"
       - ".github/actions/download_s3_artifact/**"
-      # Manager-only trees: src/CMakeLists.txt:276-293 and src/wazuh_modules/CMakeLists.txt:97-102
+      # Read by every configure (src/CMakeLists.txt:140, the VERSION define), by `make deps`
+      # (src/Makefile:729 runs get_git_refs.sh, which reads VERSION.json too, to choose the ref the
+      # agent's indexer templates are downloaded from, src/Makefile:596-614) and by the test itself
+      # (src/win32/qa/test_bin_details.py:8, the version every binary must carry)
+      - "VERSION.json"
+      - "tools/get_git_refs.sh"
+      # Converted by `make TARGET=winagent` (src/Makefile:375-376)
+      - "etc/internal_options.conf"
+      - "etc/local_internal_options-win.conf"
+      # Manager-only trees: src/CMakeLists.txt:346-362 and src/wazuh_modules/CMakeLists.txt:97-102
       # add them only when TARGET is not an agent. Their include/ directories stay: agent code
       # compiles against them (shared/src/agent_op.c -> os_auth/include/auth.h,
       # shared/src/agent_validate_op.c -> wazuh_db/include/wdb.h, and
-      # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,
+      # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,task_manager,
       # vulnerability_scanner}.c, globbed for every target at wazuh_modules/CMakeLists.txt:110-119,
       # -> each module's include/).
       - "!src/engine/**"
@@ -45,14 +60,54 @@ on:
       - "src/wazuh_modules/task_manager/include/**"
       - "!src/wazuh_modules/vulnerability_scanner/**"
       - "src/wazuh_modules/vulnerability_scanner/include/**"
-      # The manager's credential ladder: an install-time script, never built
-      - "!src/init/credentials/**"
+      # Parsers src/config/CMakeLists.txt:46-55 removes from the agent's libconfig
+      - "!src/config/src/authd-config.c"
+      - "!src/config/src/global-config.c"
+      - "!src/config/src/indexer-config.c"
+      - "!src/config/src/mconf-config.c"
+      - "!src/config/src/remote-config.c"
+      - "!src/config/src/wazuh_db-config.c"
+      - "!src/config/src/wmodules-task-manager.c"
+      - "!src/config/src/wmodules-vulnerability-detection.c"
+      # Installer scripts of the Unix products (the manager's credential ladder included): neither
+      # `make TARGET=winagent` nor the MSI (src/win32/wazuh-installer.wxs) reads src/init
+      - "!src/init/**"
+      # Linux-only: the SELinux policy hangs off the `agent` make target (src/Makefile:351-365)
+      # and eBPF off src/syscheckd/CMakeLists.txt:124-127; the eBPF include/ is on every
+      # platform's include path (:44) and syscheckd sources include ebpf_whodata.h
+      - "!src/selinux/**"
+      - "!src/syscheckd/src/ebpf/**"
+      - "src/syscheckd/src/ebpf/include/**"
+      # Inputs of the agent build tooling (src/build.py), never run here
+      - "!src/build.py"
+      - "!src/ci/**"
       # Test trees: UNIT_TEST-gated, never built by this workflow
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
       - "!src/**/integrationTests/**"
-      # qa/ suites run in other workflows; win32/qa stays (executed here)
+      # Test-tool inputs and a docker demo no CMake file references
+      - "!src/**/smokeTests/**"
+      - "!src/client-agent/https_client/demo/**"
+      # MSI-only inputs (src/win32/wazuh-installer.wxs:64-71,300,726 and the upgrade scripts): no
+      # CMake or make rule reads them; 5_testcomponent_windows-installer-upgrade.yml builds the MSI
+      - "!src/win32/wazuh-installer*"
+      - "!src/win32/*.vbs"
+      - "!src/win32/do_upgrade.ps1"
+      - "!src/win32/upgrade.bat"
+      - "!src/win32/license.rtf"
+      - "!src/win32/vista_sec.txt"
+      - "!src/win32/ui/*.jpg"
+      # qa/ suites run in other workflows; of src/win32/qa only this workflow's own test stays
       - "!src/data_provider/qa/**"
+      - "!src/win32/qa/test_dll_hijack.py"
+      - "!src/win32/qa/test_win_upgrade.py"
+      - "!src/win32/qa/*.pmc"
+      # Prose and pictures: nothing compiles or packages them (last, so they win over the
+      # re-included include/)
+      - "!src/**/*.md"
+      - "!src/**/COPYING"
+      - "!src/shared_modules/dbsync/images/**"
+      - "!src/Doxyfile"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -75,7 +130,7 @@ jobs:
           sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4
@@ -146,4 +201,6 @@ jobs:
       - name: Run tests
         run: |
           cd src/win32/qa
-          python -m pytest -vv ./test_bin_details.py
+          # The test is parametrized over the downloaded binaries: without the option, an empty
+          # C:\binaries is one skipped case and exit 0.
+          python -m pytest -vv -o empty_parameter_set_mark=fail_at_collect ./test_bin_details.py

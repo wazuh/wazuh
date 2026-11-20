@@ -29,11 +29,16 @@ The installer writes this section:
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
+
+### When changes apply
+
+`wazuh-manager-modulesd` (Vulnerability Scanner, Inventory Sync Server, Content Manager) and
+`wazuh-manager-analysisd` (the engine) read `<indexer>` once, when they start: after editing it, run
+`wazuh-manager-control restart` (or `reload`, which restarts both). The Python framework (API, cluster)
+reads the section again whenever `wazuh-manager.conf` changes and needs no restart.
 
 ### hosts
 
@@ -49,7 +54,7 @@ List of Indexer node URLs, one per `<host>` child element.
 ### ssl
 
 TLS material of the connection. The schema's defaults are empty (no CA file, no client
-certificate); the installer writes the `/etc/wazuh-manager/certs/` names shown above.
+certificate); the installer writes the CA name shown above and no client certificate.
 
 **Every file must sit directly in `/etc/wazuh-manager/certs`.** The schema accepts any path (a
 relative one resolves against the manager home, `/var/wazuh-manager`), but the
@@ -78,7 +83,8 @@ CA certificates used to verify the Indexer's certificate, one per `<ca>` child e
 
 #### certificate
 
-Client certificate the manager presents to the Indexer.
+Client certificate the manager presents to the Indexer, for an Indexer that requires client certificates. The
+connector authenticates with the [indexer credentials](#indexer-credentials) whether or not it is set.
 
 - **Default value:** empty (no client certificate)
 - **Allowed values:** path of a PEM-encoded certificate directly in `/etc/wazuh-manager/certs`; set
@@ -116,7 +122,7 @@ printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f i
 printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-The C daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
+The daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
 credentials once per process, so restart the manager after changing them. The Python framework (API,
 cluster) reads them again for every Indexer client it builds and needs no restart.
 
@@ -150,8 +156,6 @@ All of them are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -160,8 +164,8 @@ All of them are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
 
 If the Indexer nodes' certificates come from different CAs, either put them all in `indexer-ca.pem`
 or list several files. Files other than `indexer-ca.pem` are never imported: stage them in
-`/etc/wazuh-manager/certs` (`root:wazuh-manager 0640`) before the start. The client pair may chain to
-any of the listed CAs.
+`/etc/wazuh-manager/certs` (`root:wazuh-manager 0640`) before the start. A configured client pair may
+chain to any of the listed CAs.
 
 ```xml
 <indexer>
@@ -173,6 +177,23 @@ any of the listed CAs.
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
       <ca>/etc/wazuh-manager/certs/indexer-ca-2.pem</ca>
+    </certificate_authorities>
+  </ssl>
+</indexer>
+```
+
+### Client Certificate
+
+For an Indexer that requires client certificates, name a pair it issued for this manager (`clientAuth`):
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://10.0.0.1:9200</host>
+  </hosts>
+  <ssl>
+    <certificate_authorities>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -208,15 +229,14 @@ Validate the configuration, then the TLS files and their modes (as root):
 /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 ```
 
-Check that the Indexer accepts the manager's certificate and credentials, using the same files and
-account the connector uses. The command sends the indexer password, so send it only to a host this
-manager is configured for: take `<indexer>` from the output of
-`/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` rather than assuming the indexer is local.
+Check that the Indexer accepts the manager's credentials, using the same CA and account the connector
+uses (with a [client certificate](#client-certificate) configured, add `--cert` and `--key` with its
+files). The command sends the indexer password, so send it only to a host this manager is configured
+for: take `<indexer>` from the output of `/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts`
+rather than assuming the indexer is local.
 
 ```bash
 curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
-     --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
-     --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
      'https://127.0.0.1:9200/_cluster/health/wazuh-*,.wazuh-*'
 ```
@@ -231,8 +251,8 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 
 | Message | Meaning |
 |---|---|
-| `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | The Indexer answered `401`: wrong user or password in the keystore (logged only at debug level 2) |
-| `Health check failed for '<host>' - Forbidden - Check user permissions` | The Indexer answered `403` (logged only at debug level 2) |
+| `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | The Indexer answered `401`: wrong user or password in the keystore (logged only at debug level 2; when the Indexer names the error, it is `Unauthorized (<type>: <reason>) - …`) |
+| `Health check failed for '<host>' - Forbidden - Check user permissions` | The Indexer answered `403` (logged only at debug level 2; likewise `Forbidden (<type>: <reason>) - …`) |
 | `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`; `<reason>` carries the cause above (for example `Unauthorized - Check indexer credentials`) |
 | `Indexer node '<host>' is available again.` | The node recovered |
 | `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
@@ -250,17 +270,18 @@ interval, some with the same tag. They describe the same node state, not repeate
 
 ## Certificates
 
-The connector trusts the indexer's CA and presents a client pair the indexer issued for this manager. Neither
-comes from the manager's own CA:
+The connector trusts the indexer's CA, and presents a client pair the indexer issued for this manager only when
+[`certificate`](#certificate) and [`key`](#key) name one. Neither comes from the manager's own CA:
 
 | File | Owner:group | Mode |
 |---|---|---|
 | `/etc/wazuh-manager/certs/indexer-ca.pem` | root:wazuh-manager | 0640 |
-| `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
-| `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector.pem` (when configured) | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector-key.pem` (when configured) | root:wazuh-manager | 0640 |
 
-When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`;
-otherwise stage them yourself under these names. The owner and mode above are checked exactly before every start:
+When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`
+(the client pair only when the indexer publishes `manager-client.pem` and `manager-client-key.pem`); otherwise
+stage them yourself under these names. The owner and mode above are checked exactly before every start:
 a replacement file with any other is refused as `UNSAFE` (`Unsafe credentials. Exiting`). How imports, staged
 files, validity checks and rotation work is described once, in
 [Indexer trust](../../getting-started/credentials.md#indexer-trust).

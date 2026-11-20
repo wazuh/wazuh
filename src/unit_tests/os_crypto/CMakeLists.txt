@@ -17,11 +17,12 @@ if(${TARGET} STREQUAL "manager")
     add_subdirectory(md5_sha1_sha256)
     add_subdirectory(sha256)
     add_subdirectory(sha512)
+    add_subdirectory(signature)
 elseif(${TARGET} STREQUAL "agent" OR ${TARGET} STREQUAL "winagent")
     # All os_crypto sources are linked into the agent/winagent binaries
     # (shared/CMakeLists.txt:94). Pure-math subdirs (aes, sha*, md5*, hmac,
-    # blowfish, signature) have no CLIENT/manager or POSIX/Win32 divergence,
-    # so their tests are safe to run on both Linux agent and winagent.
+    # blowfish) have no CLIENT/manager or POSIX/Win32 divergence, so their
+    # tests are safe to run on both Linux agent and winagent.
     # `shared/` is excluded because msgs.c has #ifdef CLIENT branches that
     # change behavior vs the manager-only flow the tests were written against.
     if(${TARGET} STREQUAL "winagent")
@@ -45,4 +46,8 @@ elseif(${TARGET} STREQUAL "agent" OR ${TARGET} STREQUAL "winagent")
     add_subdirectory(md5_sha1_sha256)
     add_subdirectory(sha256)
     add_subdirectory(sha512)
+    # POSIX only: it creates symlinks, hard links and FIFOs.
+    if(${TARGET} STREQUAL "agent")
+        add_subdirectory(signature)
+    endif()
 endif()

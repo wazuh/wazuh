@@ -8,6 +8,9 @@ on:
     paths:
       - "ruleset/sca/**/*.yml"
       - ".github/scripts/sca-remediation-markdown/**"
+      # dashboard-ref.js derives the wazuh-dashboard(-plugins) ref it renders against from
+      # VERSION.json's "version": a bump changes what every check here compares with.
+      - "VERSION.json"
       - ".github/workflows/5_codequality_sca-remediation-markdown.yml"
   # A change on the dashboard side (its renderer, or a markdown-it/dompurify bump) can't show up
   # as a path change here, so a PR-only trigger would never notice it drifting. This re-runs a

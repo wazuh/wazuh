@@ -44,4 +44,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg);
 // Validate checksums
 int validate_command_checksums(wm_command_t * command, const char * full_path);
 
+// Get the next line-aligned part of text that fits in budget bytes once JSON-escaped
+size_t wm_command_next_part(const char *text, size_t len, size_t start, size_t budget, size_t *part_len, size_t *skipped);
+
 #endif // WM_COMMAND_H

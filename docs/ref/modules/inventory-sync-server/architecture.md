@@ -129,13 +129,20 @@ Sessions divide into two scheduling kinds:
   whole-agent deletions) execute their own I/O and respond by themselves. Before running one, the
   worker **cuts the open batch** — flushes and answers it — because an immediate session's
   effects (deletes, a checksum read) must not overtake bulk writes of an EARLIER session of the
-  same agent.
+  same agent. The checksum reads ask the indexer for `allow_partial_search_results=false`.
 
 The `200` contract is strict on purpose: it is only sent after a successful `flush()`, so "the
 agent saw 200" always means "the indexer accepted the data". A failed flush fails the whole open
 batch; the status is picked by connector availability — `503` when the indexer is the problem
 (the agent retries, exactly like any other not-ready condition), `500` otherwise (same retry, but
-the log line is operator-actionable). Re-applying a session is idempotent (deterministic document
+the log line is operator-actionable). One failure skips the availability check: when the indexer
+answered a read (the checksum's) with a `5xx`, the session is answered `503` at once, with the
+generic body and no `Retry-After`, because the answer is the indexer's own and the last health
+check can still say "available" while a node restarts. It is never `409`: no mismatch was
+calculated. A `5xx` on a write follows the rule above, and any other read failure (a `4xx`, a
+`429` with the retry budget spent, no server, transport) follows it too. That includes a `5xx`
+whose body the connection cut short: the transport reports a transfer error without the status,
+so the read counts as a transport failure. Re-applying a session is idempotent (deterministic document
 ids, versioned upserts), which is what makes "just re-POST it" the whole recovery story.
 
 Because each worker owns its connector outright, all cross-thread contention in the ingestion
@@ -179,7 +186,7 @@ the indexer never delays the strand that is deciding whether to admit the next s
 Sessions whose `Start.option` is `VDFirst` or `VDSync` carry data the vulnerability scanner must
 evaluate. They run through a dedicated lane so that the scan can GATE the response: a `200` for a
 VD session guarantees the scan ran (unless this node runs no scanner — see the table below) AND the
-inventory was flushed; a failed scan answers `500` with **nothing indexed**.
+inventory was flushed; a failed scan answers `500` with **nothing indexed** and no vulnerability alerts sent.
 
 ```mermaid
 flowchart LR
@@ -204,7 +211,7 @@ The gates, in order:
 | No healthy indexer host when a lane worker picks the session up | `503` (generic body) | Checked before the scan: a scan whose inventory could never land would waste minutes to answer the same `503`. The feed gate above is also re-checked here, answering `503` + `Retry-After` again if the feed became unready while the session waited. |
 | `Start.feed_offset` differs from this node's current feed offset (only while this node runs a scanner) | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
-| Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
+| Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed and no alerts sent (the scanner sends them only after its findings are stored); the agent retries next cycle and the re-POST redoes both halves. |
 | Scan legitimately skipped (scanner disabled, or enabled but failed to start) | index + `200` | Inventory must keep flowing even with the scanner off or broken. |
 | VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A scanner that is enabled here but still starting is answered `503` above instead, so packages and vulnerabilities keep going together whenever the module is up. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
@@ -436,7 +443,7 @@ answers to) lives in the module's in-tree developer README,
 | 5 | **The in-flight byte budget is the size limit** — no per-request body cap by default. A session declaring more than the total budget answers `413`. | One limit that actually bounds memory, instead of two that can contradict each other. |
 | 6 | **Per-agent ordering by sharding**, not by locking: `hash(agentId) % workers`, one connector per worker, group commit. | Ordering becomes a topology property; the indexer sees few large bulks; no shared connector state on the hot path. |
 | 7 | **A `200` means flushed.** Bulk responses wait for the group commit; immediate sessions flush inside their own execution. | "The agent saw success" and "the indexer has the data" can never diverge. |
-| 8 | **Checksum verification is one attempt, no retry loop.** Mismatch answers `409` and the agent full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison only delays the inevitable resync. |
+| 8 | **Checksum verification is one attempt on the server, no retry loop.** Mismatch answers `409`; the agent repeats the check and, once the mismatch is confirmed on every attempt, full-resyncs (a cleans + a full delta). | Retrying a deterministic comparison inside the server only delays the answer; whether to check again is the agent's call. |
 | 9 | **VD sessions scan synchronously, and the scan gates indexing** — scan → ok → index → `200`; failure → `500` with nothing indexed. | A VD `200` certifies both halves; there is no window where inventory exists without its scan. |
 | 10 | **Feed not ready ⇒ `503` + `Retry-After`, rejected without processing.** Nobody blocks waiting for the CVE feed. | The re-POST applies ingest and scan together; threads are never parked on a download that can take minutes. |
 | 11 | **A short scan-lane queue** with immediate `503` on overflow, and per-agent cross-lane exclusion through a shared registry. | Early rejection beats late timeout; the pipeline and the lane can never interleave one agent's operations. |

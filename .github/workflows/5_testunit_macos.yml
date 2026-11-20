@@ -4,18 +4,26 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
+      # The agent's TEST=1 tree compiles every agent module with its tests, so the blanket src/**
+      # is the real closure once the other product, the other platforms and the trees this build
+      # never reads are taken out below.
       - "src/**"
       - ".github/workflows/5_testunit_macos.yml"
-      # Manager-only trees: src/CMakeLists.txt:276-293 and src/wazuh_modules/CMakeLists.txt:97-102
+      # Read by every configure (src/CMakeLists.txt:140, the VERSION define) and by `make deps`:
+      # src/Makefile:729 runs get_git_refs.sh (which reads VERSION.json too) to choose the ref the
+      # agent's indexer templates are downloaded from (src/Makefile:596-614)
+      - "VERSION.json"
+      - "tools/get_git_refs.sh"
+      # Manager-only trees: src/CMakeLists.txt:346-362 and src/wazuh_modules/CMakeLists.txt:97-102
       # add them only when TARGET is not an agent. Their include/ directories stay: agent code
       # compiles against them (shared/src/agent_op.c -> os_auth/include/auth.h,
       # shared/src/agent_validate_op.c -> wazuh_db/include/wdb.h, and
-      # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,
+      # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,task_manager,
       # vulnerability_scanner}.c, globbed for every target at wazuh_modules/CMakeLists.txt:110-119,
       # -> each module's include/).
       - "!src/engine/**"
       - "!src/remoted/**"
-      # Except the two headers the remoted test wrappers include (agent_metadata_wrappers.h:15,
+      # Except the two headers the remoted test wrappers include (agent_metadata_wrappers.h:14,
       # netbuffer_wrappers.h:15 under src/unit_tests/wrappers/wazuh/remoted/), which TEST=1 compiles
       # into libwazuh_test on Darwin too (src/shared/CMakeLists.txt:164-165, Darwin branch)
       - "src/remoted/include/remoted.h"
@@ -42,13 +50,44 @@ on:
       - "src/wazuh_modules/task_manager/include/**"
       - "!src/wazuh_modules/vulnerability_scanner/**"
       - "src/wazuh_modules/vulnerability_scanner/include/**"
+      # Parsers src/config/CMakeLists.txt:46-55 removes from the agent's libconfig
+      - "!src/config/src/authd-config.c"
+      - "!src/config/src/global-config.c"
+      - "!src/config/src/indexer-config.c"
+      - "!src/config/src/mconf-config.c"
+      - "!src/config/src/remote-config.c"
+      - "!src/config/src/wazuh_db-config.c"
+      - "!src/config/src/wmodules-task-manager.c"
+      - "!src/config/src/wmodules-vulnerability-detection.c"
       # Installer scripts (the manager's credential ladder included) and their shell suites:
       # neither make nor ctest reads src/init
       - "!src/init/**"
-      # Windows-only, never built for the macOS agent
+      # Windows-only, never built for the macOS agent (src/CMakeLists.txt:340-342)
       - "!src/win32/**"
-      # Prose: nothing compiles Markdown (last, so it wins over the re-included include/)
+      # Linux-only (src/syscheckd/CMakeLists.txt:124-127); its include/ is on every platform's
+      # include path (:44) and syscheckd sources include ebpf_whodata.h
+      - "!src/syscheckd/src/ebpf/**"
+      - "src/syscheckd/src/ebpf/include/**"
+      # Inputs of the agent build tooling (src/build.py), never run here
+      - "!src/ci/**"
+      # qa/ harnesses are pytest suites driving test tools, run by their own workflows
+      - "!src/**/qa/**"
+      # The cmocka project (src/unit_tests/CMakeLists.txt) is a separate configure tree this
+      # workflow never builds; `make TEST=1` reads only the wrappers it compiles into libwazuh_test
+      # (src/shared/CMakeLists.txt:111-256) and the wrapper headers the sources include under
+      # WAZUH_UNIT_TESTING
+      - "!src/unit_tests/**"
+      - "src/unit_tests/wrappers/**"
+      # Test-tool inputs and a docker demo no CMake file references
+      - "!src/**/smokeTests/**"
+      - "!src/client-agent/https_client/demo/**"
+      # Python: no CMake or make rule of the agent build runs any
+      - "!src/**/*.py"
+      # Prose and pictures: nothing compiles them (last, so they win over the re-included include/)
       - "!src/**/*.md"
+      - "!src/**/COPYING"
+      - "!src/shared_modules/dbsync/images/**"
+      - "!src/Doxyfile"
   workflow_dispatch:
 
 concurrency:

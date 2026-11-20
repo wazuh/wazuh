@@ -35,6 +35,34 @@ DEFAULT_DATE: str = 'n/a'
 UNIDENTIFIED_PEER_TAG = "Incoming connection"
 
 
+def read_vulnerability_detection_enabled(logger) -> bytes:
+    """Read this node's `vulnerability-detection.enabled` as the answer a worker gets to `vd_enabled`.
+
+    Vulnerability detection is on or off for the whole cluster and the master decides, so every worker asks for
+    this after connecting. Read once, when the cluster daemon starts: the vulnerability scanner reads the same
+    file at the same (re)start, so this is the value the master's own scanner runs with.
+
+    Parameters
+    ----------
+    logger : logging.Logger
+        Logger to report an unreadable configuration with.
+
+    Returns
+    -------
+    bytes
+        `b'yes'` or `b'no'`; `b'unknown'` when the configuration could not be read, which a worker ignores.
+    """
+    try:
+        enabled = get_manager_conf(section='vulnerability-detection',
+                                   field='enabled')['vulnerability-detection']['enabled']
+    except Exception as e:
+        logger.error(f"Could not read the vulnerability detection configuration: {e}. "
+                     "Worker nodes will keep their own setting.")
+        return b'unknown'
+
+    return b'yes' if enabled else b'no'
+
+
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
     """
     Define the process and variables necessary to receive and process integrity information from the master.
@@ -323,6 +351,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'sendsync':
             self.server.sendsync.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to SendSync requests queue'
+        elif command == b'vd_enabled':
+            return b'ok', self.server.vulnerability_detection_enabled
         else:
             return super().process_request(command, data)
 
@@ -1077,6 +1107,7 @@ class Master(server.AbstractServer):
                 "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
             self.task_pool = None
         self.integrity_already_executed = []
+        self.vulnerability_detection_enabled = read_vulnerability_detection_enabled(self.logger)
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
         self.indexer_task_manager = IndexerTaskManager()

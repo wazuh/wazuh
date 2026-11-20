@@ -175,7 +175,7 @@ namespace
                 *server, Method::Post, "/scan/vd", remoted::endpoints::scanvd::makeHandler(*scanVdHandler));
 
             HttpServerConfig httpConfig;
-            port = static_cast<std::uint16_t>(28000 + (::getpid() % 5000));
+            port = remoted::test::findFreePort();
             httpConfig.port = port;
             httpConfig.certificatePath = cert->certPath;
             httpConfig.privateKeyPath = cert->keyPath;

@@ -11,6 +11,10 @@ name: 5.X - API endpoints - Delete old integration test images
 # refuses to delete, are left to the daily cleanup.
 
 on:
+  # No `paths` on purpose: a pull request has images whenever any of its runs fired the integration
+  # workflow, which its final diff does not tell (a commit may have touched those paths and been
+  # reverted), and copying that workflow's path list here would only add a list to keep in step. A
+  # closed pull request with no images costs two jobs of a few seconds.
   pull_request:
     types: [closed]
   schedule:

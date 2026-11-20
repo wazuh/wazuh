@@ -8,9 +8,12 @@ on:
       # Library, schema (embedded at configure time, MANAGER_CONFIG_SCHEMA_FILE in CMakeLists.txt), CLI, GTest, vectors,
       # tests/cli/manager_conf_cli_test.sh and tests/parity.py.
       - "src/shared_modules/manager_config/**"
-      # bin/wazuh-manager-conf re-spells error_messages.h's NO_CONFIG/CONFIG_INVALID (cli/manager-conf.cpp);
-      # manager_config_cli asserts those (1244)/(1239) texts.
-      - "src/shared/include/error_messages/error_messages.h"
+      # The one header outside the module that the library and the CLI compile: managerConfDir.hpp
+      # (src/semantics.cpp:12, cli/manager-conf.cpp:31; include dirs at CMakeLists.txt:43 and :52).
+      - "src/shared_modules/utils/managerConfDir.hpp"
+      # Not listed on purpose: src/shared/include/error_messages/error_messages.h. Nothing built or
+      # run here reads it -- the CLI defines its own NO_CONFIG/CONFIG_INVALID (cli/manager-conf.cpp:35-36)
+      # and manager_config_cli asserts those strings, so a change there cannot change this lane's result.
       # The end-to-end suite (manager_config_cli) runs the real generator and asserts that the
       # configuration the installer writes is accepted by the strict loader. Exactly what it executes:
       # the mirror holds only src/init/*.sh, etc/ and VERSION.json (MIRROR in manager_conf_cli_test.sh);
@@ -49,6 +52,10 @@ on:
       # (its "Build http-request" step, also configured by add_subdirectory(shared_modules/http-request)
       # in src/CMakeLists.txt). A submodule bump changes only
       # the gitlink path, which `http-request/**` would never match.
+      # Not listed on purpose: the action's other two standalone builds (shared_modules/keystore and
+      # utils/flatbuffers). No target built here links or includes their output, and a change that
+      # breaks either is caught on its own PR by the lanes that fire on those trees and run this same
+      # action (5_testcomponent_keystore.yml, 5_testunit_shared_modules_utils.yml).
       - "src/Makefile"
       - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
@@ -64,8 +71,9 @@ on:
       - ".github/actions/reinstall_cmake/**"
       - "tools/devContainer/reinstall-cmake.sh"
       - ".github/actions/setup-sccache/**"
-      # Prose: no build or test reads it.
+      # Prose: no build or test reads them.
       - "!src/shared_modules/manager_config/README.md"
+      - "!src/shared_modules/manager_config/COPYING"
   workflow_dispatch:
 
 concurrency:
@@ -171,9 +179,10 @@ jobs:
       # `manager_config` is the module-wide ctest label: it selects the GTest, the CLI end-to-end
       # suite and the jsonschema parity check (tests/unit/CMakeLists.txt).
       #
-      # Valgrind is deliberately off: test_cpp runs `valgrind ctest` without --trace-children=yes, so
-      # the test binaries are not instrumented anyway, and two of the three tests are a shell script
-      # and a Python script. The ASAN job below is the memory gate that matters here.
+      # Valgrind is off: this leg never had a working valgrind run (test_cpp used to wrap only the
+      # ctest driver; its branch now traces the test binaries, but turning it on needs a trial run),
+      # and two of the three tests are a shell script and a Python script. The ASAN job below is the
+      # memory gate.
       - name: Manager config - Run tests
         uses: ./.github/actions/test_cpp
         with:

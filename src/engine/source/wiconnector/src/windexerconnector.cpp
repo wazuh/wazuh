@@ -11,6 +11,7 @@
 #include <json.hpp>
 
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
 
 #include <wiconnector/windexerconnector.hpp>
 
@@ -473,6 +474,26 @@ uint64_t WIndexerConnector::getDroppedEvents()
     return m_indexerConnectorAsync->getDroppedEvents();
 }
 
+uint64_t WIndexerConnector::getRequeuedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getRequeuedEvents();
+}
+
+uint64_t WIndexerConnector::getDeduplicatedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDeduplicatedEvents();
+}
+
 void WIndexerConnector::index(std::string_view index, std::string_view data)
 {
     std::shared_lock lock(m_mutex);
@@ -480,7 +501,8 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     {
         try
         {
-            m_indexerConnectorAsync->indexDataStream(index, data);
+            const auto id = base::utils::generators::generateDocId();
+            m_indexerConnectorAsync->indexDataStream(index, id, data);
         }
         catch (const IndexerConnectorException& e)
         {
@@ -603,6 +625,15 @@ std::optional<PolicyResources> WIndexerConnector::getPolicy(std::string_view spa
         LOG_TRACE("[indexer-connector] Retrieved {} / {} hits so far", retrievedSoFar, total_hits);
 
     } while (moreHits);
+
+    // The walk must reach the total its first page announced: a page that comes back empty before
+    // that would otherwise end it early and return a space missing documents, whose policy would then
+    // reference assets that were never downloaded.
+    if (retrievedSoFar < total_hits)
+    {
+        throw IndexerConnectorException(fmt::format(
+            "Policy download for space '{}' ended after {} of {} documents", space, retrievedSoFar, total_hits));
+    }
 
     // Avoid memory reallocations
     {

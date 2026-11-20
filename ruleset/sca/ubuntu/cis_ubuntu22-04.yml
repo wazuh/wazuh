@@ -10670,7 +10670,7 @@ checks:
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
-      - 'not f:/etc/default/grub -> r:^\s*\t*linux && !r:audit=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && !r:audit=1'
 
   # 6.3.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 28593
@@ -10736,7 +10736,8 @@ checks:
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
-      - 'not f:/etc/default/grub -> !r:audit_backlog_limit=\d+'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && !r:audit_backlog_limit='
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && n:audit_backlog_limit=(\d+) compare < 8192'
 
   # 6.3.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 28594

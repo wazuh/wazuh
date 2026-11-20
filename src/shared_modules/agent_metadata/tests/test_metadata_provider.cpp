@@ -13,6 +13,7 @@
 #include <cstring>
 #include <thread>
 #include <atomic>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -397,9 +398,20 @@ TEST_F(MetadataProviderTest, ReadsNeverMixTwoConcurrentRecords)
     std::thread reader1(reader);
     std::thread reader2(reader);
 
-    for (int i = 0; i < 5000; ++i)
+    // get() turns a reader away while a write is in progress, so a fixed number of back-to-back
+    // writes can end before any read succeeds. That is the usual outcome under valgrind, which
+    // runs one thread at a time. Keep writing until a read went through, and until then give up
+    // the CPU after each write.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+
+    for (int i = 0; i < 5000 || (reads.load() == 0 && std::chrono::steady_clock::now() < deadline); ++i)
     {
         metadata_provider_update(i % 2 == 0 ? &recordB : &recordA);
+
+        if (reads.load() == 0)
+        {
+            std::this_thread::yield();
+        }
     }
 
     stop.store(true);

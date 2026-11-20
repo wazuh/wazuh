@@ -355,14 +355,15 @@ through a worker whose replica has not been refreshed yet.
 ## Step 8: The keystore decision, with and without a key
 
 Now authd validates the request and mutates the in-memory keystore under one mutex. What happens
-next depends on whether this agent is new, colliding, or rotating.
+next depends on whether this agent is new, colliding, or rotating. The mutex is the one every
+enrollment and the `client.keys` writer take, so authd does not wait on wazuh-db while holding it.
 
 ### A brand-new agent
 
 No name or IP collision: authd draws a 32-byte `reenroll_secret`, then `OS_AddNewAgent()` increments
 the id counter and generates a 32-byte key as 64 lowercase hex characters. It does not search for
-a free id slot. On a fresh enrollment, failure of the secret draw leaves no new entry;
-on a force replacement, the old agent may already have been removed.
+a free id slot. The secret is drawn before anything else changes, so a failure of that draw leaves no
+new entry and removes no agent, on a fresh enrollment and on a force replacement alike.
 
 That key is the agent's long-term credential: it is the HS256 secret of the `wazuh-agent+jwt` bearer
 the agent signs for every subsequent request, and it is what `client.keys` carries.
@@ -382,6 +383,22 @@ refusal ends the decision:
 | 5 | `force.key_mismatch` | when enabled and `key_hash` is supplied: **the supplied hash matches** |
 | 6 | deletion backlog | too many deletions are already in flight; this replacement failure surfaces as `9007`/`9008` (`409`), while an explicit `remove` uses `9021` |
 
+Guards 2 to 4 need the existing agent's row from wazuh-db. authd reads it with the keystore mutex
+released, then validates the request again: the agent holding the name or the IP is looked up once
+more, and the row only counts if it is still the same agent. An enrollment that collides with an
+existing agent therefore waits for wazuh-db on its own. While it does, enrollments of other agents on
+`/enroll` and the server API are answered and `client.keys` keeps being written; port 1515 is served
+by a single thread, so requests arriving there after a colliding one still wait behind it.
+
+If the existing agent is replaced or removed by another request while its row is being read, authd
+reads the row of whoever holds the name or the IP by then, up to three more times. When the holder
+still cannot be confirmed, the enrollment is refused as a duplicate (`9007`/`9008`) with this line in
+the manager log and nothing is removed; the agent may retry the enrollment:
+
+```
+Duplicate name '<name>', rejecting enrollment. The agent holding it could not be confirmed while it was being checked.
+```
+
 `key_hash` is SHA-1 of the concatenation of the existing id, name and raw key text, without
 separators (`w_get_key_hash()`); it is not a re-enrollment credential. Guard 5 applies only when
 `force.key_mismatch` is enabled:
@@ -398,9 +415,10 @@ When the guards do allow it, **the takeover is a deletion**: the previous agent 
 normal removal path, and the newcomer gets a **new id**. Its documents in the indexer are purged on
 the usual schedule. An automatically assigned id is never reused.
 
-The IP collision is checked before the name collision. If they name different agents, an allowed
-IP replacement can delete the first agent before the name guard refuses the request for the second;
-that earlier deletion is not rolled back. The same limitation applies to failures after the guards.
+The IP collision is checked before the name collision. If they name different agents, both are
+judged before either is removed: a request refused for the name leaves the agent holding the IP in
+place. What is not rolled back is a failure after the guards have admitted the request: if adding
+the new agent or recording its credential then fails, the agents it replaced are already removed.
 
 ### A re-enrollment
 

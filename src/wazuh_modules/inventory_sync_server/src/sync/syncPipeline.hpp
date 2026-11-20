@@ -172,8 +172,9 @@ namespace invsync::sync
         /// Pops the first queued item whose agent the registry lets this lane take (front, when
         /// no registry). Returns false when nothing is dispatchable RIGHT NOW.
         bool popDispatchable(Shard& shard, Item& item);
-        /// 503 when the worker's connector reports unavailable (retriable), 503 + Retry-After when
-        /// a by-query ran out of its version-conflict allowance (retriable contention), 500 otherwise.
+        /// 503 when the indexer answered a read with a 5xx or the worker's connector reports
+        /// unavailable (retriable), 503 + Retry-After when a by-query ran out of its
+        /// version-conflict allowance (retriable contention), 500 otherwise.
         void respondConnectorFailure(std::vector<Item>& items,
                                      indexer::IIndexerConnectorSync& connector,
                                      indexer::ConnectorError::Cause cause = indexer::ConnectorError::Cause::Other);

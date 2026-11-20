@@ -360,7 +360,7 @@ right address.
 
 ### Disabling it
 
-Set `<remote><legacy><ca_delivery>no</ca_delivery></remote>` when a corporate PKI or a
+Set `<remote><legacy><ca_delivery>no</ca_delivery></legacy></remote>` when a corporate PKI or a
 configuration-management tool distributes the anchor by its own means. With it off, the upgrade push
 is byte-for-byte what it was before this feature existed. Unlike `<remote><legacy><enabled>` and
 `<remote><https><verification_mode>`, this option is read by `remoted` alone, so changing it does not

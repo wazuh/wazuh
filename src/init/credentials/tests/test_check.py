@@ -116,6 +116,20 @@ def installed(resolver, sandbox):
     assert code == 0 and err == "", err
 
 
+def test_prestart_validates_what_it_wrote(resolver, sandbox, monkeypatch):
+    """After its steps, --prestart judges the result as --check would: a file a step left with a lax mode is
+    refused, and the start with it."""
+    sandbox.stage_ca()
+    real = resolver.write_file
+
+    def lax(parent, name, data, mode, uid, gid):
+        return real(parent, name, data, 0o640 if name == "credentials.env" else mode, uid, gid)
+
+    monkeypatch.setattr(resolver, "write_file", lax)
+    code, _, err = run_env(resolver, sandbox, "--prestart")
+    assert code == 1 and f"UNSAFE {sandbox.conf}/export/credentials.env: mode is 0640, not 0600" in err, err
+
+
 @pytest.mark.parametrize("case,expected", [
     ("export 0750", "UNSAFE {conf}/export: mode is 0750, not 0700"),
     ("export account-owned", "UNSAFE {conf}/export: owned by uid"),

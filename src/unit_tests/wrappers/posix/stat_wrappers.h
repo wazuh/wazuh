@@ -25,6 +25,10 @@ int __wrap_lstat(const char *filename, struct stat *buf);
 
 int __wrap_fstat (int __fd, struct stat *__buf);
 
+/* Queues a __wrap_fstat() call that copies all of *buf (owner, group, mode...), instead of only the
+   st_mode and st_size the plain form takes. buf must stay valid until the call happens. */
+void expect_fstat_stat(int fd, const struct stat *buf, int ret);
+
 int __wrap_fstatat(int __fd, const char *__file, struct stat *__buf, int __flag);
 
 #ifdef WIN32

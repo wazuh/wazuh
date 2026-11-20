@@ -37,6 +37,8 @@ jobs:
         with:
           name: binutils-deb
           path: /tmp/*.deb
+          # The package is this job's only product: a build that leaves none must not be green.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -65,6 +67,8 @@ jobs:
         with:
           name: binutils-rpm
           path: /tmp/*.rpm
+          # The package is this job's only product: a build that leaves none must not be green.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -93,6 +97,8 @@ jobs:
         with:
           name: binutils-deb-arm64
           path: /tmp/*.deb
+          # The package is this job's only product: a build that leaves none must not be green.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -121,6 +127,8 @@ jobs:
         with:
           name: binutils-rpm-arm64
           path: /tmp/*.rpm
+          # The package is this job's only product: a build that leaves none must not be green.
+          if_no_files_found: error
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
