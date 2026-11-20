@@ -272,6 +272,41 @@ TEST(RequestParserTest, DetectsChunkedRegardlessOfHeaderCase)
     EXPECT_EQ(411, parser.rejectStatus());
 }
 
+// Transfer-Encoding together with Content-Length is refused by llhttp itself while it reads the second of
+// the two headers, before the chunked check above runs: it is malformed HTTP (400), not a refused
+// encoding (411). Both orders, since llhttp reports each with its own error.
+TEST(RequestParserTest, ChunkedWithContentLengthIsAProtocolError)
+{
+    for (const std::string& headers : {std::string {"Transfer-Encoding: chunked\r\nContent-Length: 5\r\n"},
+                                       std::string {"Content-Length: 5\r\nTransfer-Encoding: chunked\r\n"}})
+    {
+        RequestParser parser {defaultLimits()};
+        const std::string request {"POST /inventory/sync HTTP/1.1\r\n"
+                                   "Host: localhost\r\n" +
+                                   headers +
+                                   "\r\n"
+                                   "hello"};
+
+        ASSERT_EQ(Feed::ProtocolError, feedChunks(parser, {request})) << headers;
+        EXPECT_EQ(0, parser.rejectStatus()) << headers;
+    }
+}
+
+// A Transfer-Encoding other than chunked passes the chunked check and is refused by llhttp once the
+// headers are complete: malformed HTTP (400) as well.
+TEST(RequestParserTest, NonChunkedTransferEncodingIsAProtocolError)
+{
+    RequestParser parser {defaultLimits()};
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\n"
+                               "Host: localhost\r\n"
+                               "Transfer-Encoding: gzip\r\n"
+                               "\r\n"
+                               "hello"};
+
+    ASSERT_EQ(Feed::ProtocolError, feedChunks(parser, {request}));
+    EXPECT_EQ(0, parser.rejectStatus());
+}
+
 // The decision is taken from the DECLARED length, so an oversized body costs nothing to refuse.
 TEST(RequestParserTest, RejectsOversizedContentLengthWith413BeforeAnyBodyByte)
 {

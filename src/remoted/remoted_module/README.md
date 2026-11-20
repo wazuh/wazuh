@@ -2103,8 +2103,8 @@ src/downstream/
   runtime is gone touches freed memory. See `RemotedModuleFacade::stop()` for the exact sequence —
   phases 1, 1b (the `/control` and `/scan/vd` teardown, before the downstream client stops), 2, 3
   and 4 — and `test/unit/shutdownRace_test.cpp` for the end-to-end regression test (run it under
-  ASan for it to be a meaningful check: `FSANITIZE` only takes effect in a `DEBUG=yes` build, see the
-  `wazuh-build` skill).
+  ASan for it to be a meaningful check: `FSANITIZE` only takes effect in a `DEBUG=yes` build, see
+  `docs/dev/build-sources.md`).
 
 ## Request lifecycle example — a `POST /stateless`, end to end
 

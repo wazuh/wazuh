@@ -7,9 +7,11 @@ After=network.target network-online.target
 Type=forking
 LimitNOFILE=65536
 TimeoutSec=45
-# Start waits up to ~130 s for analysisd's engine API (wait_for_wazuh_engine_ready in
-# wazuh-manager-control); a shorter start timeout would report a systemd timeout instead of the
-# script's own error. Stop keeps the 45 s above, for ExecStop and again for ExecStopPost.
+# Start probes analysisd's engine API up to 120 times, 1 s apart (wait_for_wazuh_engine_ready in
+# wazuh-manager-control): about 2 min when the API refuses at once, so a shorter start timeout would
+# report a systemd timeout instead of the script's own error. Each probe may itself wait up to 5 s, so
+# an engine that accepts but never answers outlasts this timeout (up to ~12 min of probes). Stop keeps
+# the 45 s above, for ExecStop and again for ExecStopPost.
 TimeoutStartSec=180
 
 # Sandboxing. No manager daemon chroots into the installation directory any more: the unit confines all

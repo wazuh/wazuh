@@ -139,9 +139,8 @@ The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for 
 
 Unblock removes the netsh rules whether or not the firewall is on, since they may have been added while it was on:
 - netsh: `netsh advfirewall firewall delete rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" remoteip=192.168.1.100/32`; for an IPv6 address the `/128` rule and then a `/32` rule, the prefix older agents wrote for IPv6
-- route: for an IPv4 address, unblock also deletes a host route to the IP through the loopback interface (`route DELETE <IP> MASK 255.255.255.255 0.0.0.0 IF 1`), only when the best route to the IP is exactly that `/32` route through interface 1. A route to the IP through another gateway or interface is never touched; an identical loopback route added by hand can't be told apart and is removed too.
 
-The unblock logs `IP <ip> successfully unblocked` if a rule or such a route was removed; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
+The unblock logs `IP <ip> successfully unblocked` if a rule was removed; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
 
 **Logging**: `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
 

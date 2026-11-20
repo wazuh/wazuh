@@ -101,7 +101,10 @@ echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
 echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
+# A clean install, never an update: USER_CLEANINSTALL skips the detection of an install already
+# registered on the build host (with USER_UPDATE="n" that detection made install.sh exit 0 having
+# installed nothing, and the host's live tree was packaged instead).
+echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
@@ -817,11 +820,6 @@ fi
 # ownership (cp -a), and before the service restart below.
 chown -R wazuh-manager:wazuh-manager %{_localstatedir}/data/ruleset > /dev/null 2>&1 || true
 chown -R wazuh-manager:wazuh-manager %{_localstatedir}/data/kvdb-ioc > /dev/null 2>&1 || true
-for year_dir in %{_localstatedir}/logs/[0-9][0-9][0-9][0-9]; do
-  if [ -d "$year_dir" ]; then
-    chown -R wazuh-manager:wazuh-manager "$year_dir" > /dev/null 2>&1 || true
-  fi
-done
 
 # Every certificate and key is root's and readable through wazuh-manager, re-applied after the
 # restore above (cp -a keeps the preserved ownership). The configuration directory is writable by

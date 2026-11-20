@@ -81,8 +81,10 @@ To build the documentation as static HTML, use `docs/build.sh` rather than calli
 directly: it first runs `tools/gen-manager-conf-ref.py --check` to refuse a build with a stale
 manager configuration reference, then builds the book, and finally runs `docs/tools/check-docs.py`, which
 fails on any broken link or anchor, unpublished page, invalid example block or unparsable diagram
-(`python3 tools/check-docs.py --list-checks` lists every check). This is also what CI runs, from the
-`docs/` directory:
+(`python3 tools/check-docs.py --list-checks` lists every check). CI runs this from the `docs/` directory, after
+a step `build.sh` does not contain: `openapi-spec-validator==0.7.1` over the five hand-maintained OpenAPI files
+(`docs/ref/modules/engine/{public-api,private-api,spec-events}.yaml`, `docs/ref/modules/remoted/agent-api.yaml`,
+`api/api/spec/spec.yaml`), so run it yourself after editing one:
 
 ```bash
 cd docs

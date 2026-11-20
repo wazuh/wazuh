@@ -345,27 +345,18 @@ namespace task_manager::schedule
         // held the store for the seconds it took.
         std::int64_t steps {0};
         storage::CompactStats stats;
+        std::int64_t before {0};
 
         do
         {
+            before = stats.freePages;
             stats = m_store.compactStep(COMPACT_STEP_PAGES);
-
-            if (!stats.supported)
-            {
-                if (!m_compactUnsupportedLogged)
-                {
-                    m_compactUnsupportedLogged = true;
-                    LOGFN_INFO(schedulerLogFn(),
-                               "The tasks database was created without incremental auto-vacuum: freed space is "
-                               "reused, but queue/tasks/tasks.db will not shrink. To enable it, stop the manager "
-                               "and run: sqlite3 /var/wazuh-manager/queue/tasks/tasks.db 'PRAGMA "
-                               "auto_vacuum=INCREMENTAL; VACUUM;'");
-                }
-                return;
-            }
-
             ++steps;
-        } while (stats.freePages >= COMPACT_STEP_PAGES && !m_stopping.load(std::memory_order_acquire));
+            // A step that freed nothing ends the pass: the free list cannot shrink any further
+            // (it never can on a database without incremental auto-vacuum), so looping on it would
+            // never return.
+        } while (stats.freePages >= COMPACT_STEP_PAGES && (steps == 1 || stats.freePages < before) &&
+                 !m_stopping.load(std::memory_order_acquire));
 
         LOGFN_DEBUG2(schedulerLogFn(),
                      "Compacted the tasks database in %lld step(s); %lld free page(s) left",

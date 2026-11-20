@@ -1027,7 +1027,7 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     std::filesystem::remove_all(home);
 }
 
-TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtyNineLeaves)
+TEST(Schema, EmbeddedSchemaIsValidJsonWithSeventyLeaves)
 {
     const auto schema = json(std::string {manager_config::schemaJson()});
     std::size_t leaves = 0;

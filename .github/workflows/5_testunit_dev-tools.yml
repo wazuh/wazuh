@@ -31,6 +31,8 @@ on:
       - "src/Makefile"
       # test_jwt_vectors_mirror.py compares the simulator's jwt_vectors.json with this header.
       - "src/shared_modules/utils/jwt/testVectors.hpp"
+      # The legacy-enrollment load tool, a standalone CMake project outside the manager build.
+      - "tools/testing/enrollment-simulator/**"
   workflow_dispatch:
 
 concurrency:
@@ -145,3 +147,24 @@ jobs:
           if grep -q 'skipped=' /tmp/dashboard.log; then
             echo "::error::dashboard capture tests skipped cases"; exit 1
           fi
+
+  # tools/testing/enrollment-simulator is built by nothing else: it is not part of the manager
+  # build, so a source or CMake change that breaks it would otherwise surface only when someone runs
+  # a load test. It has no test suite; building it (warnings shown) is the check.
+  enrollment-simulator:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libssl-dev
+
+      - name: Build
+        working-directory: tools/testing/enrollment-simulator
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+          ./build/enrollment-simulator --help

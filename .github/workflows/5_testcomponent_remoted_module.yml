@@ -74,10 +74,9 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          # This leg keeps its name (check names) but no longer wraps ctest in valgrind: test_cpp's
-          # valgrind branch never instrumented the test binary (no --trace-children=yes,
-          # test_cpp/action.yml), so it is the plain, non-sanitized build of the suite. The asan
-          # leg is the memory gate. The two are not duplicates: each has failed on its own in CI
+          # This leg keeps its name (check names) but does not wrap ctest in valgrind (the valgrind
+          # input is false, so test_cpp's valgrind branch is unused), so it is the plain,
+          # non-sanitized build of the suite. The asan leg is the memory gate. The two are not duplicates: each has failed on its own in CI
           # (the suite binds real TCP ports and is timing-sensitive), and this one answers in
           # about a third of the time.
           - test_type: valgrind

@@ -246,7 +246,7 @@ Proto files are the **single source of truth**. Both C++ and Python code are gen
 - **C++**: `src/engine/source/proto/include/eMessages/*.pb.{cc,h}` (committed to the repo)
 - **Python**: `src/engine/tools/api-communication/src/api_communication/proto/*_pb2.{py,pyi}` (committed to the repo)
 
-**How to regenerate** (from the repository root, in the single CMake tree under `src/` — build directory src/build, see the `wazuh-build` skill; the engine has no CMake presets of its own):
+**How to regenerate** (from the repository root, in the single CMake tree under `src/` — build directory src/build, see `docs/dev/build-sources.md`; the engine has no CMake presets of its own):
 
 ```bash
 cmake -S src -B src/build -DENGINE_GENERATE_PROTO=ON

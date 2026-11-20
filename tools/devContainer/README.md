@@ -230,7 +230,8 @@ bash /tmp/claude/skills/claude-portable/scripts/claude-portable.sh import claude
 bash .claude/skills/claude-portable/scripts/claude-portable.sh doctor --fetch
 ```
 
-The first command extracts only the import script. `import` then does four things:
+`claude-portable.sh` is not part of this repository: it travels inside the package, and the first command extracts
+only that script from it. `import` then does four things:
 
 1. It checks every file against the package manifest (sha256). On any mismatch it installs nothing.
 2. It creates `.claude/` with the paths of this workspace.

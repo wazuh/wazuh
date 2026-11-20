@@ -419,10 +419,8 @@ purge 003 1787582014 4
 - `purge <id> <epoch> <seq>` — one deletion in progress.
 
 Unknown labels are ignored, so a later version can add lines without this parser rejecting a file it
-merely does not fully understand. Lines from a release that had no sequences are still read, and are
-**numbered by position** rather than handed the next value from `last_seq`: position is deterministic
-across a crash during the conversion, a running counter is not, and re-numbering would derive
-different task ids and produce duplicate rows for one deletion.
+merely does not fully understand. A `purge` line without its sequence is malformed and dropped with a
+warning: the task id is derived from the sequence, so it could not be reconciled safely.
 
 **The sequence is why the row's id is safe to derive twice.** A deletion's `TASK_ID` is
 `SHA-256("mt:del:" <agent id> ":" <journal_seq>)`, so phase 3 and startup reconciliation derive the

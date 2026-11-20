@@ -270,11 +270,6 @@ case "$1" in
     # restore-permissions.sh only covers paths present in the package tree.
     chown -R ${USER}:${GROUP} ${DIR}/data/ruleset > /dev/null 2>&1 || true
     chown -R ${USER}:${GROUP} ${DIR}/data/kvdb-ioc > /dev/null 2>&1 || true
-    for YEAR_DIR in ${DIR}/logs/[0-9][0-9][0-9][0-9]; do
-        if [ -d "${YEAR_DIR}" ]; then
-            chown -R ${USER}:${GROUP} "${YEAR_DIR}" > /dev/null 2>&1 || true
-        fi
-    done
 
     # Resolve every credential the manager owns or consumes: seed rbac.db with generated or
     # supplied Server API passwords, store the indexer password in the keystore, import the

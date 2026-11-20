@@ -555,7 +555,6 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Accepting connections on port <port>. …` / `Port <port> was set as disabled.` | whether the port-1515 listener opened (`remote_enrollment` and `legacy_enrollment` both on) |
 | `Recovered N agent deletion(s) that were interrupted...` | startup reconciliation found deletions whose task was never created, and is creating them now |
 | `Dropped N journaled deletion(s) whose agents are still listed in client.keys` | those deletions never became final; nothing is owed |
-| `Converted N deletion(s) from the previous file format` | a journal written before sequences existed; the entries were numbered by position |
 | `Raising the agent id counter from X to Y` | the counter would have gone backwards; ids are not reused |
 | `The deletion of agent 'N' could not be recorded...` | phase 3 failed; the journal line stays and the next writer cycle retries |
 | `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated. A force replacement refused by the same bound reports `Agent 'N' can't be replaced: too many deletions are in progress` |
