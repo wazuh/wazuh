@@ -432,6 +432,7 @@ TEST_F(ManagerLogSinkTest, JsonTwin)
                              "e\x1f"
                              "f\b\f\r\t/g\xc3\xa9h";
     const std::string escapedHead = "a\\\"b\\\\c\\nd\\u0001e\\u001ff\\b\\f\\r\\t/g\xc3\xa9h";
+    const std::string plainHead = "a\"b\\c\\nd\\x01e\\x1ff\\x08\\x0c\\r\\t/g\xc3\xa9h";
     std::string message = head;
     message.append(65534 - message.size(), 'x');
     message.append("\xc3\xa9"); // bytes 65534 and 65535
@@ -440,8 +441,8 @@ TEST_F(ManagerLogSinkTest, JsonTwin)
 
     base::logging::write(Level::Info, TAG, "/a/b/x.cpp", 1, "f", message);
 
-    // Plain: the whole message, not truncated
-    EXPECT_EQ(sys->contentOf(plainPath()), plainLine("INFO", message));
+    // Plain: the whole message, not truncated, with its control characters escaped
+    EXPECT_EQ(sys->contentOf(plainPath()), plainLine("INFO", plainHead + message.substr(head.size())));
 
     // JSON: first 65535 bytes of the message, escaped like cJSON_PrintUnformatted
     std::string expected = std::string("{\"timestamp\":\"") + NOW + "\",\"tag\":\"" + TAG
@@ -452,6 +453,22 @@ TEST_F(ManagerLogSinkTest, JsonTwin)
     const auto json = sys->contentOf(jsonPath());
     EXPECT_EQ(json.size(), expected.size());
     EXPECT_TRUE(json == expected) << "JSON line differs; first 200 bytes: " << json.substr(0, 200);
+}
+
+TEST_F(ManagerLogSinkTest, PlainMessageStaysOnOneLine)
+{
+    auto sys = initFake(true, false, false);
+    const std::string text = "first\r\nsecond\tthird\x1b[2K\x7f\n";
+    const std::string escaped = "first\\r\\nsecond\\tthird\\x1b[2K\\x7f";
+
+    base::logging::write(Level::Warn, TAG, "/a/b/x.cpp", 1, "f", text);
+    base::logging::setManagerDebugLevel(1);
+    sys->pid = 1234;
+    base::logging::write(Level::Warn, TAG, "/a/b/x.cpp", 2, "f", text);
+
+    EXPECT_EQ(sys->contentOf(plainPath()),
+              plainLine("WARNING", escaped) + NOW + " " + TAG + "[1234] x.cpp:2 at f(): WARNING: " + escaped + "\n");
+    EXPECT_EQ(base::logging::formatPlainLine(NOW, TAG, "WARNING", text), plainLine("WARNING", escaped));
 }
 
 TEST_F(ManagerLogSinkTest, JsonOnlyWritesNoPlain)
