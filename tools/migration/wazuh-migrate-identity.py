@@ -918,13 +918,14 @@ def configuration_elements(text):
     The manager parses an uploaded agent.conf and writes it back in its own layout (indentation,
     attribute quotes, empty elements), so two copies are compared by what they set, not as text.
     An escaped \\< or \\> is legal in an agent.conf and not in XML: it is set aside for the parser,
-    as the manager does.
+    as the manager does. The manager also stores &amp; as a bare &, which is encoded again here.
     """
     def shape(element):
         return (element.tag, sorted(element.attrib.items()), (element.text or "").strip(),
                 [shape(child) for child in element])
     body = re.sub(r"^\s*<\?xml[^>]*\?>", "", text or "")
     body = body.replace("\\<", "_escaped_lt_").replace("\\>", "_escaped_gt_")
+    body = re.sub(r"&(?!(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);)", "&amp;", body)
     return [shape(e) for e in ElementTree.fromstring("<migration-wrapper>%s</migration-wrapper>" % body)]
 
 

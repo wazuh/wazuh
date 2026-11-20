@@ -692,13 +692,13 @@ class MigrationToolTest(unittest.TestCase):
                  "    <directories>/root/fim test</directories>\n"
                  "    <nodiff></nodiff>\n  </syscheck>\n</agent_config>\n")
         second = ("<agent_config>\n  <localfile>\n    <log_format>command</log_format>\n"
-                  "    <command>echo \\< 3</command>\n  </localfile>\n</agent_config>\n")
+                  "    <command>echo \\< 3 &amp;&amp; true</command>\n  </localfile>\n</agent_config>\n")
         self.write_group_file("default", "agent.conf", first + second)
         self.assertEqual(0, self.export())
         self.assertEqual(0, self.do_import())
         stored = FakeManager.configurations["default"]
         self.assertIn('os="Linux"', stored, "the manager rewrote the attribute quotes")
-        self.assertIn("echo \\< 3", stored, "the escaped bracket is kept")
+        self.assertIn("echo \\< 3 && true", stored, "the escaped bracket is kept, the ampersands decoded")
         self.assertEqual(0, self.check(), "the same settings in another layout are the same settings")
 
         FakeManager.configurations["default"] = stored.replace("/root/fim test", "/root/fimtest")
