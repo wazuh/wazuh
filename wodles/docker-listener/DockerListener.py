@@ -15,14 +15,23 @@ import sys
 import time
 from os.path import abspath, dirname
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from utils import MAX_EVENT_SIZE
+# wodles/ holds utils.py but also the installed wodles/docker/ dir, which would shadow the SDK as a
+# namespace package, so keep it on sys.path only while importing utils.
+WODLES_DIR = dirname(dirname(abspath(__file__)))
+sys.path.insert(0, WODLES_DIR)
+try:
+    from utils import MAX_EVENT_SIZE
+finally:
+    sys.path.remove(WODLES_DIR)
 
 try:
     import docker
-except:
+    # A docker/ directory elsewhere on the path imports as a namespace package; treat it as a missing SDK.
+    if not hasattr(docker, 'from_env'):
+        raise ImportError("'docker' resolves to a directory, not the Docker SDK")
+except ImportError:
     sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
-    exit(1)
+    sys.exit(1)
 
 
 def log(msg):
