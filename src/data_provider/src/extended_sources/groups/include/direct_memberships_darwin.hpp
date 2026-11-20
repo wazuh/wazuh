@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <sys/types.h>
 #include <vector>
@@ -46,7 +47,7 @@ class DirectMemberships
         };
 
         void load();
-        std::string uuidOf(uid_t uid) const;
+        std::optional<std::string> uuidOf(uid_t uid) const;
 
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;

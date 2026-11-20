@@ -14,24 +14,25 @@
 
 #include "direct_memberships_darwin.hpp"
 
+static std::string mapChars(std::string value, int (*convert)(int))
+{
+    std::transform(value.begin(), value.end(), value.begin(), [convert](unsigned char c)
+    {
+        return convert(c);
+    });
+    return value;
+}
+
 // OpenDirectory writes GUIDs in upper case, but nothing guarantees it for every record.
 static std::string toUpper(std::string value)
 {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
-    {
-        return std::toupper(c);
-    });
-    return value;
+    return mapChars(std::move(value), ::toupper);
 }
 
 // Account names are not case sensitive on macOS, so a group listing "Bob" lists the user "bob".
 static std::string toLower(std::string value)
 {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
-    {
-        return std::tolower(c);
-    });
-    return value;
+    return mapChars(std::move(value), ::tolower);
 }
 
 DirectMemberships::DirectMemberships(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
@@ -77,14 +78,21 @@ void DirectMemberships::load()
     }
 }
 
-std::string DirectMemberships::uuidOf(uid_t uid) const
+std::optional<std::string> DirectMemberships::uuidOf(uid_t uid) const
 {
     uuid_t uuid = {0};
     uuid_string_t uuidString = {0};
 
     m_uuidWrapper->uidToUUID(uid, uuid);
-    m_uuidWrapper->uuidToString(uuid, uuidString);
 
+    // mbr_uid_to_uuid() reports a failure only through its return value, which the wrapper does not
+    // pass on. A successful call always writes a UUID, so a null one means there is no answer.
+    if (uuid_is_null(uuid))
+    {
+        return std::nullopt;
+    }
+
+    m_uuidWrapper->uuidToString(uuid, uuidString);
     return toUpper(uuidString);
 }
 
@@ -98,12 +106,20 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, uid_
     }
 
     const auto uuid = uuidOf(uid);
+
+    // Without the account's UUID the memberships listed by GUID cannot be told apart, and
+    // reporting only the others would hide groups, so the account's groups are unknown.
+    if (!uuid)
+    {
+        return {};
+    }
+
     const auto lowerName = toLower(userName);
     std::vector<gid_t> others;
 
     for (const auto& group : m_groups)
     {
-        const bool listed = group.members.names.count(lowerName) != 0 || group.members.uuids.count(uuid) != 0;
+        const bool listed = group.members.names.count(lowerName) != 0 || group.members.uuids.count(*uuid) != 0;
 
         if (listed && group.gid != primaryGid)
         {

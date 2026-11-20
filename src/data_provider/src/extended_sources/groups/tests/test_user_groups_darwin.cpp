@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include <cstring>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "igroup_wrapper.hpp"
@@ -60,12 +61,20 @@ class MockODUtilsWrapper : public IODUtilsWrapper
         MOCK_METHOD(bool, genGroupMembers, (GroupMembersMap& membersByGroup), (override));
 };
 
-class MockUUIDWrapper : public IUUIDWrapper
+class MockUserGroupsUUIDWrapper : public IUUIDWrapper
 {
     public:
         MOCK_METHOD(void, uidToUUID, (uid_t uid, uuid_t& uuid), (override));
         MOCK_METHOD(void, gidToUUID, (gid_t gid, uuid_t& uuid), (override));
         MOCK_METHOD(void, uuidToString, (const uuid_t& uuid, uuid_string_t& str), (override));
+
+        MockUserGroupsUUIDWrapper()
+        {
+            ON_CALL(*this, uidToUUID(_, _)).WillByDefault(Invoke([](uid_t, uuid_t& uuid)
+            {
+                memset(uuid, 0xAB, sizeof(uuid_t));
+            }));
+        }
 };
 
 // Answers the directory read the provider does once: each added user is listed by name in one
@@ -136,7 +145,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithUIDReturnsExpectedGroups)
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -166,7 +175,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithoutUID_ReturnsExpectedGroups)
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -203,7 +212,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidSingleGidReturnsCorrectUse
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -242,7 +251,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidMultipleGidsReturnsGrouped
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -283,7 +292,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGid_NoMatch_ReturnsEmpty)
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
 
     std::map<std::string, bool> emptyUsers;
@@ -302,7 +311,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidSingleUidReturnsGroupName
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -347,7 +356,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidMultipleUidsReturnsGroupe
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -398,7 +407,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidInvalidUIDReturnsEmpty)
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
 
     uid_t invalidUid = 9999;
@@ -416,7 +425,7 @@ namespace
         std::shared_ptr<MockGroupWrapper> group = std::make_shared<MockGroupWrapper>();
         std::shared_ptr<MockPasswdWrapper> passwd = std::make_shared<MockPasswdWrapper>();
         std::shared_ptr<MockODUtilsWrapper> od = std::make_shared<MockODUtilsWrapper>();
-        std::shared_ptr<NiceMock<MockUUIDWrapper>> uuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+        std::shared_ptr<NiceMock<MockUserGroupsUUIDWrapper>> uuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
         struct passwd account {};
         struct group share {};
 
@@ -486,7 +495,7 @@ TEST_F(UserGroupsProviderDarwinTest, PrimaryGroupComesFirstThenAscendingGidsWith
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
     DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
@@ -543,7 +552,7 @@ TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesIncludeGroupsReachedThro
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
 
     passwd* fakePwd = createFakePasswd("member", 800, 20);
@@ -576,10 +585,119 @@ TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesOfUnknownUidAreEmpty)
     auto mockGroup = std::make_shared<MockGroupWrapper>();
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
-    auto mockUuid = std::make_shared<NiceMock<MockUUIDWrapper>>();
+    auto mockUuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper, mockUuid);
 
     EXPECT_CALL(*mockPasswd, getpwuid(9999)).WillOnce(Return(nullptr));
 
     EXPECT_TRUE(provider.getEffectiveGroupNamesByUid(9999).empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountWhoseNameDiffersInCaseFromTheGroupEntryIsReported)
+{
+    DirectoryCase env;
+    env.account.pw_name = const_cast<char*>("MEMBER");
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountWithoutUuidReportsNoGroupsAndIsNotCached)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.uuid, uidToUUID(_, _)).WillOnce(Invoke([](uid_t, uuid_t& uuid)
+    {
+        memset(uuid, 0, sizeof(uuid_t));
+    })).WillRepeatedly(Invoke([](uid_t, uuid_t& uuid)
+    {
+        memset(uuid, 0xAB, sizeof(uuid_t));
+    }));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).Times(2).WillRepeatedly(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+
+    EXPECT_TRUE(env.collect().empty());
+    EXPECT_EQ(env.collect(false).size(), 2u);
+}
+
+namespace
+{
+    // An account whose effective groups come from getgrouplist(), as the sudo role reads them.
+    struct EffectiveCase
+    {
+        std::shared_ptr<MockGroupWrapper> group = std::make_shared<MockGroupWrapper>();
+        std::shared_ptr<MockPasswdWrapper> passwd = std::make_shared<MockPasswdWrapper>();
+        std::shared_ptr<MockODUtilsWrapper> od = std::make_shared<MockODUtilsWrapper>();
+        std::shared_ptr<NiceMock<MockUserGroupsUUIDWrapper>> uuid = std::make_shared<NiceMock<MockUserGroupsUUIDWrapper>>();
+        struct passwd account {};
+
+        EffectiveCase()
+        {
+            account.pw_name = const_cast<char*>("member");
+            account.pw_uid = 810;
+            account.pw_gid = 20;
+            EXPECT_CALL(*passwd, getpwuid(810)).WillRepeatedly(Return(&account));
+        }
+
+        std::set<std::string> names()
+        {
+            UserGroupsProvider provider(group, passwd, od, uuid);
+            return provider.getEffectiveGroupNamesByUid(810);
+        }
+    };
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesAreEmptyWhenTheSystemCountsNoGroups)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(0));
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).Times(0);
+
+    EXPECT_TRUE(env.names().empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesAreEmptyWhenTheCountFails)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).Times(0);
+
+    EXPECT_TRUE(env.names().empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesAreEmptyWhenTheListFails)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(2));
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).WillOnce(Return(-1));
+    EXPECT_CALL(*env.group, getgrgid(_)).Times(0);
+
+    EXPECT_TRUE(env.names().empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesStopAtTheNumberTheSystemReturned)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(3));
+    // The list came back shorter than the buffer: only the first gid is valid.
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
+    {
+        groups[0] = 20;
+        *ngroups = 1;
+        return 0;
+    }));
+    struct group staff {};
+    staff.gr_name = const_cast<char*>("staff");
+    EXPECT_CALL(*env.group, getgrgid(20)).WillOnce(Return(&staff));
+
+    EXPECT_THAT(env.names(), ::testing::ElementsAre("staff"));
 }
