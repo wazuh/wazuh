@@ -38,9 +38,12 @@ void test_w_get_epoch_ms_matches_wall_clock(void **state)
     const time_t after = time(NULL);
 
     assert_true(ms > 0);
-    /* Same epoch as time(), in milliseconds: within the second this call spans. */
-    assert_true(ms / 1000 >= (int64_t)before);
-    assert_true(ms / 1000 <= (int64_t)after);
+    /* Same epoch as time(), in milliseconds. One second of slack on each side: on Windows,
+     * gettimeofday() and time() read the system clock through different paths that do not
+     * round to the same second, so an exact bound fails there whenever the call straddles a
+     * second boundary. A wrong epoch would be off by far more than a second. */
+    assert_true(ms / 1000 >= (int64_t)before - 1);
+    assert_true(ms / 1000 <= (int64_t)after + 1);
 }
 
 void test_w_get_monotonic_time_is_nondecreasing(void **state)
