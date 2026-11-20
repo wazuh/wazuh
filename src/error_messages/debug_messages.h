@@ -92,7 +92,7 @@
 #define FIM_AUDIT_THREAD_STOPED             "(6277): Audit thread finished."
 #define FIM_AUDIT_HEALTHCHECK_RULE          "(6278): Couldn't add audit health check rule."
 #define FIM_AUDIT_HEALTHCHECK_START         "(6279): Whodata health-check: Starting."
-#define FIM_AUDIT_HEALTHCHECK_FILE          "(6280): Couldn't create audit health check file."
+#define FIM_AUDIT_HEALTHCHECK_FILE          "(6280): Couldn't create audit health check file '%s' due to [(%d)-(%s)]."
 #define FIM_SYSCOM_ARGUMENTS                "(6281): SYSCOM %s needs arguments."
 #define FIM_SYSCOM_UNRECOGNIZED_COMMAND     "(6282): SYSCOM Unrecognized command '%s'"
 #define FIM_SYSCOM_FAIL_GETCONFIG           "(6283): At SYSCOM getconfig: Could not get '%s' section."

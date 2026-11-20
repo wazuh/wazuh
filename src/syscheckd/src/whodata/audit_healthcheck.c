@@ -63,7 +63,7 @@ int audit_health_check(int *audit_socket) {
         fp = w_fopen_nofollow(abs_path_healthcheck, AUDIT_HEALTHCHECK_NAME, "wx");
 
         if (!fp) {
-            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
+            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE, abs_path_healthcheck_file, errno, strerror(errno));
         } else {
             fclose(fp);
         }

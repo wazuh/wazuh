@@ -324,6 +324,7 @@ static int teardown_audit_wrappers(void **state) {
     test_os_connect_unix_errno = 0;
     test_unlink_errno = 0;
     test_unlink_record_call = 0;
+    test_w_fopen_nofollow_record_call = 0;
     return 0;
 }
 
@@ -1146,18 +1147,25 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'tmp/af_wazuh.conf'");
 
     // Plugin not created
+    test_unlink_record_call = 1;
+    test_w_fopen_nofollow_record_call = 1;
     expect_string(__wrap_unlink, file, audit3_socket);
+    expect_function_call(__wrap_unlink);
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_unlink, file, AUDIT_SOCKET);
+    expect_function_call(__wrap_unlink);
     will_return(__wrap_unlink, 0);
 
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    // No staging file left from an earlier run
+    // No staging file left from an earlier run. The name is removed before the exclusive open.
+    test_unlink_errno = ENOENT;
     expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
+    expect_function_call(__wrap_unlink);
     will_return(__wrap_unlink, -1);
+    expect_function_call(__wrap_w_fopen_nofollow);
     expect_w_fopen_nofollow(AUDIT_CONF_DIR, AUDIT_CONF_NAME, "wx", (FILE *)1);
 
     will_return(__wrap_fwrite, 256);
@@ -1177,7 +1185,6 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     will_return(__wrap_audit_restart, 99);
 
     int ret;
-    errno = ENOENT;
     ret = set_auditd_config();
 
     assert_int_equal(ret, 99);
@@ -1267,12 +1274,11 @@ void test_set_auditd_config_audit_plugin_not_created_staging_unlink_error(void *
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
+    test_unlink_errno = EACCES;
     expect_string(__wrap_unlink, file, "tmp/af_wazuh.conf");
     will_return(__wrap_unlink, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1123): Unable to delete file: 'tmp/af_wazuh.conf' due to [(13)-(Permission denied)].");
-
-    errno = EACCES;
 
     int ret;
     ret = set_auditd_config();
@@ -2489,9 +2495,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_set_auditd_config_audit4_socket_live, teardown_audit_wrappers),
         cmocka_unit_test_teardown(test_set_auditd_config_audit_socket_stale_no_restart, teardown_audit_wrappers),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_tampered_configuration),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created),
+        cmocka_unit_test_teardown(test_set_auditd_config_audit_plugin_not_created, teardown_audit_wrappers),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fopen_error),
-        cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_staging_unlink_error),
+        cmocka_unit_test_teardown(test_set_auditd_config_audit_plugin_not_created_staging_unlink_error, teardown_audit_wrappers),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_fclose_error),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink),
         cmocka_unit_test(test_set_auditd_config_audit_plugin_not_created_recreate_hardlink_restart),
