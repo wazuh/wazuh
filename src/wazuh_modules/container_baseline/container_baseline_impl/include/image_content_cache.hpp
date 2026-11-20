@@ -120,12 +120,15 @@ class ImageContentCache
 /// @brief Fingerprint the files the cached data classes are read from, inside
 /// the container's rootfs.
 ///
-/// Covers /etc/passwd, /etc/group, the os-release candidates and every package
-/// database location the scanner probes. A file that is absent contributes a
-/// distinct marker, so "the image gained a package DB" is a fingerprint change
-/// rather than a silent cache hit.
+/// Covers every ImageSourceFiles() entry, each file of a source directory, and
+/// a non-empty rpm WAL. A file that is absent contributes a distinct marker, so
+/// "the image gained a package DB" is a fingerprint change rather than a silent
+/// cache hit.
 ///
 /// Exposed for unit testing.
 [[nodiscard]] std::string FingerprintImageSources(pid_t pid);
+
+/// @brief FingerprintImageSources() for a rootfs given as a directory path.
+[[nodiscard]] std::string FingerprintImageSourcesAt(const std::string& rootfs);
 
 } // namespace wazuh::container_baseline
