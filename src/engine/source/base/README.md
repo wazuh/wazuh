@@ -139,17 +139,18 @@ Tests: `TimeUtilsTest.StrictClock*`, `TimeUtilsTest.EpochNanosToISO8601*` and `T
 
 Header: [include/base/utils/generator.hpp](include/base/utils/generator.hpp). Implementation: [src/utils/generator.cpp](src/utils/generator.cpp). Namespace `base::utils::generators`.
 
-`generateDocId` draws its random bytes from OpenSSL `RAND_bytes` (through `fillRandom`); a failure is an exception, never a fallback to a weaker source. `generateUUIDv4` and `randomHexString` are unchanged and still use `mt19937`.
+`generateDocId` and `generateUUIDv4` draw their random bytes from OpenSSL `RAND_bytes` (through `fillRandom`); a failure is an exception, never a fallback to a weaker source. `randomHexString` is unchanged and still uses `mt19937`.
 
 | Function | Behaviour |
 |---|---|
 | `fillRandom(out, n)` | Fills `n` bytes with `RAND_bytes`. Throws `std::runtime_error` when `n > INT_MAX` (the source is not called) or when the source fails (message with the OpenSSL error). |
 | `generateDocId` | Document id for an indexer write: 8 bytes big-endian of a per-thread strictly increasing nanosecond clock (`max(systemEpochNanos(), last + 1)`) followed by a 12-byte random prefix drawn once per thread, encoded as unpadded base64url: always `DOC_ID_LENGTH` (27) characters of `[A-Za-z0-9_-]`. Lock-free after the first id of each thread (the first one goes through a `std::call_once` that registers the fork handler): the state is a trivial `thread_local`. Two ids can only collide if two threads draw the same 96-bit prefix and stamp the same nanosecond, or once a thread's clock reaches `INT64_MAX` (year 2262): there it saturates instead of overflowing and the thread repeats its last id. Throws if the prefix cannot be drawn; the next call on that thread retries. |
-| `generateUUIDv4`, `isValidResourceId`, `randomHexString` | Unchanged (`wazuh.event.id`; resource id rules; hex string for temporary names). |
+| `generateUUIDv4` | Random UUID version 4 (`wazuh.event.id`, content resource ids): 36 lowercase characters in the 8-4-4-4-12 layout, version `4` at index 14 and variant `[89ab]` at index 19 (122 random bits). Each id takes 16 bytes from a per-thread 4096-byte buffer filled by `fillRandom` when it runs out, so one draw serves 256 ids; the buffer is a trivial `thread_local` (4 KiB of static TLS in every thread of the process). No shared lock or atomic of its own per id. Throws if a refill fails, without using any byte of the failed draw; the next call on that thread retries. |
+| `isValidResourceId`, `randomHexString` | Unchanged (resource id rules; hex string for temporary names). |
 
-`fork()`: a child-side `pthread_atfork` handler, registered once, marks the per-thread state of the forking thread as uninitialized, so the child draws a new prefix and never repeats the parent's ids. The handler only stores a flag (no OpenSSL, no allocation).
+`fork()`: a child-side `pthread_atfork` handler, registered once by the first `generateDocId` or `generateUUIDv4` call, marks the per-thread state of the forking thread as uninitialized (the doc id prefix and the UUID buffer), so the child draws new random bytes and never repeats the parent's ids. The handler only stores (no OpenSSL, no allocation).
 
-Test seam: `detail::exchangeRandBytesForTesting(fn)` replaces the source read by `fillRandom` (`nullptr` restores `RAND_bytes`) and returns the previous one; `detail::DocIdGenerator` runs the same encoding core over an injected prefix and clock. Tests: `GeneratorTest.*` in [generator_test.cpp](test/src/unit/utils/generator_test.cpp) (run in `base_utest`), including the vectors shared with the id spike.
+Test seam: `detail::exchangeRandBytesForTesting(fn)` replaces the source read by `fillRandom` (`nullptr` restores `RAND_bytes`) and returns the previous one; `detail::DocIdGenerator` runs the same encoding core over an injected prefix and clock. Tests: `GeneratorTest.*` in [generator_test.cpp](test/src/unit/utils/generator_test.cpp) (run in `base_utest`), including the vectors shared with the id spike and, for `generateUUIDv4`, the exact ids built from known source bytes, one draw per 256 ids, failure and retry, and new ids after `fork()` (`GeneratorTest.UUIDv4*`).
 
 ## Testing
 
