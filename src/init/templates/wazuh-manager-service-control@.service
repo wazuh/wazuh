@@ -1,0 +1,10 @@
+[Unit]
+Description=Wazuh manager service control (%i)
+
+[Service]
+Type=oneshot
+# Consumed before the action, so a request written while it runs triggers it once more.
+ExecStartPre=-/bin/rm -f WAZUH_HOME_TMP/var/run/wazuh-manager-service-control.%i
+ExecStart=WAZUH_HOME_TMP/bin/wazuh-manager-service-control %i
+# A reload waits up to 60 s for the manager to settle, then the stop (45 s, twice) and the start (180 s).
+TimeoutStartSec=360
