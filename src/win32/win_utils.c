@@ -403,11 +403,18 @@ int local_start()
     const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
     int token_bootstrap_delay = 0;
     time_t token_pending_since = 0;
+    time_t token_window_seen = 0;
     w_token_bootstrap_result_t token_bootstrap_result;
 
     while ((token_bootstrap_result =
                 w_token_bootstrap_bound_pending(w_agent_token_bootstrap(0, 0), &token_pending_since,
                                                 w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+        /* Restart the ramp for each pending window, so one opened at retry_max still gets several tries. */
+        if (token_pending_since != 0 && token_pending_since != token_window_seen) {
+            token_window_seen = token_pending_since;
+            token_bootstrap_delay = 0;
+        }
+
         if (token_bootstrap_delay < agt->enrollment.retry_max) {
             token_bootstrap_delay += agt->enrollment.retry_delta;
         }
