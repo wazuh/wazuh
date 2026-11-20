@@ -205,8 +205,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * w_agentd_keys_init()) -- rather than falling through to that loop, which enrolls
      * unverified and would defeat the whole point of the token path. A token the manager does
      * not accept yet (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
-     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S. Refusals the manager's state can change come back
-     * TRANSIENT and retry here too.
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S, as is a refused password. Refusals the manager's
+     * state can change come back TRANSIENT and retry here too.
      *
      * Only a token that was present and (after any transient retries) still failed does this.
      * An install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the

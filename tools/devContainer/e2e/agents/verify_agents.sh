@@ -207,7 +207,7 @@ for i in "${!CONTAINERS[@]}"; do
     ml=$(grep -oE "Enrollment token '[^']*' (used|consumed) by agent '$nm'" "$OUT/manager-enroll.log" | tail -1)
     check "${n}e" "$c" "manager log: token used by this agent" yes "$([ -n "$ml" ] && echo yes || echo no)"
   fi
-  hint=$(grep -oE 'Invalid password|Duplicate name|Enrollment-token bootstrap failed:|Enrollment request could not be sent|HTTP/[0-9.]+ (401|403|404|429|503)|Invalid endpoint|Deployment variables refused \[[A-Z_]+\]' "$OUT/$c.log" | sort -u | tr '\n' ';')
+  hint=$(grep -oE 'Invalid password|Duplicate name|Enrollment-token bootstrap failed: [^;]*|Enrollment request could not be sent|HTTP/[0-9.]+ (401|403|404|429|503)|Invalid endpoint|Deployment variables refused \[[A-Z_]+\]' "$OUT/$c.log" | sort -u | tr '\n' ';')
   [ -z "$hint" ] || say "      hints in $c.log: $hint"
   if [ "$fl" = 4.x ]; then mlcell='n/a (authd 1515 logs at debug level)'
   elif [ -n "$ml" ]; then mlcell="token $(sed -n "s/Enrollment token '\\([^']*\\)'.*/\\1/p" <<<"$ml") used"

@@ -193,7 +193,7 @@ wazuh-agentd: ERROR: Enrollment rejected by the manager: invalid request. Invali
 
 An agent installed with an enrollment token, on its first start, follows each such line with
 `INFO: Token bootstrap: the manager refused the enrollment; retrying with the same enrollment token.`
-It keeps the token, does not exit, and enrolls with it once the group exists.
+It keeps the token, does not exit, and enrolls with it once the group exists. This holds for the missing group (authd code `9014`) only: any other `400` is a malformed request, and the agent exits with `Enrollment-token bootstrap failed: <reason>`, keeping the token.
 
 A 4.x agent, which enrolls on `1515`, logs `ERROR: Invalid group: <group>. Unable to add agent (from manager)` instead.
 

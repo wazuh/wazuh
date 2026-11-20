@@ -389,8 +389,8 @@ int local_start()
      * across both platforms and this caller must not collapse TRANSIENT and PERMANENT into the
      * same outcome the way a bare "!= 0" check would. A token the manager does not accept yet
      * (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
-     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S. Refusals the manager's state can change come back
-     * TRANSIENT and retry here too.
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S, as is a refused password. Refusals the manager's
+     * state can change come back TRANSIENT and retry here too.
      *
      * Only a token that was present and (after any transient retries) still failed does this. An
      * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal

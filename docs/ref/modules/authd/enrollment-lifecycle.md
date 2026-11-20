@@ -183,11 +183,12 @@ characters on the CLI.
 
 A `--no-credential` token has **no `key` member at all**. It says where to connect and which CA to
 trust, and nothing more; remoted never accepts its id as a bearer `kid`. On an agent that is not
-enrolled yet, the first start uses it only to install the manager's CA as the trust anchor (pinned
-or embedded, with the same checks as the other shapes), then hands over to the agent's normal
-enrollment, verified against that anchor: with the password configured in the agent's
-`authd.pass` when there is one, with no credential otherwise. `wazuh-agent-auth` given such a token
-enrolls with no credential.
+enrolled yet, the first start enrolls through the same verified path as the other shapes: the CA
+(pinned or embedded) is checked, the enrollment is verified against it whatever `<verification_mode>`
+says, and the anchor is committed and the token removed only once the enrollment succeeded. It
+presents the password configured in the agent's `authd.pass` as its credential when there is one, and
+none otherwise; it does not depend on `<enrollment><enabled>`. A credential-bearing token never
+presents `authd.pass`. `wazuh-agent-auth` given a credential-less token enrolls with no credential.
 
 ## Step 3: The agent derives a key and signs a bearer
 
@@ -505,14 +506,31 @@ before the request was sent (DNS, connection refused, a refused TLS handshake) n
   and the retry is refused as a duplicate (`9008`). The agent logs `Enrollment was refused as a
   duplicate after an earlier attempt in this start timed out or got no answer`, then `Token
   bootstrap: the manager refused the enrollment; retrying with the same enrollment token.`, and
-  keeps retrying with the same token until the agent is deleted on the manager. A single-use token
-  was already spent by the lost request, so the retry is refused with `9024` instead, the agent adds
+  keeps retrying with the same token, which enrolls the agent once it is deleted on the manager. A
+  single-use token was already spent by the lost request, so the retry is refused with `9024` instead, the agent adds
   that the earlier attempt most likely registered it, and `wazuh-agentd` exits with
   `Enrollment-token bootstrap failed: enrollment token <id> has no uses left. Create a new
   enrollment token on the manager.`
 
-In both cases, delete the agent on the manager, wait for its deletion to finish (see
-[Agent removal](README.md#agent-removal)), and enroll the agent again with a new enrollment token.
+In both cases, delete the agent on the manager and wait for its deletion to finish (see
+[Agent removal](README.md#agent-removal)). A re-enrolling agent then needs a new enrollment token; a
+first enrollment with a multi-use token retries on its own, and one whose token was spent needs a new one.
+
+### How the token bootstrap treats a refused enrollment
+
+Only the manager refusing the token itself deletes the token file (`token_expired`, `token_revoked`,
+`9022`, `9023`, `9024`). For every other refusal of `POST /enroll` the token is kept, and the agent
+either retries or exits with `Enrollment-token bootstrap failed: <reason>`:
+
+| Refusal | Bootstrap |
+|---|---|
+| Duplicate agent (`409`), enrollment disabled (`403`, code `0`), a group that does not exist yet (`400`, `9014`), `401` `enrollment_key_unavailable`, a `401` with no readable class | retried with no limit |
+| `401` `token_unknown` or `stale_token` (the node has not synced the token, or the clocks disagree) | retried for about a minute, then exits |
+| `401` `invalid_request` (no credential presented: a credential-less token with a missing or wrong `authd.pass`) | retried for about a minute, then exits naming the password |
+| Any other `400` (a malformed request), `401` `invalid_signature` (the token's own key failed), `401` `invalid_request` on a credential-bearing token, any other `403` (for example a refused client certificate), `401` `unknown_agent` | exits at once with the manager's reason |
+
+The exit never costs the token: fix the cause (the certificate, the password, the configuration) and
+restart the agent.
 
 ## Step 11: The writer settles it
 

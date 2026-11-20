@@ -36,6 +36,12 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
 #endif
 STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
 
+/* Whether the explicit-'none' warning was already issued; a variable of its own so unit tests can reset it. */
+STATIC bool g_token_none_warned = false;
+
+/* The kind of pending result the caller's window is counting, so a change of kind restarts it. */
+STATIC w_token_bootstrap_result_t g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
+
 /**
  * @brief Reads the one-shot enrollment token file, mirroring
  *        w_enrollment_load_password()'s fopen/fgets read style (enrollment.c), sized for a
@@ -348,6 +354,29 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
 }
 
 #endif /* WIN32 */
+
+/* Retries what the manager's state can change; the rest is final. The list is on
+ * w_token_enroll_report_t (token_bootstrap.h). Only a credential-less token presents authd.pass, so
+ * only it can wait on a password. */
+static void token_enroll_classify_refusal(w_enroll_status_t status, bool has_key,
+                                          w_token_enroll_report_t *report) {
+    switch (status) {
+        case W_ENROLL_ERR_DUPLICATE:
+        case W_ENROLL_ERR_DISABLED:
+            report->refused = true;
+            break;
+        case W_ENROLL_ERR_INVALID_REQUEST:
+            report->refused = (report->authd_code == 9014);
+            break;
+        case W_ENROLL_ERR_AUTH_RETRY:
+            report->credential_pending = !has_key && strcmp(report->auth_class, "invalid_request") == 0;
+            report->refused = !report->credential_pending && strcmp(report->auth_class, "invalid_signature") != 0 &&
+                              !(has_key && strcmp(report->auth_class, "invalid_request") == 0);
+            break;
+        default:
+            break;
+    }
+}
 
 /** One short, operator-facing sentence per failing step. Never NULL. */
 const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status) {
@@ -925,11 +954,9 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     if (!opts->anchor_only && agt->ssl.verification_mode_explicit
             && agt->ssl.verification_mode == AGENT_VERIFY_NONE) {
         /* The bootstrap retries, and the configuration cannot change between attempts. */
-        static bool warned = false;
-
-        if (!warned) {
+        if (!g_token_none_warned) {
             mwarn(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
-            warned = true;
+            g_token_none_warned = true;
         } else {
             mdebug1(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
         }
@@ -1200,22 +1227,12 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     memset(&enroll_request, 0, sizeof(enroll_request));
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);
     enroll_request.log = mtLoggingFunctionsWrapper;
-    /* Never the configured authd.pass here: a token-based enrollment must not sign with a
-     * possibly-unrelated password. Nor any credential w_enrollment_build_request() resolved for
-     * itself -- its password AND the re-enrollment credential it may have loaded are both
-     * discarded, and only body_json is taken from it. The token is the only thing that may
-     * authenticate this request: it is the one credential the operator handed to this endpoint
-     * for this purpose.
-     *
-     * A credential-less token (token.has_key == false) does NOT fall back to a configured
-     * authd.pass either -- enrollment goes out with no credential at all.
-     * Confirmed against the manager's own EnrollmentAuthenticator
-     * (remoted/remoted_module/src/enrollment/enrollmentAuthenticator.hpp on
-     * enhancement/38991-identity): it has no notion of a "credential-less token" distinct from
-     * "no credential presented" -- sending no Authorization header falls through to whatever
-     * requirePassword is already configured, exactly like a classic no-password attempt.
-     * Silently reusing a configured password here would misrepresent to the manager (and any
-     * audit trail) what actually authenticated the request. */
+    /* A credential-bearing token never signs with the configured authd.pass, nor with the
+     * re-enrollment credential w_enrollment_build_request() may have loaded: only body_json is
+     * taken from it, and the token is the one credential the operator handed to this endpoint.
+     * A credential-less token carries nothing to sign with, so it presents the configured
+     * authd.pass, if any, as a regular enrollment would; the request is still verified against
+     * the pin-checked anchor. */
 
     if (token.has_key) {
         uint8_t derived_key[W_ETOKEN_KEY_BYTES];
@@ -1247,6 +1264,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_CREDENTIAL;
         }
+    } else if (built_request.password != NULL) {
+        strncpy(enroll_request.password, built_request.password, sizeof(enroll_request.password) - 1);
     }
 
     memset(&enroll_result, 0, sizeof(enroll_result));
@@ -1317,6 +1336,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             w_enrollment_parse_error(&enroll_result, &error);
 
             snprintf(report->manager_message, sizeof(report->manager_message), "%s", error.message);
+            snprintf(report->auth_class, sizeof(report->auth_class), "%s", error.auth_class);
+            report->authd_code = error.authd_code;
 
             /* The manager refusing the token itself: the one verdict on which the caller discards
              * the token, so the same call decides both that and the line telling the operator. Not
@@ -1375,17 +1396,16 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     if (enroll_status != W_ENROLL_OK) {
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
-         * clear on their own; any other answer is a refusal, either about the token
-         * (token_rejected, pending) or about the request or the manager's state, which `refused`
-         * marks as retryable. */
+         * clear on their own; a refusal about the token is token_rejected or pending. Of the rest,
+         * token_enroll_classify_refusal() says which the manager's state can change. */
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);
-            /* The rest of the answers the regular enrollment loop retries
-             * (w_enrollment_apply_policy()): the manager's state may change -- a group created, a
-             * duplicate deleted, enrollment re-enabled -- and the same token then succeeds. */
-            report->refused = !report->transient && !report->pending && !report->token_rejected &&
-                              enroll_status != W_ENROLL_ERR_AUTH_FATAL && enroll_result.http_code != 200;
+
+            if (!report->transient && !report->pending && !report->token_rejected &&
+                    enroll_status != W_ENROLL_ERR_AUTH_FATAL && enroll_result.http_code != 200) {
+                token_enroll_classify_refusal(enroll_status, token.has_key, report);
+            }
         }
 
         w_enroll_request_destroy(&built_request);
@@ -1526,8 +1546,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     w_token_enroll_report_t report = {0};
     w_token_enroll_status_t enroll_status;
     char *token_text = NULL;
-    /* An enrolled agent keeps running if the anchor can't be installed; a credential-less token on
-     * an unenrolled one does not. */
+    /* An enrolled agent keeps running if the anchor can't be installed; an unenrolled one does not. */
     bool already_enrolled = false;
 
     g_token_bootstrap_failure[0] = '\0';
@@ -1611,22 +1630,6 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
         return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
-    /* A credential-less token cannot enroll on its own, so install the anchor only (like
-     * --certs-only); the regular loop then enrolls, verified against it. A token that fails to
-     * decode is left to w_agent_token_enroll(), which names the reason. */
-    if (!already_enrolled) {
-        w_etoken_t probe;
-
-        if (w_etoken_decode(token_text, &probe) == ETOKEN_OK) {
-            if (!probe.has_key) {
-                minfo("Token bootstrap: the enrollment token carries no credential; installing the "
-                      "manager's CA, then enrolling with the agent's configured credential, if any.");
-                opts.anchor_only = true;
-            }
-            w_etoken_free(&probe);
-        }
-    }
-
     opts.token_text = token_text;
     opts.uid = uid;
     opts.gid = gid;
@@ -1655,8 +1658,9 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * something to enroll with. The one exception is a token the manager has finally refused:
          * expired, revoked, out of uses, or unknown to the master. Nothing on this path clears it
          * (the anchor is never installed and client.keys never written, so neither latch above
-         * trips next boot), so
-         * keeping it would hand the same dead credential to the same refusal on every restart.
+         * trips next boot), so keeping it would hand the same dead credential to the same refusal
+         * on every restart. Every other refusal keeps it: a final one (refused certificate,
+         * malformed request) may be fixed in the configuration, and a restart then reuses it.
          * Disposal is the caller's business, which is why the core only reports the verdict. */
         if (report.token_rejected) {
             unlink(AGENT_ENROLLMENT_TOKEN_FILE);
@@ -1666,14 +1670,20 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
             return W_TOKEN_BOOTSTRAP_PENDING;
         }
 
-        /* Refused for a reason the manager's state can change -- a group that does not exist
-         * yet, a duplicate agent, enrollment disabled. w_enrollment_process_response() already
-         * logged the manager's reason; the token is kept and the request repeated, verified as
-         * before, until it is accepted. */
+        /* A refusal the manager's state can change -- a group that does not exist yet, a duplicate
+         * agent, enrollment disabled. w_enrollment_process_response() already logged the manager's
+         * reason; the token is kept and the request repeated, verified as before. */
         if (report.refused) {
             minfo("Token bootstrap: the manager refused the enrollment; retrying with the same "
                   "enrollment token.");
             return W_TOKEN_BOOTSTRAP_TRANSIENT;
+        }
+
+        /* Bounded like a pending token (w_token_bootstrap_bound_pending()): a missing or wrong
+         * authd.pass is fixed on the manager or in the agent's file, and neither is instant. */
+        if (report.credential_pending) {
+            minfo("Token bootstrap: the manager did not accept the agent's password; retrying.");
+            return W_TOKEN_BOOTSTRAP_PENDING_PASSWORD;
         }
 
         if (report.transient) {
@@ -1684,6 +1694,17 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * that the next one starts with no token and takes the "legacy install" path. */
         if (report.token_rejected && report.token_refusal[0] != '\0') {
             token_bootstrap_set_failure("%s", report.token_refusal);
+        } else if (enroll_status == W_TOKEN_ENROLL_ERR_ENROLL && report.http_code != 0 &&
+                   report.manager_message[0] != '\0') {
+            size_t reason_len = strlen(report.manager_message);
+
+            while (reason_len > 0 && report.manager_message[reason_len - 1] == '.') {
+                reason_len--;
+            }
+
+            token_bootstrap_set_failure("the manager refused the enrollment (HTTP %ld): %.*s; refusing to "
+                                        "enroll unverified.", report.http_code, (int)reason_len,
+                                        report.manager_message);
         } else {
             token_bootstrap_set_failure("%s; refusing to enroll unverified.",
                                         w_agent_token_enroll_strerror(enroll_status));
@@ -1700,9 +1721,19 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
 
 w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result,
                                                            time_t *pending_since, time_t now) {
-    if (result != W_TOKEN_BOOTSTRAP_PENDING) {
+    const bool password = (result == W_TOKEN_BOOTSTRAP_PENDING_PASSWORD);
+
+    /* A later episode, or one of the other kind, must not inherit the time an earlier one spent. */
+    if (result != W_TOKEN_BOOTSTRAP_PENDING && !password) {
+        *pending_since = 0;
+        g_token_pending_kind = W_TOKEN_BOOTSTRAP_DONE;
         return result;
     }
+
+    if (g_token_pending_kind != W_TOKEN_BOOTSTRAP_DONE && g_token_pending_kind != result) {
+        *pending_since = 0;
+    }
+    g_token_pending_kind = result;
 
     if (*pending_since == 0) {
         *pending_since = now;
@@ -1710,6 +1741,15 @@ w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_res
 
     if (now - *pending_since < W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S) {
         return W_TOKEN_BOOTSTRAP_TRANSIENT;
+    }
+
+    if (password) {
+        merror("The manager still refuses the agent's password after %ld seconds: authd.pass is "
+               "missing or does not match the manager's. Fix it and restart the agent.",
+               (long)(now - *pending_since));
+        token_bootstrap_set_failure("the manager did not accept the agent's password (authd.pass is "
+                                    "missing or wrong) within %ld seconds.", (long)(now - *pending_since));
+        return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 
     merror("The manager still does not accept the enrollment token after %ld seconds. It may not "

@@ -632,8 +632,8 @@ STATIC w_enroll_status_t w_enrollment_handle_answer(const hc_enroll_result_t *re
                 *keep_unknown = true;
                 merror("Enrollment was refused as a duplicate after an earlier attempt in this start timed "
                        "out or got no answer. The manager most likely registered this agent from that "
-                       "attempt. Delete the agent on the manager and enroll again with a new enrollment "
-                       "token.");
+                       "attempt. The agent keeps retrying with the same enrollment token; delete the agent "
+                       "on the manager so a retry can succeed.");
             } else {
                 merror("Enrollment rejected by the manager: duplicate agent.%s%s",
                        manager_message ? " " : "", manager_message ? manager_message : "");

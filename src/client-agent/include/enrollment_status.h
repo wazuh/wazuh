@@ -34,7 +34,8 @@ typedef enum {
     W_ENROLL_OK = 0,              /**< 200: keys parsed and written to client.keys. */
     W_ENROLL_ERR_TRANSPORT,       /**< No HTTP response at all (invalid transport
                                     *   config, connect/TLS failure). */
-    W_ENROLL_ERR_INVALID_REQUEST, /**< 400: malformed request. */
+    W_ENROLL_ERR_INVALID_REQUEST, /**< 400: malformed request, or authd's 9014 (a group that does not
+                                    *   exist). The token bootstrap retries only the latter. */
     W_ENROLL_ERR_AUTH_RETRY,      /**< Any 401 that is neither `unknown_agent` nor a refusal of
                                     *   the enrollment token itself (`token_expired`,
                                     *   `token_revoked`: W_ENROLL_ERR_AUTH_FATAL). Every one of
@@ -47,7 +48,10 @@ typedef enum {
                                     *   the manager refused outright (`invalid_signature`, which
                                     *   must never re-enroll but is still worth retrying: the fix
                                     *   is on the manager). Also any 401 whose class could not be
-                                    *   read, which is the fail-safe reading (design §2.9 rule 3). */
+                                    *   read, which is the fail-safe reading (design §2.9 rule 3).
+                                    *   The token bootstrap retries `invalid_request` for a window
+                                    *   only (credential-less tokens) and never `invalid_signature`
+                                    *   (the token's own key failing). */
     W_ENROLL_ERR_AUTH_FATAL,      /**< Nothing the agent can retry into success. From the wire that
                                     *   is the manager refusing an enrollment token whose signature
                                     *   it already VERIFIED (w_enrollment_token_refusal()): a 401
@@ -63,18 +67,20 @@ typedef enum {
                                     *   class can only come from authd's 9026, which only a
                                     *   re-enrollment bearer can provoke -- a password or token
                                     *   enrollment asserts no identity -- so it means exactly one
-                                    *   thing: the stored re-enrollment secret is dead. */
+                                    *   thing: the stored re-enrollment secret is dead. Final for the
+                                    *   token bootstrap. */
     W_ENROLL_ERR_DISABLED,        /**< 403 whose nested envelope carries code 0: enrollment
                                     *   administratively disabled on the manager. Retried by the
-                                    *   enrollment loops (an operator can re-enable it), not
-                                    *   transient for the token bootstrap. */
+                                    *   enrollment loops and by the token bootstrap, without a
+                                    *   limit (an operator can re-enable it). */
     W_ENROLL_ERR_FORBIDDEN,       /**< Any other 403 that is not a token verdict: refused before
                                     *   the /enroll handler ran (e.g. a client certificate whose SAN
                                     *   does not list the peer address), a code this agent does not
                                     *   know, or a body that could not be read. Not "disabled", so
-                                    *   it is logged with the manager's own reason, but handled like
-                                    *   it: retried by the enrollment loops, not transient for the
-                                    *   token bootstrap. */
+                                    *   it is logged with the manager's own reason. Retried by the
+                                    *   enrollment loops; final for the token bootstrap, which
+                                    *   exits with that reason (repeating the request does not
+                                    *   change a refused certificate). */
     W_ENROLL_ERR_DUPLICATE,       /**< 409: duplicate agent. */
     W_ENROLL_ERR_SERVER           /**< 500/503, or any other/malformed response. */
 } w_enroll_status_t;
