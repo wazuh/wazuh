@@ -340,15 +340,17 @@ void * run_dealer(__attribute__((unused)) void * args) {
             continue;
         }
         if (wnotify_add(notify_queue, peer, WO_READ) < 0) {
+            /* Drop only this peer: leaving the loop would close and unlink wdb.sock while the
+             * daemon keeps running, and every later client would fail to connect. */
             merror("at run_dealer(): wnotify_add(%d): %s (%d)",
                     peer, strerror(errno), errno);
-            goto error;
+            close(peer);
+            continue;
         }
 
         mdebug1("New client connected (%d).", peer);
     }
 
-error:
     close(sock);
     unlink(WDB_LOCAL_SOCK);
     return NULL;

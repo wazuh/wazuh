@@ -1822,8 +1822,9 @@ HTTPS channel, whose equivalent is [`remoted.max_inflight_bytes`](#remotedmax_in
 - Events-queue drops (its byte limit, [`remoted.batch_events_capacity`](#remotedbatch_events_capacity)
   or [`remoted.batch_events_per_agent_capacity`](#remotedbatch_events_per_agent_capacity)) count in
   `metrics.messages.received_breakdown.events_failed` and are logged as
-  `Events queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds, with the
-  same wording rules.
+  `Events queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds; here `<s>`
+  is the time since the first of the events the line counts (at least 1), and the first line says
+  `so far` instead.
 
 ### Guidelines
 

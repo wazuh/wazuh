@@ -155,10 +155,21 @@ wazuh-indexer:
 - After the prefix it may only contain lowercase letters, digits, `.`, `-` and `${field}` placeholders, for example
   `wazuh-events-v5-${wazuh.integration.category}-custom`. A name that breaks these rules makes the asset fail to build.
 - Each `${field}` placeholder is replaced, for every event, with the value of that event field. The field must exist and
-  hold a string; otherwise the event is not indexed (trace: `Couldn't get field ${field} from event`).
-- The replacement is not sanitized: referenced field values must already contain only valid index-name characters.
-- After the replacement the name must be at most 255 characters; a longer name is not indexed (trace:
-  `Index name '<name>' exceeds 255 characters limit`).
+  hold a string; otherwise the event is not indexed and the operation fails (trace:
+  `write.output(wazuh-indexer/<index>) -> Couldn't get field ${field} from event`).
+- The replacement is not sanitized: a referenced field value must already contain only lowercase letters, digits,
+  `.`, `-` and `_`. A value holding anything else is not indexed and the operation fails (trace:
+  `write.output(wazuh-indexer/<index>) -> Field ${field} holds characters not allowed in an index name`).
+- After the replacement the name must be at most 255 characters; a longer name is not indexed and the operation fails
+  (trace: `write.output(wazuh-indexer/<index>) -> Index name '<name>' exceeds 255 characters limit`).
+- The traces appear in test sessions (logtest). On live traffic the same cause is logged as a `WARNING` without the
+  event, at most once per minute for each output operation:
+  `[builder] Event not indexed by 'write.output(wazuh-indexer/<index>)': <cause>`, followed by
+  `(<n> more events not indexed by this output since the previous report)` when events were skipped since the last line.
+  The line never carries event content: for a name that is too long the cause is
+  `Index name exceeds 255 characters limit (<length> characters)`, without the name. Events skipped after the last
+  line are reported when the output next indexes an event, once that minute is over:
+  `[builder] <n> more events not indexed by 'write.output(wazuh-indexer/<index>)' since the previous report`.
 - There is no date placeholder: apart from the `${field}` replacement, the name is used as written.
 
 ### Asset example

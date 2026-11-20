@@ -213,7 +213,8 @@ daemons it manages are, in order, `wazuh-manager-clusterd`, `-modulesd`, `-remot
 `-db`, `-authd` and `-apid`; `start` launches them in the reverse order. Two are skipped by `start` and
 `status` (`stop` stops whatever is running): `wazuh-manager-apid` unless `bin/wazuh-manager-conf --skip-file-checks get
 cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` is `true` (both read without
-checking the files the configuration names, so a missing certificate does not hide a running apid from `status`).
+checking the files the configuration names, so a missing certificate does not hide a running apid from `status`;
+when the configuration cannot be read at all, `status` lists those two only while they run, as described after the pre-start checks below).
 
 | Action | Behaviour |
 | ------ | --------- |
@@ -246,8 +247,15 @@ daemon that did not start) appear only in the `-j` output, as
 `{"error":<code>,"message":"<reason>."}`. The messages, codes and log
 lines of each step are in [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
 When `bin/wazuh-manager-resolve-credentials` is missing or not executable, steps 2 and 4 are skipped. A
-configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
-configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`
+configuration the validator refuses is refused by step 1 (`Configuration error`) before the role is read.
+`status` reads the role without validating first, and on such a configuration it cannot: it prints `Cannot
+read cluster.node_type, check the /etc/wazuh-manager/wazuh-manager.conf file.` (with `-j`, as a
+`message` beside the daemons' `data`) and still answers for the daemons alone: its exit code and `error` do
+not change, so a configuration being edited does not make a running manager look down (`check` is what
+judges the file). `wazuh-manager-apid` and `wazuh-manager-authd` are then listed only while they run, so a
+running one stays visible; a stopped one is left out, since the node may be a worker, where apid never
+runs, or have `auth.disabled` set — which also means that a crashed apid or authd goes unreported until
+the configuration is readable again.
 
 An unknown action prints the usage and exits `1`; with `-j` it prints only `{"error":1,"message":"Invalid action: <action>."}` (or `Missing action.`).
 Anything after `start`, `stop`, `restart`, `reload`, `check` or `status` is ignored, not refused:

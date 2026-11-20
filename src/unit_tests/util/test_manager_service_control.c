@@ -126,6 +126,15 @@ static void test_check_verdict_requires_a_clean_exit(void **state)
     assert_false(check_passed(SIGSEGV));
 }
 
+static void test_check_refusal_names_the_requested_action(void **state)
+{
+    (void)state;
+    assert_string_equal(check_failed_message("restart"),
+                        "the manager configuration or credentials check failed; the manager was not restarted");
+    assert_string_equal(check_failed_message("reload"),
+                        "the manager configuration or credentials check failed; the manager was not reloaded");
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -136,6 +145,7 @@ int main(void)
         cmocka_unit_test(test_service_states),
         cmocka_unit_test(test_install_paths_are_derived_independently),
         cmocka_unit_test(test_check_verdict_requires_a_clean_exit),
+        cmocka_unit_test(test_check_refusal_names_the_requested_action),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

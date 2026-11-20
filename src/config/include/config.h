@@ -140,6 +140,16 @@ int Test_Rootcheck(const char * path);
 /* Verifies that the configuration for Localfile is correct. Return 0 on success or -1 on error.  */
 int Test_Localfile(const char * path);
 
+/**
+ * @brief Take the number of reserved ("_"-prefixed) labels Read_Localfile() has skipped, and reset it.
+ *
+ * A reader skips such a label with a warning. The manager's verifier uses this count to refuse a group
+ * configuration that carries one: agents whose reader predates the skip never finish reading it.
+ *
+ * @return Labels skipped since the previous call.
+ */
+unsigned int Localfile_TakeReservedLabels(void);
+
 /* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
 int Test_Agent(const char * path);
 

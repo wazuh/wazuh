@@ -386,18 +386,49 @@ status()
 
     node_type=$(get_node_type);
 
-    if [ $USE_JSON = true ]; then
+    # A configuration the validator refuses has no readable role, so whether apid belongs on this
+    # node is unknown, and so is whether authd does (auth.disabled cannot be read either). Say so,
+    # and list those two only while they run (a running one must stay visible), never as stopped,
+    # since neither may belong here. The verdict stays the other daemons': a
+    # configuration being edited must not turn a running manager into a failed status (judging the
+    # file is what `check` is for). With -j the notice travels in the document itself, as a message
+    # beside the daemons' data: callers drop stderr.
+    if [ -z "$node_type" ]; then
+        role_message="Cannot read cluster.node_type, check the ${CONF_DIR}/${WAZUH_CONF} file."
+        if [ $USE_JSON = true ]; then
+            printf '{"error":0,"message":"%s","data":[' "$(json_string "${role_message}")"
+        else
+            echo "${role_message}"
+        fi
+    elif [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
         ## The API daemon only runs on the master node
         if [ "$i" = "wazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
-            continue
+            if [ -n "$node_type" ]; then
+                continue
+            fi
+            ## Unknown role: listed only when it is running
+            pstatus ${i} quiet
+            if [ $? = 0 ]; then
+                continue
+            fi
         fi
 
         ## Mirror start_service(): authd is not started when auth.disabled is true.
-        if [ "$i" = "wazuh-manager-authd" ] && auth_disabled; then
-            continue
+        if [ "$i" = "wazuh-manager-authd" ]; then
+            if [ -n "$node_type" ]; then
+                if auth_disabled; then
+                    continue
+                fi
+            else
+                ## Unreadable configuration: listed only when it is running
+                pstatus ${i} quiet
+                if [ $? = 0 ]; then
+                    continue
+                fi
+            fi
         fi
 
         if [ $USE_JSON = true ] && [ $first = false ]; then

@@ -2007,6 +2007,11 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
             wdb_close(*wdb, true);
             unlink(global_path);
 
+            // The cached global group hash describes the database just removed: drop it whether
+            // or not the rename below succeeds, so the next request recalculates it from the file
+            // that is actually opened next.
+            wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+
             if (rename(global_tmp_path, global_path) != OS_SUCCESS) {
                 merror("Renaming %s to %s: %s", global_tmp_path, global_path, strerror(errno));
                 result = OS_INVALID;

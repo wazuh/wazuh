@@ -533,8 +533,19 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                     code=2201, extra_message=f"Keystore operation failed: {e}"
                 )
 
-            indexer_user = user_response.get("value") if user_response else None
-            indexer_pass = pass_response.get("value") if pass_response else None
+            # The keystore answers {"status": "error", "message": ...} when it could not read the
+            # value at all (e.g. its lock was held for the whole wait). That is not an empty
+            # credential: report it as the transient keystore failure it is.
+            for key, response in (("username", user_response), ("password", pass_response)):
+                if not isinstance(response, dict) or response.get("status") != "ok":
+                    detail = response.get("message") if isinstance(response, dict) else None
+                    raise IndexerUnavailableError(
+                        code=2201,
+                        extra_message=f"Keystore could not read indexer/{key}: {detail or 'unexpected response'}",
+                    )
+
+            indexer_user = user_response.get("value")
+            indexer_pass = pass_response.get("value")
 
             if not indexer_user:
                 raise IndexerConfigurationError(

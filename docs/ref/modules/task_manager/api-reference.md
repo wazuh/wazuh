@@ -124,7 +124,7 @@ Rows are described in [Manager tasks](manager-tasks.md). Statuses: `pending`, `c
 | `scheduled_run_at` | no | Unix seconds |
 | `create_time` | no | Unix seconds; defaults to now |
 | `next_attempt_at` | no | Unix seconds; defaults to `create_time` |
-| `coalesce`, `max_pending` | no | **honoured only for a task type this build does not know** — a registered type takes both from its descriptor |
+| `coalesce`, `max_pending` | no | **honoured only for a task type this build does not know** — a registered type takes both from its descriptor. For an unknown type a `max_pending` that is absent, `0` or negative means the fixed bound of 100 |
 
 The three times must be integers in the signed 64-bit range and an honoured `max_pending` an
 integer in the 32-bit `int` range; anything else (a fraction, a string, `null`, a value out of range)
@@ -138,7 +138,8 @@ executor immediately — there is no poll interval.
 
 `task_type` is not validated against the registered types. A row of a type this build has no handler
 for is stored and never run; the next start of the module retires it as `failed` with `last_error`
-`unknown task type`, and logs it at ERROR.
+`unknown task type`, and logs it at ERROR. Until then such a type is admitted only up to 100 pending
+rows (or its positive `max_pending`), and refused beyond that with `503` `queue_full`.
 
 ### `POST /v1/manager-tasks/get`
 

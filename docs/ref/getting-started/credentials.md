@@ -580,7 +580,7 @@ To run the manager on your own PKI, stage the CA in `<CONF>/ca/`, the server pai
 `<CONF>/certs/`, and for an indexer on another host its CA and the indexer password (plus the client pair it
 issued for this node, when the configuration names one). The CA and `local.env` can be staged before installing,
 in a `root:root` `/etc/wazuh-manager` you create; the files of `certs/` need the `wazuh-manager` group, so they are
-staged after installing, before the first start (a Debian package also re-owns files staged before it). The
+staged after installing, before the first start, or before installing a DEB or RPM package, which re-owns them. The
 procedure, with the commands, is in
 [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere). Staged files carry
 no marker, so the resolver validates them at every start and never replaces them.

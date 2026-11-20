@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <chrono>
 #include <memory>
 
 #include "builders/baseBuilders_test.hpp"
@@ -490,6 +491,225 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     auto result = operation(event);
     ASSERT_TRUE(result.success());
     ASSERT_EQ(*result.payload(), *event);
+}
+
+// A placeholder whose field is missing (or not a string) fails the operation with the documented trace; the index
+// name is never used as a format string (a '${field}' in it used to throw "argument not found").
+TEST_F(IndexerOutputOperationTest, missing_field_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.missing}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+
+    for (const auto* messageStr : {R"({"wazuh":{"integration":{"category":"applications"}}})",
+                                   R"({"wazuh":{"integration":{"category":"applications"},"missing":1}})"})
+    {
+        auto event = std::make_shared<json::Json>(messageStr);
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success());
+        EXPECT_EQ(result.trace(),
+                  "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.integration.category}-${wazuh.missing}) -> "
+                  "Couldn't get field ${wazuh.missing} from event");
+    }
+}
+
+// A field value becomes part of the index name the connector writes into a bulk action line: one holding anything
+// but index-name characters is refused, never indexed under a name it shaped
+TEST_F(IndexerOutputOperationTest, field_value_with_invalid_characters_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.name}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    for (const std::string value : {"x\",\"_id\":\"y", "a/b", "a b", "Upper", "a\nb", "a*", "a,b"})
+    {
+        auto event = std::make_shared<json::Json>("{}");
+        event->setString(value, "/wazuh/name");
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success()) << value;
+        EXPECT_EQ(result.trace(),
+                  "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Field ${wazuh.name} holds characters "
+                  "not allowed in an index name");
+    }
+    ::testing::Mock::VerifyAndClearExpectations(&mockConnector);
+
+    auto event = std::make_shared<json::Json>("{}");
+    event->setString("aws_cloud.trail-1", "/wazuh/name");
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-aws_cloud.trail-1", ::testing::_));
+    EXPECT_TRUE(operation(event).success());
+}
+
+TEST_F(IndexerOutputOperationTest, too_long_index_name_fails_with_trace)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(true));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.name}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    // 16 (prefix) + 239 = 255 characters: indexed
+    const std::string longest(239, 'a');
+    auto event = std::make_shared<json::Json>("{}");
+    event->setString(longest, "/wazuh/name");
+    EXPECT_CALL(mockConnector, index("wazuh-events-v5-" + longest, ::testing::_));
+    EXPECT_TRUE(operation(event).success());
+
+    // 256 characters: not indexed
+    const std::string tooLongName = "wazuh-events-v5-" + longest + "b";
+    event->setString(longest + "b", "/wazuh/name");
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    base::result::Result<base::Event> result;
+    ASSERT_NO_THROW(result = operation(event));
+    EXPECT_FALSE(result.success());
+    EXPECT_EQ(result.trace(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.name}) -> Index name '" + tooLongName
+                  + "' exceeds 255 characters limit");
+}
+
+// Outside test mode the failure carries no trace and nothing throws, however many events fail
+TEST_F(IndexerOutputOperationTest, missing_field_fails_without_trace_outside_test_mode)
+{
+    auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
+    auto builder = getIndexerOutputBuilder(iConnector);
+
+    EXPECT_CALL(*(mocks->ctx), isTestMode()).WillOnce(::testing::Return(false));
+    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.missing}"})");
+    auto expression = builder(definition, this->mocks->ctx);
+    auto operation = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(mockConnector, index(::testing::_, ::testing::_)).Times(0);
+    for (int i = 0; i < 3; ++i)
+    {
+        auto event = std::make_shared<json::Json>(messageStr.c_str());
+        base::result::Result<base::Event> result;
+        ASSERT_NO_THROW(result = operation(event));
+        EXPECT_FALSE(result.success());
+        EXPECT_TRUE(result.trace().empty());
+    }
+}
+
+// The warning of one output: the first failure is reported, the following ones only once per window, and each
+// report carries how many were suppressed since the previous one.
+TEST(NotIndexedLogThrottleTest, reports_first_then_once_per_window_with_suppressed_count)
+{
+    NotIndexedLogThrottle throttle;
+    const auto start = NotIndexedLogThrottle::Clock::now();
+    const auto window = NotIndexedLogThrottle::WINDOW;
+
+    // First occurrence: reported, nothing suppressed before it
+    auto reported = throttle.record(start);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 0U);
+
+    // Inside the window: suppressed, up to its last instant
+    EXPECT_FALSE(throttle.record(start).has_value());
+    EXPECT_FALSE(throttle.record(start + std::chrono::seconds(1)).has_value());
+    EXPECT_FALSE(throttle.record(start + window - std::chrono::milliseconds(1)).has_value());
+
+    // Window elapsed: reported with the three suppressed ones
+    reported = throttle.record(start + window);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 3U);
+
+    // The count restarts, and the window is measured from the last report
+    EXPECT_FALSE(throttle.record(start + window + std::chrono::seconds(1)).has_value());
+    reported = throttle.record(start + window + window);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 1U);
+
+    // A quiet window reports no suppressed events
+    reported = throttle.record(start + window * 4);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 0U);
+}
+
+// Failures suppressed after the last report are not lost when no further failure comes: pending() hands them
+// over once the window is over, and only once
+TEST(NotIndexedLogThrottleTest, pending_reports_the_tail_after_the_window)
+{
+    NotIndexedLogThrottle throttle;
+    const auto start = NotIndexedLogThrottle::Clock::now();
+    const auto window = NotIndexedLogThrottle::WINDOW;
+
+    // Nothing recorded, or nothing suppressed: nothing pending
+    EXPECT_FALSE(throttle.pending(start).has_value());
+    ASSERT_TRUE(throttle.record(start).has_value());
+    EXPECT_FALSE(throttle.pending(start + window).has_value());
+
+    // Two suppressed failures stay pending while the window since the last report lasts
+    EXPECT_FALSE(throttle.record(start + std::chrono::seconds(1)).has_value());
+    EXPECT_FALSE(throttle.record(start + std::chrono::seconds(2)).has_value());
+    EXPECT_FALSE(throttle.pending(start + std::chrono::seconds(3)).has_value());
+
+    // Window over: handed over once
+    const auto pending = throttle.pending(start + window);
+    ASSERT_TRUE(pending.has_value());
+    EXPECT_EQ(*pending, 2U);
+    EXPECT_FALSE(throttle.pending(start + window * 2).has_value());
+
+    // That report starts a new window for record() too
+    EXPECT_FALSE(throttle.record(start + window + std::chrono::seconds(1)).has_value());
+}
+
+// Each output has its own throttle: one being silenced does not silence another
+TEST(NotIndexedLogThrottleTest, instances_are_independent)
+{
+    NotIndexedLogThrottle first;
+    NotIndexedLogThrottle second;
+    const auto now = NotIndexedLogThrottle::Clock::now();
+
+    EXPECT_TRUE(first.record(now).has_value());
+    EXPECT_FALSE(first.record(now).has_value());
+    EXPECT_TRUE(second.record(now).has_value());
+}
+
+// Every build of one output (one per router worker) shares its throttle; another output has its own
+TEST(NotIndexedLogThrottleTest, builds_of_the_same_output_share_one_throttle)
+{
+    const auto first = notIndexedLogThrottleFor("write.output(wazuh-indexer/shared-a)");
+    const auto second = notIndexedLogThrottleFor("write.output(wazuh-indexer/shared-a)");
+    const auto other = notIndexedLogThrottleFor("write.output(wazuh-indexer/shared-b)");
+    const auto now = NotIndexedLogThrottle::Clock::now();
+
+    EXPECT_EQ(first, second);
+    EXPECT_NE(first, other);
+
+    // One report for the output, whichever build hits the failure
+    EXPECT_TRUE(first->record(now).has_value());
+    EXPECT_FALSE(second->record(now).has_value());
+    EXPECT_TRUE(other->record(now).has_value());
+}
+
+// A throttle lives while a build holds it: an output built again later starts from a clean one
+TEST(NotIndexedLogThrottleTest, a_released_output_gets_a_new_throttle)
+{
+    const auto name = "write.output(wazuh-indexer/released)";
+    const auto now = NotIndexedLogThrottle::Clock::now();
+
+    auto throttle = notIndexedLogThrottleFor(name);
+    EXPECT_TRUE(throttle->record(now).has_value());
+    EXPECT_FALSE(throttle->record(now).has_value());
+    throttle.reset();
+
+    throttle = notIndexedLogThrottleFor(name);
+    const auto reported = throttle->record(now);
+    ASSERT_TRUE(reported.has_value());
+    EXPECT_EQ(*reported, 0U);
 }
 
 } // namespace indexeroutputtest
