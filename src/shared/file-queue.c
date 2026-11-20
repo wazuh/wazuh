@@ -17,6 +17,7 @@
 static void file_sleep(void);
 static void GetFile_Queue(file_queue *fileq) __attribute__((nonnull));
 static int Handle_Queue(file_queue *fileq, int flags) __attribute__((nonnull));
+static void close_queue_fp(file_queue *fileq) __attribute__((nonnull));
 
 /* To translate between month (int) to month (char) */
 static const char *(s_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -47,14 +48,21 @@ static void GetFile_Queue(file_queue *fileq)
     snprintf(fileq->file_name, MAX_FQUEUE, "%s", fileq->flags & CRALERT_FP_SET ? "<stdin>" : ALERTS_DAILY);
 }
 
+/* Close the queue stream along with the line held from it */
+static void close_queue_fp(file_queue *fileq)
+{
+    fclose(fileq->fp);
+    fileq->fp = NULL;
+    os_free(fileq->pending_line);
+}
+
 /* Re Handle the file queue */
 static int Handle_Queue(file_queue *fileq, int flags)
 {
     /* Close if it is open */
     if (!(flags & CRALERT_FP_SET)) {
         if (fileq->fp) {
-            fclose(fileq->fp);
-            fileq->fp = NULL;
+            close_queue_fp(fileq);
         }
 
         /* We must be able to open the file, fseek and get the
@@ -75,8 +83,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
 
         if (fseek(fileq->fp, 0, SEEK_END) < 0) {
             merror(FSEEK_ERROR, fileq->file_name, errno, strerror(errno));
-            fclose(fileq->fp);
-            fileq->fp = NULL;
+            close_queue_fp(fileq);
             return (-1);
         }
     }
@@ -85,8 +92,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
     if (fileq->fp) {
         if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
             merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
-            fclose(fileq->fp);
-            fileq->fp = NULL;
+            close_queue_fp(fileq);
             return (-1);
         }
     }
@@ -103,6 +109,7 @@ int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
     if (!(flags & CRALERT_FP_SET)) {
         fileq->fp = NULL;
     }
+    fileq->pending_line = NULL;
     fileq->last_change = 0;
     fileq->flags = 0;
 
@@ -131,6 +138,8 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
 {
     unsigned int i = 0;
     alert_data *al_data;
+    /* Caller-provided streams may not be seekable, so hold the next header instead of seeking back */
+    char **pending = (fileq->flags & CRALERT_FP_SET) ? &fileq->pending_line : NULL;
 
     /* If the file queue is not available, try to access it */
     if (!fileq->fp) {
@@ -144,7 +153,7 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
         return (NULL);
     }
 
-    if (al_data = GetAlertData(fileq->flags, fileq->fp), al_data) {
+    if (al_data = GetAlertData_ex(fileq->flags, fileq->fp, pending), al_data) {
         return al_data;
     }
 
@@ -162,7 +171,7 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
 
     /* Try up to timeout times to get an event */
     while (i < timeout) {
-        al_data = GetAlertData(fileq->flags, fileq->fp);
+        al_data = GetAlertData_ex(fileq->flags, fileq->fp, pending);
         if (al_data) {
             return (al_data);
         }
