@@ -13,10 +13,11 @@
 #include "password_authority.hpp"
 #include "json.hpp"
 
-#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <utility>
+
+#include "uid_text_darwin.hpp"
 
 namespace od
 {
@@ -519,8 +520,13 @@ namespace od
                     continue;
                 }
 
-                const auto uid = static_cast<uid_t>(std::strtoll(toStdString([uids[0] description]).c_str(), nullptr, 10));
-                collected[uid] = toStdString([guids[0] description]);
+                // A UniqueID that is not a plain uid must not land on a real account's uid.
+                uid_t uid = 0;
+
+                if (parseUidText(toStdString([uids[0] description]), uid))
+                {
+                    collected[uid] = toStdString([guids[0] description]);
+                }
             }
 
             guidByUid = std::move(collected);
