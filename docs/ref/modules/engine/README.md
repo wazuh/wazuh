@@ -2582,6 +2582,14 @@ Total number of input lines the router workers dropped because they are not a va
 
 ---
 
+##### `router.events.id_failed`
+
+Total number of events the router workers dropped because their `wazuh.event.id` could not be generated: the system's cryptographic random source (OpenSSL) reported a failure. Such an event is dropped before anything else is done with it, so it is neither indexed (not even in the raw-event index) nor decoded. Each worker logs the first one as an ERROR with the reason, then at most one line per minute that also reports how many it dropped since its previous report; every event tries the random source again. It stays `0` on a healthy system.
+
+**Used for:** detecting a failing random source on the manager host.
+
+---
+
 #### Server metrics
 
 ##### `server.bytes.received`
