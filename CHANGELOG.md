@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-db` not escaping map keys in its HTTP responses, which let the operating system platform reported by an agent alter or break the counts of `GET /agents/summary`. ([#41545](https://github.com/wazuh/wazuh/pull/41545))
 - Fixed `wazuh-clusterd` accepting divided messages from a peer that had not proven the cluster key, and copying the whole accumulated message on every received chunk, which let a connection without the key make the master hold hundreds of MiB and stop serving workers and `cluster_control` for tens of seconds. The connection is now closed at the header of a divided message received before the peer proves the key, or of a chunk larger than 10 MiB, and the chunks are accumulated in place. ([#41594](https://github.com/wazuh/wazuh/pull/41594))
 - Fixed `wazuh-integratord` writing the alert location, rule ID and rule description unfiltered to the alert file of integrations that do not use the JSON alert format. These fields now get the same character filtering as the alert log. ([#41599](https://github.com/wazuh/wazuh/pull/41599))
+- Fixed the manager sending its HTTPS requests, such as the vulnerability feed updates, without verifying the server certificate when no CA bundle was found in the known paths. These requests now fail with an error, and `/etc/ssl/ca-bundle.pem`, where SLES and openSUSE keep the bundle, is now one of those paths. ([#41597](https://github.com/wazuh/wazuh/pull/41597))
 
 ### Ruleset
 
