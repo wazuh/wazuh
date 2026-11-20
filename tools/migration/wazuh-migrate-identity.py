@@ -921,8 +921,9 @@ def configuration_elements(text):
     as the manager does. The manager also stores &amp; as a bare &, which is encoded again here.
     """
     def shape(element):
-        return (element.tag, sorted(element.attrib.items()), (element.text or "").strip(),
-                [shape(child) for child in element])
+        # Around child elements the text is layout; in a leaf it is the value, spaces included.
+        value = (element.text or "").strip() if len(element) else element.text or ""
+        return (element.tag, sorted(element.attrib.items()), value, [shape(child) for child in element])
     body = re.sub(r"^\s*<\?xml[^>]*\?>", "", text or "")
     body = body.replace("\\<", "_escaped_lt_").replace("\\>", "_escaped_gt_")
     body = re.sub(r"&(?!(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);)", "&amp;", body)

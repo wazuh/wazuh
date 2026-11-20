@@ -703,6 +703,8 @@ class MigrationToolTest(unittest.TestCase):
 
         FakeManager.configurations["default"] = stored.replace("/root/fim test", "/root/fimtest")
         self.assertEqual(1, self.check(), "a value that differs by a space is another value")
+        FakeManager.configurations["default"] = stored.replace("/root/fim test<", "/root/fim test <")
+        self.assertEqual(1, self.check(), "so is one with a trailing space")
 
         head, mark, carried = stored.partition("<!-- Carried from the 4.x default group")
         blocks = carried.split("<agent_config", 2)
