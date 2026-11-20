@@ -22,6 +22,7 @@
 
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
 #include "../wrappers/wazuh/remoted/manager_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "secure.c"
 
 void * save_control_thread(void * control_msg_queue);
@@ -68,12 +69,75 @@ void test_save_control_message_ok(void **state)
     indexed_queue_free(queue);    
 }
 
+/* Pops a close notice of agent 001, whose keystore entry has the given shutdown flag. */
+static void run_closed_connection(bool worker_node, bool shutdown_received, const char * sync_status, agent_status_code_t status_code)
+{
+    keyentry * entry = NULL;
+    os_calloc(1, sizeof(keyentry), entry);
+    entry->id = "001";
+    entry->keyid = 0;
+    entry->shutdown_received = shutdown_received;
+
+    keys.keyentries = &entry;
+    keys.keysize = 1;
+    keys.keytree_id = rbtree_init();
+    rbtree_insert(keys.keytree_id, entry->id, entry);
+
+    w_ctrl_msg_data_t * ctrl_msg_data;
+    os_calloc(1, sizeof(w_ctrl_msg_data_t), ctrl_msg_data);
+    os_calloc(1, sizeof(keyentry), ctrl_msg_data->key);
+    ctrl_msg_data->key->id = strdup("001");
+    ctrl_msg_data->is_closed = true;
+
+    logr.worker_node = worker_node;
+
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_indexed_queue_pop_ex, (void *) ctrl_msg_data);
+    expect_value(__wrap_indexed_queue_pop_ex, queue, 0x1);
+
+    expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    expect_string(__wrap_wdb_update_agent_connection_status, sync_status, sync_status);
+    expect_value(__wrap_wdb_update_agent_connection_status, status_code, status_code);
+    will_return(__wrap_wdb_update_agent_connection_status, OS_SUCCESS);
+
+    will_return(__wrap_FOREVER, 0);
+
+    assert_null(save_control_thread((void *) 0x1));
+
+    rbtree_destroy(keys.keytree_id);
+    keys.keytree_id = NULL;
+    keys.keyentries = NULL;
+    keys.keysize = 0;
+    logr.worker_node = false;
+    os_free(entry);
+}
+
+void test_save_control_message_connection_closed(void **state)
+{
+    run_closed_connection(false, false, "synced", CONNECTION_CLOSED);
+}
+
+// The close of the connection that sent the shutdown keeps the shutdown as the reason, whatever the queue order.
+void test_save_control_message_connection_closed_after_shutdown(void **state)
+{
+    run_closed_connection(false, true, "synced", HC_SHUTDOWN_RECV);
+}
+
+void test_save_control_message_connection_closed_worker(void **state)
+{
+    run_closed_connection(true, false, "syncreq_status", CONNECTION_CLOSED);
+}
+
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_save_control_message_empty),
         cmocka_unit_test(test_save_control_message_ok),
+        cmocka_unit_test(test_save_control_message_connection_closed),
+        cmocka_unit_test(test_save_control_message_connection_closed_after_shutdown),
+        cmocka_unit_test(test_save_control_message_connection_closed_worker),
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

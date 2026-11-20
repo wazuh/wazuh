@@ -220,6 +220,54 @@ void test_indexed_queue_upsert(void **state) {
     indexed_queue_set_dispose(queue, NULL);
 }
 
+void test_indexed_queue_upsert_ex_nowait(void **state) {
+    w_indexed_queue_t *queue = *state;
+
+    int *data1 = malloc(sizeof(int));
+    *data1 = 42;
+    assert_int_equal(indexed_queue_upsert_ex_nowait(queue, "key1", data1), 0);
+    assert_int_equal(indexed_queue_size(queue), 1);
+
+    indexed_queue_set_dispose(queue, test_data_dispose);
+
+    int *data2 = malloc(sizeof(int));
+    *data2 = 99;
+    assert_int_equal(indexed_queue_upsert_ex_nowait(queue, "key1", data2), 1);
+    assert_int_equal(indexed_queue_size(queue), 1);
+    assert_int_equal(*(int *)indexed_queue_get(queue, "key1"), 99);
+
+    indexed_queue_set_dispose(queue, NULL);
+}
+
+void test_indexed_queue_upsert_ex_nowait_full(void **state) {
+    w_indexed_queue_t *queue = *state;
+
+    for (int i = 0; i < 5; i++) {
+        int *data = malloc(sizeof(int));
+        *data = i;
+        char key[10];
+        snprintf(key, sizeof(key), "key%d", i);
+        assert_int_equal(indexed_queue_push(queue, key, data), 0);
+    }
+
+    // A new key fails instead of waiting for room
+    int *data = malloc(sizeof(int));
+    *data = 99;
+    assert_int_equal(indexed_queue_upsert_ex_nowait(queue, "key99", data), -1);
+    assert_null(indexed_queue_get(queue, "key99"));
+    free(data);
+
+    // An existing key is still replaced
+    indexed_queue_set_dispose(queue, test_data_dispose);
+
+    data = malloc(sizeof(int));
+    *data = 100;
+    assert_int_equal(indexed_queue_upsert_ex_nowait(queue, "key0", data), 1);
+    assert_int_equal(*(int *)indexed_queue_get(queue, "key0"), 100);
+
+    indexed_queue_set_dispose(queue, NULL);
+}
+
 void test_indexed_queue_pop(void **state) {
     w_indexed_queue_t *queue = *state;
 
@@ -531,6 +579,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_indexed_queue_push_full, setup_indexed_queue, teardown_indexed_queue),
         cmocka_unit_test_setup_teardown(test_indexed_queue_get, setup_indexed_queue, teardown_indexed_queue),
         cmocka_unit_test_setup_teardown(test_indexed_queue_upsert, setup_indexed_queue, teardown_indexed_queue),
+        cmocka_unit_test_setup_teardown(test_indexed_queue_upsert_ex_nowait, setup_indexed_queue, teardown_indexed_queue),
+        cmocka_unit_test_setup_teardown(test_indexed_queue_upsert_ex_nowait_full, setup_indexed_queue, teardown_indexed_queue),
         cmocka_unit_test_setup_teardown(test_indexed_queue_pop, setup_indexed_queue, teardown_indexed_queue),
         cmocka_unit_test_setup_teardown(test_indexed_queue_peek, setup_indexed_queue, teardown_indexed_queue),
         cmocka_unit_test_setup_teardown(test_indexed_queue_delete, setup_indexed_queue, teardown_indexed_queue),

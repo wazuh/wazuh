@@ -159,6 +159,16 @@ int indexed_queue_upsert(w_indexed_queue_t *queue, const char *key, void *data);
 int indexed_queue_upsert_ex(w_indexed_queue_t *queue, const char *key, void *data);
 
 /**
+ * @brief Thread-safe upsert operation that does not block when the queue is full
+ *
+ * @param queue The indexed queue
+ * @param key Key for the element
+ * @param data Data to insert or update
+ * @return 1 if updated, 0 if inserted, -1 on error or if the queue is full for a new key
+ */
+int indexed_queue_upsert_ex_nowait(w_indexed_queue_t *queue, const char *key, void *data);
+
+/**
  * @brief Get element by key (without removing)
  *
  * @param queue The indexed queue

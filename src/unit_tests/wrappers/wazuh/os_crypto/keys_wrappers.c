@@ -24,10 +24,10 @@ int __wrap_OS_IsAllowedDynamicID(__attribute__((unused)) keystore *keys, const c
     return mock();
 }
 
-int __wrap_OS_DeleteSocket(__attribute__((unused)) keystore * keys, int sock) {
+keyentry * __wrap_OS_DeleteSocket(__attribute__((unused)) keystore * keys, int sock) {
     check_expected(sock);
 
-    return mock();
+    return mock_type(keyentry *);
 }
 
 int __wrap_OS_IsAllowedIP(__attribute__((unused)) keystore *keys, const char *srcip) {

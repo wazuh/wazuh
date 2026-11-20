@@ -517,12 +517,14 @@ void test_move_netdata_carries_counters_ahead_of_rids(void **state)
      * 995:0 would be ahead of the file's counters, but not of the carried ones. */
     netdata_store_init(&old, "key-a", 1000, 20, 7);
     netdata_store_init(&reloaded, "key-a", 990, 3, -1);
+    old.entry.shutdown_received = true;
 
     netdata_move(&reloaded, &old);
 
     assert_int_equal(reloaded.entry.global, 1000);
     assert_int_equal(reloaded.entry.local, 20);
     assert_int_equal(reloaded.entry.sock, 7);
+    assert_true(reloaded.entry.shutdown_received);
 }
 
 void test_move_netdata_carries_local_counter_ahead_of_rids(void **state)
@@ -571,6 +573,56 @@ void test_move_netdata_replaced_key_keeps_rids_counters(void **state)
     assert_int_equal(reloaded.entry.sock, 7);
 }
 
+// Test OS_DeleteSocket
+static keyentry * run_OS_DeleteSocket(int entry_sock, int sock, int found)
+{
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+    keys->keytree_sock = rbtree_init();
+
+    keyentry *entry = NULL;
+    os_calloc(1, sizeof(keyentry), entry);
+    entry->id = "001";
+    entry->sock = entry_sock;
+
+    char strsock[16];
+    snprintf(strsock, sizeof(strsock), "%d", sock);
+
+    expect_value(__wrap_rbtree_get, tree, keys->keytree_sock);
+    expect_string(__wrap_rbtree_get, key, strsock);
+    will_return(__wrap_rbtree_get, found ? entry : NULL);
+
+    keyentry *closed = OS_DeleteSocket(keys, sock);
+
+    assert_int_equal(entry->sock, found && entry_sock == sock ? -1 : entry_sock);
+
+    os_free(entry);
+    rbtree_destroy(keys->keytree_sock);
+    os_free(keys);
+
+    return closed;
+}
+
+void test_OS_DeleteSocket_current_socket(void **state)
+{
+    keyentry *closed = run_OS_DeleteSocket(5, 5, 1);
+
+    assert_non_null(closed);
+    assert_string_equal(closed->id, "001");
+
+    OS_FreeKey(closed);
+}
+
+void test_OS_DeleteSocket_replaced_socket(void **state)
+{
+    assert_null(run_OS_DeleteSocket(7, 5, 1));
+}
+
+void test_OS_DeleteSocket_not_found(void **state)
+{
+    assert_null(run_OS_DeleteSocket(5, 5, 0));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -601,7 +653,11 @@ int main(void)
         cmocka_unit_test(test_move_netdata_carries_counters_ahead_of_rids),
         cmocka_unit_test(test_move_netdata_carries_local_counter_ahead_of_rids),
         cmocka_unit_test(test_move_netdata_keeps_rids_counters_ahead_of_memory),
-        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters)
+        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters),
+        // Test OS_DeleteSocket
+        cmocka_unit_test(test_OS_DeleteSocket_current_socket),
+        cmocka_unit_test(test_OS_DeleteSocket_replaced_socket),
+        cmocka_unit_test(test_OS_DeleteSocket_not_found)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

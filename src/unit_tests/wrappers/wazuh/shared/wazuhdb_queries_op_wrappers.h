@@ -23,7 +23,8 @@ int __wrap_wdb_update_agent_data(agent_info_data* agent_data, __attribute__((unu
 int __wrap_wdb_update_agent_connection_status(int id,
                                               const char* connection_status,
                                               const char* sync_status,
-                                              __attribute__((unused)) int* sock);
+                                              __attribute__((unused)) int* sock,
+                                              agent_status_code_t status_code);
 int __wrap_wdb_update_agent_status_code(int id,
                                         agent_status_code_t status_code,
                                         const char* version,

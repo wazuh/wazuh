@@ -13,7 +13,7 @@
 
 int __wrap_OS_IsAllowedDynamicID(__attribute__((unused)) keystore *keys, const char *id, const char *srcip);
 
-int __wrap_OS_DeleteSocket(__attribute__((unused)) keystore * keys, int sock);
+keyentry * __wrap_OS_DeleteSocket(__attribute__((unused)) keystore * keys, int sock);
 
 int __wrap_OS_IsAllowedIP(__attribute__((unused)) keystore *keys, const char *srcip);
 

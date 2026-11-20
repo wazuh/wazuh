@@ -25,6 +25,7 @@ typedef enum agent_status_code_t
     ERR_VERSION_RECV,    ///< Error retrieving version
     HC_SHUTDOWN_RECV,    ///< Shutdown message received
     NO_KEEPALIVE,        ///< Disconnected because no keepalive received
+    CONNECTION_CLOSED = 6, ///< TCP connection closed without a shutdown message. Same value as in 4.x, where 5 is RESET_BY_MANAGER
 } agent_status_code_t;
 
 /// OS information data structure
