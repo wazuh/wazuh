@@ -1314,7 +1314,7 @@ InstallCommon()
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
                 # installed (file existence is not checked: the certificates are issued later in the installation by
                 # the credential resolver, or deployed by the operator -- see SetCertsOwnership()).
-                if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
+                if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc > /dev/null; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1
                 fi

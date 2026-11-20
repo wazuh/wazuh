@@ -5,11 +5,19 @@
 #include <wiconnector/mockIndexerConnectorAsync.hpp>
 #include <wiconnector/windexerconnector.hpp>
 
+#include <algorithm>
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
+#include <cctype>
 #include <chrono>
 #include <filesystem>
 #include <keyStore.hpp>
+#include <mutex>
+#include <string>
 #include <thread>
+#include <vector>
+
+#include "indexerConnectorAsyncAdapter.hpp"
 
 namespace
 {
@@ -398,7 +406,7 @@ protected:
 };
 
 /**************************
- * getQueueSize / getDroppedEvents
+ * getQueueSize / getDroppedEvents / getRequeuedEvents
  **************************/
 TEST_F(WIndexerConnectorMockTest, GetQueueSizeForwardsToBackend)
 {
@@ -428,21 +436,220 @@ TEST_F(WIndexerConnectorMockTest, GetDroppedEventsReturnsZeroAfterShutdown)
     EXPECT_EQ(connector->getDroppedEvents(), 0U);
 }
 
+TEST_F(WIndexerConnectorMockTest, GetRequeuedEventsForwardsToBackend)
+{
+    EXPECT_CALL(*mock, getRequeuedEvents()).WillOnce(Return(uint64_t {5}));
+    auto connector = makeConnector();
+    EXPECT_EQ(connector->getRequeuedEvents(), 5U);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetRequeuedEventsReturnsZeroAfterShutdown)
+{
+    auto connector = makeConnector();
+    connector->shutdown();
+    EXPECT_EQ(connector->getRequeuedEvents(), 0U);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetDeduplicatedEventsForwardsToBackend)
+{
+    EXPECT_CALL(*mock, getDeduplicatedEvents()).WillOnce(Return(uint64_t {5}));
+    ON_CALL(*mock, getDroppedEvents()).WillByDefault(Return(uint64_t {7}));
+    auto connector = makeConnector();
+    EXPECT_EQ(connector->getDeduplicatedEvents(), 5U);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetDeduplicatedEventsReturnsZeroAfterShutdown)
+{
+    auto connector = makeConnector();
+    connector->shutdown();
+    EXPECT_EQ(connector->getDeduplicatedEvents(), 0U);
+}
+
 /**************************
  * index()
  **************************/
 TEST_F(WIndexerConnectorMockTest, IndexSwallowsIndexerConnectorException)
 {
-    EXPECT_CALL(*mock, indexDataStream(_, _)).WillOnce(Throw(IndexerConnectorException("boom")));
+    EXPECT_CALL(*mock, indexDataStream(_, _, _)).WillOnce(Throw(IndexerConnectorException("boom")));
     auto connector = makeConnector();
     EXPECT_NO_THROW(connector->index("idx", R"({"a":1})"));
 }
 
 TEST_F(WIndexerConnectorMockTest, IndexSwallowsStdException)
 {
-    EXPECT_CALL(*mock, indexDataStream(_, _)).WillOnce(Throw(std::runtime_error("oops")));
+    EXPECT_CALL(*mock, indexDataStream(_, _, _)).WillOnce(Throw(std::runtime_error("oops")));
     auto connector = makeConnector();
     EXPECT_NO_THROW(connector->index("idx", R"({"a":1})"));
+}
+
+namespace
+{
+struct IdCapture
+{
+    std::mutex mtx;
+    std::vector<std::string> ids;
+    std::vector<std::string> indices;
+    std::vector<std::string> datas;
+};
+
+bool isValidDocId(const std::string& id)
+{
+    if (id.size() != base::utils::generators::DOC_ID_LENGTH)
+    {
+        return false;
+    }
+    return std::all_of(
+        id.begin(), id.end(), [](unsigned char c) { return std::isalnum(c) != 0 || c == '_' || c == '-'; });
+}
+
+int failingRand(unsigned char*, int)
+{
+    return 0;
+}
+
+// Restores the previous random source when the test ends.
+class DocIdRandSourceGuard
+{
+public:
+    explicit DocIdRandSourceGuard(base::utils::generators::detail::RandBytesFn fn)
+        : m_previous(base::utils::generators::detail::exchangeRandBytesForTesting(fn))
+    {
+    }
+
+    ~DocIdRandSourceGuard() { base::utils::generators::detail::exchangeRandBytesForTesting(m_previous); }
+
+    DocIdRandSourceGuard(const DocIdRandSourceGuard&) = delete;
+    DocIdRandSourceGuard& operator=(const DocIdRandSourceGuard&) = delete;
+
+private:
+    base::utils::generators::detail::RandBytesFn m_previous;
+};
+} // namespace
+
+TEST_F(WIndexerConnectorMockTest, IndexGeneratesDistinctIdPerCall)
+{
+    IdCapture cap;
+    ON_CALL(*mock, indexDataStream(_, _, _))
+        .WillByDefault(Invoke(
+            [&cap](std::string_view index, std::string_view id, std::string_view data)
+            {
+                std::lock_guard<std::mutex> lock(cap.mtx);
+                cap.indices.emplace_back(index);
+                cap.ids.emplace_back(id);
+                cap.datas.emplace_back(data);
+            }));
+    auto connector = makeConnector();
+    const std::string body = R"({"a":1})";
+    connector->index("idx", body);
+    connector->index("idx", body);
+
+    ASSERT_EQ(cap.ids.size(), 2U);
+    EXPECT_EQ(cap.indices[0], "idx");
+    EXPECT_EQ(cap.indices[1], "idx");
+    EXPECT_EQ(cap.datas[0], body);
+    EXPECT_EQ(cap.datas[1], body);
+    EXPECT_NE(cap.ids[0], cap.ids[1]);
+}
+
+TEST_F(WIndexerConnectorMockTest, IndexPassesDocIdFormat)
+{
+    IdCapture cap;
+    ON_CALL(*mock, indexDataStream(_, _, _))
+        .WillByDefault(Invoke(
+            [&cap](std::string_view, std::string_view id, std::string_view)
+            {
+                std::lock_guard<std::mutex> lock(cap.mtx);
+                cap.ids.emplace_back(id);
+            }));
+    auto connector = makeConnector();
+    connector->index("idx", R"({"a":1})");
+
+    ASSERT_EQ(cap.ids.size(), 1U);
+    EXPECT_EQ(cap.ids[0].size(), 27U);
+    EXPECT_TRUE(isValidDocId(cap.ids[0])) << cap.ids[0];
+}
+
+TEST_F(WIndexerConnectorMockTest, IndexIdsUniqueAcrossThreads)
+{
+    constexpr int kThreads = 4;
+    constexpr int kPerThread = 250;
+    IdCapture cap;
+    ON_CALL(*mock, indexDataStream(_, _, _))
+        .WillByDefault(Invoke(
+            [&cap](std::string_view, std::string_view id, std::string_view)
+            {
+                std::lock_guard<std::mutex> lock(cap.mtx);
+                cap.ids.emplace_back(id);
+            }));
+    auto connector = makeConnector();
+
+    std::vector<std::thread> threads;
+    for (int t = 0; t < kThreads; ++t)
+    {
+        threads.emplace_back(
+            [&connector]()
+            {
+                for (int i = 0; i < kPerThread; ++i)
+                {
+                    connector->index("idx", R"({"a":1})");
+                }
+            });
+    }
+    for (auto& th : threads)
+    {
+        th.join();
+    }
+
+    ASSERT_EQ(cap.ids.size(), static_cast<size_t>(kThreads * kPerThread));
+    std::sort(cap.ids.begin(), cap.ids.end());
+    EXPECT_EQ(std::adjacent_find(cap.ids.begin(), cap.ids.end()), cap.ids.end());
+}
+
+TEST_F(WIndexerConnectorMockTest, IndexDropsEventWhenIdGenerationFails)
+{
+    IdCapture cap;
+    ON_CALL(*mock, indexDataStream(_, _, _))
+        .WillByDefault(Invoke(
+            [&cap](std::string_view, std::string_view id, std::string_view)
+            {
+                std::lock_guard<std::mutex> lock(cap.mtx);
+                cap.ids.emplace_back(id);
+            }));
+    auto connector = makeConnector();
+
+    size_t afterFirst = 0;
+    // A new thread has no per-thread prefix yet, so the failing source makes generateDocId() throw.
+    std::thread worker(
+        [&]()
+        {
+            {
+                DocIdRandSourceGuard guard(&failingRand);
+                EXPECT_NO_THROW(connector->index("idx", R"({"a":1})"));
+            }
+            {
+                std::lock_guard<std::mutex> lock(cap.mtx);
+                afterFirst = cap.ids.size();
+            }
+            EXPECT_NO_THROW(connector->index("idx", R"({"a":1})"));
+        });
+    worker.join();
+
+    EXPECT_EQ(afterFirst, 0U);
+    ASSERT_EQ(cap.ids.size(), 1U);
+    EXPECT_TRUE(isValidDocId(cap.ids[0])) << cap.ids[0];
+}
+
+TEST(IndexerConnectorAsyncAdapterTest, ForwardsIdAsSecondArgument)
+{
+    logging::testInit(logging::Level::Debug);
+    const nlohmann::json config = {{"hosts", {"http://127.0.0.1:1"}}};
+    auto inner = std::make_unique<IndexerConnectorAsync>(
+        config, LoggingContext {logging::default_tag(), logging::createStandaloneLogFunction()});
+    auto adapter = std::make_unique<wiconnector::IndexerConnectorAsyncAdapter>(std::move(inner));
+
+    EXPECT_THROW(adapter->indexDataStream("idx", std::string(513, 'x'), "{}"), IndexerConnectorException);
+    EXPECT_NO_THROW(adapter->indexDataStream("idx", "id", std::string(513, 'x')));
+    adapter.reset();
 }
 
 /**************************
@@ -821,6 +1028,110 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyMissingPolicyHashThrows)
 
     auto connector = makeConnector();
     EXPECT_THROW(connector->getPolicy("default"), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyMultiPageCompleteSucceeds)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json firstPage = {{"total", {{"value", 3}}},
+                                {"hits",
+                                 {makePolicyHit("wazuh-threatintel-kvdbs", "kv1", nlohmann::json::array({1, "a"})),
+                                  makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    nlohmann::json secondPage = {
+        {"total", {{"value", 3}}},
+        {"hits",
+         {makePolicyHit(
+             "wazuh-threatintel-policies", "policy1", nlohmann::json::array({3, "c"}), std::string("HASHX"))}}};
+
+    std::vector<std::optional<nlohmann::json>> searchAfters;
+    EXPECT_CALL(*mock, search(_, _, _, _, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke(
+            [&](const PointInTime&,
+                std::size_t,
+                const nlohmann::json&,
+                const nlohmann::json&,
+                const std::optional<nlohmann::json>& searchAfter,
+                const std::optional<nlohmann::json>&)
+            {
+                searchAfters.push_back(searchAfter);
+                return searchAfters.size() == 1 ? firstPage : secondPage;
+            }));
+
+    auto connector = makeConnector(/*maxHits=*/2);
+    auto resources = connector->getPolicy("default");
+
+    ASSERT_TRUE(resources.has_value());
+    EXPECT_EQ(resources->kvdbs.size(), 1U);
+    EXPECT_EQ(resources->decoders.size(), 1U);
+    EXPECT_TRUE(resources->policy.isObject());
+    ASSERT_EQ(searchAfters.size(), 2U);
+    EXPECT_FALSE(searchAfters[0].has_value());
+    ASSERT_TRUE(searchAfters[1].has_value());
+    EXPECT_EQ(*searchAfters[1], nlohmann::json::array({2, "b"}));
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyShortPaginationThrows)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    // The first page carries the policy and one decoder and announces 5 documents; the next page comes
+    // back empty. Returning here would hand the content sync a policy whose other assets were never
+    // downloaded.
+    nlohmann::json firstPage = {
+        {"total", {{"value", 5}}},
+        {"hits",
+         {makePolicyHit("wazuh-threatintel-policies", "policy1", nlohmann::json::array({1, "a"}), std::string("HASHX")),
+          makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    nlohmann::json emptyPage = {{"total", {{"value", 5}}}, {"hits", nlohmann::json::array()}};
+    EXPECT_CALL(*mock, search(_, _, _, _, _, _)).WillOnce(Return(firstPage)).WillOnce(Return(emptyPage));
+
+    auto connector = makeConnector(/*maxHits=*/2);
+    try
+    {
+        connector->getPolicy("default");
+        FAIL() << "Expected an IndexerConnectorException";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("Policy download for space 'default' ended after 2 of 5 documents"));
+    }
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyPitSearchFailureMidPaginationThrows)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json firstPage = {{"total", {{"value", 4}}},
+                                {"hits",
+                                 {makePolicyHit("wazuh-threatintel-kvdbs", "kv1", nlohmann::json::array({1, "a"})),
+                                  makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({2, "b"}))}}};
+    EXPECT_CALL(*mock, search(_, _, _, _, _, _))
+        .WillOnce(Return(firstPage))
+        .WillOnce(Throw(IndexerConnectorException(
+            "Search request failed with status 500: Server error. Response: "
+            "{\"error\":{\"type\":\"search_phase_execution_exception\",\"reason\":\"Partial shards failure\"}}",
+            IndexerConnectorException::Category::Other,
+            500)));
+
+    auto connector = makeConnector(/*maxHits=*/2);
+    try
+    {
+        connector->getPolicy("default");
+        FAIL() << "Expected an IndexerConnectorException";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("search_phase_execution_exception"));
+        EXPECT_EQ(e.statusCode(), 500);
+    }
 }
 
 /**************************

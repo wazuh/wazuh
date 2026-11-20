@@ -163,6 +163,9 @@ int rootcheck_init(int test_config, const char *cfg)
     }
 
     rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
+#ifdef __linux__
+    int max_pid_default = rc_read_max_pid();
+#endif
 
     /* If testing config, exit here */
     if (test_config) {
@@ -174,6 +177,12 @@ int rootcheck_init(int test_config, const char *cfg)
         mtinfo(ARGV0, "Rootcheck disabled.");
         return (1);
     }
+
+#ifdef __linux__
+    if (rootcheck.checks.rc_pids) {
+        rc_log_max_pid(max_pid_default, rc_kernel_pid_max());
+    }
+#endif
 
     /* Set default values */
 #ifndef OSSECHIDS

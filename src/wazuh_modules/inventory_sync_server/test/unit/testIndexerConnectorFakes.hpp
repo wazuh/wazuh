@@ -186,6 +186,15 @@ namespace invsync::test
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_syncThrowOn == op)
             {
+                if (m_syncThrowSkip > 0)
+                {
+                    --m_syncThrowSkip;
+                    return;
+                }
+                if (m_syncAvailableOnThrow)
+                {
+                    m_syncAvailable.store(*m_syncAvailableOnThrow);
+                }
                 if (m_syncThrowCause)
                 {
                     throw invsync::indexer::ConnectorError {std::string {"injected failure in "} + op,
@@ -198,6 +207,14 @@ namespace invsync::test
         /// When set, throwIfInjected() throws the seam's typed ConnectorError with this cause
         /// instead of a plain runtime_error. Guarded by m_mutex.
         std::optional<invsync::indexer::ConnectorError::Cause> m_syncThrowCause;
+
+        /// Number of calls matching m_syncThrowOn that pass without throwing before the fake starts
+        /// to throw. Guarded by m_mutex.
+        std::size_t m_syncThrowSkip {0};
+
+        /// When set, m_syncAvailable takes this value right before the injected failure is thrown:
+        /// the connector is available at dispatch and not after the failure. Guarded by m_mutex.
+        std::optional<bool> m_syncAvailableOnThrow;
 
         void closeFlushGate()
         {

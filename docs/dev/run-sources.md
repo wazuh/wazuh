@@ -75,14 +75,13 @@ example above again on a host whose real installation you want to keep.
 `install.sh` resolves the manager's credentials at the end of the run: it seeds the Server API passwords, stores
 the indexer password if one was supplied, mints the manager's CA in `/etc/wazuh-manager/ca`, and issues the agent
 listener and Server API pairs into `/etc/wazuh-manager/certs`. When a 5.x indexer runs on the same host it also
-imports the indexer's CA and the client pair it issued for this manager. So a plain source install next to an
-indexer has every certificate it needs, and you can skip this section.
+imports the indexer's CA and password. So a plain source install next to an indexer has every certificate it needs,
+and you can skip this section.
 
 Cases where you supply them instead:
 
-* The indexer runs elsewhere: stage its CA as `indexer-ca.pem` and a client pair it issued for this node (with
-  `extendedKeyUsage` `clientAuth`) as `indexer-connector.pem` / `indexer-connector-key.pem`, and put
-  `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env`.
+* The indexer runs elsewhere: stage its CA as `indexer-ca.pem`, and put `WAZUH_INDEXER_MANAGER_PASSWORD` in
+  `/etc/wazuh-manager/local.env`.
 * You want the pairs your deployment actually uses (an E2E environment, a node that has to match certificates
   issued elsewhere).
 * You passed `USER_RESOLVE_CREDENTIALS="n"` — which you should for any install whose tree is copied somewhere
@@ -126,9 +125,9 @@ sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
 
 Or run the tool directly and stage what it issues as the CI does
 (`.github/workflows/5_testintegration_manager.yml`, steps "Provision TLS certificates" and "Supply the indexer
-credential and resolve"): the listener pair also as `apid.pem` / `apid-key.pem`, the manager node's certificate
-(issued with `clientAuth`) as the indexer client pair, the tool's `root-ca.pem` as `certs/root-ca.pem`,
-`certs/indexer-ca.pem` and `ca/root-ca.pem`, the indexer password in `local.env`, then `--install`:
+credential and resolve"): the listener pair also as `apid.pem` / `apid-key.pem`, the tool's `root-ca.pem` as
+`certs/root-ca.pem`, `certs/indexer-ca.pem` and `ca/root-ca.pem`, the indexer password in `local.env`, then
+`--install`:
 
 ```bash
 bash $WAZUH_REPO/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs
@@ -144,7 +143,7 @@ sudo /var/wazuh-manager/bin/wazuh-manager-control start > /tmp/wazuh-manager-sta
 
 Do not pipe the output of `start`: the daemons inherit it and the command never returns. Redirect it to a file instead.
 
-A fresh installation does not start until the indexer credentials are resolved. Unless a 5.x indexer runs on the same host, `start` stops before any daemon with `Unresolved credentials. Exiting` until the indexer password is in `/etc/wazuh-manager/local.env` and the indexer's CA and client pair are in `/etc/wazuh-manager/certs` (see [Provision certificates](#provision-certificates)). Put the password in `local.env` rather than in your shell: systemd starts the service with a clean environment, and `sudo` resets it too.
+A fresh installation does not start until the indexer credentials are resolved. Unless a 5.x indexer runs on the same host, `start` stops before any daemon with `Unresolved credentials. Exiting` until the indexer password is in `/etc/wazuh-manager/local.env` and the indexer's CA is in `/etc/wazuh-manager/certs` (see [Provision certificates](#provision-certificates)). Put the password in `local.env` rather than in your shell: systemd starts the service with a clean environment, and `sudo` resets it too.
 
 To verify the server is running:
 

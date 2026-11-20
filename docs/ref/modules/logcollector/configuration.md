@@ -289,17 +289,17 @@ File check interval for detecting log file changes.
 - **Default value:** `2` (seconds)
 - **Allowed values:** Integer from `1` to `120`
 - **Format:** `logcollector.loop_timeout=2`
-- **Note:** Controls how frequently Logcollector checks monitored files for changes
+- **Note:** Controls how frequently Logcollector checks monitored files for changes. Each check reads everything new, so a lower value makes smaller bursts into the output queue (see [`logcollector.queue_size`](#logcollectorqueue_size))
 
 ### logcollector.ip_update_interval
 
-How often Logcollector refreshes the cached host IP address it exposes to its output-format
-placeholders (`src/shared/src/log_builder.c`).
+How often Logcollector refreshes the host IP address that the `$(host_ip)` placeholder of
+`<out_format>` prints (`src/shared/src/log_builder.c`).
 
 - **Default value:** `60` (seconds)
-- **Allowed values:** Integer from `0` to `3600`; `0` never refreshes the address after start
+- **Allowed values:** Integer from `0` to `3600`; `0` never resolves the address, so `$(host_ip)` is always `0.0.0.0`
 - **Format:** `logcollector.ip_update_interval=60`
-- **Note:** Agent only; the manager reads no `logcollector.*` key
+- **Note:** Agent only; the manager reads no `logcollector.*` key. The address is only resolved when some `<out_format>` uses `$(host_ip)`; it is checked on each `logcollector.vcheck_files` cycle, so a change can take up to that long more to show. The address is the source address the host would use to reach the Internet (a route lookup toward `1.1.1.1` and `2606:4700::1111`; no packet is sent), IPv4 first and IPv6 if there is no IPv4 route. On Linux the IPv6 address is the stable one, not a temporary (privacy) address; on Windows and macOS the system may pick a temporary one, which rotates. Without any route it is `0.0.0.0`
 
 ### logcollector.open_attempts
 
@@ -371,7 +371,9 @@ Size of the internal output queue for log events.
 - **Default value:** `1024`
 - **Allowed values:** Integer from `128` to `220000`
 - **Format:** `logcollector.queue_size=1024`
-- **Note:** Larger queue sizes improve burst handling but increase memory usage
+- **Note:** Larger queue sizes improve burst handling but increase memory usage. A full queue holds a copy of each queued line, so it costs roughly the size of those lines
+- **When the queue is full:** There is one queue per target (`agent` or a `<socket>` target), drained by one sender thread. A line that does not fit is dropped. The drop is counted in the `drops` of that target in `wazuh-logcollector.state` and reported in `ossec.log` as `Target '<target>' message queue is full (<size>). <n> log line(s) lost since the last warning.`, at most once a minute per target
+- **Sizing for read bursts:** The queue can fill without any manager outage. Every `logcollector.loop_timeout` seconds an input thread reads everything new in a file, up to `logcollector.max_lines` lines, and queues it at once. A pass therefore adds about `lines per second for the target × loop_timeout` lines. With the defaults, a target that receives more than about 500 lines per second can overflow on every pass. The sender drains the queue during the pass, so the real limit is somewhat higher, and a sender that is held up lowers it. Set `queue_size` to at least the peak lines per second for the target times `loop_timeout`, with margin. A backlog read at startup (`only-future-events` set to `no`) is the same case, with a pass of up to `max_lines` lines per file. A larger queue moves the limit, it does not remove it
 
 ### logcollector.sample_log_length
 

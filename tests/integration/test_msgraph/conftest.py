@@ -5,6 +5,7 @@
 import pytest
 import subprocess
 import os
+import struct
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -23,6 +24,26 @@ def wait_for_msgraph_start():
                               'integration': 'ms-graph'
                           }))
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
+
+
+@pytest.fixture()
+def msgraph_bookmarks(test_metadata):
+    # Bookmark state files to have before the module starts: a timestamp writes it, null removes it.
+    # Request it before daemons_handler, so the files are in place when the module starts.
+    bookmarks = test_metadata.get('bookmarks') or {}
+    paths = [os.path.join(WAZUH_PATH, 'var', 'wodles', name) for name in bookmarks]
+
+    for path, timestamp in zip(paths, bookmarks.values()):
+        remove_file(path)
+        if timestamp is not None:
+            # wm_ms_graph_state_t holds only a time_t, a native long on Linux
+            with open(path, 'wb') as state_file:
+                state_file.write(struct.pack('l', timestamp))
+
+    yield
+
+    for path in paths:
+        remove_file(path)
 
 
 @pytest.fixture(scope="session")

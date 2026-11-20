@@ -77,7 +77,7 @@ The consumer IDs are passed by the callers (`cmsync`, `iocsync`); the connector 
 
 ### Thread Safety
 
-Every public method except `requestShutdown()` acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal connector, subsequent calls degrade: `index()` returns (debug log), `getQueueSize()`/`getDroppedEvents()` return `0`, `isConsumerReadyForSync()` returns `false`, and the other query methods throw `std::runtime_error` (`IndexerConnectorAsync is not initialized`).
+Every public method except `requestShutdown()` acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal connector, subsequent calls degrade: `index()` returns (debug log), `getQueueSize()`/`getDroppedEvents()`/`getDeduplicatedEvents()` return `0`, `isConsumerReadyForSync()` returns `false`, and the other query methods throw `std::runtime_error` (`IndexerConnectorAsync is not initialized`).
 
 ### Graceful Shutdown
 
@@ -92,6 +92,8 @@ In `main.cpp`, the exit handler registers both: `requestShutdown()` executes fir
 ### Point-In-Time (PIT) Pagination
 
 For large result sets (`getPolicy`, `queryByBatches`), the connector always opens a **Point-In-Time** snapshot on the wazuh-indexer with a keep-alive of `5m` (`PIT_KEEP_ALIVE`). Results are retrieved in pages sorted by `_shard_doc`, `_id` using `search_after` cursors, guaranteeing a consistent view even if the index is being concurrently updated. The PIT is automatically deleted via an RAII guard (a failed delete is logged, not thrown). `getPolicy` pages by `maxHitsPerRequest` (the constructor argument; `main.cpp` passes `analysisd.cmsync_indexer_connector_sync_batch_size`; `0` is replaced by `1` with a warning).
+
+Every page must be complete. The shared `IndexerConnectorAsync` asks the indexer to refuse a PIT or a search it cannot answer over every shard (`allow_partial_pit_creation=false`, `allow_partial_search_results=false`); the indexer then answers `503`/`500` instead of leaving shards out, and the connector throws `IndexerConnectorException` with that status (see [Searches and points in time](../../../../docs/ref/modules/indexer_connector/README.md#searches-and-points-in-time)). On top of that, `getPolicy` refuses a walk that ends before the `total_hits` its first page announced (`Policy download for space '<space>' ended after <n> of <total> documents`): a page that comes back empty before that total would otherwise end the walk early, and the policy would then reference assets that were never downloaded. Either way nothing is returned, and the caller (CMSync) retries the download.
 
 ### Batched Query Abstraction with Consumer Validation
 
@@ -219,6 +221,7 @@ public:
     // ── Queue introspection ───────────────────────────────
     virtual uint64_t getQueueSize() = 0;     // bytes pending
     virtual uint64_t getDroppedEvents() = 0;
+    virtual uint64_t getRequeuedEvents() = 0; // requeue attempts after per-item 429 / cluster block
 };
 ```
 
@@ -249,6 +252,7 @@ public:
 
     void shutdown();          // Destructive: resets the async connector under exclusive lock
     void requestShutdown();   // Non-destructive: sets abort flag for in-flight pagination loops
+    uint64_t getDeduplicatedEvents(); // Concrete class only (not in IWIndexerConnector): forwards to IIndexerConnectorAsync::getDeduplicatedEvents(); 0 after shutdown() or without a connector
     // ... all IWIndexerConnector overrides ...
 
 private:
@@ -286,9 +290,18 @@ private:
 
 ### Key Flows
 
-#### `index(index, data)`
+#### Indexing an event: `index(index, data)`
 
-Acquires shared lock, delegates to `indexDataStream()`. Exceptions are caught and logged as warnings (`Error indexing data: …`) — indexing failures do not propagate to callers.
+1. Acquires the shared lock.
+2. Generates a fresh `_id` on **every call** with `base::utils::generators::generateDocId()`: 27 base64url characters made of 8 bytes of a strictly increasing nanosecond clock (per thread) plus 12 random bytes per thread (`RAND_bytes`). Two calls with the same body are two documents: each copy of the per-environment fan-out and the raw document carry their own `_id`.
+3. Calls `IIndexerConnectorAsync::indexDataStream(index, id, data)` (three arguments), which queues `{"create":{"_index":"<ds>","_id":"<id>"}}` followed by the body.
+
+The `_id` travels inside the serialised action in the queue, so every resend (timeout, transport error, `429`/`503`, partition after a `413`) repeats the same `_id`. The indexer answers the duplicate with `409` `version_conflict_engine_exception`; the connector counts it as applied (no retry, no per-document log line, one `WARN` per streak) and exposes the count through `getDeduplicatedEvents()` (metric `indexer.events.deduplicated`). See the [indexer_connector](../../../../docs/ref/modules/indexer_connector/README.md) operator page.
+
+Limits and failures:
+- `_id` uniqueness is per backing index, so a resend that crosses a rollover of the data stream is indexed again (and its finding is duplicated). Accepted and documented.
+- If id generation fails (`RAND_bytes` fails when drawing a thread's prefix), `index()` logs one warning per event and the event is not indexed; it does not enter `indexer.events.dropped`.
+- Any other exception is caught and logged as a warning (`Error indexing data: …`) — indexing failures do not propagate to callers.
 
 #### `getPolicy(space, consumerIdToValidate?)`
 
@@ -298,11 +311,12 @@ Acquires shared lock, delegates to `indexDataStream()`. Exceptions are caught an
    - Returns `std::nullopt` if consumer not ready (cmsync skips sync cycle).
 2. **Otherwise** (no consumer validation):
    - Opens a PIT across all 5 policy aliases only.
-3. Filters by `space.name`, paginates through results using `search_after` cursors (aborting with `IndexerConnectorException` if `requestShutdown()` was called).
-4. Classifies each hit by index name into `IndexResourceType`; the policy document gets `/hash` from `space.hash.sha256` (missing → `IndexerConnectorException`).
-5. Accumulates resources into `PolicyResources` vectors (with pre-reserved capacity).
-6. Sets `/origin_space` on a non-empty policy.
-7. PIT is automatically cleaned up via RAII guard.
+3. Filters by `space.name`, paginates through results using `search_after` cursors (aborting with `IndexerConnectorException` if `requestShutdown()` was called). A partial page throws from the connector.
+4. Throws `IndexerConnectorException` (`Policy download for space '<space>' ended after <n> of <total> documents`) if the walk ended before `total_hits`.
+5. Classifies each hit by index name into `IndexResourceType`; the policy document gets `/hash` from `space.hash.sha256` (missing → `IndexerConnectorException`).
+6. Accumulates resources into `PolicyResources` vectors (with pre-reserved capacity).
+7. Sets `/origin_space` on a non-empty policy.
+8. PIT is automatically cleaned up via RAII guard.
 
 #### `getPolicyHashAndEnabled(space, consumerIdToValidate?)`
 
@@ -356,7 +370,7 @@ Searches `.wazuh-settings` (`match_all`, `size=1`, source `engine` only); exactl
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/wic_test.cpp`) — `ConfigTest` (`Config::toJson()` serialisation), `WIndexerConnectorTest` (constructor validation: empty/invalid JSON, zero `maxHitsPerRequest`; `index()` graceful handling; `shutdown()` / `requestShutdown()` semantics; concurrent indexing and shutdown) and `WIndexerConnectorMockTest`, which drives every query path (policy, hashes, IOC streaming, PIT and consumer validation, remote config, readiness, shutdown during pagination) through `MockIndexerConnectorAsync`.
+- **Unit tests** (`test/src/unit/wic_test.cpp`) — `ConfigTest` (`Config::toJson()` serialisation), `WIndexerConnectorTest` (constructor validation: empty/invalid JSON, zero `maxHitsPerRequest`; `index()` graceful handling; `shutdown()` / `requestShutdown()` semantics; concurrent indexing and shutdown) and `WIndexerConnectorMockTest`, which drives every query path (policy, hashes, IOC streaming, PIT and consumer validation, remote config, readiness, shutdown during pagination) through `MockIndexerConnectorAsync`. The `_id` and deduplication cases are `IndexGeneratesDistinctIdPerCall`, `IndexPassesDocIdFormat`, `IndexIdsUniqueAcrossThreads`, `IndexDropsEventWhenIdGenerationFails`, `GetDeduplicatedEventsForwardsToBackend` and `GetDeduplicatedEventsReturnsZeroAfterShutdown` (fixture `WIndexerConnectorMockTest`), plus `IndexerConnectorAsyncAdapterTest.ForwardsIdAsSecondArgument`.
 - **Mocks** — `MockWIndexerConnector` (`test/mocks/wiconnector/mockswindexerconnector.hpp`, namespace `wiconnector::mocks`) implements all `IWIndexerConnector` methods for downstream consumers; `MockIndexerConnectorAsync` (`mockIndexerConnectorAsync.hpp`) mocks the internal async seam.
 
 ## Consumers
@@ -368,4 +382,4 @@ Searches `.wazuh-settings` (`match_all`, `size=1`, source `engine` only); exactl
 | `iocsync` | `wIndexerConnector::iwIndexerConnector` | Reads IOC type hashes and streams IOC records for local KVDB synchronization |
 | `rawevtindexer` | `wIndexerConnector::iwIndexerConnector` | Indexes raw events into the wazuh-indexer |
 | `confremote` | `wIndexerConnector::iwIndexerConnector` | Retrieves remote engine configuration from `.wazuh-settings` |
-| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Creates the `WIndexerConnector` (only when event processing is enabled), injects it into consuming modules, exports `getQueueSize()`/`getDroppedEvents()` as metrics, and registers `requestShutdown()`/`shutdown()` on exit |
+| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Creates the `WIndexerConnector` (only when event processing is enabled), injects it into consuming modules, exports `getQueueSize()`/`getDroppedEvents()`/`getDeduplicatedEvents()` as metrics, and registers `requestShutdown()`/`shutdown()` on exit |

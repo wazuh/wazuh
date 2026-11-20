@@ -5,14 +5,100 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/wazuh_modules/sca/**"
-      - "src/config/src/wmodules-sca.c"
-      - "src/Makefile"
-      - "src/deps.lock.mk"
+      # --- CI plumbing: this workflow and what its steps execute.
       - ".github/workflows/5_testcomponent_sca-rtr.yml"
-      - ".github/actions/**"
+      # actions/setup-python `python-version-file`: the interpreter that runs src/build.py
+      - ".github/workflows/.python-version"
+      - ".github/actions/install_build_deps/**"
+      - ".github/actions/reinstall_cmake/**"
+      # run by reinstall_cmake/action.yml (`sudo tools/devContainer/reinstall-cmake.sh`)
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Not listed: .github/actions/upload_s3_artifact. It only uploads the coverage report after
+      # build.py has given its verdict, and the agent package workflows list it and run it on a PR.
+      # --- The driver. `python build.py --readytoreview <module>` imports ci/{build_tools,run_check,
+      # utils}.py and reads ci/input/astyle.config (run_check.py runAStyleCheck) and
+      # ci/input/test_tool_config.json (run_check.py runReadyToReview). ci/input/rtr_input.json is
+      # read by nothing; ci/tests/ runs only for syscheckd (5_testcomponent_syscheck-rtr.yml).
+      - "src/build.py"
+      - "src/ci/*.py"
+      - "src/ci/input/astyle.config"
+      - "src/ci/input/test_tool_config.json"
+      # --- Configure path and dependency inputs of `make deps` + `make TARGET=agent|winagent TEST=1`
+      # (src/ci/build_tools.py makeDeps/makeTarget). The build compiles the whole agent, but only the
+      # module's own checks run: the paths below are what those checks compile, link and execute. A
+      # compile break elsewhere in the agent tree is 5_testunit_linux-win.yml's to catch (src/**).
+      - "src/Makefile"
+      # included by src/Makefile: the ref of every external dependency
+      - "src/deps.lock.mk"
+      - "src/CMakeLists.txt"
+      # include(WazuhRpath)/include(WazuhJemalloc) in src/CMakeLists.txt, WazuhExternalFlags in external/
+      - "src/cmake/**"
+      # add_subdirectory(external): libwazuhext, googletest, flatc
+      - "src/external/CMakeLists.txt"
+      # file(READ ../VERSION.json) in src/CMakeLists.txt
+      - "VERSION.json"
+      # src/Makefile GIT_REFS_LIST: the refs `make deps` tries for the indexer templates
+      - "tools/get_git_refs.sh"
+      # winagent: the version resource compiled into every DLL (RESOURCE_OBJ_DLL, src/CMakeLists.txt)
+      - "src/win32/version.rc"
+      # --- The module (ctest -L sca), registered by wazuh_modules/CMakeLists.txt.
+      - "src/wazuh_modules/sca/**"
+      - "src/wazuh_modules/CMakeLists.txt"
+      # SCA's configuration reader, compiled into libconfig by the same build. No test of this lane
+      # executes it (5_testunit_linux-win.yml does); kept because the lane builds it.
+      - "src/config/src/wmodules-sca.c"
+      # --- What SCAImpl links (sca/sca_impl/CMakeLists.txt target_link_libraries): sysinfo, FileIO,
+      # FilesystemWrapper, agent_sync_protocol, dbsync, schema_validator. Its tests include their mocks.
+      # data_provider: sysinfo
+      - "src/data_provider/CMakeLists.txt"
+      - "src/data_provider/include/**"
+      - "src/data_provider/lib/**"
+      - "src/data_provider/src/**"
+      - "src/data_provider/tests/mocks/**"
+      - "!src/data_provider/src/extended_sources/*/tests/**"
+      # file_helper: FileIO, FilesystemWrapper
+      - "src/shared_modules/file_helper/CMakeLists.txt"
+      - "src/shared_modules/file_helper/*/include/**"
+      - "src/shared_modules/file_helper/*/src/**"
+      - "src/shared_modules/file_helper/*/tests/mocks/**"
+      # sync_protocol: agent_sync_protocol
+      - "src/shared_modules/sync_protocol/CMakeLists.txt"
+      - "src/shared_modules/sync_protocol/include/**"
+      - "src/shared_modules/sync_protocol/src/**"
+      - "src/shared_modules/sync_protocol/tests/mocks/**"
+      # dbsync: dbsync
+      - "src/shared_modules/dbsync/CMakeLists.txt"
+      - "src/shared_modules/dbsync/include/**"
+      - "src/shared_modules/dbsync/src/**"
+      - "src/shared_modules/dbsync/tests/mocks/**"
+      # schema_validator: schema_validator
+      - "src/shared_modules/schema_validator/CMakeLists.txt"
+      - "src/shared_modules/schema_validator/include/**"
+      - "src/shared_modules/schema_validator/src/**"
+      # agent_metadata: linked by sca_unit_test and by sync_protocol
+      - "src/shared_modules/agent_metadata/CMakeLists.txt"
+      - "src/shared_modules/agent_metadata/include/**"
+      - "src/shared_modules/agent_metadata/src/**"
+      - "src/shared_modules/common/**"
+      # utils: header-only helpers included by the module and by the libraries above. Its tests/, benchmark/ and
+      # flatbuffers/ are manager-only (utils/CMakeLists.txt: `if(NOT IS_AGENT)`, TARGET manager).
+      - "src/shared_modules/utils/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "!src/shared_modules/utils/flatbuffers/**"
+      # ...except the mocks the module tests include
+      - "src/shared_modules/utils/tests/mocks/**"
+      # ...and the schema flatc compiles for sync_protocol (sync_protocol/CMakeLists.txt SCHEMA_FILE)
+      - "src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs"
+      # C headers reached through wmodules.h (sca_impl/src/sca_policy_check.cpp, src/sca.cpp): libwazuh's,
+      # the config structs, the wmodules shim headers
+      - "src/shared/**/*.h"
+      - "src/config/include/**"
+      - "src/wazuh_modules/include/**"
+      - "src/wazuh_modules/src/**/*.h"
+      # --- Never a trigger: prose inside the trees above.
+      - "!src/shared_modules/*/COPYING"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -46,7 +132,7 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4

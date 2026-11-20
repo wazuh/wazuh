@@ -560,7 +560,7 @@
       "description": "Vulnerability scanner module (modulesd).",
       "properties": {
         "enabled": {
-          "description": "Whether the vulnerability scanner module runs.",
+          "description": "Whether the vulnerability scanner module runs. In a cluster the master node's value applies to every node: a worker node uses it in place of its own.",
           "type": "boolean",
           "default": true
         },

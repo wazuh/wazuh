@@ -476,7 +476,7 @@ def test_long_node_name_is_refused_before_issuance(resolver, sandbox):
     assert ("INVALID WAZUH_MANAGER_NODE_NAME: too long for a certificate's common name (64 characters at most; "
             "set in the environment)") in err, err
     assert not any(os.path.exists(os.path.join(sandbox.certs, f)) for f in ("remoted.pem", "apid.pem"))
-    assert os.path.exists(os.path.join(sandbox.certs, "indexer-connector.pem"))
+    assert os.path.exists(os.path.join(sandbox.certs, "indexer-ca.pem"))
 
 
 def test_64_character_node_name_is_accepted(resolver, sandbox):
@@ -520,7 +520,7 @@ def test_unparsable_certificate_is_invalid(resolver, sandbox, case):
     assert code == 1 and f"INVALID {target}: {PARSE_ERROR} (" in err and "internal error" not in err, err
     code, _, err = run(resolver, sandbox, "--install")
     assert code == 0 and f"INVALID {target}: {PARSE_ERROR} (" in err and "internal error" not in err, err
-    assert os.path.exists(os.path.join(sandbox.certs, "indexer-connector.pem"))      # the later step still ran
+    assert os.path.exists(os.path.join(sandbox.certs, "indexer-ca.pem"))             # the later step still ran
 
 
 def test_anchor_only_missing(resolver, sandbox):

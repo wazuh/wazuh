@@ -828,6 +828,35 @@ TEST_F(CMSyncSynchronizeTest, ClearsFailedStatusWhenNextCycleFindsNoChanges)
     logging::setLevel(logging::Level::Warn);
 }
 
+// While an indexer node restarts, a request can be refused (503) because a shard is unavailable. The retry
+// recovers within the same cycle: the content is unchanged, so the deployed route is kept as it is, with no
+// download, import or hot swap.
+TEST_F(CMSyncSynchronizeTest, RecoversFromARefusedReadinessCheckWithinTheCycle)
+{
+    auto state = createStoredStateWithNs("standard", "current_ns");
+    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillRepeatedly(::testing::Return(true));
+    auto entry = makeRouterEntry("cmsync_standard", "current_ns", 1, router::env::State::ENABLED, "same_hash");
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillRepeatedly(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));
+    cm::sync::CMSync sync {indexer, crud, store, router, 2U, 0U};
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_))
+        .WillOnce(::testing::Throw(std::runtime_error(
+            "Search request failed with status 503: Server error. Response: "
+            "{\"error\":{\"type\":\"search_phase_execution_exception\",\"phase\":\"query\"},\"status\":503}")))
+        .WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("same_hash"), true))));
+
+    // The strict crud and router mocks fail the test on any download, import or hot swap.
+    EXPECT_FALSE(sync.synchronize());
+    EXPECT_EQ(sync.getSpacesStatus()[0].status, base::SyncStatus::READY);
+    EXPECT_TRUE(sync.getSpacesStatus()[0].available);
+}
+
 // A policy disabled in an earlier cycle is not pending when a later cycle fails on the indexer
 TEST_F(CMSyncSynchronizeTest, NotPendingWhenDisabledSpaceFailsLaterCycle)
 {

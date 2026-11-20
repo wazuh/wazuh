@@ -5,9 +5,12 @@ inputs:
   path:
     required: true
     description: "Path to the module"
+  # Read by no step: the coverage scope is `path` (the --include patterns below). Kept, optional,
+  # only so the callers that still pass it need no change.
   test_directory:
-    required: true
-    description: "Directory where the tests are located"
+    required: false
+    description: "Unused. Kept for the callers that still pass it."
+    default: ""
   id:
     required: true
     description: "Module identifier, used to name the artifact"

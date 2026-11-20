@@ -16,6 +16,8 @@ constexpr auto INDEXER_QUEUE_USAGE_PERCENT = "indexer.queue.usage.percent";
 
 // Indexer event metrics
 constexpr auto INDEXER_EVENTS_DROPPED = "indexer.events.dropped";
+constexpr auto INDEXER_EVENTS_REQUEUED = "indexer.events.requeued";
+constexpr auto INDEXER_EVENTS_DEDUPLICATED = "indexer.events.deduplicated";
 
 // Router queue metrics
 constexpr auto ROUTER_QUEUE_SIZE = "router.queue.size";
@@ -30,6 +32,7 @@ constexpr auto ROUTER_EPS_30M = "router.eps.30m";
 constexpr auto ROUTER_EVENTS_PROCESSED = "router.events.processed";
 constexpr auto ROUTER_EVENTS_DROPPED = "router.events.dropped";
 constexpr auto ROUTER_EVENTS_MALFORMED = "router.events.malformed";
+constexpr auto ROUTER_EVENTS_ID_FAILED = "router.events.id_failed";
 
 // Agent cache metrics
 constexpr auto AGENT_CACHE_ENTRIES = "agent.cache.entries";

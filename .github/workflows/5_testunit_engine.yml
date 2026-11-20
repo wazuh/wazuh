@@ -12,6 +12,9 @@ on:
       # Link closure outside src/engine. The engine is configured inside the src/ tree
       # (add_subdirectory(engine) in src/CMakeLists.txt).
       - 'src/CMakeLists.txt'
+      # file(READ VERSION.json) in src/CMakeLists.txt -> -DVERSION, compiled into source/main.cpp; also the
+      # source of the fallback refs tools/get_git_refs.sh hands to `make deps`
+      - 'VERSION.json'
       # wazuh_link_jemalloc(wazuh-engine PLAIN) in src/engine/CMakeLists.txt, defined in src/cmake/WazuhJemalloc.cmake
       - 'src/cmake/**'
       # wazuhext and the vendored libraries the engine imports from src/external (add_subdirectory(external) in src/CMakeLists.txt)
@@ -46,6 +49,10 @@ on:
       - '!src/shared_modules/utils/benchmark/**'
       - '!src/shared_modules/utils/mocks/**'
       - '!src/shared_modules/utils/flatbuffers/**'
+      # Agent-JWT headers: included by remoted_module, authd, vulnerability_scanner and
+      # inventory_sync_server only -- by nothing the engine, indexer_connector, keystore or
+      # manager_config compile
+      - '!src/shared_modules/utils/jwt/**'
       - '!src/shared_modules/manager_config/tests/**'
       - '!src/shared_modules/manager_config/cli/**'
       - '!src/shared_modules/indexer_connector/tests/**'
@@ -54,8 +61,9 @@ on:
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'
-      # READMEs and design docs build nothing.
+      # READMEs, design docs and license texts build nothing.
       - '!src/**/*.md'
+      - '!src/shared_modules/*/COPYING'
       # CI plumbing. upload_s3_artifact only uploads the sanitizer logs here; it stays out because
       # 5_testintegration_engine.yml exercises it on every engine PR.
       - '.github/workflows/5_testunit_engine.yml'

@@ -2000,6 +2000,495 @@ static cJSON *replaceable_row(int id) {
     return rows;
 }
 
+/* ---- The row of the agent a request collides with is read with the keystore lock released ---- */
+
+// What the keystore lock looked like from inside each wazuh-db read. The answer is kept and asserted by
+// the case once local_add() has returned: an assertion in here would fire with the lock held by the code
+// under test and hang every case after it.
+static int lock_probe_reads = 0;
+static int lock_probe_busy = 0;
+
+static void probe_keystore_lock(int id) {
+    (void)id;
+    lock_probe_reads++;
+    if (pthread_mutex_trylock(&mutex_keys) == 0) {
+        pthread_mutex_unlock(&mutex_keys);
+    } else {
+        lock_probe_busy++;
+    }
+}
+
+static void use_force_for_duplicates(void) {
+    config.force_options.enabled = true;
+    config.force_options.key_mismatch = false;
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+    lock_probe_reads = 0;
+    lock_probe_busy = 0;
+    // A case that failed inside local_add() left the lock taken, by this same thread; the ones after
+    // it must not hang on it. Taken here or already held, it is this thread's to release.
+    (void)pthread_mutex_trylock(&mutex_keys);
+    assert_int_equal(pthread_mutex_unlock(&mutex_keys), 0);
+}
+
+static void assert_keystore_lock_is_free(void) {
+    assert_int_equal(pthread_mutex_trylock(&mutex_keys), 0);
+    pthread_mutex_unlock(&mutex_keys);
+}
+
+static void fill_identity_journal(void) {
+    char filler[16];
+    for (size_t room = IDENTITY_JOURNAL_MAX_ENTRIES - identity_journal_pending(); room > 0; room--) {
+        snprintf(filler, sizeof(filler), "%zu", room);
+        assert_true(identity_journal_append(filler, "filler", "any", REENROLL_SECRET, REENROLL_SECRET, false, NULL));
+    }
+}
+
+static void test_local_add_reads_duplicate_name_without_the_keystore_lock(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("probe-name", old_id, sizeof(old_id), NULL, 0);
+
+    wdb_get_agent_info_hook = probe_keystore_lock;
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"probe-name\",\"ip\":\"any\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    // The read happened, and the lock every enrollment and the writer take was free while it did.
+    assert_int_equal(lock_probe_reads, 1);
+    assert_int_equal(lock_probe_busy, 0);
+    assert_keystore_lock_is_free();
+
+    // And the replacement went through as it always has: the old agent is queued for removal, the new
+    // one holds the name.
+    assert_int_equal(response_error(response), 0);
+    assert_string_not_equal(data_string(response, "id"), old_id);
+    cJSON_Delete(response);
+    assert_int_equal(OS_IsAllowedID(&keys, old_id), -1);
+    assert_non_null(find_node(queue_remove, old_id));
+
+    config.force_options = saved_force;
+}
+
+static void test_local_add_reads_duplicate_ip_without_the_keystore_lock(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return(__wrap_OS_IsValidIP, -3);
+    will_return(__wrap_OS_IsValidIP, -1);
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"probe-ip-old\",\"ip\":\"10.44.0.1\"}}");
+    assert_int_equal(response_error(response), 0);
+    snprintf(old_id, sizeof(old_id), "%s", data_string(response, "id"));
+    cJSON_Delete(response);
+
+    // Two passes under the lock (one finds the holder without its row, one judges it), then the add.
+    wdb_get_agent_info_hook = probe_keystore_lock;
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 3);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 3);
+    will_return_count(__wrap_OS_IsValidIP, -3, 2);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"probe-ip-new\",\"ip\":\"10.44.0.1\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    assert_int_equal(lock_probe_reads, 1);
+    assert_int_equal(lock_probe_busy, 0);
+    assert_keystore_lock_is_free();
+
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+    assert_int_equal(OS_IsAllowedID(&keys, old_id), -1);
+    assert_non_null(find_node(queue_remove, old_id));
+
+    config.force_options = saved_force;
+}
+
+static void test_local_add_purge_pending_after_a_read_is_refused(void **state) {
+    // An insertion with its own id that also collides by name. The id owes no deletion when the request
+    // arrives and does by the time the holder's row has been read: the question is asked again after
+    // every read, so the request is refused, and the agent it would have replaced stays.
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("purge-after-read", old_id, sizeof(old_id), NULL, 0);
+
+    expect_string(__wrap_manager_task_agent_status, agent_id, "777");
+    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_NONE);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_string(__wrap_manager_task_agent_status, agent_id, "777");
+    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_OUTSTANDING);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"purge-after-read\",\"ip\":\"any\",\"id\":\"777\"}}");
+    assert_int_equal(response_error(response), 9018);
+    cJSON_Delete(response);
+
+    assert_keystore_lock_is_free();
+    assert_true(OS_IsAllowedID(&keys, old_id) >= 0);
+    assert_int_equal(OS_IsAllowedID(&keys, "777"), -1);
+    assert_null(find_node(queue_remove, old_id));
+
+    config.force_options = saved_force;
+}
+
+static void fill_journal_while_reading(int id) {
+    (void)id;
+    fill_identity_journal();
+}
+
+static void test_local_add_journal_full_after_a_read_keeps_every_holder(void **state) {
+    // The journal has room when the request arrives and none once the holder's row has been read. The
+    // room is asked for again after every read, before the lock: refused, holder intact.
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("journal-after-read", old_id, sizeof(old_id), NULL, 0);
+
+    // The address is checked once per pass under the keystore lock, and exactly one such check is
+    // declared: the refusal has to come from the question asked again BEFORE the lock, not from a
+    // second pass under it.
+    wdb_get_agent_info_hook = fill_journal_while_reading;
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -3);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"journal-after-read\",\"ip\":\"10.45.0.8\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    assert_int_equal(response_error(response), 9031);
+    cJSON_Delete(response);
+    assert_keystore_lock_is_free();
+    assert_true(OS_IsAllowedID(&keys, old_id) >= 0);
+    assert_null(find_node(queue_remove, old_id));
+
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    config.force_options = saved_force;
+}
+
+static int address_checks = 0;
+
+static void fill_journal_on_second_address_check(void) {
+    if (++address_checks == 2) {
+        fill_identity_journal();
+    }
+}
+
+static void test_local_add_journal_full_under_the_lock_keeps_every_holder(void **state) {
+    // The narrower window: the journal fills AFTER the request asked for room the last time and before
+    // it removes the agent it replaces. The address check runs under the keystore lock on every pass,
+    // so filling the journal from its second call lands exactly there. Room is asked for once more,
+    // under the lock, before anything is removed: refused, holder intact.
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("journal-under-lock", old_id, sizeof(old_id), NULL, 0);
+
+    address_checks = 0;
+    OS_IsValidIP_hook = fill_journal_on_second_address_check;
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return_count(__wrap_OS_IsValidIP, -3, 2);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"journal-under-lock\",\"ip\":\"10.45.0.9\"}}");
+    OS_IsValidIP_hook = NULL;
+
+    assert_int_equal(address_checks, 2);
+    assert_int_equal(response_error(response), 9031);
+    cJSON_Delete(response);
+    assert_keystore_lock_is_free();
+    assert_true(OS_IsAllowedID(&keys, old_id) >= 0);
+    assert_true(OS_IsAllowedName(&keys, "journal-under-lock") >= 0);
+    assert_null(find_node(queue_remove, old_id));
+
+    identity_journal_init(IDENTITY_JOURNAL_PATH);
+    config.force_options = saved_force;
+}
+
+static size_t queued_removals(void) {
+    size_t count = 0;
+    for (struct keynode *node = queue_remove; node; node = node->next) {
+        count++;
+    }
+    return count;
+}
+
+// Another request takes over what `name` holds while a row is being read: its holder is deleted and a
+// new agent holds the same name (and the same address). No OS_IsValidIP is declared here: the cases
+// declare every call of theirs in the order it happens.
+static const char *churn_name = NULL;
+static const char *churn_ip = NULL;
+static bool churn_only_once = false;
+
+static void churn_the_holder(int id) {
+    (void)id;
+    lock_probe_reads++;
+    if (churn_only_once && lock_probe_reads > 1) {
+        return;
+    }
+    int index = OS_IsAllowedName(&keys, churn_name);
+    char holder_id[16];
+    assert_true(index >= 0);
+    snprintf(holder_id, sizeof(holder_id), "%s", keys.keyentries[index]->id);
+    assert_true(OS_DeleteKey(&keys, holder_id, 1) >= 0);
+    assert_true(OS_AddNewAgent(&keys, NULL, churn_name, churn_ip, NULL, 0) >= 0);
+}
+
+static void test_local_add_unreadable_row_is_refused(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("unreadable-holder", old_id, sizeof(old_id), NULL, 0);
+    const size_t queued = queued_removals();
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, NULL);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"unreadable-holder\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 9008);
+    cJSON_Delete(response);
+
+    assert_keystore_lock_is_free();
+    assert_true(OS_IsAllowedID(&keys, old_id) >= 0);
+    assert_int_equal(queued_removals(), queued);
+
+    config.force_options = saved_force;
+}
+
+static void test_local_add_holder_replaced_once_is_judged_again(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("once-holder", old_id, sizeof(old_id), NULL, 0);
+    const int next_id = atoi(old_id) + 1;
+
+    churn_name = "once-holder";
+    churn_ip = "any";
+    churn_only_once = true;
+    wdb_get_agent_info_hook = churn_the_holder;
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_value(__wrap_wdb_get_agent_info, id, next_id);
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(next_id));
+    // The agent that takes the name over, then the one this request adds.
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return_count(__wrap_OS_IsValidIP, -1, 2);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"once-holder\",\"ip\":\"any\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    // The row of the agent that was gone said nothing about the one holding the name by then: that one
+    // was read too, and it is the one this request replaced.
+    assert_int_equal(lock_probe_reads, 2);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+    assert_keystore_lock_is_free();
+
+    char replaced_id[16];
+    snprintf(replaced_id, sizeof(replaced_id), "%03d", next_id);
+    assert_non_null(find_node(queue_remove, replaced_id));
+    assert_null(find_node(queue_remove, old_id));
+
+    config.force_options = saved_force;
+}
+
+static void test_local_add_changing_name_holder_is_refused_after_the_retries(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("churn-name-holder", old_id, sizeof(old_id), NULL, 0);
+    const size_t queued = queued_removals();
+    const unsigned int keysize = keys.keysize;
+
+    churn_name = "churn-name-holder";
+    churn_ip = "any";
+    churn_only_once = false;
+    wdb_get_agent_info_hook = churn_the_holder;
+    for (int read = 0; read < 1 + AUTH_HOLDER_RETRIES; read++) {
+        expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id) + read);
+        will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id) + read));
+    }
+    // One per agent that takes the name over; this request adds none.
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 1 + AUTH_HOLDER_RETRIES);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 1 + AUTH_HOLDER_RETRIES);
+    will_return_count(__wrap_OS_IsValidIP, -1, 1 + AUTH_HOLDER_RETRIES);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"churn-name-holder\",\"ip\":\"any\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    // The first read and AUTH_HOLDER_RETRIES more, and then it ends: a duplicate name, nothing added
+    // and nothing removed by this request, the lock released.
+    assert_int_equal(lock_probe_reads, 1 + AUTH_HOLDER_RETRIES);
+    assert_int_equal(response_error(response), 9008);
+    cJSON_Delete(response);
+    assert_keystore_lock_is_free();
+    assert_int_equal(keys.keysize, keysize);
+    assert_true(OS_IsAllowedName(&keys, "churn-name-holder") >= 0);
+    assert_int_equal(queued_removals(), queued);
+
+    config.force_options = saved_force;
+}
+
+static void test_local_add_changing_ip_holder_is_refused_after_the_retries(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return(__wrap_OS_IsValidIP, -3);
+    will_return(__wrap_OS_IsValidIP, -1);
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"churn-ip-holder\",\"ip\":\"10.46.0.1\"}}");
+    assert_int_equal(response_error(response), 0);
+    snprintf(old_id, sizeof(old_id), "%s", data_string(response, "id"));
+    cJSON_Delete(response);
+    const size_t queued = queued_removals();
+    const unsigned int keysize = keys.keysize;
+
+    churn_name = "churn-ip-holder";
+    churn_ip = "10.46.0.1";
+    churn_only_once = false;
+    wdb_get_agent_info_hook = churn_the_holder;
+    for (int read = 0; read < 1 + AUTH_HOLDER_RETRIES; read++) {
+        expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id) + read);
+        will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id) + read));
+    }
+    // In the order they happen: the request's address check on each pass under the lock (-3), and after
+    // each read but the last pass, the agent that takes the address over (-1). The last pass finds the
+    // holder changed once more and refuses.
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2 * (1 + AUTH_HOLDER_RETRIES) + 1);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2 * (1 + AUTH_HOLDER_RETRIES) + 1);
+    for (int read = 0; read < 1 + AUTH_HOLDER_RETRIES; read++) {
+        will_return(__wrap_OS_IsValidIP, -3);
+        will_return(__wrap_OS_IsValidIP, -1);
+    }
+    will_return(__wrap_OS_IsValidIP, -3);
+
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"churn-ip-newcomer\",\"ip\":\"10.46.0.1\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    // Refused for the address, which is the holder that could not be pinned down.
+    assert_int_equal(lock_probe_reads, 1 + AUTH_HOLDER_RETRIES);
+    assert_int_equal(response_error(response), 9007);
+    cJSON_Delete(response);
+    assert_keystore_lock_is_free();
+    assert_int_equal(keys.keysize, keysize);
+    assert_int_equal(OS_IsAllowedName(&keys, "churn-ip-newcomer"), -1);
+    assert_int_equal(queued_removals(), queued);
+
+    config.force_options = saved_force;
+}
+
+// While one request waits for its holder's row, another one inserts an agent under an id of its choice.
+static void insert_with_a_chosen_id(int id) {
+    (void)id;
+    if (++lock_probe_reads == 1) {
+        cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"chosen-id-agent\",\"ip\":\"any\",\"id\":\"901\"}}");
+        assert_int_equal(response_error(response), 0);
+        cJSON_Delete(response);
+    }
+}
+
+static void test_local_add_with_a_chosen_id_discards_the_rows_other_requests_read(void **state) {
+    // An id chosen by the caller may have belonged to another agent before, so once such an insertion
+    // is admitted, a row another request read earlier can no longer be matched to its agent by id. The
+    // waiting request reads its holder's row again instead of deciding on the one it had.
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    use_force_for_duplicates();
+
+    char old_id[16];
+    add_agent("reuse-holder", old_id, sizeof(old_id), NULL, 0);
+
+    wdb_get_agent_info_hook = insert_with_a_chosen_id;
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    expect_string(__wrap_manager_task_agent_status, agent_id, "901");
+    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_NONE);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(old_id));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(old_id)));
+    // The insertion with the chosen id, then the agent this request adds.
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return_count(__wrap_OS_IsValidIP, -1, 2);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"reuse-holder\",\"ip\":\"any\"}}");
+    wdb_get_agent_info_hook = NULL;
+
+    assert_int_equal(lock_probe_reads, 2);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+    assert_keystore_lock_is_free();
+    assert_true(OS_IsAllowedID(&keys, "901") >= 0);
+    assert_non_null(find_node(queue_remove, old_id));
+
+    config.force_options = saved_force;
+}
+
 static void test_a_refused_enrollment_removes_no_agent(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -2029,9 +2518,11 @@ static void test_a_refused_enrollment_removes_no_agent(void **state) {
 
     // A is replaceable, B is not (no agent-info to judge it by): the request is refused for B's name,
     // and A must survive it. Judging A and removing it before the name check deleted it here.
-    expect_any(__wrap_OS_IsValidIP, ip_address);
-    expect_any(__wrap_OS_IsValidIP, final_ip);
-    will_return(__wrap_OS_IsValidIP, -3);
+    // The address is put in its registered form on every pass under the keystore lock, and there are
+    // three: one finds A without its row, one finds B without its row, one judges them.
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 3);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 3);
+    will_return_count(__wrap_OS_IsValidIP, -3, 3);
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
     will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_a)));
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_b));
@@ -2048,9 +2539,9 @@ static void test_a_refused_enrollment_removes_no_agent(void **state) {
     assert_null(find_node(queue_remove, id_b));
 
     // The same request once B is replaceable too: admitted, and both holders are removed by it.
-    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
-    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
-    will_return(__wrap_OS_IsValidIP, -3);
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 4);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 4);
+    will_return_count(__wrap_OS_IsValidIP, -3, 3);
     will_return(__wrap_OS_IsValidIP, -1);
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
     will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_a)));
@@ -2386,6 +2877,16 @@ int main(void) {
         cmocka_unit_test(test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation),
         cmocka_unit_test(test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent),
         cmocka_unit_test(test_a_refused_enrollment_removes_no_agent),
+        cmocka_unit_test(test_local_add_reads_duplicate_name_without_the_keystore_lock),
+        cmocka_unit_test(test_local_add_reads_duplicate_ip_without_the_keystore_lock),
+        cmocka_unit_test(test_local_add_purge_pending_after_a_read_is_refused),
+        cmocka_unit_test(test_local_add_journal_full_after_a_read_keeps_every_holder),
+        cmocka_unit_test(test_local_add_journal_full_under_the_lock_keeps_every_holder),
+        cmocka_unit_test(test_local_add_unreadable_row_is_refused),
+        cmocka_unit_test(test_local_add_holder_replaced_once_is_judged_again),
+        cmocka_unit_test(test_local_add_changing_name_holder_is_refused_after_the_retries),
+        cmocka_unit_test(test_local_add_changing_ip_holder_is_refused_after_the_retries),
+        cmocka_unit_test(test_local_add_with_a_chosen_id_discards_the_rows_other_requests_read),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
         cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),

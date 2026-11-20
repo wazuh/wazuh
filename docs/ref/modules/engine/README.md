@@ -925,8 +925,8 @@ disabled — no output is selected and the event is **not indexed**.
 The engine does not log these drops. Every unclassified event of production traffic, indexed or not, is counted
 in the [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric (policies built in test mode do not
 move it). When the manager has indexer hosts configured, the master node collects the engine metrics of its own node
-and of its connected workers at startup and then every `metrics_frequency` (600 seconds by default and at least;
-`0` disables the collection) and indexes them into `wazuh-metrics-normalization` (a node that cannot be reached in a
+and of its connected workers at startup and then every `intervals.master.metrics_frequency` seconds of the cluster's
+built-in `cluster.json` (600 by default and at least; `0` disables the collection) and indexes them into `wazuh-metrics-normalization` (a node that cannot be reached in a
 cycle is skipped until the next one); the Wazuh dashboard shows this one in the **Unclassified events** panel of
 **Server statistics → Normalization** and **Server statistics → Per-Space Metrics**. Without that publication the
 counter is still available from the engine's metrics, but the dashboard is not updated.
@@ -1063,6 +1063,10 @@ appearing again at `INFO`. A cycle that cannot reach the indexer logs its attemp
 route, and the next cycle keeps running at the regular interval; when the indexer is reachable again the space logs
 `Space '<name>' is back in sync with wazuh-indexer` at `INFO` if its content did not change, or the usual
 `Changes detected` / `Successfully synchronized` lines if it did.
+
+A download the indexer can only answer in part, typically because a node holding some of the content is stopping
+during it, counts as a failed attempt in the same way: the space content is never imported incomplete, and the
+deployed route is kept (see [Synchronization failures](configuration.md#synchronization-failures)).
 
 The content synchronized per space includes:
 
@@ -2494,9 +2498,25 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted), plus items a successful response rejected with a per-item `429` (the indexer shedding load). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and other failed items inside a successful response, are not counted.
+Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted. Items a successful response rejected with a per-item `429` or a `cluster_block_exception` are requeued and retried, not dropped (see `indexer.events.requeued`); while such rejections last, the queue fills up and the new events it refuses are counted here (see the [indexer connector retry behavior](../indexer_connector/README.md#retry-and-backoff-behavior)).
 
 **Used for:** detecting loss conditions and overload situations.
+
+---
+
+##### `indexer.events.requeued`
+
+Number of items the indexer rejected with a per-item `429` (load shedding) or a `cluster_block_exception` (writes blocked) inside a successful `_bulk` response, and that the connector put back in its queue to resend, since the indexer connector started. It is a pull metric (type `pull` in the dump) and reads `0` while no connector exists. It counts requeue attempts, not unique documents: an item rejected on three consecutive sends counts three. Items still waiting when the manager stops are lost with the rest of the queue, and are not counted in `indexer.events.dropped`.
+
+**Used for:** detecting an indexer that refuses writes or sheds load. A value that keeps growing across reads means the rejections have not stopped; then watch `indexer.queue.usage.percent` and `indexer.events.dropped`.
+
+---
+
+##### `indexer.events.deduplicated`
+
+Number of `_bulk` items the indexer had already applied when the connector resent them, since the indexer connector started. Every event is indexed with a `create` action carrying its own `_id`, and a resend after a timeout or a dropped connection repeats that `_id`; the indexer answers the already-applied item with `409` (`version_conflict_engine_exception`) and the connector counts it as applied. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, and it reads `0` while no connector exists. It is not a loss and is never added to `indexer.events.dropped`.
+
+**Used for:** detecting a slow or unstable indexer that forces resends.
 
 ---
 
@@ -2579,6 +2599,14 @@ Total number of events dropped by the router because its input queue was full.
 Total number of input lines the router workers dropped because they are not a valid `<byte>:<location>:<message>` event (too short, no `:` after the queue byte, no unescaped `:` between location and message, empty location). Such a line is never decoded or indexed as an event (it still reaches the raw-event index when that is enabled). Each worker logs the first one as a WARNING with the reason, then at most one line per minute that also reports how many it dropped since its previous report.
 
 **Used for:** detecting a sender that emits lines in the wrong format.
+
+---
+
+##### `router.events.id_failed`
+
+Total number of events the router workers dropped because their `wazuh.event.id` could not be generated: the system's cryptographic random source (OpenSSL) reported a failure. Such an event is dropped before anything else is done with it, so it is neither indexed (not even in the raw-event index) nor decoded. Each worker logs the first one as an ERROR with the reason, then at most one line per minute that also reports how many it dropped since its previous report; every event tries the random source again. It stays `0` on a healthy system.
+
+**Used for:** detecting a failing random source on the manager host.
 
 ---
 

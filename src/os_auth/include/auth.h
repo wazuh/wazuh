@@ -197,8 +197,99 @@ w_err_t w_auth_parse_data(const char* buf,
                           char **groups,
                           char **key_hash);
 
+/** How many times one enrollment reads a holder's row again because the holder changed while it was being
+ * read. The first read of each holder is not counted. */
+#define AUTH_HOLDER_RETRIES 3
+
+/** Which of the two agents an enrollment can collide with. */
+enum { W_AUTH_HOLDER_IP = 0, W_AUTH_HOLDER_NAME = 1 };
+
+/** What the force rules need from the wazuh-db row of the agent that holds a name or an IP. */
+typedef struct {
+    char id[OS_SIZE_32];                ///< Agent the row belongs to; "" = empty slot
+    bool readable;                      ///< false = the row was asked for and did not arrive complete
+    char connection_status[OS_SIZE_32];
+    long disconnection_time;
+    long date_add;
+} w_auth_holder_info_t;
+
 /**
- * @brief Validates if new enrollment is possible with provided data.
+ * The rows one enrollment has read so far, and the one it still needs.
+ *
+ * It lives for the whole request and is zero-initialised by the caller. The rows are read with mutex_keys
+ * released, so on every pass under the lock the holders are looked up again and matched against these
+ * rows; a row only counts for the agent it was read for.
+ */
+typedef struct {
+    w_auth_holder_info_t row[2];        ///< By role: the row of the IP holder and of the name holder
+    char wanted[OS_SIZE_32];            ///< Id whose row has to be read next; "" = none
+    int wanted_role;                    ///< Role that row is for
+    unsigned long long epoch;           ///< Id-reuse epoch seen when the row was asked for
+    bool read_once[2];                  ///< By role: a row has already been read for it
+    int retries;                        ///< Re-reads spent by the whole request; never reset
+} w_auth_holders_t;
+
+/** Outcome of judging the agents an enrollment collides with. */
+typedef enum {
+    W_AUTH_ADMIT,                       ///< No holder, or every holder may be replaced
+    W_AUTH_REFUSE_IP,                   ///< The IP holder may not be replaced
+    W_AUTH_REFUSE_NAME,                 ///< The name holder may not be replaced
+    W_AUTH_NEED_ROW                     ///< A holder's row has to be read first: see w_auth_holders_read()
+} w_auth_judge_t;
+
+/**
+ * @brief Finds the agents that hold `ip` and `name`, matches them against the rows already read and
+ * applies the force rules. Removes nothing. MUST be called with mutex_keys held.
+ *
+ * The IP holder is judged first, and the name holder is neither judged nor read while the IP holder is
+ * unresolved or refused. On W_AUTH_NEED_ROW no verdict has been given and nothing was written to the
+ * results: the caller checks w_auth_holders_exhausted() while it still holds the lock and, if it is not,
+ * releases the lock, calls w_auth_holders_read() and starts over.
+ *
+ * @param ip Address to look up, in the form it is registered; NULL or "any" skips the IP check
+ * @param name Agent name to look up
+ * @param key_hash Hash of the key on the enrolling agent, or NULL
+ * @param force_options Force configuration that applies to this request
+ * @param holders Rows read so far for this request
+ * @param ip_holder [out] The IP holder to remove once the request is admitted, or NULL
+ * @param name_holder [out] The name holder to remove, or NULL (also NULL when it is the IP holder)
+ * @param ip_result [out] Message of the IP verdict. Must be freed by the caller
+ * @param name_result [out] Message of the name verdict. Must be freed by the caller
+ * @param warn [out] Whether a refusal reflects a live identity conflict. May be NULL
+ */
+w_auth_judge_t w_auth_judge_holders(const char *ip,
+                                    const char *name,
+                                    const char *key_hash,
+                                    authd_force_options_t *force_options,
+                                    w_auth_holders_t *holders,
+                                    keyentry **ip_holder,
+                                    keyentry **name_holder,
+                                    char **ip_result,
+                                    char **name_result,
+                                    bool *warn);
+
+/**
+ * @brief Whether the row w_auth_judge_holders() asked for may not be read any more: its role already had
+ * its first read and the request spent its AUTH_HOLDER_RETRIES. Memory only; meant to be asked while
+ * mutex_keys is still held, so the refusal leaves through the caller's ordinary locked exit.
+ */
+bool w_auth_holders_exhausted(const w_auth_holders_t *holders);
+
+/**
+ * @brief Reads from wazuh-db the row w_auth_judge_holders() asked for. It can block for as long as
+ * wazuh-db takes to answer, so it MUST NOT be called with mutex_keys held. It does not touch the keystore.
+ */
+void w_auth_holders_read(w_auth_holders_t *holders);
+
+/**
+ * @brief Records that an agent was added with an id chosen by the caller. MUST be called with mutex_keys
+ * held. Such an id may have belonged to another agent before, so every row read before this point stops
+ * counting for the agent that now holds the id.
+ */
+void w_auth_id_reuse_note(void);
+
+/**
+ * @brief Validates if new enrollment is possible with provided data. MUST be called with mutex_keys held.
  * With force configuration disabled, if enrollment data is already registered, validation will fail.
  * With force configuration enabled, duplicated entries will be removed -- but only once every check has
  * passed: a refused enrollment never removes an agent.
@@ -207,19 +298,26 @@ w_err_t w_auth_parse_data(const char* buf,
  * @param agentname New enrollment agent name
  * @param groups New enrollment groups
  * @param hash_key Hash of the key on the agent
+ * @param holders Rows read so far for this request
+ * @return OS_SUCCESS when the request is admitted (the replaced agents have been removed), OS_INVALID when
+ * it is refused, and OS_NOTFOUND when a holder's row has to be read first: nothing was removed and
+ * `response` is untouched; the caller releases the lock, calls w_auth_holders_read() and validates again.
  * */
 w_err_t w_auth_validate_data(char *response,
                              const char *ip,
                              const char *agentname,
                              const char *groups,
-                             const char *hash_key);
+                             const char *hash_key,
+                             w_auth_holders_t *holders);
 
 /**
  * @brief Decides whether the old agent can be replaced. Removes nothing: the caller removes it with
- * w_auth_remove_replaced_agent() once the whole request is known to succeed.
+ * w_auth_remove_replaced_agent() once the whole request is known to succeed. Reads nothing either: the
+ * agent's row comes from the caller, who read it with mutex_keys released.
  * @param key Key structure of the agent to be replaced
  * @param hash_key Hash of the key on the agent
  * @param force_options Force configuration structure to define how the agent replacement must be handled.
+ * @param info The agent's row, or NULL when there is none. Not looked at when force is disabled.
  * @param str_result A message related to the result of the agent replacement. Must be freed by the caller.
  * @param warn Set to true when the rejection reflects a live identity conflict (the existing agent is still connected and does not self-heal); false for transient or expected rejections. May be NULL.
  * @return OS_SUCCESS if the agent may be replaced, OS_INVALID otherwise.
@@ -227,6 +325,7 @@ w_err_t w_auth_validate_data(char *response,
 w_err_t w_auth_check_replace_agent(keyentry *key,
                                    const char *key_hash,
                                    authd_force_options_t *force_options,
+                                   const w_auth_holder_info_t *info,
                                    char** str_result,
                                    bool *warn);
 
