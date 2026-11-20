@@ -62,6 +62,13 @@ namespace containerimages::oci
     /// Windows drive-relative prefix.
     bool isSafeDigest(const std::string& digest);
 
+    /// @brief True when @p digest is a sha256 or sha512 digest in full: the algorithm, a colon, and the
+    /// exact number of lower-case hex digits (64 or 128).
+    ///
+    /// Stricter than @ref isSafeDigest, for a value a container engine supplies and the module turns
+    /// into a key and a request path, where nothing but a real image id should pass.
+    bool isHexDigest(const std::string& digest);
+
     /// @brief Every digest an image is known by, without empty or repeated entries.
     ///
     /// Ordered from the outside in: the indexes the image was resolved through (outermost

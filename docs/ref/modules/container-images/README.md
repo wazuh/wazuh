@@ -4,11 +4,11 @@ The **Container Images** module introduces agent-side support for collecting inv
 
 The module is implemented as an **agent-only** `wazuh-modulesd` module. It follows the same module layout used by other inventory components: a C glue layer handles configuration and lifecycle, while a C++ shared library contains the scan logic.
 
-> **Note:** This stage covers image discovery from saved archives, OCI image layouts and GitHub Container Registry references, package extraction for the `dpkg`, `apk` and `rpm` (sqlite, ndb and Berkeley DB) formats, and local persistence of the inventory. Change events, manager synchronization, indexing, Vulnerability Detector integration, the container engine reader and registries other than GitHub Container Registry are not implemented yet.
+> **Note:** This stage covers image discovery from saved archives, OCI image layouts and GitHub Container Registry references, package extraction for the `dpkg`, `apk` and `rpm` (sqlite, ndb and Berkeley DB) formats, and local persistence of the inventory. Change events, manager synchronization, indexing, Vulnerability Detector integration and registries other than GitHub Container Registry and Amazon ECR are not implemented yet. Images held by the Docker engine on a Linux agent are read through `<local>docker`.
 
 ## Overview
 
-Container Images scans configured image sources, stores what it finds in a local database, and reports the scan in the agent logs. The inputs are read without a container daemon: saved image archives and OCI image layout directories on disk, and image references in GitHub Container Registry.
+Container Images scans configured image sources, stores what it finds in a local database, and reports the scan in the agent logs. The inputs are saved image archives and OCI image layout directories on disk, image references in a registry, and, on Linux agents, the images held by the Docker engine configured in the same `<container_security>` block.
 
 ### Key Features
 
@@ -17,6 +17,7 @@ Container Images scans configured image sources, stores what it finds in a local
 - **Digest check**: An image still reporting the configuration digest already stored is not read again, so an unchanged image costs its metadata and nothing more.
 - **Read failure handling**: A reference that cannot be read keeps the inventory an earlier scan stored for it, instead of having it reported as deleted.
 - **Archive reader**: Reads saved image archives (`docker save`) and OCI image layout directories.
+- **Engine reader**: On Linux, `<local>docker` inventories every image the Docker engine of the same `<container_security>` block holds, over its Unix socket, one row per image. An image whose id is already stored is not exported again.
 - **Registry reader**: Reads image references in GitHub Container Registry, pinned by tag, by digest, or by a tag followed by a digest, with credentials taken from the agent credential store.
 - **Streaming layer reader**: Streams layer blobs, gzip-compressed, zstd-compressed or plain, without extracting an image to disk.
 - **Package extraction**: Composes the image layers in manifest order, applies the OverlayFS deletion markers, and parses the `dpkg` and `apk` databases.
@@ -42,7 +43,7 @@ Container Images scans configured image sources, stores what it finds in a local
 |--------|-------|--------|-------------|
 | Saved image archive | `<archive>` | Supported | The output of `docker save`, holding either an OCI layout or the older `manifest.json` layout. |
 | OCI image layout | `<archive>` | Supported | A directory containing an OCI image layout. |
-| Container engine store | `<local>` | Not implemented | Accepted by the configuration and reported. |
+| Docker engine | `<local>docker` | Supported on Linux | Every image the engine holds, through the socket of the engine configured in the same `<container_security>` block. |
 | GitHub Container Registry | `<ref>` | Supported | An image reference pinned by tag, by digest, or by a tag followed by a digest. Other registries are refused. |
 
 ## Supported Package Formats

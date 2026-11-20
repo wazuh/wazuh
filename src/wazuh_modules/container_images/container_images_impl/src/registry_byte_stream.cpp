@@ -122,7 +122,7 @@ namespace containerimages
         if (stream->m_status != 0 && (stream->m_status < 200 || stream->m_status > 299))
         {
             stream->m_failed = true;
-            stream->m_error = "the registry answered " + std::to_string(stream->m_status);
+            stream->m_error = "the server answered " + std::to_string(stream->m_status);
 
             return 0;
         }
@@ -198,7 +198,9 @@ namespace containerimages
         m_started = true;
         m_idle.restart(std::chrono::steady_clock::now());
 
-        if (m_config.caBundle.empty())
+        const bool unixSocket {!m_config.unixSocketPath.empty()};
+
+        if (!unixSocket && m_config.caBundle.empty())
         {
             m_failed = true;
             m_error = "no certificate bundle is available, so the registry cannot be verified";
@@ -227,17 +229,27 @@ namespace containerimages
 
         curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 2L);
-        curl_easy_setopt(handle, CURLOPT_CAINFO, m_config.caBundle.c_str());
 
-        curl_easy_setopt(handle, CURLOPT_PROTOCOLS_STR, "https");
-        curl_easy_setopt(handle, CURLOPT_REDIR_PROTOCOLS_STR, "https");
+        if (unixSocket)
+        {
+            // A container engine on this host: the socket is the only peer, over plain http.
+            curl_easy_setopt(handle, CURLOPT_UNIX_SOCKET_PATH, m_config.unixSocketPath.c_str());
+        }
+        else
+        {
+            curl_easy_setopt(handle, CURLOPT_CAINFO, m_config.caBundle.c_str());
+        }
+
+        curl_easy_setopt(handle, CURLOPT_PROTOCOLS_STR, unixSocket ? "http" : "https");
+        curl_easy_setopt(handle, CURLOPT_REDIR_PROTOCOLS_STR, unixSocket ? "http" : "https");
 
         // A blob request is answered with a redirect to a content host. It has to be
         // followed, and the token must not go with it: that host does not need it, the
         // URL it hands out is already signed, and sending it there would disclose the
         // credential to a third party. Off is the default; it is set anyway so the
         // decision is visible next to the redirect that makes it matter.
-        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
+        // An engine does not redirect, so nothing is followed away from its socket.
+        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, unixSocket ? 0L : 1L);
         curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 5L);
         curl_easy_setopt(handle, CURLOPT_UNRESTRICTED_AUTH, 0L);
 
@@ -247,11 +259,17 @@ namespace containerimages
         // this transfer is suspended on purpose whenever the caller is slower than the
         // network, so it would abort a healthy read of a large layer.
         //
-        // The stall detector below ends a transfer that stays under 1 KiB/s for the
-        // request timeout. m_idle is the backstop, checked in pump(): it counts only a
-        // wait for the network, and restarts whenever bytes arrive.
-        curl_easy_setopt(handle, CURLOPT_LOW_SPEED_LIMIT, 1024L);
-        curl_easy_setopt(handle, CURLOPT_LOW_SPEED_TIME, m_config.requestTimeoutMs / 1000);
+        // The stall detector ends a transfer that stays under 1 KiB/s for the request
+        // timeout. m_idle is the backstop, checked in pump(): it counts only a wait for the
+        // network, and restarts whenever bytes arrive.
+        //
+        // An engine builds the whole export before it sends the first byte, which takes
+        // longer than the request timeout for a large image. Its detector is armed by pump()
+        // once data flows, and until then m_idle bounds the wait.
+        if (!unixSocket)
+        {
+            armStallDetector();
+        }
 
         curl_easy_setopt(handle, CURLOPT_NOSIGNAL, 1L);
         curl_easy_setopt(handle, CURLOPT_USERAGENT, "Wazuh-Agent-ContainerImages");
@@ -279,8 +297,22 @@ namespace containerimages
         return true;
     }
 
+    void RegistryByteStream::armStallDetector()
+    {
+        auto* handle {static_cast<CURL*>(m_handle)};
+
+        curl_easy_setopt(handle, CURLOPT_LOW_SPEED_LIMIT, 1024L);
+        curl_easy_setopt(handle, CURLOPT_LOW_SPEED_TIME, m_config.requestTimeoutMs / 1000);
+        m_stallDetectorArmed = true;
+    }
+
     void RegistryByteStream::pump()
     {
+        if (!m_stallDetectorArmed && m_received > 0)
+        {
+            armStallDetector();
+        }
+
         // Both checks live here rather than in read(), because pump() is the only place
         // that blocks and therefore the only place a stalled transfer can be caught.
         if (m_stopRequested != nullptr && m_stopRequested->load())
@@ -297,7 +329,7 @@ namespace containerimages
         {
             m_failed = true;
             m_abortedLocally = true;
-            m_error = "the layer transfer received no data for " + std::to_string(m_config.blobIdleTimeoutMs) +
+            m_error = "the transfer received no data for " + std::to_string(m_config.blobIdleTimeoutMs) +
                       " milliseconds";
             m_running = false;
 
@@ -364,7 +396,7 @@ namespace containerimages
         if (!m_failed && (m_status < 200 || m_status > 299))
         {
             m_failed = true;
-            m_error = "the registry answered " + std::to_string(m_status);
+            m_error = "the server answered " + std::to_string(m_status);
         }
     }
 

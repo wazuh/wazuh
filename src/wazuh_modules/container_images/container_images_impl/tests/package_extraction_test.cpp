@@ -1704,7 +1704,7 @@ TEST_F(PackageExtractionTest, ArchiveAndRegistryReferenceTypesBuildAReader)
     EXPECT_NE(makeReader({ReferenceType::Registry, "ghcr.io/owner/app:1.0"}, {}, {}), nullptr);
     EXPECT_NE(makeReader({ReferenceType::Registry, "docker.io/library/alpine:latest"}, {}, {}), nullptr);
 
-    // Still accepted by the configuration and reported as unimplemented here.
+    // `<local>` names an engine; anything but the ones the module supports builds no reader.
     EXPECT_EQ(makeReader({ReferenceType::EngineStore, "alpine:latest"}, {}, {}), nullptr);
 }
 

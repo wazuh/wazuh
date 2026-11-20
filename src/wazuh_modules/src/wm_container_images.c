@@ -57,6 +57,7 @@ static void *container_images_module = NULL;
 static container_images_set_log_function_func container_images_set_log_function_ptr = NULL;
 static container_images_init_func container_images_init_ptr = NULL;
 static container_images_set_registry_options_func container_images_set_registry_options_ptr = NULL;
+static container_images_set_engine_options_func container_images_set_engine_options_ptr = NULL;
 static container_images_start_func container_images_start_ptr = NULL;
 static container_images_stop_func container_images_stop_ptr = NULL;
 static container_images_release_resources_func container_images_release_resources_ptr = NULL;
@@ -102,6 +103,10 @@ static void wm_container_images_log_config(const wm_container_images_t *data) {
         mdebug1("Reference configured: <%s>%s.", data->references[i].type, data->references[i].value);
     }
 
+    if (data->docker_socket) {
+        mdebug1("Docker engine for <local>docker: socket '%s'.", data->docker_socket);
+    }
+
     // The host and the key names, never the values: the values are read from the
     // credential store at scan time and must not reach a log line at any level.
     for (int i = 0; i < data->registries_count; i++) {
@@ -138,6 +143,7 @@ void *wm_container_images_main(wm_container_images_t *data) {
         container_images_set_log_function_ptr = so_get_function_sym(container_images_module, "container_images_set_log_function");
         container_images_init_ptr = so_get_function_sym(container_images_module, "container_images_init");
         container_images_set_registry_options_ptr = so_get_function_sym(container_images_module, "container_images_set_registry_options");
+        container_images_set_engine_options_ptr = so_get_function_sym(container_images_module, "container_images_set_engine_options");
         container_images_start_ptr = so_get_function_sym(container_images_module, "container_images_start");
         container_images_stop_ptr = so_get_function_sym(container_images_module, "container_images_stop");
         container_images_release_resources_ptr = so_get_function_sym(container_images_module, "container_images_release_resources");
@@ -154,7 +160,7 @@ void *wm_container_images_main(wm_container_images_t *data) {
     }
 
     if (!container_images_set_log_function_ptr || !container_images_init_ptr ||
-        !container_images_set_registry_options_ptr ||
+        !container_images_set_registry_options_ptr || !container_images_set_engine_options_ptr ||
         !container_images_start_ptr || !container_images_stop_ptr ||
         !container_images_release_resources_ptr) {
         merror("Can't get required container_images module symbols.");
@@ -206,6 +212,8 @@ void *wm_container_images_main(wm_container_images_t *data) {
     os_free(registry_user_keys);
     os_free(registry_passkey_keys);
     os_free(registry_regions);
+
+    container_images_set_engine_options_ptr(data->docker_socket);
 
     container_images_init_ptr(data->interval, data->scan_on_start, data->enabled,
                               reference_types, reference_values, (unsigned int)data->references_count);
@@ -264,6 +272,7 @@ void wm_container_images_destroy(wm_container_images_t *data) {
             os_free(data->registries);
         }
         os_free(data->ca_bundle);
+        os_free(data->docker_socket);
         os_free(data);
     }
 }
@@ -323,6 +332,10 @@ cJSON *wm_container_images_dump(const wm_container_images_t *data) {
 
     if (data->ca_bundle) {
         cJSON_AddStringToObject(wm_wd, "ca_bundle", data->ca_bundle);
+    }
+
+    if (data->docker_socket) {
+        cJSON_AddStringToObject(wm_wd, "docker_socket", data->docker_socket);
     }
 
     cJSON_AddItemToObject(root, "container_images", wm_wd);

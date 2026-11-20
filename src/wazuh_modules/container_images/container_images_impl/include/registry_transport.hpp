@@ -45,7 +45,12 @@ namespace containerimages
     /// @brief How the transport is allowed to behave.
     struct TransportConfig
     {
-        std::string caBundle;                                ///< Certificate bundle to verify against. Required.
+        std::string caBundle;                                ///< Certificate bundle to verify against. Required, unless @ref unixSocketPath is set.
+
+        /// Unix domain socket to send every request through, over plain http, for a container
+        /// engine on this host. When set no certificate bundle is needed, redirects are not followed
+        /// and the request URL only supplies the path.
+        std::string unixSocketPath;
         long connectTimeoutMs {10000};                        ///< Ceiling on establishing a connection.
         long requestTimeoutMs {30000};                        ///< Ceiling on one whole request.
         std::uint64_t maxResponseBytes {16ULL * 1024 * 1024}; ///< Ceiling on one buffered response.

@@ -8,7 +8,7 @@ The section is optional. Without `<images>` the module is not started. When the 
 
 All the options on this page go inside `<images>`, which goes inside `<container_security>`. The examples below show the `<images>` section; the fragments for `<registry_auth>` and `<references>` are written inside it.
 
-> **Note:** Images are read from two kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`) and Amazon Elastic Container Registry (public and private). The `<local>` entry type is accepted by the parser and reported as unimplemented.
+> **Note:** Images are read from three kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`) and Amazon Elastic Container Registry (public and private). From the Docker engine on the host through `<local>docker`, on Linux agents, which uses the engine configured in the same `<container_security>` block.
 
 ---
 
@@ -89,7 +89,7 @@ Move its children, unchanged, into `<container_security><images>`.
 | `references/ref` | string | empty | Image in a remote GHCR or Amazon ECR registry, by tag, by digest, or by both. This element can be repeated. |
 | `registry_auth` | section | empty | Container section for per-registry credentials. See [Registry Credentials](#registry-credentials). |
 | `ca_bundle` | string | detected | Path to the certificate bundle used to verify a registry, and the AWS API endpoint a private Amazon ECR token is requested from. Detected at run time when unset. |
-| `references/local` | string | empty | Image in the local container engine store. Accepted and reported as unimplemented. |
+| `references/local` | string | empty | Name of a container engine configured in the same `<container_security>` block. Every image the engine holds is inventoried. Only `docker` is supported, on Linux agents. See [Local Engine References](#local-engine-references). |
 
 ---
 
@@ -118,7 +118,7 @@ The grammar holds three entry types.
 |-------|---------|--------|
 | `<archive>` | Saved image archive or OCI image layout on disk. | Implemented. |
 | `<ref>` | Image in a remote registry. | Implemented for `ghcr.io` and Amazon ECR. |
-| `<local>` | Image in the local container engine store. | Accepted, reported as unimplemented. |
+| `<local>` | Every image held by a container engine on the host. | Implemented for `docker`, on Linux agents. |
 
 ```xml
 <references>
@@ -131,11 +131,52 @@ The grammar holds three entry types.
 </references>
 ```
 
-An unimplemented entry type is reported once per scan and costs nothing else:
+### Local Engine References
+
+`<local>` names a container engine, not an image, and the module inventories every image that engine holds. The engine is the one already configured in the same `<container_security>` block, so its socket is written once and there is no socket option under `<images>`.
+
+```xml
+<container_security>
+  <container_instances>
+    <type>docker</type>
+    <socket_path>/var/run/docker.sock</socket_path>
+  </container_instances>
+  <images>
+    <references>
+      <local>docker</local>
+    </references>
+  </images>
+</container_security>
+```
+
+The engine block is read as runtime security writes it. Both shapes are recognised, in any order inside the block, and the module reads only their `<socket_path>` and `<enabled>`; the rest is validated by runtime security:
+
+| Shape | Docker engine |
+|-------|---------------|
+| `<container_instances>` with `<type>docker</type>` | Today's shape. |
+| `<docker>` | The shape of the proposed runtime configuration. |
+
+An image pulled by digest has no tag, so it is named by the repository its digest names. When the block holds several Docker engine blocks, an enabled one is used, whatever its position, over a disabled one.
+
+| Case | Result |
+|------|--------|
+| The engine block has a `<socket_path>` | That socket. |
+| The engine block has no `<socket_path>` | `/var/run/docker.sock`, the socket runtime security uses by default. |
+| No Docker engine in the block, or it is switched off with `<enabled>no</enabled>` | The `<local>` entry is reported and ignored. The rest of `<images>` keeps running. |
+| `<local>kubernetes</local>` | Reported and ignored: Kubernetes has no image export, name its images with `<ref>`. |
+| Any other name | Reported and ignored: only `docker` is supported. |
+| A second `<local>docker</local>`, in the block or in a later block | Reported and ignored. The socket of the first one is used. |
+| macOS and Windows agents | Reported and ignored: container engines are supported on Linux agents only. |
+
+Each ignored entry logs one warning, for example:
 
 ```sql
-wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: the '<local>' reference 'nginx:1.27' needs container engine support, which is not available yet. Skipping it.
+wazuh-modulesd:container_images: WARNING: The 'local' reference 'docker' at module 'container_images' needs the Docker engine of the same 'container_security' block, and none is configured. Ignoring it.
 ```
+
+The images are read from the Docker Engine API on that socket: `GET /images/json` lists them and `GET /images/{id}/get` exports one as a saved image archive, which is read by the same code as an `<archive>`, streamed and never written to disk. An export is read in two passes (metadata, then layers), so it is requested twice. The limits of a registry image apply to it: the per image byte allowance (`2 GiB`) and the per scan one (`8 GiB`, an image is not started once it is reached; its stored inventory is kept), plus the decompressed layer ceiling.
+
+Each image is one row, keyed `local:docker/<image id>`. The engine reports its names, tags and digests, which are the ones stored: the name and tags are normalised like those of a saved archive, and the digests are the ones the engine pins the name to, then the configuration digest (the image id). An image with no name is inventoried with an empty name and no tags. The row keeps its key when the image is retagged and is rewritten with the new names. An image whose id is already stored is not exported again. An image the engine no longer lists is removed like any reference that goes away. An image the engine reports as larger than the per image allowance is not exported: it is skipped with one warning per image (not per scan) and does not use the scan allowance, and the stream limit stays as a backstop for an engine that under-reports. An image exported with several platforms is read as the one matching the agent, else the first. When the engine cannot be reached (socket missing, daemon stopped, an error answer) the scan keeps everything stored for it and logs one warning, since an unreachable engine says nothing about what it holds.
 
 ### Remote References
 

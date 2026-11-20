@@ -11,15 +11,33 @@
 #ifndef _ARCHIVE_IMAGE_READER_HPP
 #define _ARCHIVE_IMAGE_READER_HPP
 
+#include "byte_stream.hpp"
 #include "iimage_reader.hpp"
 
 #include <atomic>
 #include <filesystem>
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace containerimages
 {
+    /// @brief Opens one pass over a saved image archive that does not live on disk, such as an
+    /// image a container engine exports. A tar is read twice, so it is called twice.
+    ///
+    /// Returns null when the archive cannot be opened. A stream that is an @ref IBlobStream is also
+    /// asked whether its transfer completed, so a connection that drops mid-image is not read as a
+    /// short archive.
+    using ArchiveOpener = std::function<std::unique_ptr<IByteStream>()>;
+
+    /// @brief The name and tags an image is known by, from the references listed for it.
+    ///
+    /// Applies the rule saved archives use for `RepoTags`: the first reference that normalises fixes
+    /// the name, the tag of every reference to that name is kept once, other names and `<none>:<none>`
+    /// are left out, and at most 64 references are read.
+    ImageNames imageNamesOf(const std::vector<std::string>& references);
+
     /// @brief Reads image references, and the packages they contain, from an image on disk.
     ///
     /// Two inputs are supported, and both end up describing their layers the same way
@@ -48,6 +66,13 @@ namespace containerimages
                                         std::string knownConfigDigest = {},
                                         const std::atomic<bool>* stopRequested = nullptr);
 
+            /// @brief Read a saved image archive supplied by @p opener rather than found at a path.
+            /// @param location     Name the image goes by in the log and in its records.
+            ArchiveImageReader(std::string location,
+                               std::string knownConfigDigest,
+                               const std::atomic<bool>* stopRequested,
+                               ArchiveOpener opener);
+
             ImageReadResult discover() override;
             std::string sourceType() const override;
 
@@ -55,12 +80,13 @@ namespace containerimages
             /// @brief Read an image layout held in a directory.
             ImageReadResult readDirectory(const std::filesystem::path& path);
 
-            /// @brief Read a saved image archive.
-            ImageReadResult readSavedArchive(const std::filesystem::path& path);
+            /// @brief Read a saved image archive, opened once per pass.
+            ImageReadResult readSavedArchive(const ArchiveOpener& open);
 
             std::string m_location;
             std::string m_knownConfigDigest;
             const std::atomic<bool>* m_stopRequested;
+            ArchiveOpener m_opener;
     };
 } // namespace containerimages
 

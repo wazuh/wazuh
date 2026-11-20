@@ -89,6 +89,15 @@ namespace containerimages
             ///         no inventory stored.
             std::optional<ImageReferenceRecord> loadStored(const std::string& sourceType, const std::string& location);
 
+            /// @brief Read back every image stored for a container engine.
+            ///
+            /// The rows of an engine are keyed `<engine>/<image id>` under the `<local>` reference
+            /// type, one per image, so they are found by that prefix rather than by one location.
+            ///
+            /// @param sourceType  Reference type of the engine references.
+            /// @param engine      Name of the engine, as configured (`docker`).
+            std::vector<ImageReferenceRecord> loadStoredEngine(const std::string& sourceType, const std::string& engine);
+
             /// @brief The CREATE TABLE statements for both tables (exposed for tests/inspection).
             static std::string getCreateStatement();
 

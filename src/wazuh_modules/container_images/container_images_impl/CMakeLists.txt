@@ -48,6 +48,8 @@ add_library(
   src/aws_sigv4.cpp
   src/container_images_impl.cpp
   src/container_images_db.cpp
+  src/docker_image_source.cpp
+  src/engine_image_reader.cpp
   src/archive_image_reader.cpp
   src/auth_challenge.cpp
   src/ca_bundle.cpp

@@ -45,6 +45,20 @@ static const char *XML_CI_REGION = "region";
 // machine that built the package, not necessarily one that exists on this host.
 static const char *XML_CI_CA_BUNDLE = "ca_bundle";
 
+// Engine blocks of runtime security that <local> binds to. Read here only for the socket of the Docker
+// engine: the runtime parser validates them. Both shapes are recognised, the one runtime security parses today
+// (<container_instances> with <type>docker</type>) and the <docker> tag its configuration proposal moves to.
+#ifdef __linux__
+static const char *XML_CI_CONTAINER_INSTANCES = "container_instances";
+static const char *XML_CI_TYPE = "type";
+static const char *XML_CI_DOCKER = "docker";
+static const char *XML_CI_KUBERNETES = "kubernetes";
+static const char *XML_CI_SOCKET_PATH = "socket_path";
+
+// Socket runtime security uses for Docker when its block names none, so both read the same one.
+static const char *DOCKER_DEFAULT_SOCKET = "/var/run/docker.sock";
+#endif
+
 // Children of <container_security> that belong to runtime security, which only Linux agents run.
 static const char *RUNTIME_SECURITY_TAGS[] = {"container_instances", "syscheck", "syscollector", "docker", "kubernetes", NULL};
 
@@ -582,4 +596,150 @@ void wm_container_images_skip_security_tag(const char *element, bool runtime_sup
     }
 
     mwarn("No such tag '%s' inside 'container_security', ignoring it.", element);
+}
+
+#ifdef __linux__
+typedef enum {
+    DOCKER_ENGINE_ABSENT,
+    DOCKER_ENGINE_DISABLED,
+    DOCKER_ENGINE_FOUND
+} docker_engine_state_t;
+
+// True when an <enabled> value switches its block off. Anything else is left to the runtime parser to judge.
+static bool is_switched_off(const char *content) {
+    return content && (!strcmp(content, "no") || !strcmp(content, "false"));
+}
+
+// Read one engine block. A <docker> block is the Docker engine; a <container_instances> block is only when its
+// <type> says so, whatever order its options come in. The socket is set only for an enabled Docker block.
+static docker_engine_state_t read_docker_block(const OS_XML *xml, xml_node *block, bool is_container_instances, char **socket_path) {
+    xml_node **options = OS_GetElementsbyNode(xml, block);
+    bool is_docker = !is_container_instances;
+    bool enabled = true;
+    char *block_socket = NULL;
+
+    for (int i = 0; options && options[i]; i++) {
+        if (!options[i]->element || !options[i]->content) {
+            continue;
+        }
+
+        if (!strcmp(options[i]->element, XML_CI_TYPE)) {
+            is_docker = !strcmp(options[i]->content, XML_CI_DOCKER);
+        } else if (!strcmp(options[i]->element, XML_ENABLED)) {
+            enabled = !is_switched_off(options[i]->content);
+        } else if (!strcmp(options[i]->element, XML_CI_SOCKET_PATH) && strlen(options[i]->content)) {
+            os_free(block_socket);
+            os_strdup(options[i]->content, block_socket);
+        }
+    }
+
+    OS_ClearNode(options);
+
+    if (!is_docker) {
+        os_free(block_socket);
+        return DOCKER_ENGINE_ABSENT;
+    }
+
+    if (!enabled) {
+        os_free(block_socket);
+        return DOCKER_ENGINE_DISABLED;
+    }
+
+    *socket_path = block_socket;
+    return DOCKER_ENGINE_FOUND;
+}
+
+// Find the Docker engine among the children of a <container_security> block. The whole block is searched, so the
+// order of its children does not matter. An engine written without a socket gets the one runtime security uses.
+// The caller frees the socket.
+static docker_engine_state_t find_docker_engine(const OS_XML *xml, xml_node **security_children, char **socket_path) {
+    docker_engine_state_t state = DOCKER_ENGINE_ABSENT;
+
+    *socket_path = NULL;
+
+    for (int i = 0; security_children[i] && state != DOCKER_ENGINE_FOUND; i++) {
+        docker_engine_state_t block_state;
+
+        if (!security_children[i]->element) {
+            continue;
+        }
+
+        if (!strcmp(security_children[i]->element, XML_CI_CONTAINER_INSTANCES)) {
+            block_state = read_docker_block(xml, security_children[i], true, socket_path);
+        } else if (!strcmp(security_children[i]->element, XML_CI_DOCKER)) {
+            block_state = read_docker_block(xml, security_children[i], false, socket_path);
+        } else {
+            continue;
+        }
+
+        if (block_state != DOCKER_ENGINE_ABSENT) {
+            state = block_state;
+        }
+    }
+
+    if (state == DOCKER_ENGINE_FOUND && !*socket_path) {
+        os_strdup(DOCKER_DEFAULT_SOCKET, *socket_path);
+    }
+
+    return state;
+}
+#endif
+
+void wm_container_images_bind_local(const OS_XML *xml, xml_node **security_children, wm_container_images_t *module, int first_reference) {
+    int kept = first_reference;
+#ifdef __linux__
+    bool looked_up = false;
+    docker_engine_state_t state = DOCKER_ENGINE_ABSENT;
+    char *socket_path = NULL;
+#else
+    (void) xml;
+    (void) security_children;
+#endif
+
+    for (int i = first_reference; i < module->references_count; i++) {
+        wm_container_images_reference_t *reference = &module->references[i];
+        bool bound = true;
+
+        if (!strcmp(reference->type, XML_CI_LOCAL)) {
+#ifdef __linux__
+            if (!strcmp(reference->value, XML_CI_KUBERNETES)) {
+                mwarn("The '%s' reference 'kubernetes' at module '%s' cannot be read: Kubernetes has no image export, so name the images with '<ref>'. Ignoring it.", XML_CI_LOCAL, WM_CONTAINER_IMAGES_CONTEXT.name);
+                bound = false;
+            } else if (strcmp(reference->value, XML_CI_DOCKER)) {
+                mwarn("The '%s' reference '%s' at module '%s' names an engine that is not supported, only '%s' is. Ignoring it.", XML_CI_LOCAL, reference->value, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_DOCKER);
+                bound = false;
+            } else if (module->docker_socket) {
+                mwarn("The '%s' reference '%s' at module '%s' repeats one already configured, ignoring it. Its Docker socket, '%s', is used.", XML_CI_LOCAL, XML_CI_DOCKER, WM_CONTAINER_IMAGES_CONTEXT.name, module->docker_socket);
+                bound = false;
+            } else {
+                if (!looked_up) {
+                    state = find_docker_engine(xml, security_children, &socket_path);
+                    looked_up = true;
+                }
+
+                if (state == DOCKER_ENGINE_FOUND) {
+                    os_strdup(socket_path, module->docker_socket);
+                } else {
+                    mwarn("The '%s' reference '%s' at module '%s' needs the Docker engine of the same 'container_security' block, and %s. Ignoring it.", XML_CI_LOCAL, XML_CI_DOCKER, WM_CONTAINER_IMAGES_CONTEXT.name, state == DOCKER_ENGINE_DISABLED ? "it is disabled" : "none is configured");
+                    bound = false;
+                }
+            }
+#else
+            mwarn("The '%s' reference '%s' at module '%s' needs a container engine, which is only supported on Linux agents, ignoring it.", XML_CI_LOCAL, reference->value, WM_CONTAINER_IMAGES_CONTEXT.name);
+            bound = false;
+#endif
+        }
+
+        if (bound) {
+            module->references[kept++] = *reference;
+        } else {
+            os_free(reference->type);
+            os_free(reference->value);
+        }
+    }
+
+    module->references_count = kept;
+#ifdef __linux__
+    os_free(socket_path);
+#endif
 }

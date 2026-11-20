@@ -588,6 +588,244 @@ static void test_container_security_invalid_images_is_rejected(void **state) {
 
     wm_free(wmodules);
 }
+
+/* The warning of a <local> entry that cannot be used: only that entry is dropped. Literal message,
+ * because cmocka keeps the pointer, not a copy, until the wrapper runs. */
+#define expect_local_warning(message)                       \
+    do {                                                    \
+        expect_any(__wrap__mtwarn, tag);                    \
+        expect_string(__wrap__mtwarn, formatted_msg, message); \
+    } while (0)
+
+#ifdef __linux__
+/* <local>docker takes the socket of the Docker engine in the same <container_security>, written the way
+ * runtime security reads it today. The engine block is after <images>: the whole element is read first. */
+static void test_local_docker_binds_the_container_instances_socket(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<images><references><local>docker</local><archive>/var/tmp/a.tar</archive></references></images>"
+                   "<container_instances><type>docker</type><socket_path>/run/d.sock</socket_path></container_instances>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 2);
+    assert_string_equal(data->references[0].type, "local");
+    assert_string_equal(data->references[0].value, "docker");
+    assert_string_equal(data->references[1].type, "archive");
+    assert_string_equal(data->docker_socket, "/run/d.sock");
+
+    wm_free(wmodules);
+}
+
+/* The <docker> tag of the proposed runtime configuration is bound the same way. */
+static void test_local_docker_binds_the_docker_tag_socket(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<docker><enabled>yes</enabled><socket_path>/run/podman.sock</socket_path></docker>"
+                   "<images><references><local>docker</local></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->docker_socket, "/run/podman.sock");
+
+    wm_free(wmodules);
+}
+
+/* An engine block that names no socket means the socket runtime security defaults to, so both read the same. */
+static void test_local_docker_without_a_socket_uses_the_default(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<container_instances><type>docker</type></container_instances>"
+                   "<images><references><local>docker</local></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->docker_socket, "/var/run/docker.sock");
+
+    wm_free(wmodules);
+}
+
+/* No engine in the block: the entry is reported and dropped, the rest of <images> runs. */
+static void test_local_docker_without_an_engine_is_dropped(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<images><references><local>docker</local><archive>/var/tmp/a.tar</archive></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    expect_local_warning("The 'local' reference 'docker' at module 'container_images' needs the Docker engine of the "
+                         "same 'container_security' block, and none is configured. Ignoring it.");
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->references[0].type, "archive");
+    assert_null(data->docker_socket);
+
+    wm_free(wmodules);
+}
+
+/* Only a block of type docker is a Docker engine, and a disabled one is not usable. */
+static void test_local_docker_needs_an_enabled_docker_engine(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<container_instances><type>kubernetes</type><socket_path>/run/k.sock</socket_path></container_instances>"
+                   "<images><references><local>docker</local></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    expect_local_warning("The 'local' reference 'docker' at module 'container_images' needs the Docker engine of the "
+                         "same 'container_security' block, and none is configured. Ignoring it.");
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+    assert_int_equal(container_images_data(wmodules)->references_count, 0);
+    assert_null(container_images_data(wmodules)->docker_socket);
+    wm_free(wmodules);
+
+    wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<container_instances><enabled>no</enabled><type>docker</type></container_instances>"
+                   "<images><references><local>docker</local></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    expect_local_warning("The 'local' reference 'docker' at module 'container_images' needs the Docker engine of the "
+                         "same 'container_security' block, and it is disabled. Ignoring it.");
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+    assert_int_equal(container_images_data(wmodules)->references_count, 0);
+    wm_free(wmodules);
+}
+
+/* A disabled Docker block does not hide an enabled one: the enabled engine is the one bound, whatever the order. */
+static void test_local_docker_an_enabled_engine_wins_over_a_disabled_one(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<docker><enabled>no</enabled><socket_path>/run/off.sock</socket_path></docker>"
+                   "<images><references><local>docker</local></references></images>"
+                   "<container_instances><type>docker</type><socket_path>/run/on.sock</socket_path></container_instances>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->docker_socket, "/run/on.sock");
+
+    wm_free(wmodules);
+}
+
+/* Kubernetes has no image export, and any other name is not an engine of the module: one message per entry. */
+static void test_local_with_another_engine_name_is_refused(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<container_instances><type>docker</type></container_instances>"
+                   "<images><references>"
+                   "<local>kubernetes</local><local>podman</local><local>alpine:latest</local><archive>/var/tmp/a.tar</archive>"
+                   "</references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    expect_local_warning("The 'local' reference 'kubernetes' at module 'container_images' cannot be read: Kubernetes "
+                         "has no image export, so name the images with '<ref>'. Ignoring it.");
+    expect_local_warning("The 'local' reference 'podman' at module 'container_images' names an engine that is not "
+                         "supported, only 'docker' is. Ignoring it.");
+    expect_local_warning("The 'local' reference 'alpine:latest' at module 'container_images' names an engine that is "
+                         "not supported, only 'docker' is. Ignoring it.");
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->references[0].type, "archive");
+    assert_null(data->docker_socket);
+
+    wm_free(wmodules);
+}
+
+/* The engine is one per module: a second <local>docker, in the block or in a later one, is a repeat and the
+ * socket of the first is kept. */
+static void test_local_docker_repeated_keeps_the_first_socket(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<container_instances><type>docker</type><socket_path>/run/one.sock</socket_path></container_instances>"
+                   "<images><references><local>docker</local><local>docker</local></references></images>"
+                   "</container_security>"
+                   "<container_security>"
+                   "<container_instances><type>docker</type><socket_path>/run/two.sock</socket_path></container_instances>"
+                   "<images><references><local>docker</local></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    expect_local_warning("The 'local' reference 'docker' at module 'container_images' repeats one already configured, "
+                         "ignoring it. Its Docker socket, '/run/one.sock', is used.");
+    expect_local_warning("The 'local' reference 'docker' at module 'container_images' repeats one already configured, "
+                         "ignoring it. Its Docker socket, '/run/one.sock', is used.");
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->docker_socket, "/run/one.sock");
+
+    wm_free(wmodules);
+}
+#else
+/* Engines are Linux only: the entry is reported and dropped, and the module keeps its other references. */
+static void test_local_is_reported_outside_linux(void **state) {
+    wmodule *wmodules = NULL;
+
+    if (write_conf("<container_security>"
+                   "<docker><enabled>yes</enabled></docker>"
+                   "<images><references><local>docker</local><archive>/var/tmp/a.tar</archive></references></images>"
+                   "</container_security>") != 0) {
+        fail();
+    }
+
+    expect_runtime_child_reported("docker");
+    expect_local_warning("The 'local' reference 'docker' at module 'container_images' needs a container engine, "
+                         "which is only supported on Linux agents, ignoring it.");
+
+    assert_int_equal(ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL), 0);
+
+    wm_container_images_t *data = container_images_data(wmodules);
+    assert_int_equal(data->references_count, 1);
+    assert_string_equal(data->references[0].type, "archive");
+
+    wm_free(wmodules);
+}
+#endif
 #endif
 
 #ifndef TEST_AGENT_TARGET
@@ -709,6 +947,18 @@ int main(void) {
         cmocka_unit_test_teardown(test_container_security_repeated_blocks_merge, teardown_conf_file),
         cmocka_unit_test_teardown(test_container_security_beside_the_obsolete_block, teardown_conf_file),
         cmocka_unit_test_teardown(test_container_security_invalid_images_is_rejected, teardown_conf_file),
+#ifdef __linux__
+        cmocka_unit_test_teardown(test_local_docker_binds_the_container_instances_socket, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_docker_binds_the_docker_tag_socket, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_docker_without_a_socket_uses_the_default, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_docker_without_an_engine_is_dropped, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_docker_needs_an_enabled_docker_engine, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_docker_an_enabled_engine_wins_over_a_disabled_one, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_with_another_engine_name_is_refused, teardown_conf_file),
+        cmocka_unit_test_teardown(test_local_docker_repeated_keeps_the_first_socket, teardown_conf_file),
+#else
+        cmocka_unit_test_teardown(test_local_is_reported_outside_linux, teardown_conf_file),
+#endif
 #endif
 #ifndef TEST_AGENT_TARGET
         cmocka_unit_test_teardown(test_agent_config_unknown_attribute_is_fatal, teardown_conf_file),

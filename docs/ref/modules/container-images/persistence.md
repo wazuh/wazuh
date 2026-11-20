@@ -147,6 +147,30 @@ find.
 The three delta types are exercised by the unit tests over images built on disk, whose layers
 change between scans.
 
+### 6b. Local engine images
+
+A `<local>` reference stands for every image a container engine holds, so it owns many rows. Each
+image is one row of the references table, keyed `(reference_type, reference_value)` =
+(`local`, `<engine>/<image id>`), for example `local` and `docker/sha256:3f...`, written
+`local:docker/<image id>` in logs and documents.
+
+- **Why the image id.** It is the engine's identity for an image and is stable: a retag keeps the
+  row and rewrites `image_name`, `image_tag` and `image_hash_all`; a rebuilt image has a new id and
+  is a new row; an image the engine no longer lists is not in the scan's set, so the whole-table sync
+  reports it as deleted like any reference that goes away. The configured value (`docker`) is not
+  stored, since it names the engine and not an image.
+- **Why not the name.** An image can carry several names or none (a dangling image still describes a
+  running container), and a name moves between images, which would replace a row's packages.
+- **Change detection.** For Docker the id is the configuration digest, so an image whose id is the stored
+  `image_id` is not exported again. An engine that identifies images by their manifest is recognised
+  through the id kept in `image_hash_all`, so the row is not exported again either.
+- **Names and digests come from the engine's listing**, not from the export, which carries no names
+  when an image is saved by id. `image_hash_all` is the digests the engine pins the name to
+  (`RepoDigests`), then `image_id`, then the engine id when it is neither.
+- **An unreachable engine** carries every stored row of that engine into the scan, like any reference
+  that could not be read. An image that cannot be exported keeps its stored row, and has none when
+  nothing was stored.
+
 ### 7. Image identity on the package row
 
 A package row carries `reference_type` and `reference_value`, which identify the source type
@@ -177,6 +201,7 @@ synchronization layer and the manager can settle on it (`IMAGE_PACKAGES_INDEX` i
 | `container_images_impl/{include,src}/archive_image_reader.*` | Reads the configured inputs on disk and returns references with their packages. |
 | `container_images_impl/{include,src}/layer_reader.*`, `layer_composer.*`, `byte_stream.*` | Stream a layer, compose the layers of an image, and keep only its package databases. |
 | `data_provider/src/packages/packageDbParser.hpp` | The package database formats, shared with container runtime security. The composer in `layer_composer.cpp` also lists the formats that are recognized but not implemented yet. |
+| `container_images_impl/{include,src}/engine_image_reader.*`, `engine_image_source.hpp`, `docker_image_source.*` | Read the images of a container engine (`<local>`): the interface, the Docker Engine API client and the reader that keys one row per image. |
 | `container_images_impl/{include,src}/container_images_db.*` | Owns DBSync, holds the CREATE TABLE statements and the upgrade list, runs the transactions, emits deltas. |
 | `container_images_impl/{include,src}/container_images_impl.*` | Orchestrator: scan -> DB -> delta callback. |
 | `container_images/{include,src}/container_images.{h,hpp,cpp}` | C ABI + facade; initializes DBSync. |

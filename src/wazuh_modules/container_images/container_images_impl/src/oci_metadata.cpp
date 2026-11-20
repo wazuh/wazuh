@@ -80,6 +80,25 @@ namespace containerimages::oci
                isSafeDigestEncoded(digest.substr(separator + 1));
     }
 
+    bool isHexDigest(const std::string& digest)
+    {
+        const auto separator {digest.find(':')};
+
+        if (separator == std::string::npos)
+        {
+            return false;
+        }
+
+        const auto algorithm {digest.substr(0, separator)};
+        const auto encoded {digest.substr(separator + 1)};
+        const std::size_t length {algorithm == "sha256" ? 64U : (algorithm == "sha512" ? 128U : 0U)};
+
+        return length != 0 && encoded.size() == length && std::all_of(encoded.begin(), encoded.end(), [](const char character)
+        {
+            return (character >= 'a' && character <= 'f') || (character >= '0' && character <= '9');
+        });
+    }
+
     std::vector<std::string> collectDigests(const std::vector<std::string>& indexDigests,
                                             const std::string& manifestDigest,
                                             const std::string& configDigest)
