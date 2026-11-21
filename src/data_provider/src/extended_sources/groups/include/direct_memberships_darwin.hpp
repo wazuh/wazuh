@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -50,6 +51,7 @@ class DirectMemberships
 
         void load();
         void resolveGroups(const std::map<std::string, ODGroupMembers>& membersByGroup);
+        std::optional<gid_t> gidOf(const std::string& groupName, const std::string& recordGid) const;
         std::string guidOf(const std::string& lowerName) const;
         std::set<gid_t> otherGroupsOf(const std::string& lowerName, const std::string& uuid, gid_t primaryGid) const;
 

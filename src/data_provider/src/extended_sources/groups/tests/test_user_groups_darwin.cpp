@@ -555,6 +555,43 @@ TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDir
     EXPECT_FALSE(provider.membershipsUnreadable());
 }
 
+TEST_F(UserGroupsProviderDarwinTest, GroupTheSystemCannotResolveUsesItsRecordGid)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        out["share"].gid = "5000";
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, GroupWithoutAUsableGidIsLeftOut)
+{
+    for (const std::string recordGid : {"", "50x0", "-5", "+5", " 5", "99999999999"})
+    {
+        DirectoryCase env;
+        EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
+        EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([&recordGid](std::map<std::string, ODGroupMembers>& out)
+        {
+            out["share"].names.insert("member");
+            out["share"].gid = recordGid;
+            return true;
+        }));
+
+        const auto result = env.collect();
+
+        ASSERT_EQ(result.size(), 1u) << "record gid '" << recordGid << "'";
+        EXPECT_EQ(result[0]["gid"], 20);
+    }
+}
+
 TEST_F(UserGroupsProviderDarwinTest, MemberListedWithDifferentCaseIsReported)
 {
     DirectoryCase env;

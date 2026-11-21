@@ -465,12 +465,14 @@ namespace od
     {
         const auto names = readStrings(record, kODAttributeTypeGroupMembership);
         const auto uuids = readStrings(record, kODAttributeTypeGroupMembers);
+        const auto gids = readStrings(record, kODAttributeTypePrimaryGroupID);
 
-        if (names && uuids)
+        if (names && uuids && gids)
         {
             auto& members = collected[toStdString([record recordName])];
             members.names.insert(names->begin(), names->end());
             members.uuids.insert(uuids->begin(), uuids->end());
+            members.gid = gids->empty() ? std::string {} : gids->front();
         }
     }
 
@@ -498,7 +500,8 @@ namespace od
         {
             // Every group has a gid, so a null value matches all of them, as in genEntries().
             NSArray* results = queryLocalNode(kODRecordTypeGroups, kODAttributeTypePrimaryGroupID, nil,
-                                              @[kODAttributeTypeGroupMembership, kODAttributeTypeGroupMembers]);
+                                              @[kODAttributeTypeGroupMembership, kODAttributeTypeGroupMembers,
+                                                kODAttributeTypePrimaryGroupID]);
 
             if (results == nil)
             {

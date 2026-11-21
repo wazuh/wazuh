@@ -22,6 +22,8 @@ struct ODGroupMembers
 {
     std::set<std::string> names;
     std::set<std::string> uuids;
+    /// The record's PrimaryGroupID as the directory stores it; empty when it has none.
+    std::string gid;
 };
 
 // Interface for the open directory utils wrapper

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <iterator>
 
 #include "direct_memberships_darwin.hpp"
@@ -54,6 +55,21 @@ static std::map<std::string, std::string> foldNames(const std::map<std::string, 
     return folded;
 }
 
+// Only plain decimal digits that fit a gid_t; a sign, a space or anything else is no gid.
+static std::optional<gid_t> parseGid(const std::string& text)
+{
+    gid_t gid {};
+    const char* end = text.data() + text.size();
+    const auto [last, error] = std::from_chars(text.data(), end, gid);
+
+    if (text.empty() || error != std::errc {} || last != end)
+    {
+        return std::nullopt;
+    }
+
+    return gid;
+}
+
 // An account whose record has no GUID cannot be listed by GUID, only by name.
 static bool lists(const ODGroupMembers& members, const std::string& lowerName, const std::string& uuid)
 {
@@ -89,12 +105,25 @@ void DirectMemberships::resolveGroups(const std::map<std::string, ODGroupMembers
 {
     for (const auto& [name, members] : membersByGroup)
     {
-        // A group the system cannot resolve to a gid cannot be reported as a membership.
-        if (const struct group* grp = m_groupWrapper->getgrnam(name.c_str()); grp != nullptr)
+        // A group without a gid cannot be reported as a membership.
+        if (const auto gid = gidOf(name, members.gid); gid.has_value())
         {
-            m_groups.push_back({grp->gr_gid, {mapAll(members.names, toLower), mapAll(members.uuids, toUpper)}});
+            m_groups.push_back({*gid, {mapAll(members.names, toLower), mapAll(members.uuids, toUpper), {}}});
         }
     }
+}
+
+// The system's answer first. When getgrnam() cannot resolve a group the directory just listed,
+// for example a lookup that fails for a moment, the record's own PrimaryGroupID is used, so its
+// members do not lose the group for one scan.
+std::optional<gid_t> DirectMemberships::gidOf(const std::string& groupName, const std::string& recordGid) const
+{
+    if (const struct group* grp = m_groupWrapper->getgrnam(groupName.c_str()); grp != nullptr)
+    {
+        return grp->gr_gid;
+    }
+
+    return parseGid(recordGid);
 }
 
 std::string DirectMemberships::guidOf(const std::string& lowerName) const
