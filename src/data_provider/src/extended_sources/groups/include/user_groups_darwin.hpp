@@ -41,6 +41,10 @@ class UserGroupsProvider
         /// @brief Names of the groups of one account counting nested groups, as sudo sees them.
         std::set<std::string> getEffectiveGroupNamesByUid(uid_t uid);
 
+        /// @brief Whether this provider read the directory memberships and the read failed. The
+        /// accounts looked up since then got no groups, which does not mean they have none.
+        bool membershipsUnreadable() const;
+
         static void resetCache();
 
     private:

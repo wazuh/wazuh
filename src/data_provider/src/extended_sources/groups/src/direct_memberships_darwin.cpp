@@ -134,3 +134,8 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, gid_
     groups.insert(groups.end(), others.begin(), others.end());
     return groups;
 }
+
+bool DirectMemberships::readFailed() const
+{
+    return m_loaded && !m_readable;
+}

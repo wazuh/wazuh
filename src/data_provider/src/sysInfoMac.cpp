@@ -9,6 +9,7 @@
  */
 #include "sysInfo.hpp"
 #include <optional>
+#include <stdexcept>
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include <filesystem_wrapper.hpp>
@@ -446,6 +447,18 @@ nlohmann::json SysInfo::getHotfixes() const
     return nlohmann::json();
 }
 
+// A failed directory read leaves every account without groups. Reporting that would mark every
+// user or group as modified twice, when the read fails and when it works again, so the scan of
+// the table is dropped instead: its stored rows stay as they are and the next scan reads again.
+static void throwIfMembershipsUnreadable(const UserGroupsProvider& provider, const std::string& inventory)
+{
+    if (provider.membershipsUnreadable())
+    {
+        throw std::runtime_error("Could not read the group memberships from OpenDirectory; the " + inventory +
+                                 " inventory is not updated in this scan.");
+    }
+}
+
 nlohmann::json SysInfo::getGroups() const
 {
     nlohmann::json result;
@@ -467,6 +480,7 @@ nlohmann::json SysInfo::getGroups() const
 
     // Single call to getUserNamesByGid with all GIDs
     auto allUsersGroups = userGroupsProvider.getUserNamesByGid(allGids);
+    throwIfMembershipsUnreadable(userGroupsProvider, "groups");
 
     // Process each group
     for (auto& group : collectedGroups)
@@ -693,6 +707,7 @@ nlohmann::json SysInfo::getUsers() const
         result.push_back(std::move(userItem));
     }
 
+    throwIfMembershipsUnreadable(userGroupsProvider, "users");
     return result;
 }
 

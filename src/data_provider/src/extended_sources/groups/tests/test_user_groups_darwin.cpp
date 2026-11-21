@@ -509,6 +509,49 @@ TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryReportsNoGroupsAndIsNotC
     EXPECT_EQ(env.collect(false).size(), 2u);
 }
 
+TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryIsReportedAsUnreadable)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Return(false));
+    UserGroupsProvider::resetCache();
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+
+    EXPECT_FALSE(provider.membershipsUnreadable());
+    EXPECT_TRUE(provider.collect({600}).empty());
+    EXPECT_TRUE(provider.membershipsUnreadable());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryIsNotReportedAsUnreadable)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+    UserGroupsProvider::resetCache();
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+
+    EXPECT_EQ(provider.collect({600}).size(), 2u);
+    EXPECT_FALSE(provider.membershipsUnreadable());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDirectory)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+    env.collect();
+
+    // The second provider finds the account in the cache, so it reads nothing and nothing failed.
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+    EXPECT_EQ(provider.collect({600}).size(), 2u);
+    EXPECT_FALSE(provider.membershipsUnreadable());
+}
+
 TEST_F(UserGroupsProviderDarwinTest, MemberListedWithDifferentCaseIsReported)
 {
     DirectoryCase env;

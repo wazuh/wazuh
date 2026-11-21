@@ -37,6 +37,10 @@ class DirectMemberships
         /// @return Empty when the directory could not be read, which is not the same as no groups.
         std::vector<gid_t> groupsOf(const std::string& userName, gid_t primaryGid);
 
+        /// @brief Whether the directory was read and the read failed. False before any account is
+        /// asked about, since nothing has been read yet.
+        bool readFailed() const;
+
     private:
         struct Group
         {

@@ -244,3 +244,8 @@ std::set<std::string> UserGroupsProvider::getEffectiveGroupNamesByUid(uid_t uid)
 
     return pwd != nullptr ? m_effectiveGroups.namesOf(pwd->pw_name, pwd->pw_gid) : std::set<std::string> {};
 }
+
+bool UserGroupsProvider::membershipsUnreadable() const
+{
+    return m_directMemberships.readFailed();
+}
