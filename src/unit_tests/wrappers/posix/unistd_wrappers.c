@@ -14,11 +14,26 @@
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include "../common.h"
+
+int test_unlink_errno = 0;
+int test_unlink_record_call = 0;
 
 int __wrap_unlink(const char *file) {
     check_expected_ptr(file);
-    return mock();
+
+    if (test_unlink_record_call) {
+        function_called();
+    }
+
+    int ret = mock();
+
+    if (ret < 0 && test_unlink_errno != 0) {
+        errno = test_unlink_errno;
+    }
+
+    return ret;
 }
 
 #ifdef WIN32

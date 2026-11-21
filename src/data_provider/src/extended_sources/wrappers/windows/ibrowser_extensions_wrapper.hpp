@@ -10,6 +10,7 @@
 #pragma once
 
 #include <string>
+#include "filesystemHelper.h"
 
 class IBrowserExtensionsWrapper
 {
@@ -19,4 +20,10 @@ class IBrowserExtensionsWrapper
         virtual std::string getHomePath() = 0;
         virtual std::string getApplicationsPath() = 0;
         virtual std::string getUserId(std::string user) = 0;
+        /// @brief Tells whether a home directory entry is an automount point not mounted yet, so it is
+        /// skipped instead of mounted by looking inside it.
+        virtual bool isUnmountedAutomountPoint(const std::string& path)
+        {
+            return Utils::isUnmountedAutomountPoint(path);
+        }
 };

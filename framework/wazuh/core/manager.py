@@ -265,7 +265,10 @@ def get_api_conf() -> dict:
     dict
         API configuration.
     """
-    return copy.deepcopy(configuration.api_conf)
+    api_conf = copy.deepcopy(configuration.api_conf)
+    # Ignored option, removed only from the apid main process configuration
+    api_conf.pop('drop_privileges', None)
+    return api_conf
 
 
 def _get_ssl_context() -> ssl.SSLContext:

@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <string.h>
 #include "../common.h"
 
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
@@ -216,4 +217,34 @@ UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName) {
     }
 
     return DRIVE_NO_ROOT_DIR;
+}
+
+BOOL wrap_ReadFile(__UNUSED_PARAM(HANDLE hFile),
+                   LPVOID lpBuffer,
+                   DWORD nNumberOfBytesToRead,
+                   LPDWORD lpNumberOfBytesRead,
+                   __UNUSED_PARAM(LPOVERLAPPED lpOverlapped)) {
+    const char * data = mock_type(const char *);
+    DWORD length = mock_type(DWORD);
+
+    assert_true(length <= nNumberOfBytesToRead);
+
+    if (data) {
+        memcpy(lpBuffer, data, length);
+    } else {
+        memset(lpBuffer, 'A', length);
+    }
+
+    *lpNumberOfBytesRead = length;
+    return mock_type(BOOL);
+}
+
+BOOL wrap_PeekNamedPipe(__UNUSED_PARAM(HANDLE hNamedPipe),
+                        __UNUSED_PARAM(LPVOID lpBuffer),
+                        __UNUSED_PARAM(DWORD nBufferSize),
+                        __UNUSED_PARAM(LPDWORD lpBytesRead),
+                        LPDWORD lpTotalBytesAvail,
+                        __UNUSED_PARAM(LPDWORD lpBytesLeftThisMessage)) {
+    *lpTotalBytesAvail = mock_type(DWORD);
+    return mock_type(BOOL);
 }

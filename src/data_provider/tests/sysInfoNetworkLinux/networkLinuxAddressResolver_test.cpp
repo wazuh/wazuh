@@ -639,3 +639,573 @@ TEST(NetworkLinuxAddressResolverTest, ResolvesTheFlagsOfEachAddressByLinkName)
     };
     EXPECT_EQ(expected, flags);
 }
+
+namespace
+{
+    struct RouteOptions
+    {
+        unsigned char family { AF_INET6 };
+        unsigned char destinationLength { 0 };
+        unsigned char sourceLength { 0 };
+        unsigned char type { RTN_UNICAST };
+        unsigned char table { RT_TABLE_MAIN };
+        unsigned int flags { 0 };
+        unsigned int sequence { SEQUENCE };
+    };
+
+    Attribute ipv6Attribute(const unsigned short type, const std::string& address)
+    {
+        in6_addr value {};
+        inet_pton(AF_INET6, address.c_str(), &value);
+        const auto bytes { reinterpret_cast<const char*>(&value) };
+        return { type, std::vector<char>(bytes, bytes + sizeof(value)) };
+    }
+
+    Attribute outputInterfaceAttribute(const unsigned int index)
+    {
+        const auto bytes { reinterpret_cast<const char*>(&index) };
+        return { RTA_OIF, std::vector<char>(bytes, bytes + sizeof(index)) };
+    }
+
+    // One rtnexthop followed by its gateway attribute, as the kernel lays out RTA_MULTIPATH.
+    void appendNexthop(std::vector<char>& payload, const unsigned int index, const std::string& gateway)
+    {
+        const auto attribute { ipv6Attribute(RTA_GATEWAY, gateway) };
+        const auto offset { payload.size() };
+        payload.resize(offset + RTNH_ALIGN(RTNH_LENGTH(RTA_LENGTH(attribute.payload.size()))), 0);
+
+        auto nexthop { reinterpret_cast<rtnexthop*>(payload.data() + offset) };
+        nexthop->rtnh_len = RTNH_LENGTH(RTA_LENGTH(attribute.payload.size()));
+        nexthop->rtnh_ifindex = static_cast<int>(index);
+
+        auto rta { RTNH_DATA(nexthop) };
+        rta->rta_type = attribute.type;
+        rta->rta_len = RTA_LENGTH(attribute.payload.size());
+        std::copy(attribute.payload.begin(), attribute.payload.end(), static_cast<char*>(RTA_DATA(rta)));
+    }
+
+    Attribute multipathAttribute(const std::vector<std::pair<unsigned int, std::string>>& nexthops)
+    {
+        Attribute attribute { RTA_MULTIPATH, {} };
+
+        for (const auto& nexthop : nexthops)
+        {
+            appendNexthop(attribute.payload, nexthop.first, nexthop.second);
+        }
+
+        return attribute;
+    }
+
+    void appendRoute(std::vector<char>& buffer, const std::vector<Attribute>& attributes, const RouteOptions& options = {})
+    {
+        auto length { NLMSG_LENGTH(sizeof(rtmsg)) };
+
+        for (const auto& attribute : attributes)
+        {
+            length = NLMSG_ALIGN(length) + RTA_LENGTH(attribute.payload.size());
+        }
+
+        const auto offset { buffer.size() };
+        buffer.resize(offset + NLMSG_ALIGN(length), 0);
+
+        auto header { reinterpret_cast<nlmsghdr*>(buffer.data() + offset) };
+        header->nlmsg_len = length;
+        header->nlmsg_type = RTM_NEWROUTE;
+        header->nlmsg_flags = NLM_F_MULTI;
+        header->nlmsg_seq = options.sequence;
+
+        auto message { static_cast<rtmsg*>(NLMSG_DATA(header)) };
+        message->rtm_family = options.family;
+        message->rtm_dst_len = options.destinationLength;
+        message->rtm_src_len = options.sourceLength;
+        message->rtm_table = options.table;
+        message->rtm_type = options.type;
+        message->rtm_flags = options.flags;
+
+        auto position { NLMSG_LENGTH(sizeof(rtmsg)) };
+
+        for (const auto& attribute : attributes)
+        {
+            position = NLMSG_ALIGN(position);
+            auto rta { reinterpret_cast<rtattr*>(buffer.data() + offset + position) };
+            rta->rta_type = attribute.type;
+            rta->rta_len = RTA_LENGTH(attribute.payload.size());
+            std::copy(attribute.payload.begin(), attribute.payload.end(), static_cast<char*>(RTA_DATA(rta)));
+            position += RTA_LENGTH(attribute.payload.size());
+        }
+    }
+
+    unsigned int loopbackIndex()
+    {
+        return if_nametoindex("lo");
+    }
+
+    // Name and index of a host interface other than lo, or an empty name when there is none.
+    std::pair<std::string, unsigned int> otherInterface()
+    {
+        std::pair<std::string, unsigned int> other;
+        const auto list { if_nameindex() };
+
+        for (auto entry { list }; list && entry->if_index != 0; ++entry)
+        {
+            if (std::string { "lo" } != entry->if_name)
+            {
+                other = { entry->if_name, entry->if_index };
+                break;
+            }
+        }
+
+        if_freenameindex(list);
+        return other;
+    }
+
+    bool parseRoutes(const std::vector<char>& buffer, std::vector<IPv6Route>& routes)
+    {
+        return NetworkLinuxAddressResolver::parseRouteMessages(buffer.data(), buffer.size(), SEQUENCE, routes);
+    }
+
+    // Routes that name no nexthop object: nothing to look up.
+    bool parseRoutes(const std::vector<char>& buffer, IPv6Gateways& gateways)
+    {
+        std::vector<IPv6Route> routes;
+        const auto pending { parseRoutes(buffer, routes) };
+        gateways = NetworkLinuxAddressResolver::selectGateways(routes, {});
+        return pending;
+    }
+
+    constexpr unsigned short NEXTHOP_ID { 1 };
+    constexpr unsigned short NEXTHOP_GROUP { 2 };
+    constexpr unsigned short NEXTHOP_BLACKHOLE { 4 };
+    constexpr unsigned short NEXTHOP_OIF { 5 };
+    constexpr unsigned short NEXTHOP_GATEWAY { 6 };
+    constexpr unsigned short ROUTE_NEXTHOP_ID { 30 };
+    constexpr unsigned short NEW_NEXTHOP { 104 };
+
+    Attribute integerAttribute(const unsigned short type, const unsigned int value)
+    {
+        const auto bytes { reinterpret_cast<const char*>(&value) };
+        return { type, std::vector<char>(bytes, bytes + sizeof(value)) };
+    }
+
+    // The members as the kernel lays out NHA_GROUP: id, weight, weight_high, reserved.
+    Attribute groupAttribute(const std::vector<unsigned int>& members)
+    {
+        Attribute attribute { NEXTHOP_GROUP, {} };
+
+        for (const auto member : members)
+        {
+            const auto bytes { reinterpret_cast<const char*>(&member) };
+            attribute.payload.insert(attribute.payload.end(), bytes, bytes + sizeof(member));
+            attribute.payload.insert(attribute.payload.end(), 4, 0);
+        }
+
+        return attribute;
+    }
+
+    void appendNexthopObject(std::vector<char>& buffer, const std::vector<Attribute>& attributes, const unsigned char family = AF_INET6, const unsigned int sequence = SEQUENCE)
+    {
+        // struct nhmsg is 8 bytes.
+        const size_t messageSize { 8 };
+        auto length { NLMSG_LENGTH(messageSize) };
+
+        for (const auto& attribute : attributes)
+        {
+            length = NLMSG_ALIGN(length) + RTA_LENGTH(attribute.payload.size());
+        }
+
+        const auto offset { buffer.size() };
+        buffer.resize(offset + NLMSG_ALIGN(length), 0);
+
+        auto header { reinterpret_cast<nlmsghdr*>(buffer.data() + offset) };
+        header->nlmsg_len = length;
+        header->nlmsg_type = NEW_NEXTHOP;
+        header->nlmsg_flags = NLM_F_MULTI;
+        header->nlmsg_seq = sequence;
+        buffer[offset + NLMSG_LENGTH(0)] = static_cast<char>(family);
+
+        auto position { NLMSG_LENGTH(messageSize) };
+
+        for (const auto& attribute : attributes)
+        {
+            position = NLMSG_ALIGN(position);
+            auto rta { reinterpret_cast<rtattr*>(buffer.data() + offset + position) };
+            rta->rta_type = attribute.type;
+            rta->rta_len = RTA_LENGTH(attribute.payload.size());
+            std::copy(attribute.payload.begin(), attribute.payload.end(), static_cast<char*>(RTA_DATA(rta)));
+            position += RTA_LENGTH(attribute.payload.size());
+        }
+    }
+
+    bool parseNexthops(const std::vector<char>& buffer, IPv6Nexthops& nexthops)
+    {
+        return NetworkLinuxAddressResolver::parseNexthopMessages(buffer.data(), buffer.size(), SEQUENCE, nexthops);
+    }
+
+    std::vector<Attribute> singleNexthop(const unsigned int id, const unsigned int index, const std::string& gateway)
+    {
+        return { integerAttribute(NEXTHOP_ID, id), ipv6Attribute(NEXTHOP_GATEWAY, gateway), integerAttribute(NEXTHOP_OIF, index) };
+    }
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpTakesTheGatewayOfADefaultRoute)
+{
+    ASSERT_NE(0u, loopbackIndex());
+    std::vector<char> buffer;
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(loopbackIndex()) });
+    appendDone(buffer, 0);
+
+    IPv6Gateways gateways;
+    EXPECT_FALSE(parseRoutes(buffer, gateways));
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::1" } }), gateways);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpKeepsReadingUntilDone)
+{
+    std::vector<char> buffer;
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(loopbackIndex()) });
+
+    IPv6Gateways gateways;
+    EXPECT_TRUE(parseRoutes(buffer, gateways));
+    EXPECT_EQ(1u, gateways.size());
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpIgnoresADefaultRouteWithoutGateway)
+{
+    std::vector<char> buffer;
+    appendRoute(buffer, { outputInterfaceAttribute(loopbackIndex()) });
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "::"), outputInterfaceAttribute(loopbackIndex()) });
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_TRUE(gateways.empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpIgnoresRoutesThatAreNotPlainDefaults)
+{
+    const std::vector<Attribute> via { ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(loopbackIndex()) };
+    std::vector<char> buffer;
+
+    RouteOptions prefix;
+    prefix.destinationLength = 64;
+    appendRoute(buffer, via, prefix);
+
+    RouteOptions source;
+    source.sourceLength = 64;
+    appendRoute(buffer, via, source);
+
+    RouteOptions unreachable;
+    unreachable.type = RTN_UNREACHABLE;
+    appendRoute(buffer, via, unreachable);
+
+    RouteOptions cached;
+    cached.flags = RTM_F_CLONED;
+    appendRoute(buffer, via, cached);
+
+    RouteOptions otherFamily;
+    otherFamily.family = AF_INET;
+    appendRoute(buffer, via, otherFamily);
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_TRUE(gateways.empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpTakesTheFirstGatewayOfEachInterface)
+{
+    std::vector<char> buffer;
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(loopbackIndex()) });
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::2"), outputInterfaceAttribute(loopbackIndex()) });
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::1" } }), gateways);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpTakesDefaultRoutesOfEveryTable)
+{
+    RouteOptions other;
+    other.table = 100;
+    std::vector<char> buffer;
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::7"), outputInterfaceAttribute(loopbackIndex()) }, other);
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::7" } }), gateways);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpIgnoresAnUnknownInterfaceIndex)
+{
+    std::vector<char> buffer;
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(0x7ffffff0) });
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_TRUE(gateways.empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpTakesTheGatewayOfEachMultipathNexthop)
+{
+    const auto other { otherInterface() };
+
+    if (other.first.empty())
+    {
+        GTEST_SKIP() << "This host has a single interface";
+    }
+
+    std::vector<char> buffer;
+    appendRoute(buffer, { multipathAttribute({ { other.second, "fe80::a" }, { loopbackIndex(), "fe80::b" } }) });
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_EQ((IPv6Gateways { { other.first, "fe80::a" }, { "lo", "fe80::b" } }), gateways);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpTakesTheFirstMultipathNexthopOfAnInterface)
+{
+    std::vector<char> buffer;
+    appendRoute(buffer, { multipathAttribute({ { loopbackIndex(), "fe80::a" }, { loopbackIndex(), "fe80::b" } }) });
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::a" } }), gateways);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpStopsAtTheEndOfTheMultipathAttribute)
+{
+    const auto other { otherInterface() };
+
+    if (other.first.empty())
+    {
+        GTEST_SKIP() << "This host has a single interface";
+    }
+
+    // The next attribute is laid out like one more nexthop with a gateway on another interface.
+    const auto gateway { ipv6Attribute(RTA_GATEWAY, "fe80::bad") };
+    Attribute trailing { 200, {} };
+    trailing.payload.resize(sizeof(int) + RTA_LENGTH(gateway.payload.size()), 0);
+    const auto index { static_cast<int>(other.second) };
+    std::memcpy(trailing.payload.data(), &index, sizeof(index));
+    auto rta { reinterpret_cast<rtattr*>(trailing.payload.data() + sizeof(int)) };
+    rta->rta_type = gateway.type;
+    rta->rta_len = RTA_LENGTH(gateway.payload.size());
+    std::copy(gateway.payload.begin(), gateway.payload.end(), static_cast<char*>(RTA_DATA(rta)));
+
+    std::vector<char> buffer;
+    appendRoute(buffer, { multipathAttribute({ { loopbackIndex(), "fe80::a" } }), trailing });
+
+    IPv6Gateways gateways;
+    parseRoutes(buffer, gateways);
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::a" } }), gateways);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpIgnoresMessagesOfAnotherSequence)
+{
+    RouteOptions foreign;
+    foreign.sequence = SEQUENCE + 1;
+    std::vector<char> buffer;
+    appendRoute(buffer, { ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(loopbackIndex()) }, foreign);
+
+    IPv6Gateways gateways;
+    EXPECT_TRUE(parseRoutes(buffer, gateways));
+    EXPECT_TRUE(gateways.empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpFailsOnAnErrorAndOnAnInterruptedDump)
+{
+    std::vector<char> failed;
+    appendDone(failed, -ENOBUFS);
+
+    std::vector<char> interrupted;
+    appendDone(interrupted, 0, NLM_F_MULTI | NLM_F_DUMP_INTR);
+
+    IPv6Gateways gateways;
+    EXPECT_THROW(parseRoutes(failed, gateways), std::runtime_error);
+    EXPECT_THROW(parseRoutes(interrupted, gateways), NetlinkDumpInterrupted);
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpRecordsARouteThatOnlyNamesANexthop)
+{
+    std::vector<char> buffer;
+    appendRoute(buffer, { integerAttribute(ROUTE_NEXTHOP_ID, 7) });
+
+    std::vector<IPv6Route> routes;
+    parseRoutes(buffer, routes);
+
+    ASSERT_EQ(1u, routes.size());
+    EXPECT_EQ(7u, routes[0].nexthopId);
+    EXPECT_TRUE(routes[0].gateway.empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, RouteDumpPrefersTheCompatAttributesOverTheNexthopId)
+{
+    const auto other { otherInterface() };
+
+    if (other.first.empty())
+    {
+        GTEST_SKIP() << "This host has a single interface";
+    }
+
+    std::vector<char> buffer;
+    appendRoute(buffer, { integerAttribute(ROUTE_NEXTHOP_ID, 7), ipv6Attribute(RTA_GATEWAY, "fe80::1"), outputInterfaceAttribute(loopbackIndex()) });
+    appendRoute(buffer, { integerAttribute(ROUTE_NEXTHOP_ID, 8), multipathAttribute({ { other.second, "fe80::a" } }) });
+
+    std::vector<IPv6Route> routes;
+    parseRoutes(buffer, routes);
+
+    ASSERT_EQ(2u, routes.size());
+    EXPECT_EQ(7u, routes[0].nexthopId);
+    EXPECT_EQ("fe80::1", routes[0].gateway);
+    EXPECT_EQ(8u, routes[1].nexthopId);
+    EXPECT_EQ("fe80::a", routes[1].gateway);
+    EXPECT_FALSE(NetworkLinuxAddressResolver::hasPendingRoute(routes));
+    EXPECT_TRUE(NetworkLinuxAddressResolver::usesNexthopObjects(routes));
+}
+
+TEST(NetworkLinuxAddressResolverTest, NexthopDumpParsesASingleIPv6Nexthop)
+{
+    std::vector<char> buffer;
+    appendNexthopObject(buffer, singleNexthop(5, loopbackIndex(), "fe80::1"));
+    appendDone(buffer, 0);
+
+    IPv6Nexthops nexthops;
+    EXPECT_FALSE(parseNexthops(buffer, nexthops));
+
+    ASSERT_EQ(1u, nexthops.size());
+    EXPECT_FALSE(nexthops.at(5).isGroup);
+    EXPECT_EQ("lo", nexthops.at(5).link);
+    EXPECT_EQ("fe80::1", nexthops.at(5).gateway);
+}
+
+TEST(NetworkLinuxAddressResolverTest, NexthopDumpParsesAGroupAsItsMemberIds)
+{
+    std::vector<char> buffer;
+    appendNexthopObject(buffer, { integerAttribute(NEXTHOP_ID, 9), groupAttribute({ 5, 6 }) }, AF_UNSPEC);
+
+    IPv6Nexthops nexthops;
+    EXPECT_TRUE(parseNexthops(buffer, nexthops));
+
+    ASSERT_EQ(1u, nexthops.size());
+    EXPECT_TRUE(nexthops.at(9).isGroup);
+    EXPECT_EQ((std::vector<uint32_t> { 5, 6 }), nexthops.at(9).members);
+}
+
+TEST(NetworkLinuxAddressResolverTest, NexthopDumpIgnoresBlackholeAndIPv4Nexthops)
+{
+    std::vector<char> buffer;
+    appendNexthopObject(buffer, { integerAttribute(NEXTHOP_ID, 1), { NEXTHOP_BLACKHOLE, {} } }, AF_INET6);
+    appendNexthopObject(buffer, { integerAttribute(NEXTHOP_ID, 2), ipv4Attribute(NEXTHOP_GATEWAY, "192.0.2.1"), integerAttribute(NEXTHOP_OIF, loopbackIndex()) }, AF_INET);
+    appendNexthopObject(buffer, { integerAttribute(NEXTHOP_ID, 3), integerAttribute(NEXTHOP_OIF, loopbackIndex()) });
+
+    IPv6Nexthops nexthops;
+    parseNexthops(buffer, nexthops);
+    EXPECT_TRUE(nexthops.empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, NexthopDumpBoundsATruncatedGroup)
+{
+    auto group { groupAttribute({ 5, 6 }) };
+    group.payload.resize(group.payload.size() - 3);
+
+    std::vector<char> buffer;
+    appendNexthopObject(buffer, { integerAttribute(NEXTHOP_ID, 9), group }, AF_UNSPEC);
+
+    IPv6Nexthops nexthops;
+    parseNexthops(buffer, nexthops);
+
+    ASSERT_EQ(1u, nexthops.size());
+    EXPECT_EQ((std::vector<uint32_t> { 5 }), nexthops.at(9).members);
+}
+
+TEST(NetworkLinuxAddressResolverTest, NexthopDumpFailsOnAnErrorAndOnAnInterruptedDump)
+{
+    std::vector<char> failed;
+    appendDone(failed, -ENOBUFS);
+
+    std::vector<char> interrupted;
+    appendDone(interrupted, 0, NLM_F_MULTI | NLM_F_DUMP_INTR);
+
+    IPv6Nexthops nexthops;
+    EXPECT_THROW(parseNexthops(failed, nexthops), std::runtime_error);
+    EXPECT_THROW(parseNexthops(interrupted, nexthops), NetlinkDumpInterrupted);
+}
+
+TEST(NetworkLinuxAddressResolverTest, PendingRouteTakesTheGatewayOfASingleNexthop)
+{
+    std::vector<char> routesBuffer;
+    appendRoute(routesBuffer, { integerAttribute(ROUTE_NEXTHOP_ID, 5) });
+    std::vector<char> nexthopsBuffer;
+    appendNexthopObject(nexthopsBuffer, singleNexthop(5, loopbackIndex(), "fe80::1"));
+
+    std::vector<IPv6Route> routes;
+    IPv6Nexthops nexthops;
+    parseRoutes(routesBuffer, routes);
+    parseNexthops(nexthopsBuffer, nexthops);
+
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::1" } }), NetworkLinuxAddressResolver::selectGateways(routes, nexthops));
+}
+
+TEST(NetworkLinuxAddressResolverTest, PendingRouteTakesTheGatewayOfEveryGroupMember)
+{
+    const auto other { otherInterface() };
+
+    if (other.first.empty())
+    {
+        GTEST_SKIP() << "This host has a single interface";
+    }
+
+    std::vector<char> routesBuffer;
+    appendRoute(routesBuffer, { integerAttribute(ROUTE_NEXTHOP_ID, 9) });
+    std::vector<char> nexthopsBuffer;
+    appendNexthopObject(nexthopsBuffer, singleNexthop(5, other.second, "fe80::a"));
+    appendNexthopObject(nexthopsBuffer, singleNexthop(6, loopbackIndex(), "fe80::b"));
+    appendNexthopObject(nexthopsBuffer, { integerAttribute(NEXTHOP_ID, 9), groupAttribute({ 5, 6 }) }, AF_UNSPEC);
+
+    std::vector<IPv6Route> routes;
+    IPv6Nexthops nexthops;
+    parseRoutes(routesBuffer, routes);
+    parseNexthops(nexthopsBuffer, nexthops);
+
+    EXPECT_EQ((IPv6Gateways { { other.first, "fe80::a" }, { "lo", "fe80::b" } }), NetworkLinuxAddressResolver::selectGateways(routes, nexthops));
+}
+
+TEST(NetworkLinuxAddressResolverTest, PendingRoutesKeepTheFirstGatewayOfEachInterfaceInRouteOrder)
+{
+    std::vector<char> routesBuffer;
+    appendRoute(routesBuffer, { integerAttribute(ROUTE_NEXTHOP_ID, 5) });
+    appendRoute(routesBuffer, { ipv6Attribute(RTA_GATEWAY, "fe80::c"), outputInterfaceAttribute(loopbackIndex()) });
+    appendRoute(routesBuffer, { integerAttribute(ROUTE_NEXTHOP_ID, 6) });
+    std::vector<char> nexthopsBuffer;
+    appendNexthopObject(nexthopsBuffer, singleNexthop(5, loopbackIndex(), "fe80::a"));
+    appendNexthopObject(nexthopsBuffer, singleNexthop(6, loopbackIndex(), "fe80::b"));
+
+    std::vector<IPv6Route> routes;
+    IPv6Nexthops nexthops;
+    parseRoutes(routesBuffer, routes);
+    parseNexthops(nexthopsBuffer, nexthops);
+
+    EXPECT_EQ((IPv6Gateways { { "lo", "fe80::a" } }), NetworkLinuxAddressResolver::selectGateways(routes, nexthops));
+}
+
+TEST(NetworkLinuxAddressResolverTest, PendingRouteResolvesOneGroupLevelAndIgnoresAnUnknownId)
+{
+    std::vector<char> routesBuffer;
+    appendRoute(routesBuffer, { integerAttribute(ROUTE_NEXTHOP_ID, 99) });
+    appendRoute(routesBuffer, { integerAttribute(ROUTE_NEXTHOP_ID, 10) });
+    std::vector<char> nexthopsBuffer;
+    appendNexthopObject(nexthopsBuffer, singleNexthop(5, loopbackIndex(), "fe80::a"));
+    appendNexthopObject(nexthopsBuffer, { integerAttribute(NEXTHOP_ID, 9), groupAttribute({ 5 }) }, AF_UNSPEC);
+    appendNexthopObject(nexthopsBuffer, { integerAttribute(NEXTHOP_ID, 10), groupAttribute({ 9, 77 }) }, AF_UNSPEC);
+
+    std::vector<IPv6Route> routes;
+    IPv6Nexthops nexthops;
+    parseRoutes(routesBuffer, routes);
+    parseNexthops(nexthopsBuffer, nexthops);
+
+    EXPECT_TRUE(NetworkLinuxAddressResolver::selectGateways(routes, nexthops).empty());
+}
+
+TEST(NetworkLinuxAddressResolverTest, DumpIsSkippedWhenIPv6IsDisabled)
+{
+    // The marker path is a parameter, so the host does not need ipv6.disable=1.
+    EXPECT_TRUE(NetworkLinuxAddressResolver::dumpIPv6DefaultGatewaysIfEnabled("/nonexistent/net/if_inet6").empty());
+}

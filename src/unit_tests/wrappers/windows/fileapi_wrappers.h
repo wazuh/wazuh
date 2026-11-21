@@ -74,4 +74,19 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData);
 
 UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName);
 
+/**
+ * @brief Not redirected by a macro here: wm_exec.c opts in, other users of this header keep the real call.
+ *        Mocked data per call: the bytes to copy (NULL to fill with 'A'), their count and the return value.
+ *        The count must fit in the requested size.
+ */
+BOOL wrap_ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
+                   LPOVERLAPPED lpOverlapped);
+
+/**
+ * @brief Not redirected by a macro here: wm_exec.c opts in, other users of this header keep the real call.
+ *        Mocked data per call: the bytes available and the return value.
+ */
+BOOL wrap_PeekNamedPipe(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, LPDWORD lpBytesRead,
+                        LPDWORD lpTotalBytesAvail, LPDWORD lpBytesLeftThisMessage);
+
 #endif

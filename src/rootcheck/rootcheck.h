@@ -142,6 +142,17 @@ typedef struct rc_pid_probes_t {
 /* Alert on a PID whose probes disagree. Returns 1 if an alert was sent */
 int check_rc_pid_report(pid_t pid, const rc_pid_probes_t *probes, int (*is_thread)(int pid));
 
+#ifdef __linux__
+/* Load rootcheck.max_pid. Returns 1 when the option is not set and the default is used */
+int rc_read_max_pid(void);
+
+/* The kernel pid_max, or 0 when it cannot be read */
+long rc_kernel_pid_max(void);
+
+/* Log the PID range of the hidden process check */
+void rc_log_max_pid(int from_default, long pid_max);
+#endif
+
 void check_rc_ports(void);
 void check_open_ports(void);
 void check_rc_if(void);

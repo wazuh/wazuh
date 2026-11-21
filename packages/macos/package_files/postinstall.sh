@@ -26,23 +26,27 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
 
-    # The backup holds only a regular file per config name (preinstall copied with cp -R and
-    # removed any planted symlink or hard link before the payload was laid). Move it over the
-    # package default with a plain mv: -h is not used because it does not exist before macOS 12.5
-    # (Apple file_cmds-353) and the agent supports older releases, and by this point the destination
-    # is the package's regular file, not a symlink. Anything that is not a regular file is dropped.
+    # The backup holds, per config name, a copy of the regular file or the symlink or hard link
+    # itself (preinstall renamed a link aside before the payload was laid). Rename it over the
+    # package default with a plain mv, which puts a link back as a link without touching its target:
+    # -h is not used because it does not exist before macOS 12.5 (Apple file_cmds-353) and the agent
+    # supports older releases, and by this point the destination is the package's regular file.
+    # Anything else that was at a config name (a directory, a FIFO) is not restored. That, a failed
+    # restore, or a backup preinstall could not take (its marker) makes this script exit non-zero at
+    # the end, so the installer does not report a successful upgrade.
     restore_failed=""
+    [ -e ${DIR}/config_files/backup_failed ] && restore_failed="yes"
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ ! -e ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
             continue
-        elif [ -f ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
+        elif [ -f ${DIR}/config_files/${conf} ] || [ -L ${DIR}/config_files/${conf} ]; then
             if ! mv -f ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
-                echo "WARNING: could not restore ${DIR}/etc/${conf}; a copy is kept for recovery." >&2
+                echo "WARNING: could not restore ${DIR}/etc/${conf}; the backup is kept for recovery." >&2
                 restore_failed="yes"
             fi
         else
-            echo "WARNING: ${DIR}/config_files/${conf} is not a regular file; not restored, the package-installed ${DIR}/etc/${conf} is left in place." >&2
-            rm -rf ${DIR}/config_files/${conf}
+            echo "WARNING: ${DIR}/etc/${conf} was not a regular file or a link; not restored, the package default is in place and the entry is kept for recovery." >&2
+            restore_failed="yes"
         fi
     done
 
@@ -225,12 +229,13 @@ echo "Removing temporary files..."
 rm -rf ${DIR}/packages_files
 
 # Remove old ossec user and group if exists and change ownwership of files
+# chown -h re-owns a symlink itself, never the file it points to.
 if [[ $(dscl . -read /Groups/ossec) ]]; then
     echo "Changing group from Ossec to Wazuh"
-    find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \; > /dev/null 2>&1 || true
+    find ${DIR}/ -group ossec -user root -exec chown -h root:wazuh {} \; > /dev/null 2>&1 || true
     if [[ $(dscl . -read /Users/ossec) ]]; then
         echo "Changing user from Ossec to Wazuh"
-        find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
+        find ${DIR}/ -group ossec -user ossec -exec chown -h wazuh:wazuh {} \; > /dev/null 2>&1 || true
         echo "Removing Ossec user"
         sudo /usr/bin/dscl . -delete "/Users/ossec"
     fi
@@ -247,4 +252,22 @@ fi
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     echo "Restarting Wazuh..."
     launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
+fi
+
+# A configuration file that could not be kept must not look like a clean upgrade, and neither must
+# one the agent cannot read: a config kept as a link is not re-owned, so the file it points to may
+# be out of reach of the account the agent runs as, and the agent does not start. The read check is
+# skipped when sudo cannot run as that account at all, so it never fails an upgrade on its own.
+config_unreadable=""
+if [ -n "${upgrade}" ] && sudo -u ${USER} /usr/bin/true 2> /dev/null; then
+    for conf in ossec.conf client.keys; do
+        if ! sudo -u ${USER} /bin/test -r ${DIR}/etc/${conf}; then
+            echo "WARNING: the ${USER} account cannot read ${DIR}/etc/${conf}; the agent will not start until it can. For a linked file, check the owner, group and mode of the file it points to." >&2
+            config_unreadable="yes"
+        fi
+    done
+fi
+if [ -n "${restore_failed}" ] || [ -n "${config_unreadable}" ]; then
+    echo "ERROR: the agent configuration is not all in place after the upgrade; see the warnings above." >&2
+    exit 1
 fi

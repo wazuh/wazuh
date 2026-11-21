@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import subprocess
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -93,3 +94,37 @@ def test_main_type_ko(args: list[str], error_code: int):
             pytest.raises(SystemExit) as e:
         aws_s3.main(args)
     assert e.value.code == error_code
+
+
+@pytest.mark.parametrize('package_dir, module', [
+    ('', 'aws_s3'),
+    ('', 'buckets_s3'),
+    ('', 'services'),
+    ('', 'subscribers'),
+    ('', 'wazuh_integration'),
+    ('buckets_s3', 'aws_bucket'),
+    ('buckets_s3', 'server_access'),
+    ('buckets_s3', 'vpcflow'),
+    ('services', 'cloudwatchlogs'),
+    ('subscribers', 's3_log_handler'),
+    ('subscribers', 'sqs_queue'),
+])
+def test_missing_boto3_exits_with_code_4(package_dir: str, module: str):
+    """Test that importing an AWS module without the AWS SDK reports the missing boto3 module and exits with
+    code 4, instead of failing with an unhandled ImportError that wazuh-modulesd logs as an unknown error.
+
+    Parameters
+    ----------
+    package_dir : str
+        Directory, relative to the AWS wodle, added to the path to import the module on its own.
+    module : str
+        Module to import.
+    """
+    aws_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
+    code = (f"import sys; sys.modules['boto3'] = sys.modules['botocore'] = None; "
+            f"sys.path.insert(0, {package_dir!r}); import {module}")
+
+    result = subprocess.run([sys.executable, '-c', code], cwd=aws_dir, capture_output=True, text=True)
+
+    assert result.returncode == 4, result.stderr
+    assert result.stdout == 'ERROR: boto3 module is required.\n'

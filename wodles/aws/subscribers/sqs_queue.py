@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import botocore
 import sys
 from os import path
 from typing import Optional
@@ -13,6 +12,9 @@ import sqs_message_processor
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+
+# After the boto3 check in wazuh_integration (exit code 4).
+import botocore
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools

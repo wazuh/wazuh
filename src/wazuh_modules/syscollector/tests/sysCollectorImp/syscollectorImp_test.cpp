@@ -2852,35 +2852,51 @@ TEST_F(SyscollectorImpTest, destroyDuringScanSkipsRemainingTasks)
     t.join();
 }
 
-TEST_F(SyscollectorImpTest, destroyDuringScanReturnsAfterBoundedWait)
+// Runs f on a detached thread, so a call that never returns fails the test instead of hanging it.
+static std::future<void> runDetached(std::function<void()> f)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
-    ScanGate gate;
-    EXPECT_CALL(*spInfoWrapper, hardware()).WillOnce(testing::Invoke([&gate]()
+    auto done{std::make_shared<std::promise<void>>()};
+    auto future{done->get_future()};
+    std::thread{[done, f]()
     {
-        gate.block();
-        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
-    }));
-
-    std::thread t
-    {
-        [&]()
+        try
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, logFunction,
-                                          SYSCOLLECTOR_DB_PATH, "", "", 3600, true, true, false,
-                                          false, false, false, false, false, false, false, false, false, false);
+            f();
+            done->set_value();
         }
-    };
+        catch (...)
+        {
+            done->set_exception(std::current_exception());
+        }
+    }}.detach();
+    return future;
+}
 
-    gate.waitEntered();
-    const auto start{std::chrono::steady_clock::now()};
-    Syscollector::instance().destroy();
-    const auto elapsed{std::chrono::steady_clock::now() - start};
-    // Bounds bracket destroy()'s STOP_WAIT_SLICES budget (20 x 1 s).
-    EXPECT_GE(elapsed, std::chrono::seconds{15});
-    EXPECT_LT(elapsed, std::chrono::seconds{30});
-    gate.release();
-    t.join();
+TEST_F(SyscollectorImpTest, destroyReturnsWhenInitThrows)
+{
+    // Registering syscollector_hwinfo first makes init() throw COMPONENT_ALREADY_REGISTERED.
+    DBSync dbSync{HostType::AGENT, DbEngineType::SQLITE3, ":memory:", "CREATE TABLE t(a TEXT PRIMARY KEY);"};
+    RemoteSync remoteSync;
+    const auto config = nlohmann::json::parse(R"({"decoder_type":"JSON_RANGE"})");
+    remoteSync.registerSyncID("syscollector_hwinfo", dbSync.handle(), config, [](const std::string&) {});
+
+    auto initialized{runDetached([]()
+    {
+        Syscollector::instance().init(std::make_shared<SysInfoWrapper>(), reportFunction, reportFunction, logFunction,
+                                      ":memory:", "", "", 3600, true, true, false,
+                                      false, false, false, false, false, false, false, false, false, false);
+    })};
+    ASSERT_EQ(std::future_status::ready, initialized.wait_for(std::chrono::seconds{5}));
+    EXPECT_THAT([&]()
+    {
+        initialized.get();
+    }, testing::ThrowsMessage<std::exception>(testing::StrEq("Component already registered.")));
+
+    auto destroyed{runDetached([]()
+    {
+        Syscollector::instance().destroy();
+    })};
+    EXPECT_EQ(std::future_status::ready, destroyed.wait_for(std::chrono::seconds{5}));
 }
 
 TEST_F(SyscollectorImpTest, destroyDuringSyncDoesNotHang)

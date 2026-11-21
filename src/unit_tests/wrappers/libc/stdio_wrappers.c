@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "headers/defs.h"
 #include "../common.h"
@@ -270,8 +271,16 @@ FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc) {
     return mock_ptr_type(FILE*);
 }
 
+/* Takes ownership of a heap-allocated line, or returns -1 when the mocked line is NULL */
 ssize_t __wrap_getline(char ** lineptr, size_t * n, FILE * stream) {
-    *lineptr = mock_ptr_type(char *);
+    char * line = mock_ptr_type(char *);
+
+    if (line == NULL) {
+        return -1;
+    }
+
+    free(*lineptr);
+    *lineptr = line;
     *n = strlen(*lineptr);
     return *n;
 }
