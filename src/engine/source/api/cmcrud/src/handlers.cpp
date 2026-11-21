@@ -502,10 +502,11 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             const bool shouldPromote = loadInTester && hasIntegrations && isEnabled;
             const bool shouldDeleteOldTest = loadInTester && (!hasIntegrations || !isEnabled);
 
-            // Replacing the persistent test session reads it, deletes it, renames the temporary one
-            // into its place and deletes the namespace it had. Two requests interleaving those steps
-            // for one session each end up deleting the other's work or leaving their own temporary
-            // namespace behind, so the swap is serialised. Validation above is not: its names are unique.
+            // Replacing the persistent test session checks who owns its namespace, swaps the temporary
+            // one into its place (or extracts it) and deletes the namespace of the entry it displaced.
+            // The swap and the extraction are atomic on their own; the lock serialises the ownership
+            // check and the swap between validation requests only: a session changed through the tester
+            // API in between is not covered. Validation above is not serialised: its names are unique.
             static std::mutex testSessionSwapMutex;
             std::unique_lock<std::mutex> testSessionSwapLock {testSessionSwapMutex, std::defer_lock};
             if (loadInTester)

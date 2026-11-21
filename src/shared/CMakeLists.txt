@@ -318,7 +318,7 @@ set_target_properties(
 # Add compile definitions
 target_compile_definitions(wazuh PRIVATE ARGV0="wazuh")
 # debug_op.c gives a log file it creates as root to GROUPGLOBAL: the service group of the product this
-# tree builds (the defs.h fallback is the agent's). Same variable and condition as the daemons' own CMake files.
+# tree builds (the defs.h fallback picks the same one from CLIENT). Same variable and condition as the daemons' own CMake files.
 set(WAZUH_RUNTIME_GROUP "wazuh")
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   set(WAZUH_RUNTIME_GROUP "wazuh-manager")
