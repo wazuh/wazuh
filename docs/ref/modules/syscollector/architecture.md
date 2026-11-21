@@ -292,7 +292,7 @@ processVDDataContext() ──────► getDataContextTables() ────
 Generated immediately when changes are detected and written to the agent's local message queue (`queue/sockets/queue`, event type `d`) by the wodle's report callback, rate-limited by `max_eps`:
 
 ```cpp
-if (m_notify && !onlyVolatileFieldsChanged(result, data, table)) {
+if (m_notify && tableHasNotifiableBaseline(table) && !onlyVolatileFieldsChanged(result, data, table)) {
     // build the stateless event
     m_reportDiffFunction(stateless.dump());
 }
@@ -301,6 +301,7 @@ if (m_notify && !onlyVolatileFieldsChanged(result, data, table)) {
 **Characteristics:**
 - Sent immediately when changes detected
 - Not sent for the first scan of an agent when `notify_first_scan` is `no`
+- Not sent, when `notify_first_scan` is `no`, for the scan that refills a table without a scan baseline (`scan_baseline:<table>` in `table_metadata`): a collector switched back on, or the users and groups tables after the upgrade that made macOS `user.groups` and `group.users` direct memberships
 - Not sent when only volatile counters changed (memory free/used, process `utime`/`stime`, interface traffic counters)
 - Not subject to document limits
 - Contain essential inventory change information
