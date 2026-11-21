@@ -289,6 +289,8 @@ The root container is level 1: 256 nested containers (objects and arrays) parse,
 
 `parser::run()` turns either failure into a `base::Error` that carries the message only when tracing is enabled (test mode) and is empty otherwise, exactly as for any other parse failure.
 
+A `std::bad_alloc` while the KV, XML or DSV/CSV parser builds its document leaves `parser::run()` before anything is mapped; one raised while mapping leaves the fields mapped before it. An allocation failure inside the XML library does not throw: it fails the parse like any other invalid XML, and nothing is mapped.
+
 The XML parser creates one `json::PathWriter` per parse, and `xmlToJson` and the `windows` module read and write the document through it. Repeated sibling elements are appended to their array, which grows geometrically. `xmlToJson` descends the XML tree carrying the [anchor](../base/README.md#json-path-writer) of the parent node and writes each element's text and attributes with paths relative to the element's own anchor. Each element resolves its name a fixed number of times, independent of how many writes or children it has, and promoting an element to an array on its first repeated sibling moves the value instead of copying it. The writer is described in the [JSON Path Writer](../base/README.md#json-path-writer) section of the `base` README.
 
 Sibling elements that share a name become one array under that name, in document order. The first one is written as an object and is moved into the array when the second one appears; each element of the array holds the `#text`, the `@<attribute>` members and the child elements of its own sibling, and the same rule applies inside it:
@@ -318,7 +320,7 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
 - `unescape()` — removes the escape characters of a value in place and in one pass: every occurrence of the escape drops its first byte and the byte after that one is kept verbatim (`a\\b` gives `a\b`), an escape at the end of the value disappears, and every occurrence is removed, not only the ones that escape a meaningful character. Both callers pass a single-character escape; only the first byte of a longer sequence is dropped
 - `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
-  `updateDoc()` has two overloads with the same contract: one takes a `json::Json&` (used by the DSV/CSV parser) and one takes a `json::PathWriter&` (used by the KV parser, which keeps one writer for the whole parse). `json::Json` scans the members of an object on every write, while the writer indexes objects with many members, so the cost of a document with many sibling members grows almost linearly instead of quadratically; see [JSON Path Writer](../base/README.md#json-path-writer).
+  `updateDoc()` has two overloads with the same contract: one takes a `json::Json&` (used by the DSV/CSV parser) and one takes a `json::PathWriter&` (used by the KV parser, which keeps one writer for the whole parse). `json::Json` scans the members of an object on every write, while the writer indexes objects with many members, so the cost of a document with many sibling members grows almost linearly instead of quadratically; see [JSON Path Writer](../base/README.md#json-path-writer). Both overloads write into a document local to the parse: a `std::bad_alloc` raised by either one leaves `parser::run()` before anything is mapped.
 - `hasInvalidPointerEscape()` — true when a key has a `~` not followed by `0` or `1` (or a trailing `~`): such a key is not a valid JSON Pointer token and `updateDoc()` would throw on it. `kvmap` fails the parse on it; `dsv_csv` rejects such an output name when the parser is built
 
 ### External Libraries
@@ -345,6 +347,7 @@ Each parser has a dedicated test file (`*_test.cpp`) testing:
 - Invalid inputs → parse failure with appropriate error traces
 - Edge cases: empty input, missing stop tokens, partial matches
 - Depth boundary cases (256/257) and a stack probe (`*Depth*`, `*StackProbe`)
+- Allocation failure while a parser builds or maps its document (`ObjectBuildInjectionTest.*` in `test/src/unit/objectBuild_injection_test.cpp`, `hlp_utest`)
 
 ## Consumers
 

@@ -75,8 +75,8 @@ namespace json
  * Using an anchor after it stopped being valid is not supported and has no guaranteed outcome: the write may be lost
  * or may land in the live document.
  *
- * Allocation failures. When an allocation fails, every write (set*, append*, ensure, wrapInArray, by absolute path or
- * by anchor) throws std::bad_alloc and leaves the document exactly as it was, and the writer stays usable. A write
+ * Allocation failures. A write (set*, append*, ensure, wrapInArray, by absolute path or by anchor) that throws
+ * std::bad_alloc leaves the document exactly as it was, and the writer stays usable. A write
  * first reads the part of the path that exists, then builds apart everything it needs (the missing levels around the
  * new value, a deep copy of a Json, the array that replaces a scalar or wraps a node), and only then attaches it with
  * one operation that reallocates before it touches the document (AddMember, Reserve + PushBack) or with a move that

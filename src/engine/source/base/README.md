@@ -113,6 +113,8 @@ Use it in code that writes or looks up many members of the same object in one go
 5. A value written through the writer is never the target document itself.
 6. An anchor is used only with the writer that created it, and only while it is valid. The writer rejects an anchor created by another live writer; it does not check whether an anchor is still valid (see **Anchors** below).
 
+**Allocation failures.** A write (`set*`, `append*`, `ensure`, `wrapInArray`, by absolute path or by anchor) that throws `std::bad_alloc` leaves the document exactly as it was, and the writer stays usable. The index is exact or absent: an entry that can be matched always describes the current members, and when the index cannot allocate after a member was attached, the write still succeeds, the entry is dropped and the next lookup rebuilds it. Anchors that were valid before a failed write stay valid.
+
 Objects at or below the threshold are scanned exactly like `Json` does, and constructing a writer allocates nothing: the index of an object is built the first time that object is looked up above the threshold (reads included). That first lookup costs more than the single scan `Json` would do, so keep one writer for the whole construction of a document instead of creating one per operation; index entries live until the writer is destroyed. The writer is neither copyable nor movable.
 
 ```cpp
@@ -162,6 +164,8 @@ if (const auto os = writer.find(host, "/os"))                // child anchor, nu
 Header: [include/base/json.hpp](include/base/json.hpp). Implementation: [src/json.cpp](src/json.cpp). Namespace `json`.
 
 **`Json::merge` between objects.** Each member of the source is resolved in the destination with one lookup, which scans the destination. Once the scans of one merge have visited more than `Json::MERGE_INDEX_SCAN_FACTOR` times the number of members of the destination, the rest of its lookups go through a local ordered index of the destination members: building the index costs a small fraction of the scanning already done, so a merge is not noticeably slower than plain scanning and the cost of merging wide objects grows almost linearly with the number of members. A recursive merge descends into the member it found. Merging arrays is a different path: each source element is compared with every destination element.
+
+**Allocation failures in `Json::merge`.** The guarantee is "usable", not strong: when an allocation fails midway, `std::bad_alloc` propagates and the destination keeps the part of the source that was already merged. Every member or element is either what it was before or its complete final value (a name that the source repeats may hold the complete value of an earlier occurrence, and in a recursive merge this holds node by node), never a half-written member and never a new duplicate name: the value and the name are copied before they are added, and a replacement is copied before it is assigned. Repeating the same merge completes the result. A merge whose source is inside the same document (`merge(isRecursive, sourcePath, path)`) erases the source only when the merge finished.
 
 **Destination path in URI-fragment form.** A destination path written as `#/...` is resolved once, at the start of the call. Member names met while descending are never read again as part of a fragment.
 
@@ -228,9 +232,9 @@ Where each contract is exercised:
 | User/group lookup and privilege drop | `LookupUid.*`, `LookupGid.*`, `DropToUser.*`, `DropToGroup.*`, `DropErrors.*` |
 | Manager home | `ManagerHome.*` (incl. the exits `ManagerHomeEnvNotDirectoryExits`, `ExeNotDirectoryExits`), `ManagerHomeAbsolute.*` |
 | Log sink | `ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*` |
-| JSON allocation failure | `JsonAllocationInjectionTest.*` (`json::BaseAllocator::failAt` fails the n-th allocation; every mutation is swept through its allocation points and the document must stay usable), `JsonAllocationFailureTest.*` (`RLIMIT_AS` death tests, skipped under the sanitizers) |
+| JSON allocation failure | `JsonAllocationInjectionTest.*` (`json::BaseAllocator::failAt` fails the n-th allocation; every mutation is swept through its allocation points and the document must stay usable; the `Merge*` cases pin the "usable" guarantee of `Json::merge`: a failure leaves each node as it was or complete (for a name that the source repeats, complete with the value of one of its occurrences), no duplicate name, and repeating the merge completes it, and the same-document merge keeps its source until it finishes), `JsonAllocationFailureTest.*` (`RLIMIT_AS` death tests, skipped under the sanitizers) |
 | `Json::str()` sanitization log | `JsonSanitizeLog.WarnsOnceThenDebugsAndNeverLogsTheEvent` (warning once, debug afterwards, and no part of the event in either line) |
-| JSON path writer | Differential tests against `Json` in [jsonPathWriter_test.cpp](test/src/unit/jsonPathWriter_test.cpp) (`base_utest`); benchmarks `BM_PathWriter*` in [jsonSet_bench.cpp](benchmark/src/jsonSet_bench.cpp) (`base_benchmark`) |
+| JSON path writer | Differential tests against `Json` in [jsonPathWriter_test.cpp](test/src/unit/jsonPathWriter_test.cpp) (`base_utest`); `PathWriterInjectionTest.*` in [jsonPathWriter_injection_test.cpp](test/src/unit/jsonPathWriter_injection_test.cpp) (`base_utest`) fails every allocation of each write and checks the document, the index and the anchors afterwards; benchmarks `BM_PathWriter*` in [jsonSet_bench.cpp](benchmark/src/jsonSet_bench.cpp) (`base_benchmark`) |
 
 `ctest` discovers the cases with `gtest_discover_tests`; names are `<Suite>.<Test>`, without a binary prefix.
 
