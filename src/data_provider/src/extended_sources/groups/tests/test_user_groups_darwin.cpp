@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include <stdexcept>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "igroup_wrapper.hpp"
@@ -512,19 +513,19 @@ TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryReportsNoGroupsAndIsNotC
     EXPECT_EQ(env.collect(false).size(), 2u);
 }
 
-TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryIsReportedAsUnreadable)
+TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryMakesTheInventoryThrow)
 {
     DirectoryCase env;
     EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Return(false));
     UserGroupsProvider::resetCache();
     UserGroupsProvider provider(env.group, env.passwd, env.od);
 
-    EXPECT_FALSE(provider.membershipsUnreadable());
+    EXPECT_NO_THROW(provider.requireReadableMemberships("users"));
     EXPECT_TRUE(provider.collect({600}).empty());
-    EXPECT_TRUE(provider.membershipsUnreadable());
+    EXPECT_THROW(provider.requireReadableMemberships("users"), std::runtime_error);
 }
 
-TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryIsNotReportedAsUnreadable)
+TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryDoesNotThrow)
 {
     DirectoryCase env;
     EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
@@ -536,7 +537,7 @@ TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryIsNotReportedAsUnreadable)
     UserGroupsProvider provider(env.group, env.passwd, env.od);
 
     EXPECT_EQ(provider.collect({600}).size(), 2u);
-    EXPECT_FALSE(provider.membershipsUnreadable());
+    EXPECT_NO_THROW(provider.requireReadableMemberships("users"));
 }
 
 TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDirectory)
@@ -552,7 +553,7 @@ TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDir
     // The second provider finds the account in the cache, so it reads nothing and nothing failed.
     UserGroupsProvider provider(env.group, env.passwd, env.od);
     EXPECT_EQ(provider.collect({600}).size(), 2u);
-    EXPECT_FALSE(provider.membershipsUnreadable());
+    EXPECT_NO_THROW(provider.requireReadableMemberships("users"));
 }
 
 TEST_F(UserGroupsProviderDarwinTest, GroupTheSystemCannotResolveUsesItsRecordGid)

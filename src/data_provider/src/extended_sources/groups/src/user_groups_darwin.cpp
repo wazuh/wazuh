@@ -8,6 +8,8 @@
  */
 
 #include <iostream>
+#include <stdexcept>
+
 #include "user_groups_darwin.hpp"
 #include "group_wrapper.hpp"
 #include "passwd_wrapper.hpp"
@@ -245,7 +247,11 @@ std::set<std::string> UserGroupsProvider::getEffectiveGroupNamesByUid(uid_t uid)
     return pwd != nullptr ? m_effectiveGroups.namesOf(pwd->pw_name, pwd->pw_gid) : std::set<std::string> {};
 }
 
-bool UserGroupsProvider::membershipsUnreadable() const
+void UserGroupsProvider::requireReadableMemberships(const std::string& inventory) const
 {
-    return m_directMemberships.readFailed();
+    if (m_directMemberships.readFailed())
+    {
+        throw std::runtime_error("Could not read the group memberships from OpenDirectory; the " + inventory +
+                                 " inventory is not updated in this scan.");
+    }
 }
