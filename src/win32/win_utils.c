@@ -439,6 +439,11 @@ int local_start()
         w_agent_resolve_ssl_posture(agt);
     }
 
+    /* The CA check above may have been deferred to this point (agentd.c does the same). */
+    if (!anchor_before && !w_agent_validate_ssl_ca(agt)) {
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
     w_agent_warn_unverified_without_anchor(agt);
 
     if (agt->notify_time == 0) {

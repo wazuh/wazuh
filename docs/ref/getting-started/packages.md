@@ -227,3 +227,5 @@ curl -O https://packages.wazuh.com/production/5.x/yum/wazuh-agent-5.0.0.x86_64.r
   - **Manager**: `wazuh-manager`
   - **Agent**: `wazuh-agent`
 - These repositories are not accessible via web browser, even though some are public via HTTPS.
+- RPM packages are signed with the Wazuh key (`https://packages.wazuh.com/key/GPG-KEY-WAZUH`). Import it with
+  `sudo rpm --import` before installing a downloaded RPM; see [Installation](installation.md#installation).

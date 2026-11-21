@@ -430,8 +430,32 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Result.
         payload : bytes
             Response message.
+
+        Raises
+        ------
+        WazuhClusterError(3063)
+            The request does not carry exactly the four fields.
+        WazuhClusterError(3030)
+            The worker belongs to another cluster.
+        WazuhClusterError(3031)
+            The worker runs another Wazuh version.
+
+        A refused worker is not registered. Its connection is not closed here: a real worker closes it itself once it
+        reads the refusal (and logs the reason), and any other peer is closed by the handshake deadline, which stays
+        armed until a hello is accepted.
         """
-        name, cluster_name, node_type, version = data.split(b' ')
+        fields = data.split(b' ')
+        if len(fields) != 4:
+            raise exception.WazuhClusterError(3063, extra_message='malformed hello request')
+        name, cluster_name, node_type, version = fields
+
+        # Check the cluster name and version before the worker is registered: a refused peer must never be listed
+        # as a node, served, or synchronized.
+        if cluster_name.decode(errors='replace') != self.server.configuration['name']:
+            raise exception.WazuhClusterError(3030)
+        elif version.decode(errors='replace') != metadata.__version__:
+            raise exception.WazuhClusterError(3031)
+
         # Add client to global clients dictionary.
         cmd, payload = super().hello(name)
 
@@ -441,13 +465,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                              'Agent-groups send': self.setup_task_logger('Agent-groups send'),
                              'Agent-groups send full': self.setup_task_logger('Agent-groups send full')}
 
-        # Fill more information and check both name and version are correct.
+        # Fill more information.
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
-
-        if self.cluster_name != self.server.configuration['name']:
-            raise exception.WazuhClusterError(3030)
-        elif self.version != metadata.__version__:
-            raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
         worker_dir = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', self.name)

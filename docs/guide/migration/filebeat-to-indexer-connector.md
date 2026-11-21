@@ -116,7 +116,7 @@ The section is described in full in the [Indexer Connector configuration referen
 ```bash
 sudo systemctl stop filebeat
 sudo systemctl disable filebeat
-sudo systemctl restart wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 

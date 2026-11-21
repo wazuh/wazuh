@@ -189,12 +189,26 @@ case "$1" in
             elif [ -f ${DIR}/VERSION.json ]; then
                 OLD_VERSION=$(json_version ${DIR}/VERSION.json 2>/dev/null) || OLD_VERSION=""
             fi
+            # A package left half-installed (a removal that failed after deleting its files) can no
+            # longer report its version from the tree; dpkg still knows it, and $2 was already
+            # checked against a 4.x version above.
+            if [ -z "${OLD_VERSION}" ] && [ -n "$2" ]; then
+                OLD_VERSION="$2"
+            fi
             MAJOR_VER=$(major_of "${OLD_VERSION}")
 
             # Determine if upgrade should be blocked
             case "${MAJOR_VER}" in
                 ''|*[!0-9]*)
-                    print_unsupported_manager_upgrade "${OLD_VERSION}"
+                    cat <<EOF >&2
+==============================================================
+ERROR: Cannot determine the version of the installed Wazuh manager.
+
+Detected installed version: ${OLD_VERSION:-unknown}
+
+Remove the installed package (dpkg --purge wazuh-manager) and install this one again.
+==============================================================
+EOF
                     exit 1
                     ;;
             esac
