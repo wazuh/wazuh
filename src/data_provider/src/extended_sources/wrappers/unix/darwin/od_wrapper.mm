@@ -14,8 +14,10 @@
 #include "json.hpp"
 
 #include <cstring>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace od
 {
@@ -434,14 +436,68 @@ namespace od
         }
     }
 
+    /// @brief The values of one attribute of a record, as strings.
+    /// @return nullopt when the record could not be read. An absent attribute is an empty list.
+    static std::optional<std::vector<std::string>> readStrings(ODRecord* record, ODAttributeType attribute)
+    {
+        NSError* err = nullptr;
+        NSArray* values = [record valuesForAttribute:attribute error:&err];
+
+        if (err != nullptr)
+        {
+            return std::nullopt;
+        }
+
+        std::vector<std::string> strings;
+
+        for (id value in values)
+        {
+            strings.push_back(toStdString([value description]));
+        }
+
+        return strings;
+    }
+
+    // A group record that cannot be read is left out of this read: its members lose that group
+    // for one scan, where failing the whole read would leave every account without groups, and a
+    // record that never reads would stop the inventory for good.
+    static void addGroupMembers(ODRecord* record, std::map<std::string, ODGroupMembers>& collected)
+    {
+        const auto names = readStrings(record, kODAttributeTypeGroupMembership);
+        const auto uuids = readStrings(record, kODAttributeTypeGroupMembers);
+
+        if (names && uuids)
+        {
+            auto& members = collected[toStdString([record recordName])];
+            members.names.insert(names->begin(), names->end());
+            members.uuids.insert(uuids->begin(), uuids->end());
+        }
+    }
+
+    // A user record that cannot be read, or that has no GUID, gives no GUID: the account is then
+    // matched by name only. The accounts are joined by name, as the system does for a group
+    // membership: the record names are unique in the node, unlike a uid text, which can be
+    // written in several ways.
+    static void addUserGuid(ODRecord* record, std::map<std::string, std::string>& collected)
+    {
+        const auto names = readStrings(record, kODAttributeTypeRecordName);
+        const auto guids = readStrings(record, kODAttributeTypeGUID);
+
+        if (names && guids && !guids->empty())
+        {
+            for (const auto& name : *names)
+            {
+                collected[name] = guids->front();
+            }
+        }
+    }
+
     bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup)
     {
         @autoreleasepool
         {
             // Every group has a gid, so a null value matches all of them, as in genEntries().
-            NSArray* results = queryLocalNode(kODRecordTypeGroups,
-                                              kODAttributeTypePrimaryGroupID,
-                                              nil,
+            NSArray* results = queryLocalNode(kODRecordTypeGroups, kODAttributeTypePrimaryGroupID, nil,
                                               @[kODAttributeTypeGroupMembership, kODAttributeTypeGroupMembers]);
 
             if (results == nil)
@@ -453,29 +509,7 @@ namespace od
 
             for (ODRecord * re in results)
             {
-                NSError* namesErr = nullptr;
-                NSError* uuidsErr = nullptr;
-                NSArray* names = [re valuesForAttribute:kODAttributeTypeGroupMembership error:&namesErr];
-                NSArray* uuids = [re valuesForAttribute:kODAttributeTypeGroupMembers error:&uuidsErr];
-
-                // A partial member list would drop a group from a user, so an unreadable group
-                // fails the whole read instead of passing as a group with fewer members.
-                if (namesErr != nullptr || uuidsErr != nullptr)
-                {
-                    return false;
-                }
-
-                auto& members = collected[toStdString([re recordName])];
-
-                for (id name in names)
-                {
-                    members.names.insert(toStdString([name description]));
-                }
-
-                for (id uuid in uuids)
-                {
-                    members.uuids.insert(toStdString([uuid description]));
-                }
+                addGroupMembers(re, collected);
             }
 
             membersByGroup = std::move(collected);
@@ -488,9 +522,7 @@ namespace od
         @autoreleasepool
         {
             // Every user has a uid, so a null value matches all of them, as in genEntries().
-            NSArray* results = queryLocalNode(kODRecordTypeUsers,
-                                              kODAttributeTypeUniqueID,
-                                              nil,
+            NSArray* results = queryLocalNode(kODRecordTypeUsers, kODAttributeTypeUniqueID, nil,
                                               @[kODAttributeTypeRecordName, kODAttributeTypeGUID]);
 
             if (results == nil)
@@ -502,29 +534,7 @@ namespace od
 
             for (ODRecord * re in results)
             {
-                NSError* nameErr = nullptr;
-                NSError* guidErr = nullptr;
-                NSArray* names = [re valuesForAttribute:kODAttributeTypeRecordName error:&nameErr];
-                NSArray* guids = [re valuesForAttribute:kODAttributeTypeGUID error:&guidErr];
-
-                if (nameErr != nullptr || guidErr != nullptr)
-                {
-                    return false;
-                }
-
-                // An account without a GUID cannot be listed by GUID, so there is nothing to match.
-                if ([guids count] == 0)
-                {
-                    continue;
-                }
-
-                // The accounts are joined by name, as the system does for a group membership: the
-                // record names are unique in the node, unlike a uid text, which can be written in
-                // several ways.
-                for (id name in names)
-                {
-                    collected[toStdString([name description])] = toStdString([guids[0] description]);
-                }
+                addUserGuid(re, collected);
             }
 
             guidByName = std::move(collected);

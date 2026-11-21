@@ -99,7 +99,8 @@ class IODUtilsWrapper
         /// expanding nested groups. getgrent() cannot be used for this, its `gr_mem` leaves out
         /// the members a group lists only by GUID.
         ///
-        /// @param membersByGroup Output map of group record name to its direct members.
+        /// @param membersByGroup Output map of group record name to its direct members. A group
+        /// record that cannot be read is left out.
         /// @return True when the directory was read, false when it could not be: the map is then
         /// not to be trusted, it does not mean the groups have no members.
         virtual bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup) = 0;
@@ -110,7 +111,7 @@ class IODUtilsWrapper
         /// keeps them consistent. mbr_uid_to_uuid() is not used for this: with the membership service
         /// unavailable it still succeeds and answers with a made-up UUID, not the account's own.
         ///
-        /// @param guidByName Output map of record name (every name the record holds) to GUID; an account whose record has no GUID is left out.
+        /// @param guidByName Output map of record name (every name the record holds) to GUID; an account whose record has no GUID, or cannot be read, is left out.
         /// @return True when the directory was read, false when it could not be.
         virtual bool genUserGuids(std::map<std::string, std::string>& guidByName) = 0;
 };
