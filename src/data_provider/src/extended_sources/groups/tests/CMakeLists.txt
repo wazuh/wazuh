@@ -25,6 +25,7 @@ else()
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     list(APPEND TEST_SRC test_groups_darwin.cpp)
     list(APPEND TEST_SRC test_user_groups_darwin.cpp)
+    list(APPEND TEST_SRC test_directory_keys_darwin.cpp)
   endif()
 endif()
 

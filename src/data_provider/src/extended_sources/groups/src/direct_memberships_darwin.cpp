@@ -7,53 +7,10 @@
  * Foundation.
  */
 
-#include <algorithm>
-#include <cctype>
 #include <charconv>
-#include <iterator>
 
 #include "direct_memberships_darwin.hpp"
-
-static std::string mapChars(std::string value, int (*convert)(int))
-{
-    std::transform(value.begin(), value.end(), value.begin(), [convert](unsigned char c)
-    {
-        return convert(c);
-    });
-    return value;
-}
-
-// OpenDirectory writes GUIDs in upper case, but nothing guarantees it for every record.
-static std::string toUpper(std::string value)
-{
-    return mapChars(std::move(value), ::toupper);
-}
-
-// Account names are not case sensitive on macOS, so a group listing "Bob" lists the user "bob".
-static std::string toLower(std::string value)
-{
-    return mapChars(std::move(value), ::tolower);
-}
-
-static std::set<std::string> mapAll(const std::set<std::string>& values, std::string (*convert)(std::string))
-{
-    std::set<std::string> mapped;
-    std::transform(values.begin(), values.end(), std::inserter(mapped, mapped.end()), convert);
-    return mapped;
-}
-
-// Names are not case sensitive on macOS, so the keys are folded as the member names are.
-static std::map<std::string, std::string> foldNames(const std::map<std::string, std::string>& guidByName)
-{
-    std::map<std::string, std::string> folded;
-
-    for (const auto& [name, guid] : guidByName)
-    {
-        folded[toLower(name)] = guid;
-    }
-
-    return folded;
-}
+#include "directory_keys_darwin.hpp"
 
 // Only plain decimal digits that fit a gid_t; a sign, a space or anything else is no gid.
 static std::optional<gid_t> parseGid(const std::string& text)
@@ -96,7 +53,7 @@ void DirectMemberships::load()
 
     if (m_readable)
     {
-        m_guidByName = foldNames(m_guidByName);
+        m_guidByName = DirectoryKeys::byName(m_guidByName);
         resolveGroups(membersByGroup);
     }
 }
@@ -108,7 +65,7 @@ void DirectMemberships::resolveGroups(const std::map<std::string, ODGroupMembers
         // A group without a gid cannot be reported as a membership.
         if (const auto gid = gidOf(name, members.gid); gid.has_value())
         {
-            m_groups.push_back({*gid, {mapAll(members.names, toLower), mapAll(members.uuids, toUpper), {}}});
+            m_groups.push_back({*gid, {DirectoryKeys::names(members.names), DirectoryKeys::guids(members.uuids), {}}});
         }
     }
 }
@@ -129,7 +86,7 @@ std::optional<gid_t> DirectMemberships::gidOf(const std::string& groupName, cons
 std::string DirectMemberships::guidOf(const std::string& lowerName) const
 {
     const auto guid = m_guidByName.find(lowerName);
-    return guid != m_guidByName.end() ? toUpper(guid->second) : std::string {};
+    return guid != m_guidByName.end() ? DirectoryKeys::guid(guid->second) : std::string {};
 }
 
 std::set<gid_t> DirectMemberships::otherGroupsOf(const std::string& lowerName, const std::string& uuid,
@@ -157,7 +114,7 @@ std::vector<gid_t> DirectMemberships::groupsOf(const std::string& userName, gid_
         return {};
     }
 
-    const auto lowerName = toLower(userName);
+    const auto lowerName = DirectoryKeys::name(userName);
     const auto others = otherGroupsOf(lowerName, guidOf(lowerName), primaryGid);
     std::vector<gid_t> groups {primaryGid};
     groups.insert(groups.end(), others.begin(), others.end());
