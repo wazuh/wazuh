@@ -2337,6 +2337,27 @@ STATIC bool batch_was_sent(const dispatch_ctx_t *ctx) {
     return ctx && ctx->bulk.len > 0 && !ctx->drop;
 }
 
+/**
+ * @brief Note that the engine answered a POST that did not fail.
+ *
+ * Evaluated after flush_batch() returned 0. The engine answered only if the batch was actually sent:
+ * then the engine is back online and the drops the throttled warning still owes are reported.
+ *
+ * @param ctx The batch just flushed.
+ * @param engine_offline The dispatcher's outage flag, cleared when the batch was sent.
+ */
+STATIC void note_engine_answer(const dispatch_ctx_t *ctx, bool *engine_offline) {
+    // The engine answered: report the drops the throttled warning still owes. A client
+    // handle alone proves nothing, it is created without connecting, and neither does a
+    // batch that was not sent (empty or discarded).
+    if (!batch_was_sent(ctx)) {
+        return;
+    }
+
+    *engine_offline = false;
+    rem_flush_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
+}
+
 // Thread that dispatches each ring turn as a single POST
 void *dispach_events_thread(void *arg) {
     w_rr_queue_t *q = (w_rr_queue_t*)arg;
@@ -2432,12 +2453,8 @@ void *dispach_events_thread(void *arg) {
                 reopen_at = mono_ms() + backoff;
 
                 // From now on (until reopened), the loop will drain with drop_consumer.
-            } else if (batch_was_sent(&ctx)) {
-                // The engine answered: report the drops the throttled warning still owes. A client
-                // handle alone proves nothing, it is created without connecting, and neither does a
-                // batch that was not sent (empty or discarded).
-                engine_offline = false;
-                rem_flush_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
+            } else {
+                note_engine_answer(&ctx, &engine_offline);
             }
         }
 
