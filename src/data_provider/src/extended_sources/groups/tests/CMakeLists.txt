@@ -26,6 +26,7 @@ else()
     list(APPEND TEST_SRC test_groups_darwin.cpp)
     list(APPEND TEST_SRC test_user_groups_darwin.cpp)
     list(APPEND TEST_SRC test_directory_keys_darwin.cpp)
+    list(APPEND TEST_SRC test_od_read_rule_darwin.cpp)
   endif()
 endif()
 

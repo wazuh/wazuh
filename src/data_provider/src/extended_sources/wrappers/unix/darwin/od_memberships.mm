@@ -9,6 +9,7 @@
 
 #include "od_wrapper.hpp"
 #include "od_local_node.h"
+#include "od_read_rule.hpp"
 
 #include <optional>
 #include <string>
@@ -89,8 +90,6 @@ namespace od
         return true;
     }
 
-    // Records are skipped one by one, but when the query found records and none of them could be
-    // read, the directory is not readable: an empty answer would leave every account without groups.
     template<typename Collected>
     static bool readRecords(NSArray* results, Collected& collected,
                             bool (*add)(ODRecord*, Collected&))
@@ -102,7 +101,7 @@ namespace od
             readable += add(re, collected) ? 1 : 0;
         }
 
-        return [results count] == 0 || readable > 0;
+        return readIsTrusted([results count], readable);
     }
 
     bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup)
