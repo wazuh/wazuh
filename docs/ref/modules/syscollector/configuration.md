@@ -58,7 +58,7 @@ Generate events during the initial inventory scan.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When `no`, suppresses events during first scan and only reports changes after baseline establishment. Applies only to the agent's very first scan ever, since installation — it does not reoccur on later restarts.
+- **Note:** When `no`, suppresses events during first scan and only reports changes after baseline establishment. Applies to the agent's very first scan ever, since installation — it does not reoccur on later restarts. It also applies to the scan that refills a single table: a collector switched back on, or the users and groups tables after the upgrade that made macOS memberships direct.
 
 ### Inventory Categories
 

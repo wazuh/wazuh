@@ -203,7 +203,17 @@ class SyscollectorBaselineTest : public ::testing::Test
         static void scanOnce(const Collectors& collectors, bool withNewUser, bool notifyOnFirstScan = false)
         {
             initModule(collectors, makeSysInfo(withNewUser), notifyOnFirstScan);
+            scan();
+        }
+
+        static void scan()
+        {
             Syscollector::instance().scan();
+        }
+
+        static bool hasRows(const std::string& table)
+        {
+            return Syscollector::instance().hasDataInTable(table);
         }
 
         /// @brief The stateless reports of @p table, by event type.
@@ -394,6 +404,47 @@ TEST_F(SyscollectorBaselineTest, CleanupClearsTheBaselineOfTheTablesItEmpties)
     EXPECT_FALSE(Syscollector::instance().hasDataInTable(SERVICES_TABLE));
     EXPECT_EQ(baseline(SERVICES_TABLE), 0);
     EXPECT_EQ(baseline(USERS_TABLE), usersBaseline);
+}
+
+// The upgrade that made macOS memberships direct: every stored user changes its groups once, and
+// that scan is the inventory being rebuilt, not a change per user. Other tables keep reporting.
+TEST_F(SyscollectorBaselineTest, UpgradeToDirectMembershipsRefillsUsersAndGroupsWithoutReporting)
+{
+    scanOnce({.users = true, .services = true}, false);
+    ASSERT_GT(baseline(USERS_TABLE), 0);
+    Syscollector::instance().destroy();
+
+    // The version before the statement under test. The services and groups baselines get values a
+    // scan cannot write, so what the upgrade did to each one shows.
+    seedMetadata(std::string("scan_baseline:") + SERVICES_TABLE, 7);
+    seedMetadata(std::string("scan_baseline:") + GROUPS_TABLE, 7);
+    execSql("PRAGMA user_version = " + std::to_string(UPGRADE_SQL_STATEMENTS.size()) + ";");
+    clearCaptures();
+
+    const auto spInfo {makeSysInfo(false)};
+    auto directGroups = usersData(false);
+    directGroups[0]["user_groups"] = "root";
+    ON_CALL(*spInfo, users()).WillByDefault(Return(directGroups));
+    initModule({.users = true, .services = true}, spInfo);
+
+    // Upgraded in place, not recreated: the rows and the services baseline are kept.
+    EXPECT_TRUE(hasRows(USERS_TABLE));
+    EXPECT_EQ(baseline(SERVICES_TABLE), 7);
+    EXPECT_EQ(baseline(USERS_TABLE), 0);
+    EXPECT_EQ(baseline(GROUPS_TABLE), 0);
+
+    scan();
+
+    EXPECT_TRUE(reportsOf(USERS_TABLE).empty());
+    EXPECT_GT(persistedTo(SYSCOLLECTOR_SYNC_INDEX_USERS), 0);
+    EXPECT_GT(baseline(USERS_TABLE), 0);
+    EXPECT_EQ(baseline(SERVICES_TABLE), 7);
+    Syscollector::instance().destroy();
+    clearCaptures();
+
+    // Baselined again by that scan, so the next real change is reported.
+    scanOnce({.users = true, .services = true}, true);
+    EXPECT_EQ(reportsOf(USERS_TABLE)["created"], 1);
 }
 
 // A stop skips the tasks still to run. Their tables were not scanned, so they get no baseline.

@@ -13,6 +13,7 @@
 #include <set>
 #include <string>
 
+#include "iopen_directory_utils_wrapper.hpp"
 #include "json.hpp"
 
 namespace od
@@ -83,5 +84,21 @@ namespace od
     /// @return True when the directory was read, false when it could not be: an empty set then
     /// means the membership is unknown rather than nobody being disabled.
     bool genDisabledUsers(std::set<std::string>& disabledUsers);
+
+    /// @brief Reads the direct members of every local group in a single query.
+    ///
+    /// Members are read as the group record lists them: by name (`GroupMembership`) and by GUID
+    /// (`GroupMembers`). Nested groups are not expanded.
+    ///
+    /// @param membersByGroup Output map of group record name to its direct members. A group record
+    /// that cannot be read is left out.
+    /// @return True when the directory was read, false when it could not be.
+    bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup);
+
+    /// @brief Reads the GUID of every local user from its directory record, keyed by record name.
+    ///
+    /// @param guidByName Output map of record name (every name the record holds) to GUID; an account whose record has no GUID, or cannot be read, is left out.
+    /// @return True when the directory was read, false when it could not be.
+    bool genUserGuids(std::map<std::string, std::string>& guidByName);
 
 } // namespace od

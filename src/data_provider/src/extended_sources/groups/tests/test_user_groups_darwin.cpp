@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include <stdexcept>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "igroup_wrapper.hpp"
@@ -42,6 +43,9 @@ class MockPasswdWrapper : public IPasswdWrapperDarwin
 
 class MockODUtilsWrapper : public IODUtilsWrapper
 {
+        using GroupMembersMap = std::map<std::string, ODGroupMembers>;
+        using UserGuidMap = std::map<std::string, std::string>;
+
         using StringBoolMap = std::map<std::string, bool>;
         using StringJsonMap = std::map<std::string, nlohmann::json>;
 
@@ -53,6 +57,57 @@ class MockODUtilsWrapper : public IODUtilsWrapper
         MOCK_METHOD(void, genAccountPolicyData, (const std::string& uid, nlohmann::json& policyData), (override));
         MOCK_METHOD(void, genPasswordData, (StringJsonMap& passwordData), (override));
         MOCK_METHOD(bool, genDisabledUsers, (std::set<std::string>& disabledUsers), (override));
+        MOCK_METHOD(bool, genGroupMembers, (GroupMembersMap& membersByGroup), (override));
+        MOCK_METHOD(bool, genUserGuids, (UserGuidMap& guidByName), (override));
+};
+
+// Answers the directory read the provider does once: each added user is listed by name in one
+// group per extra gid, named "g<gid>". Nothing else is listed, so nested groups never appear.
+class DirectGroupsStub
+{
+    public:
+        DirectGroupsStub(MockGroupWrapper& group, MockODUtilsWrapper& od)
+        {
+            EXPECT_CALL(od, genGroupMembers(_)).WillOnce(Invoke([this](std::map<std::string, ODGroupMembers>& out)
+            {
+                out = m_members;
+                return true;
+            }));
+            EXPECT_CALL(od, genUserGuids(_)).WillRepeatedly(Return(true));
+            EXPECT_CALL(group, getgrnam(_)).WillRepeatedly(Invoke([this](const char* name) -> struct group*
+            {
+                auto it = m_groups.find(name);
+                return it == m_groups.end() ? nullptr : &it->second;
+            }));
+        }
+
+        ~DirectGroupsStub()
+        {
+            for (auto& entry : m_groups)
+            {
+                free(entry.second.gr_name);
+            }
+        }
+
+        void add(const std::string& user, const std::vector<gid_t>& extraGids)
+        {
+            for (const auto gid : extraGids)
+            {
+                const auto name = "g" + std::to_string(gid);
+                m_members[name].names.insert(user);
+
+                // A gid added twice keeps the record made the first time.
+                if (const auto [entry, created] = m_groups.try_emplace(name); created)
+                {
+                    entry->second.gr_gid = gid;
+                    entry->second.gr_name = strdup(name.c_str());
+                }
+            }
+        }
+
+    private:
+        std::map<std::string, ODGroupMembers> m_members;
+        std::map<std::string, struct group> m_groups;
 };
 
 // Test fixture to ensure cache is reset before each test
@@ -80,6 +135,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithUIDReturnsExpectedGroups)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
     uid_t testUid = 1000;
     gid_t testGid = 2000;
@@ -88,16 +144,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithUIDReturnsExpectedGroups)
     passwd* fakePwd = createFakePasswd(username, testUid, testGid);
     EXPECT_CALL(*mockPasswd, getpwuid(testUid)).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("testuser"), testGid))
-    .WillOnce(Return(2));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("testuser"), testGid, _, _))
-    .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
-    {
-        groups[0] = 2000;
-        groups[1] = 3000;
-        return 0;
-    }));
+    stub.add("testuser", {2000, 3000});
 
     std::set<uid_t> uids = {testUid};
     nlohmann::json result = provider.collect(uids);
@@ -117,6 +164,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithoutUID_ReturnsExpectedGroups)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
     const char* username = "testuser";
     uid_t testUid = 1001;
@@ -133,15 +181,7 @@ TEST_F(UserGroupsProviderDarwinTest, CollectWithoutUID_ReturnsExpectedGroups)
     passwd* fakePwd = createFakePasswd(username, testUid, testGid);
     EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username))).WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), testGid))
-    .WillOnce(Return(1));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), testGid, _, _))
-    .WillOnce(Invoke([](const std::string&, gid_t, gid_t * groups, int* /*ngroups*/)
-    {
-        groups[0] = 3001;
-        return 0;
-    }));
+    stub.add(username, {3001});
 
     std::set<uid_t> emptyUids;
     nlohmann::json result = provider.collect(emptyUids);
@@ -160,6 +200,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidSingleGidReturnsCorrectUse
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
     const char* username = "testuser";
     uid_t uid = 1000;
@@ -179,16 +220,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidSingleGidReturnsCorrectUse
     EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username)))
     .WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), primaryGid))
-    .WillOnce(Return(2));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), primaryGid, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = primaryGid;
-        groups[1] = extraGid;
-        return 0;
-    }));
+    stub.add(username, {extraGid});
 
     nlohmann::json result = provider.getUserNamesByGid(targetGids);
 
@@ -206,6 +238,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidMultipleGidsReturnsGrouped
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
     const char* username = "testuser";
     uid_t uid = 1000;
@@ -225,22 +258,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetUserNamesByGidMultipleGidsReturnsGrouped
     EXPECT_CALL(*mockPasswd, getpwnam(::testing::StrEq(username)))
     .WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), gid1))
-    .WillOnce(Return(2));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), gid1, testing::NotNull(), _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int* ngroups)
-    {
-        if (*ngroups >= 2)
-        {
-            groups[0] = gid1;
-            groups[1] = gid2;
-            *ngroups = 2;
-            return 0;
-        }
-
-        return -1;
-    }));
+    stub.add(username, {gid2});
 
     auto result = provider.getUserNamesByGid(gids);
 
@@ -278,6 +296,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidSingleUidReturnsGroupName
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
     const char* username = "testuser";
     uid_t uid = 1001;
@@ -290,16 +309,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidSingleUidReturnsGroupName
     EXPECT_CALL(*mockPasswd, getpwuid(uid))
     .WillOnce(Return(fakePwd));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(username), primaryGid))
-    .WillOnce(Return(2));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(username), primaryGid, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = primaryGid;
-        groups[1] = extraGid;
-        return 0;
-    }));
+    stub.add(username, {extraGid});
 
     struct group* fakeGroup1 = new group();
     fakeGroup1->gr_name = strdup("staff");
@@ -330,6 +340,7 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidMultipleUidsReturnsGroupe
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
     UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
 
     const char* user1 = "user1";
     const char* user2 = "user2";
@@ -344,22 +355,8 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidMultipleUidsReturnsGroupe
     EXPECT_CALL(*mockPasswd, getpwuid(uid1)).WillOnce(Return(pwd1));
     EXPECT_CALL(*mockPasswd, getpwuid(uid2)).WillOnce(Return(pwd2));
 
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(user1), gid1)).WillOnce(Return(1));
-    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq(user2), gid2)).WillOnce(Return(1));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(user1), gid1, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = gid1;
-        return 0;
-    }));
-
-    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq(user2), gid2, _, _))
-    .WillOnce(Invoke([ = ](const char*, gid_t, gid_t * groups, int*)
-    {
-        groups[0] = gid2;
-        return 0;
-    }));
+    stub.add(user1, {});
+    stub.add(user2, {});
 
     struct group* grp1 = new group();
     grp1->gr_name = strdup("staff");
@@ -399,4 +396,425 @@ TEST_F(UserGroupsProviderDarwinTest, GetGroupNamesByUidInvalidUIDReturnsEmpty)
 
     auto result = provider.getGroupNamesByUid({invalidUid});
     ASSERT_TRUE(result.empty());
+}
+
+namespace
+{
+    // One account whose groups come from a directory the test scripts, read by a fresh provider.
+    struct DirectoryCase
+    {
+        std::shared_ptr<MockGroupWrapper> group = std::make_shared<MockGroupWrapper>();
+        std::shared_ptr<MockPasswdWrapper> passwd = std::make_shared<MockPasswdWrapper>();
+        std::shared_ptr<MockODUtilsWrapper> od = std::make_shared<MockODUtilsWrapper>();
+        struct passwd account {};
+        struct group share {};
+
+        DirectoryCase()
+        {
+            account.pw_name = const_cast<char*>("member");
+            account.pw_uid = 600;
+            account.pw_gid = 20;
+            share.gr_gid = 5000;
+            share.gr_name = const_cast<char*>("share");
+            EXPECT_CALL(*passwd, getpwuid(600)).WillRepeatedly(Return(&account));
+            EXPECT_CALL(*group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(&share));
+            EXPECT_CALL(*od, genUserGuids(_)).WillRepeatedly(Return(true));
+            EXPECT_CALL(*group, getgrouplist(_, _, _, _)).Times(0);
+        }
+
+        nlohmann::json collect(bool resetCache = true)
+        {
+            if (resetCache)
+            {
+                UserGroupsProvider::resetCache();
+            }
+
+            UserGroupsProvider provider(group, passwd, od);
+            return provider.collect({600});
+        }
+    };
+}
+
+TEST_F(UserGroupsProviderDarwinTest, GroupThatOnlyNestsAnotherGroupIsNotReported)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        // "share" nests `everyone` in the directory, so it does not list `member` itself.
+        out["share"] = {};
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0]["gid"], 20);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, MemberListedOnlyByGuidIsReported)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genUserGuids(_)).WillRepeatedly(Invoke([](std::map<std::string, std::string>& out)
+    {
+        out["Member"] = "abcdefab-cdef-abcd-efab-cdef00000001";
+        return true;
+    }));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].uuids.insert("ABCDEFAB-CDEF-ABCD-EFAB-CDEF00000001");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[0]["gid"], 20);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, PrimaryGroupComesFirstThenAscendingGidsWithoutRepeats)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+    DirectGroupsStub stub(*mockGroup, *mockODWrapper);
+
+    passwd* fakePwd = createFakePasswd("testuser", 700, 500);
+    EXPECT_CALL(*mockPasswd, getpwuid(700)).WillOnce(Return(fakePwd));
+    stub.add("testuser", {900, 300, 300, 500});
+
+    const auto result = provider.collect({700});
+
+    ASSERT_EQ(result.size(), 3u);
+    EXPECT_EQ(result[0]["gid"], 500);
+    EXPECT_EQ(result[1]["gid"], 300);
+    EXPECT_EQ(result[2]["gid"], 900);
+
+    free(fakePwd->pw_name);
+    delete fakePwd;
+}
+
+TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryReportsNoGroupsAndIsNotCached)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_))
+    .WillOnce(Return(false))
+    .WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+
+    EXPECT_TRUE(env.collect().empty());
+
+    // The cache is left as the failed scan found it: had the empty answer been stored, this
+    // second scan, run within the cache window, would return it instead of reading the directory.
+    EXPECT_EQ(env.collect(false).size(), 2u);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, GroupNamesThrowWhenTheDirectoryCannotBeRead)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Return(false));
+    UserGroupsProvider::resetCache();
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+
+    EXPECT_THROW(provider.getGroupNamesByUid({600}), std::runtime_error);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, UserNamesThrowWhenTheDirectoryCannotBeRead)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genEntries(_, _, _)).WillOnce(Invoke([](const std::string&, const std::string*, std::map<std::string, bool>& out)
+    {
+        out["member"] = true;
+    }));
+    EXPECT_CALL(*env.passwd, getpwnam(::testing::StrEq("member"))).WillOnce(Return(&env.account));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Return(false));
+    UserGroupsProvider::resetCache();
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+
+    EXPECT_THROW(provider.getUserNamesByGid({5000}), std::runtime_error);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryDoesNotThrow)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+    EXPECT_CALL(*env.group, getgrgid(_)).WillRepeatedly(Return(&env.share));
+    UserGroupsProvider::resetCache();
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+
+    EXPECT_NO_THROW(provider.getGroupNamesByUid({600}));
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDirectory)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+    EXPECT_CALL(*env.group, getgrgid(_)).WillRepeatedly(Return(&env.share));
+    env.collect();
+
+    // The second provider finds the account in the cache, so it reads nothing and nothing failed.
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+    EXPECT_NO_THROW(provider.getGroupNamesByUid({600}));
+}
+
+TEST_F(UserGroupsProviderDarwinTest, GroupTheSystemCannotResolveUsesItsRecordGid)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        out["share"].gid = "5000";
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, NegativeRecordGidIsReportedAsTheSystemReportsIt)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        // `nobody` is -2 in the directory and 4294967294 for getgrnam().
+        out["share"].names.insert("member");
+        out["share"].gid = "-2";
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 4294967294u);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, GroupWithoutAUsableGidIsLeftOut)
+{
+    const std::vector<std::string> unusableGids {"", "50x0", "+5", " 5", "2147483648", "-2147483649", "99999999999"};
+
+    for (const auto& recordGid : unusableGids)
+    {
+        DirectoryCase env;
+        EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
+        EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([&recordGid](std::map<std::string, ODGroupMembers>& out)
+        {
+            out["share"].names.insert("member");
+            out["share"].gid = recordGid;
+            return true;
+        }));
+
+        const auto result = env.collect();
+
+        ASSERT_EQ(result.size(), 1u) << "record gid '" << recordGid << "'";
+        EXPECT_EQ(result[0]["gid"], 20);
+    }
+}
+
+TEST_F(UserGroupsProviderDarwinTest, MemberListedWithDifferentCaseIsReported)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("MEMBER");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesIncludeGroupsReachedThroughNesting)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+
+    passwd* fakePwd = createFakePasswd("member", 800, 20);
+    EXPECT_CALL(*mockPasswd, getpwuid(800)).WillOnce(Return(fakePwd));
+    EXPECT_CALL(*mockGroup, getgroupcount(::testing::StrEq("member"), 20)).WillOnce(Return(2));
+    // The second gid is a group the account reaches only because another group nests into it.
+    EXPECT_CALL(*mockGroup, getgrouplist(::testing::StrEq("member"), 20, _, _))
+    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int*)
+    {
+        groups[0] = 20;
+        groups[1] = 80;
+        return 0;
+    }));
+
+    struct group staff {};
+    staff.gr_name = const_cast<char*>("staff");
+    struct group admin {};
+    admin.gr_name = const_cast<char*>("admin");
+    EXPECT_CALL(*mockGroup, getgrgid(20)).WillOnce(Return(&staff));
+    EXPECT_CALL(*mockGroup, getgrgid(80)).WillOnce(Return(&admin));
+
+    EXPECT_THAT(provider.getEffectiveGroupNamesByUid(800), ::testing::UnorderedElementsAre("staff", "admin"));
+
+    free(fakePwd->pw_name);
+    delete fakePwd;
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesOfUnknownUidAreEmpty)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockODWrapper = std::make_shared<MockODUtilsWrapper>();
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockODWrapper);
+
+    EXPECT_CALL(*mockPasswd, getpwuid(9999)).WillOnce(Return(nullptr));
+
+    EXPECT_TRUE(provider.getEffectiveGroupNamesByUid(9999).empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountWhoseNameDiffersInCaseFromTheGroupEntryIsReported)
+{
+    DirectoryCase env;
+    env.account.pw_name = const_cast<char*>("MEMBER");
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, UnreadableUserGuidsReportNoGroupsAndAreNotCached)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).Times(2).WillRepeatedly(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        return true;
+    }));
+    EXPECT_CALL(*env.od, genUserGuids(_)).WillOnce(Return(false)).WillRepeatedly(Return(true));
+
+    EXPECT_TRUE(env.collect().empty());
+    EXPECT_EQ(env.collect(false).size(), 2u);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountWithoutGuidIsNotMatchedByAnEmptyGuidEntry)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        // A group that lists an empty GUID must not match an account that has no GUID.
+        out["share"].uuids.insert("");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0]["gid"], 20);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, AccountWithoutGuidIsStillFoundByName)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        out["share"].names.insert("member");
+        out["share"].uuids.insert("ABCDEFAB-CDEF-ABCD-EFAB-CDEF00000001");
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 5000);
+}
+
+namespace
+{
+    // An account whose effective groups come from getgrouplist(), as the sudo role reads them.
+    struct EffectiveCase
+    {
+        std::shared_ptr<MockGroupWrapper> group = std::make_shared<MockGroupWrapper>();
+        std::shared_ptr<MockPasswdWrapper> passwd = std::make_shared<MockPasswdWrapper>();
+        std::shared_ptr<MockODUtilsWrapper> od = std::make_shared<MockODUtilsWrapper>();
+        struct passwd account {};
+
+        EffectiveCase()
+        {
+            account.pw_name = const_cast<char*>("member");
+            account.pw_uid = 810;
+            account.pw_gid = 20;
+            EXPECT_CALL(*passwd, getpwuid(810)).WillRepeatedly(Return(&account));
+        }
+
+        std::set<std::string> names()
+        {
+            UserGroupsProvider provider(group, passwd, od);
+            return provider.getEffectiveGroupNamesByUid(810);
+        }
+    };
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesAreEmptyWhenTheSystemCountsNoGroups)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(0));
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).Times(0);
+
+    EXPECT_TRUE(env.names().empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesAreEmptyWhenTheCountFails)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(-1));
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).Times(0);
+
+    EXPECT_TRUE(env.names().empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesAreEmptyWhenTheListFails)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(2));
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).WillOnce(Return(-1));
+    EXPECT_CALL(*env.group, getgrgid(_)).Times(0);
+
+    EXPECT_TRUE(env.names().empty());
+}
+
+TEST_F(UserGroupsProviderDarwinTest, EffectiveGroupNamesStopAtTheNumberTheSystemReturned)
+{
+    EffectiveCase env;
+    EXPECT_CALL(*env.group, getgroupcount(_, _)).WillOnce(Return(3));
+    // The list came back shorter than the buffer: only the first gid is valid.
+    EXPECT_CALL(*env.group, getgrouplist(_, _, _, _)).WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
+    {
+        groups[0] = 20;
+        *ngroups = 1;
+        return 0;
+    }));
+    struct group staff {};
+    staff.gr_name = const_cast<char*>("staff");
+    EXPECT_CALL(*env.group, getgrgid(20)).WillOnce(Return(&staff));
+
+    EXPECT_THAT(env.names(), ::testing::ElementsAre("staff"));
 }

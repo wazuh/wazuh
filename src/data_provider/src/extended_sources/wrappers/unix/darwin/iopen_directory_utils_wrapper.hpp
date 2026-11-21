@@ -14,6 +14,18 @@
 #include <string>
 #include "json.hpp"
 
+/// @brief Direct members of one group record, as OpenDirectory stores them.
+///
+/// A group lists a member by name (`GroupMembership`), by the member's GUID (`GroupMembers`), or
+/// both. Groups nested inside it (`NestedGroups`) are not members and are never listed here.
+struct ODGroupMembers
+{
+    std::set<std::string> names;
+    std::set<std::string> uuids;
+    /// The record's PrimaryGroupID as the directory stores it; empty when it has none.
+    std::string gid;
+};
+
 // Interface for the open directory utils wrapper
 class IODUtilsWrapper
 {
@@ -82,4 +94,26 @@ class IODUtilsWrapper
         /// @return True when the directory was read, false when it could not be: an empty set then
         /// means the membership is unknown rather than nobody being disabled.
         virtual bool genDisabledUsers(std::set<std::string>& disabledUsers) = 0;
+
+        /// @brief Reads the direct members of every local group in a single query.
+        ///
+        /// Only what the group record lists is returned: members by name and by GUID, without
+        /// expanding nested groups. getgrent() cannot be used for this, its `gr_mem` leaves out
+        /// the members a group lists only by GUID.
+        ///
+        /// @param membersByGroup Output map of group record name to its direct members. A group
+        /// record that cannot be read is left out.
+        /// @return True when the directory was read, false when it could not be: the map is then
+        /// not to be trusted, it does not mean the groups have no members.
+        virtual bool genGroupMembers(std::map<std::string, ODGroupMembers>& membersByGroup) = 0;
+
+        /// @brief Reads the GUID of every local user from its directory record, keyed by record name.
+        ///
+        /// The groups list their members by these GUIDs, so reading both from the same directory node
+        /// keeps them consistent. mbr_uid_to_uuid() is not used for this: with the membership service
+        /// unavailable it still succeeds and answers with a made-up UUID, not the account's own.
+        ///
+        /// @param guidByName Output map of record name (every name the record holds) to GUID; an account whose record has no GUID, or cannot be read, is left out.
+        /// @return True when the directory was read, false when it could not be.
+        virtual bool genUserGuids(std::map<std::string, std::string>& guidByName) = 0;
 };
