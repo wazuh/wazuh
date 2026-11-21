@@ -103,7 +103,7 @@ endif()
 
 # Build macOS-specific block-ip active response
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  # macOS uses a separate block-ip binary: pf -> hosts.deny -> route chain
+  # macOS uses a separate block-ip binary: pf -> route chain
   add_active_response_executable(
     block-ip
     ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-macos.c)
@@ -138,5 +138,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     block-ip PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                        OUTPUT_NAME block-ip)
-  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS} iphlpapi ole32)
+  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS} ole32)
 endif()

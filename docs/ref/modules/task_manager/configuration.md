@@ -232,11 +232,7 @@ short triage guide are in [Metrics](metrics.md).
 cleanup pass, and the same pass returns the freed space to the filesystem; a long `cleanup_interval`
 delays deletion, expiry and the shrink. Manager-task rows are bounded by the
 [retention rules](manager-tasks.md#retention). If the log shows `Could not checkpoint the tasks
-database`, the `tasks.db-wal` file is what is growing. If it shows `The tasks database was created
-without incremental auto-vacuum`, the database predates the incremental compaction: its freed space
-is reused but the file never shrinks. Stop the manager and run
-`sqlite3 /var/wazuh-manager/queue/tasks/tasks.db 'PRAGMA auto_vacuum=INCREMENTAL; VACUUM;'` once to
-convert it.
+database`, the `tasks.db-wal` file is what is growing.
 
 ---
 

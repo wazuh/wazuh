@@ -39,10 +39,10 @@ object (`count`, `sum`, `min`, `max`, `p50`, `p90`, `p99`).
 Counters and pull values are cheap — the counters are already maintained and each queue gauge is one
 indexed query — but this is a cold path by design. Scrape it on the order of seconds, not per request.
 
-**Per-type names appear on first use.** The `manager_tasks.created.*`, `manager_tasks.retired.*` and
-`handler.outcome.*` counters are created the first time that (type, result) pair occurs, so a name that
-is missing from the dump means *zero so far*, not *not instrumented*. The `queue.pending.<task_type>`
-gauges, by contrast, exist for every registered type from start-up.
+**Per-type names exist from start-up.** The `manager_tasks.created.*`, `manager_tasks.retired.*` and
+`handler.outcome.*` counters exist at `0` for every registered type and every result, status or
+outcome, before the first event, as do the four `manager_tasks.created.unknown.*` counters; so do the `queue.pending.<task_type>` gauges
+for every registered type. A name missing from the dump is not instrumented, not *zero so far*.
 
 ## Catalog
 
@@ -57,7 +57,9 @@ gauges, by contrast, exist for every registered type from start-up.
 ### Manager tasks
 
 `<task_type>` is a registered type ([Manager tasks](manager-tasks.md)) — for `manager_tasks.created`,
-whatever type the producer sent, registered or not; `<result>` is `created`,
+also the literal `unknown`, the one bucket every type this build does not register is counted under
+(`manager_tasks.retired` and `handler.outcome` have none: only rows of a registered type are ever claimed);
+`<result>` is `created`,
 `coalesced`, `collided` or `queue_full`; `<status>` is a terminal status — `completed`, `failed`,
 `dead_letter` or `superseded`; `<outcome>` is `ok`, `retryable`, `timeout`, `terminal`, `not_ready`,
 `busy` or `incomplete`.
@@ -65,7 +67,7 @@ whatever type the producer sent, registered or not; `<result>` is `created`,
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `task_manager.queue.pending.<task_type>` | pull | tasks | Pending rows of that type, read from `tasks.db` | [`manager_task_executor_threads`](manager-tasks.md#threading), though per-type concurrency is a code constant |
-| `task_manager.manager_tasks.created.<task_type>.<result>` | counter | count | Create requests by outcome, from `POST /v1/manager-tasks` and from the scheduler's own spawns | `queue_full` means the type's admission bound is reached: [`manager_task_max_pending_{deletes,scans}`](manager-tasks.md#per-type-bounds) |
+| `task_manager.manager_tasks.created.<task_type>.<result>` | counter | count | Create requests by outcome, from `POST /v1/manager-tasks` and from the scheduler's own spawns. Every combination exists at `0` from the start; a type this build does not register counts under `created.unknown.<result>`, never under its own name | *diagnostic* — a rising `created.unknown.*` is a producer sending a misspelt type. `queue_full` means the type's admission bound is reached: [`manager_task_max_pending_{deletes,scans}`](manager-tasks.md#per-type-bounds), or, for a [type this build does not register](manager-tasks.md#task-types), the request's `max_pending` (100 when it gives none) |
 | `task_manager.manager_tasks.retired.<task_type>.<status>` | counter | count | Rows the executor brought to a terminal status (rows of an unknown type retired at startup are not counted) | `dead_letter` follows the attempt and deferral budgets: [`manager_task_max_{attempts,defer}`](manager-tasks.md#queue-mechanics) |
 | `task_manager.manager_tasks.reclaimed` | counter | count | Claimed rows the ownership sweep returned to pending (their worker died or overran), including those the startup sweep took back from a previous process | [`manager_task_claim_grace`, `manager_task_sweep_interval`](manager-tasks.md#queue-mechanics) |
 | `task_manager.handler.outcome.<task_type>.<outcome>` | counter | count | What each handler run returned | *diagnostic* — `not_ready` / `busy` point at the consumer |

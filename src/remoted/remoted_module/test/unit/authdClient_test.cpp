@@ -102,8 +102,8 @@ TEST(AuthdClientTest, SuccessfulAddReturnsAgentData)
 
 TEST(AuthdClientTest, SuccessfulAddCarriesTheReenrollSecretWhenAuthdSendsIt)
 {
-    // The fifth field of authd's answer (issue #38993): parsed verbatim when present, empty when an
-    // authd that predates it answers with the four classic fields (the test above).
+    // The fifth field of authd's answer: parsed verbatim when present, empty when an answer carries
+    // only the four classic fields (the test above).
     const std::string path = makeUniqueSocketPath("authd_client_reenroll_secret");
     FakeUdsServer server(
         path,

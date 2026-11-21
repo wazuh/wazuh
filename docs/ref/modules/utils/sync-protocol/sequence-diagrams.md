@@ -186,7 +186,7 @@ sequenceDiagram
 
     Module->>ASP: notifyDataClean(indices)
 
-    ASP->>ASP: Build ONE FullSession<br/>Start(mode=DELTA, index=[...]) +<br/>Cleans{DataClean per index}
+    ASP->>ASP: Build ONE FullSession<br/>Start(mode=ModuleDelta, index=[...]) +<br/>Cleans{DataClean per index}
     ASP->>Transport: sendSession(session_id, bytes)
     Transport->>AD: Write over queue-sync socket
     AD->>Manager: POST /stateful
@@ -198,7 +198,7 @@ sequenceDiagram
     ASP->>ASP: applyHttpResult(200, body, session)
     ASP->>Queue: clearItemsByIndex() for each index
 
-    ASP-->>Module: true (success)
+    ASP-->>Module: SyncModuleResult{success=true}<br/>(asp_notify_data_clean(): true)
 ```
 
 ### Full-Replace Recovery Flow (DataClean + DELTA)
@@ -220,7 +220,7 @@ sequenceDiagram
     ASP->>Transport: sendSession(session_id, bytes)
     Transport-->>Manager: (via agentd/https_client)
     Manager-->>ASP: HCRESULT:session_id:200:<body>
-    ASP-->>Module: true
+    ASP-->>Module: SyncModuleResult{success=true}
 
     loop For each item in the fresh snapshot
         Module->>ASP: persistDifference(id, operation, index, data, version)

@@ -18,6 +18,7 @@
 #include "indexerTransport.hpp"
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
+#include "safeIndexName.hpp"
 #include "secureCommunication.hpp"
 #include "simdjson.h"
 #include <algorithm>
@@ -1063,6 +1064,15 @@ public:
             throw IndexerConnectorException("keepAlive parameter cannot be empty for PIT creation");
         }
 
+        for (const auto& idx : indices)
+        {
+            if (!isSafeIndexName(idx))
+            {
+                throw IndexerConnectorException("createPointInTime: unsafe index name '" + idx +
+                                                "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+            }
+        }
+
         // Build the indices string (comma-separated)
         std::string indicesStr;
         auto reservedSize = [&]() -> std::size_t
@@ -1316,13 +1326,19 @@ public:
      * @param query Query object.
      * @param source Optional source filtering configuration.
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the index name fails isSafeIndexName() or the search fails.
      */
     nlohmann::json search(std::string_view index,
                           std::size_t size,
                           const nlohmann::json& query,
                           const std::optional<nlohmann::json>& source)
     {
+        if (!isSafeIndexName(index))
+        {
+            throw IndexerConnectorException("search: unsafe index name '" + std::string(index) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
         // Build the search request body
         nlohmann::json requestBody;
         requestBody["size"] = size;

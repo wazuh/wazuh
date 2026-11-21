@@ -1,0 +1,37 @@
+name: 5.X - WPK upgrade test images - Build
+
+# packages/wpk/test holds the Dockerfiles of the images the WPK smoke upgrade test runs in. Nothing in
+# this repository builds them, so a change that breaks one (a base image tag, a package that is no
+# longer available) would surface only when that test next runs. This lane builds both; it pushes
+# nothing.
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testbuild_wpk-test-images.yml"
+      - "packages/wpk/test/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-images:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [deb_upgrade, rpm_upgrade]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.image }}
+        run: docker build -t "wpk-test-${{ matrix.image }}" "packages/wpk/test/${{ matrix.image }}"

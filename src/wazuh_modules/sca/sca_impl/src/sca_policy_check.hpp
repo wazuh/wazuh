@@ -89,9 +89,13 @@ class FileRuleEvaluator : public RuleEvaluator
         RuleResult Evaluate() override;
 
     private:
-        RuleResult CheckFileForContents();
+        /// @brief Checks the contents of one file of the rule, without applying the rule's negation
+        /// @param path File to check
+        RuleResult CheckFileForContents(const std::string& path);
 
-        RuleResult CheckFileExistence();
+        /// @brief Checks that one file of the rule exists, without applying the rule's negation
+        /// @param path File to check
+        RuleResult CheckFileExistence(const std::string& path);
 
         std::unique_ptr<IFileIOUtils> m_fileUtils = nullptr;
 };
@@ -130,9 +134,13 @@ class DirRuleEvaluator : public RuleEvaluator
         RuleResult Evaluate() override;
 
     private:
-        RuleResult CheckDirectoryForContents();
+        /// @brief Checks the contents of one directory of the rule, without applying the rule's negation
+        /// @param path Directory to check
+        RuleResult CheckDirectoryForContents(const std::string& path);
 
-        RuleResult CheckDirectoryExistence();
+        /// @brief Checks that one directory of the rule exists, without applying the rule's negation
+        /// @param path Directory to check
+        RuleResult CheckDirectoryExistence(const std::string& path);
 
         std::unique_ptr<IFileIOUtils> m_fileUtils = nullptr;
 };

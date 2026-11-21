@@ -114,8 +114,8 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | `IndexerDownloader: Slice <i> (<i+1>/<n>) complete — <n> docs in <ms>ms` | One slice of a full download finished (`interrupted` instead of `complete` when the module is stopping; `abandoned after another slice failed` when another slice exhausted its retries) |
 | `IndexerDownloader: Download in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sequential download (full load with `numSlices` = 1, or an incremental update) is advancing (at most once a minute) |
 | `IndexerDownloader: Starting incremental update from offset <n>` | An incremental download started |
-| `IndexerDownloader: Initial load download phase complete — <n> documents, cursor: '<n>'` | A full download finished |
-| `IndexerDownloader: Incremental update download phase complete — <n> documents, new cursor: '<n>'` | An incremental download finished |
+| `IndexerDownloader: Initial load download phase complete — <n> documents, cursor: '<n>'` | A full download finished (`interrupted` instead of `complete` when the module stopped during it) |
+| `IndexerDownloader: Incremental update download phase complete — <n> documents, new cursor: '<n>'` | An incremental download finished (`interrupted` instead of `complete` when the module stopped during it) |
 | `IndexerDownloader: Slice <i> failed: <error> — the initial load will be retried` | One slice of a sliced full download still failed after its page retries (a warning); the whole download fails with it and starts again from the beginning |
 | `IndexerDownloader: Initial load failed (<error>) — retrying in 30s.` | A full download failed, with its reason (an info line for the first two attempts, a warning from the third on) |
 | `IndexerDownloader: Indexer index not ready (0 documents) — retrying in 30s.` | A full download found the feed index empty (a warning from the third attempt on; earlier attempts log at debug level) |

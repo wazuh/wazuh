@@ -1400,6 +1400,76 @@ void test_Read_Localfile_remote_accepted_undefined_target(void ** state) {
     free_test_nodes(nodes);
 }
 
+static void set_test_node_attribute(xml_node * node, const char * name, const char * value) {
+    os_calloc(2, sizeof(char *), node->attributes);
+    os_calloc(2, sizeof(char *), node->values);
+    os_strdup(name, node->attributes[0]);
+    os_strdup(value, node->values[0]);
+}
+
+static void free_test_node_attributes(xml_node ** nodes) {
+    for (int i = 0; nodes[i]; i++) {
+        for (int j = 0; nodes[i]->attributes && nodes[i]->attributes[j]; j++) {
+            os_free(nodes[i]->attributes[j]);
+            os_free(nodes[i]->values[j]);
+        }
+        os_free(nodes[i]->attributes);
+        os_free(nodes[i]->values);
+    }
+}
+
+/* A reserved ("_"-prefixed) label is skipped with one warning and parsing goes on to the next element */
+void test_Read_Localfile_reserved_label_skipped(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "label", "hidden",
+                                  "label", "prod", "log_format", "syslog", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 0, .accept_remote = 0 };
+
+    set_test_node_attribute(nodes[1], "key", "_reserved");
+    set_test_node_attribute(nodes[2], "key", "env");
+    (void)Localfile_TakeReservedLabels();
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Labels starting with \"_\"  are reserved for internal use. Skipping label '_reserved'.");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].file, "/var/log/test.log");
+    assert_string_equal(config.config[0].logformat, "syslog");
+    assert_non_null(config.config[0].labels);
+    assert_string_equal(config.config[0].labels[0].key, "env");
+    assert_string_equal(config.config[0].labels[0].value, "prod");
+    assert_null(config.config[0].labels[1].key);
+
+    /* The skip is counted for the manager's verifier, and taking the count resets it */
+    assert_int_equal(Localfile_TakeReservedLabels(), 1);
+    assert_int_equal(Localfile_TakeReservedLabels(), 0);
+
+    Free_Localfile(&config);
+    free_test_node_attributes(nodes);
+    free_test_nodes(nodes);
+}
+
+/* A reserved label as the last element still terminates the parse */
+void test_Read_Localfile_reserved_label_last(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                  "label", "hidden", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 0, .accept_remote = 0 };
+
+    set_test_node_attribute(nodes[2], "key", "_x");
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Labels starting with \"_\"  are reserved for internal use. Skipping label '_x'.");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].file, "/var/log/test.log");
+    assert_null(config.config[0].labels);
+
+    Free_Localfile(&config);
+    free_test_node_attributes(nodes);
+    free_test_nodes(nodes);
+}
+
 /* main */
 
 int main(void) {
@@ -1512,6 +1582,8 @@ int main(void) {
         cmocka_unit_test(test_Read_Localfile_remote_local_socket_target),
         cmocka_unit_test(test_Read_Localfile_remote_default_target),
         cmocka_unit_test(test_Read_Localfile_remote_accepted_undefined_target),
+        cmocka_unit_test(test_Read_Localfile_reserved_label_skipped),
+        cmocka_unit_test(test_Read_Localfile_reserved_label_last),
 
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

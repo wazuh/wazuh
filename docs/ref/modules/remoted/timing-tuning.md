@@ -8,7 +8,7 @@ this page adds is how they interact, which pairs must move together, and what me
 when they do not.
 
 Defaults and ranges are the ones the product ships; every *measured* figure quoted here comes from
-the #38284 campaign on the 4-core/8 GB reference pair (c5ad.xlarge, Amazon Linux 2023),
+a measurement campaign on a 4-core/8 GB reference pair (c5ad.xlarge, Amazon Linux 2023),
 cross-checked on a second architecture.
 
 **Where the options live.** Manager: `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
@@ -215,11 +215,7 @@ number that has to move.
 
 ## 9. Measured defaults record
 
-All shipped defaults were validated by measurement in the #38284 campaign; none needed changing.
-The two range fixes it produced (the batch-size ceiling, the startup warning for the throttle)
-shipped separately. The measurement tables behind each verdict are in wazuh/wazuh#38284, and the
-defects found on the way in wazuh/wazuh#38549. Final sign-off of the defaults against a stated
-product envelope (target fleet size, worst supported link) is tracked in #38284.
+All shipped defaults were validated by measurement in that campaign; none needed changing.
 
 ## See Also
 

@@ -87,7 +87,7 @@ Three scenarios exist to find limits rather than to be fast:
 The VD lane's worker count is `wazuh_modules.inventory_sync_server_vd_workers`, whose default `0`
 resolves to half the host's cores, at least one (`resolveVdWorkers()` in
 `src/wazuh_modules/inventory_sync_server/src/inventorySyncServerFacade.hpp`).
-The ceiling therefore moves with the host, and F9c-4 **MUST** state the worker count, or the numbers
+The ceiling therefore moves with the host, and the load report **MUST** state the worker count, or the numbers
 are not comparable between machines. The sender does not record it (see
 [09](09-metrics-and-output.md)).
 

@@ -421,19 +421,20 @@ def test_manager_restart_helper_missing(service_control):
     assert utils.SERVICE_CONTROL_NAME in exc.value.message
 
 
-@pytest.mark.parametrize('function, action', [(utils.manager_restart, 'restart'), (utils.manager_reload, 'reload')])
-def test_manager_restart_reload_helper_check_refuses(service_control, function, action):
+@pytest.mark.parametrize('function, action, done', [(utils.manager_restart, 'restart', 'restarted'),
+                                                    (utils.manager_reload, 'reload', 'reloaded')])
+def test_manager_restart_reload_helper_check_refuses(service_control, function, action, done):
     """A refusal of the check the helper runs after accepting (before systemctl) is still answered as a 1904."""
     service_control(HELPER_ACCEPT.format(
         after='echo "wazuh-manager-service-control: the manager configuration or credentials check failed; '
-              'the manager was not restarted" >&2\nexit 1'))
+              f'the manager was not {done}" >&2\nexit 1'))
 
     with pytest.raises(WazuhError, match='.* 1904 .*') as exc:
         function()
 
     assert exc.value.message == (f'The manager service-control helper refused the {action} request (exit code 1: '
                                  'wazuh-manager-service-control: the manager configuration or credentials check '
-                                 'failed; the manager was not restarted)')
+                                 f'failed; the manager was not {done})')
 
 
 def test_manager_restart_helper_fails_after_handing_over(service_control, caplog):

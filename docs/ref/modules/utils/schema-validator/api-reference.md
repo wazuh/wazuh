@@ -409,13 +409,13 @@ bool validate_and_persist(const char* index, const char* data, void* item_data)
 
     if (!schema_validator_validate(index, data, &errorMessage))
     {
-        // Validation failed
+        // Validation failed (FIM logs both lines at ERROR)
         if (errorMessage)
         {
-            mdebug2("Validation failed: %s", errorMessage);
-            mdebug2("Raw event: %s", data);
+            merror("Validation failed: %s", errorMessage);
             free(errorMessage);
         }
+        merror("Raw event: %s", data);
 
         // Mark for deferred deletion
         if (failed_list && item_data)

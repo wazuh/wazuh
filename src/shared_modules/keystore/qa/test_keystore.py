@@ -219,3 +219,21 @@ def test_keystore_unknown_option_is_named(args):
         _, stderr = process.communicate()
         assert process.returncode != 0
         assert "Unknown option: -z" in stderr.decode()
+
+
+@pytest.mark.parametrize("value", ["-g", "-h", "-v", "-z", "--not-an-option"])
+def test_keystore_value_may_start_with_a_dash(value):
+    """ The argument after `-v` is the value, even when it is spelled like an option.
+
+    `-v -g` stores `-g` (it is not a read), `-v -h` stores `-h` (it does not print the usage) and
+    `-v -z` stores `-z` (it is not an unknown option).
+    """
+    with Popen([KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", value], stdout=PIPE, stderr=PIPE) as process:
+        _, stderr = process.communicate()
+        assert process.returncode == 0, stderr.decode()
+
+    status, stored = run_get("indexer", "password")
+    clear_password()
+
+    assert status == 0
+    assert stored == value

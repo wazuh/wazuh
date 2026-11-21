@@ -613,29 +613,18 @@ static void test_loading_raises_the_id_counter_past_every_stored_id(void **state
 
 /* --------------------------------------------------------------------------------- loading rules */
 
-static void test_old_format_entries_are_numbered_by_position(void **state) {
+static void test_entries_without_a_sequence_are_malformed(void **state) {
     (void)state;
 
-    /* By POSITION, not by handing each the next value from last_seq. Position is deterministic
-     * across a crash during the conversion; a running counter is not, and re-assigning different
-     * sequences would derive different task ids and produce DUPLICATE rows for one deletion --
-     * breaking "a collision means already recorded" on precisely the path that story exists for. */
-    size_t owed_count = 0;
-    purge_journal_entry_t *owed;
+    /* The task id is derived from the sequence, so an entry without one cannot be reconciled
+     * without risking a duplicate row for one deletion: it is dropped like any malformed line. */
+    write_journal_file("last_update 1000\nlast_id 9999\nlast_seq 1\npurge 061 1000\npurge 062 1000 1\n");
 
-    write_journal_file("last_update 1000\nlast_id 9999\npurge 061 1000\npurge 062 1000\n");
-
-    expect_any(__wrap__minfo, formatted_msg); // converted 2 entries
+    expect_any(__wrap__mwarn, formatted_msg); // the entry without a sequence
     purge_file_load();
 
-    expect_any(__wrap__minfo, formatted_msg); // recovered 2 deletions
-    owed = purge_journal_reconcile(&owed_count);
-
-    assert_int_equal(2, owed_count);
-    assert_int_equal(1, owed[0].journal_seq);
-    assert_int_equal(2, owed[1].journal_seq);
-
-    os_free(owed);
+    assert_false(purge_is_pending_locally("061"));
+    assert_true(purge_is_pending("062"));
 }
 
 static void test_loading_ignores_unknown_labels_and_malformed_entries(void **state) {
@@ -803,7 +792,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_loading_raises_the_id_counter_past_every_stored_id,
                                         setup_journal, teardown_journal),
         // Loading rules
-        cmocka_unit_test_setup_teardown(test_old_format_entries_are_numbered_by_position,
+        cmocka_unit_test_setup_teardown(test_entries_without_a_sequence_are_malformed,
                                         setup_journal, teardown_journal),
         cmocka_unit_test_setup_teardown(test_loading_ignores_unknown_labels_and_malformed_entries,
                                         setup_journal, teardown_journal),

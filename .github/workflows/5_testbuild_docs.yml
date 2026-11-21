@@ -62,6 +62,18 @@ jobs:
         with:
           node-version: 20
 
+      # The OpenAPI documents the book embeds (the ReDoc pages load them at runtime) and the Server API
+      # contract. Nothing generates them, so a hand edit that breaks the schema is caught only here.
+      - name: Validate the OpenAPI documents
+        run: |
+          python3 -m pip install --break-system-packages openapi-spec-validator==0.7.1
+          openapi-spec-validator \
+            docs/ref/modules/engine/public-api.yaml \
+            docs/ref/modules/engine/private-api.yaml \
+            docs/ref/modules/engine/spec-events.yaml \
+            docs/ref/modules/remoted/agent-api.yaml \
+            api/api/spec/spec.yaml
+
       - name: Build docs
         env:
           WAZUH_DOCS_NODE_DIR: ${{ runner.temp }}/wazuh-docs-tools

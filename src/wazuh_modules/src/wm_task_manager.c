@@ -378,11 +378,6 @@ static void *wm_task_manager_main(wm_task_manager *data) {
     task_manager_config_t config;
     task_manager_host_ops_t host_ops;
 
-    if (!data->enabled) {
-        mtinfo(WM_TASK_MANAGER_LOGTAG, "Module disabled. Exiting.");
-        return NULL;
-    }
-
     if (task_manager_module = so_get_module_handle("task_manager"), !task_manager_module) {
         /* Names the file and reports dlerror(): the overwhelmingly likely cause is that
          * libtask_manager.so was built but never installed, and "cannot load the module" on its own
@@ -460,11 +455,6 @@ static cJSON *wm_task_manager_dump(const wm_task_manager *data) {
     /* A JSON boolean, not "yes"/"no": getconfig answers with the same types the effective document
      * uses, so a client reads one shape whether it asked the daemon or read the file. */
     cJSON_AddBoolToObject(wm_tm, "enabled", data->enabled ? 1 : 0);
-
-    if (!data->enabled) {
-        cJSON_AddItemToObject(root, "task-manager", wm_tm);
-        return root;
-    }
 
     cJSON_AddNumberToObject(wm_tm, "task_ttl", data->task_ttl);
     cJSON_AddNumberToObject(wm_tm, "cleanup_interval", data->cleanup_interval);

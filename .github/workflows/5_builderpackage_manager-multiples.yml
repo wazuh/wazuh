@@ -10,11 +10,11 @@ on:
       # install_api) and installed by api/Makefile.
       - "api/**"
       - "framework/**"
-      # Compiled by debian/rules:48-49 / the RPM %build (wazuh-manager.spec:76-77: make TARGET=manager,
+      # Compiled by debian/rules override_dh_install / the RPM %build (`make TARGET=manager`,
       # the default `all` target, so every unconditional add_subdirectory -- the module testtool/
       # directories included -- is built), installed by install.sh -> src/init/inst-functions.sh, and
-      # src/init/* copied into the package for the maintainer scripts (debian/rules:101 recursively,
-      # wazuh-manager.spec:140 the *.sh, listed in its %files and so in the check_files CSV).
+      # src/init/* copied into the package for the maintainer scripts (debian/rules recursively,
+      # the RPM %install the *.sh, listed in its %files and so in the check_files CSV).
       # Narrowed by the negations at the end of this list.
       - "src/**"
       # Packaging inputs read from the checkout (mounted at /wazuh-local-src by generate_package.sh).
@@ -25,28 +25,28 @@ on:
       - "packages/generate_package.sh"
       - "packages/debs/SPECS/wazuh-manager/**"
       - "packages/rpms/SPECS/wazuh-manager.spec"
-      # install.sh drives the install the package recipes run (debian/rules:60,
-      # wazuh-manager.spec:97); VERSION.json is read by CMake, by install.sh and copied into the tree
-      # (inst-functions.sh:934, debian/rules:97, wazuh-manager.spec:139).
+      # install.sh drives the install the package recipes run (debian/rules override_dh_install,
+      # the RPM %install); VERSION.json is read by CMake, by install.sh and copied into the tree
+      # (inst-functions.sh, debian/rules, the RPM %install).
       - "install.sh"
       - "VERSION.json"
-      # License texts both recipes install by name (debian/rules:114, wazuh-manager.spec:850 %license);
+      # License texts both recipes install by name (debian/rules, the RPM %license);
       # the two engine ones are under src/**. A rename or removal fails the package build.
       - "LICENSE"
       - "THIRD-PARTY-NOTICES"
       # Configuration templates, internal options and agent.conf installed by InstallCommon /
       # InstallServer; etc/templates/config/{generic,debian,ubuntu,centos,rhel} are also shipped
-      # for the maintainer scripts (debian/rules:103-110, wazuh-manager.spec:125-137).
+      # for the maintainer scripts (debian/rules, the RPM %install).
       - "etc/**"
-      # install.sh sources only etc/templates/${LANGUAGE}/messages.txt (install.sh:1114-1124), and
-      # both recipes preload USER_LANGUAGE="en" (debian/rules:51, wazuh-manager.spec:85), so the
+      # install.sh sources only etc/templates/${LANGUAGE}/messages.txt (install.sh), and
+      # both recipes preload USER_LANGUAGE="en" (debian/rules, the RPM %install), so the
       # other languages never reach a package.
       - "!etc/templates/**"
       - "etc/templates/en/**"
       - "etc/templates/config/**"
       # ...and not the agent's files: InstallCommon reads these only when INSTYPE is agent
-      # (inst-functions.sh:908 ossec-agent.conf, :1277-1280 internal_options.conf and
-      # local_internal_options.conf, InstallAgent :1767 wpk_root.pem), and the Windows/macOS agent
+      # (inst-functions.sh: ossec-agent.conf, internal_options.conf and
+      # local_internal_options.conf, InstallAgent wpk_root.pem), and the Windows/macOS agent
       # templates are never selected for a Linux manager.
       - "!etc/ossec-agent.conf"
       - "!etc/internal_options.conf"
@@ -56,7 +56,7 @@ on:
       - "!etc/templates/config/windows/**"
       - "!etc/templates/config/darwin/**"
       # mitre.db is built at install time: src/Makefile install_mitre runs tools/mitre/mitredb.py,
-      # which reads ruleset/mitre/enterprise-attack.json (mitredb.py:754).
+      # which reads ruleset/mitre/enterprise-attack.json (mitredb.py).
       - "tools/mitre/**"
       - "ruleset/mitre/**"
       # `make deps` resolves every download (indexer templates, WCS files)
@@ -96,18 +96,18 @@ on:
       - "tests/integration/test_wazuh_db/**"
       - "tests/integration/test_remoted/**"
       - "tests/integration/test_authd/**"
-      # Agent-only trees, never built for the manager target (src/CMakeLists.txt:327-343 adds them
-      # only if(IS_AGENT); src/wazuh_modules/CMakeLists.txt:103-108 likewise for agent_info, sca and
+      # Agent-only trees, never built for the manager target (src/CMakeLists.txt adds them
+      # only if(IS_AGENT); src/wazuh_modules/CMakeLists.txt likewise for agent_info, sca and
       # syscollector). Their include/ directories stay: manager code compiles against them --
       # shared/include/shared.h -> dbsync/include/dbsync.h, shared/include/syscheck_op.h ->
       # syscheckd/include/syscheck.h, shared/src/agent_op.c -> data_provider/include/sysInfo.h,
       # shared/src/log_builder.c -> client-agent/include/agentd.h, util/src/verify-agent-conf.c ->
       # logcollector/include/logcollector.h, wazuh_modules/src/wm_{agent_info,sca,syscollector}.c
-      # (globbed for every target, wazuh_modules/CMakeLists.txt:110-119) -> each module's include/,
+      # (globbed for every target, wazuh_modules/CMakeLists.txt) -> each module's include/,
       # and those headers -> sync_protocol/include. Of active-response (registered only
-      # if(IS_AGENT), src/CMakeLists.txt:328; its binaries installed only for an agent,
-      # inst-functions.sh:1335-1341) the manager compiles one file into libwazuh
-      # (shared/CMakeLists.txt:89 active_responses.c, which includes active_responses.h).
+      # if(IS_AGENT), src/CMakeLists.txt; its binaries installed only for an agent,
+      # inst-functions.sh) the manager compiles one file into libwazuh
+      # (shared/CMakeLists.txt: active_responses.c, which includes active_responses.h).
       - "!src/active-response/**"
       - "src/active-response/include/**"
       - "src/active-response/src/active_responses.c"
@@ -141,8 +141,8 @@ on:
       - "!src/build.py"
       - "!src/ci/**"
       # Test trees: UNIT_TEST/WAZUH_ENGINE_TEST-gated or excluded from the wheel (setup.py).
-      # The package build passes neither TEST nor ENGINE_TEST (debian/rules:49,
-      # wazuh-manager.spec:77), so nothing under them is configured or compiled. Both spellings:
+      # The package build passes neither TEST nor ENGINE_TEST (debian/rules,
+      # the RPM %build), so nothing under them is configured or compiled. Both spellings:
       # `tests/` and the singular `test/` of the engine modules (every reference sits inside
       # if(ENGINE_BUILD_TEST) in src/engine/source/*/CMakeLists.txt), src/engine/test and
       # remoted_module, inventory_sync_server, task_manager, keystore_server, metrics,
@@ -151,15 +151,15 @@ on:
       - "!src/**/tests/**"
       - "!src/**/test/**"
       # Benchmarks: if(ENGINE_BUILD_BENCHMARK) in the engine modules, if(UNIT_TEST) in
-      # shared_modules/utils/CMakeLists.txt:14-21; utils/mocks is included only by test sources.
+      # shared_modules/utils/CMakeLists.txt; utils/mocks is included only by test sources.
       - "!src/**/benchmark/**"
       - "!src/shared_modules/utils/mocks/**"
       # Not excluded: the testtool/ directories. They are added unconditionally
-      # (e.g. vulnerability_scanner/CMakeLists.txt:179, task_manager/CMakeLists.txt:89), so the
+      # (e.g. in vulnerability_scanner/CMakeLists.txt and task_manager/CMakeLists.txt), so the
       # package build compiles them and a broken one fails it.
       - "!src/engine/docs/**"
       # Engine developer tooling and the packaging of other products. The install runs only
-      # engine-schema (inst-functions.sh:1393 generateSchemaFiles); internal_packages/ and
+      # engine-schema (inst-functions.sh generateSchemaFiles); internal_packages/ and
       # standalone/ are built by 5_buildpackage_internal_tools.yml and
       # 5_builderpackage_engine-standalone_onpush.yml.
       - "!src/engine/tools/**"

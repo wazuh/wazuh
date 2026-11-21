@@ -194,7 +194,7 @@ Every route mutation (add, remove, rebuild, priority change, hot swap) is replic
 - an unstamped event (`receivedAtNs == 0`, a producer that bypasses the parser) falls back to `receptionClock().next()` at dequeue time, so `@timestamp` is never empty;
 - decoders may still overwrite `@timestamp` later in the pipeline (for instance from a date inside the log); the stamp is the value they start from.
 
-The tester path (`TesterWorker`) has no parser in front of it: it takes its stamp from the same clock at dequeue time and formats it with the same function, so test output shows the same format as production. Why: stamping at dequeue time in N parallel workers, with a coarser clock, produced equal and inverted `@timestamp` values inside one batch (wazuh/wazuh#40763).
+The tester path (`TesterWorker`) has no parser in front of it: it takes its stamp from the same clock at dequeue time and formats it with the same function, so test output shows the same format as production. Why: stamping at dequeue time in N parallel workers, with a coarser clock, produced equal and inverted `@timestamp` values inside one batch.
 
 ### Router Ingestion
 

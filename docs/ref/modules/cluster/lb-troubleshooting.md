@@ -394,17 +394,29 @@ A node can lose a dependency and keep answering the liveness probe. With `wazuh-
 Events keep flowing while groups, configuration hashes, configuration downloads and task delivery
 all fail.
 
-**No central layer flags it.** Verified on a node in exactly that state:
+**The usual places do not flag it.** On a node in exactly that state:
 
 | Where you would look | What it reports |
 |---|---|
 | The balancer's health check | healthy, same session count as the other nodes |
 | `cluster_control -l` | the node is listed, like any other |
-| Server API `/cluster/nodes` | the node is present, and carries no status field |
+| Server API `GET /cluster/nodes` | the node is present, and carries no status field |
 | Agent list | agents still `active` |
 
-So the node cannot be found by asking anything centrally. Only its own log says so. It has to be
-found by asking each node directly, which is what the commands below do.
+### Find it with the node readiness endpoint
+
+The Server API on the master asks each node for its daemons' readiness:
+
+```bash
+curl -k -H "Authorization: Bearer $TOKEN" \
+  "https://<master>:55000/cluster/<node_name>/status?pretty=true"
+```
+
+A degraded node answers `"ready": false`, and the daemon at fault says why: for
+`wazuh-manager-db`, `running: false` when the process is gone, or `running: true` with
+`ready: false` when it runs but its own status endpoint is unreachable or does not report `ok`
+(the state in which it cannot read `global.db`). Query every node by name (`cluster_control -l`
+lists them).
 
 ### Find it by asking every node directly
 
@@ -417,7 +429,8 @@ done
 ```
 
 A node logging `Cannot serve /control startup: wazuh-manager-db is not answering` (remoted), or
-`Cannot connect to 'queue/sockets/wdb.sock'` in a loop (the C daemons), is the one.
+`Cannot connect to 'queue/sockets/wdb.sock'` or `Cannot find 'queue/sockets/wdb.sock'` in a loop
+(the C daemons), is the one.
 
 ### Verify the daemons really started
 
@@ -437,8 +450,8 @@ two Python daemons appear as `python3 …/wazuh_manager_clusterd.py` and
 
 ### Take it out of rotation manually
 
-Until a dependency-aware readiness signal exists, the only reliable remedy is to remove the node
-from the balancer yourself and restart it.
+The agent-facing health probe does not reflect the node's dependencies, so a balancer keeps sending
+agents there: remove the node from the balancer yourself and restart it.
 
 ---
 

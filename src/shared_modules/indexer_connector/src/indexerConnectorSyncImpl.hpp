@@ -18,6 +18,7 @@
 #include "indexerTransport.hpp"
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
+#include "safeIndexName.hpp"
 #include "secureCommunication.hpp"
 #include <algorithm>
 #include <atomic>
@@ -69,38 +70,6 @@ constexpr auto FORMATTED_LENGTH {INDEX_OPERATION_PREFIX + ID_FIELD_PREFIX + CLOS
 // {"delete":{"_index":"<index>","_id":"<id>"}}
 constexpr auto DELETE_FORMATTED_LENGTH {DELETE_OPERATION_PREFIX + DELETE_ID_FIELD_PREFIX + CLOSING_BRACES +
                                         NEWLINE_CHAR};
-
-/**
- * @brief Validates that an index name is safe to embed in a URL path component or
- *        in a JSON string sent to wazuh-indexer.
- *
- * Rejects empty strings and any character outside the conservative allowlist
- * `[a-zA-Z0-9._*-]`. Blocks `/`, `?`, `#`, `,`, whitespace and quote characters,
- * which would otherwise enable path traversal, query-string injection in URLs,
- * or JSON-body escape attacks. `*` is allowed because wazuh-indexer interprets it
- * as a wildcard and the connector has legitimate callers that use patterns such
- * as `wazuh-states-*`.
- *
- * @param idx Candidate index name.
- * @return true if the name is non-empty and contains only safe characters.
- */
-inline bool isSafeIndexName(std::string_view idx) noexcept
-{
-    if (idx.empty())
-    {
-        return false;
-    }
-    for (const char c : idx)
-    {
-        const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' ||
-                        c == '_' || c == '.' || c == '*';
-        if (!ok)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 /**
  * @brief Appends an ID to bulkData, escaping special characters if necessary

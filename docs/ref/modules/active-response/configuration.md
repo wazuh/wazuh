@@ -50,8 +50,14 @@ Longer timeouts for stateful responses that recur for the same keys.
 - **Note:** applies only to stateful responses. The first time execd sees a key, the response uses
   its `stateful_timeout`; the n-th repetition of that key uses the n-th value of the list, and the
   last value once the list is exhausted. A repetition that arrives while the reversal is still
-  pending counts too. The count lives in execd's memory and restarts with it.
-  execd logs `Adding offenders timeout: <n> (for #<k>)` for each value it reads
+  pending counts too. The count lives in execd's memory and restarts with it. A key is also
+  forgotten once its last block ended longer ago than the largest value of the list (execd checks
+  when it handles a stateful response, at most once a minute while the table has room), so its next
+  occurrence uses `stateful_timeout` again
+- **Note:** execd tracks at most 10,000 keys. While the table is full, a key it has not seen gets
+  the plain `stateful_timeout` and execd logs, at most once a minute,
+  `(1308): Tracking the maximum of 10000 repeated offenders. New offenders get the base timeout until older entries expire.`
+- **Note:** execd logs `Adding offenders timeout: <n> (for #<k>)` for each value it reads
 
 ### allowlist
 

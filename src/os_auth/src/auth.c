@@ -1875,17 +1875,10 @@ void purge_last_id_update(int id_counter) {
 /**
  * @brief Load the journal a previous run left behind.
  *
- * Called from main() before the threads start, so nothing contends for it. Two rules that are not
- * obvious:
- *
- *   - A backward clock jump (now earlier than the file's own last_update) makes every stored
- *     timestamp untrustworthy, so they are all re-stamped to now: better to make a purge wait its
- *     full delay again than to run one whose delay never actually elapsed.
- *   - ENTRIES WITHOUT A SEQUENCE ARE NUMBERED BY POSITION, not handed the next value from
- *     last_seq. Position is deterministic across a crash during the conversion; a running counter
- *     is not, and re-assigning different sequences would derive different task ids and produce
- *     duplicate rows for one deletion -- breaking "a collision means already recorded" on precisely
- *     the path that story exists for.
+ * Called from main() before the threads start, so nothing contends for it. One rule that is not
+ * obvious: a backward clock jump (now earlier than the file's own last_update) makes every stored
+ * timestamp untrustworthy, so they are all re-stamped to now: better to make a purge wait its full
+ * delay again than to run one whose delay never actually elapsed.
  */
 void purge_file_load(void) {
     FILE *fp = wfopen(PENDING_PURGES_FILE, "r");
@@ -1894,8 +1887,6 @@ void purge_file_load(void) {
     time_t last_update = 0;
     bool clock_went_back = false;
     unsigned int loaded = 0;
-    unsigned int converted = 0;
-    long long position = 0;
 
     if (!fp) {
         if (errno != ENOENT) {
@@ -1949,20 +1940,13 @@ void purge_file_load(void) {
             continue;
         }
 
-        position++;
-
         fields = sscanf(line, "%31s %31s %ld %lld", label, id, &stamp, &seq);
 
-        if (fields < 3 || !OS_IsValidID(id)) {
+        // Every entry carries its sequence: the task id is derived from it, so an entry without one
+        // could not be reconciled without risking a duplicate row for one deletion.
+        if (fields != 4 || !OS_IsValidID(id)) {
             mwarn("Ignoring a malformed entry in '%s'.", PENDING_PURGES_FILE);
             continue;
-        }
-
-        if (fields == 3) {
-            // A file written by a release that had no sequences. By POSITION, deliberately -- see
-            // the note above.
-            seq = position;
-            converted++;
         }
 
         purge_node_t *node;
@@ -1986,11 +1970,6 @@ void purge_file_load(void) {
     if (clock_went_back) {
         mwarn("The system clock is earlier than the last update of '%s'; the %u recovered deletion(s) "
               "were re-stamped so each one waits its full delay again.", PENDING_PURGES_FILE, loaded);
-    }
-
-    if (converted > 0) {
-        minfo("Converted %u deletion(s) from the previous file format in '%s'; they were numbered by "
-              "position.", converted, PENDING_PURGES_FILE);
     }
 
     /* The id counter never goes backwards. OS_ReadKeys() rebuilt it from client.keys, which no

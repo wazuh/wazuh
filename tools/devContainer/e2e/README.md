@@ -23,8 +23,7 @@ manager connections stay unauthenticated until the file exists and the container
 
 ## Per-component credentials
 
-Each 5.0 package owns its credentials under its own configuration directory and never writes the
-shared `/etc/wazuh` of earlier builds: its CA in `ca/`, its pairs in `certs/`, what it publishes for
+Each 5.0 package owns its credentials under its own configuration directory: its CA in `ca/`, its pairs in `certs/`, what it publishes for
 its peers in `export/` (`credentials.env`, `ca.pem`) and the operator's values in `local.env`. Every
 resolver reads the process environment first, so the variables compose injects win.
 

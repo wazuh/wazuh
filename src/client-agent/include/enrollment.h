@@ -55,8 +55,8 @@ typedef struct w_enroll_request_t {
  * re-enrollment secret if it holds one, otherwise the configured
  * authorization_pass_path. The narrow, per-agent credential beats the
  * fleet-wide one; the enrollment token's own credential is not read here at
- * all, because that path (token_bootstrap.c) only ever runs when no
- * client.keys and no secret exist yet.
+ * all: token_bootstrap.c sets its credential itself, reading authd.pass with
+ * w_enrollment_load_password() for a credential-less token.
  *
  * @param out Filled on success; the caller owns it via w_enroll_request_destroy().
  * @return 0 on success; -1 on a local validation failure (e.g. an invalid
@@ -66,6 +66,14 @@ int w_enrollment_build_request(w_enroll_request_t *out);
 
 /** @brief Frees the heap fields of a w_enroll_request_t. NULL-safe. */
 void w_enroll_request_destroy(w_enroll_request_t *request);
+
+/**
+ * @brief Loads the enrollment password from `path`, re-read on every call
+ *        (#38465 D6: no caching, so rotating the file needs no restart).
+ * @return A newly allocated password, or NULL when the file is missing/empty
+ *         (mTLS/open mode -- not an error).
+ */
+char *w_enrollment_load_password(const char *path);
 
 /**
  * @brief What a refused /enroll response says about why, whichever error envelope carried it.

@@ -129,9 +129,6 @@ namespace task_manager::schedule
         Timestamp m_nextSweep {0};
         Timestamp m_nextCleanup {0};
         Timestamp m_nextSizeRotate {0};
-
-        /// @brief The unsupported-database notice is said once per process, not once per pass.
-        bool m_compactUnsupportedLogged {false};
     };
 } // namespace task_manager::schedule
 

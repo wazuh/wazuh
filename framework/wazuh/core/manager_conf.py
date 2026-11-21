@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""Reader and writer of the manager configuration file (etc/wazuh-manager.conf).
+"""Reader and writer of the manager configuration file (/etc/wazuh-manager/wazuh-manager.conf; `<repo>/etc` only in a checkout, see `common.find_conf_path`).
 
 Consumer of `bin/wazuh-manager-conf`, the CLI of shared_modules/manager_config — the same loader the C
 daemons and the engine use — so there is exactly one implementation of the configuration language
@@ -25,10 +25,10 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.utils import safe_move
 
-# Detail prefixes of the CLI error line: "(1244): Invalid configuration at '<file>': <detail>." and
-# "(1239): Configuration file not found: '<file>'.". Syntax problems carry the "invalid XML" marker
-# (with the line embedded); everything else under 1244 is a schema or cross-field violation whose
-# detail starts with the JSON pointer of the offending option.
+# Detail prefixes of the CLI error line: "(1244): Invalid configuration at '<subject>': <detail>." and
+# "(1239): Configuration file not found: '<file>'.". Under 1244 the subject is always a JSON pointer
+# ('/' for a syntax problem, which carries the "invalid XML" marker with the line embedded); a missing
+# file is 1239 with no subject.
 _NOT_FOUND_MARKER = 'Configuration file not found'
 _SYNTAX_MARKER = 'invalid XML'
 
@@ -65,9 +65,10 @@ def _run_cli(arguments: list) -> subprocess.CompletedProcess:
 def _error_detail(completed: subprocess.CompletedProcess) -> str:
     """The CLI error line, reduced to '<pointer>: <message>' (validation) or '<message>' (syntax).
 
-    The 1244 contract puts the JSON pointer of the offending option in the quoted subject of
-    "Invalid configuration at '<subject>'"; syntax and file problems carry the file path there
-    instead, which is dropped (the syntax message embeds the line on its own).
+    The CLI's 1244 line always puts a JSON pointer in the quoted subject of
+    "Invalid configuration at '<subject>'": the offending option's, or the bare root '/' for a
+    problem with no option (a syntax error, whose message embeds the line on its own), which is
+    dropped. A missing file is the separate 1239 line, which has no quoted subject.
     """
     detail = (completed.stderr or completed.stdout).strip()
     prefix = "Invalid configuration at '"
@@ -77,9 +78,9 @@ def _error_detail(completed: subprocess.CompletedProcess) -> str:
         end = rest.find("': ")
         if end != -1:
             subject, message = rest[:end], rest[end + 3:]
-            # A validation error carries the option's JSON pointer as the subject; syntax and file
-            # problems carry the file path (dropped), and a structural error with no pointer is
-            # rendered by the CLI as the bare root '/', which is just as meaningless to keep.
+            # A validation error carries the option's JSON pointer as the subject; a problem with
+            # no option (a syntax or structural error) is rendered by the CLI as the bare root '/',
+            # which is meaningless to keep.
             is_pointer = subject.startswith('/') and subject != '/'
             detail = f'{subject}: {message}' if is_pointer else message
     return detail.rstrip('.')

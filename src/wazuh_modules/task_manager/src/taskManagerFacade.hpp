@@ -17,6 +17,7 @@
 #include "host/cHostOps.hpp"
 #include "http/apiHandlers.hpp"
 #include "http/httpServer.hpp"
+#include "metrics/metricNames.hpp"
 #include "metrics/taskMetrics.hpp"
 #include "registry/builtinTypes.hpp"
 #include "schedule/scheduler.hpp"
@@ -138,9 +139,6 @@ namespace task_manager
                            names.c_str());
             }
 
-            m_metricsManager = std::make_shared<wazuh::metrics::Manager>();
-            m_metrics = std::make_shared<metrics::TaskMetrics>(m_metricsManager);
-
             storage::SqliteTaskStore::Options storeOptions;
             storeOptions.dbPath = config.db_path;
             m_store = std::make_unique<storage::SqliteTaskStore>(std::move(storeOptions));
@@ -148,6 +146,10 @@ namespace task_manager
             const auto localConfig {buildLocalConfig(config)};
             m_registry = std::make_unique<registry::TaskRegistry>(
                 registry::buildBuiltinRegistry(config, *m_hostOps, localConfig));
+
+            // After the registry: the create counters are pre-created per registered type.
+            m_metricsManager = std::make_shared<wazuh::metrics::Manager>();
+            m_metrics = std::make_shared<metrics::TaskMetrics>(m_metricsManager, m_registry->typeNames());
 
             execution::Executor::Options executorOptions;
             executorOptions.workerCount = resolveWorkerCount(config);
@@ -454,37 +456,37 @@ namespace task_manager
             // Pull metrics, like the queue gauges: the counters are already maintained, so reading
             // them on demand costs nothing. Nothing the retired C module could publish at all.
             m_metrics->registerPull(
-                "task_manager.upgrade.queue_depth",
+                metrics::names::UPGRADE_QUEUE_DEPTH,
                 [this] { return m_upgradeService ? static_cast<std::int64_t>(m_upgradeService->queueDepth()) : 0; },
                 "Upgrade batches waiting for a worker",
                 "batches");
 
             m_metrics->registerPull(
-                "task_manager.upgrade.batches_shed",
+                metrics::names::UPGRADE_BATCHES_SHED,
                 [this] { return m_upgradeService ? static_cast<std::int64_t>(m_upgradeService->shedCount()) : 0; },
                 "Upgrade requests refused because the queue was full",
                 "requests");
 
             m_metrics->registerPull(
-                "task_manager.upgrade.wpk_downloads",
+                metrics::names::UPGRADE_WPK_DOWNLOADS,
                 [this] { return m_wpkCache ? static_cast<std::int64_t>(m_wpkCache->downloadCount()) : 0; },
                 "WPK downloads performed",
                 "downloads");
 
             m_metrics->registerPull(
-                "task_manager.upgrade.wpk_cache_hits",
+                metrics::names::UPGRADE_WPK_CACHE_HITS,
                 [this] { return m_wpkCache ? static_cast<std::int64_t>(m_wpkCache->memoHitCount()) : 0; },
                 "Upgrade requests answered from an already-verified WPK",
                 "requests");
 
             m_metrics->registerPull(
-                "task_manager.upgrade.versions_fetches",
+                metrics::names::UPGRADE_VERSIONS_FETCHES,
                 [this] { return m_versionsCache ? static_cast<std::int64_t>(m_versionsCache->fetchCount()) : 0; },
                 "Repository `versions` files fetched",
                 "requests");
 
             m_metrics->registerPull(
-                "task_manager.upgrade.versions_cache_hits",
+                metrics::names::UPGRADE_VERSIONS_CACHE_HITS,
                 [this] { return m_versionsCache ? static_cast<std::int64_t>(m_versionsCache->hitCount()) : 0; },
                 "Repository `versions` lookups answered from cache",
                 "requests");
@@ -540,7 +542,7 @@ namespace task_manager
             {
                 const auto name {descriptor.name};
                 m_metrics->registerPull(
-                    "task_manager.queue.pending." + name,
+                    metrics::names::QUEUE_PENDING_PREFIX + name,
                     [this, name]
                     {
                         try
@@ -559,7 +561,7 @@ namespace task_manager
             }
 
             m_metrics->registerPull(
-                "task_manager.agent_tasks.empty_cache_entries",
+                metrics::names::AGENT_TASKS_EMPTY_CACHE_ENTRIES,
                 [this] { return m_cache ? static_cast<std::uint64_t>(m_cache->size()) : std::uint64_t {0}; },
                 "Agents known to have no pending agent tasks",
                 "agents");

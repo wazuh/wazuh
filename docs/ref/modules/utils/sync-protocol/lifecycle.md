@@ -168,7 +168,7 @@ Agent                                   Manager
 Agent                                   Manager
   |                                        |
   |------------- FullSession ------------> |
-  |   Start(mode=DELTA, index=[...])       |
+  |   Start(mode=ModuleDelta, index=[...]) |
   |   payload = Cleans{                    |
   |     DataClean(index="<index 1>"),      |
   |     DataClean(index="<index 2>")}      |

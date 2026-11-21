@@ -3995,10 +3995,11 @@ components:
     file_path:
       in: query
       name: file_path
-      description: "Full path to the WPK file, ending in <code>.wpk</code>. The file must be directly in the
-      <code>var/upgrade/</code> directory of the installation (by default, <code>/var/wazuh-manager/var/upgrade/</code>),
-      not in a subdirectory of it; a symbolic link that resolves outside that directory is refused. Any other path
-      fails with error 1824"
+      description: "Full path to the WPK file, ending in <code>.wpk</code>, or its bare file name. The file must be
+      directly in the <code>var/upgrade/</code> directory of the installation (by default,
+      <code>/var/wazuh-manager/var/upgrade/</code>), not in a subdirectory of it; a bare file name is looked up
+      there, and a symbolic link that resolves outside that directory is refused. Any other path fails with
+      error 1824"
       required: True
       schema:
         type: string

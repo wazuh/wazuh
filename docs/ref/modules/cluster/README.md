@@ -87,15 +87,18 @@ exception, because it must be the same on every node.
 
 What an operator sees:
 
-- A worker whose own file says otherwise applies the master's value. `wazuh-manager-modulesd` logs a
-  warning at every start while they differ, and the worker's own setting is ignored until then.
+- A worker whose own file says otherwise applies the master's value, and its own setting is ignored.
+  `wazuh-manager-modulesd` logs a warning at every start while they differ: `Vulnerability detection
+  is <enabled|disabled> in this node's configuration and <disabled|enabled> on the master node. The
+  master's setting is applied: it is the same for every node of the cluster.`
 - If the worker's vulnerability scanner is running with the other value when the worker connects,
   `cluster.log` records a warning and the worker reloads itself once. If the scanner still does
   not follow after that reload, an error is logged and the node is not reloaded again. A reload
   request that was refused is tried again on the next connection.
-- The value in effect is the one `GET /vulnerability-detector/status` reports on that node
-  (`enabled`); reading the worker's `wazuh-manager.conf`, directly or through the API, shows its
-  local value.
+- The value in effect is the `enabled` field the node's scanner reports: in the Server API's
+  `GET /cluster/{node_id}/status` (under `wazuh-manager-modulesd` → `modules` → `vulnerability-detector`), or
+  locally in [`GET /vulnerability-detector/status`](../vulnerability-scanner/api-reference.md).
+  Reading the worker's `wazuh-manager.conf`, directly or through the API, shows its local value.
 - To switch vulnerability detection for the cluster, change it on the master and reload every node
   (`PUT /cluster/reload`). Each worker restarts twice: the reload starts it with the value it had
   stored, and once it reconnects and learns the new one it reloads itself. Every daemon but
@@ -166,11 +169,14 @@ until it expires, at most `remoted.control_groups_refresh_interval`
 includes an agent that restarts in the meantime: `/control` startup answers from a fresh cached
 membership without querying the database.
 
-When `<indexer><hosts>` is configured, `wazuh-manager-clusterd` also runs indexer-dependent tasks,
-started only while the indexer is reachable: on every node, the
-[active-response](../active-response/README.md) fetch task; on the master, the group and cluster-name
-synchronization of disconnected agents' indexed documents, and a periodic metrics snapshot. Without
-`<indexer><hosts>` it logs `Indexer configuration is unavailable; Indexer tasks will not be started.`
+`wazuh-manager-clusterd` also runs indexer-dependent tasks, started only while the indexer is
+reachable: on every node, the [active-response](../active-response/README.md) fetch task; on the
+master, the group and cluster-name synchronization of disconnected agents' indexed documents, and a
+periodic metrics snapshot. `<indexer><hosts>` is mandatory, so these tasks are always set up; only
+when the daemon cannot read the `<indexer>` section at its start does it log the WARNING
+`Indexer configuration is unavailable; Indexer tasks will not be started.` (the master logs
+`Error loading indexer configuration: <reason>` before it), and then it runs none of them until it
+is restarted.
 
 The indexer is checked every 300 s while it is reachable. The scheme of `<indexer><hosts>` decides
 TLS: `https://` hosts use `<ssl>`, `http://` hosts ignore it, and a list mixing both is refused. Two
@@ -257,3 +263,8 @@ master's answer at once. For example:
 /var/wazuh-manager/bin/cluster_control -l
 /var/wazuh-manager/bin/cluster_control -i more
 ```
+
+The same views are available through the Server API on the master: `GET /cluster/nodes` (the
+`-l` list), `GET /cluster/healthcheck` (the `-i` report) and `GET /cluster/{node_id}/status`, which
+`cluster_control` has no equivalent for: whether each daemon of that node is running and ready. See
+the [Server API reference](../server-api/api-reference.md#cluster).

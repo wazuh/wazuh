@@ -15,14 +15,35 @@ import sys
 import time
 from os.path import abspath, dirname
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from utils import MAX_EVENT_SIZE
+# wodles/ holds utils.py but also the installed wodles/docker/ dir, which would shadow the SDK as a
+# namespace package, so keep it on sys.path only while importing utils.
+WODLES_DIR = dirname(dirname(abspath(__file__)))
+sys.path.insert(0, WODLES_DIR)
+try:
+    from utils import MAX_EVENT_SIZE
+finally:
+    sys.path.remove(WODLES_DIR)
+
+DOCKER_MISSING = "'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n"
 
 try:
     import docker
-except:
-    sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
-    exit(1)
+except ModuleNotFoundError as e:
+    # Only the SDK itself missing; a dependency it cannot find is a broken install.
+    if e.name == 'docker':
+        sys.stderr.write(DOCKER_MISSING)
+    else:
+        sys.stderr.write(f"'docker' module could not be imported: {type(e).__name__}: {e}\n")
+    sys.exit(1)
+except Exception as e:
+    # Installed but broken (for example docker 4.x with urllib3 2.x): name the cause.
+    sys.stderr.write(f"'docker' module could not be imported: {type(e).__name__}: {e}\n")
+    sys.exit(1)
+
+# A docker/ directory elsewhere on the path imports as a namespace package; treat it as a missing SDK.
+if not hasattr(docker, 'from_env'):
+    sys.stderr.write(DOCKER_MISSING)
+    sys.exit(1)
 
 
 def log(msg):

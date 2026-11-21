@@ -518,8 +518,10 @@ label need another key, such as group membership (`wazuh.agent.groups`). A `<lab
 wrapper inside a `<localfile>` is different: like invalid content in the group's `<client>`
 section, it is rejected (`(1230): Invalid element in the configuration`) and the configuration
 does not compile; see [`label`](../../ref/modules/logcollector/configuration.md#label). A
-`<label>` key starting with `_` inside a `<localfile>` does not fail the check either:
-`verify-agent-conf` never returns on it, so a check that seems stuck points to such a key.
+`<label>` key starting with `_` inside a `<localfile>` fails the check as well
+(`(1235): Invalid value for element 'label': keys starting with _ are reserved for internal use.`):
+remove such labels before distributing the group, since 4.x agents never finish reading a
+configuration that carries one.
 Do the extraction with the manager stopped: `wazuh-manager-modulesd` drops a group whose
 directory it cannot open, and between the extraction and the `chown` these carry the 4.x owner,
 which is exactly that. The group comes back on the next synchronization, after a `delete-group`

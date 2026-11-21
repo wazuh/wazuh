@@ -125,6 +125,7 @@ int main(int argc, char **argv)
             if (snprintf(path_f, PATH_MAX + 1, "%s/%s", path, AGENT_CONF_FILE) > PATH_MAX) {
                 merror("Path too long.");
                 error = 1;
+                closedir(subdir);
                 break;
             }
 
@@ -133,6 +134,7 @@ int main(int argc, char **argv)
             if (IsFile(path_f) < 0){
                 printf("%s: File not found\n", ARGV0);
                 error = 1;
+                closedir(subdir);
                 continue;
             }
 
@@ -159,7 +161,16 @@ int verify_agent_conf(const char * path) {
         return -1;
     } else if (Test_Rootcheck(path) < 0) {
         return -1;
-    } else if (Test_Localfile(path) < 0) {
+    }
+
+    /* A reserved ("_"-prefixed) label loads here, skipped with a warning, but agents whose reader
+     * predates that skip never finish reading the file: refuse it before it is distributed. */
+    (void)Localfile_TakeReservedLabels();
+    if (Test_Localfile(path) < 0) {
+        return -1;
+    } else if (Localfile_TakeReservedLabels() > 0) {
+        merror(XML_VALUEERR, "label", "keys starting with _ are reserved for internal use");
+        merror(RCONFIG_ERROR, "Localfile", path);
         return -1;
     } else if (Test_Agent(path) < 0) {
         return -1;

@@ -132,7 +132,7 @@ private:
     /**
      * @brief Throws on the first argument that is not a known option, skipping the value that
      *        follows -f, -k, -v and -vp (a value may itself start with '-'). -h prints the usage and
-     *        exits wherever it appears, as paramValueOf() does.
+     *        exits wherever it appears as an option.
      */
     static void rejectUnknownSwitches(int argc, char* argv[])
     {
@@ -146,7 +146,7 @@ private:
                 std::exit(0);
             }
 
-            if (currentValue == "-f" || currentValue == "-k" || currentValue == "-v" || currentValue == "-vp")
+            if (takesValue(currentValue))
             {
                 ++i;
             }
@@ -157,13 +157,32 @@ private:
         }
     }
 
+    /**
+     * @brief Whether a switch consumes the argument that follows it as its value.
+     */
+    static bool takesValue(const std::string& switchValue)
+    {
+        return switchValue == "-f" || switchValue == "-k" || switchValue == "-v" || switchValue == "-vp";
+    }
+
+    /**
+     * @brief Whether a value-less switch was given. The value of -f, -k, -v and -vp is skipped, so a
+     *        value spelled like a switch (`-v -g`) is never taken for one.
+     */
     static bool hasSwitch(int argc, char* argv[], const std::string& switchValue)
     {
         for (auto i = 1; i < argc; ++i)
         {
-            if (std::string {argv[i]} == switchValue)
+            const std::string currentValue {argv[i]};
+
+            if (currentValue == switchValue)
             {
                 return true;
+            }
+
+            if (takesValue(currentValue))
+            {
+                ++i;
             }
         }
 
@@ -175,17 +194,22 @@ private:
                                     const std::string& switchValue,
                                     const std::pair<bool, std::string>& required = std::make_pair(true, ""))
     {
+        // -h is handled by rejectUnknownSwitches(), which runs first and skips values the same way: a
+        // value spelled "-h" (`-v -h`) is a value, not a request for the usage.
         for (auto i = 1; i < argc; ++i)
         {
             const std::string currentValue {argv[i]};
 
-            if (currentValue == "-h")
+            if (currentValue != switchValue)
             {
-                showHelp();
-                std::exit(0);
+                if (takesValue(currentValue))
+                {
+                    ++i;
+                }
+                continue;
             }
 
-            if (currentValue == switchValue && i + 1 < argc)
+            if (i + 1 < argc)
             {
                 // Switch found
                 std::string returnValue = argv[i + 1];

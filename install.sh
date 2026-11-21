@@ -323,6 +323,7 @@ Install()
     # error). The summary at the end of the installer reads CREDENTIALS_INCOMPLETE.
     CREDENTIALS_INCOMPLETE="no"
     CREDENTIALS_NEEDS_INSTALL="no"
+    CREDENTIALS_NEEDS_CA_KEY="no"
     if [ "X${INSTYPE}" = "Xmanager" ] && \
        [ "X$(normalizeYesNoOrDefault "${USER_RESOLVE_CREDENTIALS}" "yes")" != "Xno" ] && \
        [ -x "${INSTALLDIR}/bin/wazuh-manager-resolve-credentials" ]; then
@@ -345,6 +346,13 @@ Install()
         if [ "${CREDENTIALS_STATUS}" -ne 0 ] || printf '%s\n' "${CREDENTIALS_ERR}" \
             | grep -q -E "^(INVALID|UNSAFE) |^MISSING $(InstalledEtcDir)/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
             CREDENTIALS_NEEDS_INSTALL="yes"
+        fi
+        # A CA staged without its key: --install keeps it and cannot issue the server pairs, so
+        # repeating it changes nothing; the node's pairs are staged instead (it never needs the key).
+        # Same branch and wording as the DEB postinst and the RPM %post.
+        if printf '%s\n' "${CREDENTIALS_ERR}" \
+            | grep -q -E "^MISSING $(InstalledEtcDir)/certs/(remoted|apid)\.pem: no CA key"; then
+            CREDENTIALS_NEEDS_CA_KEY="yes"
         fi
     fi
 
@@ -1267,7 +1275,11 @@ main()
     if [ "X${CREDENTIALS_INCOMPLETE}" = "Xyes" ]; then
         echo " - WARNING: Credential resolution is incomplete: the manager does not start until every"
         echo "   MISSING, INVALID or UNSAFE entry reported above is resolved."
-        if [ "X${CREDENTIALS_NEEDS_INSTALL}" = "Xyes" ]; then
+        if [ "X${CREDENTIALS_NEEDS_CA_KEY}" = "Xyes" ]; then
+            echo "   The CA in $(InstalledEtcDir)/ca was staged without its key, so no server certificate was issued here."
+            echo "   Place this node's certificate pairs it reports missing in $(InstalledEtcDir)/certs, then start the"
+            echo "   manager: no new --install is needed. This node does not need the root CA private key: do not copy it here."
+        elif [ "X${CREDENTIALS_NEEDS_INSTALL}" = "Xyes" ]; then
             echo "   Fix them, then run: $INSTALLDIR/bin/wazuh-manager-resolve-credentials --install -H $INSTALLDIR"
         else
             echo "   Supply them as each entry above says, then start the manager."

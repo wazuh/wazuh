@@ -189,7 +189,7 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | `-V` | Print the version and license, then exit. | — |
 | `-h` | Print the help message, then exit with status `1`. | — |
 | `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read; without it, `-t` reads and range-checks `authd.debug` but does not apply it. | off |
-| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. Nothing is bound or started. | — |
+| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. On a master with `use_password` and `remote_enrollment` on, it also checks `/etc/wazuh-manager/authd.pass` as the start would load it (an absent file passes: the start generates it). Nothing is bound or started. | — |
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
@@ -264,7 +264,7 @@ a token for one worker's own address is refused unless the master's certificate 
 `--max-uses` to unlimited.
 
 **What a mint refuses about the request itself**, before any certificate is read, and identically from
-the CLI and the API (issue #39133):
+the CLI and the API:
 
 | Rule | Why |
 |------|-----|
@@ -278,8 +278,8 @@ A refusal is `9025` with the reason (`Enrollment token refused: ttl must be betw
 seconds (3650 days); 0 takes the default`). The CLI refuses an out-of-range `--ttl` locally, without
 reaching the socket; it also refuses `--ttl 0` (the `0` = default form is the socket's and the API's: omit `--ttl` on the CLI to get the 30 days), and a `--max-uses` above 1000000000.
 
-An entry of the store that cannot be read — a negative `expires` written by a version that still
-accepted one, or any other malformed field — is **dropped with a warning** and the rest of the file is
+An entry of the store that cannot be read — a negative `expires` or any other malformed
+field — is **dropped with a warning** and the rest of the file is
 loaded; the next write removes it from the file. What is still refused whole is a document that is not
 JSON, that carries another `version`, that has no `tokens` array, or that holds more tokens (or bytes)
 than this manager could ever write back: in those the tokens already loaded are kept.
@@ -329,8 +329,7 @@ fully rolled back if its final journal append fails.
 from that moment on this manager, but the answer is `9029` — *Enrollment token store write failed*, the
 API's error `1771` with HTTP 500 — and not the `9022` of a token that does not exist: the id is real and
 what the operator has to do is retry, not go looking for it. The pending revocation is remembered, so a
-reload does not undo it and the next token verb writes it; the earlier behaviour, answering success on
-the retry, let the token come back at the next restart. Two related contracts are worth stating: a
+reload does not undo it and the next token verb writes it. Two related contracts are worth stating: a
 **use** counted while the file cannot be written is *not* durable (a restart may admit one more
 enrollment with that token, or several if writes keep failing — revocation survives restart only
 after a successful store write),
@@ -400,8 +399,7 @@ secret and enrolls again with the credential it is configured with (an enrollmen
 password); with neither, it retries without one, which only a manager that accepts
 credential-less enrollment honours — otherwise an operator re-points it with a token.
 
-**There is no upgrade path for `global.db`.** A database created by a 5.0.0 build from before the
-`agent.reenroll_secret` column is recreated, not migrated. And rebuilding the agent rows from
+**Rebuilt rows carry no secret.** Rebuilding the agent rows from
 `client.keys` — what `wazuh-manager-modulesd` does when it finds rows missing — does **not** bring the
 secrets back: `client.keys` never held them, so those rows get a NULL secret and their agents answer
 `9026` until they enroll again. The identity journal (see above) does not change this either: it only
@@ -476,6 +474,10 @@ A request is a single-line JSON object:
     `Agent key generated for agent 'N' (requested by <source>)`; without it the line says
     `(requested locally)` (the server API). A value that is not printable as an address is
     ignored; a non-string one answers `9002`
+  - `legacy` (optional boolean) — set by a worker forwarding a port-1515 enrollment to the master:
+    the master then issues no `reenroll_secret` and records no identity-journal entry, as for a
+    direct port-1515 enrollment (see [the identity journal](architecture.md#the-identity-journal)).
+    A non-boolean value answers `9002`
 - **`remove`** — delete an agent. Arguments: `id` (required), `purge` (optional boolean; same
   meaning as the [`purge`](configuration.md#purge) configuration option, but scoped to this one
   request)
@@ -540,7 +542,7 @@ included); any other section name or unrecognized command returns an `err <messa
 
 ## Manager certificate
 
-authd has no certificate-generation mode (the `-C/-B/-K/-X/-S` flags of earlier builds are gone). The
+authd has no certificate-generation mode. The
 pair referenced by [`ssl_manager_cert` and `ssl_manager_key`](configuration.md#ssl_manager_cert) is
 the HTTPS agent listener's: the manager's credential resolver issues it at installation and nothing
 reissues it afterwards; a deployment on its own PKI replaces it out of band, for example with the
@@ -563,7 +565,7 @@ The in-repo companion to these pages (a plain path — it lives outside this boo
 
 - `src/os_auth/README.md` — the developer's map of the module: its source layout, the
   functional/non-functional requirements catalog (RF, RNF, and the `REQ-PURGE` contract with
-  inventory-sync), the design decisions (D1–D13) with the reasoning behind each, the load-bearing
+  inventory-sync), the design decisions (D1–D17) with the reasoning behind each, the load-bearing
   invariants, the operational notes, and which test suite covers what.
 - `src/config/src/authd-config.c` — the reader of the `auth` section (`Read_Authd_JSON()`), shared
   by authd and remoted's enrollment bridge; the option names, types and defaults themselves come

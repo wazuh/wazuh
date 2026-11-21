@@ -150,7 +150,7 @@ to do when the manager refuses to start.
 
 A distributed deployment, a corporate PKI, cert-manager or Vault all issue the manager's certificates outside the
 host. Stage the CA **before** installing the package, so the install issues the pairs from it or mints nothing,
-and stage the files of `certs/` before installing (Debian packages only) or after it, before the first start.
+and stage the files of `certs/` before installing (DEB or RPM package) or after it, before the first start.
 Staged files are validated at every start and never replaced.
 
 The manager uses two server pairs of its own, issued by one CA, and the indexer's trust:
@@ -199,13 +199,12 @@ refused as unsafe. With the CA's certificate staged but not its key, the install
 /etc/wazuh-manager/ca` (and the same for `apid.pem`); staging the pairs afterwards resolves it, and the start needs
 no rerun of `--install`.
 
-On a Debian package install you can stage `certs/` before installing as well, with `-g root`: create it with
+On a DEB or RPM package install you can stage `certs/` before installing as well, with `-g root` (the
+`wazuh-manager` group does not exist yet): create it with
 `sudo install -d -m 0750 -o root -g root /etc/wazuh-manager/certs` and install each file `root:root` `0640`. The
-package's `postinst` sets `/etc/wazuh-manager` to `root:wazuh-manager` `0770`, `certs/` to `root:wazuh-manager`
-`0750` and every `certs/*.pem` to `root:wazuh-manager` `0640` before the credential resolver runs; `ca/` and
-`local.env` are left as staged. The RPM package re-owns the `*.pem` files only after its resolver has run, which
-then refuses them as unsafe (`group is root, not wazuh-manager`) and issues nothing: on RPM systems, stage `certs/`
-after installing.
+package sets `/etc/wazuh-manager` to `root:wazuh-manager` `0770`, `certs/` to `root:wazuh-manager` `0750` and every
+regular `certs/*.pem` file to `root:wazuh-manager` `0640` before the credential resolver runs (DEB `postinst`, RPM
+`%post`); `ca/` and `local.env` are left as staged.
 
 If the install already minted a CA before you staged yours, remove `ca/root-ca.key` and
 `ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and replace `certs/root-ca.pem` and the pairs
@@ -264,9 +263,10 @@ stopped by an unsafe or invalid entry writes nothing), whether the credential
 resolution is incomplete and what completes it — the command
 `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (run as root) when
 the CA, the agents' bundle or a server pair is missing or an entry is invalid or unsafe; when the CA was staged in
-`/etc/wazuh-manager/ca` without its key, staging that key as `/etc/wazuh-manager/ca/root-ca.key` (owned by root,
-mode `0400` or `0600`) before that command, or staging the missing server pairs in `/etc/wazuh-manager/certs` and
-starting the manager; otherwise the start itself once the indexer's password and files are supplied — and the command to start the service (and to enable it at boot, when systemd is running).
+`/etc/wazuh-manager/ca` without its key, staging this node's missing server pairs in `/etc/wazuh-manager/certs` and
+starting the manager, with no new `--install` (the node does not need the root CA's private key); otherwise the
+start itself once the indexer's password and files are supplied — and the command to start the service (and to
+enable it at boot, when systemd is running).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;
@@ -284,8 +284,9 @@ sudo systemctl status wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-`wazuh-manager-control status` prints one `<daemon> is running...` line per daemon and exits `1` when
-any of them is down. `wazuh-manager-apid` is listed only on a master node, and
+`wazuh-manager-control status` prints one line per daemon, `<daemon> is running...` when it is up, and exits
+`1` when any of them is down (`<daemon> not running...`, `<daemon> refused its configuration...` after a start that
+refused it, or `<daemon> failed to start...`). `wazuh-manager-apid` is listed only on a master node, and
 `wazuh-manager-authd` only when `auth.disabled` is not set.
 
 If it refuses to start, `wazuh-manager-control` (and so the journal) prints one line ending in `Exiting`:
@@ -442,12 +443,14 @@ A token comes in three shapes, and every installation method below accepts any o
 |---|---|---|
 | Pinned | the default | Fetches the manager's CA, installs only the certificate that matches the pin in the token as the trust anchor |
 | Embedded CA | `--embed-ca` | Installs every CA certificate the token carries as the trust anchor; no fetch |
-| Credential-less | `--no-credential` | Points the agent at the manager and installs the trust anchor, but presents no enrollment credential |
+| Credential-less | `--no-credential` | Enrolls like the shapes above, with the agent's `authd.pass` as its credential if it has one (see below) |
+
+A credential-less token enrolls through the same verified path as the other shapes: the CA is fetched and pin-checked (or embedded), the enrollment is verified against it whatever `<verification_mode>` says, and the anchor is committed only after it succeeds. It carries no enrollment credential, so it presents the enrollment password configured on the agent (`authd.pass`) if there is one, or no credential, which only a manager that accepts credential-less enrollment honours. It does not depend on `<enrollment><enabled>`. A missing or wrong password is retried for about a minute, then the agent exits naming the password.
 
 In a [CA rotation](../modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation) that changes the CA key, pinned tokens minted before the manager's certificates are replaced, and `--embed-ca` tokens minted before the new CA was added, stop working once the certificates are replaced; agents already enrolled with them are not affected. Mint new ones for any still used to enroll agents once every node's certificate has been replaced.
 
 > [!IMPORTANT]
-> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs and starts normally and then fails to register. The agent log names the token id the manager refused.
+> Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs, and its first start then fails: `wazuh-agentd` logs `ERROR: Enrollment token <id> has expired (token_expired). A new enrollment token is needed.` (`(code 9023)` instead when authd, not remoted, refused it) and exits with `CRITICAL: Enrollment-token bootstrap failed: enrollment token <id> has expired. Create a new enrollment token on the manager.` The token is discarded; give the agent a new one with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent). A refusal that can clear on its own, such as a group that does not exist on the manager yet, is retried instead; a refusal that cannot (a malformed request, a refused client certificate, a damaged token) ends the start with the manager's reason and keeps the token, so a fixed configuration and a restart can still use it.
 
 ### Installation methods
 

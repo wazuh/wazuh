@@ -283,9 +283,9 @@ help: failtarget
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_SELINUX=yes         						Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_SELINUX=yes         						Build with SELinux policies (agent only: forced to no for the manager). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           						Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_JEMALLOC=yes    						Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=yes    						Not to link jemalloc into the daemons (it is still fetched, built and installed). Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
@@ -294,7 +294,7 @@ help: failtarget
 	@echo
 	@echo "User options: "
 	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
-	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
+	@echo "   make WAZUH_USER=wazuh        Shown by 'make settings'; only WAZUH_GROUP is used (chown of the bundled Python)"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=yes"
@@ -397,15 +397,6 @@ build-external:
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS}
 	cd build/external && $(MAKE) all
 # deps-recipe: end
-
-# CPython build
-ifneq (${TARGET},winagent)
-ifneq (${TARGET},agent)
-ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
-server: build_python
-endif
-endif
-endif
 
 TAR := tar -xf
 GUNZIP := gunzip

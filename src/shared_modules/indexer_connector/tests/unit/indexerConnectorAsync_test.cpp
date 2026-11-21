@@ -4406,6 +4406,125 @@ TEST_F(IndexerConnectorAsyncTest, PitAndSearchWithEveryNodeDownThrowIndexerConne
 }
 
 // =============================================================================
+// Index-name allowlist — Async (same isSafeIndexName() rule as the sync connector)
+// =============================================================================
+
+namespace
+{
+    // Every name here would change the URL the connector builds: a path segment, a query string, a
+    // fragment, a second index, or a character the indexer would read as something else.
+    const std::vector<std::string> UNSAFE_INDEX_NAMES {"",
+                                                       "wazuh-states-/x",
+                                                       "../_cluster",
+                                                       "wazuh-states-?q=1",
+                                                       "wazuh-states-#x",
+                                                       "wazuh-states-a,b",
+                                                       "wazuh-states- ",
+                                                       "wazuh-states-\nfoo",
+                                                       "wazuh-states-\"foo\"",
+                                                       "wazuh-states-foo\\bar",
+                                                       "wazuh-states-%2F"};
+} // namespace
+
+TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeRejectsUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-pit-unsafe");
+
+    for (const auto& name : UNSAFE_INDEX_NAMES)
+    {
+        try
+        {
+            connector.createPointInTime(std::vector<std::string> {name}, "5m", false);
+            FAIL() << "createPointInTime() accepted the index name '" << name << "'";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_THAT(e.what(), ::testing::HasSubstr("createPointInTime: unsafe index name"));
+            EXPECT_EQ(e.statusCode(), 0);
+        }
+    }
+}
+
+TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeRejectsListWithOneUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-pit-unsafe-list");
+
+    // The safe entries before and after do not let the unsafe one through.
+    const std::vector<std::string> indices {"wazuh-threatintel-kvdbs", "x/_search", ".wazuh-cti-consumers"};
+    EXPECT_THROW(connector.createPointInTime(indices, "5m", true), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorAsyncTest, SearchRejectsUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-search-unsafe");
+
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    for (const auto& name : UNSAFE_INDEX_NAMES)
+    {
+        try
+        {
+            connector.search(name, 10, query, std::nullopt);
+            FAIL() << "search() accepted the index name '" << name << "'";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_THAT(e.what(), ::testing::HasSubstr("search: unsafe index name"));
+            EXPECT_EQ(e.statusCode(), 0);
+        }
+    }
+}
+
+TEST_F(IndexerConnectorAsyncTest, PitAndSearchAcceptAllowlistedIndexNames)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::vector<std::string> urls;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke(
+            [&urls](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit([&urls](auto&& request) { urls.push_back(request.url.url()); }, requestParams);
+                const std::string response =
+                    urls.size() == 1 ? R"({"pit_id":"pit-1","creation_time":1})" : R"({"hits":{"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(std::string(response));
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(response));
+                }
+            }));
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-safe-names");
+
+    connector.createPointInTime(std::vector<std::string> {"wazuh-states-*", ".wazuh-cti-consumers"}, "5m", false);
+    connector.search("Idx_With.MixedCase-1.2.3", 1, {{"match_all", nlohmann::json::object()}}, std::nullopt);
+
+    ASSERT_EQ(urls.size(), 2u);
+    EXPECT_THAT(urls[0], ::testing::HasSubstr("/wazuh-states-*,.wazuh-cti-consumers/_search/point_in_time?"));
+    EXPECT_THAT(urls[1], ::testing::HasSubstr("/Idx_With.MixedCase-1.2.3/_search?"));
+}
+
+// =============================================================================
 // Partial answers — Async (the indexer is asked to refuse them; its refusals keep their status)
 // =============================================================================
 

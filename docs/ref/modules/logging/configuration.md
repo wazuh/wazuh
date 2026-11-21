@@ -117,7 +117,7 @@ for example after `wazuh-manager-control enable debug` and a restart) adds
 `[<pid>] <file>:<line> at <function>():` to the tag, before the level:
 
 ```text
-2026/07/06 12:34:58 wazuh-manager-modulesd[23059] main.c:179 at main(): DEBUG: Created new thread for the 'control' module.
+2026/07/06 12:34:58 wazuh-manager-modulesd[23059] main.c:166 at main(): DEBUG: Available processors: 4
 ```
 
 ### JSON
@@ -134,9 +134,12 @@ and `routine`.
 
 ## Rotation
 
-On the manager, `wazuh-manager.log` and `wazuh-manager.json` are rotated daily, and when they exceed a
+On the manager, `wazuh-manager.log` and `wazuh-manager.json` are rotated daily, and when they reach a
 size threshold, into `logs/wazuh/<YYYY>/<Mon>/wazuh-<DD>.log.gz` and `.json.gz` (with a `-<NNN>` counter
-for further rotations of the same day). The rotated files are gzip-compressed by default; with the internal
+for further rotations of the same day). The daily rotation, just after midnight, files the log under
+the day that ended. Each rotation logs `Running daily rotation of log files.` or `Rotating
+'logs/wazuh-manager.log' file: Maximum size reached.` (`logs/wazuh-manager.json` for the JSON log) under
+the `wazuh-manager-modulesd` tag. The rotated files are gzip-compressed by default; with the internal
 option `wazuh_modules.manager_task_log_compress=0` they stay plain `.log` and `.json`. The schedule and its internal options are described in
 [Recurring manager tasks](../task_manager/schedules.md).
 

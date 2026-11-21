@@ -44,6 +44,12 @@ you need the payload, drop it before replying if you are done with the bytes. A 
 that throws is answered `500`; a responder dropped without `send()` is answered `503`
 and logged as a handler bug.
 
+A route that parses a JSON body and may copy, compare or serialize the result must first
+call `wazuh::uds_http::exceedsNestingDepth()` (`jsonNestingDepth.hpp`, cap
+`MAX_JSON_NESTING_DEPTH` = 256) on the raw bytes and refuse the body when it returns
+`true`. A body far below any byte cap can nest deeply enough to overflow the stack in
+nlohmann's recursive `dump()`, copy and comparison. Inventory Sync and Task Manager do this.
+
 ## Headers that must appear once
 
 `HttpRequest::headers` keeps the last value of a repeated name. If your contract needs

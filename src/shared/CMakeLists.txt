@@ -317,6 +317,13 @@ set_target_properties(
 
 # Add compile definitions
 target_compile_definitions(wazuh PRIVATE ARGV0="wazuh")
+# debug_op.c gives a log file it creates as root to GROUPGLOBAL: the service group of the product this
+# tree builds (the defs.h fallback is the agent's). Same variable and condition as the daemons' own CMake files.
+set(WAZUH_RUNTIME_GROUP "wazuh")
+if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
+  set(WAZUH_RUNTIME_GROUP "wazuh-manager")
+endif()
+target_compile_definitions(wazuh PRIVATE GROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
 
 if(OS_BIG_ENDIAN)
   add_definitions(-DOS_BIG_ENDIAN)
@@ -350,6 +357,7 @@ if(UNIT_TEST)
 
   # Add same compile definitions as production library
   target_compile_definitions(wazuh_test PRIVATE ARGV0="wazuh")
+  target_compile_definitions(wazuh_test PRIVATE GROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
   target_compile_definitions(wazuh_test PRIVATE WAZUH_UNIT_TESTING)
 
   if(CA_NAME)

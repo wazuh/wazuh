@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 # Tool to build and compress the WPK package
 # Wazuh package generator
 # Copyright (C) Wazuh Inc.
@@ -35,7 +36,6 @@ def mergeappend(merged, sources):
     with open(merged, 'ab') as f:
         for s in sources:
             _mergeappend(f, s)
-
 
 def _mergeappend(fm, source):
     if isfile(source):

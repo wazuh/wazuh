@@ -1,7 +1,7 @@
 # benchmark_sender — design documentation
 
 Design set for the load-generation tool of `inventory_sync_server` and the agent-facing routes of
-remoted. It was written before the implementation (F9c-1, implemented by F9c-2) and is kept in step
+remoted. It was written before the implementation and is kept in step
 with the sender as built (`cmd/` and `internal/`): every behaviour described here is what the code
 on this branch does, and where the two disagree the code wins and this set is the one to fix.
 
@@ -56,6 +56,6 @@ the **client**, and cites those where the contract originates.
 ## What is NOT here
 
 The orchestration scripts (`run_benchmark.sh`, the resource monitor, the chart generators) and the
-scenario corpus are F9c-3, documented in [the harness README](../../README.md) and
-[`SCENARIOS.md`](../../SCENARIOS.md); the load report is F9c-4. This set covers only the sender
+scenario corpus are documented in [the harness README](../../README.md) and
+[`SCENARIOS.md`](../../SCENARIOS.md), together with the load report. This set covers only the sender
 itself.
