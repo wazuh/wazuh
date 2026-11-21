@@ -69,7 +69,7 @@ constexpr auto OUTPUT_NOT_SHOWABLE {
  * @return The HTTP response.
  */
 template<typename Res>
-httplib::Response runResponse(const Res& eResponse)
+httpsrv::Response runResponse(const Res& eResponse)
 {
     const auto serialized = eMessage::eMessageToJson<Res>(eResponse);
     if (std::holds_alternative<base::Error>(serialized))
@@ -78,9 +78,9 @@ httplib::Response runResponse(const Res& eResponse)
             fmt::format("{}: {}", OUTPUT_NOT_SHOWABLE, std::get<base::Error>(serialized).message));
     }
 
-    httplib::Response response;
-    response.status = httplib::StatusCode::OK_200;
-    response.set_content(std::get<std::string>(serialized), "application/json");
+    httpsrv::Response response;
+    response.status = 200;
+    response.setContent(std::get<std::string>(serialized), "application/json");
     return response;
 }
 
