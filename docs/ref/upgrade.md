@@ -482,8 +482,8 @@ sudo /var/wazuh-manager/bin/wazuh-manager-control status
 # Review cluster logs
 sudo tail -100 /var/wazuh-manager/logs/cluster.log
 
-# Restart cluster service
-sudo systemctl restart wazuh-manager
+# Restart the manager (check first: a refused start would leave it down)
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 ```
 
 **Issue: Global database refused after an upgrade or a rollback**

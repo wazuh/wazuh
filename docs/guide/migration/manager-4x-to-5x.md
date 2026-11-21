@@ -676,7 +676,7 @@ the installer deliberately does not do:
 
 ```bash
 sudo systemctl enable wazuh-manager
-sudo systemctl restart wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
 grep -E "client-keys|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```

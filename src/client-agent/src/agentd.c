@@ -263,6 +263,14 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         w_agent_resolve_ssl_posture(agt);
     }
 
+    /* main() may have deferred the CA check to this point: a verifying mode with no CA yet, and a
+     * token about to install the anchor. Checked again now that the bootstrap has run, so a token
+     * that did not deliver one still ends the start with (4118) instead of an agent that can never
+     * connect. */
+    if (!anchor_before && !w_agent_validate_ssl_ca(agt)) {
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
     w_agent_warn_unverified_without_anchor(agt);
 
     /* Set group ID */

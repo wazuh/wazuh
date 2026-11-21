@@ -1001,8 +1001,8 @@ sudo sh -c 'if [ ! -f /var/wazuh-manager/queue/db/global.db ]; then echo "MISSIN
   elif ! command -v sqlite3 > /dev/null; then echo "sqlite3 is not installed (see the pre-backup checklist)"; \
   else sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent"; fi'
 
-# Restart manager
-sudo systemctl restart wazuh-manager
+# Restart manager (check first: a refused start would leave it down)
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 
 # Check remoted logs
 sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
@@ -1048,8 +1048,8 @@ sudo systemctl start wazuh-manager
 # Verify cluster configuration
 sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 
-# Restart cluster daemon
-sudo systemctl restart wazuh-manager
+# Restart the manager (check first: a refused start would leave it down)
+sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl restart wazuh-manager
 
 # Check cluster logs
 sudo tail -f /var/wazuh-manager/logs/cluster.log
