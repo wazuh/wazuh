@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <sys/types.h>
 #include <vector>
@@ -44,6 +45,9 @@ class DirectMemberships
         };
 
         void load();
+        void resolveGroups(const std::map<std::string, ODGroupMembers>& membersByGroup);
+        std::string guidOf(const std::string& lowerName) const;
+        std::set<gid_t> otherGroupsOf(const std::string& lowerName, const std::string& uuid, gid_t primaryGid) const;
 
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
         std::shared_ptr<IODUtilsWrapper> m_odWrapper;
