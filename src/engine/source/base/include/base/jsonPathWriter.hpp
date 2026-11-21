@@ -92,7 +92,7 @@ public:
 
     private:
         friend class PathWriter;
-        Anchor(const PathWriter* owner, rapidjson::Value* value)
+        Anchor(const PathWriter* owner, json::Value* value)
             : m_owner(owner)
             , m_value(value)
         {
@@ -100,7 +100,7 @@ public:
 
         /// Writer that created the anchor; the anchored overloads reject an anchor whose owner is another writer.
         const PathWriter* m_owner;
-        rapidjson::Value* m_value;
+        json::Value* m_value;
     };
 
     /**
@@ -210,9 +210,9 @@ public:
     size_t indexedObjects() const;
 
 private:
-    using Value = rapidjson::Value;
-    using Member = rapidjson::Value::Member;
-    using Token = rapidjson::Pointer::Token;
+    using Value = json::Value;
+    using Member = json::Value::Member;
+    using Token = json::Pointer::Token;
     using Position = rapidjson::SizeType;
 
     struct IndexEntry;
@@ -275,15 +275,15 @@ private:
 
     // One body per operation that has a relative overload: the absolute overload calls it with the root of the
     // document, the relative one with the anchored node
-    void setStringAt(Value& from, const rapidjson::Pointer& pointer, std::string_view value);
-    void setObjectAt(Value& from, const rapidjson::Pointer& pointer);
-    void appendStringAt(Value& from, const rapidjson::Pointer& pointer, std::string_view value);
-    void appendJsonAt(Value& from, const rapidjson::Pointer& pointer, const Json& value);
-    bool existsAt(Value& from, const rapidjson::Pointer& pointer) const;
-    bool isObjectAt(Value& from, const rapidjson::Pointer& pointer) const;
-    bool isArrayAt(Value& from, const rapidjson::Pointer& pointer) const;
+    void setStringAt(Value& from, const json::Pointer& pointer, std::string_view value);
+    void setObjectAt(Value& from, const json::Pointer& pointer);
+    void appendStringAt(Value& from, const json::Pointer& pointer, std::string_view value);
+    void appendJsonAt(Value& from, const json::Pointer& pointer, const Json& value);
+    bool existsAt(Value& from, const json::Pointer& pointer) const;
+    bool isObjectAt(Value& from, const json::Pointer& pointer) const;
+    bool isArrayAt(Value& from, const json::Pointer& pointer) const;
     /// std::nullopt when the path does not exist or its value has no size.
-    std::optional<size_t> sizeAt(Value& from, const rapidjson::Pointer& pointer) const;
+    std::optional<size_t> sizeAt(Value& from, const json::Pointer& pointer) const;
 
     Json& m_doc;
     size_t m_indexThreshold;

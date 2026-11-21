@@ -1934,10 +1934,9 @@ bool Json::erase(std::string_view path)
 namespace
 {
 
-using Allocator = rapidjson::Document::AllocatorType;
 using Position = rapidjson::SizeType;
 
-std::string_view memberName(const rapidjson::Value& name)
+std::string_view memberName(const json::Value& name)
 {
     return {name.GetString(), name.GetStringLength()};
 }
@@ -1948,7 +1947,7 @@ struct MemberPositionLess
 {
     using is_transparent = void;
 
-    const rapidjson::Value* object;
+    const json::Value* object;
 
     std::string_view nameAt(Position position) const { return memberName((object->MemberBegin() + position)->name); }
 
@@ -1964,7 +1963,7 @@ struct MemberIndex
     std::pmr::monotonic_buffer_resource memory;
     std::pmr::set<Position, MemberPositionLess> positions;
 
-    explicit MemberIndex(const rapidjson::Value& object)
+    explicit MemberIndex(const json::Value& object)
         : positions(MemberPositionLess {&object}, &memory)
     {
         const Position count = object.MemberCount();
@@ -1975,19 +1974,19 @@ struct MemberIndex
     }
 };
 
-void mergeValue(rapidjson::Value& dst, const rapidjson::Value& src, bool isRecursive, Allocator& allocator);
+void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator);
 
 // Merges one source member into the object dst once its member in dst (or MemberEnd) is known. Returns true if the
 // member was added.
-bool mergeMember(rapidjson::Value& dst,
-                 rapidjson::Value::MemberIterator found,
-                 rapidjson::Value::ConstMemberIterator srcIt,
+bool mergeMember(json::Value& dst,
+                 json::Value::MemberIterator found,
+                 json::Value::ConstMemberIterator srcIt,
                  bool isRecursive,
-                 Allocator& allocator)
+                 json::Allocator& allocator)
 {
     if (found != dst.MemberEnd())
     {
-        rapidjson::Value cpyValue {srcIt->value, allocator};
+        json::Value cpyValue {srcIt->value, allocator};
         if (isRecursive && (srcIt->value.IsObject() || srcIt->value.IsArray()))
         {
             mergeValue(found->value, cpyValue, isRecursive, allocator);
@@ -1999,8 +1998,8 @@ bool mergeMember(rapidjson::Value& dst,
         return false;
     }
 
-    rapidjson::Value cpyValue {srcIt->value, allocator};
-    rapidjson::Value cpyName {srcIt->name, allocator};
+    json::Value cpyValue {srcIt->value, allocator};
+    json::Value cpyName {srcIt->name, allocator};
     dst.AddMember(cpyName, cpyValue, allocator);
     return true;
 }
@@ -2008,11 +2007,11 @@ bool mergeMember(rapidjson::Value& dst,
 // Merges the source members from srcIt on into the object dst, looking them up through an index of dst: it holds the
 // first occurrence of each name, like FindMember, and every member added from here on. Kept out of line so that the
 // merges that never need the index do not carry it.
-[[gnu::noinline]] void mergeMembersIndexed(rapidjson::Value& dst,
-                                           const rapidjson::Value& src,
-                                           rapidjson::Value::ConstMemberIterator srcIt,
+[[gnu::noinline]] void mergeMembersIndexed(json::Value& dst,
+                                           const json::Value& src,
+                                           json::Value::ConstMemberIterator srcIt,
                                            bool isRecursive,
-                                           Allocator& allocator)
+                                           json::Allocator& allocator)
 {
     MemberIndex index(dst);
     for (; srcIt != src.MemberEnd(); ++srcIt)
@@ -2030,7 +2029,7 @@ bool mergeMember(rapidjson::Value& dst,
     }
 }
 
-void mergeValue(rapidjson::Value& dst, const rapidjson::Value& src, bool isRecursive, Allocator& allocator)
+void mergeValue(json::Value& dst, const json::Value& src, bool isRecursive, json::Allocator& allocator)
 {
     if (dst.GetType() != src.GetType())
     {
@@ -2074,7 +2073,7 @@ void mergeValue(rapidjson::Value& dst, const rapidjson::Value& src, bool isRecur
             }
             if (!found)
             {
-                rapidjson::Value cpyValue {*srcIt, allocator};
+                json::Value cpyValue {*srcIt, allocator};
                 dst.PushBack(cpyValue, allocator);
             }
         }
@@ -2087,7 +2086,7 @@ void mergeValue(rapidjson::Value& dst, const rapidjson::Value& src, bool isRecur
 
 } // namespace
 
-void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path)
+void Json::merge(const bool isRecursive, const json::Value& source, std::string_view path)
 {
     const auto pp = json::makePointer(path);
 
@@ -2230,7 +2229,7 @@ size_t Json::removeDuplicateKeys()
 
 size_t Json::eraseMembersEqualTo(std::string_view path, const Json& value)
 {
-    const auto pp = rapidjson::Pointer(path.data(), path.size());
+    const auto pp = json::makePointer(path);
     if (!pp.IsValid())
     {
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
