@@ -478,7 +478,7 @@ The same table also holds module-wide markers, stored in `last_sync_time` under 
 - `synced_agent_id`: Agent ID under which the manager holds this module's whole inventory; when the agent's current ID differs (for example, after re-enrolling), Syscollector resends every table
 - `vd_synced_agent_id`: Agent ID under which the vulnerability detection tables (OS, packages and, on Windows, hotfixes) were last resent during a resend still in progress
 - `synced_agent_id:<table>`: Agent ID under which that table was last resent during a resend still in progress, so a resend cut short by a restart or by a failed table resumes with the tables still pending
-- `scan_baseline:<table>`: time that table last completed a scan while its collector was enabled. While it is `0` or absent, the table's changes are stored and synchronized but sent as stateless events only when `notify_first_scan` is `yes`; the next complete scan sets it. It is cleared when a disabled collector's table is emptied, and by the upgrade below for `dbsync_users` and `dbsync_groups`
+- `scan_baseline:<table>`: time that table last completed a scan while its collector was enabled. While it is `0` or absent, the table's changes are stored and synchronized but sent as stateless events only when `notify_first_scan` is `yes`; the next complete scan sets it. It is cleared when a disabled collector's table is emptied, and by the second upgrade described under `dbsync_osinfo` above, for `dbsync_users` and `dbsync_groups`
 
 The `vd_synced_agent_id` and `synced_agent_id:<table>` keys are reset to `0` once `synced_agent_id` records the new ID.
 
