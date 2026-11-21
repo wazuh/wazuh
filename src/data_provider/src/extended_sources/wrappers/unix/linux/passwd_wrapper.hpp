@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "file_entry_reader.hpp"
 #include "ipasswd_wrapper.hpp"
 
 /// @brief Wrapper class for functions related to the passwd database.
@@ -28,7 +29,10 @@ class PasswdWrapperLinux : public IPasswdWrapperLinux
         int fgetpwent_r(FILE* stream, struct passwd* pwd,
                         char* buf, size_t buflen, struct passwd** result) override
         {
-            return ::fgetpwent_r(stream, pwd, buf, buflen, result);
+            return readFileEntry(stream, [&]()
+            {
+                return ::fgetpwent_r(stream, pwd, buf, buflen, result);
+            });
         }
 
         /// @brief Rewinds the passwd database to the beginning.

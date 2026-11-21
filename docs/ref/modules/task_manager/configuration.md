@@ -57,10 +57,11 @@ rejected with HTTP `413` and a `payload_too_large` body. It applies to agent tas
 
 - **Default value:** `1048576` (1 MiB)
 - **Allowed values:** integer 0–2147483647 (bytes). `0` means "use default".
-- **Note:** the manager-task routes are served in the transport's `Control` class, whose own body cap
-  defaults to 64 KiB. The module raises that cap to this value plus envelope overhead, so the limit
-  you configure is the one that applies — but a value raised far beyond the payloads a producer
-  actually sends only widens what one request can reserve.
+- **Note:** the manager-task create route (`POST /v1/manager-tasks`) is served in the transport's
+  `Control` class, whose own body cap defaults to 64 KiB. The module raises the cap of that one route
+  (not of the class) to this value plus 64 KiB of envelope, and the socket-wide cap to at least that
+  much, so the limit you configure is the one that applies — but a value raised far beyond the
+  payloads a producer actually sends only widens what one request can reserve.
 
 ### max_tasks_per_poll
 
@@ -73,19 +74,22 @@ Maximum number of tasks returned by one `POST /v1/tasks/pending` call, oldest fi
 
 ## Manager Configuration Examples
 
+Each example shows only its section, which goes inside `<wazuh_config>` next to the required
+`cluster` and `indexer` sections.
+
 ### Default Configuration
 
 The section can be omitted entirely — the module runs with all built-in defaults, on every manager
 node in the cluster:
 
-```xml
+```xml,fragment
 <task-manager>
 </task-manager>
 ```
 
 Or explicit:
 
-```xml
+```xml,fragment
 <task-manager>
   <task_ttl>3600</task_ttl>
   <cleanup_interval>300</cleanup_interval>
@@ -98,7 +102,7 @@ Or explicit:
 
 For deployments with many agents and frequent task creation, enlarge the response batch size and give tasks more time before they are considered expired:
 
-```xml
+```xml,fragment
 <task-manager>
   <task_ttl>7200</task_ttl>
   <cleanup_interval>600</cleanup_interval>
@@ -110,7 +114,7 @@ For deployments with many agents and frequent task creation, enlarge the respons
 
 The default 1 MiB limit is enough for the majority of tasks. Raise it only if the payload the producer is attaching is legitimately large (e.g. an Active Response event with rich context):
 
-```xml
+```xml,fragment
 <task-manager>
   <max_payload_bytes>4194304</max_payload_bytes>
 </task-manager>
@@ -148,7 +152,9 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localh
 
 If the module cannot start — for example, it cannot bind its socket or open `tasks.db` — it logs
 `Task manager failed to start: <reason>` and modulesd exits with `Cannot start the task manager module.`
-The timeout-pair rule is checked by `wazuh-manager-modulesd -t`, before the daemon starts. A missing
+The [timeout-pair rule](manager-tasks.md#per-type-bounds) (`manager_task_delete_timeout` must exceed
+`manager_task_vd_scan_timeout`, else `Invalid task-manager timeout pair: …`) is checked by
+`wazuh-manager-modulesd -t`, so `wazuh-manager-control` refuses the start before the daemon runs. A missing
 `lib/libtask_manager.so` exits with `Unable to load libtask_manager.so (<reason>); the installation
 is broken.`
 
@@ -246,7 +252,7 @@ options below; their behaviour is described in [Recurring manager tasks](schedul
 `<global>` holds this one option. It is shared configuration rather than the Task Manager's own:
 the disconnection sweep uses it as its window, and `wazuh-manager-remoted` reads the same value (it
 stops pushing to an agent silent for longer, and warns when `remoted.control_keepalive_throttle` is
-at or above half of it).
+at or above half of it — see [remoted's use of it](../remoted/configuration.md#agents_disconnection_time)).
 
 - **Default value:** `15m`
 - **Allowed values:** seconds as an integer, or a number with a unit suffix `s`, `m`, `h`, `d` or `w`;
@@ -263,7 +269,7 @@ at or above half of it).
   the global configuration; the agent disconnection sweep will use its default window.`, uses
   900 s, and fails `wazuh-manager-modulesd -t` — so `wazuh-manager-control` refuses the start.
 
-```xml
+```xml,fragment
 <global>
   <agents_disconnection_time>15m</agents_disconnection_time>
 </global>
@@ -361,7 +367,7 @@ one `remote_upgrade` agent task per agent.
 | `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* (Server API error 1827); modulesd says so once at start, at INFO: `Agent upgrades are disabled by configuration; the upgrade routes will refuse every request.` |
 | `<wpk_repository>` | none | Non-empty string (an empty element fails validation). Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` overrides it. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
 
-```xml
+```xml,fragment
 <task-manager>
   <wpk_repository>https://packages.internal.company.com/wazuh/wpk/</wpk_repository>
 </task-manager>

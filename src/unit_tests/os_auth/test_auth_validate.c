@@ -22,6 +22,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 
 #define EXISTENT_AGENT1 "ExistentAgent1"
 #define EXISTENT_AGENT2 "ExistentAgent2"
@@ -156,6 +157,39 @@ int setup_validate_force_enabled(void **state) {
     return 0;
 }
 
+/* The validation as its callers run it: validate, read the row it asked for, validate again. Callers do
+ * the read with the keystore lock released; this binary has no lock, so only the sequence is exercised. */
+static w_err_t validate(char *response, const char *ip, const char *agentname, const char *groups, const char *key_hash) {
+    w_auth_holders_t holders;
+    w_err_t err;
+
+    memset(&holders, 0, sizeof(holders));
+
+    while (err = w_auth_validate_data(response, ip, agentname, groups, key_hash, &holders), err == OS_NOTFOUND) {
+        w_auth_holders_read(&holders);
+    }
+
+    return err;
+}
+
+/* The verdict on one agent, with its row read first, as its callers hand it over. A disabled force never
+ * asks for the row. */
+static w_err_t check_replace(keyentry *key, const char *key_hash, authd_force_options_t *force_options,
+                             char **str_result, bool *warn) {
+    w_auth_holders_t holders;
+
+    memset(&holders, 0, sizeof(holders));
+
+    if (force_options->enabled) {
+        snprintf(holders.wanted, sizeof(holders.wanted), "%s", key->id);
+        holders.wanted_role = W_AUTH_HOLDER_IP;
+        w_auth_holders_read(&holders);
+    }
+
+    return w_auth_check_replace_agent(key, key_hash, force_options,
+                                      force_options->enabled ? &holders.row[W_AUTH_HOLDER_IP] : NULL, str_result, warn);
+}
+
 /* tests */
 static void test_w_auth_validate_data(void **state) {
     char response[2048] = {0};
@@ -163,13 +197,13 @@ static void test_w_auth_validate_data(void **state) {
 
     /* New agent / IP*/
     response[0] = '\0';
-    err = w_auth_validate_data(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
+    err = validate(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
     /* any IP*/
     response[0] = '\0';
-    err = w_auth_validate_data(response, ANY_IP, NEW_AGENT1, NULL, NULL);
+    err = validate(response, ANY_IP, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
@@ -177,7 +211,7 @@ static void test_w_auth_validate_data(void **state) {
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
                                                 "Agent '001' won't be removed because the force option is disabled.");
-    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
+    err = validate(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
 
@@ -185,7 +219,7 @@ static void test_w_auth_validate_data(void **state) {
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
                                                 "Agent '001' won't be removed because the force option is disabled.");
-    err = w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
+    err = validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
 
@@ -196,7 +230,7 @@ static void test_w_auth_validate_data(void **state) {
         host_name[sizeof(host_name) - 1] = '\0';
     }
     response[0] = '\0';
-    err = w_auth_validate_data(response, NEW_IP1, host_name, NULL, NULL);
+    err = validate(response, NEW_IP1, host_name, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
@@ -236,7 +270,7 @@ static void test_w_auth_validate_data_refused_name_removes_no_agent(void **state
 
     expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT2"', rejecting enrollment. "
                                                 "Failed to get agent-info for agent '002'");
-    err = w_auth_validate_data(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL);
+    err = validate(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT2"");
 
@@ -268,7 +302,7 @@ static void test_w_auth_validate_data_same_holder_is_judged_and_removed_once(voi
     char expected[256];
     snprintf(expected, sizeof(expected), "Duplicate IP '"NEW_IP1"'. Removing old agent '"NEW_AGENT1"' (id '%s').", id);
     expect_string(__wrap__minfo, formatted_msg, expected);
-    err = w_auth_validate_data(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
+    err = validate(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
@@ -341,7 +375,7 @@ static void test_w_auth_validate_data_replace_agent(void **state) {
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"'. "
                                                 "Removing old agent '"EXISTENT_AGENT1"' (id '001').");
-    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
+    err = validate(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
@@ -359,7 +393,7 @@ static void test_w_auth_validate_data_replace_agent(void **state) {
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicate name. "
                                                 "Removing old agent '"EXISTENT_AGENT2"' (id '002').");
-    err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
+    err = validate(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
@@ -489,7 +523,7 @@ static void test_w_auth_check_replace_agent_force_disabled(void **state) {
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
     char* str_result = NULL;
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, NULL);
 
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(str_result, "Agent '001' won't be removed because the force option is disabled.");
@@ -507,7 +541,7 @@ static void test_w_auth_check_replace_agent_agent_info_failed(void **state) {
     expect_value(__wrap_wdb_get_agent_info, id, 1);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.enabled = 0;
     assert_int_equal(err, OS_INVALID);
@@ -544,7 +578,7 @@ static void test_w_auth_check_replace_agent_not_disconnected(void **state) {
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, &warn);
 
     assert_int_equal(err, OS_INVALID);
     assert_true(warn);
@@ -580,7 +614,7 @@ static void assert_replace_refused_with_stale_disconnection_time(char *connectio
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, &warn);
 
     config.force_options.disconnected_time_enabled = false;
     config.force_options.disconnected_time = 0;
@@ -629,7 +663,7 @@ static void test_w_auth_check_replace_agent_not_disconnected_long_enough(void **
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.disconnected_time_enabled = false;
     config.force_options.disconnected_time = 0;
@@ -668,7 +702,7 @@ static void test_w_auth_check_replace_agent_not_old_enough(void **state) {
 
     config.force_options.after_registration_time = 100;
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.after_registration_time = 0;
 
@@ -705,7 +739,7 @@ static void test_w_auth_check_replace_agent_existent_key_hash(void **state) {
     config.force_options.after_registration_time = 0;
     config.force_options.key_mismatch = true;
 
-    err = w_auth_check_replace_agent(&key, key_hash, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, key_hash, &config.force_options, &str_result, NULL);
 
     config.force_options.key_mismatch = false;
 
@@ -741,7 +775,7 @@ static void test_w_auth_check_replace_agent_success(void **state) {
     config.force_options.disconnected_time_enabled = false;
     config.force_options.after_registration_time = 1;
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.after_registration_time = 0;
 
@@ -789,7 +823,7 @@ static void test_w_auth_check_replace_agent_backlog_full(void **state) {
 
     expect_any(__wrap__mwarn, formatted_msg); // phase 0 refusing
 
-    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = check_replace(&key, NULL, &config.force_options, &str_result, NULL);
 
     purge_pending_rows_update(0);
     config.max_pending_deletes = 0;
@@ -799,6 +833,340 @@ static void test_w_auth_check_replace_agent_backlog_full(void **state) {
     assert_string_equal(str_result, "Agent '001' can't be replaced: too many deletions are in progress.");
     free_keyentry(&key);
     os_free(str_result);
+}
+
+/* ---- The holder's row is read between two validations, and the holder may change meanwhile ---- */
+
+static void drain_queue_remove(void) {
+    struct keynode *cur = NULL;
+    struct keynode *next = NULL;
+
+    for (cur = queue_remove; cur; cur = next) {
+        next = cur->next;
+        os_free(cur->id);
+        os_free(cur->name);
+        os_free(cur->ip);
+        os_free(cur);
+    }
+    queue_remove = NULL;
+    remove_tail = &queue_remove;
+}
+
+static void add_agent(const char *id, const char *name, const char *ip) {
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    assert_true(OS_AddNewAgent(&keys, id, name, ip, NULL, 0) >= 0);
+}
+
+/* What the hook does to the keystore while a row is being "read", and how many rows were read. */
+static int rows_read = 0;
+static void (*while_reading)(int id, int nth) = NULL;
+
+static void reading_hook(int id) {
+    rows_read++;
+    if (while_reading) {
+        while_reading(id, rows_read);
+    }
+}
+
+/* Its own keystore: 001 holds EXISTENT_AGENT1 + EXISTENT_IP1, 002 holds EXISTENT_AGENT2 + EXISTENT_IP2.
+ * Every guard but the row itself is off, so a readable row means "replaceable". */
+static int setup_holders(void **state) {
+    OS_FreeKeys(&keys);
+    keys_init(&keys, 0, !config.flags.clear_removed);
+    add_agent(NULL, EXISTENT_AGENT1, EXISTENT_IP1);
+    add_agent(NULL, EXISTENT_AGENT2, EXISTENT_IP2);
+    drain_queue_remove();
+
+    config.force_options.enabled = 1;
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+    w_auth_client_rejection_log_reset();
+
+    rows_read = 0;
+    while_reading = NULL;
+    wdb_get_agent_info_hook = reading_hook;
+    return 0;
+}
+
+static int teardown_holders(void **state) {
+    wdb_get_agent_info_hook = NULL;
+    while_reading = NULL;
+    drain_queue_remove();
+    return 0;
+}
+
+static void expect_row(int id, cJSON *row) {
+    expect_value(__wrap_wdb_get_agent_info, id, id);
+    will_return(__wrap_wdb_get_agent_info, row);
+}
+
+static void assert_removed_ids(const char *first, const char *second) {
+    struct keynode *node = queue_remove;
+
+    if (first) {
+        assert_non_null(node);
+        assert_string_equal(node->id, first);
+        node = node->next;
+    }
+    if (second) {
+        assert_non_null(node);
+        assert_string_equal(node->id, second);
+        node = node->next;
+    }
+    assert_null(node);
+}
+
+/* Another request took the name over: the holder is deleted and a new agent holds its name. */
+static void replace_name_holder(const char *name, const char *ip) {
+    int index = OS_IsAllowedName(&keys, name);
+    char id[16];
+
+    assert_true(index >= 0);
+    snprintf(id, sizeof(id), "%s", keys.keyentries[index]->id);
+    assert_true(OS_DeleteKey(&keys, id, 1) >= 0);
+    add_agent(NULL, name, ip);
+}
+
+static void test_validate_replacement_queues_the_replaced_agent(void **state) {
+    /* The positive control of every "nothing was removed" below: a replacement that does happen leaves
+     * the replaced agent's id in the removal queue. */
+    char response[2048] = {0};
+
+    expect_row(1, agent_info_row("never_connected"));
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name. Removing old agent '"EXISTENT_AGENT1"' (id '001').");
+
+    assert_int_equal(validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL), OS_SUCCESS);
+    assert_int_equal(rows_read, 1);
+    assert_removed_ids("001", NULL);
+    assert_true(OS_IsAllowedID(&keys, "001") < 0);
+}
+
+static void test_validate_missing_rows_leave_response_and_keystore_untouched(void **state) {
+    /* Every byte of the buffer is set beforehand: "untouched" has to mean not even cleared. */
+    char response[2048];
+    char untouched[2048];
+    w_auth_holders_t holders;
+
+    memset(response, 'x', sizeof(response));
+    memset(untouched, 'x', sizeof(untouched));
+    memset(&holders, 0, sizeof(holders));
+
+    assert_int_equal(w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL, &holders), OS_NOTFOUND);
+
+    assert_memory_equal(response, untouched, sizeof(response));
+    assert_string_equal(holders.wanted, "001");
+    assert_int_equal(holders.wanted_role, W_AUTH_HOLDER_NAME);
+    assert_int_equal(rows_read, 0);
+    assert_int_equal(keys.keysize, 2);
+    assert_string_equal(keys.keyentries[OS_IsAllowedName(&keys, EXISTENT_AGENT1)]->id, "001");
+    assert_removed_ids(NULL, NULL);
+}
+
+static void test_validate_unreadable_row_refuses_and_removes_nothing(void **state) {
+    char response[2048] = {0};
+
+    expect_row(1, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
+                                                "Failed to get agent-info for agent '001'");
+
+    assert_int_equal(validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL), OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
+    assert_int_equal(rows_read, 1);
+    assert_int_equal(keys.keysize, 2);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void replace_agent1_on_first_read(int id, int nth) {
+    if (nth == 1) {
+        replace_name_holder(EXISTENT_AGENT1, EXISTENT_IP1);
+    }
+}
+
+static void test_validate_holder_replaced_once_is_judged_again(void **state) {
+    /* The row of 001 arrives, but 001 is gone: another agent (003) holds the name now. The row read for
+     * 001 says nothing about 003, so 003's is read and 003 is the one judged and removed. */
+    char response[2048] = {0};
+
+    while_reading = replace_agent1_on_first_read;
+    expect_row(1, agent_info_row("never_connected"));
+    expect_row(3, agent_info_row("never_connected"));
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name. Removing old agent '"EXISTENT_AGENT1"' (id '003').");
+
+    assert_int_equal(validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL), OS_SUCCESS);
+    assert_int_equal(rows_read, 2);
+    assert_removed_ids("003", NULL);
+}
+
+static void replace_agent1_always(int id, int nth) {
+    replace_name_holder(EXISTENT_AGENT1, EXISTENT_IP1);
+}
+
+static void test_validate_holder_replaced_every_time_is_refused(void **state) {
+    /* The first read and AUTH_HOLDER_RETRIES more, each answered for an agent that no longer holds the
+     * name; then the request is refused as the duplicate it is, with nothing removed by it. */
+    char response[2048] = {0};
+
+    while_reading = replace_agent1_always;
+    expect_row(1, agent_info_row("never_connected"));
+    expect_row(3, agent_info_row("never_connected"));
+    expect_row(4, agent_info_row("never_connected"));
+    expect_row(5, agent_info_row("never_connected"));
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
+                                                "The agent holding it could not be confirmed while it was being checked.");
+
+    assert_int_equal(validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL), OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
+    assert_int_equal(rows_read, 1 + AUTH_HOLDER_RETRIES);
+    assert_true(OS_IsAllowedName(&keys, EXISTENT_AGENT1) >= 0);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void remove_agent1(int id, int nth) {
+    assert_true(OS_DeleteKey(&keys, "001", 1) >= 0);
+}
+
+static void test_validate_holder_removed_meanwhile_is_admitted(void **state) {
+    char response[2048] = {0};
+
+    while_reading = remove_agent1;
+    expect_row(1, agent_info_row("never_connected"));
+
+    assert_int_equal(validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL), OS_SUCCESS);
+    assert_string_equal(response, "");
+    assert_int_equal(rows_read, 1);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void replace_agent2_on_second_read(int id, int nth) {
+    if (nth == 2) {
+        replace_name_holder(EXISTENT_AGENT2, EXISTENT_IP2);
+    }
+}
+
+static void test_validate_stable_ip_holder_is_not_read_again(void **state) {
+    /* 001 holds the IP and stays; 002 holds the name and is replaced by 003 while its row is read. Only
+     * the name holder's row is read again: an expectation for a second read of 001 does not exist. */
+    char response[2048] = {0};
+
+    while_reading = replace_agent2_on_second_read;
+    expect_row(1, agent_info_row("never_connected"));
+    expect_row(2, agent_info_row("never_connected"));
+    expect_row(3, agent_info_row("never_connected"));
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"'. Removing old agent '"EXISTENT_AGENT1"' (id '001').");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name. Removing old agent '"EXISTENT_AGENT2"' (id '003').");
+
+    assert_int_equal(validate(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL), OS_SUCCESS);
+    assert_int_equal(rows_read, 3);
+    assert_removed_ids("001", "003");
+}
+
+static void replace_ip_holder_on_second_read(int id, int nth) {
+    if (nth == 2) {
+        assert_true(OS_DeleteKey(&keys, "001", 1) >= 0);
+        add_agent(NULL, "TookTheIp", EXISTENT_IP1);
+    }
+}
+
+static void test_validate_pending_ip_row_defers_the_name_verdict(void **state) {
+    /* 002's row is already in hand and refuses the name. Then the IP changes hands (001 -> 003). The
+     * cached refusal must not be answered while the new IP holder is unjudged: 003's row is read, it
+     * refuses, and the answer is the IP's -- the order a request has always been refused in. */
+    char response[2048] = {0};
+
+    while_reading = replace_ip_holder_on_second_read;
+    expect_row(1, agent_info_row("never_connected"));
+    expect_row(2, NULL);
+    expect_row(3, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
+                                                "Failed to get agent-info for agent '003'");
+
+    assert_int_equal(validate(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL), OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
+    assert_int_equal(rows_read, 3);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void test_validate_refused_ip_never_reads_the_name_row(void **state) {
+    /* The IP holder is refused: the name holder's row is not needed, and asking wazuh-db for it would
+     * make the refusal wait for a second round trip. No expectation for 002 exists. */
+    char response[2048] = {0};
+
+    expect_row(1, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
+                                                "Failed to get agent-info for agent '001'");
+
+    assert_int_equal(validate(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL), OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
+    assert_int_equal(rows_read, 1);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void reinsert_agent1_under_its_id(int id, int nth) {
+    if (nth == 1) {
+        assert_true(OS_DeleteKey(&keys, "001", 1) >= 0);
+        add_agent("001", EXISTENT_AGENT1, EXISTENT_IP1);
+        w_auth_id_reuse_note();
+    }
+}
+
+static void test_validate_reused_id_discards_the_row_read_before(void **state) {
+    /* 001 is deleted and an agent is inserted under that same id and name while 001's row is read. The
+     * id matches, the agent does not: the row describes the one that is gone. It is read again, and the
+     * agent that holds the id now is judged on its own row -- here unreadable, so it is not replaced. */
+    char response[2048] = {0};
+
+    while_reading = reinsert_agent1_under_its_id;
+    expect_row(1, agent_info_row("never_connected"));
+    expect_row(1, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
+                                                "Failed to get agent-info for agent '001'");
+
+    assert_int_equal(validate(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL), OS_INVALID);
+    assert_int_equal(rows_read, 2);
+    assert_true(OS_IsAllowedID(&keys, "001") >= 0);
+    assert_removed_ids(NULL, NULL);
+}
+
+static void mixed_churn(int id, int nth) {
+    switch (nth) {
+    case 1: /* the IP changes hands: 001 -> 003 */
+        assert_true(OS_DeleteKey(&keys, "001", 1) >= 0);
+        add_agent(NULL, "TookTheIp1", EXISTENT_IP1);
+        break;
+    case 2: /* and again: 003 -> 004, which stays */
+        assert_true(OS_DeleteKey(&keys, "003", 1) >= 0);
+        add_agent(NULL, "TookTheIp2", EXISTENT_IP1);
+        break;
+    case 3: /* an id is reused somewhere: every row in hand is discarded */
+        w_auth_id_reuse_note();
+        break;
+    case 5: /* the name changes hands while its first row is read */
+        replace_name_holder(EXISTENT_AGENT2, EXISTENT_IP2);
+        break;
+    }
+}
+
+static void test_validate_mixed_holder_churn_ends_within_the_read_bound(void **state) {
+    /* Both holders move, a row is discarded for an id reuse, and the counters survive all of it: the
+     * first read of each holder plus AUTH_HOLDER_RETRIES, never more. The request ends refused for the
+     * holder it could not pin down, with nothing removed by it. */
+    char response[2048] = {0};
+
+    while_reading = mixed_churn;
+    expect_row(1, agent_info_row("never_connected")); /* IP, first read */
+    expect_row(3, agent_info_row("never_connected")); /* IP, re-read 1 */
+    expect_row(4, agent_info_row("never_connected")); /* IP, re-read 2 */
+    expect_row(4, agent_info_row("never_connected")); /* IP, re-read 3: the row was discarded */
+    expect_row(2, agent_info_row("never_connected")); /* name, first read */
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT2"', rejecting enrollment. "
+                                                "The agent holding it could not be confirmed while it was being checked.");
+
+    assert_int_equal(validate(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL), OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT2"");
+    assert_int_equal(rows_read, 2 + AUTH_HOLDER_RETRIES);
+    assert_removed_ids(NULL, NULL);
 }
 
 int main(void) {
@@ -824,6 +1192,17 @@ int main(void) {
         cmocka_unit_test_setup(test_w_auth_check_replace_agent_existent_key_hash, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_check_replace_agent_success, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_check_replace_agent_backlog_full, setup_validate_force_enabled),
+        cmocka_unit_test_setup_teardown(test_validate_replacement_queues_the_replaced_agent, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_missing_rows_leave_response_and_keystore_untouched, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_unreadable_row_refuses_and_removes_nothing, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_holder_replaced_once_is_judged_again, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_holder_replaced_every_time_is_refused, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_holder_removed_meanwhile_is_admitted, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_stable_ip_holder_is_not_read_again, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_pending_ip_row_defers_the_name_verdict, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_refused_ip_never_reads_the_name_row, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_reused_id_discards_the_row_read_before, setup_holders, teardown_holders),
+        cmocka_unit_test_setup_teardown(test_validate_mixed_holder_churn_ends_within_the_read_bound, setup_holders, teardown_holders),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

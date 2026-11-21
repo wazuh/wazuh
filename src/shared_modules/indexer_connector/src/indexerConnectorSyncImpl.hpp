@@ -1566,12 +1566,15 @@ public:
             }
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        // Status of the last retried answer when it was a 502/503/504, 0 otherwise.
+        long retriedStatus = 0;
+        const auto onError = [this, &needToRetry, &retriedStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
+                retriedStatus = 0;
                 LOGFN_DEBUG2(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
             }
             else if (statusCode <= 0)
@@ -1581,6 +1584,7 @@ public:
                 // idempotent; failing here turns an indexer rolling restart into a lost caller
                 // operation -- for the VD, a whole scan including the new findings it had computed.
                 needToRetry = true;
+                retriedStatus = 0;
                 LOGFN_DEBUG2(m_logFn,
                              "Transport-level failure, no HTTP status received (code %ld): %s. Retrying search query.",
                              statusCode,
@@ -1592,6 +1596,7 @@ public:
                 // to another host (m_selector->getNext()). 500 stays out of this branch: it may be
                 // deterministic, and retrying it would only burn the budget.
                 needToRetry = true;
+                retriedStatus = statusCode;
                 LOGFN_DEBUG2(m_logFn,
                              "Search query: server unavailable (HTTP %ld), retrying with exponential backoff.",
                              statusCode);
@@ -1631,7 +1636,9 @@ public:
             url += serverUrl;
             url += "/";
             url += index;
-            url += "/_search";
+            // The caller takes the answer as the whole result, so ask the indexer to refuse it when some
+            // shards cannot take part instead of answering 200 without their documents.
+            url += "/_search?allow_partial_search_results=false";
 
             LOGFN_DEBUG2(m_logFn, "Executing search query on: %s", url.c_str());
 
@@ -1653,8 +1660,10 @@ public:
                 const auto retryDelay = retryBackoff.nextDelay();
                 if (retryBudget.exhausted(retryDelay))
                 {
+                    // A server that kept answering 502/503/504 leaves its status for the caller.
                     throw IndexerConnectorException("Search query retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    retriedStatus);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1771,9 +1780,14 @@ public:
             url += "&expand_wildcards=all";
         }
 
+        // A PIT over the shards that happen to be reachable hides the missing ones from every search
+        // that uses it, so the indexer must refuse to create it instead.
+        url += "&allow_partial_pit_creation=false";
+
         std::string pitId;
         uint64_t creationTime = 0;
         bool success = false;
+        long errorStatus = 0;
         std::string errorMessage;
 
         const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](const std::string& response)
@@ -1808,8 +1822,10 @@ public:
             }
         };
 
-        const auto onError = [this, &errorMessage](const std::string& error, const long statusCode, const std::string&)
+        const auto onError =
+            [this, &errorMessage, &errorStatus](const std::string& error, const long statusCode, const std::string&)
         {
+            errorStatus = statusCode;
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode);
             LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
         };
@@ -1820,7 +1836,9 @@ public:
 
         if (!success)
         {
-            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage,
+                                            IndexerConnectorException::Category::Other,
+                                            errorStatus);
         }
 
         return PointInTime(std::move(pitId), creationTime, keepAlive);
@@ -1929,7 +1947,9 @@ public:
             {
                 LOGFN_WARN(m_logFn, "Search request failed: %s, status code: %ld", error.c_str(), statusCode);
                 throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
-                                                ": " + error);
+                                                    ": " + error,
+                                                IndexerConnectorException::Category::Other,
+                                                statusCode);
             }
         };
 
@@ -1946,7 +1966,7 @@ public:
             needToRetry = false;
             std::string url;
             url += m_selector->getNext();
-            url += "/_search";
+            url += "/_search?allow_partial_search_results=false";
 
             m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                    .data = requestBody.dump(),

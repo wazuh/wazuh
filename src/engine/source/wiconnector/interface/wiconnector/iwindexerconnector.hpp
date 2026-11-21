@@ -206,6 +206,17 @@ public:
      * @return The number of dropped events
      */
     virtual uint64_t getDroppedEvents() = 0;
+
+    /**
+     * @brief Gets the number of events requeued by the indexer connector.
+     *
+     * Returns how many items the indexer rejected with a 429 or a cluster_block_exception inside a successful
+     * bulk response and that were put back in the queue to be resent. It counts requeue attempts: an item
+     * requeued three times counts three.
+     *
+     * @return The number of requeued events
+     */
+    virtual uint64_t getRequeuedEvents() = 0;
 };
 
 } // namespace wiconnector

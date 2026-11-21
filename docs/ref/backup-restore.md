@@ -22,7 +22,7 @@ The following components should be included in your Wazuh manager backup strateg
   - Critical for agent communication
 
 - **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
-  - Manager certificates and keys, the agents' CA bundle, the indexer's CA and client pair
+  - Manager certificates and keys, the agents' CA bundle, the indexer's CA (and a client pair, when the configuration names one)
   - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files). They exist only when the manager imported the files from a co-located indexer's export; with credentials staged by hand or from `local.env` they are absent, which is normal
 
 - **Credentials**: `/etc/wazuh-manager/ca/`, `/etc/wazuh-manager/export/`, `/etc/wazuh-manager/local.env`

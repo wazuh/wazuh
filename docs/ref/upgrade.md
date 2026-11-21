@@ -48,7 +48,7 @@ The package manager will automatically:
 - Stop the current service
 - Preserve your configuration and runtime data (see [File preservation](#file-preservation))
 - Install the new binaries
-- Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA and client pair when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
+- Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA (and a configured client pair) when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
 - Restart the service, only if it was running before the upgrade
 
 The package also deletes `/etc/systemd/system/wazuh-manager.service`, a copy of its unit that an earlier

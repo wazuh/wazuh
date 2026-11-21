@@ -122,19 +122,16 @@ The manager sets up every credential it needs with its credential resolver: the 
 indexer password, its own CA and two server pairs, and its trust in the indexer. It runs when the package is
 installed, the only moment the CA is minted and the server pairs are issued, and again before every start, when it
 checks everything and completes the passwords and the indexer trust. On a single host where the indexer is already installed there is nothing to configure:
-the manager generates what it owns and imports the indexer's CA, client pair and password from
+the manager generates what it owns and imports the indexer's CA and password from
 `/etc/wazuh-indexer/export/`. Install order does not matter: what a component could not resolve at install time
 is resolved when it starts.
 
 When the indexer runs on another host, give the manager what it cannot invent or import. Copy the indexer's
-`ca.pem` and the client pair it issued for this manager (`manager-client.pem`, `manager-client-key.pem`, from the
-indexer's `/etc/wazuh-indexer/export/`) into the manager's certificates directory under the names below, and put
-the password in `/etc/wazuh-manager/local.env`:
+`ca.pem` (from the indexer's `/etc/wazuh-indexer/export/`) into the manager's certificates directory as
+`indexer-ca.pem`, and put the password in `/etc/wazuh-manager/local.env`:
 
 ```bash
 sudo install -m 0640 -o root -g wazuh-manager ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
-sudo install -m 0640 -o root -g wazuh-manager manager-client.pem /etc/wazuh-manager/certs/indexer-connector.pem
-sudo install -m 0640 -o root -g wazuh-manager manager-client-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem
 sudo sh -c 'umask 077; [ -e /etc/wazuh-manager/local.env ] || : > /etc/wazuh-manager/local.env'
 echo "WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'" \
     | sudo tee -a /etc/wazuh-manager/local.env > /dev/null
@@ -164,7 +161,7 @@ The manager uses two server pairs of its own, issued by one CA, and the indexer'
 | `apid.pem`, `apid-key.pem` | the Server API's chain (a `serverAuth` leaf, `CA:FALSE`, with a SAN extension, followed by its CA) and key |
 | `root-ca.pem` | the agents' CA bundle; must contain the CA in `/etc/wazuh-manager/ca/root-ca.pem` |
 | `indexer-ca.pem` | the indexer's CA |
-| `indexer-connector.pem`, `indexer-connector-key.pem` | the client pair the indexer issued for this manager (`clientAuth`) and its key |
+| `indexer-connector.pem`, `indexer-connector-key.pem` | only for an indexer that requires client certificates, with `indexer.ssl.certificate` and `indexer.ssl.key` naming them: the client pair the indexer issued for this manager (`clientAuth`) and its key |
 
 When your PKI issued the server pairs from an intermediate CA, `apid.pem` carries the leaf followed by the
 intermediates, the intermediate that issued the remoted leaf is added to `certs/root-ca.pem` (agents receive that
@@ -221,8 +218,8 @@ them. To serve another certificate on the API, use other file names in `/etc/waz
 `https.key` and `https.cert` at them, with the same owner and mode.
 
 Before every start, the credential resolver checks each pair: that it parses, matches its key, is inside its
-validity window, is issued by its CA, and (for the indexer client pair) carries `clientAuth`. A problem stops the
-start with a line naming the file; see [When the manager does not start](credentials.md#when-the-manager-does-not-start).
+validity window, is issued by its CA, and (for a configured indexer client pair) carries `clientAuth`. A problem
+stops the start with a line naming the file; see [When the manager does not start](credentials.md#when-the-manager-does-not-start).
 Check what a node presents with `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
 
 The agents' bundle `certs/root-ca.pem` is served from the first start, but a fresh install leaves it unpublished:
@@ -245,8 +242,6 @@ credential resolver. The installer generates this block:
     <certificate_authorities>
       <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
-    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```

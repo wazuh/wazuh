@@ -170,6 +170,18 @@ rule maps to it. Renaming a policy or rule, and deleting one linked to no role, 
 `GET /security/users/me/policies` need a valid token (or, for the logins, valid credentials) but no
 RBAC action.
 
+`GET /security/users/me` lists every role of the token by `id` and `name`. What the gated readers return
+by id is still held to `security:read` here:
+
+| Object in the reply | Needs `security:read` over | Otherwise |
+|---------------------|----------------------------|-----------|
+| A role's `rules` and `policies` lists | that `role:id` | the role is `id` and `name` only |
+| A rule in full (`name`, `rule`) | that `rule:id` | the rule is `id` only |
+| A policy in full (`name`, `policy`) | that `policy:id` | the policy is `id` only |
+
+A run_as token is filtered the same way, over the roles its authorization context resolved to. The caller's
+effective permissions are always available from `GET /security/users/me/policies`.
+
 ### Notes on specific actions
 
 `agent:read_secrets` gates `GET /agents/{agent_id}/key`, which returns the agent's pre-shared key.

@@ -118,20 +118,13 @@ public:
     std::string m_payload;
     std::vector<uint64_t> m_boundaries;
     std::string m_response;
-    // Send attempt's sequence id (see IndexerBulkQueue::Processor), tagging the classification's
-    // requestBackoff()/reportHealthyResponse() verdict.
-    uint64_t m_sequence {0};
 
     IndexerResponse() = default;
 
-    explicit IndexerResponse(std::string&& payload,
-                             std::vector<uint64_t>&& boundaries,
-                             std::string&& response,
-                             uint64_t sequence)
+    explicit IndexerResponse(std::string&& payload, std::vector<uint64_t>&& boundaries, std::string&& response)
         : m_payload(std::move(payload))
         , m_boundaries(std::move(boundaries))
         , m_response(std::move(response))
-        , m_sequence(sequence)
     {
     }
 
@@ -144,14 +137,12 @@ public:
         m_payload = std::move(data.m_payload);
         m_boundaries = std::move(data.m_boundaries);
         m_response = std::move(data.m_response);
-        m_sequence = data.m_sequence;
     }
     IndexerResponse& operator=(IndexerResponse&& data) noexcept
     {
         m_payload = std::move(data.m_payload);
         m_boundaries = std::move(data.m_boundaries);
         m_response = std::move(data.m_response);
-        m_sequence = data.m_sequence;
         return *this;
     }
 };
@@ -176,7 +167,6 @@ class IndexerConnectorAsyncImpl final
     THttpRequest* m_httpRequest;
     std::atomic<bool> m_stopping {false};
     LogFn m_logFn;
-    std::atomic<size_t> m_clusterBlockedItemCount {0};
     std::unique_ptr<IndexerBulkQueue> m_queue;
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     bool m_error413Logged {false};
@@ -198,13 +188,37 @@ class IndexerConnectorAsyncImpl final
     size_t m_pendingDiscard504 {0};
     size_t m_pendingDiscard503Exhausted {0};
     size_t m_pendingDiscardOther {0};
+    /// Requeue log window (dispatch thread only), same rules as the discard window: the first requeue
+    /// is logged with a WARN that opens the window, later ones are summarized per cause.
+    bool m_requeueWindowOpen {false};
+    std::chrono::steady_clock::time_point m_requeueWindowStart {};
+    size_t m_pendingRequeueEvents {0};
+    size_t m_pendingRequeueBatches {0};
+    size_t m_pendingRequeueClusterBlocked {0};
+    size_t m_pendingRequeueThrottled {0};
+    /// Log window for bulk responses whose errors could not be classified (dispatch thread only), same
+    /// rules as the discard window.
+    bool m_unclassifiedWindowOpen {false};
+    std::chrono::steady_clock::time_point m_unclassifiedWindowStart {};
+    size_t m_pendingUnclassifiedEvents {0};
+    size_t m_pendingUnclassifiedBatches {0};
+    /// Parser for the items of a bulk response that reports errors (dispatch thread only).
+    simdjson::dom::parser m_bulkParser;
+    /// Deduplication WARN edge (dispatch thread only, like m_consecutiveUnavailable): armed until a
+    /// bulk answer reports already applied `create` items, re-armed by an answer without any (see noteDeduplicated()).
+    bool m_dedupArmed {true};
+    /// `create` items answered with a per-item 409 version_conflict_engine_exception (already
+    /// applied by an earlier attempt). Written on the dispatch thread, read by the metrics from
+    /// another thread.
+    std::atomic<uint64_t> m_deduplicated {0};
     size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
     size_t m_bulkMaxBytes {BulkMaxBytes};
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     size_t m_maxRetryDelay {MaxRetryDelay};
-    /// Minimum seconds between two "Discards continue" summaries (test hook, 30 in production).
+    /// Minimum seconds between two summaries of the discard, requeue or unclassified-response log windows (test
+    /// hook, 30 in production).
     size_t m_discardSummaryInterval {30};
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
@@ -219,15 +233,50 @@ class IndexerConnectorAsyncImpl final
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
     static constexpr size_t DEFAULT_LOGGER_THREADS {1};    ///< Default number of error-logger threads.
+    static constexpr size_t MAX_DOC_ID_BYTES {512};        ///< Longest caller-supplied document id (before escaping).
+
+    /**
+     * @brief Whether one _bulk response item is a `create` the indexer had already applied.
+     *
+     * A resend of a document with a caller-supplied `_id` that an earlier attempt did apply is
+     * answered with a per-item 409 `version_conflict_engine_exception` on the `create` action.
+     *
+     * @param item One element of the response's "items" array.
+     * @return true only when the item has a "create" key whose "status" is 409 and whose
+     * "error.type" is "version_conflict_engine_exception"; false if any of them is missing or of
+     * another type.
+     */
+    static bool isAppliedCreateConflict(simdjson::dom::element item)
+    {
+        simdjson::dom::element create;
+        if (item["create"].get(create) != simdjson::SUCCESS)
+        {
+            return false;
+        }
+
+        int64_t status {0};
+        if (create["status"].get_int64().get(status) != simdjson::SUCCESS || status != HTTP_VERSION_CONFLICT)
+        {
+            return false;
+        }
+
+        std::string_view errorType;
+        if (create["error"]["type"].get_string().get(errorType) != simdjson::SUCCESS)
+        {
+            return false;
+        }
+
+        return errorType == "version_conflict_engine_exception";
+    }
 
     /**
      * @brief Cheap check of the "errors" field in the head of an OpenSearch _bulk response.
      *
      * A bulk response starts with {"took":N,"errors":false,...}. This scans the first bytes
-     * for the "errors" key and inspects its value token, so the happy path can skip the
-     * logger queue entirely (avoiding a second life of the full payload + response).
+     * for the "errors" key and inspects its value token, so the happy path skips parsing the
+     * items and never parks a copy of the payload + response in the logger queue.
      * Conservative: if the field cannot be found or recognized in the head, reports true so
-     * the logger's full parse decides.
+     * the full parse of the items decides.
      *
      * @param response Raw HTTP _bulk response body.
      * @return false only when the response head contains "errors": false; true otherwise.
@@ -240,7 +289,7 @@ public:
         const auto keyPos = response.substr(0, HEAD_BYTES).find(KEY);
         if (keyPos == std::string_view::npos)
         {
-            return true; // conservative: let the logger parse it
+            return true; // conservative: let the full parse decide
         }
 
         auto pos = keyPos + KEY.size();
@@ -355,8 +404,9 @@ public:
             throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
-        // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
-        // bulk reported errors are enqueued (see onSuccess), so small defaults suffice.
+        // Error-logger sizing: bounded queue (elements) and thread count. Only responses with item
+        // errors that are not retried are enqueued (see onSuccess), so small defaults suffice. The
+        // logger only writes diagnostics: what is requeued and the backoff are decided in onSuccess.
         m_loggerQueueSize = config.contains("logger_queue_size") && config.at("logger_queue_size").is_number_integer()
                                 ? config.at("logger_queue_size").get<size_t>()
                                 : DEFAULT_LOGGER_QUEUE_SIZE;
@@ -391,26 +441,20 @@ public:
                     parsedResponse["errors"].get(errorsElement) != simdjson::SUCCESS ||
                     !errorsElement.get_bool().value_unsafe())
                 {
-                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
-                // Get items array
+                // Get items array. onSuccess only enqueues responses whose items it could match with the
+                // events, so a missing array or a count mismatch was already reported there.
                 simdjson::dom::array itemsArray;
                 if (parsedResponse["items"].get_array().get(itemsArray) != simdjson::SUCCESS)
                 {
-                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
                 const size_t itemsSize = itemsArray.size();
                 if (data.m_boundaries.size() != itemsSize)
                 {
-                    LOGFN_WARN(m_logFn,
-                               "Mismatch between the number of events (%zu) and response items (%zu)",
-                               data.m_boundaries.size(),
-                               itemsSize);
-                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
@@ -420,10 +464,16 @@ public:
 
                 // Process items with optimized iteration
                 size_t itemIndex = 0;
-                size_t clusterBlockedCount = 0;
-                size_t throttledCount = 0;
                 for (const auto& item : itemsArray)
                 {
+                    // An already applied `create` (resend of a document an earlier attempt indexed)
+                    // is counted by onSuccess as deduplicated: no line, not a failure.
+                    if (isAppliedCreateConflict(item))
+                    {
+                        ++itemIndex;
+                        continue;
+                    }
+
                     // Try to find the operation element (could be "index", "create", "delete")
                     simdjson::dom::element operationElement;
                     bool foundOperation = false;
@@ -457,13 +507,11 @@ public:
                     }
 
                     // Per-item 429 (circuit_breaking_exception, es_rejected_execution_exception): the
-                    // indexer is shedding load. Tally instead of logging per document; the batch backs
-                    // off and counts the items as dropped below. They are not re-queued.
+                    // indexer is shedding load. onSuccess already requeued the item and logged the batch.
                     if (int64_t itemStatus = 0;
                         operationElement["status"].get_int64().get(itemStatus) == simdjson::SUCCESS &&
                         itemStatus == HTTP_TOO_MANY_REQUESTS)
                     {
-                        ++throttledCount;
                         ++itemIndex;
                         continue;
                     }
@@ -485,11 +533,9 @@ public:
                         errorType = typeElement.get_string().value_unsafe();
                     }
 
-                    // Expected, recoverable condition (cluster refusing writes) - tally instead of
-                    // logging per document; back off once per batch below.
+                    // The cluster refusing writes: onSuccess already requeued the item and logged the batch.
                     if (errorType == "cluster_block_exception")
                     {
-                        ++clusterBlockedCount;
                         ++itemIndex;
                         continue;
                     }
@@ -551,38 +597,6 @@ public:
 
                     ++itemIndex;
                 }
-
-                if (clusterBlockedCount > 0)
-                {
-                    const auto totalBlocked =
-                        m_clusterBlockedItemCount.fetch_add(clusterBlockedCount, std::memory_order_relaxed) +
-                        clusterBlockedCount;
-                    LOGFN_WARN(m_logFn,
-                               "Index write(s) blocked by the cluster (cluster_block_exception) - %zu document(s) "
-                               "in this batch (%zu total) not indexed due to this expected condition. Backing off "
-                               "future sends.",
-                               clusterBlockedCount,
-                               totalBlocked);
-                }
-
-                if (throttledCount > 0)
-                {
-                    m_queue->recordDiscarded(throttledCount);
-                    LOGFN_WARN(m_logFn,
-                               "Indexer rejected %zu document(s) in this batch with HTTP 429 (load shedding); they "
-                               "were not indexed and are counted as dropped. Backing off future sends.",
-                               throttledCount);
-                }
-
-                if (clusterBlockedCount > 0 || throttledCount > 0)
-                {
-                    m_queue->requestBackoff(data.m_sequence);
-                }
-                else
-                {
-                    // Errors present but none asked the connector to slow down.
-                    m_queue->reportHealthyResponse(data.m_sequence);
-                }
             },
             static_cast<unsigned int>(m_loggerThreads),
             m_loggerQueueSize);
@@ -609,7 +623,7 @@ public:
                     bulkData.append(item);
                 }
 
-                const auto onSuccess = [this, &bulkData, &boundaries, sequence](std::string&& response)
+                const auto onSuccess = [this, &dataQueue, &bulkData, &boundaries, sequence](std::string&& response)
                 {
                     if (m_queue->bulkMaxBytes() != m_bulkMaxBytes && m_successCount == MaxSuccessCount)
                     {
@@ -626,30 +640,98 @@ public:
                     // Any HTTP answer other than 503 ends a run of consecutive 503s.
                     m_consecutiveUnavailable = 0;
                     maybeLogDiscardSummary();
+                    maybeLogRequeueSummary();
+                    maybeLogUnclassifiedSummary();
 
                     // Fast path: when the bulk head reports "errors":false there is nothing to
-                    // log — drop payload and response right here instead of parking a full copy
-                    // of both in the logger queue (the main RSS driver under sustained load).
+                    // classify or log — drop payload and response right here instead of parking a
+                    // full copy of both in the logger queue (the main RSS driver under sustained load).
                     if (!bulkResponseHasErrors(response))
                     {
+                        m_dedupArmed = true;
                         m_queue->reportHealthyResponse(sequence);
                         return;
                     }
 
-                    // Dispatch to error logger (bounded queue: drop + warn when it is full).
-                    IndexerResponse responseData(
-                        std::move(bulkData), std::move(boundaries), std::move(response), sequence);
-                    if (m_loggerProcessor->push(std::move(responseData)))
+                    // The items are classified here, on the dispatch thread, so the ones to retry are back
+                    // at the front of the queue before the next batch is taken. Nothing may escape this
+                    // block: HTTPRequest would report the exception as a transport failure and the whole
+                    // batch, documents the indexer already wrote included, would be sent again.
+                    bool decided = false;
+                    try
                     {
-                        m_loggerDropLogged = false;
+                        auto verdict = classifyBulkItems(response, dataQueue.size());
+                        if (!verdict.classified)
+                        {
+                            // Nothing requeued and the backoff left as it is: the response says neither
+                            // that the indexer is refusing writes nor that it is healthy.
+                            noteUnclassified(verdict.reason, dataQueue.size());
+                            return;
+                        }
+
+                        if (!verdict.retryable.empty())
+                        {
+                            // Item i of the response is dataQueue[i]. The indexer wrote none of these
+                            // items, so resending them cannot duplicate a document. bulkData holds its
+                            // own copy for the logger.
+                            std::vector<std::string> entries;
+                            entries.reserve(verdict.retryable.size());
+                            for (const auto index : verdict.retryable)
+                            {
+                                entries.push_back(std::move(dataQueue[index]));
+                            }
+                            m_queue->requeueFront(std::move(entries));
+                            m_queue->requestBackoff(sequence);
+                            decided = true;
+                            noteRequeue(verdict.clusterBlocked, verdict.throttled);
+                        }
+                        else
+                        {
+                            // Item errors present, but none asked the connector to slow down.
+                            m_queue->reportHealthyResponse(sequence);
+                            decided = true;
+                        }
+
+                        // `create` items an earlier attempt had already applied (a resend after a timeout or a
+                        // lost connection): counted, never resent and not logged per document.
+                        noteDeduplicated(verdict.applied);
+
+                        if (!verdict.otherErrors)
+                        {
+                            return;
+                        }
+
+                        // Dispatch the other item errors to the logger (bounded queue: drop + warn when it
+                        // is full; only their log lines are lost).
+                        IndexerResponse responseData(std::move(bulkData), std::move(boundaries), std::move(response));
+                        if (m_loggerProcessor->push(std::move(responseData)))
+                        {
+                            m_loggerDropLogged = false;
+                        }
+                        else if (!m_loggerDropLogged)
+                        {
+                            m_loggerDropLogged = true;
+                            LOGFN_WARN(m_logFn,
+                                       "Indexer error-logger queue is full (%zu elements): bulk error details "
+                                       "dropped. Increase 'logger_queue_size' to keep them.",
+                                       m_loggerQueueSize);
+                        }
                     }
-                    else if (!m_loggerDropLogged)
+                    catch (...)
                     {
-                        m_loggerDropLogged = true;
-                        LOGFN_WARN(m_logFn,
-                                   "Indexer error-logger queue is full (%zu elements): bulk error details dropped. "
-                                   "Increase 'logger_queue_size' to keep them.",
-                                   m_loggerQueueSize);
+                        // Once the queue holds the decision, only log lines and the logger handoff can fail: the
+                        // items are where they belong and only their log lines are lost.
+                        if (!decided)
+                        {
+                            try
+                            {
+                                noteUnclassified("internal error", dataQueue.size());
+                            }
+                            catch (...)
+                            {
+                                // Not even this log line may escape, for the reason above.
+                            }
+                        }
                     }
                 };
 
@@ -745,8 +827,8 @@ public:
                     else
                     {
                         // 500, 502, 504 and any other status: not retried. 502/504 may mean the indexer
-                        // processed the bulk but the answer was lost; resending would duplicate documents
-                        // in data streams, which have no _id.
+                        // processed the bulk but the answer was lost; resending a data stream action without
+                        // an _id would duplicate documents. The engine now sends an _id, but the policy is kept.
                         m_consecutiveUnavailable = 0;
                         discardBatch(statusCode, bulkSize, error, responseBody, false);
                     }
@@ -900,7 +982,13 @@ public:
 
     void bulkIndexDataStream(std::string_view index, std::string_view data)
     {
-        constexpr auto FORMATTED_SIZE {24}; // {"create":{"_index":""}} + newlines"
+        bulkIndexDataStream(index, std::string_view(), data);
+    }
+
+    void bulkIndexDataStream(std::string_view index, std::string_view id, std::string_view data)
+    {
+        constexpr auto FORMATTED_SIZE {24};   // {"create":{"_index":""}} + newlines"
+        constexpr auto ID_FORMATTED_SIZE {9}; // ,"_id":""
 
         // Validate input parameters
         if (index.empty())
@@ -913,11 +1001,23 @@ public:
             throw IndexerConnectorException("Data cannot be empty for data stream: " + std::string(index));
         }
 
+        if (id.size() > MAX_DOC_ID_BYTES)
+        {
+            throw IndexerConnectorException("Document id longer than " + std::to_string(MAX_DOC_ID_BYTES) +
+                                            " bytes for data stream: " + std::string(index));
+        }
+
         std::string bulkData;
-        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE);
+        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE +
+                         (id.empty() ? 0 : id.size() + ID_FORMATTED_SIZE));
 
         bulkData.append(R"({"create":{"_index":")");
         bulkData.append(index);
+        if (!id.empty())
+        {
+            bulkData.append(R"(","_id":")");
+            appendEscapedId(bulkData, id);
+        }
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
@@ -938,6 +1038,16 @@ public:
     uint64_t getDroppedEvents() const
     {
         return m_queue->droppedEvents();
+    }
+
+    uint64_t getRequeuedEvents() const
+    {
+        return m_queue->requeuedEvents();
+    }
+
+    uint64_t getDeduplicatedEvents() const
+    {
+        return m_deduplicated.load(std::memory_order_relaxed);
     }
 
     PointInTime
@@ -979,8 +1089,8 @@ public:
         const std::string baseUrl {m_selector->getNext()};
         std::string url;
         // Pre-reserve: base_url + '/' + indices + '/_search/point_in_time?keep_alive=' + keepAlive + potential
-        // '&expand_wildcards=all'
-        url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25);
+        // '&expand_wildcards=all' + '&allow_partial_pit_creation=false'
+        url.reserve(baseUrl.size() + 1 + indicesStr.size() + 35 + keepAlive.size() + 25 + 33);
         url = baseUrl;
         url += "/";
         url += indicesStr;
@@ -992,10 +1102,15 @@ public:
             url += "&expand_wildcards=all";
         }
 
+        // A PIT over the shards that happen to be reachable hides the missing ones from every search
+        // that uses it, so the indexer must refuse to create it instead.
+        url += "&allow_partial_pit_creation=false";
+
         // Variables to capture the response
         std::string pitId;
         uint64_t creationTime = 0;
         bool success = false;
+        long errorStatus = 0;
         std::string errorMessage;
 
         const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](std::string&& response)
@@ -1030,9 +1145,10 @@ public:
             }
         };
 
-        const auto onError =
-            [this, &errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError = [this, &errorMessage, &errorStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            errorStatus = statusCode;
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
                            ", Response: " + responseBody;
             LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
@@ -1045,7 +1161,9 @@ public:
 
         if (!success)
         {
-            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage,
+                                            IndexerConnectorException::Category::Other,
+                                            errorStatus);
         }
 
         // Return the PointInTime object
@@ -1137,9 +1255,9 @@ public:
         // Build the URL
         const std::string baseUrl {m_selector->getNext()};
         std::string url;
-        url.reserve(baseUrl.size() + 10); // base_url + '/_search'
+        url.reserve(baseUrl.size() + 46); // base_url + '/_search?allow_partial_search_results=false'
         url = baseUrl;
-        url += "/_search";
+        url += "/_search?allow_partial_search_results=false";
 
         // Variables to capture the response
         nlohmann::json hitsResult;
@@ -1170,7 +1288,9 @@ public:
         const auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
-                                            error + ". Response: " + responseBody);
+                                                error + ". Response: " + responseBody,
+                                            IndexerConnectorException::Category::Other,
+                                            statusCode);
         };
 
         // Execute the POST request synchronously
@@ -1222,7 +1342,7 @@ public:
         url = m_selector->getNext();
         url += "/";
         url += index;
-        url += "/_search";
+        url += "/_search?allow_partial_search_results=false";
 
         // Variables to capture the response
         bool success = false;
@@ -1275,6 +1395,284 @@ public:
     }
 
 private:
+    /// Outcome of classifying the items of a bulk response that reports errors (see classifyBulkItems()).
+    struct BulkItemVerdict
+    {
+        /// False when the items could not be matched with the events sent; `reason` says why.
+        bool classified {false};
+        const char* reason {""};
+        /// Indexes of the items to resend, ascending: rejected with a cluster_block_exception or a 429.
+        std::vector<size_t> retryable;
+        size_t clusterBlocked {0};
+        size_t throttled {0};
+        /// `create` items answered 409 version_conflict_engine_exception: an earlier attempt had already
+        /// applied them. Neither retried nor an error (see isAppliedCreateConflict()).
+        size_t applied {0};
+        /// Some item failed with another error, which is logged with its document and not retried.
+        bool otherErrors {false};
+    };
+
+    /**
+     * @brief Classifies the items of a bulk response that reports errors. Dispatch thread only (it uses
+     * m_bulkParser).
+     *
+     * An item is retried when the indexer rejected it without writing it, for a reason that goes away on its
+     * own: a 429 (load shedding) or a cluster_block_exception (writes blocked). A response whose "errors" is
+     * false or absent is classified with nothing to retry. It is unclassified when it cannot be parsed, has
+     * no items array, or its item count differs from the events sent: item i must be event i.
+     * A `create` item answered 409 version_conflict_engine_exception is counted in `applied`: the document is
+     * already there, so it is neither retried nor another error.
+     *
+     * Known limitation: each item is judged on its own. When a batch holds several operations on the same
+     * document and the indexer rejects an earlier one but writes a later one, the earlier one is still resent
+     * and lands after it, so it can overwrite the newer document or recreate a deleted one.
+     *
+     * @param response Raw HTTP _bulk response body.
+     * @param events Number of events in the batch.
+     * @return The verdict; never throws (an internal failure yields an unclassified verdict).
+     */
+    BulkItemVerdict classifyBulkItems(std::string_view response, const size_t events) noexcept
+    {
+        BulkItemVerdict verdict;
+        try
+        {
+            simdjson::dom::element parsedResponse;
+            if (m_bulkParser.parse(response.data(), response.size()).get(parsedResponse) != simdjson::SUCCESS)
+            {
+                verdict.reason = "unparseable response";
+                return verdict;
+            }
+
+            if (bool errors = false; parsedResponse["errors"].get_bool().get(errors) != simdjson::SUCCESS || !errors)
+            {
+                verdict.classified = true;
+                return verdict;
+            }
+
+            simdjson::dom::array items;
+            if (parsedResponse["items"].get_array().get(items) != simdjson::SUCCESS)
+            {
+                verdict.reason = "no items array";
+                return verdict;
+            }
+
+            if (items.size() != events)
+            {
+                verdict.reason = "item count mismatch";
+                return verdict;
+            }
+
+            size_t index = 0;
+            for (const auto& item : items)
+            {
+                simdjson::dom::element operation;
+                simdjson::dom::element error;
+                if (isAppliedCreateConflict(item))
+                {
+                    ++verdict.applied;
+                }
+                else if ((item["index"].get(operation) == simdjson::SUCCESS ||
+                          item["create"].get(operation) == simdjson::SUCCESS ||
+                          item["delete"].get(operation) == simdjson::SUCCESS) &&
+                         operation["error"].get(error) == simdjson::SUCCESS)
+                {
+                    int64_t status = 0;
+                    std::string_view type;
+                    if (operation["status"].get_int64().get(status) == simdjson::SUCCESS &&
+                        status == HTTP_TOO_MANY_REQUESTS)
+                    {
+                        ++verdict.throttled;
+                        verdict.retryable.push_back(index);
+                    }
+                    else if (error["type"].get_string().get(type) == simdjson::SUCCESS &&
+                             type == "cluster_block_exception")
+                    {
+                        ++verdict.clusterBlocked;
+                        verdict.retryable.push_back(index);
+                    }
+                    else
+                    {
+                        verdict.otherErrors = true;
+                    }
+                }
+                ++index;
+            }
+            verdict.classified = true;
+        }
+        catch (...)
+        {
+            verdict = BulkItemVerdict {};
+            verdict.reason = "internal error";
+        }
+        return verdict;
+    }
+
+    /**
+     * @brief Counts the already applied `create` items of one classified bulk response. One WARN per streak:
+     * it is logged again only after a classified response without any (an HTTP error answer, or a response
+     * whose items cannot be matched with the batch, does not end the streak). Dispatch thread only.
+     *
+     * @param applied Items of the response counted in BulkItemVerdict::applied.
+     */
+    void noteDeduplicated(const size_t applied)
+    {
+        if (applied == 0)
+        {
+            m_dedupArmed = true;
+            return;
+        }
+
+        m_deduplicated.fetch_add(applied, std::memory_order_relaxed);
+        if (m_dedupArmed)
+        {
+            m_dedupArmed = false;
+            LOGFN_WARN(m_logFn,
+                       "Indexer already had %zu document(s) of a resent bulk (an earlier attempt was applied after a "
+                       "timeout or connection loss); they were not indexed twice.",
+                       applied);
+        }
+    }
+
+    /**
+     * @brief Logs the items of one batch requeued for retry: one WARN that opens a window plus, while
+     * requeues continue, a summary at most once every m_discardSummaryInterval seconds (the discard
+     * window's rules, see discardBatch()). Dispatch thread only.
+     *
+     * @param clusterBlocked Items rejected with a cluster_block_exception.
+     * @param throttled Items rejected with a 429.
+     */
+    void noteRequeue(const size_t clusterBlocked, const size_t throttled)
+    {
+        const auto events = clusterBlocked + throttled;
+        LOGFN_DEBUG1(m_logFn,
+                     "Requeued %zu rejected document(s) for retry (cluster_block_exception: %zu, HTTP 429: %zu).",
+                     events,
+                     clusterBlocked,
+                     throttled);
+
+        if (!m_requeueWindowOpen)
+        {
+            LOGFN_WARN(m_logFn,
+                       "Indexer rejected %zu document(s) in this batch (cluster_block_exception: %zu, HTTP 429: "
+                       "%zu); requeued for retry. Backing off future sends. Further requeues are summarized every "
+                       "%zu seconds.",
+                       events,
+                       clusterBlocked,
+                       throttled,
+                       m_discardSummaryInterval);
+            m_requeueWindowOpen = true;
+            m_requeueWindowStart = std::chrono::steady_clock::now();
+            return;
+        }
+
+        m_pendingRequeueEvents += events;
+        ++m_pendingRequeueBatches;
+        m_pendingRequeueClusterBlocked += clusterBlocked;
+        m_pendingRequeueThrottled += throttled;
+        maybeLogRequeueSummary();
+    }
+
+    /// Closes the requeue log window after m_discardSummaryInterval seconds, with a "Requeues continue"
+    /// summary when requeues happened in it (see maybeLogDiscardSummary()). Dispatch thread only.
+    void maybeLogRequeueSummary()
+    {
+        if (!m_requeueWindowOpen)
+        {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_requeueWindowStart);
+        if (elapsed < std::chrono::seconds(m_discardSummaryInterval))
+        {
+            return;
+        }
+
+        if (m_pendingRequeueBatches == 0)
+        {
+            m_requeueWindowOpen = false;
+            return;
+        }
+
+        LOGFN_WARN(m_logFn,
+                   "Requeues continue: %zu document(s) in %zu batch(es) in the last %lld seconds "
+                   "(cluster_block_exception: %zu, HTTP 429: %zu).",
+                   m_pendingRequeueEvents,
+                   m_pendingRequeueBatches,
+                   static_cast<long long>(elapsed.count()),
+                   m_pendingRequeueClusterBlocked,
+                   m_pendingRequeueThrottled);
+
+        m_pendingRequeueEvents = 0;
+        m_pendingRequeueBatches = 0;
+        m_pendingRequeueClusterBlocked = 0;
+        m_pendingRequeueThrottled = 0;
+        m_requeueWindowStart = now;
+    }
+
+    /**
+     * @brief Logs a bulk response that reports errors but could not be classified: nothing of it was
+     * requeued and the backoff was left as it was. Same window rules as noteRequeue(). Dispatch thread only.
+     *
+     * @param reason Why it could not be classified (static text).
+     * @param events Number of events in the batch.
+     */
+    void noteUnclassified(const char* reason, const size_t events)
+    {
+        LOGFN_DEBUG1(m_logFn, "Bulk response with errors not classified (%s), %zu event(s).", reason, events);
+
+        if (!m_unclassifiedWindowOpen)
+        {
+            LOGFN_WARN(m_logFn,
+                       "Indexer bulk response reports errors but could not be classified (%s): %zu document(s) were "
+                       "not requeued and their delivery is unknown. Further occurrences are summarized every %zu "
+                       "seconds.",
+                       reason,
+                       events,
+                       m_discardSummaryInterval);
+            m_unclassifiedWindowOpen = true;
+            m_unclassifiedWindowStart = std::chrono::steady_clock::now();
+            return;
+        }
+
+        m_pendingUnclassifiedEvents += events;
+        ++m_pendingUnclassifiedBatches;
+        maybeLogUnclassifiedSummary();
+    }
+
+    /// Closes the unclassified-response log window after m_discardSummaryInterval seconds, with a summary
+    /// when more such responses arrived in it (see maybeLogDiscardSummary()). Dispatch thread only.
+    void maybeLogUnclassifiedSummary()
+    {
+        if (!m_unclassifiedWindowOpen)
+        {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_unclassifiedWindowStart);
+        if (elapsed < std::chrono::seconds(m_discardSummaryInterval))
+        {
+            return;
+        }
+
+        if (m_pendingUnclassifiedBatches == 0)
+        {
+            m_unclassifiedWindowOpen = false;
+            return;
+        }
+
+        LOGFN_WARN(m_logFn,
+                   "Unclassified bulk responses continue: %zu batch(es), %zu document(s) in the last %lld seconds.",
+                   m_pendingUnclassifiedBatches,
+                   m_pendingUnclassifiedEvents,
+                   static_cast<long long>(elapsed.count()));
+
+        m_pendingUnclassifiedEvents = 0;
+        m_pendingUnclassifiedBatches = 0;
+        m_unclassifiedWindowStart = now;
+    }
+
     /**
      * @brief Discards a batch after an indexer response: counts it in getDroppedEvents() and logs it
      * with one WARN that opens a window plus, while discards continue, a summary at most once every

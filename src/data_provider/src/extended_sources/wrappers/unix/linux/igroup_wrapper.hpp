@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <cstdio>
 #include <grp.h>
 
 /// @brief Interface for group-related operations on Linux systems.
@@ -36,6 +37,15 @@ class IGroupWrapperLinux
         /// @param buflen The size of the buffer.
         /// @param result A pointer to a group structure pointer that will point to the result.
         virtual int getgrent_r(struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const = 0;
+
+        /// @brief Reads the next group entry from a group file (such as /etc/group).
+        /// @param stream The open group file.
+        /// @param resultbuf A pointer to a group structure where the result will be stored.
+        /// @param buffer A buffer to hold the string data for the group entry.
+        /// @param buflen The size of the buffer.
+        /// @param result A pointer to a group structure pointer that will point to the result.
+        /// @return 0 on success, or an error code on failure or at the end of the file.
+        virtual int fgetgrent_r(FILE* stream, struct group* resultbuf, char* buffer, size_t buflen, struct group** result) const = 0;
 
         /// @brief Retrieves the next group entry from the group database.
         /// @return A pointer to the next group structure, or nullptr if there are no more entries

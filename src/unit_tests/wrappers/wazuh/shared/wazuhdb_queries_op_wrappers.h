@@ -13,6 +13,10 @@
 #include "wdb.h"
 
 int* __wrap_wdb_disconnect_agents(int keepalive, const char* sync_status, __attribute__((unused)) int* sock);
+/* Optional: runs inside the wrapped call, after the id was checked and before the answer is handed
+ * back -- where a test stands in for whatever else happens while a caller waits for wazuh-db. */
+extern void (*wdb_get_agent_info_hook)(int id);
+
 cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int* sock);
 rb_tree* __wrap_wdb_get_all_agents_rbtree(int* sock);
 int __wrap_wdb_update_agent_keepalive(int id,

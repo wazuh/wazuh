@@ -104,6 +104,14 @@
     "category": "events",
     "unit": "count"
   },
+  "indexer.events.requeued": {
+    "category": "events",
+    "unit": "count"
+  },
+  "indexer.events.deduplicated": {
+    "category": "events",
+    "unit": "count"
+  },
   "agent.cache.bytes": {
     "category": "cache",
     "unit": "bytes"

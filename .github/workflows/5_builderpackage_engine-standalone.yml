@@ -188,9 +188,9 @@ jobs:
           ls -la /tmp/standalone-test/wazuh-engine-standalone/
           echo ""
           echo "Checking for required files:"
-          [ -f "/tmp/standalone-test/wazuh-engine-standalone/run_engine.sh" ] && echo "✓ run_engine.sh found" || echo "✗ run_engine.sh missing"
-          [ -f "/tmp/standalone-test/wazuh-engine-standalone/bin/wazuh-engine" ] && echo "✓ wazuh-engine binary found" || echo "✗ wazuh-engine binary missing"
-          [ -d "/tmp/standalone-test/wazuh-engine-standalone/data" ] && echo "✓ data directory found" || echo "✗ data directory missing"
+          [ -f "/tmp/standalone-test/wazuh-engine-standalone/run_engine.sh" ] && echo "✓ run_engine.sh found" || { echo "::error::✗ run_engine.sh missing"; exit 1; }
+          [ -f "/tmp/standalone-test/wazuh-engine-standalone/bin/wazuh-engine" ] && echo "✓ wazuh-engine binary found" || { echo "::error::✗ wazuh-engine binary missing"; exit 1; }
+          [ -d "/tmp/standalone-test/wazuh-engine-standalone/data" ] && echo "✓ data directory found" || { echo "::error::✗ data directory missing"; exit 1; }
           echo ""
           echo "Checking directory permissions:"
           if [ -d "/tmp/standalone-test/wazuh-engine-standalone/sockets" ]; then

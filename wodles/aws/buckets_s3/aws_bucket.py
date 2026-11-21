@@ -4,7 +4,6 @@
 
 import copy
 import sys
-import botocore
 import json
 import csv
 import zipfile
@@ -17,6 +16,9 @@ from datetime import date, datetime, timedelta
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 import aws_tools
+
+# After the boto3 check in wazuh_integration (exit code 4).
+import botocore
 
 MAX_RECORD_RETENTION = 500
 DB_DATE_FORMAT = "%Y%m%d"

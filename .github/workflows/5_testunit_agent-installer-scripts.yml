@@ -22,6 +22,9 @@ on:
       - "src/init/shared.sh"
       - "src/init/template-select.sh"
       - "etc/templates/config/generic/localfile-logs/**"
+      # shared.sh reads the version and stage from it (shared.sh:73-74); the suite copies it into
+      # its scratch tree (test_write_logs.sh:51).
+      - "VERSION.json"
       - "src/init/tests/test_write_logs.sh"
       # wazuh-client.sh (wazuh-control), run against stub daemons.
       - "src/init/wazuh-client.sh"

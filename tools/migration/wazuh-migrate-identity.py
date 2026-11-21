@@ -42,6 +42,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.dom.minidom
 import xml.etree.ElementTree as ElementTree
 
 TOOL_VERSION = "3.0.0"
@@ -126,8 +127,13 @@ SELF_MONITORING = ("localfile", "syscheck", "rootcheck", "wodle:syscollector", "
 GROUP_FILE_OWNER = ("wazuh-manager", "wazuh-manager", 0o660)
 
 # What a 4.x installation ships in shared/default besides agent.conf: the rootcheck lists and audit
-# policies (rootkit_files.txt, system_audit_rcl.txt, win_audit_rcl.txt, cis_*_rcl.txt...).
-STOCK_DEFAULT_FILES = re.compile(r"^(rootkit_\w+\.txt|system_audit_\w+\.txt|win_\w+_rcl\.txt|cis_\w+_rcl\.txt)$")
+# policies (rootkit_files.txt, system_audit_rcl.txt, win_audit_rcl.txt, cis_*_rcl.txt...). Names may
+# hold a hyphen: cis_mysql5-6_community_rcl.txt and cis_mysql5-6_enterprise_rcl.txt are stock too.
+STOCK_DEFAULT_FILES = re.compile(
+    r"^(rootkit_[\w-]+\.txt|system_audit_[\w-]+\.txt|win_[\w-]+_rcl\.txt|cis_[\w-]+_rcl\.txt)$")
+# The two lists a 4.x agent's default <rootkit_files> and <rootkit_trojans> settings read from its
+# etc/shared/. The 5.0 default group lacks them, so 4.x agents lose these checks until upgraded.
+ROOTCHECK_LISTS = ("rootkit_files.txt", "rootkit_trojans.txt")
 
 # The two credentials no endpoint can express, so they stay file copies. Both are opt-in.
 #   key: bundle name -> (source relative path, target root, target relative path, owner, group, mode)
@@ -508,7 +514,9 @@ def read_default_group(shared_dir):
     if not os.path.isdir(folder) or os.path.islink(folder):
         return None
     group = read_group_folder(folder)
-    # The rootcheck files every 4.x installation ships in default: not operator content.
+    # The rootcheck files every 4.x installation ships in default: not operator content, so not
+    # reported as left behind. They are still recorded: 4.x agents read them until they are upgraded.
+    group["stock_files"] = [entry for entry in group["extra_files"] if STOCK_DEFAULT_FILES.match(entry)]
     group["extra_files"] = [entry for entry in group["extra_files"]
                             if not STOCK_DEFAULT_FILES.match(entry)]
     group["customized"] = is_customized(group["agent_conf"])
@@ -539,8 +547,8 @@ def review_lines(manifest):
                                      % (name, setting, REMOVED_AGENT_SETTINGS[setting]))
         if group.get("extra_files"):
             lines.append("group '%s': %s not migrated. 5.0 pushes every file in a group folder to its"
-                         " agents, and a 4.x CDB list or rootcheck file has no use there. Copy any you"
-                         " still need into the group on the 5.0 manager."
+                         " agents, and once every agent runs 5.0 a 4.x CDB list or rootcheck file has"
+                         " no use there. Copy any you still need into the group on the 5.0 manager."
                          % (name, ", ".join(group["extra_files"])))
         if group.get("sca_policies"):
             lines.append("group '%s': SCA %s %s carried: the group's agent.conf loads %s, and 5.0"
@@ -549,6 +557,19 @@ def review_lines(manifest):
                             ", ".join(group["sca_policies"]),
                             "it" if len(group["sca_policies"]) == 1 else "them",
                             "it" if len(group["sca_policies"]) == 1 else "them"))
+    lists = [entry for entry in (default or {}).get("stock_files") or [] if entry in ROOTCHECK_LISTS]
+    if lists:
+        others = len(default["stock_files"]) - len(lists)
+        lines.append("group 'default': 4.x agents read %s%s from it, which the 5.0 default group lacks:"
+                     " until they are upgraded they run no rootkit checks. To keep them, copy %s from"
+                     " %s on the 4.x manager to %s on the 5.0 manager (owner wazuh-manager, mode 0660),"
+                     " and remove them once every agent runs 5.0."
+                     % (", ".join(lists),
+                        " and %d stock audit policy file(s)" % others if others else "",
+                        "these files" if others or len(lists) > 1 else "it",
+                        os.path.join(manifest.get("source_dir") or DEFAULT_SOURCE_DIR,
+                                     "etc", "shared", DEFAULT_GROUP) + "/",
+                        os.path.join(DEFAULT_TARGET_CONF_DIR, "shared", DEFAULT_GROUP) + "/"))
     if default and default.get("customized"):
         lines.append("group 'default': its 4.x agent.conf is customized and is appended to the 5.0"
                      " default group's agent.conf at import, so every agent keeps it.")
@@ -824,8 +845,7 @@ def api_preflight(api, manifest, force):
     ok, answer = api.request("GET", "/agents?select=id&limit=1&offset=0")
     if not ok:
         raise MigrationError("cannot read the agent list: %s" % describe_api_error(answer))
-    # The manager itself is agent 0 and is always present; anything else is a real agent.
-    existing = answer["data"]["total_affected_items"] - 1
+    existing = answer["data"]["total_affected_items"]
     if existing > 0 and not force:
         raise MigrationError(
             "the target already holds %d agent(s). Importing would collide with them by id"
@@ -893,6 +913,41 @@ def read_group_conf(api, name):
     return answer.get("__raw", "")
 
 
+# As the manager's XML_DECLARATION_REGEX: a declaration is legal only at the start of a document.
+XML_DECLARATION = re.compile(r"\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>")
+
+
+def as_the_manager_stores(agent_conf):
+    """An agent.conf in the layout PUT /groups/{group}/configuration saves it in.
+
+    The manager does not keep the document it is sent: it parses it and writes it back with its
+    own indentation, attribute quotes and entities (upload_group_configuration() in
+    framework/wazuh/core/configuration.py, whose steps these are). Raises on a document the
+    manager would refuse.
+    """
+    aside = (("\\<", "_custom_open_tag_"), ("\\>", "_custom_close_tag_"),
+             ("&lt;", "_custom_amp_lt_"), ("&gt;", "_custom_amp_gt_"))
+    text = XML_DECLARATION.sub("", agent_conf, count=1)
+    for literal, name in aside:
+        text = text.replace(literal, name)
+    pretty = xml.dom.minidom.parseString("<root>\n%s\n</root>" % text).toprettyxml(indent="  ")
+    pretty = "\n".join(line for line in pretty.split("\n")[2:-2] if line.strip()) + "\n"
+    pretty = re.sub(r"(?:(?<=\\) +)", "", pretty.replace("&amp;", "&").replace("&lt;", "<")
+                    .replace("&quot;", "\"").replace("&gt;", ">").replace("\\\n", "\\"))
+    for literal, name in aside:
+        pretty = pretty.replace(name, literal)
+    return pretty
+
+
+def holds_configuration(current, carried):
+    """Whether the agent.conf the manager holds contains the carried one, as it would store it."""
+    try:
+        carried = as_the_manager_stores(carried)
+    except Exception:  # not XML: the manager refused it too, so it is nowhere to be found
+        return carried.strip() in current
+    return "\n%s" % carried in "\n%s\n" % current.rstrip("\n")
+
+
 def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     """Appends the 4.x default group's settings to the 5.0 one's.
 
@@ -905,9 +960,10 @@ def merge_default_group(api, manifest, bundle, target_conf_dir, dry_run):
     if not default or not default.get("customized"):
         return None
     install_group_files(bundle, default, target_conf_dir, dry_run)
-    carried = default["agent_conf"].strip()
+    # Appended after the 5.0 file, where a declaration of its own would be refused.
+    carried = XML_DECLARATION.sub("", default["agent_conf"], count=1).strip()
     current = read_group_conf(api, DEFAULT_GROUP)
-    if carried in current:
+    if holds_configuration(current, carried):
         log("  group    %-20s 4.x agent.conf already merged" % DEFAULT_GROUP)
         return None
     log("  group    %-20s merge the 4.x agent.conf after the 5.0 one" % DEFAULT_GROUP)
@@ -1167,7 +1223,7 @@ def command_check(args):
 
     default = manifest.get("default_group")
     if default and default.get("customized"):
-        merged = default["agent_conf"].strip() in read_group_conf(api, DEFAULT_GROUP)
+        merged = holds_configuration(read_group_conf(api, DEFAULT_GROUP), default["agent_conf"])
         log("default   4.x agent.conf %s" % ("merged" if merged else "NOT merged"))
         if not merged:
             problems.append("the default group's agent.conf does not hold the 4.x settings the"

@@ -55,32 +55,7 @@ namespace
     // NOTE: cfg.port = 0 would NOT work. buildHttpServerConfig() reads a non-positive port as
     // "not configured" and substitutes the module's own default, so the module would go back to
     // binding a fixed, possibly-taken port.
-    std::uint16_t findFreePort()
-    {
-        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
-        if (probe < 0)
-        {
-            return 0;
-        }
-
-        sockaddr_in address {};
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = 0; // let the kernel pick
-
-        std::uint16_t port = 0;
-        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
-        {
-            socklen_t length = sizeof(address);
-            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&address), &length) == 0)
-            {
-                port = ntohs(address.sin_port);
-            }
-        }
-
-        ::close(probe);
-        return port;
-    }
+    using remoted::test::findFreePort;
 
     remoted_module_config_t makeConfig()
     {

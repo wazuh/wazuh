@@ -255,6 +255,13 @@ public:
      * @param index Index name to search.
      * @param searchQuery JSON object containing the search query body.
      * @return JSON response from the indexer containing search results.
+     * @throws IndexerConnectorException if the search fails. On an HTTP error other than 429,
+     *         statusCode() holds the indexer's status. The indexer is asked to refuse an answer it
+     *         cannot give over every shard (allow_partial_search_results=false). A 429, a 502, 503 or
+     *         504 and a transport failure are retried within the retry budget first; when the budget
+     *         runs out the category is RetryExhausted and statusCode() is the last 502/503/504, or 0
+     *         after a 429 or a transport failure. A 500 is not retried and reaches the caller at once.
+     *         statusCode() is 0 when no server is available.
      */
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
 
@@ -270,6 +277,9 @@ public:
      *              The query MUST include a "sort" field for pagination to work correctly.
      * @param onResponse Callback function executed for each page of results.
      *                   The function receives a JSON object with the response for one page.
+     * @throws IndexerConnectorException as executeSearchQuery() does, for the page that fails: every
+     *         page is sent with allow_partial_search_results=false. onResponse has already run for the
+     *         pages before it, so a caller that acts on each page must treat the walk as incomplete.
      */
     void executeSearchQueryWithPagination(const std::string& index,
                                           const nlohmann::json& query,
@@ -282,7 +292,9 @@ public:
      * @param keepAlive Time to keep the PIT alive (e.g., "5m").
      * @param expandWildcards If true, expands wildcard patterns to match indices.
      * @return A PointInTime object containing the PIT ID and creation time.
-     * @throws IndexerConnectorException if the PIT creation fails.
+     * @throws IndexerConnectorException if the PIT creation fails; statusCode() holds the indexer's HTTP
+     *         status, 0 or negative if there was none. The indexer is asked to refuse a PIT some shards
+     *         cannot take part in (allow_partial_pit_creation=false), so it answers 503 instead.
      */
     PointInTime createPointInTime(const std::vector<std::string>& indices,
                                   std::string_view keepAlive,
@@ -307,7 +319,9 @@ public:
      * @param source Optional source filtering configuration.
      * @param slice Optional slice object for parallel PIT consumption (e.g. {"id": 0, "max": 4}).
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
+     *         status. The indexer is asked to refuse an answer it cannot give over every shard
+     *         (allow_partial_search_results=false). A 429 is retried within the retry budget first.
      */
     nlohmann::json search(const PointInTime& pit,
                           std::size_t size,
@@ -526,6 +540,27 @@ public:
     void indexDataStream(std::string_view index, std::string_view data);
 
     /**
+     * @brief Index a document to a data stream with a caller-supplied document id.
+     *
+     * A non-empty @p id is sent as the `_id` of the `create` action (JSON-escaped). The queue stores
+     * the serialized action, so every resend of the document (timeout, transport failure, 503, 413, and
+     * the requeue of an item rejected with a 429 or a cluster_block_exception) carries the same `_id`: the indexer
+     * answers a resend of an already applied document with a per-item 409 `version_conflict_engine_exception`, which is
+     * counted in getDeduplicatedEvents() instead of being indexed twice. An empty @p id queues exactly the action of
+     * the two-argument overload.
+     *
+     * @param index Data stream name. Must not be empty.
+     * @param id Document id; empty for an indexer-generated one. At most 512 bytes (before escaping).
+     * Must be valid UTF-8: it is JSON-escaped but not validated, and an invalid one makes the
+     * indexer reject the whole bulk.
+     * @param data Document. Must not be empty.
+     *
+     * @throws IndexerConnectorException if @p index or @p data is empty or @p id is longer than
+     * 512 bytes; nothing is queued then.
+     */
+    void indexDataStream(std::string_view index, std::string_view id, std::string_view data);
+
+    /**
      * @brief Queue the deletion of ONE document by id.
      *
      * Enqueued into the SAME queue as index(), which is what this method is for: the queue is FIFO
@@ -563,9 +598,28 @@ public:
      * @brief Get the total number of dropped events.
      *
      * @return The number of events dropped by queue overflow or discarded after an indexer response
-     * (non-retryable status, 503 retries exhausted, or a per-item 429 in an HTTP 200 bulk response).
+     * (non-retryable status, or 503 retries exhausted). Items an HTTP 200 bulk response rejected with a
+     * 429 or a cluster_block_exception are requeued and retried, not dropped.
      */
     uint64_t getDroppedEvents() const;
+
+    /**
+     * @brief Get the total number of requeued events.
+     *
+     * @return The number of items an HTTP 200 bulk response rejected with a 429 or a cluster_block_exception
+     * that were put back in the queue to be resent. It counts requeue attempts, not unique documents: an
+     * item requeued three times counts three.
+     */
+    uint64_t getRequeuedEvents() const;
+
+    /**
+     * @brief Get the total number of deduplicated events.
+     *
+     * @return The number of `create` items answered with a per-item 409
+     * `version_conflict_engine_exception` inside a 2xx bulk response since start: documents an
+     * earlier attempt had already applied (see indexDataStream()). They are not dropped events.
+     */
+    uint64_t getDeduplicatedEvents() const;
 
     /**
      * @brief Create a Point In Time (PIT) for the specified indices.
@@ -577,7 +631,9 @@ public:
      * @param keepAlive Time to keep the PIT alive (e.g., "5m" for 5 minutes, "1h" for 1 hour).
      * @param expandWildcards If true, expands wildcard patterns to match indices.
      * @return A PointInTime object containing the PIT ID and creation time.
-     * @throws IndexerConnectorException if the PIT creation fails.
+     * @throws IndexerConnectorException if the PIT creation fails; statusCode() holds the indexer's HTTP
+     *         status, 0 or negative if there was none. The indexer is asked to refuse a PIT some shards
+     *         cannot take part in (allow_partial_pit_creation=false), so it answers 503 instead.
      *
      * Example:
      * auto pit = connector.createPointInTime({"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders"}, "5m", true);
@@ -607,7 +663,9 @@ public:
      * @param searchAfter Optional search_after array for pagination (must be valid JSON array).
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
+     *         status. The indexer is asked to refuse an answer it cannot give over every shard
+     *         (allow_partial_search_results=false).
      *
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
@@ -637,7 +695,8 @@ public:
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
      * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
-     *         status (404 for a missing index), 0 or negative if there was none.
+     *         status (404 for a missing index), 0 or negative if there was none. The indexer is asked to
+     *         refuse an answer it cannot give over every shard (allow_partial_search_results=false).
      *
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};

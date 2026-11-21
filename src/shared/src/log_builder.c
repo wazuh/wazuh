@@ -20,7 +20,6 @@
 // Remove static qualifier when unit testing
 #define STATIC
 #ifdef WIN32
-#define get_agent_ip_legacy_win32 wrap_get_agent_ip_legacy_win32
 #define getDefine_Int __wrap_getDefine_Int
 #define getDefine_Int_default __wrap_getDefine_Int_default
 #endif
@@ -55,10 +54,15 @@ STATIC int log_builder_update_host_ip(log_builder_t * builder);
 /* Number of seconds of how often the IP must be updated. */
 STATIC int g_ip_update_interval = 0;
 
+/* Host IP cache shared by every builder of the process, and the time of its last request. */
+STATIC char g_host_ip[IPSIZE] = { '\0' };
+STATIC time_t g_host_ip_last_update = 0;
+
 // Initialize a log builder structure
-log_builder_t * log_builder_init(bool update) {
+log_builder_t * log_builder_init(bool update, bool host_ip_used) {
     log_builder_t * builder;
     os_calloc(1, sizeof(log_builder_t), builder);
+    builder->host_ip_used = host_ip_used;
 
     {
 #ifdef CLIENT
@@ -255,39 +259,31 @@ int log_builder_update_hostname(log_builder_t * builder) {
     return retval;
 }
 
+// Check whether a log format uses the host IP
+bool log_builder_uses_host_ip(const char * pattern) {
+    return pattern != NULL && strstr(pattern, "$(host_ip)") != NULL;
+}
+
 // Update the host's IP value
 int log_builder_update_host_ip(log_builder_t * builder) {
-    static char host_ip[IPSIZE] = { '\0' };
-    static time_t last_update = 0;
     time_t now = time(NULL);
 
-    if (g_ip_update_interval > 0 && (now - last_update) >= g_ip_update_interval) {
-        last_update = now;
-#ifdef WIN32
-        char * tmp_host_ip = get_agent_ip_legacy_win32();
+    // Skipped when no log format uses $(host_ip).
+    if (builder->host_ip_used && g_ip_update_interval > 0 && (now - g_host_ip_last_update) >= g_ip_update_interval) {
+        g_host_ip_last_update = now;
+        char * primary_ip = getPrimaryIP();
 
-        if (tmp_host_ip) {
-            strncpy(host_ip, tmp_host_ip, IPSIZE - 1);
-            os_free(tmp_host_ip);
-        } else {
-            mdebug1("Cannot update host IP.");
-            *host_ip = '\0';
-        }
-
-#elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-        char *primary_ip = getPrimaryIP();
         if (primary_ip) {
-            strncpy(host_ip, primary_ip, IPSIZE - 1);
+            strncpy(g_host_ip, primary_ip, IPSIZE - 1);
             os_free(primary_ip);
         } else {
             mdebug1("Cannot update host IP.");
-            *host_ip = '\0';
+            *g_host_ip = '\0';
         }
-#endif
     }
     rwlock_lock_write(&builder->rwlock);
-    if (*host_ip != '\0' && strcmp(host_ip, "Err")) {
-        strcpy(builder->host_ip, host_ip);
+    if (*g_host_ip != '\0') {
+        strcpy(builder->host_ip, g_host_ip);
     } else {
         strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }

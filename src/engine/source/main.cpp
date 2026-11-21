@@ -570,6 +570,22 @@ int main(int argc, char* argv[])
                                      return connector ? connector->getDroppedEvents() : 0;
                                  });
 
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_EVENTS_REQUEUED,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getRequeuedEvents() : 0;
+                                 });
+
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_EVENTS_DEDUPLICATED,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getDeduplicatedEvents() : 0;
+                                 });
+
                 auto indexerQueueUsageGetter = [wIndexer, maxQueueBytes]()
                 {
                     auto connector = wIndexer.lock();

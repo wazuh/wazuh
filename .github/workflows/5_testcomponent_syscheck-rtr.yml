@@ -5,14 +5,79 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/syscheckd/**"
-      - "src/unit_tests/syscheckd/**"
-      - "src/Makefile"
-      - "src/deps.lock.mk"
+      # --- CI plumbing: this workflow and what its steps execute.
       - ".github/workflows/5_testcomponent_syscheck-rtr.yml"
-      - ".github/actions/**"
+      # actions/setup-python `python-version-file`: the interpreter that runs src/build.py
+      - ".github/workflows/.python-version"
+      - ".github/actions/install_build_deps/**"
+      - ".github/actions/reinstall_cmake/**"
+      # run by reinstall_cmake/action.yml (`sudo tools/devContainer/reinstall-cmake.sh`)
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Not listed: .github/actions/upload_s3_artifact. It only uploads the coverage report after
+      # build.py has given its verdict, and the agent package workflows list it and run it on a PR.
+      # --- The driver. `python build.py --readytoreview <module>` imports ci/{build_tools,run_check,
+      # utils}.py and reads ci/input/astyle.config (run_check.py runAStyleCheck) and
+      # ci/input/test_tool_config.json (run_check.py runReadyToReview). ci/input/rtr_input.json is
+      # read by nothing.
+      - "src/build.py"
+      - "src/ci/*.py"
+      - "src/ci/input/astyle.config"
+      - "src/ci/input/test_tool_config.json"
+      # pytest suite build.py runs after the Windows test tool (run_check.py runTestToolCheck,
+      # syscheckd + winagent only)
+      - "src/ci/tests/**"
+      # --- Configure path and dependency inputs of `make deps` + `make TARGET=agent|winagent TEST=1`
+      # (src/ci/build_tools.py makeDeps/makeTarget). The build compiles the whole agent, but only the
+      # module's own checks run: the paths below are what those checks compile, link and execute. A
+      # compile break elsewhere in the agent tree is 5_testunit_linux-win.yml's to catch (src/**).
+      - "src/Makefile"
+      # included by src/Makefile: the ref of every external dependency
+      - "src/deps.lock.mk"
+      - "src/CMakeLists.txt"
+      # include(WazuhRpath)/include(WazuhJemalloc) in src/CMakeLists.txt, WazuhExternalFlags in external/
+      - "src/cmake/**"
+      # add_subdirectory(external): libwazuhext, googletest, flatc
+      - "src/external/CMakeLists.txt"
+      # file(READ ../VERSION.json) in src/CMakeLists.txt
+      - "VERSION.json"
+      # src/Makefile GIT_REFS_LIST: the refs `make deps` tries for the indexer templates
+      - "tools/get_git_refs.sh"
+      # winagent: the version resource compiled into every DLL (RESOURCE_OBJ_DLL, src/CMakeLists.txt)
+      - "src/win32/version.rc"
+      # --- The module: ctest -L syscheckd runs the FIM database suites under src/db/tests, and
+      # fimdb_test_tool runs under ASAN (agent) and Wine (winagent); cppcheck scans the whole tree. The
+      # cmocka suites in src/unit_tests/syscheckd are 5_testunit_linux-win.yml's: build.py never
+      # configures src/unit_tests.
+      - "src/syscheckd/**"
+      # dbsync: linked by fimdb (src/db/CMakeLists.txt); its sources are compiled into the tests (src/db/tests/**/CMakeLists.txt)
+      - "src/shared_modules/dbsync/CMakeLists.txt"
+      - "src/shared_modules/dbsync/include/**"
+      - "src/shared_modules/dbsync/src/**"
+      # Headers the tree includes from the libraries syscheckd_lib links (syscheckd/CMakeLists.txt):
+      # src/recovery/recovery.h, src/syscom.c, src/syscheck.c, include/syscheck.h
+      - "src/shared_modules/sync_protocol/include/**"
+      - "src/shared_modules/schema_validator/include/**"
+      - "src/rootcheck/include/**"
+      - "src/shared_modules/common/**"
+      # utils: header-only helpers included by fimdb and dbsync. Its tests/, benchmark/ and
+      # flatbuffers/ are manager-only (utils/CMakeLists.txt: `if(NOT IS_AGENT)`, TARGET manager).
+      - "src/shared_modules/utils/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "!src/shared_modules/utils/flatbuffers/**"
+      # C headers reached through shared.h, syscheck.h and wmodules.h (src/*.c, src/db/tests): libwazuh's,
+      # the config structs, the wmodules shim headers
+      - "src/shared/**/*.h"
+      - "src/config/include/**"
+      - "src/wazuh_modules/include/**"
+      - "src/wazuh_modules/src/**/*.h"
+      # wrapper headers the C sources include under WAZUH_UNIT_TESTING, which the TEST=1 build defines
+      # for syscheckd_lib (syscheckd/CMakeLists.txt)
+      - "src/unit_tests/wrappers/**/*.h"
+      # --- Never a trigger: prose inside the trees above.
+      - "!src/shared_modules/*/COPYING"
+      - "!src/syscheckd/**/*.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -46,7 +111,7 @@ jobs:
           architecture: x64
 
       - uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4

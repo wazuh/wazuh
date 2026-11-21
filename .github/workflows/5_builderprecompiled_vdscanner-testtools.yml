@@ -39,16 +39,21 @@ on:
       - "src/shared_modules/metrics/**/CMakeLists.txt"
       - "src/shared_modules/metrics/include/**"
       - "src/shared_modules/metrics/src/**"
-      # keystore: built standalone with everything in it by build_external_deps/action.yml:45-53
+      # keystore: built standalone with everything in it by build_external_deps, step "Build keystore"
       # (wazuh-manager-keystore, testtool) -- not its qa/ suite.
       - "src/shared_modules/keystore/**"
       - "!src/shared_modules/keystore/qa/**"
+      # ...nor its component tests, compiled only into keystore_ctests (keystore/tests/component/
+      # CMakeLists.txt), which this workflow does not build; their CMakeLists.txt stay on the
+      # configure path (keystore/CMakeLists.txt, if(UNIT_TEST)).
+      - "!src/shared_modules/keystore/tests/**"
+      - "src/shared_modules/keystore/tests/**/CMakeLists.txt"
       # shared/include headers the scanner pulls in (include/vulnerabilityScanner.hpp,
       # src/scanOrchestrator/factory/eventSendReport.hpp).
       - "src/shared/include/defs.h"
       - "src/shared/include/logging_helper.h"
       # Headers from shared_modules/utils and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps, step "Build flatbuffer schemas".
       # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
       # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -57,18 +62,20 @@ on:
       - "src/shared_modules/utils/tests/CMakeLists.txt"
       - "src/shared_modules/utils/benchmark/CMakeLists.txt"
       - "src/shared_modules/common/**"
+      # Licence texts, not build inputs.
+      - "!src/shared_modules/*/COPYING"
       # Configure path: build_target_cpp configures all of src/ as one tree
-      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
-      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake,
+      # VERSION.json) and src/external/CMakeLists.txt (ext_* targets, wazuhext).
       - "src/CMakeLists.txt"
       - "src/cmake/**"
       - "src/external/CMakeLists.txt"
       - "VERSION.json"
-      # This module's parent on the configure path (src/CMakeLists.txt:255).
+      # This module's parent on the configure path (src/CMakeLists.txt, add_subdirectory(wazuh_modules)).
       - "src/wazuh_modules/CMakeLists.txt"
-      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
+      # build_external_deps runs make deps/build-external (src/Makefile `deps`, ref list from
+      # tools/get_git_refs.sh, GIT_REFS_LIST) and builds the http-request submodule
+      # (step "Build http-request"). A submodule bump changes only the gitlink path, which no '/**'
       # pattern matches.
       - "src/Makefile"
       - "src/deps.lock.mk"
@@ -86,83 +93,40 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
-      # The bundle is inventory_sync_server_testtool (testtool/CMakeLists.txt:12,33) plus the
-      # libraries it links -- inventory_sync_server, vulnerability_scanner, indexer_connector,
-      # content_manager, schema_validator, wazuhext -- the VD flatbuffer schemas and
-      # vulnerability_scanner/testtool/scanner/vd_reduced_feed.json ("Prepare vdscanner tools").
-      # Every CMakeLists.txt of both modules is on the configure path. Not the unit tests, the other
-      # testtool sources, qa/ (not shipped) or the docs.
+      # On a pull request nothing is delivered ("Upload vdscanner tools" is push/dispatch only): the
+      # run only proves that the bundle can still be built and staged. The build itself --
+      # inventory_sync_server_testtool with the same actions and inputs -- is what
+      # 5_testintegration_vulnerability-scanner.yml already does on every file of the push list
+      # above (its paths are a superset; keep them so), so a source change is not repeated here.
+      # What only this workflow checks is the staging ("Prepare vdscanner tools"): the names, types
+      # and output directories of the binary and the six libraries it copies, librocksdb.so.8, the
+      # reduced feed and the schemas directory.
+      #
+      # Target names, library types and output directories: the CMakeLists.txt of the staged
+      # targets and of the tree that configures them.
       - "src/wazuh_modules/inventory_sync_server/**/CMakeLists.txt"
-      - "src/wazuh_modules/inventory_sync_server/include/**"
-      - "src/wazuh_modules/inventory_sync_server/src/**"
-      - "src/wazuh_modules/inventory_sync_server/testtool/**"
       - "src/wazuh_modules/vulnerability_scanner/**/CMakeLists.txt"
-      - "src/wazuh_modules/vulnerability_scanner/include/**"
-      - "src/wazuh_modules/vulnerability_scanner/src/**"
-      - "src/wazuh_modules/vulnerability_scanner/schemas/**"
-      - "src/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_reduced_feed.json"
-      # vulnerability_scanner links content_manager, indexer_connector, urlrequest, schema_validator,
-      # wazuh_uds_http_server, wazuh_metrics (vulnerability_scanner/CMakeLists.txt:156-167).
-      # schema_validator embeds the indexer templates `make deps` downloads (its CMakeLists.txt:25-27),
-      # covered by src/Makefile and tools/get_git_refs.sh below.
       - "src/shared_modules/content_manager/**/CMakeLists.txt"
-      - "src/shared_modules/content_manager/include/**"
-      - "src/shared_modules/content_manager/src/**"
       - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
-      - "src/shared_modules/indexer_connector/include/**"
-      - "src/shared_modules/indexer_connector/src/**"
       - "src/shared_modules/schema_validator/**/CMakeLists.txt"
-      - "src/shared_modules/schema_validator/include/**"
-      - "src/shared_modules/schema_validator/src/**"
-      - "src/shared_modules/uds_http_server/**/CMakeLists.txt"
-      - "src/shared_modules/uds_http_server/include/**"
-      - "src/shared_modules/uds_http_server/src/**"
-      - "src/shared_modules/metrics/**/CMakeLists.txt"
-      - "src/shared_modules/metrics/include/**"
-      - "src/shared_modules/metrics/src/**"
-      # keystore: built standalone with everything in it by build_external_deps/action.yml:45-53
-      # (wazuh-manager-keystore, testtool) -- not its qa/ suite.
-      - "src/shared_modules/keystore/**"
-      - "!src/shared_modules/keystore/qa/**"
-      # shared/include headers the scanner pulls in (include/vulnerabilityScanner.hpp,
-      # src/scanOrchestrator/factory/eventSendReport.hpp).
-      - "src/shared/include/defs.h"
-      - "src/shared/include/logging_helper.h"
-      # Headers from shared_modules/utils and common/commonDefs.h (included by
-      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
-      # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
-      # the configure path (utils/CMakeLists.txt).
-      - "src/shared_modules/utils/**"
-      - "!src/shared_modules/utils/tests/**"
-      - "!src/shared_modules/utils/benchmark/**"
-      - "src/shared_modules/utils/tests/CMakeLists.txt"
-      - "src/shared_modules/utils/benchmark/CMakeLists.txt"
-      - "src/shared_modules/common/**"
-      # Configure path: build_target_cpp configures all of src/ as one tree
-      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
-      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      - "src/wazuh_modules/CMakeLists.txt"
       - "src/CMakeLists.txt"
       - "src/cmake/**"
+      # libwazuhext.so (src/external/CMakeLists.txt) and the rocksdb soname, pinned by the version
+      # `make deps` downloads (src/deps.lock.mk through src/Makefile).
       - "src/external/CMakeLists.txt"
-      - "VERSION.json"
-      # This module's parent on the configure path (src/CMakeLists.txt:255).
-      - "src/wazuh_modules/CMakeLists.txt"
-      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
-      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
-      # pattern matches.
       - "src/Makefile"
       - "src/deps.lock.mk"
-      - "tools/get_git_refs.sh"
-      - "src/shared_modules/http-request"
+      # Files copied into the bundle as they are.
+      - "src/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_reduced_feed.json"
+      - "src/wazuh_modules/vulnerability_scanner/schemas/**"
       # Actions and scripts that build the bundle (reinstall_cmake runs
       # tools/devContainer/reinstall-cmake.sh).
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/reinstall_cmake/**"
       - "tools/devContainer/reinstall-cmake.sh"
-      # upload_s3_artifact does not run on pull requests ("Upload vdscanner tools" is push/dispatch
-      # only), so it is not listed here.
+      # upload_s3_artifact does not run on pull requests, so it is not listed here.
   workflow_dispatch:
 
 # Ensures only one instance of this workflow is running per PR

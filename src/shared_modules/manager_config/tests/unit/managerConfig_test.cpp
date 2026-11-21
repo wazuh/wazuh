@@ -199,6 +199,8 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     EXPECT_STREQ(rapidjson::Pointer("/hosts/0").Get(indexer)->GetString(), "https://127.0.0.1:9200");
     EXPECT_STREQ(rapidjson::Pointer("/ssl/certificate_authorities/0").Get(indexer)->GetString(),
                  "/etc/wazuh-manager/certs/indexer-ca.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/ssl/certificate").Get(indexer)->GetString(), "") << "no client certificate";
+    EXPECT_STREQ(rapidjson::Pointer("/ssl/key").Get(indexer)->GetString(), "");
 }
 
 TEST(Load, EveryValidVectorLoads)

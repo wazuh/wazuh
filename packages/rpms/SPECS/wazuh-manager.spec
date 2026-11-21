@@ -458,7 +458,7 @@ if [ "$1" -eq 1 ]; then
     echo "ERROR: could not generate ${CONF_DIR}/wazuh-manager.conf." >&2
     exit 1
   fi
-  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE}; then
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE} > /dev/null; then
     rm -f ${CONF_STAGE}
     echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
     exit 1
@@ -497,8 +497,8 @@ fi
 rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 
 # Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
-# Server API passwords, store the indexer password in the keystore, import the indexer's CA and
-# client pair from /etc/wazuh-indexer/export when it is installed here, and -- on a fresh install
+# Server API passwords, store the indexer password in the keystore, import the indexer's CA (and
+# a client pair, when one is configured) from /etc/wazuh-indexer/export, and -- on a fresh install
 # only -- mint the manager's CA and issue its two server pairs.
 #
 # $1 is 1 on a fresh install and >= 2 on an upgrade. That distinction is the whole reason the two
@@ -537,7 +537,7 @@ if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   fi
   # Only --install mints the CA and issues the bundle and the server pairs, and an unsafe or invalid
   # entry may have stopped the run before it did. Everything else it reports missing (the indexer
-  # password, the indexer's CA and client pair, rbac.db) the start completes.
+  # password, the indexer's CA, a configured client pair, rbac.db) the start completes.
   if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" \
       | grep -q -E "^(INVALID|UNSAFE) |^MISSING ${CONF_DIR}/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
     CRED_NEEDS_INSTALL="yes"

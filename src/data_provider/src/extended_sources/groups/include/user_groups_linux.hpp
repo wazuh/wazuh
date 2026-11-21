@@ -82,8 +82,11 @@ class UserGroupsProvider
 
         /// @brief Retrieves groups for each user and returns a vector of pairs containing UID and their associated groups.
         /// @note Membership comes from one group enumeration (members of each group plus the user's primary group),
-        /// not from one getgrouplist() call per user; getgrouplist() is only asked about a user that no enumerated group
-        /// lists. The group names it sees are cached in s_groupNamesCache with the same lifetime as the memberships.
+        /// not from one getgrouplist() call per user. getgrouplist() is still asked about an account that is not in
+        /// /etc/passwd when no group outside /etc/group lists it, and about an account in /etc/passwd when no group
+        /// outside /etc/group lists anyone (a directory client that enumerates its groups without members, or does not
+        /// enumerate them). Every account is asked when the enumeration or the local account files stop on an error.
+        /// The group names it sees are cached in s_groupNamesCache with the same lifetime as the memberships.
         /// @param uids A set of user IDs (UIDs) to filter the results. If empty, all users are processed.
         /// @return A vector of pairs, where each pair contains a UID and a vector of GIDs representing the groups associated with that UID.
         /// @note This method is used internally to gather user-group associations before formatting the results into JSON.

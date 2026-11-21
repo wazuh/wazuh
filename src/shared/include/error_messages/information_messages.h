@@ -73,6 +73,8 @@
 #define FIM_AUDIT_FALLBACK_CONFIGURATION    "(6054): The audisp plugin configuration expected for the installed audit version did not create the socket '%s'. Who-data started with an alternative plugin configuration."
 #define FIM_EBPF_LSM_KPROBE_FALLBACK        "(6055): BPF LSM hooks failed to load or attach on this kernel; falling back to kprobe hooks."
 #define FIM_AUDIT_PLUGIN_REMOVED            "(6056): Removed the Audit plugin configuration file '%s': who-data via Audit is not enabled. Auditd will apply it on its next restart."
+#define FIM_AUDIT_PLUGIN_OWNER              "(6057): Changed the owner of the Audit plugin configuration file '%s' from %u:%u to root:root."
+#define FIM_AUDIT_PLUGIN_MODE               "(6058): Changed the mode of the Audit plugin configuration file '%s' from %04o to %04o."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"

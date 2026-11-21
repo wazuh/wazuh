@@ -7,6 +7,7 @@ License (version 2) as published by the FSF - Free Software
 Foundation.
 """
 
+import json
 import os
 import re
 import shutil
@@ -14,6 +15,24 @@ import subprocess
 from pathlib import Path
 from ci import utils
 from ci import build_tools
+
+
+def printWarningAnnotation(msg):
+    """
+    Emit a GitHub Actions warning annotation. The workflow command is only
+    recognized at the start of a line; outside GitHub Actions it is a plain
+    log line.
+
+    Args:
+        - msg(str): Single-line message to annotate the run with.
+
+    Returns:
+        - None
+
+    Raises:
+        - None
+    """
+    print("::warning::{}".format(" ".join(str(msg).split())), flush=True)
 
 
 def checkCoverage(output, linesThreshold=90.0, functionsThreshold=90.0):
@@ -265,7 +284,7 @@ def runCoverage(moduleName, target="agent"):
         errorString = "Error Running lcov: {}".format(out.returncode)
         raise ValueError(errorString)
     # Check if coverage info file has valid records before running genhtml.
-    # Cross-compiled targets (e.g. winagent) may produce empty coverage data.
+    # Without records there is nothing to compare against the thresholds.
     coverageInfoFile = "{}/code_coverage.info".format(reportFolder)
     has_coverage_data = False
     try:
@@ -278,10 +297,25 @@ def runCoverage(moduleName, target="agent"):
         pass
 
     if not has_coverage_data:
-        utils.printGreen(
-            msg="[genhtml: SKIPPED - no coverage data collected (cross-compiled target)]"
+        # The module/target pairs runReadyToReview exempts from coverage are
+        # the only ones where an empty capture is not an error.
+        if target == "winagent" and moduleName in ("data_provider",
+                                                   "shared_modules/file_helper"):
+            utils.printInfo(
+                msg="[Coverage: NOT CHECKED - no coverage data collected for {} in {} target]".format(
+                    moduleName, target)
+            )
+            printWarningAnnotation(
+                "Coverage thresholds were not checked for {} ({}): no coverage data collected".format(
+                    moduleName, target)
+            )
+            return
+        utils.printFail(
+            msg="[Coverage: FAILED - no coverage data collected ({} directories with .gcda files under {})]".format(
+                len(paths), centralizedBuildDir)
         )
-        return
+        raise ValueError("No coverage data collected for {} in {} target".format(
+            moduleName, target))
 
     genhtmlCommand = "genhtml {0}/code_coverage.info --branch-coverage \
                       --output-directory {0}".format(reportFolder)
@@ -704,8 +738,9 @@ def runTests(moduleName):
             subprocess.run('wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f',
                           shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Run ctest with the module label
-    command = f'ctest -L {moduleLabel} -V'
+    # Run ctest with the module label. A label that selects no test is an
+    # error: without it ctest exits 0 having run nothing.
+    command = f'ctest -L {moduleLabel} -V --no-tests=error'
     out = subprocess.run(command,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
@@ -757,6 +792,25 @@ def runTestToolCheck(moduleName):
         )
         if out.returncode == 0:
             utils.printGreen(msg="[TestTool check: PASSED]")
+        else:
+            # The result is reported but does not fail the run: the suite
+            # reads output folders (AtomicOperations, fileTransaction) that
+            # the Windows test tool run preceding it does not produce.
+            tailLines = 40
+            for stream in (out.stdout, out.stderr):
+                lines = stream.decode("utf-8", "replace").splitlines()
+                if lines:
+                    print("\n".join(lines[-tailLines:]), flush=True)
+            utils.printInfo(
+                msg="[TestTool check: NOT PASSED - pytest exit code {} (not enforced)]".format(
+                    out.returncode)
+            )
+            printWarningAnnotation(
+                "TestTool check for {} did not pass: pytest exit code {}{}. "
+                "The result is not enforced".format(
+                    moduleName, out.returncode,
+                    " (pytest not found)" if out.returncode == 127 else "")
+            )
     except Exception as e:
         errorString = "Error checking test tool results. See more details {}".format(
             os.path.join(pathResult, "results.html")
@@ -764,6 +818,46 @@ def runTestToolCheck(moduleName):
         utils.printFail(msg="[TestTool check: FAILED]")
         print(errorString)
         raise e
+
+
+def getLabelTestBinaries(buildDir, label):
+    """
+    List the executables of the tests registered in CTest under a label,
+    without running anything.
+
+    Args:
+        - buildDir(str): Configured build directory.
+        - label(str): CTest label.
+
+    Returns:
+        - binaries(list): Sorted executable file names, or None when CTest
+                          could not be queried.
+
+    Raises:
+        - None
+    """
+    try:
+        out = subprocess.run(
+            ["ctest", "--show-only=json-v1"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=buildDir,
+            check=False,
+        )
+        if out.returncode != 0:
+            return None
+        ctestInfo = json.loads(out.stdout.decode("utf-8", "replace"))
+        binaries = set()
+        for test in ctestInfo["tests"]:
+            labels = []
+            for prop in test.get("properties", []):
+                if prop.get("name") == "LABELS":
+                    labels = prop.get("value", [])
+            if label in labels and test.get("command"):
+                binaries.add(os.path.basename(test["command"][0]))
+        return sorted(binaries)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
 
 
 def runValgrind(moduleName):
@@ -826,4 +920,39 @@ def runValgrind(moduleName):
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)
     os.chdir(oldPath)
+
+    # Only binaries named after the module run under valgrind. Report the
+    # ones of the module's CTest label that were left out.
+    labelTests = getLabelTestBinaries(
+        buildDir=os.path.join(utils.rootPath(), "build"), label=moduleBaseName)
+    notRun = sorted(set(labelTests) - set(tests)) if labelTests is not None else []
+    if not tests:
+        utils.printInfo(
+            msg="[Memory leak check: NOT RUN - no test binary in {} starts with '{}']".format(
+                currentDir, moduleBaseName)
+        )
+        if notRun:
+            utils.printInfo(
+                msg="Test binaries of label '{}' not checked: {}".format(
+                    moduleBaseName, ", ".join(notRun))
+            )
+        printWarningAnnotation(
+            "Memory leak check did not run for {}: no test binary starts with '{}'{}".format(
+                moduleName, moduleBaseName,
+                " ({} test binaries of the label not checked)".format(len(notRun)) if notRun else "")
+        )
+        return
+    utils.printInfo(
+        msg="Checked with valgrind ({}): {}".format(len(tests), ", ".join(sorted(tests)))
+    )
+    if notRun:
+        utils.printInfo(
+            msg="Test binaries of label '{}' not checked ({}): {}".format(
+                moduleBaseName, len(notRun), ", ".join(notRun))
+        )
+        printWarningAnnotation(
+            "Memory leak check for {} covered {} of {} test binaries of label '{}'; not checked: {}".format(
+                moduleName, len(set(tests) & set(labelTests)), len(labelTests),
+                moduleBaseName, ", ".join(notRun))
+        )
     utils.printGreen(msg="[Memory leak check: PASSED]", module=moduleName)

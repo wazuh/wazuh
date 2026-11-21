@@ -20,6 +20,7 @@
 // Success here is: the process is still alive afterwards, and the client gets an answer.
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
 
@@ -124,12 +125,6 @@ namespace
         return received;
     }
 
-    // Picks a port unlikely to collide with a parallel test run.
-    std::uint16_t testPort(std::uint16_t offset)
-    {
-        return static_cast<std::uint16_t>(19700 + (::getpid() % 200) + offset);
-    }
-
     HttpServerConfig makeConfig(const TestCertificate& cert, std::uint16_t port)
     {
         HttpServerConfig config;
@@ -155,7 +150,7 @@ TEST(HandlerBarrier, NonStandardExceptionFromHandlerDoesNotTerminate)
     auto& cert = *certOpt;
     ScratchFileCleanup cleanup {{cert.certPath, cert.keyPath}};
 
-    const auto port = testPort(0);
+    const auto port = remoted::test::findFreePort();
     auto server = makeHttpServer();
     server->addRoute(Method::Get,
                      "/boom",
@@ -187,7 +182,7 @@ TEST(HandlerBarrier, StandardExceptionFromHandlerAnswersInternalError)
     auto& cert = *certOpt;
     ScratchFileCleanup cleanup {{cert.certPath, cert.keyPath}};
 
-    const auto port = testPort(1);
+    const auto port = remoted::test::findFreePort();
     auto server = makeHttpServer();
     server->addRoute(Method::Get,
                      "/throws",
@@ -215,7 +210,7 @@ TEST(HandlerBarrier, ThrowAfterRespondingKeepsTheOriginalResponse)
     auto& cert = *certOpt;
     ScratchFileCleanup cleanup {{cert.certPath, cert.keyPath}};
 
-    const auto port = testPort(2);
+    const auto port = remoted::test::findFreePort();
     auto server = makeHttpServer();
     server->addRoute(Method::Get,
                      "/late-throw",
@@ -259,7 +254,7 @@ TEST(TransportLogging, FormatSpecifiersInRequestTargetAreNotInterpreted)
     auto& cert = *certOpt;
     ScratchFileCleanup cleanup {{cert.certPath, cert.keyPath}};
 
-    const auto port = testPort(3);
+    const auto port = remoted::test::findFreePort();
     auto server = makeHttpServer();
     server->addRoute(Method::Get,
                      "/ok",
@@ -298,7 +293,7 @@ TEST(TransportLogging, PlaintextOnTheTlsPortIsHandledGracefully)
     auto& cert = *certOpt;
     ScratchFileCleanup cleanup {{cert.certPath, cert.keyPath}};
 
-    const auto port = testPort(4);
+    const auto port = remoted::test::findFreePort();
     auto server = makeHttpServer();
     server->addRoute(Method::Get,
                      "/ok",
@@ -346,7 +341,7 @@ TEST(TransportLogging, DISABLED_ThroughputProbe)
 
     constexpr int kRequests {2000};
 
-    const auto port = testPort(9);
+    const auto port = remoted::test::findFreePort();
     auto server = makeHttpServer();
     server->addRoute(Method::Get,
                      "/ok",

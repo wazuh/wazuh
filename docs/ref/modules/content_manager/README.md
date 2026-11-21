@@ -40,7 +40,11 @@ Each update:
    documents per request. An initial load splits the index into `numSlices` parallel slices when
    `numSlices` is greater than 1; incremental updates are always sequential. A page request that
    fails (for example the indexer answering HTTP 429 under memory pressure) is repeated from the same
-   position, up to 5 times over about 2 minutes (5, 10, 20, 40 and 60 seconds apart). Only the slice
+   position, up to 5 times over about 2 minutes (5, 10, 20, 40 and 60 seconds apart). The indexer
+   is asked to refuse a page it cannot answer over every shard (a node stopping during the download),
+   so such a page is a failed request too, never a short last page, and a PIT it cannot open over
+   every shard fails the attempt: a partial feed never moves the stored cursor (see
+   [Searches and points in time](../indexer_connector/README.md#searches-and-points-in-time)). Only the slice
    that failed waits: the pages already downloaded, and the other slices, are kept. A page that still
    fails after that fails the download. A failed initial load (in a sliced load, once the other slices
    have stopped at their next page) starts again **from the beginning** after 30 seconds; a failed
@@ -105,7 +109,7 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | `IndexerDownloader: Global-map documents present in '<index>'. Starting initial load.` | The global maps are indexed; the initial load proceeds |
 | `IndexerDownloader: Starting initial full load (slices=<n>)` | A full download started |
 | `IndexerDownloader: Retrying initial full load (attempt <n>) ...` | A previous full download failed (see the `Initial load failed` or `Slice <i> failed` line before it) or found the index empty, and the full download starts again from the beginning |
-| `IndexerDownloader: <who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` | A page request failed and is repeated from the same position; nothing already downloaded is lost. `<who>` is `Slice <i> (<i+1>/<n>)` for a sliced load, `Download` for a sequential one. A warning: it means the indexer is rejecting or failing requests (HTTP 429 is the indexer's circuit breaker) |
+| `IndexerDownloader: <who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` | A page request failed and is repeated from the same position; nothing already downloaded is lost. While an indexer node is stopping, `<error>` may read `Search request failed with status 500: Server error`: the indexer refused a page it could not answer over every shard. A `500` alone does not identify a stopped node, and once the indexer's health check reports the cluster `red` the request fails earlier with `No available server` instead. A PIT the indexer refuses for the same reason is not a page request: it ends the attempt and shows in the `Initial load failed (<error>)` or `Action for 'vulnerability_feed_manager' failed` line as `Failed to create PIT. Error: Server error, Status code: 503`. `<who>` is `Slice <i> (<i+1>/<n>)` for a sliced load, `Download` for a sequential one. A warning: it means the indexer is rejecting or failing requests (HTTP 429 is the indexer's circuit breaker) |
 | `IndexerDownloader: Slice <i> (<i+1>/<n>) in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sliced full download is advancing (one line per slice at most once a minute) |
 | `IndexerDownloader: Slice <i> (<i+1>/<n>) complete — <n> docs in <ms>ms` | One slice of a full download finished (`interrupted` instead of `complete` when the module is stopping; `abandoned after another slice failed` when another slice exhausted its retries) |
 | `IndexerDownloader: Download in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sequential download (full load with `numSlices` = 1, or an incremental update) is advancing (at most once a minute) |

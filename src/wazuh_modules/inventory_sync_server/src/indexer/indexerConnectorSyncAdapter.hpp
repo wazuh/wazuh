@@ -34,8 +34,17 @@ namespace invsync::indexer
      * scopeLock around the call, honoring the class's caller-locks contract. This module runs its
      * connectors with `flush_interval_seconds` = 0 (no background flush thread -- see
      * PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS), so the lock is uncontended; it stays because the
-     * contract is the connector's, not this module's. `flush()` and the query methods are
-     * forwarded bare: they take the mutex themselves where they need it.
+     * contract is the connector's, not this module's. `flush()` and the query methods take no
+     * lock here: they take the mutex themselves where they need it.
+     *
+     * `flush()`, `executeUpdateByQuery()` and `executeSearchQuery()` translate the connector's
+     * exception into the seam's ConnectorError. Only the search looks at the HTTP status: a 5xx
+     * answer to a read becomes IndexerUnavailable, which the pipeline answers 503. A 5xx on a write
+     * keeps the cause of its category.
+     *
+     * The class is a template over the connector so a unit test can drive these translations
+     * through the production overrides with a test connector; `IndexerConnectorSyncAdapter` is the
+     * instantiation for the real one.
      *
      * `m_inner` is held by value in the member-init-list, so a constructor failure (`hosts` not
      * matching the session's, an unreasonable `max_retry_delay_seconds`) throws out of THIS
@@ -44,18 +53,21 @@ namespace invsync::indexer
      * Taking the session means this constructor performs NO health check and NO keystore read of its
      * own: the session already did both, once, for every connector built from it.
      */
-    // LCOV_EXCL_START - integration-only: pure delegation onto the REAL IndexerConnectorSync. This adapter
-    // is the seam that lets everything above it be unit-tested against IIndexerConnectorSync fakes, so it
-    // has no testable behaviour of its own -- it is exercised by the qa/ suite, which runs in
-    // the integration workflow (real indexer container) and is never part of a coverage capture.
-    class IndexerConnectorSyncAdapter final : public IIndexerConnectorSync
+    template<typename TConnector>
+    class TIndexerConnectorSyncAdapter final : public IIndexerConnectorSync
     {
     public:
-        IndexerConnectorSyncAdapter(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging)
-            : m_inner {config, session, std::move(logging)}
+        /// @brief Builds the wrapped connector in place from its own constructor arguments
+        ///        (`config, session, logging` for the real one).
+        template<typename... TArgs>
+        explicit TIndexerConnectorSyncAdapter(TArgs&&... args)
+            : m_inner(std::forward<TArgs>(args)...)
         {
         }
 
+        // LCOV_EXCL_START - integration-only: pure delegation onto the connector, with no behaviour of
+        // its own. It is exercised by the qa/ suite, which runs in the integration workflow (real
+        // indexer container) and is never part of a coverage capture.
         bool isAvailable() const override
         {
             return m_inner.isAvailable();
@@ -87,6 +99,13 @@ namespace invsync::indexer
             m_inner.deleteByQuery(index, agentId, clusterName);
         }
 
+        BulkRequestStats takeBulkRequestStats() override
+        {
+            const auto stats = m_inner.takeBulkRequestStats();
+            return {stats.requests, stats.bytes, stats.conflictRetries};
+        }
+        // LCOV_EXCL_STOP
+
         void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery) override
         {
             try
@@ -101,7 +120,14 @@ namespace invsync::indexer
 
         nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) override
         {
-            return m_inner.executeSearchQuery(index, searchQuery);
+            try
+            {
+                return m_inner.executeSearchQuery(index, searchQuery);
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                throw ConnectorError {e.what(), searchCauseOf(e)};
+            }
         }
 
         void flush() override
@@ -114,12 +140,6 @@ namespace invsync::indexer
             {
                 throw ConnectorError {e.what(), causeOf(e.category())};
             }
-        }
-
-        BulkRequestStats takeBulkRequestStats() override
-        {
-            const auto stats = m_inner.takeBulkRequestStats();
-            return {stats.requests, stats.bytes, stats.conflictRetries};
         }
 
     private:
@@ -137,9 +157,24 @@ namespace invsync::indexer
             return ConnectorError::Cause::Other;
         }
 
-        IndexerConnectorSync m_inner;
+        /// @brief Cause of a failed read. The status outranks the category: a 5xx means the indexer
+        ///        answered and could not serve the read, whatever else the exception says.
+        static ConnectorError::Cause searchCauseOf(const IndexerConnectorException& e)
+        {
+            constexpr long SERVER_ERROR_FIRST {500};
+            constexpr long SERVER_ERROR_END {600};
+            if (e.statusCode() >= SERVER_ERROR_FIRST && e.statusCode() < SERVER_ERROR_END)
+            {
+                return ConnectorError::Cause::IndexerUnavailable;
+            }
+            return causeOf(e.category());
+        }
+
+        TConnector m_inner;
     };
-    // LCOV_EXCL_STOP
+
+    /// @brief The production adapter: the seam over the real connector.
+    using IndexerConnectorSyncAdapter = TIndexerConnectorSyncAdapter<IndexerConnectorSync>;
 
 } // namespace invsync::indexer
 

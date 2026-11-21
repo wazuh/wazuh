@@ -11,6 +11,9 @@
 #include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#ifndef WIN32
+#include <sys/statvfs.h>
+#endif
 
 #define SIGNLEN 2048 / 8
 #define BUFLEN 4096
@@ -20,6 +23,7 @@ static X509 * w_wpk_cert(FILE * fp);
 static int wpk_verify_cert(X509 * cert, const char ** ca_store);
 
 // Unsign a WPK256 file, using a key path array. Returns 0 on success or -1 on error.
+// On error, target may hold partial content: the caller removes it.
 int w_wpk_unsign(const char * source, const char * target, const char ** ca_store) {
     X509 * cert = NULL;
     EVP_PKEY * pkey = NULL;
@@ -33,13 +37,35 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
     int retval = -1;
     long offset;
     ssize_t length;
+#ifdef WIN32
+    struct _stat64 statbuf;
+#else
+    struct stat statbuf;
+#endif
+    int64_t remaining;
 
     // Read signed file
 
-    if (filein = wfopen(source, "rb"), !filein) {
-        merror("opening input file: %s", strerror(errno));
+#ifndef WIN32
+    // Open the package as a lone regular file.
+    int fd;
+
+    if (fd = w_open_path_vetted(source, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0), fd < 0) {
+        merror("opening input file '%s': %s", source, strerror(errno));
         goto cleanup;
     }
+
+    if (filein = fdopen(fd, "rb"), !filein) {
+        merror("opening input file '%s': %s", source, strerror(errno));
+        close(fd);
+        goto cleanup;
+    }
+#else
+    if (filein = wfopen(source, "rb"), !filein) {
+        merror("opening input file '%s': %s", source, strerror(errno));
+        goto cleanup;
+    }
+#endif
 
     // Check magic number
 
@@ -78,12 +104,50 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    // Hash of file content
+    // Hash and copy the content in a single pass, up to the size the file had when opened.
 
     if (offset = ftell(filein), offset < 0) {
         merror(FTELL_ERROR, source, errno, strerror(errno));
         goto cleanup;
     }
+
+#ifdef WIN32
+    const int stat_result = _fstat64(_fileno(filein), &statbuf);
+#else
+    const int stat_result = fstat(fileno(filein), &statbuf);
+#endif
+
+    if (stat_result < 0) {
+        merror(FSTAT_ERROR, source, errno, strerror(errno));
+        goto cleanup;
+    }
+
+    if (statbuf.st_size < offset) {
+        merror("Invalid input file (reading content).");
+        goto cleanup;
+    }
+
+    remaining = (int64_t)statbuf.st_size - offset;
+
+    if (fileout = wfopen(target, "wb"), !fileout) {
+        merror("Opening output file: %s", strerror(errno));
+        goto cleanup;
+    }
+
+#ifndef WIN32
+    // Keep the copy within the space available to unprivileged users.
+    struct statvfs vfs;
+
+    if (fstatvfs(fileno(fileout), &vfs) < 0) {
+        merror("Could not get the free disk space for '%s': %s", target, strerror(errno));
+        goto cleanup;
+    }
+
+    if ((unsigned long long)remaining > (unsigned long long)vfs.f_bavail * vfs.f_frsize) {
+        merror("Not enough disk space to extract '%s'.", source);
+        goto cleanup;
+    }
+#endif
 
     if (hash = EVP_MD_CTX_new(), !hash) {
         merror("Couldn't create hash context.");
@@ -95,17 +159,33 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
+    while (remaining > 0 && (length = fread(buffer, 1, remaining < BUFLEN ? (size_t)remaining : BUFLEN, filein)) > 0) {
+        remaining -= length;
+
         if (1 != EVP_DigestUpdate(hash, buffer, length)) {
             merror("Couldn't update hash.");
             goto cleanup;
         }
+
+        if (fwrite(buffer, 1, length, fileout) != (size_t)length) {
+            merror("writing output file.");
+            goto cleanup;
+        }
     }
 
-    if (length < 0) {
+    if (ferror(filein) || remaining > 0) {
         merror("Invalid input file (reading content).");
         goto cleanup;
     }
+
+    // A write error may only show up when the buffered output is flushed.
+    if (fclose(fileout) != 0) {
+        fileout = NULL;
+        merror("writing output file.");
+        goto cleanup;
+    }
+
+    fileout = NULL;
 
     if (1 != EVP_DigestFinal(hash, digest, NULL)) {
         merror("Couldn't finalize hash.");
@@ -141,30 +221,6 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
 
     if (1 != EVP_PKEY_verify(ctx, signature, SIGNLEN, digest, SHA256_DIGEST_LENGTH)) {
         merror("Failed to verify signature.");
-        goto cleanup;
-    }
-
-    // Extract file
-
-    if (fileout = wfopen(target, "wb"), !fileout) {
-        merror("Opening output file: %s", strerror(errno));
-        goto cleanup;
-    }
-
-    if (fseek(filein, offset, SEEK_SET) < 0) {
-        merror(FSEEK_ERROR, source, errno, strerror(errno));
-        goto cleanup;
-    }
-
-    while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
-        if (fwrite(buffer, 1, length, fileout) != (size_t)length) {
-            merror("writing output file.");
-            goto cleanup;
-        }
-    }
-
-    if (length < 0) {
-        merror("Invalid input file (writing output).");
         goto cleanup;
     }
 

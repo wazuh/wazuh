@@ -30,6 +30,10 @@
 #include <asio/ssl.hpp>
 #include <asio/write.hpp>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -43,6 +47,41 @@
 
 namespace remoted::test
 {
+
+    /// A TCP port the kernel reports free on loopback right now, or 0 when none could be obtained.
+    ///
+    /// Every test that starts a listener takes its port from here, just before binding it. A fixed or
+    /// pid-derived number can already be held: by a client socket of this same suite (the ephemeral
+    /// range), by another test that derives the same number, or by a manager running on the host.
+    ///
+    /// Passing port 0 to the module is not a substitute: buildHttpServerConfig() reads a non-positive
+    /// port as "not configured" and falls back to the module default, a fixed port.
+    inline std::uint16_t findFreePort()
+    {
+        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (probe < 0)
+        {
+            return 0;
+        }
+
+        sockaddr_in address {};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0; // let the kernel pick
+
+        std::uint16_t port = 0;
+        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
+        {
+            socklen_t length = sizeof(address);
+            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&address), &length) == 0)
+            {
+                port = ntohs(address.sin_port);
+            }
+        }
+
+        ::close(probe);
+        return port;
+    }
 
     /// The single agent every TLS test authenticates as.
     constexpr remoted::auth::AgentId kTestAgentId {7};

@@ -558,10 +558,8 @@ inline bool isWKTPoint(const std::string& s)
     // Extract everything between parentheses
     std::string content = s.substr(open + 1, close - open - 1);
 
-    // Check if there's anything after the closing parenthesis (garbage)
-    std::string afterClose = s.substr(close + 1);
-    while (!afterClose.empty() && afterClose.front() == ' ') afterClose.erase(0, 1);
-    if (!afterClose.empty())
+    // Only spaces may follow the closing parenthesis
+    if (s.find_first_not_of(' ', close + 1) != std::string::npos)
         return false;
 
     std::istringstream ss(content);
