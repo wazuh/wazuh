@@ -572,9 +572,27 @@ TEST_F(UserGroupsProviderDarwinTest, GroupTheSystemCannotResolveUsesItsRecordGid
     EXPECT_EQ(result[1]["gid"], 5000);
 }
 
+TEST_F(UserGroupsProviderDarwinTest, NegativeRecordGidIsReportedAsTheSystemReportsIt)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Invoke([](std::map<std::string, ODGroupMembers>& out)
+    {
+        // `nobody` is -2 in the directory and 4294967294 for getgrnam().
+        out["share"].names.insert("member");
+        out["share"].gid = "-2";
+        return true;
+    }));
+
+    const auto result = env.collect();
+
+    ASSERT_EQ(result.size(), 2u);
+    EXPECT_EQ(result[1]["gid"], 4294967294u);
+}
+
 TEST_F(UserGroupsProviderDarwinTest, GroupWithoutAUsableGidIsLeftOut)
 {
-    for (const std::string recordGid : {"", "50x0", "-5", "+5", " 5", "99999999999"})
+    for (const std::string recordGid : {"", "50x0", "+5", " 5", "2147483648", "-2147483649", "99999999999"})
     {
         DirectoryCase env;
         EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));

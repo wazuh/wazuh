@@ -8,23 +8,25 @@
  */
 
 #include <charconv>
+#include <cstdint>
 
 #include "direct_memberships_darwin.hpp"
 #include "directory_keys_darwin.hpp"
 
-// Only plain decimal digits that fit a gid_t; a sign, a space or anything else is no gid.
+// OpenDirectory stores a PrimaryGroupID as a signed 32-bit integer in decimal (nobody is -2), and
+// the system reports it as the gid_t with the same bits (4294967294). Anything else is no gid.
 static std::optional<gid_t> parseGid(const std::string& text)
 {
-    gid_t gid {};
+    int32_t value {};
     const char* end = text.data() + text.size();
-    const auto [last, error] = std::from_chars(text.data(), end, gid);
+    const auto [last, error] = std::from_chars(text.data(), end, value);
 
     if (text.empty() || error != std::errc {} || last != end)
     {
         return std::nullopt;
     }
 
-    return gid;
+    return static_cast<gid_t>(value);
 }
 
 // An account whose record has no GUID cannot be listed by GUID, only by name.
