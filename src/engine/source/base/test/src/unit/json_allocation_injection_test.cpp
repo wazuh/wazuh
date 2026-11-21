@@ -3,16 +3,28 @@
 // Every mutation is driven through each of its allocation points in turn; after each failure the document must
 // still be readable and serializable, and the next operation on it must succeed. Strings above the pool chunk
 // (64 KB) get a base allocation of their own, so each copied value is an injection point.
+//
+// The Merge* cases at the end use a second harness (sweepEveryPoint): after a warm-up run and a clean run that counts
+// the K allocation points of the merge, every point n in 1..K is injected, whether or not the merge throws there, and
+// the document is checked against the "between" predicate (every node is the one before the merge or the one after
+// it) and must converge to the reference when the same merge is repeated without a failure. Besides the base
+// allocator, the member index of large merges is reached through the default std::pmr memory resource, replaced for
+// the run by one that fails its n-th allocation.
 
 #include <gtest/gtest.h>
 
 #include <cstddef>
 #include <functional>
+#include <limits>
+#include <memory_resource>
 #include <new>
+#include <set>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -386,4 +398,650 @@ TEST(JsonAllocationInjectionTest, ValidateReportsAllocationFailure)
     }
     EXPECT_GE(points, 1u);
     EXPECT_FALSE(doc.validate(schema).has_value());
+}
+
+namespace
+{
+
+/// Where the failure is injected: the base allocator of the documents, or the default memory resource, from which
+/// the member index of a large merge takes its memory.
+enum class Inject
+{
+    Base,
+    IndexResource
+};
+
+/// Memory resource whose n-th allocation fails with std::bad_alloc (1 = the next one; the counter then stays at 0);
+/// every other request goes to the resource it wraps.
+class FailingResource final : public std::pmr::memory_resource
+{
+public:
+    explicit FailingResource(std::pmr::memory_resource* upstream)
+        : m_upstream(upstream)
+    {
+    }
+
+    size_t failAt = 0;
+
+private:
+    void* do_allocate(size_t bytes, size_t alignment) override
+    {
+        if (failAt != 0 && --failAt == 0)
+        {
+            throw std::bad_alloc();
+        }
+        return m_upstream->allocate(bytes, alignment);
+    }
+
+    void do_deallocate(void* block, size_t bytes, size_t alignment) override
+    {
+        m_upstream->deallocate(block, bytes, alignment);
+    }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
+
+    std::pmr::memory_resource* m_upstream;
+};
+
+/// Installs a default memory resource and puts the previous one back on exit, also when an assertion returns early.
+class DefaultResourceGuard
+{
+public:
+    explicit DefaultResourceGuard(std::pmr::memory_resource* resource)
+        : m_previous(std::pmr::set_default_resource(resource))
+    {
+    }
+    ~DefaultResourceGuard() { std::pmr::set_default_resource(m_previous); }
+    DefaultResourceGuard(const DefaultResourceGuard&) = delete;
+    DefaultResourceGuard& operator=(const DefaultResourceGuard&) = delete;
+
+private:
+    std::pmr::memory_resource* m_previous;
+};
+
+/// Puts json::BaseAllocator::failAt back to zero on exit.
+struct FailAtReset
+{
+    FailAtReset() = default;
+    ~FailAtReset() { json::BaseAllocator::failAt = 0; }
+    FailAtReset(const FailAtReset&) = delete;
+    FailAtReset& operator=(const FailAtReset&) = delete;
+};
+
+using MergeOp = std::function<void(json::Json&)>;
+/// check(now, before, after, threw): `after` is the reference merge, run without a failure.
+using MergeCheck = std::function<void(json::Json&, const json::Json&, const json::Json&, bool)>;
+
+struct InjectionOutcome
+{
+    bool threw;  ///< The merge left with std::bad_alloc.
+    size_t left; ///< What was left of the counter: 0 = the n-th allocation was reached.
+};
+
+/// Value of the counter that never reaches zero: the run injects nothing and counts the allocation points.
+constexpr size_t COUNT_ONLY = std::numeric_limits<size_t>::max();
+
+InjectionOutcome runFailingAt(Inject target, size_t n, const MergeOp& op, json::Json& doc)
+{
+    InjectionOutcome outcome {false, 0};
+    if (target == Inject::Base)
+    {
+        const FailAtReset reset;
+        json::BaseAllocator::failAt = n;
+        try
+        {
+            op(doc);
+        }
+        catch (const std::bad_alloc&)
+        {
+            outcome.threw = true;
+        }
+        outcome.left = json::BaseAllocator::failAt;
+    }
+    else
+    {
+        FailingResource resource(std::pmr::get_default_resource());
+        resource.failAt = n;
+        const DefaultResourceGuard guard(&resource);
+        try
+        {
+            op(doc);
+        }
+        catch (const std::bad_alloc&)
+        {
+            outcome.threw = true;
+        }
+        outcome.left = resource.failAt;
+    }
+    return outcome;
+}
+
+/// A serialized document shortened for a failure message: these documents hold 100 KB strings.
+std::string brief(const std::string& text)
+{
+    constexpr size_t shown = 120;
+    return text.size() <= shown ? text : fmt::format("{}... ({} bytes)", text.substr(0, shown), text.size());
+}
+
+void expectSameText(const std::string& actual, const std::string& expected, std::string_view what)
+{
+    EXPECT_TRUE(actual == expected) << what << ": " << brief(actual) << " instead of " << brief(expected);
+}
+
+struct SweepCounts
+{
+    size_t points = 0;     ///< K: allocation points of the merge.
+    size_t propagated = 0; ///< Points where the merge threw std::bad_alloc.
+    size_t absorbed = 0;   ///< Points reached where the merge returned normally.
+};
+
+/**
+ * Injects a failure at every allocation point n in 1..K of `op` on a fresh document, K counted by a clean run after a
+ * warm-up one (lazily initialized statics allocate once per process). After each run the counter must have been
+ * consumed (point reached) and `check` sees the document whether or not the merge threw. Then the merge converges:
+ * repeated without a failure on what a propagated failure left, it gives the reference; an absorbed failure must
+ * already have given it.
+ */
+SweepCounts
+sweepEveryPoint(Inject target, const std::function<json::Json()>& makeDoc, const MergeOp& op, const MergeCheck& check)
+{
+    SweepCounts counts;
+    {
+        auto warmUp = makeDoc();
+        op(warmUp);
+    }
+    auto reference = makeDoc();
+    const auto clean = runFailingAt(target, COUNT_ONLY, op, reference);
+    EXPECT_FALSE(clean.threw) << "the merge failed without an injected failure";
+    counts.points = COUNT_ONLY - clean.left;
+    const auto afterText = reference.str();
+    for (size_t n = 1; n <= counts.points; ++n)
+    {
+        SCOPED_TRACE(fmt::format("allocation point {} of {}", n, counts.points));
+        auto doc = makeDoc();
+        const json::Json before(doc);
+        const auto outcome = runFailingAt(target, n, op, doc);
+        if (outcome.left != 0)
+        {
+            ADD_FAILURE() << "allocation point " << n << " not reached";
+            break;
+        }
+        if (outcome.threw)
+        {
+            ++counts.propagated;
+        }
+        else
+        {
+            ++counts.absorbed;
+        }
+        check(doc, before, reference, outcome.threw);
+        if (outcome.threw)
+        {
+            op(doc);
+            expectSameText(doc.str(), afterText, "the merge repeated without a failure");
+        }
+        else
+        {
+            expectSameText(doc.str(), afterText, "a merge that returned normally");
+        }
+        if (testing::Test::HasFailure())
+        {
+            break;
+        }
+    }
+    EXPECT_EQ(counts.propagated + counts.absorbed, counts.points);
+    return counts;
+}
+
+/**
+ * "between": `now` is `before`, `after`, or a mix in which every node is the one before the merge or the one after
+ * it. Objects: the members of `before` are all there, in their order and no more repeated than in `before`, followed
+ * by new names in the order of `after`, each with exactly its value in `after`; a member that existed holds its value
+ * of `before` or of `after` (non-recursive merge) or is "between" them itself (recursive merge). Arrays: `before`
+ * followed by a prefix of the elements `after` appends. Anything else fails. Only the public API of json::Json.
+ */
+testing::AssertionResult between(const json::Json& before,
+                                 const json::Json& now,
+                                 const json::Json& after,
+                                 bool recursive,
+                                 const std::string& where = "")
+{
+    const auto nowText = now.str();
+    if (nowText == before.str() || nowText == after.str())
+    {
+        return testing::AssertionSuccess();
+    }
+    const auto fail = [&](const std::string& why)
+    {
+        return testing::AssertionFailure()
+               << (where.empty() ? "/" : where) << ": " << why << "; before " << brief(before.str()) << ", now "
+               << brief(nowText) << ", after " << brief(after.str());
+    };
+
+    if (before.isObject() && now.isObject() && after.isObject())
+    {
+        const auto old = before.getObject().value();
+        const auto cur = now.getObject().value();
+        const auto fin = after.getObject().value();
+        if (cur.size() < old.size() || fin.size() < old.size())
+        {
+            return fail("members of the destination are missing");
+        }
+        std::set<std::string> oldNames;
+        for (size_t i = 0; i < old.size(); ++i)
+        {
+            const auto& name = std::get<0>(old[i]);
+            if (std::get<0>(cur[i]) != name || std::get<0>(fin[i]) != name)
+            {
+                return fail(fmt::format("member {} is no longer '{}'", i, brief(name)));
+            }
+            oldNames.insert(name);
+            const auto child = where + "/" + brief(name);
+            const auto& oldValue = std::get<1>(old[i]);
+            const auto& curValue = std::get<1>(cur[i]);
+            const auto& finValue = std::get<1>(fin[i]);
+            if (recursive)
+            {
+                auto nested = between(oldValue, curValue, finValue, true, child);
+                if (!nested)
+                {
+                    return nested;
+                }
+            }
+            else
+            {
+                const auto valueText = curValue.str();
+                if (valueText != oldValue.str() && valueText != finValue.str())
+                {
+                    return fail(fmt::format("{} is neither its value before nor after the merge", child));
+                }
+            }
+        }
+        size_t next = old.size();
+        for (size_t i = old.size(); i < cur.size(); ++i)
+        {
+            const auto& name = std::get<0>(cur[i]);
+            if (oldNames.count(name) != 0)
+            {
+                return fail(fmt::format("'{}' was added again", brief(name)));
+            }
+            while (next < fin.size() && std::get<0>(fin[next]) != name)
+            {
+                ++next;
+            }
+            if (next == fin.size())
+            {
+                return fail(fmt::format("new member '{}' is repeated or out of the order of the merge", brief(name)));
+            }
+            if (std::get<1>(cur[i]).str() != std::get<1>(fin[next]).str())
+            {
+                return fail(fmt::format("new member '{}' is not its value after the merge", brief(name)));
+            }
+            ++next;
+        }
+        return testing::AssertionSuccess();
+    }
+
+    if (before.isArray() && now.isArray() && after.isArray())
+    {
+        const auto old = before.getArray().value();
+        const auto cur = now.getArray().value();
+        const auto fin = after.getArray().value();
+        if (cur.size() < old.size() || cur.size() > fin.size())
+        {
+            return fail("the array is not the one before plus a part of what the merge appends");
+        }
+        for (size_t i = 0; i < cur.size(); ++i)
+        {
+            const auto curText = cur[i].str();
+            if (i < old.size() && (curText != old[i].str() || fin[i].str() != old[i].str()))
+            {
+                return fail(fmt::format("element {} changed", i));
+            }
+            if (curText != fin[i].str())
+            {
+                return fail(fmt::format("element {} is not the one the merge appends", i));
+            }
+        }
+        return testing::AssertionSuccess();
+    }
+
+    return fail("neither the value before nor the value after the merge");
+}
+
+/// "between" for the value at `path`, and the rest of the document exactly as before.
+void expectBetweenAt(
+    std::string_view path, const json::Json& now, const json::Json& before, const json::Json& after, bool recursive)
+{
+    const auto nowAt = now.getJson(path);
+    const auto beforeAt = before.getJson(path);
+    const auto afterAt = after.getJson(path);
+    ASSERT_TRUE(nowAt.has_value() && beforeAt.has_value() && afterAt.has_value()) << path;
+    EXPECT_TRUE(between(*beforeAt, *nowAt, *afterAt, recursive, std::string(path)));
+    json::Json outside(now);
+    outside.set(path, *beforeAt);
+    expectSameText(outside.str(), before.str(), "the document outside the merged value");
+}
+
+/// Members `"<prefix>0":<first>,"<prefix>1":<first + 1>,...` of an object text, without the braces.
+std::string numberedMembers(std::string_view prefix, size_t count, size_t first)
+{
+    std::string text;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (i != 0)
+        {
+            text += ',';
+        }
+        text += fmt::format(R"("{}{}":{})", prefix, i, first + i);
+    }
+    return text;
+}
+
+/// Allocation points of `op` in the default memory resource: > 0 only if the merge builds its member index.
+size_t indexAllocations(const std::function<json::Json()>& makeDoc, const MergeOp& op)
+{
+    auto doc = makeDoc();
+    return COUNT_ONLY - runFailingAt(Inject::IndexResource, COUNT_ONLY, op, doc).left;
+}
+
+// A merge onto an object of m members switches to the index once its scans exceed MERGE_INDEX_SCAN_FACTOR * m, which
+// for new names only happens near member 2 * MERGE_INDEX_SCAN_FACTOR + 1 (~1 025).
+constexpr size_t INDEX_SWITCH = 2 * json::Json::MERGE_INDEX_SCAN_FACTOR + 1;
+constexpr size_t LINEAR_NAMES = 500;          ///< Distinct names merged onto {} without ever building the index.
+constexpr size_t INDEXED_PREFIX_NAMES = 1500; ///< Distinct names before the last members of the indexed case.
+constexpr size_t INDEXED_NAMES = 6000; ///< Distinct names onto {}: the index is built early and grows several times.
+static_assert(LINEAR_NAMES < INDEX_SWITCH);
+static_assert(INDEXED_PREFIX_NAMES > INDEX_SWITCH + 64);
+static_assert(INDEXED_NAMES >= 4000 && INDEXED_NAMES > 4 * INDEX_SWITCH);
+
+} // namespace
+
+// C-1: a member that is replaced or added is complete or not there; no member is half-written or duplicated
+TEST(JsonAllocationInjectionTest, MergeFlatLeavesEveryMemberOldOrNew)
+{
+    const json::Json source(fmt::format(R"({{"k":"{}","o":"{}","{}":"{}","{}":"{}"}})",
+                                        bigString('k'),
+                                        bigString('o'),
+                                        bigString('p'),
+                                        bigString('P'),
+                                        bigString('q'),
+                                        bigString('Q'))
+                                .c_str());
+    const MergeOp op = [&](json::Json& doc)
+    {
+        doc.merge(false, source);
+    };
+    // The second destination repeats "k": the first occurrence is the one replaced
+    for (const auto* destination : {R"({"n":1,"k":"v","o":{"a":1}})", R"({"n":1,"k":"v","k":"w","o":{"a":1}})"})
+    {
+        SCOPED_TRACE(destination);
+        const auto counts = sweepEveryPoint(
+            Inject::Base,
+            [destination] { return json::Json(destination); },
+            op,
+            [](json::Json& now, const json::Json& before, const json::Json& after, bool)
+            {
+                EXPECT_TRUE(between(before, now, after, false));
+                EXPECT_EQ(now.checkDuplicateKeys().has_value(), before.checkDuplicateKeys().has_value());
+            });
+        EXPECT_GE(counts.points, 5u);
+        EXPECT_EQ(counts.propagated, counts.points);
+        EXPECT_EQ(counts.absorbed, 0u);
+    }
+}
+
+TEST(JsonAllocationInjectionTest, MergeRecursiveLeavesEveryNodeOldOrNew)
+{
+    const json::Json source(fmt::format(R"({{"o":{{"a":"{}","b":"{}","arr":[2,"{}"],"deep":{{"y":"{}"}}}},"n":"{}"}})",
+                                        bigString('a'),
+                                        bigString('b'),
+                                        bigString('r'),
+                                        bigString('y'),
+                                        bigString('n'))
+                                .c_str());
+    const auto counts = sweepEveryPoint(
+        Inject::Base,
+        [] { return json::Json(R"({"o":{"a":1,"arr":[1,2],"deep":{"x":1}},"keep":"v"})"); },
+        [&](json::Json& doc) { doc.merge(true, source); },
+        [](json::Json& now, const json::Json& before, const json::Json& after, bool)
+        {
+            EXPECT_TRUE(between(before, now, after, true));
+            EXPECT_EQ(getStr(now, "/keep"), "v");
+            EXPECT_FALSE(now.checkDuplicateKeys().has_value());
+        });
+    EXPECT_GE(counts.points, 5u);
+    EXPECT_EQ(counts.absorbed, 0u);
+}
+
+TEST(JsonAllocationInjectionTest, MergeArrayKeepsAPrefix)
+{
+    const json::Json source(
+        fmt::format(R"(["a","{}","{}","{}"])", bigString('1'), bigString('2'), bigString('3')).c_str());
+    const auto counts = sweepEveryPoint(
+        Inject::Base,
+        [] { return json::Json(R"({"keep":"v","arr":[1,"a"]})"); },
+        [&](json::Json& doc) { doc.merge(false, source, "/arr"); },
+        [](json::Json& now, const json::Json& before, const json::Json& after, bool)
+        { expectBetweenAt("/arr", now, before, after, false); });
+    EXPECT_GE(counts.points, 3u);
+    EXPECT_EQ(counts.absorbed, 0u);
+}
+
+// The last members of the source are merged through the member index (an existing name included: in the recursive
+// variant its value is merged from there); injection in the base allocator
+TEST(JsonAllocationInjectionTest, MergeIndexedLeavesEveryMemberOldOrNew)
+{
+    const json::Json source(fmt::format(R"({{{},"b0":"{}","b1":"{}","b2":"{}","obj":{{"b":"{}"}}}})",
+                                        numberedMembers("m", INDEXED_PREFIX_NAMES, 0),
+                                        bigString('0'),
+                                        bigString('1'),
+                                        bigString('2'),
+                                        bigString('b'))
+                                .c_str());
+    const auto makeDoc = []
+    {
+        return json::Json(R"({"obj":{"a":1}})");
+    };
+    for (const bool recursive : {false, true})
+    {
+        SCOPED_TRACE(recursive ? "recursive" : "not recursive");
+        const MergeOp op = [&source, recursive](json::Json& doc)
+        {
+            doc.merge(recursive, source);
+        };
+        EXPECT_GT(indexAllocations(makeDoc, op), 0u) << "the input does not reach the indexed merge";
+        const auto counts =
+            sweepEveryPoint(Inject::Base,
+                            makeDoc,
+                            op,
+                            [recursive](json::Json& now, const json::Json& before, const json::Json& after, bool)
+                            {
+                                EXPECT_TRUE(between(before, now, after, recursive));
+                                EXPECT_FALSE(now.checkDuplicateKeys().has_value());
+                            });
+        EXPECT_GE(counts.points, 4u);
+        EXPECT_EQ(counts.absorbed, 0u);
+    }
+}
+
+// The member index takes its memory from the default memory resource, not from the base allocator. The first index
+// allocation happens while the index is built, so the members of the document failed there are the members it had
+// when the index was created; a document failed later with more members failed on the insertion of a new position,
+// after the member was added. How many allocations fall after the creation depends on how the buffer of the index
+// grows: INDEXED_NAMES leaves several of them with the geometric growth of the standard library, and the case asks
+// for two.
+TEST(JsonAllocationInjectionTest, MergeIndexResourceFailureKeepsTheDocumentUsable)
+{
+    const json::Json source(fmt::format("{{{}}}", numberedMembers("n", INDEXED_NAMES, 0)).c_str());
+    const auto makeDoc = []
+    {
+        return json::Json("{}");
+    };
+    std::vector<size_t> failedSizes;
+    const auto counts = sweepEveryPoint(
+        Inject::IndexResource,
+        makeDoc,
+        [&](json::Json& doc) { doc.merge(false, source); },
+        [&failedSizes](json::Json& now, const json::Json& before, const json::Json& after, bool threw)
+        {
+            EXPECT_TRUE(threw) << "a failure of the index memory did not reach the caller";
+            EXPECT_TRUE(between(before, now, after, false));
+            EXPECT_FALSE(now.checkDuplicateKeys().has_value());
+            failedSizes.push_back(now.size());
+        });
+    ASSERT_GE(counts.points, 2u) << "the merge does not reach the member index";
+    EXPECT_EQ(counts.propagated, counts.points);
+    EXPECT_EQ(counts.absorbed, 0u);
+    ASSERT_EQ(failedSizes.size(), counts.points);
+    size_t afterIndexCreation = 0;
+    for (const auto size : failedSizes)
+    {
+        if (size > failedSizes.front())
+        {
+            ++afterIndexCreation;
+        }
+    }
+    EXPECT_GE(afterIndexCreation, 2u) << "no failure fell on the insertion that follows an added member";
+
+    // Under the scan factor the index is never built
+    const json::Json small(fmt::format("{{{}}}", numberedMembers("n", LINEAR_NAMES, 0)).c_str());
+    const auto linear = sweepEveryPoint(
+        Inject::IndexResource,
+        makeDoc,
+        [&](json::Json& doc) { doc.merge(false, small); },
+        [](json::Json&, const json::Json&, const json::Json&, bool)
+        { ADD_FAILURE() << "unexpected index allocation"; });
+    EXPECT_EQ(linear.points, 0u);
+}
+
+// A name repeated in the source replaces the member the first occurrence added; a state in between is legitimately
+// {"k":<first>}, so these sweeps check no duplicates and convergence to "the last occurrence of the source wins"
+TEST(JsonAllocationInjectionTest, MergeRepeatedSourceNamesNeverDuplicate)
+{
+    const auto makeDoc = []
+    {
+        return json::Json("{}");
+    };
+    const MergeCheck noDuplicates = [](json::Json& now, const json::Json&, const json::Json&, bool)
+    {
+        const auto duplicate = now.checkDuplicateKeys();
+        EXPECT_FALSE(duplicate.has_value()) << (duplicate ? brief(duplicate->message) : std::string());
+    };
+    const auto expectReference = [&makeDoc](const MergeOp& op, const std::string& expected)
+    {
+        auto reference = makeDoc();
+        op(reference);
+        expectSameText(reference.str(), expected, "the merge without a failure");
+    };
+
+    {
+        SCOPED_TRACE("one name twice");
+        const json::Json source(R"({"k":1,"k":2})");
+        const MergeOp op = [&](json::Json& doc)
+        {
+            doc.merge(false, source);
+        };
+        expectReference(op, R"({"k":2})");
+        const auto counts = sweepEveryPoint(Inject::Base, makeDoc, op, noDuplicates);
+        EXPECT_EQ(counts.absorbed, 0u);
+    }
+    {
+        SCOPED_TRACE("eight names twice");
+        std::string first;
+        std::string second;
+        std::string expected;
+        for (char i = 0; i < 8; ++i)
+        {
+            const auto name = fmt::format("r{}", static_cast<int>(i));
+            first += fmt::format(R"("{}":"{}",)", name, bigString(static_cast<char>('a' + i)));
+            second += fmt::format(R"(,"{}":"{}")", name, bigString(static_cast<char>('A' + i)));
+        }
+        expected = "{" + second.substr(1) + "}";
+        const json::Json source(("{" + first + second.substr(1) + "}").c_str());
+        const MergeOp op = [&](json::Json& doc)
+        {
+            doc.merge(false, source);
+        };
+        expectReference(op, expected);
+        const auto counts = sweepEveryPoint(Inject::Base, makeDoc, op, noDuplicates);
+        EXPECT_GE(counts.points, 16u);
+        EXPECT_EQ(counts.absorbed, 0u);
+    }
+    {
+        SCOPED_TRACE("indexed: every name twice");
+        const json::Json source(fmt::format("{{{},{}}}",
+                                            numberedMembers("n", INDEXED_NAMES, 0),
+                                            numberedMembers("n", INDEXED_NAMES, INDEXED_NAMES))
+                                    .c_str());
+        const MergeOp op = [&](json::Json& doc)
+        {
+            doc.merge(false, source);
+        };
+        expectReference(op, fmt::format("{{{}}}", numberedMembers("n", INDEXED_NAMES, INDEXED_NAMES)));
+        const auto baseCounts = sweepEveryPoint(Inject::Base, makeDoc, op, noDuplicates);
+        EXPECT_GE(baseCounts.points, 1u);
+        EXPECT_EQ(baseCounts.absorbed, 0u);
+
+        std::vector<size_t> failedSizes;
+        const auto counts =
+            sweepEveryPoint(Inject::IndexResource,
+                            makeDoc,
+                            op,
+                            [&](json::Json& now, const json::Json& before, const json::Json& after, bool threw)
+                            {
+                                noDuplicates(now, before, after, threw);
+                                failedSizes.push_back(now.size());
+                            });
+        ASSERT_EQ(failedSizes.size(), counts.points);
+        ASSERT_GE(counts.points, 1u) << "the merge does not reach the member index";
+        EXPECT_EQ(counts.absorbed, 0u);
+        size_t afterIndexCreation = 0;
+        for (const auto size : failedSizes)
+        {
+            if (size > failedSizes.front())
+            {
+                ++afterIndexCreation;
+            }
+        }
+        // Every name added after the index was built appears again later in the source
+        EXPECT_GE(afterIndexCreation, 1u) << "no failure fell on the insertion of a name repeated later";
+    }
+}
+
+// merge(source path, destination path) erases the source only once the merge is complete
+TEST(JsonAllocationInjectionTest, MergeFromInsideTheDocumentKeepsTheSource)
+{
+    const auto makeDoc = []
+    {
+        return json::Json(
+            fmt::format(R"({{"dst":{{"a":1}},"src":{{"x":"{}","y":"{}"}}}})", bigString('x'), bigString('y')).c_str());
+    };
+    const std::string_view sourcePath = "/src";
+    const std::string_view destinationPath = "/dst";
+    const MergeOp op = [&](json::Json& doc)
+    {
+        doc.merge(false, sourcePath, destinationPath);
+    };
+    {
+        auto reference = makeDoc();
+        op(reference);
+        EXPECT_FALSE(reference.exists(sourcePath));
+    }
+    const auto counts =
+        sweepEveryPoint(Inject::Base,
+                        makeDoc,
+                        op,
+                        [&](json::Json& now, const json::Json& before, const json::Json& after, bool threw)
+                        {
+                            if (!threw)
+                            {
+                                return; // the sweep requires the reference
+                            }
+                            // The source as before and the destination "between"
+                            ASSERT_TRUE(now.exists(sourcePath));
+                            expectBetweenAt(destinationPath, now, before, after, false);
+                        });
+    EXPECT_GE(counts.points, 2u);
+    EXPECT_EQ(counts.absorbed, 0u);
 }

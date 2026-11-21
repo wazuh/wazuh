@@ -59,6 +59,7 @@ add_executable(hlp_utest
   ${UNIT_SRC_DIR}/dsv_csv_test.cpp
   ${UNIT_SRC_DIR}/parse_field_test.cpp
   ${UNIT_SRC_DIR}/objectBuild_diff_test.cpp
+  ${UNIT_SRC_DIR}/objectBuild_injection_test.cpp
 )
 
 target_include_directories(hlp_utest PRIVATE
