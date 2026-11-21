@@ -20,7 +20,6 @@ using ::testing::_;
 using ::testing::DoAll;
 using ::testing::SetArgPointee;
 using ::testing::Invoke;
-using ::testing::NiceMock;
 
 class MockGroupWrapper : public IGroupWrapperDarwin
 {
@@ -95,9 +94,13 @@ class DirectGroupsStub
             {
                 const auto name = "g" + std::to_string(gid);
                 m_members[name].names.insert(user);
-                m_groups.try_emplace(name);
-                m_groups[name].gr_gid = gid;
-                m_groups[name].gr_name = strdup(name.c_str());
+
+                // A gid added twice keeps the record made the first time.
+                if (const auto [entry, created] = m_groups.try_emplace(name); created)
+                {
+                    entry->second.gr_gid = gid;
+                    entry->second.gr_name = strdup(name.c_str());
+                }
             }
         }
 
