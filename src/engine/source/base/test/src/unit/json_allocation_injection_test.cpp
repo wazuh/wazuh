@@ -1045,3 +1045,300 @@ TEST(JsonAllocationInjectionTest, MergeFromInsideTheDocumentKeepsTheSource)
     EXPECT_GE(counts.points, 2u);
     EXPECT_EQ(counts.absorbed, 0u);
 }
+
+// A recursive merge whose source repeats a name, an object first and a scalar later, can leave the destination with
+// the later occurrence; the same merge repeated then meets the scalar with the object of the first occurrence and
+// fails as every merge of mismatched kinds does. Not converging is the documented behaviour, so this sweep classifies
+// every point instead of requiring the reference after a retry.
+TEST(JsonAllocationInjectionTest, MergeRecursiveRepeatedNamesOfDifferentKindsMayNotConvergeOnRetry)
+{
+    const auto big = bigString('s');
+    const json::Json source(fmt::format(R"({{"k":{{}},"k":1,"s":"{}"}})", big).c_str());
+    const auto makeDoc = []
+    {
+        return json::Json(R"({"keep":"v","dst":{}})");
+    };
+    const MergeOp op = [&](json::Json& doc)
+    {
+        doc.merge(true, source, "/dst");
+    };
+    {
+        auto warmUp = makeDoc();
+        op(warmUp);
+    }
+    auto reference = makeDoc();
+    const auto clean = runFailingAt(Inject::Base, COUNT_ONLY, op, reference);
+    ASSERT_FALSE(clean.threw);
+    const auto points = COUNT_ONLY - clean.left;
+    const auto referenceText = reference.str();
+    expectSameText(referenceText, fmt::format(R"({{"keep":"v","dst":{{"k":1,"s":"{}"}}}})", big), "the reference");
+
+    size_t converged = 0;
+    size_t stuck = 0;
+    for (size_t n = 1; n <= points; ++n)
+    {
+        SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+        auto doc = makeDoc();
+        const auto outcome = runFailingAt(Inject::Base, n, op, doc);
+        ASSERT_EQ(outcome.left, 0u) << "allocation point not reached";
+        if (!outcome.threw)
+        {
+            expectSameText(doc.str(), referenceText, "a merge that returned normally");
+            continue;
+        }
+        {
+            json::Json probe(doc);
+            expectUsable(probe);
+        }
+        EXPECT_EQ(getStr(doc, "/keep"), "v");
+        const auto members = doc.getObject("/dst");
+        ASSERT_TRUE(members.has_value());
+        bool kIsOne = false;
+        bool hasString = false;
+        for (const auto& [name, value] : *members)
+        {
+            const auto text = value.str();
+            if (name == "k")
+            {
+                EXPECT_TRUE(text == "{}" || text == "1") << "k is " << brief(text);
+                kIsOne = text == "1";
+            }
+            else if (name == "s")
+            {
+                expectSameText(text, quoted(big), "s");
+                hasString = true;
+            }
+            else
+            {
+                ADD_FAILURE() << "unexpected member '" << brief(name) << "'";
+            }
+        }
+
+        if (kIsOne && !hasString)
+        {
+            ++stuck;
+            bool retryThrewBadAlloc = false;
+            std::string message;
+            try
+            {
+                op(doc);
+            }
+            catch (const std::bad_alloc&)
+            {
+                retryThrewBadAlloc = true;
+            }
+            catch (const std::runtime_error& e)
+            {
+                message = e.what();
+            }
+            EXPECT_FALSE(retryThrewBadAlloc);
+            EXPECT_EQ(message, "JSON objects of different types cannot be merged");
+            expectUsable(doc);
+        }
+        else
+        {
+            ++converged;
+            op(doc);
+            expectSameText(doc.str(), referenceText, "the merge repeated without a failure");
+        }
+        if (testing::Test::HasFailure())
+        {
+            break;
+        }
+    }
+    EXPECT_GT(stuck, 0u) << "no failure left k = 1 without the string";
+    EXPECT_GT(converged, 0u) << "no failure fell before k = 1";
+}
+
+// merge(sourcePath, path) with the source inside a destination member that the merge replaces: the replacement
+// already detaches the source, so a failure after it loses the members not yet merged and the repeated merge does not
+// find the source any more.
+TEST(JsonAllocationInjectionTest, MergeFromInsideAReplacedMemberLosesTheRestOfTheSource)
+{
+    const auto big = bigString('b');
+    const auto makeDoc = [&big]
+    {
+        return json::Json(fmt::format(R"({{"dst":{{"m":{{"src":{{"m":5,"big":"{}"}}}}}}}})", big).c_str());
+    };
+    const std::string_view sourcePath = "/dst/m/src";
+    const std::string_view destinationPath = "/dst";
+    const MergeOp op = [&](json::Json& doc)
+    {
+        doc.merge(false, sourcePath, destinationPath);
+    };
+    {
+        auto warmUp = makeDoc();
+        op(warmUp);
+    }
+    auto reference = makeDoc();
+    const auto clean = runFailingAt(Inject::Base, COUNT_ONLY, op, reference);
+    ASSERT_FALSE(clean.threw);
+    const auto points = COUNT_ONLY - clean.left;
+    const auto referenceText = reference.str();
+    expectSameText(referenceText, fmt::format(R"({{"dst":{{"m":5,"big":"{}"}}}})", big), "the reference");
+
+    size_t beforeReplacement = 0;
+    size_t afterReplacement = 0;
+    size_t afterTheWholeMerge = 0;
+    for (size_t n = 1; n <= points; ++n)
+    {
+        SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+        auto doc = makeDoc();
+        const auto beforeText = doc.str();
+        const auto outcome = runFailingAt(Inject::Base, n, op, doc);
+        ASSERT_EQ(outcome.left, 0u) << "allocation point not reached";
+        if (!outcome.threw)
+        {
+            expectSameText(doc.str(), referenceText, "a merge that returned normally");
+            continue;
+        }
+        {
+            json::Json probe(doc);
+            expectUsable(probe);
+        }
+
+        if (doc.str() == beforeText)
+        {
+            ++beforeReplacement;
+            op(doc);
+            expectSameText(doc.str(), referenceText, "the merge repeated without a failure");
+        }
+        else
+        {
+            ++afterReplacement;
+            EXPECT_EQ(doc.getInt("/dst/m"), 5);
+            EXPECT_FALSE(doc.exists(sourcePath));
+            // A failure while the source is erased, after the whole merge, leaves "big" merged
+            if (doc.exists("/dst/big"))
+            {
+                expectSameText(getStr(doc, "/dst/big"), big, "/dst/big");
+                ++afterTheWholeMerge;
+            }
+            bool retryThrewBadAlloc = false;
+            std::string message;
+            try
+            {
+                op(doc);
+            }
+            catch (const std::bad_alloc&)
+            {
+                retryThrewBadAlloc = true;
+            }
+            catch (const std::runtime_error& e)
+            {
+                message = e.what();
+            }
+            EXPECT_FALSE(retryThrewBadAlloc);
+            // The source path is the one missing, but the message names the destination path
+            EXPECT_EQ(message, fmt::format("Path '{}' not found", destinationPath));
+            expectUsable(doc);
+        }
+        if (testing::Test::HasFailure())
+        {
+            break;
+        }
+    }
+    EXPECT_GT(afterReplacement, afterTheWholeMerge) << "no failure lost a member of the source";
+    EXPECT_GT(beforeReplacement, 0u) << "no failure fell before the replacement of m";
+}
+
+// An array merge appends an element only when no element of the destination compares equal to it, and an object
+// with a repeated name compares unequal to its own copy (equality looks up the first occurrence of each name on both
+// sides). A failure after the object is appended and before the next element is leaves the object in the array; the
+// same merge repeated then appends the object again and returns normally with one element more than the reference.
+TEST(JsonAllocationInjectionTest, MergeArrayOfObjectsWithARepeatedNameMayAppendTwiceOnRetry)
+{
+    const auto big = bigString('s');
+    const json::Json source(fmt::format(R"([{{"k":1,"k":2}},"{}"])", big).c_str());
+    const auto makeDoc = []
+    {
+        return json::Json(R"({"keep":"v","arr":[]})");
+    };
+    const MergeOp op = [&](json::Json& doc)
+    {
+        doc.merge(false, source, "/arr");
+    };
+    {
+        auto warmUp = makeDoc();
+        op(warmUp);
+    }
+    auto reference = makeDoc();
+    const auto clean = runFailingAt(Inject::Base, COUNT_ONLY, op, reference);
+    ASSERT_FALSE(clean.threw);
+    const auto points = COUNT_ONLY - clean.left;
+    const auto referenceText = reference.str();
+    const auto referenceArray = reference.getArray("/arr");
+    ASSERT_TRUE(referenceArray.has_value());
+    ASSERT_EQ(referenceArray->size(), 2u);
+    const auto objectText = (*referenceArray)[0].str();
+    EXPECT_EQ(objectText, R"({"k":1,"k":2})");
+    expectSameText((*referenceArray)[1].str(), quoted(big), "the second element of the reference");
+    const auto referenceDuplicate = reference.checkDuplicateKeys();
+    ASSERT_TRUE(referenceDuplicate.has_value());
+
+    // expectUsable, except that the object of the source repeats a name by design: a duplicate name is allowed only
+    // where the reference has it
+    const auto expectUsableWithTheReferenceDuplicate = [&referenceDuplicate](json::Json& now)
+    {
+        std::string text;
+        ASSERT_NO_THROW(text = now.str());
+        json::Json reparsed;
+        ASSERT_NO_THROW(reparsed = json::Json(text.c_str()));
+        EXPECT_EQ(reparsed.str(), text);
+        const auto duplicate = now.checkDuplicateKeys();
+        if (duplicate.has_value())
+        {
+            EXPECT_EQ(duplicate->message, referenceDuplicate->message);
+        }
+        ASSERT_NO_THROW(now.setString("next", "/afterFailure"));
+        EXPECT_EQ(getStr(now, "/afterFailure"), "next");
+    };
+
+    size_t converged = 0;
+    size_t appendedTwice = 0;
+    for (size_t n = 1; n <= points; ++n)
+    {
+        SCOPED_TRACE(fmt::format("allocation point {} of {}", n, points));
+        auto doc = makeDoc();
+        const auto outcome = runFailingAt(Inject::Base, n, op, doc);
+        ASSERT_EQ(outcome.left, 0u) << "allocation point not reached";
+        ASSERT_TRUE(outcome.threw) << "the merge did not fail with std::bad_alloc";
+        {
+            json::Json probe(doc);
+            expectUsableWithTheReferenceDuplicate(probe);
+        }
+        EXPECT_EQ(getStr(doc, "/keep"), "v");
+        const auto elements = doc.getArray("/arr");
+        ASSERT_TRUE(elements.has_value());
+        ASSERT_LT(elements->size(), referenceArray->size());
+        for (size_t i = 0; i < elements->size(); ++i)
+        {
+            expectSameText((*elements)[i].str(), (*referenceArray)[i].str(), fmt::format("element {}", i));
+        }
+
+        if (elements->size() == 1)
+        {
+            ++appendedTwice;
+            ASSERT_NO_THROW(op(doc));
+            const auto retried = doc.getArray("/arr");
+            ASSERT_TRUE(retried.has_value());
+            ASSERT_EQ(retried->size(), referenceArray->size() + 1);
+            EXPECT_EQ((*retried)[0].str(), objectText);
+            EXPECT_EQ((*retried)[1].str(), objectText);
+            expectSameText((*retried)[2].str(), quoted(big), "the last element after the retry");
+            expectUsableWithTheReferenceDuplicate(doc);
+        }
+        else
+        {
+            ++converged;
+            op(doc);
+            expectSameText(doc.str(), referenceText, "the merge repeated without a failure");
+        }
+        if (testing::Test::HasFailure())
+        {
+            break;
+        }
+    }
+    EXPECT_GT(appendedTwice, 0u) << "no failure left the object without the string";
+    EXPECT_GT(converged, 0u) << "no failure fell before the object was appended";
+}
