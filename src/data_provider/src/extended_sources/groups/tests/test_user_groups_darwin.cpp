@@ -606,7 +606,9 @@ TEST_F(UserGroupsProviderDarwinTest, NegativeRecordGidIsReportedAsTheSystemRepor
 
 TEST_F(UserGroupsProviderDarwinTest, GroupWithoutAUsableGidIsLeftOut)
 {
-    for (const std::string recordGid : {"", "50x0", "+5", " 5", "2147483648", "-2147483649", "99999999999"})
+    const std::vector<std::string> unusableGids {"", "50x0", "+5", " 5", "2147483648", "-2147483649", "99999999999"};
+
+    for (const auto& recordGid : unusableGids)
     {
         DirectoryCase env;
         EXPECT_CALL(*env.group, getgrnam(::testing::StrEq("share"))).WillRepeatedly(Return(nullptr));
