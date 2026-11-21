@@ -39,7 +39,8 @@ else()
          src/direct_memberships_darwin.cpp
          src/directory_keys_darwin.cpp
          src/effective_groups_darwin.cpp
-         ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm)
+         ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_wrapper.mm
+         ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/darwin/od_memberships.mm)
     set(PLATFORM_LIBS_GROUPS ${OPEN_DIRECTORY} ${FOUNDATION})
   endif()
 endif()
