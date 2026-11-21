@@ -146,7 +146,7 @@ Each page is delivered as:
 
 ## Configuration
 
-The `indexer` sub-object must be present under `configData` when `contentSource` is `indexer`:
+The `indexer` sub-object must be present under `configData` (the pipeline is always the Indexer one, whatever `contentSource` says):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -162,34 +162,7 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 
 The connection keys are passed unchanged to `IndexerConnectorSync`. Credentials are not read from this object: the connector reads `username`/`password` from the `indexer` column family of the keystore.
 
-Example:
-
-```json
-{
-    "topicName": "vulnerability_feed_manager",
-    "interval": 3600,
-    "ondemand": true,
-    "configData": {
-        "consumerName": "Wazuh VulnerabilityDetector",
-        "contentSource": "indexer",
-        "databasePath": "queue/vd/vd_updater/rocksdb",
-        "offset": 0,
-        "indexer": {
-            "hosts": ["https://127.0.0.1:9200"],
-            "ssl": {
-                "certificate_authorities": ["/etc/wazuh-manager/certs/root-ca.pem"],
-                "certificate": "/etc/wazuh-manager/certs/indexer-connector.pem",
-                "key": "/etc/wazuh-manager/certs/indexer-connector-key.pem"
-            },
-            "index": ".wazuh-threatintel-vulnerabilities",
-            "consumerStatusIndex": ".wazuh-cti-consumers",
-            "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
-            "pageSize": 100,
-            "numSlices": 2
-        }
-    }
-}
-```
+The full object the Vulnerability Scanner passes is shown in the developer README, [Input configuration](../../README.md#input-configuration).
 
 ## Relation with the UpdaterContext
 

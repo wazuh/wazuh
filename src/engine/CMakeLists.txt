@@ -447,15 +447,3 @@ else (DOXYGEN_FOUND)
   message("Doxygen need to be installed to generate the doxygen documentation")
 endif (DOXYGEN_FOUND)
 endif(ENGINE_BUILD_DOCUMENTATION)
-
-# Custom clean targets
-add_custom_target( clean_insource
-    COMMAND rm -f "${CMAKE_SOURCE_DIR}/CMakeCache.txt"
-    COMMAND rm -rf "${CMAKE_SOURCE_DIR}/CMakeFiles"
-    COMMAND rm -f "${CMAKE_SOURCE_DIR}/cmake_install.cmake"
-    COMMAND rm -f "${CMAKE_SOURCE_DIR}/Makefile"
-    ERROR_QUIET )
-
-add_custom_target( clean_build
-    COMMAND rm -rf "${CMAKE_SOURCE_DIR}/build/*"
-    ERROR_QUIET )

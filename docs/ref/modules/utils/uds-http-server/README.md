@@ -17,7 +17,7 @@ Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 | Consumer | Daemon | Socket | Routes | Transport settings |
 |---|---|---|---|---|
 | Inventory Sync Server | `wazuh-manager-modulesd` | `inventory-sync-http.sock` | [API reference](../../inventory-sync-server/api-reference.md) | `wazuh_modules.inventory_sync_server_*` internal options — [configuration](../../inventory-sync-server/configuration.md) |
-| Task Manager | `wazuh-manager-modulesd` | `task-http.sock` | [API reference](../../task_manager/api-reference.md) | I/O threads: `wazuh_modules.manager_task_io_threads` ([threading](../../task_manager/manager-tasks.md#threading)); body cap of `POST /v1/manager-tasks`: [`max_payload_bytes`](../../task_manager/configuration.md#max_payload_bytes) + 64 KiB; the rest fixed in code (server-wide body cap 8 MiB) |
+| Task Manager | `wazuh-manager-modulesd` | `task-http.sock` | [API reference](../../task_manager/api-reference.md) | I/O threads: `wazuh_modules.manager_task_io_threads`, 2 when unset ([threading](../../task_manager/manager-tasks.md#threading)); body cap of `POST /v1/manager-tasks`: [`max_payload_bytes`](../../task_manager/configuration.md#max_payload_bytes) + 64 KiB; the rest fixed in code (server-wide body cap 8 MiB, or the `POST /v1/manager-tasks` cap when that is larger) |
 | Vulnerability Scanner | `wazuh-manager-modulesd` | `vd-http.sock` | [Local HTTP API](../../vulnerability-scanner/api-reference.md#local-http-api-vd-httpsock) | Fixed in code: 2 I/O threads, 3600 s response backstop |
 | Wazuh DB | `wazuh-manager-db` | `wdb-http.sock` | [API reference](../../wazuh_db/api-reference.md) | Fixed in code: the library defaults |
 | Remoted admin socket | `wazuh-manager-remoted` | `remote-admin-http.sock` | `GET /`, `GET /metrics`, `GET /status`, `GET /tls` — [Local admin socket](../../remoted/README.md#local-admin-socket) | Fixed in code: 2 I/O threads, 64 connections, 16 reserved for control |
@@ -54,10 +54,10 @@ suppress another kind's first line):
 
 | Status | Meaning | Typical cause |
 |---|---|---|
-| `400` | Malformed request | Broken client |
+| `400` | Malformed request | Broken client; also a request carrying both `Transfer-Encoding` and `Content-Length` (the parser refuses the pair while reading the headers, before the `411` check), or a `Transfer-Encoding` other than `chunked` |
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts. Routes exist for `GET`, `POST`, `PUT`, `DELETE` and `PATCH` only: any other verb (`HEAD`, `OPTIONS`, `TRACE`, …) answers `405` on a path that exists and `404` otherwise, and never runs a handler |
-| `411` | `Transfer-Encoding: chunked` | Chunked bodies are refused by design. The byte budget must know the size at headers-complete, so send `Content-Length` |
+| `411` | `Transfer-Encoding: chunked` without `Content-Length` | Chunked bodies are refused by design, before routing. The byte budget must know the size at headers-complete, so send `Content-Length` only |
 | `413` | Declared body over a cap | The server-wide cap (by default, what the byte budget could ever admit), the route class's cap, or a per-route override. The peer is wrong; raising limits is a consumer setting |
 | `414` / `431` | URI / headers too large | Parser limits |
 | `500` | The consumer's handler threw | Check the consumer's log (lines carry the consumer's own name) |

@@ -41,3 +41,10 @@ description and remediation records derived from each `cve5` entry use the other
 schemas. Every read verifies the buffer (`flatbuffers::Verifier`) before a scan accesses
 it in place. The tables and fields are documented in the
 [Vulnerability Scanner schemas](../../vulnerability-scanner/flatbuffers.md).
+
+## Checking a JSON sample against a schema
+
+A manager build also produces `flatbuffer_tool` (`src/shared_modules/utils/flatbuffers/src/`;
+not installed). `flatbuffer_tool -s <schema.fbs> -i <file.json>` parses the JSON file
+against the schema and prints the result back as JSON. If the schema or the JSON does not
+parse, it prints the parser's error and exits 1.

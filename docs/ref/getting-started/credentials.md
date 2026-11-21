@@ -638,7 +638,7 @@ It removes:
 - the indexer files that carry an import marker, and their markers;
 - the CA in `ca/`, only when its mint marker is there;
 - the contents of `export/`;
-- `rbac.db`;
+- `rbac.db` (and a leftover `rbac.db.tmp`);
 - the keystore's contents.
 
 It keeps a CA you staged, indexer files you staged and `local.env`, and says

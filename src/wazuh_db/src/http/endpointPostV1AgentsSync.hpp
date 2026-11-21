@@ -13,7 +13,9 @@
 
 #include "external/nlohmann/json.hpp"
 #include "sqlite3Wrapper.hpp"
+#include <stdexcept>
 #include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/jsonNestingDepth.hpp>
 
 /**
  * @brief EndpointPostV1AgentsSync class.
@@ -63,6 +65,12 @@ public:
      */
     static wazuh::uds_http::HttpResponse call(const DBConnection& db, const wazuh::uds_http::HttpRequest& req)
     {
+        // On the raw bytes, before a DOM exists: the cap every route that parses a JSON body owes.
+        if (wazuh::uds_http::exceedsNestingDepth(req.body))
+        {
+            throw std::invalid_argument("Body nests deeper than the allowed limit.");
+        }
+
         nlohmann::json jsonBody = nlohmann::json::parse(req.body);
 
         {

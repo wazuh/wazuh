@@ -113,7 +113,7 @@ contract, not an implementation detail. `no_ca_signs_leaf` keeps its spelling fr
 exactly that reason; what it means is `leafChainsToAnyCa()` — the leaf does not chain to any CA of
 the bundle.
 
-### Behaviour change in C33 (issue #39319)
+### Behaviour change in C33
 
 The guard was a signature check (`X509_verify` against each CA's public key) until C33. Replacing it
 with a chain validation makes several previously "matching" bundles unpublishable — every one of them
@@ -131,7 +131,7 @@ visible:
 Two consequences worth stating. First, the verdict depends on the clock, so a bundle publishable
 yesterday can stop being publishable today with no file having changed — which is why both functions
 take an optional instant `at`, and why remoted's `CaCertificateSource` judges them again on every read
-instead of caching them with the bytes (issue #39519): a CA that expires in place is refused from the
+instead of caching them with the bytes: a CA that expires in place is refused from the
 next read on, and one whose `notBefore` was ahead of the node's clock is served once its window opens.
 Second, remoted's `caMatchesLeaf`, `remoted.server.tls.ca_matches_leaf` and the `ca_mismatch` 503 all
 mean "does not chain" now, which is what their log lines say.
@@ -176,5 +176,4 @@ set to a directory, `CaBundleTest.RenderBlockRoundTripsThroughParseBundle` write
 `bundle.pem` and the `leaf.pem` it signs there, and that pair is then loaded with
 `openssl storeutl -noout -certs`, verified with `openssl verify -CAfile bundle.pem leaf.pem` and
 handed to Python's `ssl.create_default_context(cafile=...)`. That external check is manual: no
-script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR` (issue #39319 keeps the script
-and its output).
+script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR`.

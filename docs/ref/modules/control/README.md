@@ -41,6 +41,9 @@ group. The paths are `CONTROL_SOCK` in `src/shared/include/defs.h`; the framewor
 | `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected (logged as a warning, `Unexpected arguments for command: '<command>'`) |
 | anything else | `Err` | Unknown command, including a message too long to be a command (logged as `Unknown command: '<command>'` at `ERROR` level) |
 
+The command is compared byte for byte and read with a single receive: a trailing newline
+(`echo restart | nc -U …`) makes it an unknown command answered `Err`, so send the bare word.
+
 A `<command>` is logged as the client sent it, made safe for a one-line log: `\n`, `\r`, `\t` and `\\` stand
 for a newline, carriage return, tab and backslash, any other control or non-ASCII byte is written `\xHH`, and only
 the first 128 bytes are kept — a longer command ends in `...[truncated]`.
@@ -119,7 +122,8 @@ Options:
 It accepts exactly one argument. It runs only when the **real** user is `root` or `wazuh-manager`
 (the effective user being `root` through the setuid bit), and only if its own file, the install
 directory, `bin/`, `bin/wazuh-manager-control` and, when present, `bin/.process_list` are owned by
-`root` and not group- or world-writable — and its own file still carries the setuid bit. It then
+`root` and not group- or world-writable — and its own file still carries the setuid bit; on a systemd
+host `/usr/bin/systemctl` must pass the same ownership check. It then
 clears the environment (`PATH=/usr/sbin:/usr/bin:/sbin:/bin`, `LANG=C`), reports acceptance to
 modulesd and becomes `root` before running:
 
@@ -197,7 +201,8 @@ payload). The agent fetches the task on its next `POST /control` poll to `wazuh-
 Manager marks the task delivered when it hands it out; **no result comes back to the manager**. The
 full flow is in [Architecture](architecture.md#remote-agent-restartreload-request-flow).
 
-The routes require `agent:restart` or `agent:reload`. Framework code:
+The routes require `agent:restart` or `agent:reload`; the `/agents/group/{group_id}/…` variants also
+require `agent:read` and `group:read`. Framework code:
 `framework/wazuh/agent.py` (`restart_agents()`, `reload_agents()` and their `_by_group` variants) and
 `framework/wazuh/core/agent_tasks.py` (`core_restart_agents()`, `core_reload_agents()`).
 

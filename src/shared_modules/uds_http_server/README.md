@@ -142,6 +142,7 @@ chain must re-arm itself), both in `src/asioUdsHttpServer.cpp`.
 | `include/uds_http_server/udsHttpServerFactory.hpp` | `makeUdsHttpServer()` — the transport swap point |
 | `include/uds_http_server/logThrottle.hpp` | Lock-free per-window log throttle (returns a decision; never logs itself) |
 | `include/uds_http_server/socketPathCheck.hpp` | Bind-feasibility pre-flight for fail-fast startups |
+| `include/uds_http_server/jsonNestingDepth.hpp` | `exceedsNestingDepth()` / `MAX_JSON_NESTING_DEPTH` (256): the raw-bytes nesting check a JSON-parsing route runs before building a DOM (inventory sync, task_manager); not used by the server itself |
 | `src/asioUdsHttpServer.{hpp,cpp}` | The entire implementation: asio + llhttp behind the PImpl |
 | `src/requestParser.{hpp,cpp}` | llhttp wrapper + limits; asio-free and logger-free so tests drive it with byte strings |
 | `src/inFlightBudget.hpp` | Lock-free byte budget with RAII reservations (private: observed through `diagnostics()`) |
@@ -162,9 +163,9 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 
 | File | Pins |
 |---|---|
-| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, a route raising its own response backstop while its neighbour keeps the server-wide one, no head-of-line blocking, requests outliving the server, inode-guarded unlink |
+| `udsHttpServer_test.cpp` | Routing, 404/405+`Allow`, query handling, socket modes under a hostile umask, stale-socket unlink + non-socket refusal, 411/413/414/431, slowloris, deferrals from other threads, 300 concurrent deferrals on 2 I/O threads, budget release on request drop, connection-cap 503, handler throw ⇒ 500, dropped responder ⇒ 503, never-answered ⇒ 504, a route raising its own response backstop while its neighbour keeps the server-wide one, no head-of-line blocking, requests outliving the server, inode-guarded unlink, pipelined requests (first answered, connection closed) |
 | `udsShutdown_test.cpp` | S1/S2/S3 verbatim: replies between the two phases, `send()` after stop AND after destruction, drain window, force-close as EOF, concurrent stop races |
-| `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411 |
+| `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411, pipelined second requests ignored |
 | `inFlightBudget_test.cpp` | Reservation RAII, move semantics, concurrent exactness |
 | `routeClasses_test.cpp` | The QoS model end to end: data saturation not shedding Control/Liveness, class body caps (413 at headers), class session caps releasing on close, the reserved headroom under a flood (and its documented residual), the bool-shim mapping, per-route overrides, per-class diagnostics |
 | `transportDiagnostics_test.cpp` | `diagnostics()` before/during/after; identity injection rendering the consumer vocabulary byte-for-byte; the capacity-hint sentence appearing only when configured |

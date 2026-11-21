@@ -38,4 +38,5 @@ endif()
 
 add_test(NAME utils_benchmark_test COMMAND utils_benchmark_test)
 
-set_tests_properties(utils_benchmark_test PROPERTIES LABELS "utils")
+# A manual tool no lane runs: its own label keeps `ctest -L utils` from picking it up.
+set_tests_properties(utils_benchmark_test PROPERTIES LABELS "benchmark")

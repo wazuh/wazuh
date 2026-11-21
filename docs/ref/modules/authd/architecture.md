@@ -546,6 +546,8 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | Line | Meaning |
 |---|---|
 | `A new enrollment password was generated and written to '…/authd.pass'` / `Using the existing enrollment password from '…'…` | master start with `use_password` and `remote_enrollment` on: the first when the file was absent, the second on every start that finds it |
+| `Authentication password in '…' is too short: it must be at least 16 bytes. …` / `… is too long.` / `Invalid password provided in '…'.` | the master's `authd.pass` exists but cannot be used (`ERROR`); the start and `wazuh-manager-authd -t` refuse it — see [`use_password`](configuration.md#use_password) |
+| `Using the enrollment password synchronized from the master node.` / `Shared-password enrollment is enabled but '…' has not been synchronized from the master node yet. …` | worker start with `use_password` and `remote_enrollment` on: whether the master's `authd.pass` has arrived |
 | `Enrollment password synchronized from the master node and now available at '…'` / `Enrollment password reloaded from '…'` | a worker picked up the password the cluster synced (the authpass watcher, or a port-1515 request) |
 | `Enrollment password required but not available yet. Rejecting request from <ip>…` | a worker with `use_password` that has not received `authd.pass` yet; logged once until it arrives |
 | `Invalid password provided by <ip>. Closing connection.` | a port-1515 request without the right `OSSEC PASS:` prefix |
@@ -553,7 +555,6 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Accepting connections on port <port>. …` / `Port <port> was set as disabled.` | whether the port-1515 listener opened (`remote_enrollment` and `legacy_enrollment` both on) |
 | `Recovered N agent deletion(s) that were interrupted...` | startup reconciliation found deletions whose task was never created, and is creating them now |
 | `Dropped N journaled deletion(s) whose agents are still listed in client.keys` | those deletions never became final; nothing is owed |
-| `Converted N deletion(s) from the previous file format` | a journal written before sequences existed; the entries were numbered by position |
 | `Raising the agent id counter from X to Y` | the counter would have gone backwards; ids are not reused |
 | `The deletion of agent 'N' could not be recorded...` | phase 3 failed; the journal line stays and the next writer cycle retries |
 | `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated. A force replacement refused by the same bound reports `Agent 'N' can't be replaced: too many deletions are in progress` |
@@ -571,6 +572,7 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Duplicate IP '…', rejecting enrollment. …` / `Duplicate name '…', rejecting enrollment. …` | an enrollment refused because another agent holds the address or name (`INFO`, or `WARNING` when that agent is still connected). Throttled per message: the first is logged at once, the repeats in the next 90 seconds at debug level, and the next logged one ends with `(and <n> more like it in the last <s> s)` |
 | `Error N: <message>.` | a worker relaying the master's refusal of an enrollment it forwarded (`WARNING`), from port 1515 or the local socket alike; throttled like the line above on port 1515 |
 | `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |
+| `N enrollment token(s) loaded from '…'.` | start: the token store was read and is not empty |
 | `Could not load the enrollment tokens from '…'` | the store could not be loaded at start; enrollments presenting a token are refused until it is fixed |
 | `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |
 | `Agent 'I' (N) deleted (requested locally)` | a `remove` over the local socket (`DELETE /agents`) was admitted; the writer completes it |

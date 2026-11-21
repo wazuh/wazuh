@@ -341,7 +341,7 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 | `stale_token` | `Bearer error="invalid_token", error_description="stale_token"` | the token is outside the accepted window (expired, older than `jwt_max_age + jwt_clock_skew`, or issued more than `jwt_clock_skew` s in the future) | correct its clock (the `Date` header is the manager's) and retry |
 | `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, or an entry whose key does not decode | **not** re-enroll; keep the credential and report |
 | `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer` (the scheme is matched case-insensitively, so `bearer` is accepted), or malformed | send a credential |
-| `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
+| `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state, judged from this manager's replica of the store (when `authd` itself refuses a token the manager verified, the answer is `403` instead; see [Enrollment endpoint](#error-handling-2)) | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
 On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
@@ -617,7 +617,7 @@ the throttled log line can only sample:
 
 Two more, about a registered address that no longer matches:
 
-- **`Rejected N request(s) … from an address the agent is not registered with`** (INFO) names the agent
+- **`Rejected N request(s) … coming from an address the agent is not registered with`** (INFO) names the agent
   id (in its canonical form, `'006'`) and the address it connected from, and is the line to look for when an agent that used to work
   starts getting `401`s after its address changed. INFO rather than WARNING: the condition is a
   property of the agent's registration, not a fault on the manager side. Collapsed on the same
@@ -881,7 +881,7 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
-**`ca_generation` (issue #39319, RF-3) is present too, but it is the one field whose value may be
+**`ca_generation` is present too, but it is the one field whose value may be
 `null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
 [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
 this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
@@ -1285,8 +1285,8 @@ agent's re-enrollment credential. The agent must keep it next to the key and nev
 input of the `WAZUH-REENROLL-KEY` derivation above, the only thing that lets the agent re-enroll
 later **keeping the same `id`** (after losing its key, or to rotate it) instead of appearing as a new
 agent. It is handed out exactly once per enrollment; each successful re-enrollment replaces both
-`key` and `reenroll_secret` with a new pair under the same `id`. The field is absent only when the
-master node's `authd` predates it.
+`key` and `reenroll_secret` with a new pair under the same `id`. The field is absent only when
+`authd` sends none.
 
 ### Error handling
 
@@ -1311,7 +1311,7 @@ master node's `authd` predates it.
 | Endpoint rate limit exceeded | `429` | Decided by remoted after the request passed its own checks (credential, body, version) and before `authd` is contacted, from the bucket of what the request proved: a verified password or enrollment token, or not (a re-enrollment, or no credential). Carries `Retry-After` in whole seconds. Each ceiling is node-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
-| Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
+| Worker rejected the request (9015), or its forward to the master failed (9016) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
 | The request never reached `authd` — it was stopping, its queue was full, or the connect itself failed | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}`. Safe to retry: nothing was sent. |
 | The request reached `authd` but no well-formed answer came back — an I/O error after the send, a response timeout, or an unparseable reply | `503` | `{"error":{"code":-2,"message":"Enrollment outcome unknown: the request reached authd but no answer came back in time -- it may have already been processed"}}`. `authd` may have processed the add anyway — on a worker, possibly forwarding it to and creating it on the master — before the answer was lost. Not safe to assume it did not happen; do not treat a retry under the same name as risk-free (a real add may already exist, answered later with `409`). On a re-enrollment, `authd` may already have rotated the agent's key and re-enrollment secret, so a retry signed with the previous secret gets `409` (9030) while the rotation is pending, or `401` once it is committed. |
 
@@ -1612,9 +1612,7 @@ its sole trust store), which means:
   so a bundle carrying only a (non-self-signed) intermediate is refused even though that
   intermediate signed the leaf.
 
-None of these could serve a verifying agent, which is why they are refused rather than served
-(issue #39319; before this the check was a bare signature and such a bundle was served and even
-announced as published).
+None of these could serve a verifying agent, which is why they are refused rather than served.
 
 The manager separately validates the same chain with the server **purpose** added and the anchor
 rule relaxed (an anchor need not be self-signed), and logs the result at startup and on every daily
@@ -1653,139 +1651,15 @@ evaluation itself (`cert_expiry_days`, negative once expired, and `ca_matches_le
 
 ## Testing
 
-`src/remoted/remoted_module/tools/send_stateless.py` mints the `wazuh-agent+jwt` bearer and sends
-`POST /stateless` requests the way the manager verifies them (shared `wire_jwt.py`, pure Python
-standard library, key read from `client.keys`; `python3 wire_jwt.py --self-test` reproduces the frozen
-vectors). Requires `pip install -r requirements.txt` (in the same `tools/` directory).
-
-Run the following examples from `src/remoted/remoted_module/tools/` with an account that can read
-the manager's files. Authenticated senders need an existing `client.keys` entry: most default to
-agent `1001`; the download sender defaults to `001`. Override `--agent-id` for your test agent.
-The senders read the global prefix from the local manager's XML configuration; when running
-elsewhere, pass `--global-prefix /wazuh-manager` for the installed default (or your configured prefix).
-
-```bash
-# one valid request -> 202
-python3 send_stateless.py --agent-id 1001
-
-# corrupt the token's signature -> 401 (invalid_signature)
-python3 send_stateless.py --agent-id 1001 --tamper
-
-# run every success/failure scenario and check the expected status codes, including
-# Content-Encoding: zstd (valid, malformed, and a body decompressing to about 6 MiB -- accepted:
-# the 5 MiB wire cap does not apply to the decoded body, which is capped at 32 MiB instead) and the
-# unsupported gzip
-python3 send_stateless.py --all
-# options: --url (default https://127.0.0.1:1517), --body, --client-keys
-```
-
-`src/remoted/remoted_module/tools/send_control.py` does the same for `POST /control`:
-
-```bash
-# a startup, a notify (optionally with host metadata) and a shutdown -> 200
-python3 send_control.py --url https://127.0.0.1:1517 --type startup
-python3 send_control.py --url https://127.0.0.1:1517 --type notify --with-host
-python3 send_control.py --url https://127.0.0.1:1517 --type shutdown
-
-# corrupt the token's signature -> 401 (invalid_signature)
-python3 send_control.py --url https://127.0.0.1:1517 --type startup --tamper
-
-# run every success/failure scenario
-python3 send_control.py --url https://127.0.0.1:1517 --all
-# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --version
-```
-
-`src/remoted/remoted_module/tools/send_scan_vd.py` does the same for `POST /scan/vd`, and can
-discover the manager's current offset for you instead of guessing it:
-
-```bash
-# looks up the current vd_feed_offset via /control, then sends a matching request -> 200
-python3 send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset
-
-# 409 if the manager's offset differs from 1; prints current_version to retry with
-python3 send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1
-
-# run every success/failure scenario (missing/invalid type, missing/negative feed_offset,
-# oversized body, auth failures, ...), including the matching- and mismatched-offset cases
-python3 send_scan_vd.py --url https://127.0.0.1:1517 --all
-# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys
-```
-
-`src/remoted/remoted_module/tools/send_download.py` exercises `POST /download`. Its configuration
-selector defaults to `default`; it does not discover the agent's groups:
-
-```bash
-# fetch selector default for agent 001 -> 200 + streamed body (requires matching /control state)
-python3 send_download.py --url https://127.0.0.1:1517 --agent-id 001
-
-# a staged WPK package
-python3 send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk
-
-# run every success/failure scenario (bad type, rejected identifier, unknown group -> 403, ...)
-python3 send_download.py --url https://127.0.0.1:1517 --all
-
-# concurrency + memory check: N agents downloading at once, sampling remoted's RSS
-python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
-# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --unknown-group,
-#          --other-group (default databases), --selectors, --simulate N, --repeat, --watch-rss
-```
-
-Use the `agent.config_token` from `/control` as `--resource-id` when the selector is not `default`.
-Simulated agents must already exist and have matching `/control` registry groups. For `--all`,
-stage a WPK first; `--wpk` chooses that scenario's filename and is not used by a single download.
-
-`src/remoted/remoted_module/tools/send_agent_json.py` covers the two reporting routes, `POST /stats`
-and `POST /config`, with the same bearer:
-
-```bash
-# one /stats report -> 200 + {}
-python3 send_agent_json.py
-
-# the same against /config -> 200 + {}
-python3 send_agent_json.py --endpoint config
-
-# corrupt the token's signature -> 401 (invalid_signature)
-python3 send_agent_json.py --tamper
-
-# every scenario against BOTH routes
-python3 send_agent_json.py --all
-# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --body
-```
-
-`src/remoted/remoted_module/tools/send_enroll.py` does the same for `POST /enroll` — but since an
-enrolling agent has no `client.keys` entry to sign with, it works from whatever credential you give
-it directly (a password, a client certificate, or neither) rather than reading one from a file:
-
-```bash
-# Open mode -- no credential at all
-python3 send_enroll.py --name web-01
-
-# Password mode -- mints the wazuh-enroll+jwt bearer from the manager's actual enrollment password
-python3 send_enroll.py --name web-01 --password Secret123
-
-# corrupt the bearer's signature -> 401
-python3 send_enroll.py --name web-01 --password Secret123 --tamper
-
-# mTLS mode -- the client certificate presented during the handshake is the credential
-python3 send_enroll.py --name web-01 --client-cert agent.pem --client-key agent.key
-
-# run every scenario this script can drive without knowing the manager's configured mode in
-# advance (body validation always; bearer/timing scenarios too if --password is given)
-python3 send_enroll.py --password Secret123 --all
-# options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
-#          --password-file /etc/wazuh-manager/authd.pass (requires an explicit path),
-#          --timeout (default 20 s)
-```
-
-`src/remoted/remoted_module/tools/auth_class_matrix.py` checks, on the manager itself and as root,
-that each of the eight `401` classes listed under [Error responses](#error-responses) comes back
-with its status, `error.code` and `WWW-Authenticate` challenge. Two of its cases change manager
-state and put it back: it mints enrollment tokens through `authd` (left in the store, revoked or
-expired) and moves `/etc/wazuh-manager/authd.pass` aside for one request.
-
-```bash
-sudo python3 auth_class_matrix.py --url https://127.0.0.1:1517 --global-prefix /wazuh-manager
-```
+The source tree ships request drivers for every route in `src/remoted/remoted_module/tools/`:
+`send_stateless.py`, `send_control.py`, `send_scan_vd.py`, `send_download.py`,
+`send_agent_json.py` (`/stats` and `/config`), `send_enroll.py`, and `auth_class_matrix.py`, which
+checks on the manager itself, as root, that each of the eight `401` classes listed under
+[Error responses](#error-responses) comes back with its status, `error.code` and
+`WWW-Authenticate` challenge. They mint the bearer tokens the way the manager verifies them, read
+agent keys from `client.keys`, and each one's `--help` lists its options. Their usage, options and
+scenarios are documented with the module, in the *Manual / end-to-end* sections of
+`src/remoted/remoted_module/README.md`.
 
 ## References
 

@@ -307,8 +307,8 @@ static cJSON* local_get(const char *id);
 static cJSON* local_reenroll(const char *kid, const char *bearer, const char *name, const char *ip, const char *groups);
 
 // Generates an agent info json response
-// reenroll_secret may be NULL: the field is then absent (local_get(), and a clustered add whose master
-// predates the secret). Only `add` ever carries it (#38993).
+// reenroll_secret may be NULL: the field is then absent (local_get(), and an add that issues no secret,
+// i.e. a legacy port-1515 enrollment). Only `add` ever carries it.
 static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key, const char *reenroll_secret);
 
 // Generates an agent deleted response

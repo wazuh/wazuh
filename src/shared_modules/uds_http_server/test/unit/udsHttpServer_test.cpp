@@ -382,6 +382,39 @@ TEST(UdsHttpServerTest, MalformedHttpAnswers400)
     EXPECT_EQ(400, response.status);
 }
 
+TEST(UdsHttpServerTest, ChunkedWithContentLengthAnswers400)
+{
+    const auto path = uniqueSocketPath("te-cl");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/inventory/sync", echoHandler());
+    server->start(configFor(path));
+
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\n"
+                               "Host: localhost\r\n"
+                               "Transfer-Encoding: chunked\r\n"
+                               "Content-Length: 5\r\n"
+                               "\r\n"
+                               "hello"};
+    const auto response = sendRaw(path, request);
+    EXPECT_EQ(400, response.status);
+}
+
+TEST(UdsHttpServerTest, NonChunkedTransferEncodingAnswers400)
+{
+    const auto path = uniqueSocketPath("te-gzip");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/inventory/sync", echoHandler());
+    server->start(configFor(path));
+
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\n"
+                               "Host: localhost\r\n"
+                               "Transfer-Encoding: gzip\r\n"
+                               "\r\n"
+                               "hello"};
+    const auto response = sendRaw(path, request);
+    EXPECT_EQ(400, response.status);
+}
+
 // Half a request line and then silence: the connection must be reclaimed, not held.
 TEST(UdsHttpServerTest, HeaderTimeoutClosesASlowloris)
 {

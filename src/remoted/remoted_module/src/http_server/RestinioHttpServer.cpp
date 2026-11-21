@@ -761,10 +761,10 @@ namespace
         }
 
         // Both verdicts are chain validations since C33, and neither subsumes the other: this one
-        // adds the server purpose, the one behind caMatchesLeaf demands a self-signed anchor
-        // (X509_V_FLAG_PARTIAL_CHAIN, chainValidates()). So they can still disagree in both
-        // directions, and each disagreement is worth its own line -- information, never the
-        // decision (issue #39318).
+        // (chainValidates(), X509_V_FLAG_PARTIAL_CHAIN) adds the server purpose, while the one behind
+        // caMatchesLeaf (ca_bundle, OpenSSL's default flags) demands a self-signed anchor. So they can
+        // still disagree in both directions, and each disagreement is worth its own line --
+        // information, never the decision.
         if (status.caMatchesLeaf == true && status.chainValid == false)
         {
             LOGFN_WARN(logFn(),

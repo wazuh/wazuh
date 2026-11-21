@@ -101,17 +101,19 @@ and [Credentials](../ref/getting-started/credentials.md).
 
 The repository carries a certificate tool for test PKI, `tools/devContainer/scripts/wazuh-certs-tool.sh`
 (driven by `wazuh-certs-tool.yml` next to it). In the devcontainer, the E2E environment uses it and adds a
-script that deploys its output with the names and ownership above, puts the tool's CA in
-`/etc/wazuh-manager/ca/` (certificate only), and runs `--install` and `--check`. The copy script refuses to
+script that deploys its output with the names and ownership above, replaces the CA in
+`/etc/wazuh-manager/ca/` with the tool's certificate alone (deleting the manager's own CA key), and runs
+`--install` and `--check`. The copy script refuses to
 run while the manager is running, so stop it first:
 
 ```bash
 cd $WAZUH_REPO/tools/devContainer/e2e
-./init.sh --certs-only --no-listeners   # issues certs/ (reuses certs/root-ca.pem when present)
+./init.sh --certs-only --no-listeners   # issues certs/ (keeps its root CA when root-ca.pem and root-ca.key are there)
 sudo ./wazuh_copy_certs.sh              # -> /etc/wazuh-manager/certs
 ```
 
-Without `--no-listeners`, `init.sh` also edits `/etc/wazuh-manager/wazuh-manager.conf`: it replaces a
+When `certs/` is not empty, `init.sh` asks before replacing it; `--reuse-certs` keeps it without asking and
+`--regen-certs` replaces it. Without `--no-listeners`, `init.sh` also edits `/etc/wazuh-manager/wazuh-manager.conf`: it replaces a
 `127.0.0.1` `local_ip`/`bind_addr` in `<remote>` with `0.0.0.0`, for agents in containers, and resets the file
 to `root:wazuh-manager 660`.
 
@@ -126,8 +128,8 @@ sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
 Or run the tool directly and stage what it issues as the CI does
 (`.github/workflows/5_testintegration_manager.yml`, steps "Provision TLS certificates" and "Supply the indexer
 credential and resolve"): the listener pair also as `apid.pem` / `apid-key.pem`, the tool's `root-ca.pem` as
-`certs/root-ca.pem`, `certs/indexer-ca.pem` and `ca/root-ca.pem`, the indexer password in `local.env`, then
-`--install`:
+`certs/root-ca.pem`, `certs/indexer-ca.pem` and `ca/root-ca.pem` (after deleting the minted `ca/root-ca.key`), the
+indexer password in `local.env`, then `--install` and `--check`:
 
 ```bash
 bash $WAZUH_REPO/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs

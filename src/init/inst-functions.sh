@@ -1604,15 +1604,6 @@ InstallLocal()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
-    # Engine streamlog trees (logs/<YYYY>/...) created by root in previous
-    # versions must remain writable after the engine drops privileges. Scoped
-    # to year-pattern directories so other daemons' files are untouched.
-    for YEAR_DIR in ${INSTALLDIR}/logs/[0-9][0-9][0-9][0-9]; do
-        if [ -d "${YEAR_DIR}" ]; then
-            chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${YEAR_DIR}"
-        fi
-    done
-
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
     fi

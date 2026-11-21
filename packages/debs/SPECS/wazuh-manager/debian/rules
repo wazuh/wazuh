@@ -43,6 +43,9 @@ override_dh_auto_install:
 
 override_dh_install:
 
+	# A clean install, never an update: USER_CLEANINSTALL below skips the detection of an install
+	# registered on the build host, which would otherwise find the unit pointing at the tree just
+	# removed and abort.
 	rm -rf $(INSTALLATION_DIR)/ $(CONF_DIR)/
 	# Build the binaries
 	make -C src deps TARGET=manager
@@ -52,7 +55,7 @@ override_dh_install:
 	USER_INSTALL_TYPE="manager" \
 	USER_DIR="$(INSTALLATION_DIR)" \
 	USER_DELETE_DIR="y" \
-	USER_UPDATE="n" \
+	USER_CLEANINSTALL="y" \
 	USER_ENABLE_EMAIL="n" \
 	USER_ENABLE_AUTHD="y" \
 	USER_AUTO_START="n" \

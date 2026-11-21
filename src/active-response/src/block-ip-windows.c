@@ -13,7 +13,6 @@
 #ifdef WIN32
 
 #include "dll_load_notify.h"
-#include <iphlpapi.h>
 #define COBJMACROS
 #include <netfw.h>
 
@@ -30,12 +29,10 @@
  * address either.
  *
  * DISABLE: the netsh rules are removed whether or not the firewall is on, since they may have
- * been added while it was on. A loopback route added by an earlier version's route fallback
- * is removed too (see remove_legacy_route).
+ * been added while it was on.
  */
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0);
-static bool remove_legacy_route(const char *srcip, int ip_version, const char *argv0);
 
 int main(int argc, char **argv) {
     // This must always be the first instruction on Windows
@@ -97,8 +94,7 @@ int main(int argc, char **argv) {
         // Removal is best-effort: a missing rule is not a failure, so cleanup never depends on
         // netsh's (undocumented) exit code for "no rule matched".
         firewall_result_t netsh_res = try_netsh(srcip, DISABLE_COMMAND, ip_version, argv[0]);
-        bool route_removed = remove_legacy_route(srcip, ip_version, argv[0]);
-        if (netsh_res == FIREWALL_SUCCESS || route_removed) {
+        if (netsh_res == FIREWALL_SUCCESS) {
             char unblock_msg[OS_MAXSTR];
             memset(unblock_msg, '\0', OS_MAXSTR);
             snprintf(unblock_msg, OS_MAXSTR - 1, "IP %s successfully unblocked", srcip);
@@ -526,68 +522,6 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 
     log_firewall_action(argv0, LOG_LEVEL_ERROR, "netsh", "not_enforced", reason);
     return FIREWALL_INVALID_STATE;
-}
-
-// ============================================================================
-// WINDOWS: cleanup of the route fallback of earlier versions
-// ============================================================================
-
-// Parse a validated dotted-quad IPv4 string into a network-byte-order address
-// (as GetBestRoute expects), without pulling in a winsock link dependency.
-static DWORD ipv4_to_network(const char *ip) {
-    unsigned int a, b, c, d;
-    if (sscanf(ip, "%u.%u.%u.%u", &a, &b, &c, &d) != 4 ||
-        a > 255 || b > 255 || c > 255 || d > 255) {
-        return INADDR_NONE;
-    }
-    return (DWORD)(a | (b << 8) | (c << 16) | (d << 24));
-}
-
-// Earlier 5.0.0 pre-releases fell back to a persistent route
-// (route -p ADD <ip> MASK 255.255.255.255 0.0.0.0 IF 1) when the firewall was off. If the agent
-// restarted before the unblock, that route stayed. It is removed here, only when the best
-// route to the IP is exactly that /32 host route through the loopback interface (IF 1), and only
-// that route is deleted, so a route to the IP through another gateway or interface is never
-// touched. Returns true if a route was removed.
-static bool remove_legacy_route(const char *srcip, int ip_version, const char *argv0) {
-    if (ip_version != 4) {
-        return false;  // the route fallback was IPv4-only
-    }
-
-    DWORD dest = ipv4_to_network(srcip);
-    MIB_IPFORWARDROW row;
-    memset(&row, 0, sizeof(row));
-    if (dest == INADDR_NONE || GetBestRoute(dest, 0, &row) != NO_ERROR ||
-        row.dwForwardDest != dest || row.dwForwardMask != 0xFFFFFFFF || row.dwForwardIfIndex != 1) {
-        return false;
-    }
-
-    char *route_path = NULL;
-    if (check_binary_available("route.exe", &route_path, argv0) != FIREWALL_SUCCESS) {
-        return false;
-    }
-
-    bool removed = false;
-    char *del_cmd[] = {route_path, "DELETE", (char *)srcip, "MASK", "255.255.255.255", "0.0.0.0",
-                       "IF", "1", NULL};
-    wfd_t *wfd = wpopenv(route_path, del_cmd, W_BIND_STDERR);
-    if (wfd) {
-        int rc = wpclose(wfd);
-        removed = (rc == 0);
-        if (!removed) {
-            char log_msg[OS_MAXSTR];
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "route delete of the legacy loopback route returned %d", rc);
-            write_debug_file(argv0, log_msg);
-        }
-    }
-    os_free(route_path);
-
-    if (removed) {
-        log_firewall_action(argv0, LOG_LEVEL_INFO, "route", "unblock",
-                          "Removed the loopback route added by an earlier version's route fallback");
-    }
-    return removed;
 }
 
 #endif // WIN32

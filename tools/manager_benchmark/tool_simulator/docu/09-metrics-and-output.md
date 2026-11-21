@@ -9,7 +9,7 @@ in the same change.
 
 The guiding principle for what to record: **keep everything, judge nothing.** The sender does not
 decide whether a run passed — it records every outcome it observed, along every dimension a run
-varies (status code, request kind, lane, fleet, over time), so that the operator or F9c-4's report
+varies (status code, request kind, lane, fleet, over time), so that the operator or the load report
 can slice it however they need. A run's exit code reflects only whether the *measurement itself* is
 valid (see [10](10-error-handling-and-shutdown.md)), never a success ratio.
 
