@@ -189,6 +189,7 @@ nlohmann::json UserGroupsProvider::getUserNamesByGid(const std::set<gid_t>& gids
         }
     }
 
+    requireReadableMemberships("groups");
     return results;
 }
 
@@ -237,6 +238,7 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
         }
     }
 
+    requireReadableMemberships("users");
     return results;
 }
 

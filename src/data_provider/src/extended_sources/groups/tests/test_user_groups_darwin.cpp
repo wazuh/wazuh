@@ -513,16 +513,29 @@ TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryReportsNoGroupsAndIsNotC
     EXPECT_EQ(env.collect(false).size(), 2u);
 }
 
-TEST_F(UserGroupsProviderDarwinTest, UnreadableDirectoryMakesTheInventoryThrow)
+TEST_F(UserGroupsProviderDarwinTest, GroupNamesThrowWhenTheDirectoryCannotBeRead)
 {
     DirectoryCase env;
     EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Return(false));
     UserGroupsProvider::resetCache();
     UserGroupsProvider provider(env.group, env.passwd, env.od);
 
-    EXPECT_NO_THROW(provider.requireReadableMemberships("users"));
-    EXPECT_TRUE(provider.collect({600}).empty());
-    EXPECT_THROW(provider.requireReadableMemberships("users"), std::runtime_error);
+    EXPECT_THROW(provider.getGroupNamesByUid({600}), std::runtime_error);
+}
+
+TEST_F(UserGroupsProviderDarwinTest, UserNamesThrowWhenTheDirectoryCannotBeRead)
+{
+    DirectoryCase env;
+    EXPECT_CALL(*env.od, genEntries(_, _, _)).WillOnce(Invoke([](const std::string&, const std::string*, std::map<std::string, bool>& out)
+    {
+        out["member"] = true;
+    }));
+    EXPECT_CALL(*env.passwd, getpwnam(::testing::StrEq("member"))).WillOnce(Return(&env.account));
+    EXPECT_CALL(*env.od, genGroupMembers(_)).WillOnce(Return(false));
+    UserGroupsProvider::resetCache();
+    UserGroupsProvider provider(env.group, env.passwd, env.od);
+
+    EXPECT_THROW(provider.getUserNamesByGid({5000}), std::runtime_error);
 }
 
 TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryDoesNotThrow)
@@ -533,11 +546,11 @@ TEST_F(UserGroupsProviderDarwinTest, ReadableDirectoryDoesNotThrow)
         out["share"].names.insert("member");
         return true;
     }));
+    EXPECT_CALL(*env.group, getgrgid(_)).WillRepeatedly(Return(&env.share));
     UserGroupsProvider::resetCache();
     UserGroupsProvider provider(env.group, env.passwd, env.od);
 
-    EXPECT_EQ(provider.collect({600}).size(), 2u);
-    EXPECT_NO_THROW(provider.requireReadableMemberships("users"));
+    EXPECT_NO_THROW(provider.getGroupNamesByUid({600}));
 }
 
 TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDirectory)
@@ -548,12 +561,12 @@ TEST_F(UserGroupsProviderDarwinTest, AccountsAnsweredFromTheCacheDoNotReadTheDir
         out["share"].names.insert("member");
         return true;
     }));
+    EXPECT_CALL(*env.group, getgrgid(_)).WillRepeatedly(Return(&env.share));
     env.collect();
 
     // The second provider finds the account in the cache, so it reads nothing and nothing failed.
     UserGroupsProvider provider(env.group, env.passwd, env.od);
-    EXPECT_EQ(provider.collect({600}).size(), 2u);
-    EXPECT_NO_THROW(provider.requireReadableMemberships("users"));
+    EXPECT_NO_THROW(provider.getGroupNamesByUid({600}));
 }
 
 TEST_F(UserGroupsProviderDarwinTest, GroupTheSystemCannotResolveUsesItsRecordGid)

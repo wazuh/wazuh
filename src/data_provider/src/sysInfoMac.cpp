@@ -467,7 +467,6 @@ nlohmann::json SysInfo::getGroups() const
 
     // Single call to getUserNamesByGid with all GIDs
     auto allUsersGroups = userGroupsProvider.getUserNamesByGid(allGids);
-    userGroupsProvider.requireReadableMemberships("groups");
 
     // Process each group
     for (auto& group : collectedGroups)
@@ -565,7 +564,6 @@ nlohmann::json SysInfo::getUsers() const
 
         std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
         auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
-        userGroupsProvider.requireReadableMemberships("users");
 
         if (collectedUsersGroups.empty())
         {

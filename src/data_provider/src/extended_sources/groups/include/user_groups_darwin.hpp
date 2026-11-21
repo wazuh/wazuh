@@ -33,24 +33,25 @@ class UserGroupsProvider
         nlohmann::json collect(const std::set<uid_t>& uids = {});
 
         /// @brief Names of the accounts that are direct members of each group, as collect() reports them.
+        /// @throws std::runtime_error when the directory memberships could not be read.
         nlohmann::json getUserNamesByGid(const std::set<gid_t>& gids);
 
         /// @brief Names of the groups each account is a direct member of; nested groups are not followed.
+        /// @throws std::runtime_error when the directory memberships could not be read.
         nlohmann::json getGroupNamesByUid(const std::set<uid_t>& uids);
 
         /// @brief Names of the groups of one account counting nested groups, as sudo sees them.
         std::set<std::string> getEffectiveGroupNamesByUid(uid_t uid);
 
+        static void resetCache();
+
+    private:
         /// @brief Throws when this provider read the directory memberships and the read failed:
         /// the accounts looked up since then got no groups, which does not mean they have none.
         /// Reporting them would mark every user or group as modified twice, when the read fails
         /// and when it works again, so the scan of that inventory is dropped instead.
         /// @param inventory The inventory named in the error, such as "users" or "groups".
         void requireReadableMemberships(const std::string& inventory) const;
-
-        static void resetCache();
-
-    private:
         static bool validateCache();
 
         std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
