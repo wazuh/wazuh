@@ -9107,7 +9107,7 @@ checks:
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key.pub -> r:644 && r:0 root 0 root'
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key. -> r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key.pub -> r:644 && r:0 root 0 root'
 
   # 5.2.4 Ensure SSH Protocol is set to 2. (Scored) - Not Implemented
 
