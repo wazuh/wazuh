@@ -2327,6 +2327,16 @@ STATIC int flush_batch(uhttp_client_t *cli, dispatch_ctx_t *ctx, uhttp_result_t 
     return uhttp_post(cli, ctx->bulk.buf, ctx->bulk.len, res);
 }
 
+/**
+ * @brief Tell whether flush_batch() actually sent the batch.
+ *
+ * Evaluated after flush_batch(): true only if the batch reached uhttp_post(), i.e. it was neither
+ * empty nor dropped (flush_batch() drops it when the identity header cannot be set).
+ */
+STATIC bool batch_was_sent(const dispatch_ctx_t *ctx) {
+    return ctx && ctx->bulk.len > 0 && !ctx->drop;
+}
+
 // Thread that dispatches each ring turn as a single POST
 void *dispach_events_thread(void *arg) {
     w_rr_queue_t *q = (w_rr_queue_t*)arg;
@@ -2422,9 +2432,10 @@ void *dispach_events_thread(void *arg) {
                 reopen_at = mono_ms() + backoff;
 
                 // From now on (until reopened), the loop will drain with drop_consumer.
-            } else {
+            } else if (batch_was_sent(&ctx)) {
                 // The engine answered: report the drops the throttled warning still owes. A client
-                // handle alone proves nothing, it is created without connecting.
+                // handle alone proves nothing, it is created without connecting, and neither does a
+                // batch that was not sent (empty or discarded).
                 engine_offline = false;
                 rem_flush_events_dropped(&s_engine_drop_log, "Dropped", ": unable to connect with analysisd");
             }
