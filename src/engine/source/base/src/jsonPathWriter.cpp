@@ -11,17 +11,30 @@
 #include <fmt/format.h>
 
 #include "jsonNameCompare.hpp"
+#include "jsonWriteAt.hpp"
 
 namespace json
 {
 
-// The index is keyed by the address of each object's member array. The pool allocator never frees a block while the
-// document lives (Free is a no-op and a reallocation either grows the block in place or moves it to fresh memory),
-// so an address that was retired can never name another object's member array later: an entry left behind by an
-// overwritten object is never matched again. The assertion only ties the writer to the pool of the engine documents;
-// the property itself is the pool's.
+// The index is keyed by the address of each object's member array, and anchors are node addresses. That holds because
+// the pool allocator of the engine documents never reuses memory while the document lives: Free is a no-op, and a
+// reallocation either grows the block in place (same address, same object) or moves it to fresh memory. So an
+// address that was retired (by an overwritten object or a moved member array) never names another object's member
+// array later, and an entry left behind by it is never matched again. The assertions tie the writer to that pool:
+// json::Allocator derives from it and redeclares none of Malloc, Realloc or Free (compared by address: Free is
+// static, so a redeclaration with the same signature would have the same type), and the pool does not need Free.
 static_assert(std::is_base_of_v<rapidjson::MemoryPoolAllocator<json::BaseAllocator>, json::Document::AllocatorType>,
               "PathWriter relies on the pool allocator of json::Document never reusing a retired address");
+static_assert(std::is_same_v<json::Document::AllocatorType, json::Allocator>,
+              "PathWriter relies on json::Document using json::Allocator");
+static_assert(&json::Allocator::Malloc == &rapidjson::MemoryPoolAllocator<json::BaseAllocator>::Malloc,
+              "json::Allocator must not redeclare Malloc: PathWriter relies on the pool never reusing an address");
+static_assert(&json::Allocator::Realloc == &rapidjson::MemoryPoolAllocator<json::BaseAllocator>::Realloc,
+              "json::Allocator must not redeclare Realloc: PathWriter relies on the pool never reusing an address");
+static_assert(&json::Allocator::Free == &rapidjson::MemoryPoolAllocator<json::BaseAllocator>::Free,
+              "json::Allocator must not redeclare Free: PathWriter relies on the pool never reusing an address");
+static_assert(!json::Allocator::kNeedFree,
+              "PathWriter relies on the pool allocator of json::Document never freeing a block while it lives");
 
 namespace
 {
@@ -111,31 +124,45 @@ PathWriter::Lookup PathWriter::findMember(Value& object, const Token& token) con
     }
 
     Member* members = &*object.MemberBegin();
-    IndexEntry& entry = m_index.try_emplace(members, members).first->second;
-    if (entry.indexed != count)
+    IndexEntry* entry = nullptr;
+    try
     {
-        // New entry (or one that missed members): index every member in order, so the first occurrence of a name wins
-        entry.positions.clear();
-        for (Position position = 0; position < count; ++position)
+        entry = &m_index.try_emplace(members, members).first->second;
+        if (entry->indexed != count)
         {
-            entry.positions.insert(position);
+            // New entry (or one that missed members): index every member in order, so the first occurrence of a name
+            // wins
+            entry->positions.clear();
+            entry->indexed = 0;
+            for (Position position = 0; position < count; ++position)
+            {
+                entry->positions.insert(position);
+            }
+            entry->indexed = count;
         }
-        entry.indexed = count;
+    }
+    catch (...)
+    {
+        // Only the document is read here: drop the entry so that none is left half built, and let the write fail
+        m_index.erase(members);
+        throw;
     }
 
-    const auto found = entry.positions.find(std::string_view(token.name, token.length));
-    return {found == entry.positions.end() ? nullptr : members + *found, &entry};
+    const auto found = entry->positions.find(std::string_view(token.name, token.length));
+    return {found == entry->positions.end() ? nullptr : members + *found, entry};
 }
 
-PathWriter::Value& PathWriter::addMember(Value& object, IndexEntry* entry, const Token& token)
+void PathWriter::memberAdded(const Value& object, const Lookup& lookup) noexcept
 {
-    auto& allocator = m_doc.m_document.GetAllocator();
-    const Position position = object.MemberCount();
-    object.AddMember(Value(token.name, token.length, allocator).Move(), Value().Move(), allocator);
-
-    if (entry != nullptr)
+    if (lookup.entry == nullptr)
     {
-        const Member* members = &*object.MemberBegin();
+        return;
+    }
+
+    IndexEntry* entry = lookup.entry;
+    const Member* members = &*object.MemberBegin();
+    try
+    {
         if (members != entry->base)
         {
             // The member array moved: re-key the same entry, updating the base its comparator reads through first
@@ -144,64 +171,32 @@ PathWriter::Value& PathWriter::addMember(Value& object, IndexEntry* entry, const
             node.key() = members;
             entry = &m_index.insert(std::move(node)).position->second;
         }
+        const Position position = object.MemberCount() - 1; // writeAt appends the member at the end
         if (entry->indexed == position)
         {
             entry->positions.insert(position);
             ++entry->indexed;
         }
     }
-
-    auto last = object.MemberEnd();
-    return (--last)->value; // AddMember appends at the end
+    catch (...)
+    {
+        // The write is done: drop the entry instead of failing it. It is under `members`, or the node handle of a
+        // failed re-key has already destroyed it; erasing by key does not throw
+        m_index.erase(members);
+    }
 }
 
-PathWriter::Value& PathWriter::create(Value& from, const Token* begin, const Token* end)
+PathWriter::Value& PathWriter::write(Value& from, const Token* begin, const Token* end, Value* leaf)
 {
-    // Mirrors rapidjson's GenericPointer::Create; only the member lookup differs
-    auto& allocator = m_doc.m_document.GetAllocator();
-    Value* v = &from;
-    for (const Token* t = begin; t != end; ++t)
-    {
-        if (v->IsArray() && t->name[0] == '-' && t->length == 1)
-        {
-            v->PushBack(Value().Move(), allocator);
-            v = &((*v)[v->Size() - 1]);
-        }
-        else
-        {
-            if (t->index == rapidjson::kPointerInvalidIndex)
-            {
-                if (!v->IsObject())
-                {
-                    v->SetObject();
-                }
-            }
-            else if (!v->IsArray() && !v->IsObject())
-            {
-                v->SetArray();
-            }
-
-            if (v->IsArray())
-            {
-                if (t->index >= v->Size())
-                {
-                    v->Reserve(t->index + 1, allocator);
-                    while (t->index >= v->Size())
-                    {
-                        v->PushBack(Value().Move(), allocator);
-                    }
-                }
-                v = &((*v)[t->index]);
-            }
-            else
-            {
-                const auto lookup = findMember(*v, *t);
-                v = lookup.member == nullptr ? &addMember(*v, lookup.entry, *t) : &lookup.member->value;
-            }
-        }
-    }
-
-    return *v;
+    return internal::writeAt(
+        m_doc.m_document.GetAllocator(),
+        from,
+        begin,
+        static_cast<size_t>(end - begin),
+        leaf,
+        [this](Value& object, const Token& token) { return findMember(object, token); },
+        [this](const Value& object, const Lookup& lookup) noexcept { memberAdded(object, lookup); },
+        [this](const Value& node) noexcept { forget(node); });
 }
 
 PathWriter::Value* PathWriter::get(Value& from, const Token* begin, const Token* end) const
@@ -235,7 +230,7 @@ PathWriter::Value* PathWriter::get(Value& from, const Token* begin, const Token*
     return v;
 }
 
-void PathWriter::forget(const Value& target)
+void PathWriter::forget(const Value& target) noexcept
 {
     // An object about to be overwritten drops its own entry; entries of its descendants stay until the writer dies
     if (!m_index.empty() && target.IsObject() && target.MemberCount() != 0)
@@ -253,18 +248,16 @@ void PathWriter::set(std::string_view pointerPath, const Json& value)
         return;
     }
 
-    auto& target = create(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer));
-    forget(target);
-    target.CopyFrom(value.m_document, m_doc.m_document.GetAllocator());
+    // Deep copy first: a failure leaves the document as it was
+    Value copy {value.m_document, m_doc.m_document.GetAllocator()};
+    write(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer), &copy);
 }
 
 void PathWriter::setStringAt(Value& from, const json::Pointer& pointer, std::string_view value)
 {
     const auto* data = value.data() ? value.data() : "";
     Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_doc.m_document.GetAllocator());
-    auto& target = create(from, tokensBegin(pointer), tokensEnd(pointer));
-    forget(target);
-    target = v;
+    write(from, tokensBegin(pointer), tokensEnd(pointer), &v);
 }
 
 void PathWriter::setString(std::string_view value, std::string_view path)
@@ -291,9 +284,7 @@ void PathWriter::setStringAsMembers(std::string_view value, std::string_view pat
     const auto tokens = asMemberTokens(pointer);
     const auto* data = value.data() ? value.data() : "";
     Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_doc.m_document.GetAllocator());
-    auto& target = create(m_doc.m_document, tokens.data(), tokens.data() + tokens.size());
-    forget(target);
-    target = v;
+    write(m_doc.m_document, tokens.data(), tokens.data() + tokens.size(), &v);
 }
 
 void PathWriter::setNullAsMembers(std::string_view path)
@@ -306,18 +297,14 @@ void PathWriter::setNullAsMembers(std::string_view path)
     }
 
     const auto tokens = asMemberTokens(pointer);
-    auto& target = create(m_doc.m_document, tokens.data(), tokens.data() + tokens.size());
-    forget(target);
     Value v;
-    target = v.SetNull();
+    write(m_doc.m_document, tokens.data(), tokens.data() + tokens.size(), &v);
 }
 
 void PathWriter::setObjectAt(Value& from, const json::Pointer& pointer)
 {
-    auto& target = create(from, tokensBegin(pointer), tokensEnd(pointer));
-    forget(target);
-    Value v;
-    target = v.SetObject();
+    Value v(rapidjson::kObjectType);
+    write(from, tokensBegin(pointer), tokensEnd(pointer), &v);
 }
 
 void PathWriter::setObject(std::string_view path)
@@ -341,35 +328,39 @@ void PathWriter::setArray(std::string_view path)
         return;
     }
 
-    auto& target = create(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer));
-    forget(target);
-    Value v;
-    target = v.SetArray();
+    Value v(rapidjson::kArrayType);
+    write(m_doc.m_document, tokensBegin(pointer), tokensEnd(pointer), &v);
+}
+
+void PathWriter::appendValueAt(Value& from, const json::Pointer& pointer, Value& element)
+{
+    auto& allocator = m_doc.m_document.GetAllocator();
+    auto* val = get(from, tokensBegin(pointer), tokensEnd(pointer));
+    if (val != nullptr && val->IsArray())
+    {
+        val->PushBack(element, allocator); // reallocates before it touches the array
+        return;
+    }
+
+    // A new array [element], built apart: it replaces the value found, or is written where the path did not exist
+    Value array(rapidjson::kArrayType);
+    array.PushBack(element, allocator);
+    if (val != nullptr)
+    {
+        forget(*val);
+        *val = array; // noexcept move
+    }
+    else
+    {
+        write(from, tokensBegin(pointer), tokensEnd(pointer), &array);
+    }
 }
 
 void PathWriter::appendStringAt(Value& from, const json::Pointer& pointer, std::string_view value)
 {
     auto& allocator = m_doc.m_document.GetAllocator();
     Value v(value.data(), static_cast<rapidjson::SizeType>(value.size()), allocator);
-
-    auto* val = get(from, tokensBegin(pointer), tokensEnd(pointer));
-    if (val)
-    {
-        if (!val->IsArray())
-        {
-            forget(*val);
-            val->SetArray();
-        }
-        val->PushBack(v, allocator);
-    }
-    else
-    {
-        Value vArray;
-        vArray.SetArray();
-        vArray.PushBack(v, allocator);
-        // The path did not exist, so the target is a value that create() has just added
-        create(from, tokensBegin(pointer), tokensEnd(pointer)) = vArray;
-    }
+    appendValueAt(from, pointer, v);
 }
 
 void PathWriter::appendString(std::string_view value, std::string_view path)
@@ -397,24 +388,7 @@ void PathWriter::appendJsonAt(Value& from, const json::Pointer& pointer, const J
 {
     auto& allocator = m_doc.m_document.GetAllocator();
     Value rapidValue {value.m_document, allocator};
-    auto* val = get(from, tokensBegin(pointer), tokensEnd(pointer));
-    if (val)
-    {
-        if (!val->IsArray())
-        {
-            forget(*val);
-            val->SetArray();
-        }
-        val->PushBack(rapidValue, allocator);
-    }
-    else
-    {
-        Value vArray;
-        vArray.SetArray();
-        vArray.PushBack(rapidValue, allocator);
-        // The path did not exist, so the target is a value that create() has just added
-        create(from, tokensBegin(pointer), tokensEnd(pointer)) = vArray;
-    }
+    appendValueAt(from, pointer, rapidValue);
 }
 
 void PathWriter::appendJson(const Json& value, std::string_view path)
@@ -561,7 +535,7 @@ PathWriter::Anchor PathWriter::ensure(Anchor from, std::string_view relPath)
     auto& node = resolve(from);
     const auto pointer = relativePointer(relPath);
     checkRelativePointer(pointer, relPath);
-    return Anchor(this, &create(node, tokensBegin(pointer), tokensEnd(pointer)));
+    return Anchor(this, &write(node, tokensBegin(pointer), tokensEnd(pointer), nullptr));
 }
 
 void PathWriter::setString(Anchor from, std::string_view value, std::string_view relPath)
@@ -645,10 +619,12 @@ bool PathWriter::wrapInArray(Anchor from, std::string_view relPath)
         return false;
     }
 
+    // The array is allocated first, with the default capacity a first PushBack gives; then only noexcept moves.
     // No forget(): the moved object keeps the address of its member array, so its index entry stays valid
-    Value moved(std::move(*value));
-    value->SetArray();
-    value->PushBack(moved, m_doc.m_document.GetAllocator());
+    Value array(rapidjson::kArrayType);
+    array.PushBack(Value().Move(), m_doc.m_document.GetAllocator());
+    *array.Begin() = std::move(*value);
+    *value = std::move(array);
     return true;
 }
 

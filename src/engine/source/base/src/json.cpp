@@ -19,6 +19,7 @@
 #include <base/logging.hpp>
 
 #include "jsonNameCompare.hpp"
+#include "jsonWriteAt.hpp"
 
 namespace
 {
@@ -38,112 +39,19 @@ std::vector<json::Pointer::Token> asMemberTokens(const json::Pointer& pointer)
     return tokens;
 }
 
-// `Pointer::Set` that leaves the document as it was when an allocation fails. rapidjson's `Create()` resets a scalar
-// on the path with `SetObject()`/`SetArray()` and adds the missing levels one at a time, before the allocations that
-// can fail. Here the part of the path that exists is only read; the missing part is built apart and attached in one
-// step (`AddMember`, `Reserve` and `PushBack` reallocate before they touch the node). Same semantics as `Create()`:
-// a name token turns a non-object into an object, an index token turns a scalar into an array padded with nulls,
-// `-` appends to an array.
+// `Pointer::Set` that leaves the document as it was when an allocation fails: json::internal::writeAt from the root,
+// with rapidjson's linear member lookup and no hooks.
 void setValue(json::Document& document, const json::Pointer::Token* tokens, size_t count, json::Value& value)
 {
-    auto& allocator = document.GetAllocator();
-    const auto isName = [](const json::Pointer::Token& t)
-    {
-        return t.index == rapidjson::kPointerInvalidIndex;
-    };
-    const auto isAppend = [](const json::Pointer::Token& t)
-    {
-        return t.length == 1 && t.name[0] == '-';
-    };
-
-    json::Value* node = &document;
-    size_t i = 0;
-    for (; i < count; ++i)
-    {
-        const auto& t = tokens[i];
-        if (node->IsArray())
-        {
-            if (isName(t) || t.index >= node->Size())
-            {
-                break;
-            }
-            node = &(*node)[t.index];
-        }
-        else if (node->IsObject())
-        {
-            const auto member = node->FindMember(json::Value(rapidjson::StringRef(t.name, t.length)));
-            if (member == node->MemberEnd())
-            {
-                break;
-            }
-            node = &member->value;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    if (i == count)
-    {
-        *node = value; // noexcept move
-        return;
-    }
-
-    // Levels below the attach point, innermost first, around the value
-    const auto wrap = [&](const json::Pointer::Token& t, json::Value& inner)
-    {
-        json::Value level;
-        if (isName(t))
-        {
-            level.SetObject();
-            json::Value name(t.name, t.length, allocator);
-            level.AddMember(name, inner, allocator);
-        }
-        else
-        {
-            level.SetArray();
-            level.Reserve(t.index + 1, allocator);
-            while (level.Size() < t.index)
-            {
-                level.PushBack(json::Value(), allocator);
-            }
-            level.PushBack(inner, allocator);
-        }
-        return level;
-    };
-    json::Value chain;
-    chain = value;
-    for (size_t j = count; j > i + 1; --j)
-    {
-        chain = wrap(tokens[j - 1], chain);
-    }
-
-    const auto& t = tokens[i];
-    if (node->IsObject())
-    {
-        json::Value name(t.name, t.length, allocator);
-        node->AddMember(name, chain, allocator);
-    }
-    else if (node->IsArray() && isAppend(t))
-    {
-        node->PushBack(chain, allocator);
-    }
-    else if (node->IsArray() && !isName(t))
-    {
-        node->Reserve(t.index + 1, allocator);
-        while (node->Size() < t.index)
-        {
-            node->PushBack(json::Value(), allocator);
-        }
-        node->PushBack(chain, allocator);
-    }
-    else
-    {
-        // A scalar, or an array addressed by a name: the node itself is replaced
-        chain = wrap(t, chain);
-        *node = chain;
-    }
+    json::internal::writeAt(
+        document.GetAllocator(),
+        document,
+        tokens,
+        count,
+        &value,
+        json::internal::findLinear,
+        [](const json::Value&, const json::internal::LinearLookup&) noexcept {},
+        [](const json::Value&) noexcept {});
 }
 
 void setValue(json::Document& document, const json::Pointer& pointer, json::Value& value)

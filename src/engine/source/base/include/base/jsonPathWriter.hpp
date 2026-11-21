@@ -3,10 +3,14 @@
 #define _BASE_JSON_PATH_WRITER_HPP
 
 #include <cstddef>
+#include <functional>
+#include <limits>
+#include <new>
 #include <optional>
 #include <set>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 #include <rapidjson/document.h>
 #include <rapidjson/pointer.h>
@@ -70,6 +74,17 @@ namespace json
  *  4. No anchor is valid after the writer that created it is destroyed.
  * Using an anchor after it stopped being valid is not supported and has no guaranteed outcome: the write may be lost
  * or may land in the live document.
+ *
+ * Allocation failures. When an allocation fails, every write (set*, append*, ensure, wrapInArray, by absolute path or
+ * by anchor) throws std::bad_alloc and leaves the document exactly as it was, and the writer stays usable. A write
+ * first reads the part of the path that exists, then builds apart everything it needs (the missing levels around the
+ * new value, a deep copy of a Json, the array that replaces a scalar or wraps a node), and only then attaches it with
+ * one operation that reallocates before it touches the document (AddMember, Reserve + PushBack) or with a move that
+ * cannot fail. The index allocates on the throwing base allocator of the documents: building or rebuilding the entry of
+ * an object happens while reading, and an entry whose construction fails is erased before the exception propagates;
+ * updating an entry after a member was attached cannot fail the write, the entry is dropped instead and rebuilt by the
+ * next lookup. An entry that can still be matched is either exact (current member array, valid positions, first
+ * occurrence of a duplicated name) or absent. Anchors that were valid before a failed write stay valid.
  */
 class PathWriter final
 {
@@ -217,6 +232,36 @@ private:
 
     struct IndexEntry;
 
+    /**
+     * Containers of the index allocate on the base allocator of the documents, which throws std::bad_alloc (and so
+     * honours its test hook). A stateless adapter: rapidjson::StdAllocator is not assignable, which node handles need.
+     */
+    template<typename T>
+    struct IndexAllocator
+    {
+        using value_type = T;
+
+        IndexAllocator() noexcept = default;
+        template<typename U>
+        IndexAllocator(const IndexAllocator<U>& /*other*/) noexcept
+        {
+        }
+
+        T* allocate(std::size_t n)
+        {
+            if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            {
+                throw std::bad_alloc();
+            }
+            return static_cast<T*>(json::baseAllocator().Malloc(n * sizeof(T)));
+        }
+
+        void deallocate(T* block, std::size_t /*n*/) noexcept { json::BaseAllocator::Free(block); }
+
+        friend bool operator==(const IndexAllocator& /*lhs*/, const IndexAllocator& /*rhs*/) noexcept { return true; }
+        friend bool operator!=(const IndexAllocator& /*lhs*/, const IndexAllocator& /*rhs*/) noexcept { return false; }
+    };
+
     /// Orders member positions by the name they hold in the live member array of the entry (bytes, then length).
     struct NameLess
     {
@@ -232,9 +277,9 @@ private:
     /// Index of one object: the positions of its members, first occurrence of each name only.
     struct IndexEntry
     {
-        const Member* base;                     ///< Member array of the object; the comparator reads names through it.
-        size_t indexed;                         ///< Number of members indexed so far (duplicates included).
-        std::set<Position, NameLess> positions; ///< Positions ordered by name.
+        const Member* base; ///< Member array of the object; the comparator reads names through it.
+        size_t indexed;     ///< Number of members indexed so far (duplicates included).
+        std::set<Position, NameLess, IndexAllocator<Position>> positions; ///< Positions ordered by name.
 
         explicit IndexEntry(const Member* members)
             : base(members)
@@ -268,15 +313,19 @@ private:
     Value& resolve(Anchor from) const;
 
     Lookup findMember(Value& object, const Token& token) const;
-    Value& addMember(Value& object, IndexEntry* entry, const Token& token);
-    Value& create(Value& from, const Token* begin, const Token* end);
+    /// Index maintenance after writeAt added a member to `object` whose name `lookup` did not find; never throws.
+    void memberAdded(const Value& object, const Lookup& lookup) noexcept;
+    /// Write `leaf` (or ensure the node when null) at the path from `from`; returns the target, already attached.
+    Value& write(Value& from, const Token* begin, const Token* end, Value* leaf);
     Value* get(Value& from, const Token* begin, const Token* end) const;
-    void forget(const Value& target);
+    void forget(const Value& target) noexcept;
 
     // One body per operation that has a relative overload: the absolute overload calls it with the root of the
     // document, the relative one with the anchored node
     void setStringAt(Value& from, const json::Pointer& pointer, std::string_view value);
     void setObjectAt(Value& from, const json::Pointer& pointer);
+    /// Append `element` (moved) to the array at the path, or write [element] there if the path holds no array.
+    void appendValueAt(Value& from, const json::Pointer& pointer, Value& element);
     void appendStringAt(Value& from, const json::Pointer& pointer, std::string_view value);
     void appendJsonAt(Value& from, const json::Pointer& pointer, const Json& value);
     bool existsAt(Value& from, const json::Pointer& pointer) const;
@@ -288,7 +337,12 @@ private:
     Json& m_doc;
     size_t m_indexThreshold;
     /// Entries keyed by the address of the member array of the indexed object.
-    mutable std::unordered_map<const Member*, IndexEntry> m_index;
+    mutable std::unordered_map<const Member*,
+                               IndexEntry,
+                               std::hash<const Member*>,
+                               std::equal_to<const Member*>,
+                               IndexAllocator<std::pair<const Member* const, IndexEntry>>>
+        m_index;
 };
 
 } // namespace json
