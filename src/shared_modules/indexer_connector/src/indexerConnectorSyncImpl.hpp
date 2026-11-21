@@ -1566,12 +1566,15 @@ public:
             }
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        // Status of the last retried answer when it was a 502/503/504, 0 otherwise.
+        long retriedStatus = 0;
+        const auto onError = [this, &needToRetry, &retriedStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
+                retriedStatus = 0;
                 LOGFN_DEBUG2(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
             }
             else if (statusCode <= 0)
@@ -1581,6 +1584,7 @@ public:
                 // idempotent; failing here turns an indexer rolling restart into a lost caller
                 // operation -- for the VD, a whole scan including the new findings it had computed.
                 needToRetry = true;
+                retriedStatus = 0;
                 LOGFN_DEBUG2(m_logFn,
                              "Transport-level failure, no HTTP status received (code %ld): %s. Retrying search query.",
                              statusCode,
@@ -1592,6 +1596,7 @@ public:
                 // to another host (m_selector->getNext()). 500 stays out of this branch: it may be
                 // deterministic, and retrying it would only burn the budget.
                 needToRetry = true;
+                retriedStatus = statusCode;
                 LOGFN_DEBUG2(m_logFn,
                              "Search query: server unavailable (HTTP %ld), retrying with exponential backoff.",
                              statusCode);
@@ -1655,8 +1660,10 @@ public:
                 const auto retryDelay = retryBackoff.nextDelay();
                 if (retryBudget.exhausted(retryDelay))
                 {
+                    // A server that kept answering 502/503/504 leaves its status for the caller.
                     throw IndexerConnectorException("Search query retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    retriedStatus);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);

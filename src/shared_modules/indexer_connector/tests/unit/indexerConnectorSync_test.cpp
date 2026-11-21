@@ -5633,9 +5633,18 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryRefusalKeepsStatus)
 
         const auto e = captureException([&connector, &query]() { connector.executeSearchQuery("test-index", query); });
 
+        // A 503 is retried within the budget and keeps its status when the budget runs out; a 500 is not retried.
         EXPECT_EQ(e.statusCode(), status);
-        EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
-        EXPECT_EQ(postCalls, 1) << "status " << status;
+        if (status == 503L)
+        {
+            EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+            EXPECT_GT(postCalls, 1);
+        }
+        else
+        {
+            EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+            EXPECT_EQ(postCalls, 1);
+        }
     }
 }
 
@@ -5704,7 +5713,8 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationRefusalOnSecond
 
     EXPECT_EQ(callbackCount, 1);
     EXPECT_EQ(e.statusCode(), 503);
-    EXPECT_EQ(postCalls, 2) << "The refused page must not be retried";
+    EXPECT_EQ(e.category(), IndexerConnectorException::Category::RetryExhausted);
+    EXPECT_GT(postCalls, 2) << "The refused page is retried within the budget before it fails the walk";
 }
 
 // =============================================================================

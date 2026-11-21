@@ -257,10 +257,11 @@ public:
      * @return JSON response from the indexer containing search results.
      * @throws IndexerConnectorException if the search fails. On an HTTP error other than 429,
      *         statusCode() holds the indexer's status. The indexer is asked to refuse an answer it
-     *         cannot give over every shard (allow_partial_search_results=false); that refusal is not
-     *         retried and reaches the caller. A 429 is retried within the retry budget first; when the
-     *         budget runs out the category is RetryExhausted and statusCode() is 0. statusCode() is 0
-     *         when no server is available and 0 or negative on a transport failure.
+     *         cannot give over every shard (allow_partial_search_results=false). A 429, a 502, 503 or
+     *         504 and a transport failure are retried within the retry budget first; when the budget
+     *         runs out the category is RetryExhausted and statusCode() is the last 502/503/504, or 0
+     *         after a 429 or a transport failure. A 500 is not retried and reaches the caller at once.
+     *         statusCode() is 0 when no server is available.
      */
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
 
