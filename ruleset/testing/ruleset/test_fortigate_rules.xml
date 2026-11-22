@@ -1,0 +1,13 @@
+<group name="qa,test">
+
+<!-- Fortigate field tests. The fields under test are matched exactly, so each rule fires only when the decoder extracted the right value. -->
+
+<!-- FortiOS 6+ (fortigate-firewall-v6): devid and devname, quoted and unquoted. -->
+<rule id="999940" level="3">
+  <if_sid>81618</if_sid>
+  <field name="devid">^FWF60ETK19000001$</field>
+  <field name="devname">^FWF-Branch01$</field>
+  <description>Testing Fortigate v6 devid and devname</description>
+</rule>
+
+</group>
