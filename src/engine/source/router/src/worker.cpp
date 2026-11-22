@@ -243,8 +243,7 @@ void TesterWorker::start()
                         {
                             LOG_ERROR_L(
                                 functionName.c_str(), "Failed processing test event in tester worker: {}", e.what());
-                            output.emplace(
-                                base::Error {fmt::format("Failed processing the test event: {}", e.what())});
+                            output.emplace(base::Error {fmt::format("Failed processing the test event: {}", e.what())});
                         }
                     }
 
