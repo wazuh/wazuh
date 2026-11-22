@@ -5342,11 +5342,6 @@ bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
 
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
 
-    if (!m_spDBSync)
-    {
-        return false;
-    }
-
     // The table is rewritten from the snapshot read below, and the rows missing from it are
     // deleted: two writers interleaving here -- the scan thread recording a baseline, the sync
     // thread a sync marker -- would each drop the other's key. Held only around DBSync calls whose
