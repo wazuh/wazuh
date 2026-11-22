@@ -80,6 +80,14 @@
     "category": "events",
     "unit": "count"
   },
+  "router.events.malformed": {
+    "category": "events",
+    "unit": "count"
+  },
+  "router.events.id_failed": {
+    "category": "events",
+    "unit": "count"
+  },
   "router.eps.1m": {
     "category": "events",
     "unit": "eps"
