@@ -1795,6 +1795,13 @@ build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
+# On Linux, sysinfo includes Berkeley DB's db.h and links libdb (RPM package
+# parser). Nothing else builds libdb, so source-only builds (no precompiled deps)
+# failed unless it was built by hand first.
+ifeq (${uname_S},Linux)
+build_sysinfo: $(DB_LIB)
+endif
+
 build_sysinfo: $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
