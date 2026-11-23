@@ -161,15 +161,19 @@ void StartSIG2(const char *process_name, void (*func)(int))
 void StartSIGShutdownThread()
 {
     int fds[2];
+    int flags;
 
     if (pipe(fds) < 0) {
         merror("Could not create the shutdown pipe: %s (%d). Termination signals will exit directly.", strerror(errno), errno);
         return;
     }
 
-    fcntl(fds[0], F_SETFD, FD_CLOEXEC);
-    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
-    fcntl(fds[1], F_SETFL, fcntl(fds[1], F_GETFL, 0) | O_NONBLOCK);
+    w_descriptor_cloexec(fds[0]);
+    w_descriptor_cloexec(fds[1]);
+
+    if ((flags = fcntl(fds[1], F_GETFL, 0)) < 0 || fcntl(fds[1], F_SETFL, flags | O_NONBLOCK) < 0) {
+        mwarn("Cannot set the shutdown pipe to non-blocking mode: %s (%d)", strerror(errno), errno);
+    }
 
     sig_pipe_rd = fds[0];
     w_create_thread(SIGShutdownThread, NULL);

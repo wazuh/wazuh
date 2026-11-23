@@ -110,6 +110,27 @@ constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id
 // Per plain-lane table, followed by the table name: the agent id the table was last resent under,
 // so a resync cut short by a restart or a failed table resumes with the tables still pending.
 constexpr auto SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX {"synced_agent_id:"};
+// Per table, followed by the table name: when the table last completed a scan while its collector
+// was enabled. Its changes are reported only once it has one. first_scan_completed above cannot
+// play this role because it is global: a collector switched off has its table emptied, so when it
+// is switched back on, the scan that refills it inserts every item again while every other table
+// keeps reporting real changes. Cleared together with the table it describes.
+constexpr auto SYSCOLLECTOR_TABLE_SCAN_BASELINE_METADATA_PREFIX {"scan_baseline:"};
+// Whether the VD lane has to be resent as a first scan when it is next enabled. While the lane is
+// disabled the manager keeps no vulnerabilities for this agent, and vd_first_sync_completed alone
+// cannot bring them back without an alert each: the scan that follows re-enabling queues only the
+// rows that changed, so a first-scan session sent from that queue would miss the OS or the packages.
+constexpr auto SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY {"vd_lane_rearm"};
+// Values of SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY.
+// PENDING: the lane was disabled, and its inventory must be requeued and sent as a first scan. It is
+// kept until that session landed.
+constexpr int64_t VD_REARM_NONE {0};
+constexpr int64_t VD_REARM_PENDING {1};
+
+static std::string scanBaselineKey(const std::string& tableName)
+{
+    return std::string(SYSCOLLECTOR_TABLE_SCAN_BASELINE_METADATA_PREFIX) + tableName;
+}
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -303,6 +324,9 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     if (DB_ERROR == result)
     {
         m_logFunction(LOG_ERROR, data.dump());
+        // The row was not written, so the table is not a complete baseline: the next scan inserts
+        // it again, and it must not be reported as created.
+        m_scanTaskDbError = true;
     }
     else
     {
@@ -408,7 +432,7 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
     // The state document above is refreshed on every scan so the inventory stays current, but a
     // scan where only the volatile counters moved is not reported as a change: that noise is what
     // makes these fields unusable on the stateless path.
-    if (m_notify && !onlyVolatileFieldsChanged(result, data, table))
+    if (m_notify && tableHasNotifiableBaseline(table) && !onlyVolatileFieldsChanged(result, data, table))
     {
         nlohmann::json stateless;
 
@@ -583,6 +607,11 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_processes = processes;
     m_hotfixes = hotfixes;
     m_notify = notifyOnFirstScan;
+    m_notifyOnFirstScan = notifyOnFirstScan;
+    m_vdLaneScanCompleted = false;
+    m_vdRearmRequeued = false;
+    m_scanTaskDbError = false;
+    m_tablesWithoutBaseline.clear();
     m_groups = groups;
     m_users = users;
     m_services = services;
@@ -681,6 +710,8 @@ void Syscollector::start()
 #else
         m_logFunction(LOG_WARNING, "Vulnerability Detector synchronization is disabled. OS and packages are required to be enabled.");
 #endif
+
+        holdVDLaneForRearm();
     }
 
     // Try to fetch document limits from agentd before starting syncLoop
@@ -2142,18 +2173,67 @@ void Syscollector::scan()
         m_notify = true;
     }
 
+    // Before any task opens a transaction: the dispatch threads read this set while one is open.
+    loadTablesWithoutBaseline();
+
+    // TRY_CATCH_TASK, plus the baseline of the task's tables once it has completed. Recorded only
+    // for a task that ran to the end with every row written: one skipped by a stop, cut short by an
+    // exception or with rows DBSync could not write may have left its table partly filled, and the
+    // rows its next scan inserts are not changes either.
+    const auto runScanTask = [this](void (Syscollector::*task)(), const std::vector<std::string>& tables)
+    {
+        if (m_stopping.load())
+        {
+            return false;
+        }
+
+        // The task's transactions are drained before it returns, so every DB_ERROR it can raise
+        // has been reported by the time the flag is read below.
+        m_scanTaskDbError = false;
+
+        try
+        {
+            (this->*task)();
+        }
+        catch (const std::exception& ex)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, std::string{ex.what()});
+            }
+
+            return false;
+        }
+
+        if (m_scanTaskDbError.load())
+        {
+            return false;
+        }
+
+        recordScanBaseline(tables);
+        return true;
+    };
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
-    TRY_CATCH_TASK(scanHardware);
-    TRY_CATCH_TASK(scanOs);
-    TRY_CATCH_TASK(scanNetwork);
-    TRY_CATCH_TASK(scanPackages);
-    TRY_CATCH_TASK(scanHotfixes);
-    TRY_CATCH_TASK(scanPorts);
-    TRY_CATCH_TASK(scanProcesses);
-    TRY_CATCH_TASK(scanGroups);
-    TRY_CATCH_TASK(scanUsers);
-    TRY_CATCH_TASK(scanServices);
-    TRY_CATCH_TASK(scanBrowserExtensions);
+    runScanTask(&Syscollector::scanHardware, {HW_TABLE});
+    const bool osScanned = runScanTask(&Syscollector::scanOs, {OS_TABLE});
+    runScanTask(&Syscollector::scanNetwork, {NET_IFACE_TABLE, NET_PROTOCOL_TABLE, NET_ADDRESS_TABLE});
+    const bool packagesScanned = runScanTask(&Syscollector::scanPackages, {PACKAGES_TABLE});
+    [[maybe_unused]] const bool hotfixesScanned = runScanTask(&Syscollector::scanHotfixes, {HOTFIXES_TABLE});
+    runScanTask(&Syscollector::scanPorts, {PORTS_TABLE});
+    runScanTask(&Syscollector::scanProcesses, {PROCESSES_TABLE});
+    runScanTask(&Syscollector::scanGroups, {GROUPS_TABLE});
+    runScanTask(&Syscollector::scanUsers, {USERS_TABLE});
+    runScanTask(&Syscollector::scanServices, {SERVICES_TABLE});
+    runScanTask(&Syscollector::scanBrowserExtensions, {BROWSER_EXTENSIONS_TABLE});
+
+    // What the VD lane re-arm waits for: the tables it resends were all scanned in this run. One
+    // that failed may still be missing what the disabled-collectors cleanup removed, and a
+    // first-scan session sent without it would be incomplete.
+    bool vdTablesScanned = osScanned && packagesScanned;
+#ifdef _WIN32
+    vdTablesScanned = vdTablesScanned && hotfixesScanned;
+#endif
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries
@@ -2184,6 +2264,19 @@ void Syscollector::scan()
     {
         updateMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
         m_logFunction(LOG_DEBUG, "First inventory scan completed — marker persisted.");
+    }
+
+    if (m_vdSyncEnabled && vdTablesScanned && !m_stopping.load())
+    {
+        m_vdLaneScanCompleted = true;
+    }
+    else if (m_vdSyncEnabled && !m_stopping.load() && !m_vdLaneScanCompleted.load() && !m_vdRearmRequeued.load() &&
+             vdLaneRearmState() == VD_REARM_PENDING)
+    {
+        // Waiting for the first scan is expected; a scan that ran and still did not complete these
+        // tables is not, and until one does the manager gets no vulnerability data for this agent.
+        m_logFunction(LOG_WARNING, "The vulnerability inventory cannot be resent yet: the OS, packages or hotfixes "
+                      "scan did not complete. Vulnerability Detector synchronization stays on hold until it does.");
     }
 
     m_notify = true;
@@ -3033,6 +3126,19 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
         vdOption = Option::SYNC;
         m_logFunction(LOG_DEBUG, "Using SYNC option (VD scanning disabled)");
     }
+    else if (!m_vdRearmRequeued.load() && vdLaneRearmState() == VD_REARM_PENDING)
+    {
+        // The lane is back after being disabled, and its inventory has not been requeued yet:
+        // what is queued is only what changed since, so a first-scan session sent now would leave
+        // without the OS or the packages. rearmVDLaneIfPending() requeues it and sends it. Held
+        // like a session another synchronization is already sending: nothing sent, nothing to
+        // record, and not a failure, so the plain lane's session still counts.
+        m_logFunction(LOG_DEBUG, "VD synchronization held until the vulnerability inventory is resent as a first scan.");
+        SyncModuleResult held;
+        held.success = true;
+        held.sessionSkipped = true;
+        return held;
+    }
     else
     {
         // Use VDFIRST for first scan, VDSYNC for subsequent syncs
@@ -3050,7 +3156,12 @@ SyncModuleResult Syscollector::synchronizeVDTables(const Mode mode)
     // full scan has covered this agent when nothing was sent. #38899: an empty queue takes the
     // same early-success path (sentAnything false), so it must be excluded here too -- success
     // alone does not prove the manager received this agent's first snapshot.
-    persistVDFirstSyncIfNeeded(vdResult.success && vdResult.sentAnything && !vdResult.sessionSkipped, firstSyncDone);
+    // Only a VDFIRST session builds the manager's vulnerabilities for this agent. A SYNC one, sent
+    // while the lane is disabled, indexes the inventory and scans nothing, so recording it would
+    // make the session that follows re-enabling the lane go out as VDSYNC: an alert for every
+    // vulnerability the agent already had.
+    persistVDFirstSyncIfNeeded(vdOption == Option::VDFIRST && vdResult.success && vdResult.sentAnything &&
+                               !vdResult.sessionSkipped, firstSyncDone);
 
     return vdResult;
 }
@@ -3078,6 +3189,143 @@ void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool fi
     else if (!vdResult)
     {
         m_logFunction(LOG_DEBUG, "VD sync was not successful, metadata marker not persisted.");
+    }
+}
+
+int64_t Syscollector::vdLaneRearmState()
+{
+    int64_t state = VD_REARM_NONE;
+
+    if (!getMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, state))
+    {
+        return VD_REARM_NONE;
+    }
+
+    return state;
+}
+
+void Syscollector::holdVDLaneForRearm()
+{
+    // Recorded before the marker is cleared, never after: with the marker cleared and nothing
+    // recorded, the session that follows re-enabling the lane would go out as a first scan carrying
+    // only what changed -- no OS or no packages -- and the manager would build an incomplete set of
+    // vulnerabilities without saying so. If this write fails the marker is left as it is: the worst
+    // outcome is then the alerts this exists to avoid, not missing vulnerabilities.
+    if (vdLaneRearmState() != VD_REARM_PENDING &&
+            !updateMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, VD_REARM_PENDING))
+    {
+        m_logFunction(LOG_WARNING, "Could not record that the vulnerability inventory has to be resent as a first scan "
+                      "when Vulnerability Detector synchronization is enabled.");
+        return;
+    }
+
+    // A stop between the two writes leaves the marker set; the re-arm clears it again before it
+    // sends anything.
+    if (isVDFirstSyncDone() && !updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, 0))
+    {
+        m_logFunction(LOG_WARNING, "Could not reset the VD first-sync marker; it will be reset before the vulnerability "
+                      "inventory is resent.");
+    }
+}
+
+void Syscollector::rearmVDLaneIfPending()
+{
+    if (!m_vdSyncEnabled || !m_spSyncProtocolVD)
+    {
+        return;
+    }
+
+    if (vdLaneRearmState() != VD_REARM_PENDING)
+    {
+        return;
+    }
+
+    if (m_vdRearmRequeued.load())
+    {
+        // Requeued earlier in this run, so the queue holds the whole VD inventory and the ordinary
+        // cycle sends it as a first scan. Done once that session landed.
+        if (isVDFirstSyncDone())
+        {
+            updateMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, VD_REARM_NONE);
+        }
+
+        return;
+    }
+
+    if (!m_vdLaneScanCompleted.load())
+    {
+        // The scan after re-enabling refills the tables the disabled-collectors cleanup emptied;
+        // resent before it, the first-scan session would leave with an empty packages table and
+        // the manager would scan nothing. synchronizeVDTables() holds the lane meanwhile.
+        m_logFunction(LOG_DEBUG, "Vulnerability inventory resend waits for a complete scan.");
+        return;
+    }
+
+    m_logFunction(LOG_DEBUG, "Vulnerability Detector synchronization is enabled. Resending the vulnerability "
+                  "inventory as a first scan.");
+
+    // Before anything is queued: synchronizeVDTables() picks VDFIRST only while this is unset.
+    if (!updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, 0))
+    {
+        m_logFunction(LOG_WARNING, "Could not reset the VD first-sync marker; the vulnerability inventory resend will "
+                      "be retried on the next sync cycle.");
+        return;
+    }
+
+    // Queued only, like the VD pass of checkAgentIdentity(): a single session has to carry the
+    // whole inventory, since each first-scan session starts by deleting what the previous one
+    // indexed for this agent.
+    std::vector<std::string> requeued;
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        if (!isVDIndex(index) || !isCollectorEnabledForTable(tableName))
+        {
+            continue;
+        }
+
+        if (m_stopping.load())
+        {
+            // Still pending, so the next start requeues the lane from the beginning.
+            return;
+        }
+
+        if (!resyncTableToManager(tableName, index, false, "it will be retried on the next sync cycle"))
+        {
+            // Still pending: the next cycle requeues every VD table again, and the lane stays held
+            // so the tables queued here do not leave without the one that failed.
+            return;
+        }
+
+        requeued.push_back(tableName);
+    }
+
+    if (m_stopping.load())
+    {
+        return;
+    }
+
+    // From here the queue holds the whole inventory and the lane is released for the rest of this
+    // run: whichever session sends it next -- the one below or a later cycle's -- is a first scan.
+    // Released in memory only. The rows just queued sit in the persistent queue's in-memory buffer
+    // until its next flush, so a persisted "requeued" state could outlive them in a crash and let
+    // the next run send a first scan with part of the inventory. The persisted state stays pending
+    // until the first scan lands, and a run that ends before that requeues the lane again.
+    m_vdRearmRequeued = true;
+
+    // Same reason as the identity resync stamps them: the integrity check that follows in this pass
+    // would otherwise compare checksums the manager has not recomputed yet and clear these indices
+    // again, behind the rows just queued.
+    for (const auto& tableName : requeued)
+    {
+        updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+    }
+
+    syncModule(Mode::DELTA);
+
+    if (isVDFirstSyncDone())
+    {
+        updateMetadataValue(SYSCOLLECTOR_VD_LANE_REARM_METADATA_KEY, VD_REARM_NONE);
     }
 }
 
@@ -4584,6 +4832,48 @@ void Syscollector::promoteItemsAfterScan()
 }
 
 
+bool Syscollector::tableHasNotifiableBaseline(const std::string& table) const
+{
+    return m_notifyOnFirstScan || m_tablesWithoutBaseline.find(table) == m_tablesWithoutBaseline.end();
+}
+
+void Syscollector::loadTablesWithoutBaseline()
+{
+    m_tablesWithoutBaseline.clear();
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        int64_t baseline = 0;
+
+        // A failed read counts as no baseline, as a failed read of first_scan_completed counts as a
+        // first scan: at worst one scan's changes in that table go unreported, never a flood.
+        if (!getMetadataValue(scanBaselineKey(tableName), baseline) || baseline == 0)
+        {
+            m_tablesWithoutBaseline.insert(tableName);
+        }
+    }
+}
+
+void Syscollector::recordScanBaseline(const std::vector<std::string>& tables)
+{
+    for (const auto& table : tables)
+    {
+        // A disabled collector's task returns without scanning, so its table is not baselined:
+        // when the collector is enabled, the scan that fills the table is its first.
+        if (m_tablesWithoutBaseline.count(table) == 0 || !isCollectorEnabledForTable(table))
+        {
+            continue;
+        }
+
+        // Not removed from the set if the write fails: the table is not scanned again in this
+        // scan, and the next one reads the baseline back from the database.
+        if (updateMetadataValue(scanBaselineKey(table), Utils::getSecondsFromEpoch()))
+        {
+            m_tablesWithoutBaseline.erase(table);
+        }
+    }
+}
+
 bool Syscollector::hasDataInTable(const std::string& tableName)
 {
     if (!m_spDBSync)
@@ -4875,6 +5165,21 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
 
         if (!tableName.empty())
         {
+            // The baseline goes first. Emptied without it, the table keeps reporting changes when
+            // its collector is enabled again, and the scan that refills it reports every item as
+            // created. If it cannot be cleared the table is left as it is: it still holds rows, so
+            // the next start-up finds it again and retries the whole cleanup.
+            if (!updateMetadataValue(scanBaselineKey(tableName), 0))
+            {
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_ERROR, "Could not clear the scan baseline of table " + tableName +
+                                  "; the table is kept and cleared on a later start while its collector stays disabled.");
+                }
+
+                continue;
+            }
+
             try
             {
                 // Callback for delete operations (no-op, we don't need to process deleted rows)
@@ -5036,6 +5341,13 @@ bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
     }
 
     auto emptyCallback = [](ReturnTypeCallback, const nlohmann::json&) {};
+
+    // The table is rewritten from the snapshot read below, and the rows missing from it are
+    // deleted: two writers interleaving here -- the scan thread recording a baseline, the sync
+    // thread a sync marker -- would each drop the other's key. Held only around DBSync calls whose
+    // callbacks take no lock, so it cannot be part of a lock cycle, and never across a network
+    // round trip, so a stop never waits on it.
+    std::lock_guard<std::mutex> metadataLock(m_metadataMutex);
 
     try
     {
@@ -5699,6 +6011,12 @@ void Syscollector::runRecoveryProcess()
     // time, an integrity_interval apart each. Safe to drive the resync from here rather than
     // from syncModule(): the wodle calls this after a successful sync, so resyncTableToManager()
     // reaching syncModule() internally cannot recurse.
+    //
+    // The VD lane re-arm goes first and follows the same rules: it also resends through
+    // syncModule(), and holding the VD session back until it has run is what keeps that session
+    // complete. An identity resync in the same pass then either finds the lane released and sends
+    // its own first-scan session, or has its VD rows held with the rest until the re-arm sends them.
+    rearmVDLaneIfPending();
     checkAgentIdentity();
 
     const auto retryNote = "it will be retried in the next integrity_interval (" +

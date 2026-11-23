@@ -27,7 +27,7 @@
 - [Syscollector](syscollector/README.md) - Agent module: system inventory collection and monitoring
 - [Task Manager](task_manager/README.md) - Durable task broker: agent tasks (upgrade, restart, reload, active response), manager tasks and the recurring manager jobs
 - [Vulnerability Scanner](vulnerability-scanner/README.md) - CVE detection and vulnerability assessment
-- [Wazuh DB](wazuh_db/README.md) - SQLite database daemon for the agent registry and groups (`global.db`)
+- [Wazuh DB](wazuh_db/README.md) - SQLite database daemon for the agent registry and groups (`global.db`) and the MITRE ATT&CK data (`mitre.db`)
 - [Agent Sync Protocol](utils/sync-protocol/README.md) - Agent-side library for synchronizing data with the manager
 - [FlatBuffers](utils/flatbuffers/README.md) - High-performance serialization for synchronization protocol
 - [Schema Validator](utils/schema-validator/README.md) - JSON schema validation for synchronized data (the agent modules and the Vulnerability Scanner)

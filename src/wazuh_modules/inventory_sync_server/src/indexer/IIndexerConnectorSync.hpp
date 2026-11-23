@@ -28,19 +28,24 @@ namespace invsync::indexer
      * The seam's own mirror of the real connector's exception category, so the pipeline can count
      * WHY group commits fail without depending on the connector library's exception type. The
      * adapter translates; fakes can throw it directly. Callers that do not care still catch it as
-     * std::exception -- the cause changes what the operator should look at, never what the caller
-     * does (the recovery is always re-staging).
+     * std::exception. The recovery is always the agent sending the session again; the cause decides
+     * what the operator should look at and, for ConflictsExhausted and IndexerUnavailable, which
+     * retryable answer the agent gets.
      */
     class ConnectorError final : public std::runtime_error
     {
     public:
         enum class Cause
         {
-            Other,             ///< Hard rejection or unexpected state.
-            DocumentRejected,  ///< The indexer answered but rejected documents or confirmed nothing.
-            RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, transport).
-            ConflictsExhausted ///< A by-query's version-conflict allowance ran out against a competing
-                               ///< writer: the documents are consistent and the caller may retry later.
+            Other,              ///< Hard rejection or unexpected state.
+            DocumentRejected,   ///< The indexer answered but rejected documents or confirmed nothing.
+            RetryExhausted,     ///< The retry budget ran out on a retryable condition: 429 or a transport
+                                ///< failure everywhere, and also 502/503/504 for the bulk request, the bulk
+                                ///< chunk, the update by query and the search.
+            ConflictsExhausted, ///< A by-query's version-conflict allowance ran out against a competing
+                                ///< writer: the documents are consistent and the caller may retry later.
+            IndexerUnavailable  ///< The indexer answered a read with a 5xx: it could not answer over
+                                ///< every shard, so nothing was computed and the caller may retry later.
         };
 
         ConnectorError(const std::string& what, Cause cause)
@@ -110,7 +115,10 @@ namespace invsync::indexer
         virtual void executeUpdateByQuery(const std::vector<std::string>& indices,
                                           const nlohmann::json& updateQuery) = 0;
 
-        /// @brief Immediate _search against one index; returns the raw response body.
+        /// @brief Immediate _search against one index; returns the raw response body. The indexer is
+        ///        asked to refuse an answer that does not cover every shard. A connector failure
+        ///        leaves as ConnectorError: IndexerUnavailable when the indexer answered 5xx,
+        ///        otherwise the cause of the failure's category.
         virtual nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) = 0;
 
         /// @brief Sends the staged bulk operations now, on the caller's thread. Throws on failure.

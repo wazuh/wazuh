@@ -62,6 +62,11 @@ public:
         m_impl.bulkIndexDataStream(index, data);
     }
 
+    void indexDataStream(std::string_view index, std::string_view id, std::string_view data)
+    {
+        m_impl.bulkIndexDataStream(index, id, data);
+    }
+
     void deleteById(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -80,6 +85,16 @@ public:
     uint64_t getDroppedEvents() const
     {
         return m_impl.getDroppedEvents();
+    }
+
+    uint64_t getRequeuedEvents() const
+    {
+        return m_impl.getRequeuedEvents();
+    }
+
+    uint64_t getDeduplicatedEvents() const
+    {
+        return m_impl.getDeduplicatedEvents();
     }
 
     PointInTime
@@ -150,6 +165,11 @@ void IndexerConnectorAsync::indexDataStream(std::string_view index, std::string_
     m_impl->indexDataStream(index, data);
 }
 
+void IndexerConnectorAsync::indexDataStream(std::string_view index, std::string_view id, std::string_view data)
+{
+    m_impl->indexDataStream(index, id, data);
+}
+
 void IndexerConnectorAsync::deleteById(std::string_view id, std::string_view index)
 {
     m_impl->deleteById(id, index);
@@ -168,6 +188,16 @@ uint64_t IndexerConnectorAsync::getQueueSize() const
 uint64_t IndexerConnectorAsync::getDroppedEvents() const
 {
     return m_impl->getDroppedEvents();
+}
+
+uint64_t IndexerConnectorAsync::getRequeuedEvents() const
+{
+    return m_impl->getRequeuedEvents();
+}
+
+uint64_t IndexerConnectorAsync::getDeduplicatedEvents() const
+{
+    return m_impl->getDeduplicatedEvents();
 }
 
 PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,

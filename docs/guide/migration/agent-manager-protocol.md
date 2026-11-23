@@ -174,8 +174,8 @@ agents pin the CA it chains to (`certs/root-ca.pem`); a pair from your own PKI, 
 same `wazuh-certs-tool` CA as the rest of the platform, is staged in `/etc/wazuh-manager/certs` instead (see
 [Using certificates issued elsewhere](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
 and [Server pairs](../../ref/getting-started/credentials.md#server-pairs)). Starting is **fail-closed**: without
-the pair `wazuh-manager-control start` refuses (`(1244): Invalid configuration at '/remote/https/certificate': file
-not found: …`), and a pair the service user cannot read stops `wazuh-manager-remoted` at startup (`Cannot start
+the pair `wazuh-manager-control start` refuses before any daemon runs (`MISSING /etc/wazuh-manager/certs/remoted.pem:
+run --install to issue it, or stage the pair`, then `Unresolved credentials. Exiting`), and a pair the service user cannot read stops `wazuh-manager-remoted` at startup (`Cannot start
 the HTTPS agent listener: …`) rather than letting it come up without the listener.
 
 `wazuh-manager-authd` and `wazuh-manager-remoted` share that one pair: `<auth><ssl_manager_cert>` and

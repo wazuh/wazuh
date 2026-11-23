@@ -13,26 +13,26 @@
 #ifdef WIN32
 
 #include "dll_load_notify.h"
-#include <iphlpapi.h>
+#define COBJMACROS
+#include <netfw.h>
 
 /**
  * Windows-specific block-ip implementation
  *
- * ENABLE: method chain (first success wins) netsh (Windows Firewall) -> route (null-route).
- * netsh provides true bidirectional (inbound + outbound) blocking, but its rules are only
- * enforced while a firewall profile is enabled. try_netsh checks the EFFECTIVE firewall
- * state; when the firewall is off it defers to the route fallback, which null-routes the
- * target to loopback (dropping the attacker's reverse path). netsh.exe being unavailable
- * also falls through to route.
+ * ENABLE: netsh (Windows Firewall) adds an inbound and an outbound block rule. A rule is only
+ * enforced on networks whose firewall profile is on and where Group Policy applies local rules,
+ * so after adding it the profiles of the networks in use are checked: the block is reported as
+ * done only when that holds for every one of them. Otherwise the rules stay in place (they take
+ * effect if that changes before the unblock) and the block is reported as not done.
  *
- * DISABLE: not a fallback chain - the netsh rule AND any null-route are removed
- * unconditionally (best-effort), since either may exist depending on how the block was
- * applied.
+ * There is no fallback: a route can't filter inbound connections, so it can't block an
+ * address either.
+ *
+ * DISABLE: the netsh rules are removed whether or not the firewall is on, since they may have
+ * been added while it was on.
  */
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0);
-firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0);
-static bool firewall_is_effectively_on(const char *argv0);
 
 int main(int argc, char **argv) {
     // This must always be the first instruction on Windows
@@ -91,34 +91,26 @@ int main(int argc, char **argv) {
 
     int result;
     if (action == DISABLE_COMMAND) {
-        // Removal is NOT a fallback chain: the block may have been applied by netsh
-        // (firewall enabled) OR by the null-route (firewall off) - or, across re-blocks with
-        // a firewall state change, BOTH - so we unconditionally attempt to remove BOTH.
-        // Each is best-effort: a missing rule/route is the expected case (not a failure), so
-        // cleanup never depends on netsh's (undocumented) exit code for "no rule matched".
-        // The unblock counts as successful if EITHER removal actually took effect.
+        // Removal is best-effort: a missing rule is not a failure, so cleanup never depends on
+        // netsh's (undocumented) exit code for "no rule matched".
         firewall_result_t netsh_res = try_netsh(srcip, DISABLE_COMMAND, ip_version, argv[0]);
-        firewall_result_t route_res = try_route_windows(srcip, DISABLE_COMMAND, ip_version, argv[0]);
-        if (netsh_res == FIREWALL_SUCCESS || route_res == FIREWALL_SUCCESS) {
+        if (netsh_res == FIREWALL_SUCCESS) {
             char unblock_msg[OS_MAXSTR];
             memset(unblock_msg, '\0', OS_MAXSTR);
             snprintf(unblock_msg, OS_MAXSTR - 1, "IP %s successfully unblocked", srcip);
             log_firewall_action(argv[0], LOG_LEVEL_INFO, "block-ip", "unblock", unblock_msg);
         } else {
-            // Neither a rule nor a route was actually removed. Usually benign (the IP was
-            // not blocked, or was blocked by the artifact that is now gone), but surface it
-            // so a genuine removal failure is not silent.
+            // Usually benign (the IP was not blocked), but surface it so a genuine removal
+            // failure is not silent.
             log_firewall_action(argv[0], LOG_LEVEL_WARNING, "block-ip", "unblock",
-                              "Nothing was removed (no matching firewall rule or null-route) - "
+                              "Nothing was removed (no matching firewall rule) - "
                               "the IP may already be unblocked, or removal failed");
         }
         write_debug_file(argv[0], "Ended");
         result = OS_SUCCESS;
     } else {
-        // ENABLE: netsh -> route fallback (first success wins).
         const firewall_method_t methods[] = {
             {"netsh", try_netsh, false},
-            {"route", try_route_windows, false},
             {NULL, NULL, false}  // Sentinel
         };
         result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
@@ -129,22 +121,55 @@ int main(int argc, char **argv) {
 }
 
 // ============================================================================
-// WINDOWS: effective firewall-state detection
+// WINDOWS: firewall state of the networks in use
 // ============================================================================
 
-// Reads the EnableFirewall DWORD under HKLM\<subkey>. Returns 1 (enabled), 0 (disabled),
-// or -1 (key/value absent). Forces the 64-bit view (KEY_WOW64_64KEY) because block-ip may
-// run as a 32-bit process and these keys live in the native hive.
-static int read_enable_firewall(const char *subkey) {
+typedef enum {
+    FW_IN_USE_ALL_ON,   // the firewall is on for every profile in use
+    FW_IN_USE_SOME_OFF, // on for some profiles in use, off for others
+    FW_IN_USE_ALL_OFF,  // off for every profile in use
+    FW_IN_USE_GP_OVERRIDE, // Group Policy doesn't apply local rules to the profiles in use
+    FW_IN_USE_GP_OVERRIDE_SOME, // ...to some of the profiles in use
+    FW_IN_USE_UNKNOWN   // the state could not be read
+} fw_in_use_state_t;
+
+// Defined here because the import library doesn't export them.
+static const CLSID wazuh_CLSID_NetFwPolicy2 =
+    {0xe2b3c97f, 0x6ae1, 0x41ac, {0x81, 0x7a, 0xf6, 0xf9, 0x21, 0x66, 0xd7, 0xdd}};
+static const IID wazuh_IID_INetFwPolicy2 =
+    {0x98325047, 0xc671, 0x4174, {0x8d, 0x81, 0xde, 0xfc, 0xd3, 0xf0, 0x31, 0x86}};
+
+// Opens HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<subkey>, where Group Policy writes the
+// firewall settings. Forces the 64-bit view because block-ip may run as a 32-bit process.
+static LONG open_policy_key(const char *subkey, HKEY *hkey) {
+    char key[OS_MAXSTR];
+    snprintf(key, sizeof(key), "SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\%s", subkey);
+    return RegOpenKeyEx(HKEY_LOCAL_MACHINE, key, 0, KEY_READ | KEY_WOW64_64KEY, hkey);
+}
+
+// Only a key that is known to be missing counts as absent: a key that can't be opened for another
+// reason is taken as present.
+static bool policy_key_exists(const char *subkey) {
     HKEY hkey;
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hkey) != ERROR_SUCCESS) {
+    LONG rc = open_policy_key(subkey, &hkey);
+    if (rc == ERROR_SUCCESS) {
+        RegCloseKey(hkey);
+    }
+    return rc != ERROR_FILE_NOT_FOUND;
+}
+
+// Reads a DWORD set by Group Policy under the policy key <subkey>. Returns 1 (non-zero), 0 or
+// -1 (not set by policy).
+static int read_policy_dword(const char *subkey, const char *value_name) {
+    HKEY hkey;
+    if (open_policy_key(subkey, &hkey) != ERROR_SUCCESS) {
         return -1;
     }
 
     DWORD value = 0;
     DWORD size = sizeof(value);
     DWORD type = 0;
-    LONG rc = RegQueryValueEx(hkey, "EnableFirewall", NULL, &type, (LPBYTE)&value, &size);
+    LONG rc = RegQueryValueEx(hkey, value_name, NULL, &type, (LPBYTE)&value, &size);
     RegCloseKey(hkey);
 
     if (rc != ERROR_SUCCESS || type != REG_DWORD) {
@@ -153,37 +178,136 @@ static int read_enable_firewall(const char *subkey) {
     return value != 0 ? 1 : 0;
 }
 
-// Returns true if ANY firewall profile is effectively enabled (enforcing). Reads the
-// EnableFirewall DWORD directly from the registry.
-// Per profile: the GPO policy value wins if present, else the local SharedAccess value,
-// else it defaults to ENABLED (the Windows default). Defaulting an ABSENT value to enabled
-// is the fix for the #37388 misfire (the old check treated absent as "disabled").
-static bool firewall_is_effectively_on(const char *argv0) {
-    static const char *profiles[] = {"DomainProfile", "StandardProfile", "PublicProfile"};
-    char gpo_key[OS_MAXSTR];
-    char local_key[OS_MAXSTR];
-    bool any_on = false;
+static void append_profile_name(char *buf, size_t size, const char *name) {
+    size_t len = strlen(buf);
+    snprintf(buf + len, size - len, "%s%s", len ? ", " : "", name);
+}
 
-    for (int i = 0; i < 3; i++) {
-        snprintf(gpo_key, OS_MAXSTR - 1,
-                 "SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\%s", profiles[i]);
-        snprintf(local_key, OS_MAXSTR - 1,
-                 "SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\%s",
-                 profiles[i]);
+// Reads which firewall profiles the active networks use (INetFwPolicy2::CurrentProfileTypes),
+// whether the firewall is on for each one, and whether Group Policy lets local rules (the ones
+// netsh adds) take effect on them (LocalPolicyModifyState). INetFwPolicy2::FirewallEnabled is
+// the local setting, so a value set by Group Policy takes precedence over it. The names of the
+// profiles in use with the firewall off are written to off_profiles, and the ones where Group
+// Policy doesn't apply local rules (AllowLocalPolicyMerge = 0) to merge_off_profiles.
+static fw_in_use_state_t firewall_state_for_networks_in_use(char *off_profiles,
+                                                            size_t off_size,
+                                                            char *merge_off_profiles,
+                                                            size_t merge_off_size,
+                                                            const char *argv0) {
+    // policy_key: Windows Firewall with Advanced Security policy. legacy_key: the older
+    // "Windows Firewall" policy, whose Standard profile covers Private and Public. Windows applies
+    // StandardProfile only when neither the PrivateProfile nor the PublicProfile key exists, and
+    // ignores it otherwise, whatever values those keys hold ([MS-GPFAS] Per-Profile Policy
+    // Configuration Options).
+    static const struct {
+        NET_FW_PROFILE_TYPE2 type;
+        const char *name;
+        const char *policy_key;
+        const char *legacy_key;
+    } profiles[] = {
+        {NET_FW_PROFILE2_DOMAIN, "Domain", "DomainProfile", NULL},
+        {NET_FW_PROFILE2_PRIVATE, "Private", "PrivateProfile", "StandardProfile"},
+        {NET_FW_PROFILE2_PUBLIC, "Public", "PublicProfile", "StandardProfile"},
+    };
+    char log_msg[OS_MAXSTR];
+    fw_in_use_state_t state = FW_IN_USE_UNKNOWN;
+    INetFwPolicy2 *policy = NULL;
+    long current = 0;
+    NET_FW_MODIFY_STATE modify_state = NET_FW_MODIFY_STATE_OK;
+    int in_use = 0;
+    int off = 0;
 
-        int gpo = read_enable_firewall(gpo_key);
-        int state = (gpo != -1) ? gpo : read_enable_firewall(local_key);
-        bool enabled = (state == -1) ? true : (state == 1);  // both absent -> Windows default ON
-        if (enabled) {
-            any_on = true;
-            break;
+    off_profiles[0] = '\0';
+    merge_off_profiles[0] = '\0';
+
+    const bool use_legacy = !policy_key_exists("PrivateProfile") && !policy_key_exists("PublicProfile");
+
+    HRESULT hr_init = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    HRESULT hr = hr_init;
+    if (FAILED(hr_init) && hr_init != RPC_E_CHANGED_MODE) {
+        goto end;
+    }
+
+    hr = CoCreateInstance(&wazuh_CLSID_NetFwPolicy2, NULL, CLSCTX_INPROC_SERVER,
+                          &wazuh_IID_INetFwPolicy2, (void **)&policy);
+    if (FAILED(hr)) {
+        goto end;
+    }
+
+    hr = INetFwPolicy2_get_CurrentProfileTypes(policy, &current);
+    if (FAILED(hr)) {
+        goto end;
+    }
+
+    for (size_t i = 0; i < sizeof(profiles) / sizeof(profiles[0]); i++) {
+        if (!(current & profiles[i].type)) {
+            continue;
+        }
+
+        const char *gpo_key = (use_legacy && profiles[i].legacy_key) ? profiles[i].legacy_key
+                                                                     : profiles[i].policy_key;
+        VARIANT_BOOL enabled = VARIANT_FALSE;
+        int gpo_state = read_policy_dword(gpo_key, "EnableFirewall");
+        if (gpo_state != -1) {
+            enabled = gpo_state ? VARIANT_TRUE : VARIANT_FALSE;
+        } else {
+            hr = INetFwPolicy2_get_FirewallEnabled(policy, profiles[i].type, &enabled);
+            if (FAILED(hr)) {
+                goto end;
+            }
+        }
+
+        in_use++;
+        if (enabled == VARIANT_FALSE) {
+            off++;
+            append_profile_name(off_profiles, off_size, profiles[i].name);
+        } else if (read_policy_dword(gpo_key, "AllowLocalPolicyMerge") == 0) {
+            append_profile_name(merge_off_profiles, merge_off_size, profiles[i].name);
         }
     }
 
-    if (!any_on) {
-        write_debug_file(argv0, "No firewall profile is effectively enabled (registry check)");
+    if (in_use == 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1,
+                 "No known firewall profile is in use (CurrentProfileTypes 0x%lx)", (unsigned long)current);
+        write_debug_file(argv0, log_msg);
+        goto end;
     }
-    return any_on;
+
+    // S_FALSE means the returned state holds for only some of the profiles in use: local rules
+    // may not take effect on all of them.
+    hr = INetFwPolicy2_get_LocalPolicyModifyState(policy, &modify_state);
+    if (FAILED(hr)) {
+        goto end;
+    }
+
+    if (off == in_use) {
+        state = FW_IN_USE_ALL_OFF;
+    } else if (hr == S_OK && modify_state == NET_FW_MODIFY_STATE_GP_OVERRIDE) {
+        state = FW_IN_USE_GP_OVERRIDE;
+    } else if (off > 0) {
+        state = FW_IN_USE_SOME_OFF;
+    } else if (hr == S_FALSE || merge_off_profiles[0] != '\0') {
+        state = FW_IN_USE_GP_OVERRIDE_SOME;
+    } else {
+        state = FW_IN_USE_ALL_ON;
+    }
+
+end:
+    if (FAILED(hr)) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1,
+                 "Cannot read the firewall state of the networks in use (HRESULT 0x%08lx)",
+                 (unsigned long)hr);
+        write_debug_file(argv0, log_msg);
+    }
+    if (policy) {
+        INetFwPolicy2_Release(policy);
+    }
+    if (SUCCEEDED(hr_init)) {
+        CoUninitialize();
+    }
+    return state;
 }
 
 // ============================================================================
@@ -198,19 +322,6 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     // Check if netsh.exe is available
     if (check_binary_available("netsh.exe", &netsh_path, argv0) != FIREWALL_SUCCESS) {
         return FIREWALL_NOT_AVAILABLE;
-    }
-
-    // A netsh block rule is only enforced while a firewall profile is enabled. On ENABLE,
-    // if the firewall is effectively OFF, defer to the route fallback instead of adding a
-    // dormant rule. The effective state is read from the registry (see
-    // firewall_is_effectively_on), which is locale-independent. This is ENABLE-only: on
-    // DISABLE we must always try to remove the rule, which may have been added while the
-    // firewall was enabled.
-    if (action == ENABLE_COMMAND && !firewall_is_effectively_on(argv0)) {
-        log_firewall_action(argv0, LOG_LEVEL_WARNING, "netsh", "check",
-                          "Windows Firewall is effectively disabled - deferring to route fallback");
-        os_free(netsh_path);
-        return FIREWALL_INVALID_STATE;
     }
 
     // Single-host prefix for netsh remoteip: /32 for IPv4, /128 for IPv6.
@@ -289,10 +400,8 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         }
 
     } else {
-        // DELETE (best-effort): the rule may not exist - e.g. the block was applied via the
-        // route fallback while the firewall was off - so a non-zero "no rule matched" exit
-        // is expected and is NOT treated as a failure. The caller removes the null-route
-        // unconditionally, independently of this result.
+        // DELETE (best-effort): the rule may not exist, so a non-zero "no rule matched" exit
+        // is expected and is NOT treated as a failure.
         //
         // netsh matches the rule by its exact remoteip prefix. For IPv6 we also try the
         // legacy "/32" prefix: an agent upgraded from a version that wrote every rule as
@@ -329,7 +438,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
                 } else {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR - 1,
-                             "netsh delete rule (remoteip=%s/%s) returned %d (no matching rule is expected if the block used the route fallback)",
+                             "netsh delete rule (remoteip=%s/%s) returned %d (no matching rule)",
                              srcip, del_prefixes[p], result_del);
                     write_debug_file(argv0, log_msg);
                 }
@@ -342,132 +451,77 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     }
 
     os_free(netsh_path);
-    return FIREWALL_SUCCESS;
-}
 
-// ============================================================================
-// WINDOWS: route implementation (fallback)
-// ============================================================================
+    // The rules are only enforced on networks whose firewall profile is on and where Group Policy
+    // applies local rules. Report the block as done only when that holds for every network in
+    // use; otherwise the rules are kept, so they take effect if that changes before the unblock.
+    char off_profiles[64];
+    char merge_off_profiles[64];
+    const char *reason = NULL;
+    switch (firewall_state_for_networks_in_use(off_profiles, sizeof(off_profiles), merge_off_profiles,
+                                               sizeof(merge_off_profiles), argv0)) {
+        case FW_IN_USE_ALL_ON:
+            return FIREWALL_SUCCESS;
 
-// Parse a validated dotted-quad IPv4 string into a network-byte-order address
-// (as GetBestRoute expects), without pulling in a winsock link dependency.
-static DWORD ipv4_to_network(const char *ip) {
-    unsigned int a, b, c, d;
-    if (sscanf(ip, "%u.%u.%u.%u", &a, &b, &c, &d) != 4 ||
-        a > 255 || b > 255 || c > 255 || d > 255) {
-        return INADDR_NONE;
-    }
-    return (DWORD)(a | (b << 8) | (c << 16) | (d << 24));
-}
-
-// Confirm the /32 blackhole for srcip is actually in the active routing table.
-// route.exe exits 0 even when it rejects the route, so the exit code alone is not
-// proof. Query the forwarding table and require a host route (/32) that resolves
-// through the loopback interface (IF 1) we asked for.
-static bool route_blackhole_is_active(const char *srcip) {
-    DWORD dest = ipv4_to_network(srcip);
-    if (dest == INADDR_NONE) {
-        return false;
-    }
-
-    MIB_IPFORWARDROW row;
-    memset(&row, 0, sizeof(row));
-    if (GetBestRoute(dest, 0, &row) != NO_ERROR) {
-        return false;
-    }
-
-    return row.dwForwardMask == 0xFFFFFFFF && row.dwForwardIfIndex == 1;
-}
-
-firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0) {
-    char log_msg[OS_MAXSTR];
-    char *route_path = NULL;
-
-    // Reached when netsh is unavailable, or (via try_netsh) when the firewall is
-    // effectively OFF. BEST-EFFORT: adds a /32 blackhole for the target via the loopback
-    // interface so the host drops all egress to it. The /32 host route is more specific
-    // than the on-link subnet route and wins, so it also covers a host on a
-    // directly-connected subnet, and it breaks the reverse path of inbound sessions.
-    // LIMITATION: it only affects routing (egress); it does not filter inbound packets the
-    // way a firewall rule does. netsh (Windows Firewall) remains the preferred, bidirectional
-    // blocking mechanism.
-
-    // The IPv4 mask below only applies to IPv4 targets; netsh already covers IPv6.
-    if (ip_version == 6) {
-        // On ENABLE this is a genuine limitation worth flagging. On DISABLE, skipping IPv6
-        // here is the expected path (the route fallback never creates an IPv6 null-route, so
-        // there is nothing to remove), so keep it at debug to avoid a warning on every
-        // routine IPv6 unblock.
-        if (action == ENABLE_COMMAND) {
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",
-                              "route fallback supports IPv4 only - skipping IPv6 target");
-        } else {
-            write_debug_file(argv0, "route fallback is IPv4-only - no null-route to remove for IPv6 target");
-        }
-        return FIREWALL_NOT_AVAILABLE;
-    }
-
-    // Check if route.exe is available
-    if (check_binary_available("route.exe", &route_path, argv0) != FIREWALL_SUCCESS) {
-        return FIREWALL_NOT_AVAILABLE;
-    }
-
-    if (action == ENABLE_COMMAND) {
-        log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "best_effort",
-                          "Applying best-effort blackhole route (firewall off or netsh unavailable): "
-                          "drops egress to the target (including same-subnet hosts) but does not "
-                          "filter inbound packets - enable Windows Firewall for comprehensive blocking");
-
-        // Blackhole the target through the loopback interface (gateway 0.0.0.0, IF 1): this
-        // stays in the active routing table. A 127.0.0.1 gateway is only saved to the
-        // persistent store and never becomes active, so it would not block anything.
-        char *add_cmd[] = {route_path, "-p", "ADD", (char *)srcip,
-                           "MASK", "255.255.255.255", "0.0.0.0", "IF", "1", NULL};
-        wfd_t *wfd = wpopenv(route_path, add_cmd, W_BIND_STDERR);
-        if (!wfd) {
-            os_free(route_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-        int rc = wpclose(wfd);
-        if (rc != 0) {
+        case FW_IN_USE_ALL_OFF:
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "route add failed with exit code %d", rc);
-            write_debug_file(argv0, log_msg);
-            os_free(route_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
+            snprintf(log_msg, OS_MAXSTR - 1,
+                     "IP %s is not blocked: Windows Firewall is off for the networks in use "
+                     "(profiles: %s). Turn it on for those profiles to block the IP",
+                     srcip, off_profiles);
+            reason = log_msg;
+            break;
 
-        // route.exe exits 0 even when it silently rejects the route, so confirm it took.
-        if (!route_blackhole_is_active(srcip)) {
-            write_debug_file(argv0,
-                "route add reported success but the blackhole route is not in the active table");
-            os_free(route_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-    } else {
-        // DELETE (best-effort): a null-route may not exist - e.g. the block was applied via
-        // netsh while the firewall was on - so a non-zero "element not found" is expected
-        // and is NOT treated as a failure.
-        char *del_cmd[] = {route_path, "DELETE", (char *)srcip, NULL};
-        wfd_t *wfd = wpopenv(route_path, del_cmd, W_BIND_STDERR);
-        firewall_result_t del_res = FIREWALL_EXECUTION_FAILED;
-        if (wfd) {
-            int rc = wpclose(wfd);
-            if (rc == 0) {
-                del_res = FIREWALL_SUCCESS;  // a route was actually removed
-            } else {
-                memset(log_msg, '\0', OS_MAXSTR);
+        case FW_IN_USE_SOME_OFF:
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1,
+                     "IP %s is not blocked on every network in use: Windows Firewall is off for "
+                     "some of them (profiles: %s), so the rules don't apply there. Turn it on for "
+                     "those profiles to block the IP",
+                     srcip, off_profiles);
+            reason = log_msg;
+            break;
+
+        case FW_IN_USE_GP_OVERRIDE:
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1,
+                     "IP %s is not blocked: Group Policy doesn't apply local firewall rules to the "
+                     "networks in use, so the rules added by block-ip are ignored",
+                     srcip);
+            reason = log_msg;
+            break;
+
+        case FW_IN_USE_GP_OVERRIDE_SOME:
+            memset(log_msg, '\0', OS_MAXSTR);
+            if (merge_off_profiles[0] != '\0') {
                 snprintf(log_msg, OS_MAXSTR - 1,
-                         "route delete returned %d (no route is expected if the block used netsh)", rc);
-                write_debug_file(argv0, log_msg);
+                         "IP %s is not blocked on every network in use: Group Policy doesn't apply "
+                         "local firewall rules to some of them (profiles: %s), so the rules added "
+                         "by block-ip only apply to the others",
+                         srcip, merge_off_profiles);
+            } else {
+                snprintf(log_msg, OS_MAXSTR - 1,
+                         "IP %s may not be blocked on every network in use: the firewall policy "
+                         "differs between them, so it can't be confirmed that the rules added by "
+                         "block-ip apply to all of them",
+                         srcip);
             }
-        }
-        os_free(route_path);
-        return del_res;
+            reason = log_msg;
+            break;
+
+        case FW_IN_USE_UNKNOWN:
+        default:
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1,
+                     "IP %s may not be blocked: the firewall rules were added, but the firewall "
+                     "state of the networks in use can't be read to confirm they apply",
+                     srcip);
+            reason = log_msg;
+            break;
     }
 
-    os_free(route_path);
-    return FIREWALL_SUCCESS;
+    log_firewall_action(argv0, LOG_LEVEL_ERROR, "netsh", "not_enforced", reason);
+    return FIREWALL_INVALID_STATE;
 }
 
 #endif // WIN32

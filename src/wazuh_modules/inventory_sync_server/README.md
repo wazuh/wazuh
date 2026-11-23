@@ -457,7 +457,9 @@ sequenceDiagram
 ```
 
 Failure mapping is centralized in the worker: a connector failure answers `503` when
-`isAvailable()` says the indexer is the problem (agent retries, like any not-ready), `503` with
+`isAvailable()` says the indexer is the problem (agent retries, like any not-ready), `503`
+without asking `isAvailable()` when the indexer answered a read with a `5xx`
+(`ConnectorError::Cause::IndexerUnavailable`; generic body, no `Retry-After`), `503` with
 `Retry-After` when a by-query ran out of its version-conflict allowance (D30: retryable contention,
 the agent re-sends after the delay) and `500` otherwise (agent still retries; the log is
 operator-actionable). A staging failure poisons the
@@ -467,8 +469,19 @@ are what make that safe.
 
 The checksum verification (`executeChecksum`) pages the agent's documents with `search_after`
 (1000 per page by default — `inventory_sync_server_session_query_batch_size` —, deterministic
-order), aggregates SHA-1, and answers `200`/`409 {"status":"checksum_mismatch"}`. One attempt, no
-retry loop.
+order), aggregates SHA-1, and answers `200`/`409 {"status":"checksum_mismatch"}`. No retry loop of its
+own: only the connector's, which repeats a read answered `502`/`503`/`504` within its retry budget
+before the failure reaches the worker. Its reads ask the indexer for `allow_partial_search_results=false`: when the indexer
+cannot answer over every shard (a node restarting, for instance) it answers `5xx` instead of a
+partial result, and the session is answered `503` with the generic body and no `Retry-After`,
+never `409`, because no mismatch was calculated. This is the third result of the check. Only
+reads do this: a `5xx` on a write (flush, by-query) keeps the mapping above. Any other failure of
+the read (an indexer `4xx`, a `429` whose retry budget ran out, no server, transport) follows the
+usual mapping; so does a `5xx` whose body the connection cut short, because the transport then
+reports a transfer error without the status. The `503` increments `sync.requests.total.503` and no shed, conflict or flush-failure counter. The seam's
+`indexerConnectorSyncAdapter.hpp` is the class template `TIndexerConnectorSyncAdapter<TConnector>`
+(alias `IndexerConnectorSyncAdapter` for the real connector); besides forwarding, it translates the
+connector's exception into `ConnectorError`, looking at the HTTP status only for the search.
 
 ### The allowlist (`sync/stateIndexAllowlist.hpp`)
 

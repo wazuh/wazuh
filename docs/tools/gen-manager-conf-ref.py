@@ -71,12 +71,12 @@ def resolve(node, schema):
     return merged
 
 
-def type_of(node):
+def type_of(node, schema):
     kind = node.get('type')
     if isinstance(kind, list):
         return ' or '.join(kind)
     if kind == 'array':
-        items = resolve_items(node)
+        items = resolve_items(node, schema)
         inner = 'enum' if 'enum' in items else items.get('type', 'string')
         return f'list of {inner}'
     if kind == 'object':
@@ -86,15 +86,16 @@ def type_of(node):
     return kind or ''
 
 
-def resolve_items(node):
-    return node.get('items', {})
+def resolve_items(node, schema):
+    """The schema of a list's items, with the definition it points to merged in (indexer.hosts items are a $ref)."""
+    return resolve(node.get('items', {}), schema)
 
 
-def constraints(node, required):
+def constraints(node, schema, required):
     parts = []
     if 'enum' in node:
         parts.append('one of ' + ', '.join(f'`{value}`' for value in node['enum']))
-    items = resolve_items(node)
+    items = resolve_items(node, schema)
     if 'enum' in items:
         parts.append('items one of ' + ', '.join(f'`{value}`' for value in items['enum']))
     if 'pattern' in items:
@@ -111,6 +112,8 @@ def constraints(node, required):
         parts.append(f'<= {node["maximum"]}')
     if 'minLength' in node:
         parts.append('not empty' if node['minLength'] == 1 else f'at least {node["minLength"]} characters')
+    if 'maxLength' in node:
+        parts.append(f'at most {node["maxLength"]} characters')
     if 'minItems' in node:
         parts.append(f'at least {node["minItems"]} item' + ('s' if node['minItems'] != 1 else ''))
     if 'maxItems' in node:
@@ -148,7 +151,8 @@ def rows_for(node, schema, prefix, required_keys):
         prop = resolve(raw, schema)
         path = f'{prefix}{name}'
         required = name in required_keys
-        rows.append((path, type_of(prop), default_of(prop), constraints(prop, required), prop.get('description', '')))
+        rows.append((path, type_of(prop, schema), default_of(prop), constraints(prop, schema, required),
+                     prop.get('description', '')))
         if prop.get('type') == 'object' and prop.get('properties'):
             rows.extend(rows_for(prop, schema, f'{path}.', prop.get('required', [])))
     return rows

@@ -317,6 +317,58 @@ TEST_F(ApiTest, AnUnknownTypeMayCarryItsOwnPolicy)
     EXPECT_EQ(m_api->createManagerTask(second).body["result"], "queue_full");
 }
 
+TEST_F(ApiTest, AnUnknownTypeWithNoBoundOfItsOwnGetsTheDefaultBound)
+{
+    // A misspelt producer literal sends no max_pending. Its rows are never claimed and only the
+    // next start retires them, so without a default bound they would pile up until then.
+    for (int i = 0; i < UNKNOWN_TYPE_MAX_PENDING; ++i)
+    {
+        const auto response {m_api->createManagerTask(managerTaskBody("t" + std::to_string(i), "007", "misspelt"))};
+        ASSERT_EQ(response.body["result"], "created") << "row " << i;
+    }
+
+    const auto refused {m_api->createManagerTask(managerTaskBody("over", "007", "misspelt"))};
+    EXPECT_EQ(refused.status, 503);
+    EXPECT_EQ(refused.body["result"], "queue_full");
+    EXPECT_EQ(m_store->countManagerTasks("misspelt", TaskStatus::Pending), UNKNOWN_TYPE_MAX_PENDING);
+
+    // The bound is per type: another unknown type, and a registered one, are unaffected.
+    EXPECT_EQ(m_api->createManagerTask(managerTaskBody("other", "007", "also_misspelt")).body["result"], "created");
+    EXPECT_EQ(m_api->createManagerTask(managerTaskBody("plain", "007", "plain_type")).body["result"], "created");
+}
+
+TEST_F(ApiTest, ARequestCannotLiftTheBoundOfAnUnknownType)
+{
+    // Zero would mean unbounded and a negative bound means nothing; both get the default instead.
+    for (const int asked : {0, -1})
+    {
+        const std::string type {"unbounded_" + std::to_string(asked + 1)};
+        for (int i = 0; i <= UNKNOWN_TYPE_MAX_PENDING; ++i)
+        {
+            auto body = managerTaskBody(type + "_" + std::to_string(i), "007", type);
+            body["max_pending"] = asked;
+            const auto response {m_api->createManagerTask(body)};
+            ASSERT_EQ(response.body["result"], i < UNKNOWN_TYPE_MAX_PENDING ? "created" : "queue_full")
+                << "max_pending " << asked << ", row " << i;
+        }
+    }
+}
+
+TEST_F(ApiTest, AnUnknownTypeMayAskForMoreThanTheDefaultBound)
+{
+    // The fixture escape hatch still works upwards: a positive bound is honoured as asked.
+    for (int i = 0; i <= UNKNOWN_TYPE_MAX_PENDING; ++i)
+    {
+        auto body = managerTaskBody("t" + std::to_string(i), "007", "synthetic_type");
+        body["max_pending"] = UNKNOWN_TYPE_MAX_PENDING + 1;
+        ASSERT_EQ(m_api->createManagerTask(body).body["result"], "created") << "row " << i;
+    }
+
+    auto over = managerTaskBody("over", "007", "synthetic_type");
+    over["max_pending"] = UNKNOWN_TYPE_MAX_PENDING + 1;
+    EXPECT_EQ(m_api->createManagerTask(over).body["result"], "queue_full");
+}
+
 TEST_F(ApiTest, ARepeatedIdCollidesRatherThanFailing)
 {
     // A non-coalescing type on purpose: with coalescing on, the second request would be absorbed

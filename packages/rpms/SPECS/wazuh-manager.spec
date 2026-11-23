@@ -54,6 +54,21 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 %global _defaultlicensedir /usr/share/licenses
 %global _docdir_fmt %%{NAME}
 
+# fix_certs(), the shell function %%post and %%posttrans both define: run inside certs/, it makes
+# the directory 0750 and every regular *.pem root:wazuh-manager 0640, and refuses a directory that
+# is not root's. One body, so the two scriptlets cannot drift apart.
+%define wazuh_manager_fix_certs\
+fix_certs() {\
+  [ "$(stat -c %%u .)" = 0 ] || return 1\
+  chmod 0750 .\
+  for CERT_FILE in *.pem; do\
+    if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then\
+      chown -h root:wazuh-manager "${CERT_FILE}" > /dev/null 2>&1 || true\
+      chmod 0640 "${CERT_FILE}" > /dev/null 2>&1 || true\
+    fi\
+  done\
+}
+
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
 Requires: wazuh-manager = %{_version}-%{_release}
@@ -86,7 +101,10 @@ echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
 echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
 echo 'USER_DIR="%{_localstatedir}"' >> ./etc/preloaded-vars.conf
 echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
+# A clean install, never an update: USER_CLEANINSTALL skips the detection of an install already
+# registered on the build host (with USER_UPDATE="n" that detection made install.sh exit 0 having
+# installed nothing, and the host's live tree was packaged instead).
+echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
@@ -458,7 +476,7 @@ if [ "$1" -eq 1 ]; then
     echo "ERROR: could not generate ${CONF_DIR}/wazuh-manager.conf." >&2
     exit 1
   fi
-  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE}; then
+  if ! %{_localstatedir}/bin/wazuh-manager-conf --skip-file-checks validate -f ${CONF_STAGE} > /dev/null; then
     rm -f ${CONF_STAGE}
     echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
     exit 1
@@ -491,14 +509,23 @@ fi
 # time the operator starts the service -- so the check belongs at start, where it is made. Warning
 # here about a state that no longer exists is what trains operators to ignore installer output.
 
-# The certificates' ownership is set by %files and the resolver, and re-applied in %posttrans after
-# the upgrade-preserve restore.
+# Every certificate and key is root's and readable through wazuh-manager. %%files sets that for the
+# directory only: a file staged in certs/ before the install (cp creates it root:root 0644) keeps
+# its ownership, and the resolver below refuses it as UNSAFE and issues nothing. So it is
+# re-applied here, before the resolver runs, as the DEB postinst does, and again in %%posttrans
+# after the upgrade-preserve restore (cp -a keeps the preserved ownership). The configuration
+# directory is writable by wazuh-manager, so the account could put its own directory (or a link to
+# one) in place of certs/: in_conf_dir() refuses a link, and the owner check refuses a directory
+# that is not root's. Inside a root-owned 0750 directory nobody else can swap an entry, so the
+# chown and chmod below run as root. fix_certs() is the same function %%posttrans uses.
+%{wazuh_manager_fix_certs}
+in_conf_dir ${CONF_DIR}/certs fix_certs || true
 
 rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 
 # Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
-# Server API passwords, store the indexer password in the keystore, import the indexer's CA and
-# client pair from /etc/wazuh-indexer/export when it is installed here, and -- on a fresh install
+# Server API passwords, store the indexer password in the keystore, import the indexer's CA (and
+# a client pair, when one is configured) from /etc/wazuh-indexer/export, and -- on a fresh install
 # only -- mint the manager's CA and issue its two server pairs.
 #
 # $1 is 1 on a fresh install and >= 2 on an upgrade. That distinction is the whole reason the two
@@ -537,7 +564,7 @@ if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   fi
   # Only --install mints the CA and issues the bundle and the server pairs, and an unsafe or invalid
   # entry may have stopped the run before it did. Everything else it reports missing (the indexer
-  # password, the indexer's CA and client pair, rbac.db) the start completes.
+  # password, the indexer's CA, a configured client pair, rbac.db) the start completes.
   if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" \
       | grep -q -E "^(INVALID|UNSAFE) |^MISSING ${CONF_DIR}/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
     CRED_NEEDS_INSTALL="yes"
@@ -793,28 +820,14 @@ fi
 # ownership (cp -a), and before the service restart below.
 chown -R wazuh-manager:wazuh-manager %{_localstatedir}/data/ruleset > /dev/null 2>&1 || true
 chown -R wazuh-manager:wazuh-manager %{_localstatedir}/data/kvdb-ioc > /dev/null 2>&1 || true
-for year_dir in %{_localstatedir}/logs/[0-9][0-9][0-9][0-9]; do
-  if [ -d "$year_dir" ]; then
-    chown -R wazuh-manager:wazuh-manager "$year_dir" > /dev/null 2>&1 || true
-  fi
-done
 
 # Every certificate and key is root's and readable through wazuh-manager, re-applied after the
 # restore above (cp -a keeps the preserved ownership). The configuration directory is writable by
 # wazuh-manager, so the account could put its own directory (or a link to one) in place of certs/:
 # the link check and pwd -P refuse a link, and the owner check refuses a directory that is not
 # root's. Inside a root-owned 0750 directory nobody else can swap an entry, so the chown and chmod
-# below run as root.
-fix_certs() {
-  [ "$(stat -c %%u .)" = 0 ] || return 1
-  chmod 0750 .
-  for CERT_FILE in *.pem; do
-    if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then
-      chown -h root:wazuh-manager "${CERT_FILE}" > /dev/null 2>&1 || true
-      chmod 0640 "${CERT_FILE}" > /dev/null 2>&1 || true
-    fi
-  done
-}
+# below run as root. %%post applied the same before the resolver ran.
+%{wazuh_manager_fix_certs}
 REAL_CONF_DIR=$(cd -P ${CONF_DIR} 2> /dev/null && pwd -P) || REAL_CONF_DIR=""
 if [ -n "${REAL_CONF_DIR}" ] && [ ! -L ${CONF_DIR}/certs ]; then
   (cd -P -- ${CONF_DIR}/certs 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}/certs" ] && fix_certs) || true

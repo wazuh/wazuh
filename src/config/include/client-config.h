@@ -14,6 +14,9 @@
 #include "shared.h"
 #include <stdatomic.h>
 
+/* The targets of the legacy <client> blocks, see legacy-server-targets.h. */
+struct w_legacy_targets;
+
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
     unsigned int remote_conf:1;
@@ -156,6 +159,7 @@ typedef struct _agent {
     agent_report stats_report;  ///< Periodic /stats push (<agent><stats_report>).
     agent_report config_report; ///< Periodic /config push (<agent><config_report>).
     agent_enrollment enrollment; ///< Agent-side enrollment over HTTPS (<agent><enrollment>).
+    struct w_legacy_targets *legacy_targets; ///< Legacy <client> targets, settled once the whole file is read.
 } agent;
 
 /* Anti tampering config */
@@ -216,6 +220,23 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
 int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
                            bool *port_present, char *endpoint, size_t endpoint_size,
                            uint32_t *scope_id);
+
+/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
+ * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
+ * that passed validation here. */
+#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
+
+/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
+ * 256) for the same reason. */
+#define AGENT_SERVER_HOST_MAX_LEN 255
+
+/**
+ * @brief Read an <enrollment> block into logr->enrollment.
+ *
+ * Shared by <agent> (client-config.c) and the legacy <client> block
+ * (legacy-client-config.c), which carry the same block under two names.
+ */
+int Read_Agent_Enrollment(XML_NODE node, agent *logr);
 
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10

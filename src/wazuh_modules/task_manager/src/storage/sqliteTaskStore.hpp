@@ -218,7 +218,6 @@ namespace task_manager::storage
         void applyPragmas() const;
         void applySchema() const;
         void migrate();
-        void readAutoVacuumMode();
 
         Options m_options;
 
@@ -226,8 +225,6 @@ namespace task_manager::storage
         std::unique_ptr<Session> m_session;
         bool m_txnOpen {false};
         std::chrono::steady_clock::time_point m_txnOpenedAt {};
-        /// @brief Whether the database was created with incremental auto-vacuum. Read once at open.
-        bool m_incrementalVacuum {false};
     };
 } // namespace task_manager::storage
 

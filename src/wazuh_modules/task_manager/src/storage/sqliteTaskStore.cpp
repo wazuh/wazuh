@@ -98,9 +98,6 @@ namespace
     ///        threshold of 1000 pages, at this database's 4 KiB page size.
     constexpr int WAL_SIZE_LIMIT_BYTES {1000 * 4096};
 
-    /// @brief What PRAGMA auto_vacuum reads back as for INCREMENTAL.
-    constexpr std::int32_t AUTO_VACUUM_INCREMENTAL {2};
-
     int clampLimit(const int limit)
     {
         if (limit <= 0)
@@ -213,7 +210,6 @@ namespace task_manager::storage
         applyPragmas();
         applySchema();
         migrate();
-        readAutoVacuumMode();
 
         // Prepare every statement up front rather than lazily. Preparing is microseconds, and
         // doing it here turns a typo in the catalogue into a startup failure instead of a
@@ -245,7 +241,6 @@ namespace task_manager::storage
         // time (compactStep()) instead of by a VACUUM, which builds a full copy of the database
         // and holds the store for the whole rewrite. It must come FIRST: switching to WAL writes
         // the header of a new database, and from then on SQLite silently ignores this pragma.
-        // On an existing database created without it, it is a no-op too -- detected below.
         connection.execute("PRAGMA auto_vacuum=INCREMENTAL;");
 
         // WAL, on EVERY open rather than only on create. A create-only pragma would leave a
@@ -265,14 +260,6 @@ namespace task_manager::storage
         // Sized at the automatic checkpoint threshold, so the steady state is a file that
         // checkpoints and truncates rather than one that only ever grows.
         connection.execute("PRAGMA journal_size_limit=" + std::to_string(WAL_SIZE_LIMIT_BYTES) + ";");
-    }
-
-    void SqliteTaskStore::readAutoVacuumMode()
-    {
-        // Read back rather than assumed: a database created before the pragma above was set keeps
-        // auto_vacuum=NONE until a full VACUUM converts it, and the store never runs one.
-        SQLite3Wrapper::Statement read {m_session->connection, "PRAGMA auto_vacuum;"};
-        m_incrementalVacuum = read.step() == SQLITE_ROW && read.value<std::int32_t>(0) == AUTO_VACUUM_INCREMENTAL;
     }
 
     void SqliteTaskStore::applySchema() const
@@ -1121,13 +1108,9 @@ namespace task_manager::storage
         // No temporary copy and no finalizing: unlike VACUUM, this moves pages from the end of the
         // file into free slots and truncates, through the WAL like any other write. execute() runs
         // the pragma to completion, which matters -- it frees one page per step of the statement.
-        if (m_incrementalVacuum)
-        {
-            m_session->connection.execute("PRAGMA incremental_vacuum(" + std::to_string(std::max(maxPages, 1)) + ");");
-        }
+        m_session->connection.execute("PRAGMA incremental_vacuum(" + std::to_string(std::max(maxPages, 1)) + ");");
 
         CompactStats stats;
-        stats.supported = m_incrementalVacuum;
 
         SQLite3Wrapper::Statement count {m_session->connection, "PRAGMA freelist_count;"};
         if (count.step() == SQLITE_ROW)

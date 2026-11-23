@@ -20,6 +20,7 @@
 #include "wrappers/externals/procpc/readproc_wrappers.h"
 #include "wrappers/libc/stdio_wrappers.h"
 #include "wrappers/libc/stdlib_wrappers.h"
+#include "wrappers/posix/stat_wrappers.h"
 #include "wrappers/posix/unistd_wrappers.h"
 #include "wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "wrappers/wazuh/shared/file_op_wrappers.h"
@@ -62,6 +63,44 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
 int __wrap_close(int fd) {
     check_expected(fd);
     return 0;
+}
+
+/* On failure these set the errno the test queued, so the logged message does not depend on what
+   ran before. open() is also called for real by code other tests exercise (realtime), so only the
+   audit plugin directories are mocked. */
+extern int __real_open(const char *path, int flags, ...);
+
+int __wrap_open(const char *path, int flags, ...) {
+    int ret;
+
+    if (strncmp(path, "/etc/audit/", 11) != 0 && strncmp(path, "/etc/audisp/", 12) != 0) {
+        va_list args;
+        va_start(args, flags);
+        const mode_t mode = (flags & O_CREAT) ? va_arg(args, mode_t) : 0;
+        va_end(args);
+        return __real_open(path, flags, mode);
+    }
+
+    check_expected(path);
+    check_expected(flags);
+    ret = mock();
+    if (ret < 0) {
+        errno = mock();
+    }
+    return ret;
+}
+
+int __wrap_fchown(int fd, uid_t owner, gid_t group) {
+    int ret;
+
+    check_expected(fd);
+    check_expected(owner);
+    check_expected(group);
+    ret = mock();
+    if (ret < 0) {
+        errno = mock();
+    }
+    return ret;
 }
 
 FILE * tmpfile_with_content(const char *payload) {
@@ -543,8 +582,115 @@ static void expect_wait_for_audit_socket(int found) {
 
 }
 
-/* A candidate that is not on disk yet: it gets written and Auditd restarted. */
-static void expect_candidate_written(int restart_ret) {
+/* audisp_restrict_permissions(): the plugin file is opened without following links and fixed
+   through that descriptor. */
+#define AUDISP_FD 7
+#define AUDISP_OPEN_FLAGS (O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_NOCTTY | O_CLOEXEC)
+
+static void expect_audisp_open(const char *audisp_path, int ret, int error) {
+    expect_string(__wrap_open, path, audisp_path);
+    expect_value(__wrap_open, flags, AUDISP_OPEN_FLAGS);
+    will_return(__wrap_open, ret);
+    if (ret < 0) {
+        will_return(__wrap_open, error);
+    }
+}
+
+/* expect_fstat_stat() needs its struct alive until the call, which comes after the helper that
+   queued it returns: a few rotating slots cover every call a test queues. */
+static struct stat audisp_fstat_slots[8];
+static unsigned audisp_fstat_next;
+
+static void expect_audisp_fstat(mode_t mode, uid_t uid, gid_t gid, int ret) {
+    struct stat *st = &audisp_fstat_slots[audisp_fstat_next++ % 8];
+
+    memset(st, 0, sizeof(*st));
+    st->st_mode = mode;
+    st->st_uid = uid;
+    st->st_gid = gid;
+    st->st_nlink = 1;
+    expect_fstat_stat(AUDISP_FD, st, ret);
+}
+
+/* Logged for each change that succeeded. expect_string() keeps the pointer, so the message lives in a
+   rotating slot too. */
+static char audisp_changed_slots[4][OS_SIZE_1024];
+static unsigned audisp_changed_next;
+
+/* At info level for a file found on disk, at debug level right after the agent wrote it */
+static void expect_audisp_change_logged(const char *msg, bool written) {
+    if (written) {
+        expect_string(__wrap__mdebug1, formatted_msg, msg);
+    } else {
+        expect_string(__wrap__minfo, formatted_msg, msg);
+    }
+}
+
+static void expect_audisp_owner_changed(const char *audisp_path, uid_t uid, gid_t gid, bool written) {
+    char *msg = audisp_changed_slots[audisp_changed_next++ % 4];
+
+    snprintf(msg, OS_SIZE_1024, FIM_AUDIT_PLUGIN_OWNER, audisp_path, (unsigned)uid, (unsigned)gid);
+    expect_audisp_change_logged(msg, written);
+}
+
+static void expect_audisp_mode_changed(const char *audisp_path, mode_t found, mode_t expected, bool written) {
+    char *msg = audisp_changed_slots[audisp_changed_next++ % 4];
+
+    snprintf(msg, OS_SIZE_1024, FIM_AUDIT_PLUGIN_MODE, audisp_path, (unsigned)(found & 07777), (unsigned)expected);
+    expect_audisp_change_logged(msg, written);
+}
+
+/* Matches a logged message by its start, for one whose end depends on errno */
+static int check_starts_with(const LargestIntegralType value, const LargestIntegralType prefix) {
+    return strncmp((const char *)value, (const char *)prefix, strlen((const char *)prefix)) == 0;
+}
+
+static void expect_audisp_fchown(int ret, int error) {
+    expect_value(__wrap_fchown, fd, AUDISP_FD);
+    expect_value(__wrap_fchown, owner, 0);
+    expect_value(__wrap_fchown, group, 0);
+    will_return(__wrap_fchown, ret);
+    if (ret < 0) {
+        will_return(__wrap_fchown, error);
+    }
+}
+
+static void expect_audisp_fchmod(mode_t mode, int ret) {
+    expect_value(__wrap_fchmod, fd, AUDISP_FD);
+    expect_value(__wrap_fchmod, mode, mode);
+    will_return(__wrap_fchmod, ret);
+}
+
+/* A regular file found with the given mode and group (owner root): chowned only when the group is not
+   root, chmodded only when the mode goes beyond 0640 (to the given expected mode). */
+static void expect_audisp_permissions_logged(const char *audisp_path, mode_t found, gid_t gid, mode_t expected,
+                                            bool written) {
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(found, 0, gid, 0);
+    if (gid != 0) {
+        expect_audisp_fchown(0, 0);
+        expect_audisp_owner_changed(audisp_path, 0, gid, written);
+    }
+    if ((found & 07777) != expected) {
+        expect_audisp_fchmod(expected, 0);
+        expect_audisp_mode_changed(audisp_path, found, expected, written);
+    }
+    expect_value(__wrap_close, fd, AUDISP_FD);
+}
+
+/* A file found on disk: changes logged at info level */
+static void expect_audisp_permissions(const char *audisp_path, mode_t found, gid_t gid, mode_t expected) {
+    expect_audisp_permissions_logged(audisp_path, found, gid, expected, false);
+}
+
+/* Already compliant: neither fchown() nor fchmod() */
+static void expect_audisp_permissions_checked(const char *audisp_path) {
+    expect_audisp_permissions(audisp_path, S_IFREG | 0640, 0, 0640);
+}
+
+/* A candidate that is not on disk yet: it gets written, its permissions fixed (found_mode is
+   what the write left) and Auditd restarted. */
+static void expect_candidate_written_as(int restart_ret, mode_t found_mode, gid_t found_gid, mode_t expected_mode) {
     const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
 
     expect_abspath(AUDIT_SOCKET, 1);
@@ -580,12 +726,17 @@ static void expect_candidate_written(int restart_ret) {
     expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
     expect_string(__wrap_OS_MoveFile, dst, audisp_path);
     will_return(__wrap_OS_MoveFile, 0);
+    expect_audisp_permissions_logged(audisp_path, found_mode, found_gid, expected_mode, true);
 
     expect_string(__wrap__minfo, formatted_msg,
                   "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. "
                   "Restarting Auditd service.");
 
     will_return(__wrap_audit_restart, restart_ret);
+}
+
+static void expect_candidate_written(int restart_ret) {
+    expect_candidate_written_as(restart_ret, S_IFREG | 0640, 0, 0640);
 }
 
 void test_audisp_configuration_is_known_matches_a_template(void **state) {
@@ -726,6 +877,7 @@ void test_configure_and_connect_audit_socket_keeps_socket_when_restart_disabled(
     expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, 0);
+    expect_audisp_permissions_checked("/etc/audit/plugins.d/af_wazuh.conf");
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
 
@@ -864,6 +1016,7 @@ void test_set_auditd_config_template_writes_the_given_configuration(void **state
     expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, 0);
+    expect_audisp_permissions_checked(audisp_path);
 
     // Configuration already in place and socket present: nothing to do
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
@@ -888,6 +1041,7 @@ void test_set_auditd_config_template_audit3_plugin_created(void **state) {
     expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
@@ -913,6 +1067,7 @@ void test_set_auditd_config_template_audit2_plugin_created(void **state) {
     expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, 0);
+    expect_audisp_permissions_checked(audit2_socket);
 
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
     will_return(__wrap_IsSocket, 0);
@@ -941,6 +1096,7 @@ void test_set_auditd_config_template_audit_socket_not_created(void **state) {
     expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     snprintf(buffer, OS_SIZE_128, FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
     expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
@@ -973,6 +1129,7 @@ void test_set_auditd_config_template_audit_socket_not_created_restart(void **sta
     expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
     will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
     will_return(__wrap_OS_SHA1_File, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     snprintf(buffer, OS_SIZE_128, FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
     expect_string(__wrap__minfo, formatted_msg, buffer);
@@ -1025,6 +1182,7 @@ void test_set_auditd_config_template_audit_plugin_tampered_configuration(void **
     expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
     expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
     will_return(__wrap_OS_MoveFile, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
@@ -1076,6 +1234,7 @@ void test_set_auditd_config_template_audit_plugin_not_created(void **state) {
     expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
     expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
     will_return(__wrap_OS_MoveFile, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
@@ -1210,6 +1369,7 @@ void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink(
     expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
     expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
     will_return(__wrap_OS_MoveFile, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     // Do not restart
     syscheck.restart_audit = 0;
@@ -1260,6 +1420,7 @@ void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_
     expect_string(__wrap_OS_MoveFile, src, "tmp/af_wazuh.conf");
     expect_string(__wrap_OS_MoveFile, dst, audit3_socket);
     will_return(__wrap_OS_MoveFile, 0);
+    expect_audisp_permissions_checked(audit3_socket);
 
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (/etc/audit/plugins.d/af_wazuh.conf) was modified. Restarting Auditd service.");
 
@@ -1313,6 +1474,8 @@ void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_
     will_return(__wrap_OS_MoveFile, -1);
 
     expect_string(__wrap__merror, formatted_msg, "Failed to move 'tmp/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf'");
+    // The copy fallback created the file before failing: it is still restricted
+    expect_audisp_permissions_logged(audit3_socket, S_IFREG | 0644, 999, 0640, true);
 
     int ret;
     ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_2_TPL);
@@ -1360,6 +1523,8 @@ void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_
     will_return(__wrap_OS_MoveFile, -1);
 
     expect_string(__wrap__merror, formatted_msg, "Failed to move 'tmp/af_wazuh.conf' to '/etc/audit/plugins.d/af_wazuh.conf'");
+    // Nothing was left behind
+    expect_audisp_open(audit3_socket, -1, ENOENT);
 
     int ret;
     ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_2_TPL);
@@ -1367,6 +1532,278 @@ void test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_
     assert_int_equal(ret, -1);
 }
 
+/* The plugin configuration on disk already matches the template, so set_auditd_config_template()
+   only fixes its permissions and checks the socket. */
+static void expect_audisp_config_unchanged(const char *audisp_path) {
+    expect_abspath(AUDIT_SOCKET, 0);
+
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+
+    expect_string(__wrap_OS_SHA1_File, fname, audisp_path);
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "6e3a100fc85241f04ed9686d37738e7d08086fb4");
+    will_return(__wrap_OS_SHA1_File, 0);
+
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+}
+
+void test_set_auditd_config_template_restricts_new_plugin_file(void **state) {
+    int ret;
+
+    syscheck.restart_audit = 1;
+
+    // What the agent's umask and group leave on a freshly written file
+    expect_candidate_written_as(0, S_IFREG | 0644, 999, 0640);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_restricts_existing_plugin_file(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // Left by an earlier agent: same content, looser permissions
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_permissions(audisp_path, S_IFREG | 0644, 999, 0640);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_restricts_audit2_plugin_file(void **state) {
+    const char *audisp_path = "/etc/audisp/plugins.d/af_wazuh.conf";
+    int ret;
+
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_permissions(audisp_path, S_IFREG | 0666, 999, 0640);
+
+    ret = set_auditd_config_template(PLUGINS_OLD_DIR_AUDISP, AUDISP_CONFIGURATION_0_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_keeps_stricter_plugin_file_mode(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // 0600 is within 0640: only the group is fixed
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_permissions(audisp_path, S_IFREG | 0600, 999, 0600);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_drops_only_extra_plugin_file_bits(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // World-readable but not group-readable: only the bits beyond 0640 go
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_permissions(audisp_path, S_IFREG | 0604, 0, 0600);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_skips_non_regular_plugin_file(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // Any call to __wrap_fchown or __wrap_fchmod here makes cmocka fail
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(S_IFIFO | 0644, 0, 999, 0);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_skips_plugin_file_symlink(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // O_NOFOLLOW refuses the link: its target is never changed
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, -1, ELOOP);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(6382): The Audit plugin configuration file '/etc/audit/plugins.d/af_wazuh.conf' is a "
+                  "symbolic link, its permissions are left as they are.");
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_plugin_file_fstat_error(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(0, 0, 0, -1);
+    expect_any(__wrap__mwarn, formatted_msg);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_plugin_file_chown_error(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // Mode already compliant, the owner cannot be changed (immutable file, SELinux denial...)
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(S_IFREG | 0640, 0, 999, 0);
+    expect_audisp_fchown(-1, EPERM);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6992): Could not set the owner of the Audit plugin configuration file "
+                  "'/etc/audit/plugins.d/af_wazuh.conf' to root:root: Operation not permitted (1). "
+                  "Who-data is not affected.");
+
+    // Who-data keeps going: Auditd can still read the file
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_plugin_file_chmod_error(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // Owner already root, the mode cannot be changed. The shared fchmod() wrapper sets no errno, so
+    // only the part of the message that does not depend on it is checked.
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(S_IFREG | 0644, 0, 0, 0);
+    expect_audisp_fchmod(0640, -1);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+    expect_check(__wrap__mwarn, formatted_msg, check_starts_with,
+                 cast_to_largest_integral_type("(6993): Could not set the mode of the Audit plugin configuration "
+                                               "file '/etc/audit/plugins.d/af_wazuh.conf' to 0640: "));
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_plugin_file_chown_ok_chmod_error(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // The owner is fixed but the mode is not: the owner change and the mode failure are both logged
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(S_IFREG | 0644, 0, 999, 0);
+    expect_audisp_fchown(0, 0);
+    expect_audisp_owner_changed(audisp_path, 0, 999, false);
+    expect_audisp_fchmod(0640, -1);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+    expect_check(__wrap__mwarn, formatted_msg, check_starts_with,
+                 cast_to_largest_integral_type("(6993): Could not set the mode of the Audit plugin configuration "
+                                               "file '/etc/audit/plugins.d/af_wazuh.conf' to 0640: "));
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_plugin_file_chown_error_chmod_ok(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // The owner cannot be changed but the mode can: the owner failure and the mode change are both logged
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(S_IFREG | 0644, 0, 999, 0);
+    expect_audisp_fchown(-1, EPERM);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6992): Could not set the owner of the Audit plugin configuration file "
+                  "'/etc/audit/plugins.d/af_wazuh.conf' to root:root: Operation not permitted (1). "
+                  "Who-data is not affected.");
+    expect_audisp_fchmod(0640, 0);
+    expect_audisp_mode_changed(audisp_path, 0644, 0640, false);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_configure_and_connect_audit_socket_restricts_known_plugin_file(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    syscheck.restart_audit = 1;
+
+    // Agent upgraded with Auditd running: the socket answers and the file on disk is a known one,
+    // so nothing is rewritten, but its permissions are still fixed
+    expect_audit_plugins_dir();
+    expect_audit_version("auditctl version 3.0.6\n", "Audit version detected: 3.0.6");
+
+    expect_string(__wrap_IsSocket, sock, AUDIT_SOCKET);
+    will_return(__wrap_IsSocket, 0);
+    expect_audit_socket_connect(55);
+
+    expect_string(__wrap_OS_SHA1_File, fname, audisp_path);
+    expect_value(__wrap_OS_SHA1_File, mode, OS_TEXT);
+    will_return(__wrap_OS_SHA1_File, "1111111111111111111111111111111111111111");
+    will_return(__wrap_OS_SHA1_File, 0);
+    expect_abspath(AUDIT_SOCKET, 1);
+    expect_any(__wrap_OS_SHA1_Str, str);
+    expect_any(__wrap_OS_SHA1_Str, length);
+    will_return(__wrap_OS_SHA1_Str, "1111111111111111111111111111111111111111");
+
+    expect_audisp_permissions(audisp_path, S_IFREG | 0644, 999, 0640);
+
+    ret = configure_and_connect_audit_socket();
+
+    assert_int_equal(ret, 55);
+}
+
+void test_set_auditd_config_template_restricts_plugin_file_owner(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // Right group and mode, wrong owner
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, AUDISP_FD, 0);
+    expect_audisp_fstat(S_IFREG | 0640, 1000, 0, 0);
+    expect_audisp_fchown(0, 0);
+    expect_audisp_owner_changed(audisp_path, 1000, 0, false);
+    expect_value(__wrap_close, fd, AUDISP_FD);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_set_auditd_config_template_plugin_file_gone(void **state) {
+    const char *audisp_path = "/etc/audit/plugins.d/af_wazuh.conf";
+    int ret;
+
+    // Removed between the hash and the check: nothing to restrict, nothing to report
+    expect_audisp_config_unchanged(audisp_path);
+    expect_audisp_open(audisp_path, -1, ENOENT);
+
+    ret = set_auditd_config_template(PLUGINS_DIR_AUDIT, AUDISP_CONFIGURATION_1_TPL);
+
+    assert_int_equal(ret, 0);
+}
 
 void test_audit_get_id(void **state) {
     (void) state;
@@ -2293,6 +2730,21 @@ int main(void) {
         cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_restart),
         cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_error),
         cmocka_unit_test(test_set_auditd_config_template_audit_plugin_not_created_recreate_hardlink_unlink_error),
+        cmocka_unit_test(test_set_auditd_config_template_restricts_new_plugin_file),
+        cmocka_unit_test(test_set_auditd_config_template_restricts_existing_plugin_file),
+        cmocka_unit_test(test_set_auditd_config_template_restricts_audit2_plugin_file),
+        cmocka_unit_test(test_set_auditd_config_template_keeps_stricter_plugin_file_mode),
+        cmocka_unit_test(test_set_auditd_config_template_drops_only_extra_plugin_file_bits),
+        cmocka_unit_test(test_set_auditd_config_template_skips_non_regular_plugin_file),
+        cmocka_unit_test(test_set_auditd_config_template_skips_plugin_file_symlink),
+        cmocka_unit_test(test_set_auditd_config_template_plugin_file_fstat_error),
+        cmocka_unit_test(test_set_auditd_config_template_plugin_file_chown_error),
+        cmocka_unit_test(test_set_auditd_config_template_plugin_file_chmod_error),
+        cmocka_unit_test(test_set_auditd_config_template_plugin_file_chown_ok_chmod_error),
+        cmocka_unit_test(test_set_auditd_config_template_plugin_file_chown_error_chmod_ok),
+        cmocka_unit_test(test_configure_and_connect_audit_socket_restricts_known_plugin_file),
+        cmocka_unit_test(test_set_auditd_config_template_restricts_plugin_file_owner),
+        cmocka_unit_test(test_set_auditd_config_template_plugin_file_gone),
         cmocka_unit_test_teardown(test_audit_get_id, free_string),
         cmocka_unit_test(test_audit_get_id_begin_error),
         cmocka_unit_test(test_audit_get_id_end_error),

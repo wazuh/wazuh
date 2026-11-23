@@ -18,6 +18,7 @@
 #include "indexerTransport.hpp"
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
+#include "safeIndexName.hpp"
 #include "secureCommunication.hpp"
 #include <algorithm>
 #include <atomic>
@@ -69,38 +70,6 @@ constexpr auto FORMATTED_LENGTH {INDEX_OPERATION_PREFIX + ID_FIELD_PREFIX + CLOS
 // {"delete":{"_index":"<index>","_id":"<id>"}}
 constexpr auto DELETE_FORMATTED_LENGTH {DELETE_OPERATION_PREFIX + DELETE_ID_FIELD_PREFIX + CLOSING_BRACES +
                                         NEWLINE_CHAR};
-
-/**
- * @brief Validates that an index name is safe to embed in a URL path component or
- *        in a JSON string sent to wazuh-indexer.
- *
- * Rejects empty strings and any character outside the conservative allowlist
- * `[a-zA-Z0-9._*-]`. Blocks `/`, `?`, `#`, `,`, whitespace and quote characters,
- * which would otherwise enable path traversal, query-string injection in URLs,
- * or JSON-body escape attacks. `*` is allowed because wazuh-indexer interprets it
- * as a wildcard and the connector has legitimate callers that use patterns such
- * as `wazuh-states-*`.
- *
- * @param idx Candidate index name.
- * @return true if the name is non-empty and contains only safe characters.
- */
-inline bool isSafeIndexName(std::string_view idx) noexcept
-{
-    if (idx.empty())
-    {
-        return false;
-    }
-    for (const char c : idx)
-    {
-        const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' ||
-                        c == '_' || c == '.' || c == '*';
-        if (!ok)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 /**
  * @brief Appends an ID to bulkData, escaping special characters if necessary
@@ -505,8 +474,8 @@ class IndexerConnectorSyncImpl final
     /// The single definition of the rule: the HTTP status AND the error type must both say so, so a
     /// body that merely quotes `index_not_found_exception` inside another error (a
     /// `search_phase_execution_exception` with it as `caused_by`, a 500) is NOT a missing index.
-    /// Callers classify on it (the scanner's `IndexerErrorHelper` reads the same two facts back off
-    /// the exception), so it may not drift between the search and the update_by_query paths.
+    /// Callers classify on it (the scanner's `vulnscan::isMissingIndexResponse` reads the same two
+    /// facts back off the exception), so it may not drift between the search and the update_by_query paths.
     static bool isIndexNotFound(const long statusCode, const std::string& responseBody)
     {
         return statusCode == HTTP_NOT_FOUND && responseBody.find("index_not_found_exception") != std::string::npos;
@@ -543,6 +512,7 @@ class IndexerConnectorSyncImpl final
     void processBulk()
     {
         bool needToRetry = false;
+        long lastServerStatus {0};
         if (m_bulkData.empty() && m_deleteByQuery.empty())
         {
             throw IndexerConnectorException("No data to process");
@@ -750,10 +720,13 @@ class IndexerConnectorSyncImpl final
         // One budget for the whole bulk operation: the chunks of a 413 split, nested ones
         // included, draw from it too, so a split cannot multiply what a flush may spend.
         IndexerRetryBudget retryBudget {m_maxRetryAttempts, budgetLeft(flushDeadline)};
-        const auto onError = [this, &needToRetry, &retryBudget](const std::string& error,
-                                                                const long statusCode,
-                                                                const std::string& responseBody) -> void
+        const auto onError =
+            [this, &needToRetry, &retryBudget, &lastServerStatus](
+                const std::string& error, const long statusCode, const std::string& responseBody) -> void
         {
+            // Same rule as executeSearchQuery(): the exhaustion carries the status of the last failed
+            // attempt when it was a 502/503/504, and 0 for a 429 or a transport failure.
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 LOGFN_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Splitting bulk data.");
@@ -858,7 +831,8 @@ class IndexerConnectorSyncImpl final
                         m_boundaries.clear();
                         m_lastBulkTime = std::chrono::steady_clock::now();
                         throw IndexerConnectorException("Bulk retry budget exhausted",
-                                                        IndexerConnectorException::Category::RetryExhausted);
+                                                        IndexerConnectorException::Category::RetryExhausted,
+                                                        lastServerStatus);
                     }
                     LOGFN_DEBUG2(
                         m_logFn, "Retrying bulk request in %lld ms.", static_cast<long long>(retryDelay.count()));
@@ -944,6 +918,7 @@ class IndexerConnectorSyncImpl final
     void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries, IndexerRetryBudget& retryBudget)
     {
         bool needToRetry = false;
+        long lastServerStatus {0};
         // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
         // Throwing here additionally livelocked -- the remapped onError(-1) retried the same
         // chunk, whose 200 answer carried the same failing items, forever.
@@ -959,9 +934,12 @@ class IndexerConnectorSyncImpl final
                 indexingFailures = true;
             }
         };
-        const auto onError = [this, &needToRetry, &retryBudget, boundaries, data](
+        const auto onError = [this, &needToRetry, &retryBudget, &lastServerStatus, boundaries, data](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            // Same rule as executeSearchQuery(): the exhaustion carries the status of the last failed
+            // attempt when it was a 502/503/504, and 0 for a 429 or a transport failure.
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 if (boundaries.size() > 1)
@@ -1064,7 +1042,8 @@ class IndexerConnectorSyncImpl final
                 if (retryBudget.exhausted(retryDelay))
                 {
                     throw IndexerConnectorException("Bulk chunk retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    lastServerStatus);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying bulk chunk in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1329,6 +1308,7 @@ public:
         }
 
         bool needToRetry = false;
+        long lastServerStatus {0};
         // Reported instead of thrown: see processBulk() on why success callbacks must not throw.
         bool updateByQueryFailed = false;
         std::size_t updateByQueryConflicts {0};
@@ -1402,9 +1382,12 @@ public:
             m_shouldNotifyAfterBulk = true;
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError = [this, &needToRetry, &lastServerStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            // Same rule as executeSearchQuery(): the exhaustion carries the status of the last failed
+            // attempt when it was a 502/503/504, and 0 for a 429 or a transport failure.
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 LOGFN_WARN(m_logFn,
@@ -1521,7 +1504,8 @@ public:
                 {
                     m_notify.clear();
                     throw IndexerConnectorException("Update by query retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    lastServerStatus);
                 }
                 LOGFN_DEBUG2(
                     m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
@@ -1541,6 +1525,10 @@ public:
 
         nlohmann::json resultJson;
         bool needToRetry = false;
+        // Status of the last failed attempt when it was a 502/503/504, 0 otherwise (429, transport):
+        // the exhaustion exception carries it so callers can tell an indexer that could not serve the
+        // read from a rate-limited or unreachable one.
+        long lastServerStatus {0};
         std::optional<std::string> invalidResponse;
 
         // The parse failure must be caught here, not left to propagate: HTTPRequest::post() runs
@@ -1566,9 +1554,10 @@ public:
             }
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
+        const auto onError = [this, &needToRetry, &lastServerStatus](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
         {
+            lastServerStatus = isRetryableServerError(statusCode) ? statusCode : 0;
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
@@ -1631,7 +1620,9 @@ public:
             url += serverUrl;
             url += "/";
             url += index;
-            url += "/_search";
+            // The caller takes the answer as the whole result, so ask the indexer to refuse it when some
+            // shards cannot take part instead of answering 200 without their documents.
+            url += "/_search?allow_partial_search_results=false";
 
             LOGFN_DEBUG2(m_logFn, "Executing search query on: %s", url.c_str());
 
@@ -1654,7 +1645,8 @@ public:
                 if (retryBudget.exhausted(retryDelay))
                 {
                     throw IndexerConnectorException("Search query retry budget exhausted",
-                                                    IndexerConnectorException::Category::RetryExhausted);
+                                                    IndexerConnectorException::Category::RetryExhausted,
+                                                    lastServerStatus);
                 }
                 LOGFN_DEBUG2(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
@@ -1771,9 +1763,14 @@ public:
             url += "&expand_wildcards=all";
         }
 
+        // A PIT over the shards that happen to be reachable hides the missing ones from every search
+        // that uses it, so the indexer must refuse to create it instead.
+        url += "&allow_partial_pit_creation=false";
+
         std::string pitId;
         uint64_t creationTime = 0;
         bool success = false;
+        long errorStatus = 0;
         std::string errorMessage;
 
         const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](const std::string& response)
@@ -1808,8 +1805,10 @@ public:
             }
         };
 
-        const auto onError = [this, &errorMessage](const std::string& error, const long statusCode, const std::string&)
+        const auto onError =
+            [this, &errorMessage, &errorStatus](const std::string& error, const long statusCode, const std::string&)
         {
+            errorStatus = statusCode;
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode);
             LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
         };
@@ -1820,7 +1819,9 @@ public:
 
         if (!success)
         {
-            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage,
+                                            IndexerConnectorException::Category::Other,
+                                            errorStatus);
         }
 
         return PointInTime(std::move(pitId), creationTime, keepAlive);
@@ -1929,7 +1930,9 @@ public:
             {
                 LOGFN_WARN(m_logFn, "Search request failed: %s, status code: %ld", error.c_str(), statusCode);
                 throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
-                                                ": " + error);
+                                                    ": " + error,
+                                                IndexerConnectorException::Category::Other,
+                                                statusCode);
             }
         };
 
@@ -1946,7 +1949,7 @@ public:
             needToRetry = false;
             std::string url;
             url += m_selector->getNext();
-            url += "/_search";
+            url += "/_search?allow_partial_search_results=false";
 
             m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                    .data = requestBody.dump(),

@@ -44,6 +44,7 @@ main() {
     fi
 
     mimic_full_wazuh_installation
+    check_runtime_search_paths "$WAZUH_INSTALLDIR/framework/python"
     generate_artifacts
     record_toolchain
 }
@@ -100,6 +101,39 @@ mimic_full_wazuh_installation() {
     install -m 0750 $WAZUH_ROOT_DIR/src/build/lib/libwazuhext.so "$WAZUH_INSTALLDIR/lib"
     # Install python interpreter and its dependencies
     make -j -C "$WAZUH_ROOT_DIR/src" install_dependencies INSTALLDIR=$WAZUH_INSTALLDIR
+}
+
+# Fail the build if an ELF file of the interpreter tree has an empty or relative element in its
+# RPATH/RUNPATH. The loader resolves such an element against the current directory, so a root-run
+# tool would load libraries from wherever the administrator happens to be.
+check_runtime_search_paths() {
+    local tree="$1" file paths element bad=0 checked=0
+    local -a elements
+    command -v readelf >/dev/null 2>&1 || { echo "ERROR: readelf is needed to check the run-time search paths" >&2; return 1; }
+    while IFS= read -r -d '' file; do
+        [ "$(head -c 4 "$file" | od -An -c | tr -d ' ')" = '177ELF' ] || continue
+        checked=$((checked + 1))
+        while IFS= read -r paths; do
+            # A trailing "x" keeps a trailing empty element from being dropped by the split.
+            IFS=: read -r -a elements <<< "${paths}:x"
+            unset 'elements[${#elements[@]}-1]'
+            for element in "${elements[@]}"; do
+                case "$element" in
+                    /*|'$ORIGIN'|'$ORIGIN'/*|'${ORIGIN}'|'${ORIGIN}'/*) ;;
+                    *)
+                        echo "ERROR: $file: unsafe run-time search path element '$element' in [$paths]" >&2
+                        bad=1
+                        ;;
+                esac
+            done
+        done < <(readelf -d "$file" 2>/dev/null | sed -n -E 's/.*\((RPATH|RUNPATH)\).*\[(.*)\]$/\2/p')
+    done < <(find "$tree" -type f -print0)
+    if [ "$checked" -eq 0 ]; then
+        echo "ERROR: no ELF file found under $tree" >&2
+        return 1
+    fi
+    [ "$bad" -eq 0 ] || return 1
+    echo "Run-time search paths of $checked ELF files under $tree are safe"
 }
 
 generate_artifacts() {

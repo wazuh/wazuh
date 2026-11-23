@@ -39,7 +39,7 @@ TCP port on which the enrollment service listens.
 - **Note:** While port 1515's listener starts (see the table under
   [`legacy_enrollment`](#legacy_enrollment)), the port must differ from `remote.https.port`, `cluster.port`
   and, when the legacy listener is enabled, `remote.legacy.port`. When the listener does not start, the port
-  is left out of the distinct-ports check.
+  is left out of the distinct-ports check ([the rule](../remoted/configuration.md#listener-ports-must-not-collide)).
 - **Note:** The `-p` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ipv6
@@ -91,9 +91,9 @@ Require agents to provide a shared enrollment password.
 - **Allowed values:** `yes`, `no`
 - **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
-When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0660`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 16 to 4095 bytes (a non-ASCII character counts as more than one), not all whitespace, is accepted (trailing CR/LF removed). The minimum keeps the password out of reach of online guessing, which the manager does not throttle per source; `wazuh-manager-remoted` applies the same rule to the same file for `POST /enroll`. If the file exists but is empty, shorter than 16 bytes, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start, and the error names the cause: `wazuh-manager-authd -t` checks the file, so `wazuh-manager-control start`, `restart` and `check` refuse with that error (code `20` in `-j` output) before any daemon runs. This applies to a manager upgraded from a 5.0 pre-release too, which keeps its `authd.pass`. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0660`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 16 to 4095 bytes (a non-ASCII character counts as more than one), not all whitespace, is accepted (trailing CR/LF removed). The minimum keeps the password out of reach of online guessing, which the manager does not throttle per source; `wazuh-manager-remoted` applies the same rule to the same file for `POST /enroll`. If the file exists but is empty, shorter than 16 bytes, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start, and the error names the cause: `wazuh-manager-authd -t` checks the file, so `wazuh-manager-control start`, `restart` and `check` refuse with that error (code `20` in `-j` output) before any daemon runs. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
-**Agent-side setup:** a 5.0 agent registers with an [enrollment token](README.md#enrollment-tokens), which carries its own credential, and `use_password` has no bearing on a token enrollment. It still sends a password over `POST /enroll` when the file named by [`<enrollment><authorization_pass_path>`](../client/configuration.md#authorization_pass_path) (default `etc/authd.pass`) exists and it holds no re-enrollment secret, but nothing writes the endpoint's default `etc/authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` was removed, a fresh 5.0 install never creates the file, and the 5.0 package upgrade deletes one left by a 4.x install. A path an operator names explicitly in `<enrollment><authorization_pass_path>` is theirs and is left alone.
+**Agent-side setup:** a 5.0 agent registers with an [enrollment token](README.md#enrollment-tokens), which carries its own credential, and `use_password` has no bearing on a token enrollment. An agent sends a password only from the file named by [`<enrollment><authorization_pass_path>`](../client/configuration.md#authorization_pass_path); that page says when the agent reads it and why no installer writes it.
 
 **Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/etc/wazuh-manager/authd.pass` on the master and restart `wazuh-manager-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-manager-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
 
@@ -171,6 +171,8 @@ present the same manager identity; `POST /enroll` itself is served with `remote.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (absolute, in the manager's configuration directory). The configuration generated by the installer writes the value of `remote.https.certificate` here. authd does not generate a certificate of its own: see [Manager certificate](README.md#manager-certificate)
 - **Allowed values:** Absolute path to a PEM-encoded certificate **directly inside `/etc/wazuh-manager/certs`**. The schema accepts any path, but the credential check of `wazuh-manager-control start` refuses one anywhere else, or a relative one (`Invalid credentials`, error 22 with `-j`); it also checks the file exists before any daemon starts
+- **Note:** Both checks apply even with [`disabled`](#disabled) set to `yes`: the file must exist and
+  sit directly in `/etc/wazuh-manager/certs`; only its content goes unjudged while authd is disabled.
 - **Note:** `ssl_manager_cert` and `ssl_manager_key` must be set together or not at all; setting only one is rejected by the configuration validator.
 - **Note:** The `-x` [command-line flag](README.md#command-line-options) overrides this value.
 
@@ -213,7 +215,10 @@ the hash is ignored.
 Minimum time an agent must have been disconnected before it can be forcibly re-enrolled. The `enabled` attribute gates this check. The value is the duration; `enabled` controls whether the check is active.
 
 - **Default value:** `1h` with `enabled="yes"`
-- **Allowed values:** Time value with optional suffix — `s`, `m`, `h`, `d`; attribute `enabled`: `yes`/`no`
+- **Allowed values:** Seconds, or a number with a suffix `s`, `m`, `h` or `d` (no weeks), at most 999999999 seconds; attribute `enabled`: `yes`/`no`
+- **Note:** With `enabled="yes"`, an agent that is active (or whose status is not `disconnected`) is never
+  replaced, and one disconnected for less than the value is refused. An agent that has never connected
+  passes this guard.
 
 ```xml,fragment
 <!-- Enable the check, require 2h disconnection -->
@@ -228,7 +233,7 @@ Minimum time an agent must have been disconnected before it can be forcibly re-e
 Minimum time since an agent was last registered before a forced re-enrollment is permitted. This prevents an agent from being replaced immediately after its initial enrollment.
 
 - **Default value:** `1h`
-- **Allowed values:** Time value with optional suffix — `s`, `m`, `h`, `d`
+- **Allowed values:** Seconds, or a number with a suffix `s`, `m`, `h` or `d` (no weeks), at most 999999999 seconds; `0` disables this guard
 
 ### agents / allow_higher_versions
 

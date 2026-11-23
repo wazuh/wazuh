@@ -569,10 +569,10 @@ if [ $1 = 0 ]; then
       }' "$1"
   }
 
-  # Function to extract package_uninstallation value from XML
+  # Last occurrence wins, like Read_AntiTampering() in the agent.
   get_package_uninstallation_value() {
     local file_path="$1"
-    local value=$(strip_xml_comments "$file_path" | sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
+    local value=$(strip_xml_comments "$file_path" | sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tail -n 1)
     echo "$value"
   }
 

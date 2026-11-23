@@ -51,6 +51,9 @@ int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+/* Once the whole file is read: the manager the legacy <client> blocks name, unless <agent>
+ * set one (legacy-client-manager.c). d1 is the agent configuration. */
+int Settle_Legacy_Client(void *d1);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
@@ -136,6 +139,16 @@ int Test_Rootcheck(const char * path);
 
 /* Verifies that the configuration for Localfile is correct. Return 0 on success or -1 on error.  */
 int Test_Localfile(const char * path);
+
+/**
+ * @brief Take the number of reserved ("_"-prefixed) labels Read_Localfile() has skipped, and reset it.
+ *
+ * A reader skips such a label with a warning. The manager's verifier uses this count to refuse a group
+ * configuration that carries one: agents whose reader predates the skip never finish reading it.
+ *
+ * @return Labels skipped since the previous call.
+ */
+unsigned int Localfile_TakeReservedLabels(void);
 
 /* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
 int Test_Agent(const char * path);

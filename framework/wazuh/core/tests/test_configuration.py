@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from types import MappingProxyType
 from unittest.mock import mock_open, ANY
 from unittest.mock import patch, MagicMock, AsyncMock
@@ -441,7 +442,7 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                 with pytest.raises(WazuhError, match=".* 1114 .*"):
                     configuration.upload_group_configuration('default', "<!-- just a comment -->")
             with patch('builtins.open'):
-                with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
+                with patch('wazuh.core.configuration._run_verify_agent_conf', return_value=(0, b'', False)):
                     with patch('wazuh.core.utils.chown', side_effect=None):
                         with patch('wazuh.core.utils.chmod', side_effect=None):
                             with patch('wazuh.core.configuration.safe_move'):
@@ -453,8 +454,7 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                                 with pytest.raises(WazuhInternalError, match=".* 1016 .*"):
                                     configuration.upload_group_configuration('default',
                                                                              "<agent_config>new_config</agent_config>")
-            with patch('wazuh.core.configuration.subprocess.check_output',
-                       side_effect=subprocess.CalledProcessError(cmd='ls', returncode=1, output=b'ERROR')):
+            with patch('wazuh.core.configuration._run_verify_agent_conf', return_value=(1, b'ERROR', False)):
                 with patch('wazuh.core.configuration.re.findall', return_value=[]):
                     with pytest.raises(WazuhError, match=".* 1115 .*"):
                         configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
@@ -484,17 +484,130 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 def test_upload_group_configuration_reports_the_reason(output, expected):
     """A refused group configuration names its real cause and the group's file, never the temporary file."""
     tmp_file = os.path.join(parent_directory, tmp_path, 'api_tmp_file_x.xml')
-    error = subprocess.CalledProcessError(cmd='verify-agent-conf', returncode=1,
-                                          output=output.format(tmp=tmp_file).encode())
+    result = (1, output.format(tmp=tmp_file).encode(), False)
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
             patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', tmp_file]), \
             patch('wazuh.core.configuration.open', mock_open()), \
-            patch('wazuh.core.configuration.subprocess.check_output', side_effect=error), \
+            patch('wazuh.core.configuration._run_verify_agent_conf', return_value=result), \
             pytest.raises(WazuhError, match='.* 1114 .*') as exc:
         configuration.upload_group_configuration('default', '<unknown><a>x</a></unknown>')
 
     assert exc.value.message == f'Wazuh syntax error: {expected}'
     assert 'api_tmp_file' not in exc.value.message
+
+
+def test_run_bounded_returns_exit_code_and_output():
+    """A validator that finishes in time gives back its exit code and its merged stdout/stderr."""
+    returncode, output, truncated = configuration._run_bounded(
+        ['sh', '-c', 'echo out; echo err >&2; exit 3'], timeout=10, output_limit=1024)
+    assert returncode == 3
+    assert output == b'out\nerr\n'
+    assert truncated is False
+
+
+def test_run_bounded_caps_the_kept_output():
+    """The head and the tail of a large output are kept; the middle is drained so the child still finishes."""
+    returncode, output, truncated = configuration._run_bounded(
+        ['sh', '-c', 'echo first; head -c 1000000 /dev/zero; echo; echo last; exit 1'], timeout=10,
+        output_limit=4096)
+    assert returncode == 1
+    assert len(output) == 4096 + len(configuration.OUTPUT_GAP_MARKER)
+    assert truncated is True
+    # The tool's ERROR lines come last, after any number of warnings: the end must survive the cap.
+    assert output.startswith(b'first\n')
+    assert output.endswith(b'\nlast\n')
+    assert configuration.OUTPUT_GAP_MARKER in output
+
+
+def test_run_bounded_keeps_an_output_of_exactly_the_limit_whole():
+    """An output that fits is returned as written, with no gap marker."""
+    returncode, output, truncated = configuration._run_bounded(
+        ['sh', '-c', 'head -c 4096 /dev/zero'], timeout=10, output_limit=4096)
+    assert returncode == 0
+    assert output == bytes(4096)
+    assert truncated is False
+
+
+def test_run_bounded_kills_the_process_group_on_timeout(tmp_path):
+    """A validator that never returns is killed with everything it spawned, and its output stays bounded."""
+    pid_file = tmp_path / 'grandchild.pid'
+    command = ['sh', '-c', f'sleep 60 & echo $! > {pid_file}; while :; do echo looping; done']
+    with pytest.raises(subprocess.TimeoutExpired) as exc:
+        configuration._run_bounded(command, timeout=0.5, output_limit=1024)
+    assert len(exc.value.output) <= 1024 + len(configuration.OUTPUT_GAP_MARKER)
+
+    grandchild = int(pid_file.read_text())
+    for _ in range(50):
+        try:
+            os.kill(grandchild, 0)
+        except ProcessLookupError:
+            break
+        # A killed but not yet reaped process (zombie) still answers signal 0. It can also be reaped between the
+        # signal and the read, which is the same answer.
+        try:
+            with open(f'/proc/{grandchild}/stat') as stat:
+                if stat.read().split(') ')[-1].startswith('Z'):
+                    break
+        except (FileNotFoundError, ProcessLookupError):
+            break
+        time.sleep(0.1)
+    else:
+        pytest.fail('the validator\'s child survived the timeout')
+
+
+def test_run_verify_agent_conf_timeout_is_1115():
+    """A verifier that does not finish in time becomes a 1115 that says so, never a hang."""
+    with patch('wazuh.core.configuration._verify_agent_conf_timeout', return_value=7), \
+            patch('wazuh.core.configuration._run_bounded',
+                  side_effect=subprocess.TimeoutExpired(cmd='verify-agent-conf', timeout=7, output=b'')) as run, \
+            pytest.raises(WazuhError, match='.* 1115 .*') as exc:
+        configuration._run_verify_agent_conf('/tmp/x.xml')
+    assert 'within 7 seconds' in exc.value.message
+    command, timeout, limit = run.call_args.args
+    assert command[-2:] == ['-f', '/tmp/x.xml']
+    assert (timeout, limit) == (7, configuration.VERIFY_AGENT_CONF_OUTPUT_LIMIT)
+
+
+@pytest.mark.parametrize('api_conf, expected', [
+    ({'intervals': {'request_timeout': 10}}, 9),
+    ({'intervals': {'request_timeout': 60}}, 59),
+    # Never below one second, and the default when the API configuration has no usable value.
+    ({'intervals': {'request_timeout': 1}}, 1),
+    ({'intervals': {}}, configuration.VERIFY_AGENT_CONF_TIMEOUT),
+    ({'intervals': {'request_timeout': None}}, configuration.VERIFY_AGENT_CONF_TIMEOUT),
+])
+def test_verify_agent_conf_timeout_follows_the_api_request_timeout(api_conf, expected):
+    """The verifier's bound stays just below the API's request_timeout, so the caller hears 1115 before a timeout."""
+    with patch('api.configuration.api_conf', new=api_conf):
+        assert configuration._verify_agent_conf_timeout() == expected
+
+
+def test_upload_group_configuration_verifier_timeout_removes_tmp_file():
+    """A verifier timeout reaches the caller as 1115 (not 1743) and leaves no temporary file behind."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
+            patch('wazuh.core.configuration.open', mock_open()), \
+            patch('wazuh.core.configuration._run_verify_agent_conf', side_effect=WazuhError(1115, 'timeout')), \
+            patch('wazuh.core.configuration.os.path.exists', return_value=True), \
+            patch('wazuh.core.configuration.remove') as mock_remove, \
+            patch('wazuh.core.configuration.safe_move') as mock_move:
+        with pytest.raises(WazuhError, match='.* 1115 .*'):
+            configuration.upload_group_configuration('default', '<agent_config><a>x</a></agent_config>')
+    mock_remove.assert_called_once_with('mock_tmp_file')
+    mock_move.assert_not_called()
+
+
+def test_upload_group_configuration_truncated_output_is_flagged():
+    """An unparsable, truncated verifier output is reported as such."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
+            patch('wazuh.core.configuration.open', mock_open()), \
+            patch('wazuh.core.configuration._run_verify_agent_conf', return_value=(1, b'noise', True)), \
+            patch('wazuh.core.configuration.os.path.exists', return_value=True), \
+            patch('wazuh.core.configuration.remove'), \
+            pytest.raises(WazuhError, match='.* 1115 .*') as exc:
+        configuration.upload_group_configuration('default', '<agent_config><a>x</a></agent_config>')
+    assert exc.value.message.endswith('noise [output truncated]')
 
 
 @pytest.mark.parametrize('prolog', [
@@ -508,7 +621,7 @@ def test_upload_group_configuration_accepts_xml_declaration(prolog):
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
             patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
             patch('wazuh.core.configuration.open', mock_open()) as mocked_open, \
-            patch('wazuh.core.configuration.subprocess.check_output', return_value=True), \
+            patch('wazuh.core.configuration._run_verify_agent_conf', return_value=(0, b'', False)), \
             patch('wazuh.core.configuration.safe_move'), \
             patch('wazuh.core.configuration.common.wazuh_uid'), \
             patch('wazuh.core.configuration.common.wazuh_gid'):
@@ -564,7 +677,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']):
-            with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
+            with patch('wazuh.core.configuration._run_verify_agent_conf', return_value=(0, b'', False)):
                 with patch('wazuh.core.utils.chown', side_effect=None):
                     with patch('wazuh.core.utils.chmod', side_effect=None):
                         assert configuration.upload_group_file('default',
@@ -579,7 +692,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 @pytest.mark.parametrize('group_id', INVALID_GROUP_IDS)
 @patch('wazuh.core.configuration.safe_move')
 @patch('wazuh.core.configuration.tempfile.mkstemp')
-@patch('wazuh.core.configuration.subprocess.check_output')
+@patch('wazuh.core.configuration._run_verify_agent_conf')
 def test_upload_group_invalid_group_id(mock_check_output, mock_mkstemp, mock_safe_move, group_id):
     """Check that a group_id that is not a plain group name is rejected before anything is written or moved."""
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):

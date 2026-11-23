@@ -13,8 +13,9 @@ groups at once, up to 128.
 
 1. The administrator creates a group (API or `agent_groups`), which creates
    `/etc/wazuh-manager/shared/<GROUP_NAME>/` with a copy of `/etc/wazuh-manager/shared/agent-template.conf` as its
-   `agent.conf`. The shipped template configures nothing: it holds a commented `<localfile>` example (see
-   [centralized configuration](centralized-configuration.md) for the elements it accepts).
+   `agent.conf`. The shipped template configures nothing: it holds an empty `<agent_config>` and
+   commented examples (see [File location](centralized-configuration.md#file-location), and
+   [Configuration format](centralized-configuration.md#configuration-format) for the elements it accepts).
 2. Agents are assigned to the group; the assignment is stored by `wazuh-manager-db`.
 3. `wazuh-manager-remoted` builds a `merged.mg` file from every file of each group (and of each
    combination of groups an agent has, under `var/multigroups/`).
@@ -39,7 +40,8 @@ creates it and up to 255 when `agent_groups` does (the API still lists, assigns 
 group made with `agent_groups`; the agents' `POST /download` accepts a wider set when it looks a group up,
 adding `:` `;` `=` `+` `!` `@` `(` `)`, but the API and `agent_groups` never create such a name);
 `.`, `..` and `all` are refused, and so is `default`, which always exists
-and cannot be deleted. Names are case-sensitive: `Web` and `web` are two groups, with their own directories
+and cannot be deleted; creating `default` is refused in any letter case (`Default`, `DEFAULT`) with
+`1711`. Other names are case-sensitive: `Web` and `web` are two groups, with their own directories
 and configurations, and looking up a group's agents (`GET /groups/{group_id}/agents`, `GET /agents?group=`,
 `agent_groups -l -g`) matches the name exactly. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
 with its `agent.conf` at mode `0660`.
@@ -62,7 +64,7 @@ with its `agent.conf` at mode `0660`.
 | Remove several agents from a group | `DELETE /agents/group?group_id=<GROUP_NAME>&agents_list=<ID>,<ID>` | `agent:modify_group`, `group:modify_assignments` |
 | List agents without a group | `GET /agents/no_group` | `agent:read` |
 | Delete groups | `DELETE /groups?groups_list=<GROUP_NAME>` (`all` for every group but `default`) | `group:delete` |
-| Restart / reload a group's agents | `PUT /agents/group/<GROUP_NAME>/restart`, `.../reload` | `agent:restart`, `agent:reload` |
+| Restart / reload a group's agents | `PUT /agents/group/<GROUP_NAME>/restart`, `.../reload` | `agent:restart` (or `agent:reload`), `agent:read`, `group:read` |
 
 Example using `curl`:
 

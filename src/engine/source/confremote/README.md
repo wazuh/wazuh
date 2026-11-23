@@ -226,4 +226,4 @@ Both executables exist only when `ENGINE_BUILD_TEST` is on (`make -C src TARGET=
 ctest --test-dir src/build/engine -R '^ConfRemote' --output-on-failure
 ```
 
-Lane details (ASAN, coverage): the `wazuh-testing` skill.
+Lane details (ASAN, coverage): `docs/dev/test-execution.md` and `.github/workflows/5_testunit_engine.yml`.

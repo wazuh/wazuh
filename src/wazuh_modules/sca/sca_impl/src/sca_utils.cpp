@@ -117,7 +117,8 @@ namespace
             throw std::runtime_error("Invalid operator or expected value in numeric comparison");
         }
 
-        const int expectedValue = std::stoi(expectedValueStr);
+        // 64-bit, as policies compare values above INT_MAX: sizes in bytes, and registry DWORDs read as unsigned
+        const long long expectedValue = std::stoll(expectedValueStr);
 
         if (engine == sca::RegexEngineType::PCRE2)
         {
@@ -129,7 +130,7 @@ namespace
             return false;
         }
 
-        const int actualValue = std::stoi(matchResult.second);
+        const long long actualValue = std::stoll(matchResult.second);
 
         if (opStr == "<")
         {

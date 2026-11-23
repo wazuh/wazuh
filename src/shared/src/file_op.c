@@ -3228,8 +3228,7 @@ bool w_path_names_fd(const char *path, int fd) {
 /* The flags w_openat_nofollow_vetted() requires on top of the access mode */
 #define W_VETTED_OPEN_FLAGS (O_CLOEXEC | O_NONBLOCK | O_NOCTTY)
 
-/* w_openat_nofollow_vetted() on a path: the name inside its directory */
-static int w_open_path_vetted(const char *path, int oflags, mode_t mode) {
+int w_open_path_vetted(const char *path, int oflags, mode_t mode) {
     const char *slash = strrchr(path, '/');
     char dir[PATH_MAX];
     size_t dir_length;

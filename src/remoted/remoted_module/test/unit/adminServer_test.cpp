@@ -70,34 +70,8 @@ namespace
         return std::filesystem::exists(kManagerConfDir, ec);
     }
 
-    // A port the OS says is free, asked for right before the module binds it -- same rationale
-    // as remotedModule_test.cpp: nothing here asserts on the port, it only has to be free.
-    std::uint16_t findFreePort()
-    {
-        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
-        if (probe < 0)
-        {
-            return 0;
-        }
-
-        sockaddr_in address {};
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = 0; // let the kernel pick
-
-        std::uint16_t port = 0;
-        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
-        {
-            socklen_t length = sizeof(address);
-            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&address), &length) == 0)
-            {
-                port = ntohs(address.sin_port);
-            }
-        }
-
-        ::close(probe);
-        return port;
-    }
+    // Nothing here asserts on the port; it only has to be free when the module binds it.
+    using remoted::test::findFreePort;
 
     /// Whether the public HTTPS listener answers its unauthenticated liveness endpoint. This keeps
     /// the test on the same TLS/HTTP contract production clients use, so shutdown does not race a

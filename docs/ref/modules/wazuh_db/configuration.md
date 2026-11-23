@@ -73,7 +73,9 @@ integer inside its range, digits only after an optional leading `-` (so `-0` rea
 value is below every range here). Spaces between `=` and the value are skipped; a tab there, a trailing space,
 a `+` sign, a fraction, a unit or an inline comment is not. Anything else makes `wazuh-manager-db` exit with
 `(2302): Invalid definition for wazuh_db.<key>: '<value>'.`, at start and in `wazuh-manager-db -t` alike, so
-`wazuh-manager-control check` refuses it too. Restart the manager after a change.
+`wazuh-manager-control check` refuses it too. The one exception is `wazuh_db.debug`: a daemon started
+with `-d` (after `wazuh-manager-control enable debug`) does not read it at all. Restart the manager
+after a change.
 
 ```ini
 # Debug level (0-2, default: 0)

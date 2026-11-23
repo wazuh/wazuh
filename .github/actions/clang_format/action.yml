@@ -31,6 +31,20 @@ runs:
         run: |
           set -euo pipefail
 
+          # The verdict depends on the clang-format version: the runner's apt package formats
+          # differently from the Wazuh build, so a silent fallback can pass unformatted code or fail
+          # formatted code. On a GitHub x86-64 Linux runner the Wazuh binary is mandatory and any
+          # failure to obtain it fails the step; the fallback remains for local runs (act) and for
+          # other architectures, where that binary cannot run.
+          fallback() {
+            if [ -z "${ACT:-}" ] && [ "${GITHUB_ACTIONS:-}" = "true" ] && [ "${1:-}" != "arch" ]; then
+              echo "::error::$2 Refusing to fall back to the runner's clang-format: its result is not the gate's."
+              exit 1
+            fi
+            echo "::warning::$2 Falling back to runner package."
+            exit 0
+          }
+
           WAZUH_CLANG_FORMAT_URL="https://packages.wazuh.com/utils/clang-format/clang-format.tar.gz"
           RUNNER_TEMP_DIR="${RUNNER_TEMP:-/tmp}"
           TOOL_ROOT="${RUNNER_TEMP_DIR}/wazuh-clang-format"
@@ -40,8 +54,7 @@ runs:
           echo "CLANG_FORMAT_BIN=clang-format" >> "${GITHUB_ENV}"
 
           if [ "$(uname -s)" != "Linux" ] || { [ "$(uname -m)" != "x86_64" ] && [ "$(uname -m)" != "amd64" ]; }; then
-            echo "::warning::Wazuh clang-format package is only configured for Linux amd64. Falling back to runner package."
-            exit 0
+            fallback arch "Wazuh clang-format package is only configured for Linux amd64."
           fi
 
           if [ -x "${TOOL_BIN}" ]; then
@@ -56,9 +69,8 @@ runs:
 
           echo "Attempting to download clang-format from ${WAZUH_CLANG_FORMAT_URL}"
 
-          if ! curl -fsSL "${WAZUH_CLANG_FORMAT_URL}" -o "${TMP_DIR}/clang-format.tar.gz"; then
-            echo "::warning::Unable to download clang-format from ${WAZUH_CLANG_FORMAT_URL}. Falling back to runner package."
-            exit 0
+          if ! curl -fsSL --retry 3 --retry-delay 5 "${WAZUH_CLANG_FORMAT_URL}" -o "${TMP_DIR}/clang-format.tar.gz"; then
+            fallback download "Unable to download clang-format from ${WAZUH_CLANG_FORMAT_URL}."
           fi
 
           mkdir -p "${TMP_DIR}/extract" "${TOOL_ROOT}/bin"
@@ -67,15 +79,13 @@ runs:
           FOUND_BIN="$(find "${TMP_DIR}/extract" -type f \( -name "clang-format" -o -name "clang-format-*" \) | head -n 1)"
 
           if [ -z "${FOUND_BIN}" ]; then
-            echo "::warning::Downloaded clang-format package from ${WAZUH_CLANG_FORMAT_URL} but no clang-format executable was found. Falling back to runner package."
-            exit 0
+            fallback package "Downloaded clang-format package from ${WAZUH_CLANG_FORMAT_URL} but no clang-format executable was found."
           fi
 
           install -Dm755 "${FOUND_BIN}" "${TOOL_BIN}"
           if ! "${TOOL_BIN}" --version 2>/dev/null; then
-            echo "::warning::Wazuh clang-format binary is incompatible with this runner (GLIBC mismatch). Falling back to runner package."
             rm -f "${TOOL_BIN}"
-            exit 0
+            fallback binary "Wazuh clang-format binary is incompatible with this runner (GLIBC mismatch)."
           fi
           echo "USE_WAZUH_CLANG_FORMAT=true" >> "${GITHUB_ENV}"
           echo "CLANG_FORMAT_BIN=${TOOL_BIN}" >> "${GITHUB_ENV}"

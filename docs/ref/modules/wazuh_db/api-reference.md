@@ -3,7 +3,8 @@
 All routes are served over a Unix domain socket at `queue/sockets/wdb-http.sock`, relative to the
 installation directory. There is no TCP listener, and the socket is manager-internal: its callers
 are `clusterd` and the framework (`wazuh.core.wdb_http` for the data routes, `WazuhDBStatusHTTPClient`
-in `wazuh.core.engine_http` for `/v1/status`), never an agent. Socket permissions are the whole access
+in `wazuh.core.engine_http` for `/v1/status`, behind the Server API's `GET /cluster/{node_id}/status`),
+never an agent. Socket permissions are the whole access
 control; there is no authentication.
 
 This is the REST interface. The daemon also serves the older framed protocol on
@@ -79,8 +80,13 @@ the first one), at most once per 90 seconds so a polling load balancer does not 
 process that can work: `wazuh-manager-db` can be running and accepting connections on this socket
 while being unable to query `global.db`. Before this route existed, that state was only observable
 one request at a time, after an agent had already been served badly — a node in it kept answering
-`remoted`'s liveness probe with `200` and stayed in a load balancer's rotation indefinitely
-(issue #39429).
+`remoted`'s liveness probe with `200` and stayed in a load balancer's rotation indefinitely.
+
+The Server API surfaces this answer: `GET /cluster/{node_id}/status` reports the
+`wazuh-manager-db` entry with `ready` true only when this route answers `"status":"ok"`, copies its
+`global` object, and, when the daemon runs but the socket cannot be reached, reports `ready: false` with
+`reason` `status endpoint unreachable: <error>` (`_wdb_status()` in `framework/wazuh/manager.py`). A
+`wazuh-manager-db` that is not ready makes the whole node not ready.
 
 The check is deliberately cheap and read-only: it reads `sqlite_master`, not agent rows, and runs no
 integrity check. A status route that is expensive stops being safe to poll, and whoever consumes
@@ -160,7 +166,9 @@ dropped). A leading `-` is part of the number, so `[-1]` names no agent rather t
  "agents_by_os":{"ubuntu":38,"windows":7}}
 ```
 
-`agents_by_os` is keyed by `os_platform`, and agents without one are not counted there. Empty maps
+Agent `0` (the manager) is never counted. `agents_by_groups` counts group memberships, so an agent in
+two groups counts once in each. `agents_by_os` is keyed by `os_platform`, and agents without one are not
+counted there. Empty maps
 are omitted entirely — an installation with no agents answers `{}`.
 
 With an id list every entry is returned. With an empty body each map is capped at five entries, and

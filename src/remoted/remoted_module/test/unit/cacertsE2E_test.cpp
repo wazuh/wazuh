@@ -53,32 +53,7 @@ using namespace remoted::http;
 
 namespace
 {
-    std::uint16_t findFreePort()
-    {
-        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
-        if (probe < 0)
-        {
-            return 0;
-        }
-
-        sockaddr_in address {};
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        address.sin_port = 0;
-
-        std::uint16_t port = 0;
-        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
-        {
-            sockaddr_in bound {};
-            socklen_t length = sizeof(bound);
-            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&bound), &length) == 0)
-            {
-                port = ntohs(bound.sin_port);
-            }
-        }
-        ::close(probe);
-        return port;
-    }
+    using remoted::test::findFreePort;
 
     int statusOf(const std::string& rawResponse)
     {

@@ -26,8 +26,10 @@ read as plain text in the files; what protects them is the ownership and mode of
 The [credential resolver](../../getting-started/credentials.md) writes the `indexer` entries, through
 `wazuh-manager-keystore`, at installation and before every start: `username` is set to `wazuh-manager`
 when absent, and, only while the keystore holds no `password`, `password` comes from
-`WAZUH_INDEXER_MANAGER_PASSWORD`. A stored password is never replaced by the resolver; change it with
-the CLI below.
+`WAZUH_INDEXER_MANAGER_PASSWORD`. A stored password is not replaced from the environment or
+`/etc/wazuh-manager/local.env`; the resolver replaces it only when a co-located indexer's
+`/etc/wazuh-indexer/export/credentials.env` publishes a different one (a reinstalled indexer). To change
+it otherwise, use the CLI below.
 
 ## CLI usage
 
@@ -52,16 +54,20 @@ printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f inde
 |------|-------------|
 | `-f <family>` | Column family (namespace). Required |
 | `-k <key>` | Key name. Required |
-| `-v <value>` | Value (inline) |
+| `-v <value>` | Value (inline). Cannot be combined with `-vp` (`Invalid arguments.`) |
 | `-vp <path>` | Value read from the first line of a file (opened before the tool switches user, so a root-only file works) |
 | (stdin) | When neither `-v` nor `-vp` is given, the value is the first line of standard input; an empty line is an error |
-| `-g` | Print the stored value instead of writing one; exits 1 when the key is not set or empty. Cannot be combined with `-v`/`-vp` |
-| `-h` | Print the usage |
+| `-g` | Print the stored value instead of writing one; exits 1 when the key is not set or empty. Cannot be combined with `-v`/`-vp` (`-g does not take a value.`) |
+| `-h` | Print the usage and exit 0 |
 
-The tool exits 0 on success and 1 otherwise. An error is printed to standard error (and, for an
-argument error, and also for an error reading the value from a file or from standard input (`Error opening file.`, `Error reading file.`, `Error reading from stdin.`), the usage to standard output); any argument not in the table is refused as
-`Unknown option: <argument>` before the keystore is opened. The one silent exit 1 is `-g` on a key that is not
-set or is empty: that is an answer, not an error, so nothing is printed. There is no delete
+The value after `-f`, `-k`, `-v` or `-vp` is always taken as that value, so a value may start with
+`-`. The tool exits 0 on success and 1 otherwise. Every error is printed to standard error. An
+argument error (a missing `-f` or `-k`, `Switch value: <flag> not found.`; any argument not in the
+table, `Unknown option: <argument>`, refused before the keystore is opened; the two refused combinations
+above) and an error reading the
+value (`Error opening file.`, `Error reading file.`, `Error reading from stdin.`) also print the usage
+to standard output. The one silent exit 1 is `-g` on a key that is not set or is empty: that is an
+answer, not an error, so nothing is printed. There is no delete
 operation; the resolver's `--clear` mode empties the whole `queue/keystore/` directory instead.
 
 The C++ components read the credentials once per process (`wazuh-manager-modulesd`,
@@ -107,7 +113,7 @@ credentials the framework's Indexer client needs.
   `keystore_server_start(callbackLog, socketPath)` and `keystore_server_stop(void)`
   (`src/wazuh_modules/src/wm_keystore_server.c`,
   `src/wazuh_modules/keystore_server/include/keystore_server.h`). A missing library, a missing
-  symbol or a socket that cannot be bound is fatal for `wazuh-manager-modulesd`
+  `keystore_server_start` symbol or a socket that cannot be bound is fatal for `wazuh-manager-modulesd`
   (`The keystore server cannot bind its socket; see the preceding error. Not running without keystore
   access.`), since an API that silently lost its Indexer credentials is worse than one that refuses
   to start. Its log tag is `wazuh-manager-modulesd:keystore-server`.

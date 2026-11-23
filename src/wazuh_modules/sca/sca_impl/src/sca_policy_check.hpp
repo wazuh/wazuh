@@ -89,9 +89,13 @@ class FileRuleEvaluator : public RuleEvaluator
         RuleResult Evaluate() override;
 
     private:
-        RuleResult CheckFileForContents();
+        /// @brief Checks the contents of one file of the rule, without applying the rule's negation
+        /// @param path File to check
+        RuleResult CheckFileForContents(const std::string& path);
 
-        RuleResult CheckFileExistence();
+        /// @brief Checks that one file of the rule exists, without applying the rule's negation
+        /// @param path File to check
+        RuleResult CheckFileExistence(const std::string& path);
 
         std::unique_ptr<IFileIOUtils> m_fileUtils = nullptr;
 };
@@ -130,9 +134,13 @@ class DirRuleEvaluator : public RuleEvaluator
         RuleResult Evaluate() override;
 
     private:
-        RuleResult CheckDirectoryForContents();
+        /// @brief Checks the contents of one directory of the rule, without applying the rule's negation
+        /// @param path Directory to check
+        RuleResult CheckDirectoryForContents(const std::string& path);
 
-        RuleResult CheckDirectoryExistence();
+        /// @brief Checks that one directory of the rule exists, without applying the rule's negation
+        /// @param path Directory to check
+        RuleResult CheckDirectoryExistence(const std::string& path);
 
         std::unique_ptr<IFileIOUtils> m_fileUtils = nullptr;
 };
@@ -154,21 +162,31 @@ class ProcessRuleEvaluator : public RuleEvaluator
         GetProcessesFunc m_getProcesses = nullptr;
 };
 
+/// @brief Registry view a registry rule is evaluated against.
+/// @details The agent runs as a 32-bit process on 64-bit Windows, where WOW64 redirects
+///          parts of HKLM\\SOFTWARE to WOW6432Node unless a view is requested explicitly.
+enum class RegistryView
+{
+    Bits64,
+    Bits32
+};
+
 /// @brief Subclass of RuleEvaluator that evaluates registry-related rules
 class RegistryRuleEvaluator : public RuleEvaluator
 {
     public:
-        using IsValidKeyFunc = std::function<bool(const std::string& rootKey)>;
-        using EnumKeysFunc = std::function<std::vector<std::string>(const std::string& root)>;
-        using EnumValuesFunc = std::function<std::vector<std::string>(const std::string& root)>;
-        using GetValueFunc = std::function<std::optional<std::string>(const std::string& key, const std::string& value)>;
+        using IsValidKeyFunc = std::function<bool(const std::string& rootKey, RegistryView view)>;
+        using EnumKeysFunc = std::function<std::vector<std::string>(const std::string& root, RegistryView view)>;
+        using EnumValuesFunc = std::function<std::vector<std::string>(const std::string& root, RegistryView view)>;
+        using GetValueFunc =
+            std::function<std::optional<std::string>(const std::string& key, const std::string& value, RegistryView view)>;
 
         /// @brief Constructor
         /// @param ctx Evaluation context
-        /// @param isValidKey Function that returns true if the key is valid
-        /// @param enumKeys Function that returns a vector of subkeys
-        /// @param enumValues Function that returns a vector of values
-        /// @param getValue Function that returns the value of a key
+        /// @param isValidKey Function that returns true if the key exists in the given view
+        /// @param enumKeys Function that returns the subkeys of a key in the given view
+        /// @param enumValues Function that returns the value names of a key in the given view
+        /// @param getValue Function that returns the data of a value in the given view
         RegistryRuleEvaluator(PolicyEvaluationContext ctx,
                               IsValidKeyFunc isValidKey = nullptr,
                               EnumKeysFunc enumKeys = nullptr,
@@ -176,21 +194,31 @@ class RegistryRuleEvaluator : public RuleEvaluator
                               GetValueFunc getValue = nullptr);
 
         /// @copydoc IRuleEvaluator::Evaluate
+        /// @details The rule is evaluated against the 64-bit registry view and, unless it is found
+        ///          there, against the 32-bit view. It is Found if either view finds it and Invalid
+        ///          only if both views are Invalid. Negation is applied to that combined result.
+        ///          When both views are Invalid, the reason reported comes from the first view in
+        ///          which the key exists, or from the first view if the key exists in neither.
         RuleResult Evaluate() override;
 
     private:
-        /// @brief Checks if the key has the contents expected by the rule
+        /// @brief Checks if the key has the contents expected by the rule, ignoring negation
+        /// @param view Registry view to look in
         /// @return Returns a RuleResult with the result
-        RuleResult CheckKeyForContents();
+        RuleResult CheckKeyForContents(RegistryView view);
 
-        /// @brief Checks if a Key exists
+        /// @brief Checks if a Key exists, ignoring negation
+        /// @param view Registry view to look in
         /// @return Returns a RuleResult with the result
-        RuleResult CheckKeyExistence();
+        RuleResult CheckKeyExistence(RegistryView view);
 
         IsValidKeyFunc m_isValidKey = nullptr;
         EnumKeysFunc m_enumKeys = nullptr;
         EnumValuesFunc m_enumValues = nullptr;
         GetValueFunc m_getValue = nullptr;
+
+        /// @brief Whether the last CheckKeyForContents call found the key in its view
+        bool m_lastKeyExists = false;
 };
 
 namespace sca::win

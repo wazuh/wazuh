@@ -86,7 +86,7 @@ The weaker guarantee is accepted because the queue is transient: items are remov
 
 ### Batched Writes
 
-`persistDifference()` does not write to SQLite directly. `PersistentQueue` buffers items in memory and a flush thread writes them to storage in one `BEGIN IMMEDIATE` transaction when 100 items are buffered or 500 ms have passed, whichever comes first (the defaults; the flush batch size and interval can be overridden per instance, for example from FIM's configuration); a sync also flushes the buffer before it reads the queue. The flush uses two buffers, so modules keep submitting while a batch is being written. The destructor flushes whatever is still buffered on a clean shutdown; an agent crash loses the unflushed buffer and any batch whose transaction had not committed.
+`persistDifference()` does not write to SQLite directly. `PersistentQueue` buffers items in memory and a flush thread writes them to storage in one `BEGIN IMMEDIATE` transaction when 100 items are buffered or 500 ms have passed, whichever comes first (the defaults; the flush batch size and interval can be overridden per instance — FIM passes its `syscheck.sync_flush_batch_size` and `syscheck.sync_flush_interval_ms` internal options, defaults 100 and 500); a sync also flushes the buffer before it reads the queue. The flush uses two buffers, so modules keep submitting while a batch is being written. The destructor flushes whatever is still buffered on a clean shutdown; an agent crash loses the unflushed buffer and any batch whose transaction had not committed.
 
 ### Transaction-per-Event Performance (earlier design)
 
@@ -133,7 +133,12 @@ This represents only **~7% of total scan time** (4s / 57s ≈ 7%), demonstrating
 ```cpp
 PRAGMA synchronous = OFF;  // Never fsync(), not even at checkpoints
 PRAGMA journal_mode = WAL; // Write-Ahead Logging mode
+PRAGMA wal_autocheckpoint = <pages>; // only when the instance passes an override
 ```
+
+Only FIM passes a `wal_autocheckpoint` override (its `syscheck.sync_wal_autocheckpoint_pages`
+internal option, default 1000 pages, the same as SQLite's own default); every other instance
+keeps SQLite's default.
 
 ### Configuration Rationale
 

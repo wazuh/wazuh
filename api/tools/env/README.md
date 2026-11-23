@@ -67,6 +67,8 @@ docker run -d \
 --name wazuh-master \
 --hostname wazuh-master \
 -e NODE_NAME=wazuh-master \
+-e WAZUH_MANAGER_API_PASSWORD=WazuhApi.2026 \
+-e WAZUH_MANAGER_WUI_PASSWORD=WazuhWui.2026 \
 -p 55000:55000 \
 -v ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts \
 -v ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts \

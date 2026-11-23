@@ -157,6 +157,8 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 | `indexer.queue.size` | PULL | `main.cpp` (only when the indexer connector is enabled) |
 | `indexer.queue.usage.percent` | PULL | `main.cpp` (only when the indexer connector is enabled) |
 | `indexer.events.dropped` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `indexer.events.requeued` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `indexer.events.deduplicated` | PULL | `main.cpp` (only when the indexer connector is enabled) |
 | `router.queue.size` | PULL | `router/src/orchestrator.cpp` |
 | `router.queue.usage.percent` | PULL | `router/src/orchestrator.cpp` |
 | `router.queue.bytes.used` | PULL | `router/src/orchestrator.cpp` |
@@ -164,6 +166,7 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 | `router.events.processed` | COUNTER | `router/src/worker.cpp` |
 | `router.events.dropped` | COUNTER | `router/src/orchestrator.cpp` |
 | `router.events.malformed` | COUNTER | `router/src/worker.cpp` |
+| `router.events.id_failed` | COUNTER | `router/src/worker.cpp` |
 | `router.eps.1m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 60 s) |
 | `router.eps.5m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 300 s) |
 | `router.eps.30m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 1800 s) |

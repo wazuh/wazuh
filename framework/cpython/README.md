@@ -47,7 +47,7 @@ GHCR_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 | Variable        | Value          | Description |
 |-----------------|----------------|-------------|
 | `WAZUH_BRANCH`  | `<branch>`     | Branch to clone from GitHub inside the container instead of copying the local repository. When unset, the local repository is copied and left unmodified. |
-| `BUILD_CPYTHON` | `true/false`   | Builds CPython from the sources of the version in `framework/.python-version`, with the module setup in `custom/`. Default `false`. |
+| `BUILD_CPYTHON` | `true/false`   | Builds CPython from the release tarball of the `cpython` entry in `packages/externals/dependencies.json` (checked against its `upstream_sha256`; `deps.py check` keeps its version equal to `framework/.python-version`), with the module setup in `custom/`. Default `false`. |
 | `BUILD_DEPS`    | `true/false`   | Downloads the wheels in `framework/requirements.txt`. Default `false`; also done whenever `BUILD_CPYTHON=true`. |
 
 Example:

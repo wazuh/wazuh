@@ -18,6 +18,9 @@
 #include <memory>
 #include <optional>
 #include <atomic>
+#include <set>
+#include <string>
+#include <vector>
 
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
@@ -172,6 +175,41 @@ class EXPORTED Syscollector final
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
         bool isVDFirstSyncDone();
+
+        /// @brief Holds the VD lane back until it can be resent as a first scan.
+        ///
+        /// Called at start-up while the VD lane is disabled (os, packages or, on Windows, hotfixes
+        /// switched off). Without the lane the manager keeps no vulnerabilities for this agent --
+        /// the disabled-collectors cleanup deletes them -- so whenever the lane comes back, the
+        /// manager has to rebuild them through the first-scan chain, which indexes them without an
+        /// alert each. Records that the lane must be re-armed and clears vd_first_sync_completed.
+        void holdVDLaneForRearm();
+
+        /// @brief Resends the VD inventory as one first-scan session once the lane is back.
+        ///
+        /// Runs from runRecoveryProcess() while the lane is enabled and a re-arm is pending, and
+        /// only after a scan has completed in this run: like the identity resync, it requeues the
+        /// whole VD inventory (OS, packages and, on Windows, hotfixes) and sends it in a single
+        /// session while vd_first_sync_completed is unset, so that session goes out as VDFIRST.
+        void rearmVDLaneIfPending();
+
+        /// @brief The VD lane re-arm state persisted in table_metadata (VD_REARM_* values).
+        /// @return The stored state; VD_REARM_NONE when unset or unreadable.
+        int64_t vdLaneRearmState();
+
+        /**
+         * @brief Whether a change in @p table is reported on the stateless (alert) path.
+         * @details A table that has not completed a scan since it was (re)enabled has no baseline:
+         *          what its next scan inserts is the inventory being rebuilt, not a change, so it is
+         *          reported only when notify_first_scan asks for first-scan events.
+         */
+        bool tableHasNotifiableBaseline(const std::string& table) const;
+
+        /// @brief Loads, at the start of a scan, the tables that have no scan baseline yet.
+        void loadTablesWithoutBaseline();
+
+        /// @brief Records that @p tables completed a scan, so their next changes are reported.
+        void recordScanBaseline(const std::vector<std::string>& tables);
 
         /// @brief Body of deleteDatabase() without taking m_resourcesMutex.
         /// @note The caller must already hold m_resourcesMutex. Exists so callers that
@@ -559,6 +597,29 @@ class EXPORTED Syscollector final
         std::atomic<bool>                                                        m_stopping;
         bool                                                                     m_initialized;
         bool                                                                     m_notify;
+        /// @brief notify_first_scan as configured. m_notify carries it only until the first scan
+        /// ends; the per-table baseline gate needs it for every later scan.
+        bool                                                                     m_notifyOnFirstScan {false};
+        /// @brief Tables with no scan baseline, loaded at the start of each scan and trimmed only
+        /// between scan tasks. Read from DBSync's dispatch threads while a task's transaction is
+        /// open, which is why it is never modified while one is: each task's transaction is
+        /// destroyed, and its dispatch drained, before the task returns.
+        std::set<std::string>                                                    m_tablesWithoutBaseline;
+        /// @brief Set once a scan completes in this run with the VD lane enabled: the re-arm waits
+        /// for it, so the first-scan session it sends carries the inventory that scan rebuilt.
+        std::atomic<bool>                                                        m_vdLaneScanCompleted {false};
+        /// @brief Set once the re-arm has requeued the VD inventory in this run: from then on the
+        /// lane is no longer held. Not persisted, so a run that ends before the first scan landed
+        /// leaves the re-arm pending and the next run requeues the inventory again.
+        std::atomic<bool>                                                        m_vdRearmRequeued {false};
+        /// @brief Set by notifyChange() when DBSync reports a row it could not write during the
+        /// running scan task, so that task's tables are not given a baseline. Written from DBSync's
+        /// dispatch threads, read and reset by the scan thread between tasks.
+        std::atomic<bool>                                                        m_scanTaskDbError {false};
+        /// @brief Serializes updateMetadataValue(): it rewrites the whole table_metadata from a
+        /// snapshot, and the scan and sync threads both call it, so two concurrent writers could
+        /// drop each other's key. A leaf lock: nothing that takes another lock runs while it is held.
+        std::mutex                                                               m_metadataMutex;
         std::atomic<bool>                                                        m_paused;
         std::atomic<bool>                                                        m_scanning;
         std::atomic<bool>                                                        m_syncing;

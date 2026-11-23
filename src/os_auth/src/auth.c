@@ -787,13 +787,10 @@ w_err_t w_auth_parse_data(const char* buf,
 w_err_t w_auth_check_replace_agent(keyentry *key,
                                    const char *key_hash,
                                    authd_force_options_t *force_options,
+                                   const w_auth_holder_info_t *info,
                                    char** str_result,
                                    bool *warn) {
 
-    cJSON *j_agent_info = NULL;
-    cJSON *j_date_add = NULL;
-    cJSON *j_disconnection_time = NULL;
-    cJSON *j_connection_status = NULL;
     bool replace_agent = true;
     char message[OS_SIZE_128] = {0};
 
@@ -808,15 +805,9 @@ w_err_t w_auth_check_replace_agent(keyentry *key,
         return OS_INVALID;
     }
 
-    j_agent_info = wdb_get_agent_info(atoi(key->id), NULL);
-    if (j_agent_info) {
-        j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
-        j_disconnection_time = cJSON_GetObjectItem(j_agent_info->child, "disconnection_time");
-        j_date_add = cJSON_GetObjectItem(j_agent_info->child, "date_add");
-    }
-
-    if (!j_agent_info || !j_connection_status || !j_disconnection_time || !j_date_add) {
-        cJSON_Delete(j_agent_info);
+    /* The row was read by the caller, with the keystore lock released: this function runs under it and
+     * must not wait on wazuh-db. */
+    if (!info || !info->readable) {
         snprintf(message, OS_SIZE_128, "Failed to get agent-info for agent '%s'", key->id);
         os_strdup(message, *str_result);
         return OS_INVALID;
@@ -824,12 +815,12 @@ w_err_t w_auth_check_replace_agent(keyentry *key,
 
     /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
     if (force_options->disconnected_time_enabled) {
-        if (strcmp(j_connection_status->valuestring, AGENT_CS_NEVER_CONNECTED)) {
-            time_t time_since_disconnected = difftime(time(NULL), j_disconnection_time->valueint);
+        if (strcmp(info->connection_status, AGENT_CS_NEVER_CONNECTED)) {
+            time_t time_since_disconnected = difftime(time(NULL), info->disconnection_time);
             /* The status is the verdict, the timestamp only measures it: a disconnection_time left behind
              * by a write that set the agent active without clearing it must not make a live agent
              * replaceable. */
-            if (strcmp(j_connection_status->valuestring, AGENT_CS_DISCONNECTED) || j_disconnection_time->valueint == 0) {
+            if (strcmp(info->connection_status, AGENT_CS_DISCONNECTED) || info->disconnection_time == 0) {
                 snprintf(message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", key->id);
                 os_strdup(message, *str_result);
                 replace_agent = false;
@@ -846,7 +837,7 @@ w_err_t w_auth_check_replace_agent(keyentry *key,
 
     /* Check if the agent is old enough to be removed */
     if (replace_agent && force_options->after_registration_time > 0) {
-        time_t agent_registration_time = difftime(time(NULL), j_date_add->valueint);
+        time_t agent_registration_time = difftime(time(NULL), info->date_add);
         if (agent_registration_time < force_options->after_registration_time) {
             snprintf(message, OS_SIZE_128, "Agent '%s' doesn't comply with the registration time to be removed.", key->id);
             os_strdup(message, *str_result);
@@ -864,8 +855,6 @@ w_err_t w_auth_check_replace_agent(keyentry *key,
             replace_agent = false;
         }
     }
-
-    cJSON_Delete(j_agent_info);
 
     /* The verdict only: nothing is removed here. */
     if (replace_agent) {
@@ -897,12 +886,168 @@ void w_auth_remove_replaced_agent(keyentry *key) {
     OS_DeleteKey(&keys, key->id, 0);
 }
 
+/* How many agents have been added with an id chosen by the caller. Guarded by mutex_keys.
+ *
+ * An id authd assigns is never assigned again, but a chosen one may be: once its previous owner has been
+ * deleted and purged, an insertion can bring it back. A row read for "agent 005" therefore only describes
+ * the agent that holds 005 now if no such insertion happened since the row was asked for. */
+static unsigned long long id_reuse_epoch = 0;
+
+void w_auth_id_reuse_note(void) {
+    id_reuse_epoch++;
+}
+
+static const w_auth_holder_info_t *holders_row_of(const w_auth_holders_t *holders, const char *id) {
+    for (int role = 0; role < 2; role++) {
+        if (holders->row[role].id[0] != '\0' && strcmp(holders->row[role].id, id) == 0) {
+            return &holders->row[role];
+        }
+    }
+    return NULL;
+}
+
+/* Keeps, for each role, the row that was read for the agent holding it on THIS pass, and drops the rest:
+ * the holders are looked up again every time the lock is taken, and may no longer be the agents the rows
+ * were read for. */
+static void holders_arrange(w_auth_holders_t *holders, const keyentry *ip_holder, const keyentry *name_holder) {
+    w_auth_holder_info_t arranged[2];
+    const w_auth_holder_info_t *row;
+
+    memset(arranged, 0, sizeof(arranged));
+
+    if (ip_holder && (row = holders_row_of(holders, ip_holder->id), row)) {
+        arranged[W_AUTH_HOLDER_IP] = *row;
+    }
+    if (name_holder && (row = holders_row_of(holders, name_holder->id), row)) {
+        arranged[W_AUTH_HOLDER_NAME] = *row;
+    }
+
+    memcpy(holders->row, arranged, sizeof(arranged));
+}
+
+static void holders_want(w_auth_holders_t *holders, int role, const char *id) {
+    snprintf(holders->wanted, sizeof(holders->wanted), "%s", id);
+    holders->wanted_role = role;
+    holders->epoch = id_reuse_epoch;
+}
+
+w_auth_judge_t w_auth_judge_holders(const char *ip,
+                                    const char *name,
+                                    const char *key_hash,
+                                    authd_force_options_t *force_options,
+                                    w_auth_holders_t *holders,
+                                    keyentry **ip_holder,
+                                    keyentry **name_holder,
+                                    char **ip_result,
+                                    char **name_result,
+                                    bool *warn) {
+    keyentry *ip_key = NULL;
+    keyentry *name_key = NULL;
+    int index;
+
+    *ip_holder = NULL;
+    *name_holder = NULL;
+    holders->wanted[0] = '\0';
+
+    /* An id changed hands since the rows were asked for: none of them can be trusted to describe the
+     * agent that holds its id now. */
+    if (holders->epoch != id_reuse_epoch) {
+        memset(holders->row, 0, sizeof(holders->row));
+    }
+
+    if (ip && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
+        ip_key = keys.keyentries[index];
+    }
+
+    /* The IP holder may be the name holder too; it is judged once, as the IP holder. */
+    if ((index = OS_IsAllowedName(&keys, name), index >= 0) && keys.keyentries[index] != ip_key) {
+        name_key = keys.keyentries[index];
+    }
+
+    holders_arrange(holders, ip_key, name_key);
+
+    /* The IP holder first. While its row is missing nothing is decided and the name holder's row is not
+     * even asked for: a refusal on the IP must not wait for a second round trip it does not need. A
+     * disabled force refuses without a row, so it never asks for one. */
+    if (ip_key) {
+        const w_auth_holder_info_t *info = holders->row[W_AUTH_HOLDER_IP].id[0] != '\0' ? &holders->row[W_AUTH_HOLDER_IP] : NULL;
+
+        if (force_options->enabled && !info) {
+            holders_want(holders, W_AUTH_HOLDER_IP, ip_key->id);
+            return W_AUTH_NEED_ROW;
+        }
+        if (OS_SUCCESS != w_auth_check_replace_agent(ip_key, key_hash, force_options, info, ip_result, warn)) {
+            return W_AUTH_REFUSE_IP;
+        }
+    }
+
+    if (name_key) {
+        const w_auth_holder_info_t *info = holders->row[W_AUTH_HOLDER_NAME].id[0] != '\0' ? &holders->row[W_AUTH_HOLDER_NAME] : NULL;
+
+        if (force_options->enabled && !info) {
+            /* No verdict is handed back half-given: the IP one is repeated on the next pass. */
+            os_free(*ip_result);
+            holders_want(holders, W_AUTH_HOLDER_NAME, name_key->id);
+            return W_AUTH_NEED_ROW;
+        }
+        if (OS_SUCCESS != w_auth_check_replace_agent(name_key, key_hash, force_options, info, name_result, warn)) {
+            return W_AUTH_REFUSE_NAME;
+        }
+    }
+
+    *ip_holder = ip_key;
+    *name_holder = name_key;
+    return W_AUTH_ADMIT;
+}
+
+bool w_auth_holders_exhausted(const w_auth_holders_t *holders) {
+    return holders->wanted[0] != '\0' && holders->read_once[holders->wanted_role] &&
+           holders->retries >= AUTH_HOLDER_RETRIES;
+}
+
+void w_auth_holders_read(w_auth_holders_t *holders) {
+    w_auth_holder_info_t *info;
+    cJSON *j_agent_info;
+
+    if (holders->wanted[0] == '\0') {
+        return;
+    }
+
+    /* The first row of each role is the read every duplicate needs. Any other one is there because the
+     * holder changed while its row was being read, and those are counted for the request as a whole. */
+    if (holders->read_once[holders->wanted_role]) {
+        holders->retries++;
+    } else {
+        holders->read_once[holders->wanted_role] = true;
+    }
+
+    info = &holders->row[holders->wanted_role];
+    memset(info, 0, sizeof(*info));
+    snprintf(info->id, sizeof(info->id), "%s", holders->wanted);
+    holders->wanted[0] = '\0';
+
+    j_agent_info = wdb_get_agent_info(atoi(info->id), NULL);
+    if (j_agent_info) {
+        const cJSON *j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+        const cJSON *j_disconnection_time = cJSON_GetObjectItem(j_agent_info->child, "disconnection_time");
+        const cJSON *j_date_add = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+
+        if (cJSON_IsString(j_connection_status) && j_connection_status->valuestring && j_disconnection_time && j_date_add) {
+            snprintf(info->connection_status, sizeof(info->connection_status), "%s", j_connection_status->valuestring);
+            info->disconnection_time = j_disconnection_time->valueint;
+            info->date_add = j_date_add->valueint;
+            info->readable = true;
+        }
+        cJSON_Delete(j_agent_info);
+    }
+}
+
 w_err_t w_auth_validate_data(char *response,
                              const char *ip,
                              const char *agentname,
                              const char *groups,
-                             const char *key_hash) {
-    int index = 0;
+                             const char *key_hash,
+                             w_auth_holders_t *holders) {
     char *ip_result = NULL;
     char *name_result = NULL;
     keyentry *ip_holder = NULL;
@@ -922,30 +1067,50 @@ w_err_t w_auth_validate_data(char *response,
         result = w_auth_validate_groups(groups, response);
     }
 
-    /* Check for duplicate IP */
-    if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
-        ip_holder = keys.keyentries[index];
-        if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, &config.force_options, &ip_result, &warn)) {
+    if (result != OS_INVALID) {
+        result = OS_SUCCESS;
+
+        switch (w_auth_judge_holders(ip, agentname, key_hash, &config.force_options, holders, &ip_holder, &name_holder,
+                                     &ip_result, &name_result, &warn)) {
+        case W_AUTH_ADMIT:
+            break;
+
+        case W_AUTH_REFUSE_IP:
             /* Throttled: an agent retrying a refused enrollment repeats it at its own rate. */
             w_auth_log_client_rejection(!warn, "Duplicate IP '%s', rejecting enrollment. %s", ip, ip_result);
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
             result = OS_INVALID;
-        }
-    }
+            break;
 
-    /* Check for duplicate name. The IP holder may be this same agent; it has been judged already. */
-    if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index >= 0)
-        && keys.keyentries[index] != ip_holder) {
-        name_holder = keys.keyentries[index];
-        if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, &config.force_options, &name_result, &warn)) {
+        case W_AUTH_REFUSE_NAME:
             w_auth_log_client_rejection(!warn, "Duplicate name '%s', rejecting enrollment. %s", agentname, name_result);
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
             result = OS_INVALID;
+            break;
+
+        case W_AUTH_NEED_ROW:
+            /* The holder's row is read with the lock released, which only the caller can do. Unless the
+             * holder kept changing under every read: then the request is refused here, while the lock
+             * is still held, like any other duplicate. */
+            if (!w_auth_holders_exhausted(holders)) {
+                result = OS_NOTFOUND;
+            } else if (holders->wanted_role == W_AUTH_HOLDER_IP) {
+                w_auth_log_client_rejection(true, "Duplicate IP '%s', rejecting enrollment. "
+                                            "The agent holding it could not be confirmed while it was being checked.", ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
+                result = OS_INVALID;
+            } else {
+                w_auth_log_client_rejection(true, "Duplicate name '%s', rejecting enrollment. "
+                                            "The agent holding it could not be confirmed while it was being checked.", agentname);
+                snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
+                result = OS_INVALID;
+            }
+            break;
         }
     }
 
-    /* Admitted: only now are the replaced agents removed. */
-    if (result != OS_INVALID) {
+    /* Admitted, and only then: the replaced agents are removed. */
+    if (result == OS_SUCCESS) {
         if (ip_holder) {
             minfo("Duplicate IP '%s'. %s", ip, ip_result);
             w_auth_remove_replaced_agent(ip_holder);
@@ -1710,17 +1875,10 @@ void purge_last_id_update(int id_counter) {
 /**
  * @brief Load the journal a previous run left behind.
  *
- * Called from main() before the threads start, so nothing contends for it. Two rules that are not
- * obvious:
- *
- *   - A backward clock jump (now earlier than the file's own last_update) makes every stored
- *     timestamp untrustworthy, so they are all re-stamped to now: better to make a purge wait its
- *     full delay again than to run one whose delay never actually elapsed.
- *   - ENTRIES WITHOUT A SEQUENCE ARE NUMBERED BY POSITION, not handed the next value from
- *     last_seq. Position is deterministic across a crash during the conversion; a running counter
- *     is not, and re-assigning different sequences would derive different task ids and produce
- *     duplicate rows for one deletion -- breaking "a collision means already recorded" on precisely
- *     the path that story exists for.
+ * Called from main() before the threads start, so nothing contends for it. One rule that is not
+ * obvious: a backward clock jump (now earlier than the file's own last_update) makes every stored
+ * timestamp untrustworthy, so they are all re-stamped to now: better to make a purge wait its full
+ * delay again than to run one whose delay never actually elapsed.
  */
 void purge_file_load(void) {
     FILE *fp = wfopen(PENDING_PURGES_FILE, "r");
@@ -1729,8 +1887,6 @@ void purge_file_load(void) {
     time_t last_update = 0;
     bool clock_went_back = false;
     unsigned int loaded = 0;
-    unsigned int converted = 0;
-    long long position = 0;
 
     if (!fp) {
         if (errno != ENOENT) {
@@ -1784,20 +1940,13 @@ void purge_file_load(void) {
             continue;
         }
 
-        position++;
-
         fields = sscanf(line, "%31s %31s %ld %lld", label, id, &stamp, &seq);
 
-        if (fields < 3 || !OS_IsValidID(id)) {
+        // Every entry carries its sequence: the task id is derived from it, so an entry without one
+        // could not be reconciled without risking a duplicate row for one deletion.
+        if (fields != 4 || !OS_IsValidID(id)) {
             mwarn("Ignoring a malformed entry in '%s'.", PENDING_PURGES_FILE);
             continue;
-        }
-
-        if (fields == 3) {
-            // A file written by a release that had no sequences. By POSITION, deliberately -- see
-            // the note above.
-            seq = position;
-            converted++;
         }
 
         purge_node_t *node;
@@ -1821,11 +1970,6 @@ void purge_file_load(void) {
     if (clock_went_back) {
         mwarn("The system clock is earlier than the last update of '%s'; the %u recovered deletion(s) "
               "were re-stamped so each one waits its full delay again.", PENDING_PURGES_FILE, loaded);
-    }
-
-    if (converted > 0) {
-        minfo("Converted %u deletion(s) from the previous file format in '%s'; they were numbered by "
-              "position.", converted, PENDING_PURGES_FILE);
     }
 
     /* The id counter never goes backwards. OS_ReadKeys() rebuilt it from client.keys, which no

@@ -26,8 +26,12 @@ with a warning; anything else unknown is still fatal.
 `mconf-config.c` wraps `shared_modules/manager_config` (pugixml + JSON Schema): `w_mconf_load()` parses and validates
 the XML (without the certificate-file checks; `w_mconf_validate()`, behind each daemon's `-t`, runs them), fills the
 schema defaults and keeps the loaded document, one per process; `w_mconf_section("remote")` returns a new cJSON copy of
-one section (the caller deletes it). The daemons hand that section to the JSON readers below. An invalid file is
-logged as `(1244): Invalid configuration at '<file>': <pointer>: <reason>.`. Inside libwazuh,
+one section (the caller deletes it). The daemons hand that section to the JSON readers below, which read its
+values with `w_mconf_json_bool()`, `w_mconf_json_time()` and `w_mconf_json_size()` (an integer, or a string through
+`w_parse_time()`/`w_parse_size()`; `-1` when neither) and report a value they still refuse with
+`w_mconf_json_invalid()` (`XML_VALUEERR`). An invalid file is
+logged as `(1244): Invalid configuration at '<file>': <pointer>: <reason>.` (a missing one as `(1244)` too, with
+`configuration file not found: <path>` as the reason: only `wazuh-manager-conf` prints `(1239)`). Inside libwazuh,
 `cluster_utils.c` and `debug_op.c` read `cluster` and `logging` through `w_mconf_hook_section()`
 (`src/shared/src/mconf_hook.c`): `mconf-config.c` registers its own loader as that provider (a constructor). The
 engine (`wazuh-manager-analysisd`) does not link this library nor libwazuh: it reads the same file through
@@ -38,7 +42,7 @@ engine (`wazuh-manager-analysisd`) does not link this library nor libwazuh: it r
 | Section | Reader | Output | Consumers |
 |---|---|---|---|
 | `global` | `Read_Global_JSON` (`src/global-config.c`) | `_Config` | remoted (also read by the task manager's disconnection sweep) |
-| `remote` | `Read_Remote_JSON` (`src/remote-config.c`) | `remoted` | remoted (`legacy`, `https`, `agents`); the task manager reads `legacy.enabled` and `https.verification_mode` for its upgrade delivery gates; authd reads `legacy.enabled` as the value of an unset `auth.legacy_enrollment` (`w_authd_resolve_legacy_enrollment()`) and, in `src/os_auth/src/enrollment_token_mint.c`, `https.port` and `https.global_prefix` for the enrollment tokens it mints |
+| `remote` | `Read_Remote_JSON` (`src/remote-config.c`) | `remoted` | remoted (`legacy`, `https`, `agents`); the task manager reads `legacy.enabled` and `https.verification_mode` for its upgrade delivery gates; authd reads `legacy.enabled` as the value of an unset `auth.legacy_enrollment` (`w_authd_resolve_legacy_enrollment()`) and, in `src/os_auth/src/enrollment_token_mint.c`, `https.port`, `https.global_prefix`, `https.certificate` (the listener certificate whose SAN must name the token's address) and `https.ca_certificate` (the CA the token pins) for the enrollment tokens it mints |
 | `auth` | `Read_Authd_JSON` (`src/authd-config.c`) | `authd_config_t` | authd, remoted's enrollment bridge |
 | `wdb` | `Read_WazuhDB_JSON` (`src/wazuh_db-config.c`) | `wconfig` (`src/shared/src/wazuhdb_op.c`) | wazuh-db |
 | `indexer` | `Read_Indexer_JSON` (`src/indexer-config.c`) | `indexer_config` (cJSON global) | modulesd (vulnerability scanner, inventory sync...) |

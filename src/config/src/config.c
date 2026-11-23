@@ -476,6 +476,14 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     /* Clear node and xml */
     OS_ClearNode(node);
     OS_ClearXML(&xml);
+
+    /* A legacy <client> names its manager only once the whole file is read, so an
+     * <agent><manager> anywhere in it wins, whatever the order of the blocks. */
+    if ((modules & CCLIENT) && !(modules & CAGENT_CONFIG) && Settle_Legacy_Client(d1) < 0) {
+        PrintErrorAcordingToModules(modules, cfgfile);
+        return (OS_INVALID);
+    }
+
     return (0);
 }
 

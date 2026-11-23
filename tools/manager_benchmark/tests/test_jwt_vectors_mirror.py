@@ -6,7 +6,7 @@
 
 """The simulator's JWT vectors are a mirror of the C++ ones.
 
-src/shared_modules/utils/jwt/testVectors.hpp is asserted by the utils unit tests;
+src/shared_modules/utils/jwt/testVectors.hpp is asserted by the remoted_module and agent https_client unit tests;
 tool_simulator/internal/wire/testdata/jwt_vectors.json is what the Go simulator's tests read. Nothing
 else compares the two, so this suite parses both and fails on any difference -- including a constant
 added to the header that the JSON (or the mapping below) does not carry.

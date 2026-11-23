@@ -14,7 +14,7 @@ list(APPEND active-response_flags " ")
 # defensive default if that top-level condition ever changes.
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND active-response_names "test_block_ip_macos")
-    list(APPEND active-response_flags "-Wl,--wrap,access -Wl,--wrap,get_binary_path -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,getpid -Wl,--wrap,setup_and_check_message -Wl,--wrap,get_srcip_from_json -Wl,--wrap,send_keys_and_check_message")
+    list(APPEND active-response_flags "-Wl,--wrap,access -Wl,--wrap,get_binary_path -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,getpid -Wl,--wrap,setup_and_check_message -Wl,--wrap,get_srcip_from_json -Wl,--wrap,send_keys_and_check_message -Wl,--wrap,wfopen -Wl,--wrap,OS_MoveFile -Wl,--wrap,acquire_ar_lock -Wl,--wrap,release_ar_lock")
 endif()
 
 list(LENGTH active-response_names count)

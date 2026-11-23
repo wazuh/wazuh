@@ -99,18 +99,12 @@ void test_execute_firewall_chain_success_after_earlier_failures(void **state) {
     assert_int_equal(not_reached_calls, 0);
 }
 
-/* Reproduces wazuh/wazuh#39192's stock-macOS-install scenario through the
- * exact 3-method chain block-ip-macos.c's main() now builds (pf -> hostsdeny
- * -> route), instead of the hand-rolled 2-step fallback it used before this
- * fix: pf declines (disabled by default), hosts.deny declines (missing by
- * default), and route -- which needs no prior configuration -- succeeds.
+/* Stock macOS install through the chain block-ip-macos.c's main() builds
+ * (pf -> route): pf declines (disabled by default) and route, which needs no
+ * prior configuration, succeeds.
  */
 static firewall_result_t stub_pf_invalid_state(const char *srcip, int action, int ip_version, const char *argv0) {
     return FIREWALL_INVALID_STATE;
-}
-
-static firewall_result_t stub_hostsdeny_not_available(const char *srcip, int action, int ip_version, const char *argv0) {
-    return FIREWALL_NOT_AVAILABLE;
 }
 
 static firewall_result_t stub_route_success(const char *srcip, int action, int ip_version, const char *argv0) {
@@ -120,7 +114,6 @@ static firewall_result_t stub_route_success(const char *srcip, int action, int i
 void test_execute_firewall_chain_macos_stock_install_falls_back_to_route(void **state) {
     const firewall_method_t methods[] = {
         {"pf", stub_pf_invalid_state, false},
-        {"hostsdeny", stub_hostsdeny_not_available, false},
         {"route", stub_route_success, false},
         {NULL, NULL, false}
     };

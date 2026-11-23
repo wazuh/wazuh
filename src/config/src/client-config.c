@@ -13,6 +13,8 @@
 #include "os_net.h"
 #include "config.h"
 #include "sec.h"
+#include "agent-manager-entry.h"
+#include "legacy-server-targets.h"
 
 /* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
  * shared/src/url.c links the same library -- so this adds no new one. */
@@ -28,15 +30,6 @@
 #include <net/if.h>
 #endif
 
-/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
- * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
- * that passed validation here. */
-#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
-
-/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
- * 256) for the same reason. */
-#define AGENT_SERVER_HOST_MAX_LEN 255
-
 int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
                            bool *port_present, char *endpoint, size_t endpoint_size,
                            uint32_t *scope_id);
@@ -45,7 +38,6 @@ int Read_Agent_Manager(XML_NODE node, agent *logr);
 int Read_Agent_SSL(XML_NODE node, agent *logr);
 int Read_Agent_Batch(XML_NODE node, agent *logr);
 int Read_Agent_Report(XML_NODE node, agent_report *report);
-int Read_Agent_Enrollment(XML_NODE node, agent *logr);
 
 /**
  * @brief Read the <agent> block, the 5.x name of what 4.x spelled <client> (#38103).
@@ -238,16 +230,17 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         // Add extra server (legacy configuration)
         if (rip) {
             os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
+            // os_realloc() does not zero new memory: the new entry and the NULL-rip sentinel
+            // after it start empty, so no field is left to whatever the allocator returned
+            // (an unset scope_id was appended to an IPv6 host as its zone).
+            memset(logr->server + logr->server_count, 0, 2 * sizeof(agent_server));
             os_strdup(rip, logr->server[logr->server_count].rip);
-            logr->server[logr->server_count].port = 0;
-            // os_realloc() does not zero new memory; this old <server-ip>/<server-hostname>
-            // syntax never had an <endpoint> concept, so default it the same way a WPK-upgraded
-            // 4.x <client><server> config does (see Read_Legacy_Client()).
+            // This old <server-ip>/<server-hostname> syntax never had an <endpoint> concept,
+            // so default it the same way a WPK-upgraded 4.x <client><server> config does.
             os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[logr->server_count].endpoint);
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
             logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
-            memset(logr->server + logr->server_count + 1, 0, sizeof(agent_server));
             logr->server_count++;
         }
     }
@@ -259,204 +252,6 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             logr->server[i].port = DEFAULT_HTTPS_REMOTE_PORT;
         }
     }
-    return (0);
-}
-
-/* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
-static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
-    "config-profile", "notify_time", "auto_restart", "disable-active-response", NULL
-};
-
-/**
- * @brief Report a <client> child that is read from neither <server> nor <enrollment>.
- *
- * A warning rather than info: on an upgraded agent this is a setting that used to apply
- * and silently stopped. The message never advises renaming the block, because <server>
- * and a bare <port> are rejected under <agent> - that advice would leave a configuration
- * that no longer starts.
- */
-static void w_warn_legacy_client_option(const char *option)
-{
-    for (int i = 0; LEGACY_CLIENT_MOVED_OPTIONS[i]; i++) {
-        if (strcmp(option, LEGACY_CLIENT_MOVED_OPTIONS[i]) == 0) {
-            mwarn("<%s> inside the legacy <client> block is ignored. Configure it under <agent>.", option);
-            return;
-        }
-    }
-
-    mwarn("<%s> inside the legacy <client> block is ignored: only <server> and <enrollment> "
-          "are read from it.", option);
-}
-
-/**
- * @brief Read the two things still wanted from a 4.x <client> block: the manager
- *        address under <server>, and the whole <enrollment> sub-block.
- *
- * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
- * only has <client>. The address is taken when <agent> did not already provide one - so
- * <agent> wins whichever block comes first - and <enrollment> is read because it carries
- * the agent's identity, which has no 5.x replacement inside the legacy block: dropping it
- * makes the agent re-register under its hostname with no groups. Every other direct child
- * is ignored, and says so, since the block is 4.x's and its options are not. <server>'s
- * own children stay silent: neither <port> nor <protocol> is read, and the message printed
- * for the address already names the port in use and a copy-pasteable replacement for the
- * whole block.
- *
- * Repeated addresses resolve the same way as under <agent>: the last one prevails
- */
-int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
-{
-    const char *xml_client_server = "server";
-    const char *xml_client_addr = "address";
-    const char *xml_client_endpoint = "endpoint";
-    const char *xml_client_enrollment = "enrollment";
-    char * address = NULL;
-    char * endpoint_value = NULL;
-
-    agent * logr = (agent *)d1;
-
-    /* Captured once rather than returned on, so the block is still walked for its
-     * <enrollment> child. <server> is then skipped whole instead of parsed and
-     * discarded, so a malformed legacy <endpoint> cannot fail a configuration that
-     * is not using it. */
-    const bool address_taken = (logr->server != NULL);
-
-    for (int i = 0; node[i]; i++) {
-        XML_NODE chld_node = NULL;
-
-        if (!node[i]->element) {
-            continue;
-        }
-
-        if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
-            /* Skipped, rather than merged, once <agent> supplied this block: the two
-             * are one block under two names, and an identity assembled from both is
-             * not one an operator wrote. A legacy block listed first still stands for
-             * whatever an <agent> one below it leaves unset, the same way repeated
-             * <agent><enrollment> blocks resolve. */
-            if (logr->enrollment.set_under_agent) {
-                mwarn("<enrollment> inside the legacy <client> block is ignored: <agent> "
-                      "already supplies it. Keep the identity in one of the two blocks.");
-                continue;
-            }
-
-            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Agent_Enrollment(chld_node, logr) < 0) {
-                    OS_ClearNode(chld_node);
-                    os_free(address);
-                    os_free(endpoint_value);
-                    return (OS_INVALID);
-                }
-
-                OS_ClearNode(chld_node);
-            }
-
-            continue;
-        }
-
-        if (strcmp(node[i]->element, xml_client_server) != 0) {
-            w_warn_legacy_client_option(node[i]->element);
-            continue;
-        }
-
-        if (address_taken) {
-            continue;
-        }
-
-        if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-            continue;
-        }
-
-        for (int j = 0; chld_node[j]; j++) {
-            if (!chld_node[j]->element || !chld_node[j]->content) {
-                continue;
-            }
-
-            if (strcmp(chld_node[j]->element, xml_client_addr) == 0) {
-                os_free(address);
-                os_strdup(chld_node[j]->content, address);
-            } else if (strcmp(chld_node[j]->element, xml_client_endpoint) == 0) {
-                /* The MSI reconfigures a preserved 4.x file in place and, having no
-                 * <agent> block to target, writes the endpoint into this <server> one.
-                 * Reading only <address> here left that agent with no manager at all. */
-                os_free(endpoint_value);
-                os_strdup(chld_node[j]->content, endpoint_value);
-            }
-        }
-
-        OS_ClearNode(chld_node);
-    }
-
-    /* An <endpoint> written here by the installer carries the whole target, so it wins
-     * and is parsed exactly as one under <agent><manager> would be. */
-    if (endpoint_value) {
-        char host[AGENT_SERVER_HOST_MAX_LEN + 1] = {'\0'};
-        char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
-        uint32_t scope_id = 0;
-        int port = DEFAULT_HTTPS_REMOTE_PORT;
-        bool port_present = false;
-
-        if (w_parse_agent_endpoint(endpoint_value, host, sizeof(host), &port, &port_present,
-                                   endpoint, sizeof(endpoint), &scope_id) == OS_INVALID) {
-            os_free(address);
-            os_free(endpoint_value);
-            return (OS_INVALID);
-        }
-
-        os_free(address);
-        os_free(endpoint_value);
-
-        os_calloc(2, sizeof(agent_server), logr->server);
-        os_strdup(host, logr->server[0].rip);
-
-        if (strchr(logr->server[0].rip, ':') != NULL) {
-            os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-            OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-        }
-
-        if (endpoint[0] != '\0') {
-            os_strdup(endpoint, logr->server[0].endpoint);
-        }
-
-        logr->server[0].scope_id = scope_id;
-        logr->server[0].port = port;
-        logr->server_count = 1;
-
-        return (0);
-    }
-
-    if (!address) {
-        return (0);
-    }
-
-    os_calloc(2, sizeof(agent_server), logr->server);
-    logr->server[0].rip = address;
-    if (strchr(logr->server[0].rip, ':') != NULL) {
-        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-    }
-    logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
-    /* 4.x had no <endpoint> concept at all -- any <port> under this legacy
-     * <client><server> block was never read either (see this function's own
-     * docstring), so a WPK-upgraded agent always reconnects on the 5.x HTTPS
-     * port with the manager's default reverse-proxy prefix, never the old
-     * 4.x port or unprefixed requests. */
-    os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[0].endpoint);
-    logr->server_count = 1;
-
-    /* A 4.x file has no <endpoint> at all, so say exactly what to write -- this is the
-     * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
-     * whole point. The composed value is the one now in use, so pasting it changes
-     * nothing about where the agent connects. */
-    minfo("<agent><manager><endpoint> is not configured. Using <client><server><address> '%s' "
-          "with the default port %d and the default endpoint prefix '%s'. Replace the "
-          "<client><server> block with a single <endpoint>%s%s%s:%d/%s</endpoint>",
-          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX,
-          (strchr(logr->server[0].rip, ':') != NULL) ? "[" : "",
-          logr->server[0].rip,
-          (strchr(logr->server[0].rip, ':') != NULL) ? "]" : "",
-          DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
-
     return (0);
 }
 
@@ -987,26 +782,10 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
 
 
     /* Single <manager> block: the last one prevails (#37702 restriction 2) and
-     * server rotation is removed (restriction 3), so replace any previous entry
-     * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
-    if (logr->server) {
-        if (logr->server_count > 0) {
-            mwarn("Only one <manager> block is supported; the last one prevails.");
-        }
-        for (int k = 0; logr->server[k].rip; k++) {
-            os_free(logr->server[k].rip);
-            os_free(logr->server[k].endpoint);
-        }
-        os_free(logr->server);
-        logr->server = NULL;
-        logr->server_count = 0;
-    }
-
-    os_calloc(2, sizeof(agent_server), logr->server);
-    os_strdup(rip, logr->server[0].rip);
-    if (strchr(logr->server[0].rip, ':') != NULL) {
-        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+     * server rotation is removed (restriction 3), so the entry is replaced, not
+     * appended to. */
+    if (logr->server && logr->server_count > 0) {
+        mwarn("Only one <manager> block is supported; the last one prevails.");
     }
 
     /* <endpoint> absent entirely: default to the manager's own default prefix so an
@@ -1018,11 +797,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         snprintf(endpoint, sizeof(endpoint), "%s", DEFAULT_AGENT_ENDPOINT_PREFIX);
     }
 
-    if (endpoint[0] != '\0') {
-        os_strdup(endpoint, logr->server[0].endpoint);
-    }
-    logr->server[0].scope_id = scope_id;
-    logr->server[0].port = port;
+    w_agent_set_manager(logr, rip, port, endpoint, scope_id);
 
     /* #38624: <address>/<port> still work, but tell the operator exactly what to write
      * instead. The suggestion is built from the values just resolved -- not from the
@@ -1030,20 +805,17 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
      * the line back cannot change where the agent connects. INFO rather than WARNING:
      * nothing is wrong, the configuration is simply written in the older spelling. */
     if (legacy_tags_used) {
-        /* The trailing '/' is always emitted: with a prefix it separates it, and with
-         * none it is the opt-out spelling -- so an <endpoint></endpoint> opt-out is
-         * suggested back as "host:port/" and keeps meaning the same thing. An IPv6
+        /* Named as an <endpoint> spells it, so an <endpoint></endpoint> opt-out is
+         * suggested back as "host:port/" and keeps meaning the same thing, and an IPv6
          * literal is bracketed, or its trailing group would read as the port. */
-        const bool is_ipv6 = strchr(logr->server[0].rip, ':') != NULL;
+        char *name = w_agent_manager_name(&logr->server[0]);
 
         minfo("<agent><manager><address> and <port> are deprecated. Replace them with a "
-              "single <endpoint>%s%s%s:%d/%s</endpoint>",
-              is_ipv6 ? "[" : "", logr->server[0].rip, is_ipv6 ? "]" : "",
-              port, endpoint);
+              "single <endpoint>%s</endpoint>", name);
+        os_free(name);
     }
     logr->server[0].max_retries = max_retries;
     logr->server[0].retry_interval = retry_interval;
-    logr->server_count = 1;
 
     /* Names <endpoint>, not the <port> tag: since #38624 the port is a component of
      * <endpoint>, so pointing the operator at a <port> element sends them looking for
@@ -1597,16 +1369,7 @@ int Test_Agent(const char * path){
 
 void Free_Agent(agent * config){
     if (config) {
-        int i;
-
-        if (config->server) {
-            for (i = 0; config->server[i].rip; i++) {
-                free(config->server[i].rip);
-                free(config->server[i].endpoint);
-            }
-
-            free(config->server);
-        }
+        w_agent_free_managers(config);
 
         free(config->profile);
 
@@ -1619,6 +1382,12 @@ void Free_Agent(agent * config){
         os_free(config->enrollment.groups);
         os_free(config->enrollment.agent_address);
         os_free(config->enrollment.authorization_pass_path);
+
+        /* Left by a read that failed before settling them. */
+        if (config->legacy_targets) {
+            w_legacy_targets_free(config->legacy_targets);
+            os_free(config->legacy_targets);
+        }
     }
 }
 

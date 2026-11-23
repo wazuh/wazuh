@@ -149,7 +149,7 @@ bounded by the `--drain-timeout` flag when it is set (> 0), else by the scenario
 Requests (other than `/control`) still in flight when the window expires are counted as
 `abandoned_on_drain` (in the global totals only: at that point the sender knows how many are left,
 not whose they were) — not failures of the manager, but a signal the window was shorter than
-intended. Cleanup of the enrolled fleet is the orchestration's job (F9c-3), not the sender's. An
+intended. Cleanup of the enrolled fleet is the orchestration's job (`cleanup_agents.sh`), not the sender's. An
 agent's keepalive loop and `shutdown` wait for **all** of its lanes, engine lanes included, so a
 long-running engine lane keeps its agent connected (which is how `real_inspect_fleet` stays visible
 in the dashboard).

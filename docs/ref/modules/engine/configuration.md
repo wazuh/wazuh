@@ -271,7 +271,7 @@ deployment. Use the
 | `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `67108864` (64 MB) | both |
 | `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8388608` (8 MB) | both |
 | `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` | both |
-| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` | both |
+| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses with item errors other than a `429` or a `cluster_block_exception` are queued; when the queue is full the error details are dropped and a warning is logged. The requeue of items rejected with a `429` or a `cluster_block_exception` does not depend on this queue. Allowed range: `1` to `1024`. | `8` | both |
 | `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` | both |
 | `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, `503 Service Unavailable`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` | both |
 | `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` | both |
@@ -566,7 +566,7 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 
 ### Synchronization failures
 
-**Cause:** `wazuh-indexer` unreachable, or its content not ready.
+**Cause:** `wazuh-indexer` unreachable, its content not ready, or an indexer node stopped during a download.
 
 1. Check the connector warnings, tagged `[CMSync]`, `[CM::Sync]` and `[IOC::Sync]`:
    ```bash
@@ -575,6 +575,10 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
 2. Check the `<indexer>` section of `wazuh-manager.conf` and the indexer credentials in the keystore (see
    [Configuration sources](#configuration-sources)).
 3. Check the per-space state with `GET /status`.
+4. Attempts that fail with `Search request failed with status 500: … search_phase_execution_exception`,
+   `Failed to create PIT. … Status code: 503` or `Policy download for space '<space>' ended after <n> of <total>
+   documents` mean the indexer could not answer for every shard, usually because a node was restarting. Nothing
+   partial was imported and the deployed route stays; the next cycle synchronizes once the node is back.
 
 ## See also
 

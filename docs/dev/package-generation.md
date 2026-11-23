@@ -107,7 +107,7 @@ At startup, `wazuh-agent.exe`, `win32ui.exe`, `manage_agents.exe` and `active-re
 
 The builder images and the packages are also produced by GitHub Actions workflows.
 
-**Builder images.** `5_builderprecompiled_docker-images-upload.yml` rebuilds and pushes the images whose files changed on every push under `packages/` to a `5.x.y` or `main` branch. The manager images can also be pushed on demand:
+**Builder images.** `5_builderprecompiled_docker-images-upload.yml` runs on every push to a `5.x.y` or `main` branch that changes what the builder images are made from (`packages/build.sh`, `generate_package.sh`, the `manager`/`agent` image directories and `utils/` under `packages/debs/` and `packages/rpms/`, `packages/windows/`, the WPK packer files, and the scripts that push the images), and rebuilds and pushes the images whose files changed. The manager images can also be pushed on demand:
 
 ```bash
 gh workflow run 5_builderprecompiled_docker-images-upload-manager.yml --ref <branch> \

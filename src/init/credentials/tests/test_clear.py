@@ -25,7 +25,6 @@ MADE_BY_INSTALL = {
     "conf/certs/indexer-connector.pem", "conf/certs/indexer-connector-key.pem", "conf/certs/.indexer-connector.imported",
     "conf/ca/root-ca.pem", "conf/ca/root-ca.key", "conf/ca/.wazuh-manager-bootstrap-ca",
     "conf/export/credentials.env", "conf/export/ca.pem",
-    "conf/export/dashboard-client.pem", "conf/export/dashboard-client-key.pem", "conf/export/.dashboard-client.issued",
     "home/api/configuration/security/rbac.db",
     "home/queue/keystore/keystore.json",
 }
@@ -61,6 +60,7 @@ def live_in_proc(sandbox, pid):
 
 
 def test_clear_after_install(resolver, sandbox):
+    sandbox.configure_client_pair()
     install(resolver, sandbox)
     before = set(sandbox.tree_state())
     code, out, err = run(resolver, sandbox, "--clear")
@@ -170,6 +170,7 @@ def test_stamped_bundle_removed(resolver, sandbox):
 
 
 def test_staged_imports_kept(resolver, sandbox):
+    sandbox.configure_client_pair()
     install(resolver, sandbox)
     for marker in (".indexer-ca.imported", ".indexer-connector.imported"):
         os.unlink(os.path.join(sandbox.certs, marker))
@@ -183,6 +184,7 @@ def test_staged_imports_kept(resolver, sandbox):
 
 
 def test_marker_only_and_half_pair(resolver, sandbox):
+    sandbox.configure_client_pair()
     install(resolver, sandbox)
     os.unlink(os.path.join(sandbox.certs, "indexer-ca.pem"))
     os.unlink(os.path.join(sandbox.certs, "indexer-connector-key.pem"))

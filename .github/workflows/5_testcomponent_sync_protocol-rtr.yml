@@ -5,11 +5,64 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/shared_modules/sync_protocol/**"
+      # --- CI plumbing: this workflow and what its steps execute.
       - ".github/workflows/5_testcomponent_sync_protocol-rtr.yml"
-      - ".github/actions/**"
+      # actions/setup-python `python-version-file`: the interpreter that runs src/build.py
+      - ".github/workflows/.python-version"
+      - ".github/actions/install_build_deps/**"
+      - ".github/actions/reinstall_cmake/**"
+      # run by reinstall_cmake/action.yml (`sudo tools/devContainer/reinstall-cmake.sh`)
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Not listed: .github/actions/upload_s3_artifact. It only uploads the coverage report after
+      # build.py has given its verdict, and the agent package workflows list it and run it on a PR.
+      # --- The driver. `python build.py --readytoreview <module>` imports ci/{build_tools,run_check,
+      # utils}.py and reads ci/input/astyle.config (run_check.py runAStyleCheck) and
+      # ci/input/test_tool_config.json (run_check.py runReadyToReview). ci/input/rtr_input.json is
+      # read by nothing; ci/tests/ runs only for syscheckd (5_testcomponent_syscheck-rtr.yml).
+      - "src/build.py"
+      - "src/ci/*.py"
+      - "src/ci/input/astyle.config"
+      - "src/ci/input/test_tool_config.json"
+      # --- Configure path and dependency inputs of `make deps` + `make TARGET=agent|winagent TEST=1`
+      # (src/ci/build_tools.py makeDeps/makeTarget). The build compiles the whole agent, but only the
+      # module's own checks run: the paths below are what those checks compile, link and execute. A
+      # compile break elsewhere in the agent tree is 5_testunit_linux-win.yml's to catch (src/**).
+      - "src/Makefile"
+      # included by src/Makefile: the ref of every external dependency
+      - "src/deps.lock.mk"
+      - "src/CMakeLists.txt"
+      # include(WazuhRpath)/include(WazuhJemalloc) in src/CMakeLists.txt, WazuhExternalFlags in external/
+      - "src/cmake/**"
+      # add_subdirectory(external): libwazuhext, googletest, flatc
+      - "src/external/CMakeLists.txt"
+      # file(READ ../VERSION.json) in src/CMakeLists.txt
+      - "VERSION.json"
+      # src/Makefile GIT_REFS_LIST: the refs `make deps` tries for the indexer templates
+      - "tools/get_git_refs.sh"
+      # winagent: the version resource compiled into every DLL (RESOURCE_OBJ_DLL, src/CMakeLists.txt)
+      - "src/win32/version.rc"
+      # --- The module (ctest -L sync_protocol, sync_protocol_test_tool under ASAN).
+      - "src/shared_modules/sync_protocol/**"
+      # Linked by agent_sync_protocol (sync_protocol/CMakeLists.txt target_link_libraries:
+      # flatbuffers FilesystemWrapper agent_metadata wazuhext); the tests include the filesystem mocks.
+      - "src/shared_modules/file_helper/CMakeLists.txt"
+      - "src/shared_modules/file_helper/filesystem/include/**"
+      - "src/shared_modules/file_helper/filesystem/src/**"
+      - "src/shared_modules/file_helper/filesystem/tests/mocks/**"
+      - "src/shared_modules/agent_metadata/CMakeLists.txt"
+      - "src/shared_modules/agent_metadata/include/**"
+      - "src/shared_modules/agent_metadata/src/**"
+      # the schema flatc compiles into inventorySync_generated.h (sync_protocol/CMakeLists.txt SCHEMA_FILE)
+      - "src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs"
+      # every header included from outside: src/agent_sync_protocol.cpp, src/persistent_queue.hpp,
+      # src/logging_helper.hpp, tests/test_persistent_queue_storage.cpp, file_helper's filesystem_utils.cpp
+      - "src/shared_modules/utils/jwt/canonicalAgentId.hpp"
+      - "src/shared_modules/utils/monotonicCondition.hpp"
+      - "src/shared_modules/utils/sqlite3Wrapper.hpp"
+      - "src/shared_modules/utils/globHelper.h"
+      - "src/shared/include/defs.h"
+      - "src/shared/include/logging_helper.h"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -43,7 +96,7 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache. Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: aws-actions/configure-aws-credentials@v4

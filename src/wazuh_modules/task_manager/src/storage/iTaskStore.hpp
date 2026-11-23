@@ -138,9 +138,6 @@ namespace task_manager::storage
     {
         /// @brief Free pages left in the database file after the step.
         std::int64_t freePages {0};
-        /// @brief False on a database created without incremental auto-vacuum (one made by an
-        ///        earlier build): its free pages are reused in place, but the file never shrinks.
-        bool supported {true};
     };
 
     /**

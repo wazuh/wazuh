@@ -907,8 +907,8 @@ static void test_process_response_409_is_duplicate(void **state) {
     "manager and enroll it again with a new enrollment token."
 #define LOST_REGISTRATION_MSG \
     "Enrollment was refused as a duplicate after an earlier attempt in this start timed out or got no " \
-    "answer. The manager most likely registered this agent from that attempt. Delete the agent on the " \
-    "manager and enroll again with a new enrollment token."
+    "answer. The manager most likely registered this agent from that attempt. The agent keeps retrying " \
+    "with the same enrollment token; delete the agent on the manager so a retry can succeed."
 #define LOST_TOKEN_USE_MSG \
     "An earlier attempt with this token timed out or got no answer. It most likely registered this " \
     "agent and used the token's last use. Delete the agent on the manager before enrolling again " \

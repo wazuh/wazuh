@@ -1314,7 +1314,7 @@ InstallCommon()
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
                 # installed (file existence is not checked: the certificates are issued later in the installation by
                 # the credential resolver, or deployed by the operator -- see SetCertsOwnership()).
-                if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
+                if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc > /dev/null; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1
                 fi
@@ -1603,15 +1603,6 @@ InstallLocal()
     # the engine drops privileges (RocksDB requires owner write access).
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
-
-    # Engine streamlog trees (logs/<YYYY>/...) created by root in previous
-    # versions must remain writable after the engine drops privileges. Scoped
-    # to year-pattern directories so other daemons' files are untouched.
-    for YEAR_DIR in ${INSTALLDIR}/logs/[0-9][0-9][0-9][0-9]; do
-        if [ -d "${YEAR_DIR}" ]; then
-            chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${YEAR_DIR}"
-        fi
-    done
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"

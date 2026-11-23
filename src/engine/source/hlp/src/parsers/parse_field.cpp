@@ -4,6 +4,8 @@
 #include "number.hpp"
 #include <algorithm>
 #include <base/json.hpp>
+#include <base/jsonPathWriter.hpp>
+#include <cstring>
 #include <iostream>
 #include <string_view>
 namespace hlp
@@ -78,14 +80,49 @@ getField(std::string_view input, const char delimiter, const char quote, const c
 
 void unescape(bool is_escaped, std::string& vs, std::string_view escape)
 {
-    if (is_escaped)
+    // An empty escape matches at every position: it is not a separator, and no caller passes one.
+    if (!is_escaped || escape.empty())
     {
-        for (auto j = vs.find(escape, 0); j != std::string::npos; j = vs.find(escape, j))
+        return;
+    }
+
+    // One pass: every surviving byte is moved at most once. The clean run between two escapes is moved in a
+    // single memmove, and the search keeps using find, so a value with few escapes costs what the scan costs.
+    // The write index never overtakes the read index, so the regions overlap and memmove is required: memcpy
+    // would be undefined behaviour here even though it happens to produce the same bytes with forward copies.
+    std::size_t write = 0;
+    std::size_t read = 0;
+    for (auto found = vs.find(escape, read); found != std::string::npos; found = vs.find(escape, read))
+    {
+        if (found > read)
         {
-            vs.erase(j, 1);
-            j++;
+            if (write != read)
+            {
+                std::memmove(&vs[write], &vs[read], found - read);
+            }
+            write += found - read;
+            read = found;
+        }
+
+        // The escape drops its first byte and the byte after it is kept verbatim; a trailing escape leaves
+        // read at the end of the value, so it is dropped and nothing is kept after it.
+        ++read;
+        if (read < vs.size())
+        {
+            vs[write++] = vs[read++];
         }
     }
+
+    if (read < vs.size())
+    {
+        if (write != read)
+        {
+            std::memmove(&vs[write], &vs[read], vs.size() - read);
+        }
+        write += vs.size() - read;
+    }
+
+    vs.resize(write);
 }
 
 bool hasInvalidPointerEscape(std::string_view key)
@@ -120,14 +157,11 @@ bool exceedsMaxDepth(std::string_view path)
 {
     return static_cast<std::size_t>(std::count(path.cbegin(), path.cend(), '/')) > json::Json::MAX_DEPTH;
 }
-} // namespace
 
-bool updateDoc(json::Json& doc,
-               std::string_view key,
-               std::string_view value,
-               bool is_escaped,
-               std::string_view escape,
-               bool is_quoted)
+// Body shared by the two overloads of updateDoc: Doc is json::Json or json::PathWriter.
+template<typename Doc>
+bool updateDocImpl(
+    Doc& doc, std::string_view key, std::string_view value, bool is_escaped, std::string_view escape, bool is_quoted)
 {
     // Keys come from event data: every token is written as an object member, never as an array index.
     // The dots of the key nest the value whether it is empty or not, so both count towards the depth cap
@@ -148,6 +182,27 @@ bool updateDoc(json::Json& doc,
     unescape(is_escaped, vs, escape);
     doc.setStringAsMembers(vs, path);
     return true;
+}
+} // namespace
+
+bool updateDoc(json::Json& doc,
+               std::string_view key,
+               std::string_view value,
+               bool is_escaped,
+               std::string_view escape,
+               bool is_quoted)
+{
+    return updateDocImpl(doc, key, value, is_escaped, escape, is_quoted);
+}
+
+bool updateDoc(json::PathWriter& doc,
+               std::string_view key,
+               std::string_view value,
+               bool is_escaped,
+               std::string_view escape,
+               bool is_quoted)
+{
+    return updateDocImpl(doc, key, value, is_escaped, escape, is_quoted);
 }
 
 } // namespace hlp

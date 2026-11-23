@@ -142,7 +142,10 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 > lists it: the `global.db-backup` prefix, a `.gz` suffix, only letters, digits and `-_.:`, no `..`. Any
 > other name is rejected with `err Invalid snapshot name` before any pre-restore backup is taken; the
 > same check applies to the most recent file chosen when `snapshot` is omitted. When `backup/db/` holds
-> no backup at all the answer is `err Unable to found a snapshot to restore`.
+> no backup at all the answer is `err Unable to found a snapshot to restore`. A key that is present with
+> the wrong type is refused, never read as omitted: a `snapshot` that is not a string answers
+> `err Invalid JSON data, 'snapshot' must be a string`, and a `save_pre_restore_state` that is not a
+> boolean answers `err Invalid JSON data, 'save_pre_restore_state' must be a boolean`; nothing is restored.
 
 > **Note on `insert-agent`:** `id` (number), `name` (string) and `date_add` (number) are required; `ip`,
 > `register_ip`, `internal_key`, `reenroll_secret` and `group` are optional strings. A missing required
@@ -164,7 +167,10 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 
 > **Note on `update-connection-status`:** the `status_code` field (numeric) is required in addition to `id`, `connection_status`, and `sync_status`. Omitting it causes the query to be rejected with `err Invalid JSON data, near '…'`.
 
-> **Note on `get-agent-info`:** the agent ID argument is a **plain integer**, not a JSON object — the parser (`wdb_parse_global_get_agent_info`) runs `atoi()` directly on the raw token. Passing a JSON object such as `{"agent_id":5}` does **not** produce an error: `atoi()` silently parses it as `0`, so the query resolves to agent `0` instead of failing. Always use the bare-integer syntax shown above.
+> **Note on `get-agent-info`:** the agent ID argument is a **plain integer**, not a JSON object: the
+> argument is read as a C integer (`atoi()`), so a JSON object such as `{"agent_id":5}` does **not**
+> produce an error but reads as `0`, and the query answers for agent `0` instead of failing. Always use
+> the bare-integer syntax shown above.
 
 > **Note on `backup`:** `create` writes a backup now (same file format and retention as the periodic
 > one, see [Backup files](configuration.md#backup-files)) and answers `ok ["<path>"]`; `get` lists the
