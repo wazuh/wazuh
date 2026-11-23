@@ -84,7 +84,7 @@ namespace
         private:
             static void writeFile(const std::filesystem::path& path, const std::string& content)
             {
-                std::ofstream stream(path);
+                std::ofstream stream(path, std::ios::binary);
                 stream << content;
             }
 
@@ -1767,7 +1767,7 @@ TEST_F(ContainerImagesDBTest, HostPackageInventoryIsNotTouchedByAContainerImageS
     nlohmann::json hostRows = nlohmann::json::array();
     hostRows.push_back({{"name", "apt"}, {"version", "2.6.1"}, {"checksum", "host-checksum"}});
 
-    DBSync hostDb {HostType::AGENT, DbEngineType::SQLITE3, hostDbPath, hostSchema, DbManagement::PERSISTENT};
+    auto hostDb {std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, hostDbPath, hostSchema, DbManagement::PERSISTENT)};
 
     const auto syncHost = [&hostDb, &hostRows, HOST_TABLE](DeltaTally & tally)
     {
@@ -1782,7 +1782,7 @@ TEST_F(ContainerImagesDBTest, HostPackageInventoryIsNotTouchedByAContainerImageS
         input["table"] = HOST_TABLE;
         input["data"] = hostRows;
 
-        DBSyncTxn txn {hostDb.handle(), nlohmann::json {HOST_TABLE}, 0, 4096, callback};
+        DBSyncTxn txn {hostDb->handle(), nlohmann::json {HOST_TABLE}, 0, 4096, callback};
         txn.syncTxnRow(input);
         txn.getDeletedRows(callback);
     };
@@ -1815,6 +1815,8 @@ TEST_F(ContainerImagesDBTest, HostPackageInventoryIsNotTouchedByAContainerImageS
     EXPECT_TRUE(std::filesystem::exists(m_dbPath));
     EXPECT_ANY_THROW(storedRows(m_dbPath, HOST_TABLE, {"name"}));
 
+    // Windows cannot delete a file that is still open.
+    hostDb.reset();
     std::filesystem::remove(hostDbPath);
 }
 

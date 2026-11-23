@@ -36,6 +36,9 @@
 
 using namespace containerimages;
 
+// Windows agents refuse remote references by design, so the readers below are exercised on the other platforms.
+#ifndef WIN32
+
 namespace
 {
     /// @brief A scripted transport: answers by URL, and records what it was asked.
@@ -2990,7 +2993,7 @@ TEST_F(EcrReaderTest, ATokenRefusedAfterARegionOverrideSaysSoAndIsNotRenewed)
         const auto instance = ecrReader(ECR_REFERENCE, transport);
         EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
 
-        EXPECT_EQ(m_source.calls.size(), 1u) << "a token from the same wrong region must not be asked for twice";
+        ASSERT_EQ(m_source.calls.size(), 1u) << "a token from the same wrong region must not be asked for twice";
         EXPECT_EQ(m_source.calls[0].region, "eu-west-1");
         EXPECT_EQ(transport->countMatching("/manifests/1.0"), 1u);
 
@@ -3874,3 +3877,31 @@ TEST_F(EcrLayerTest, AnUnsupportedLayerCompressionIsSkippedAndReported)
     EXPECT_TRUE(logged("NOT IMPLEMENTED: layer 'sha256:dddd4444'"));
     EXPECT_TRUE(logged("is xz compressed"));
 }
+
+#else
+
+TEST(RegistryReaderWindowsTest, ARemoteReferenceIsRefusedOnWindowsAgents)
+{
+    std::vector<std::string> logs;
+    LoggingHelper::setLogCallback([&logs](const modules_log_level_t, const char* line)
+    {
+        logs.push_back(line);
+    });
+
+    const ContainerImagesConfig config;
+    std::uint64_t scanBytes {0};
+    std::atomic<bool> stop {false};
+    std::map<std::string, std::string> refusedScopes;
+    std::set<std::string> reportedHosts;
+    const ReaderContext context {&config, nullptr, &scanBytes, &stop, &refusedScopes, &reportedHosts};
+
+    RegistryImageReader instance {"ghcr.io/wazuh/app:1.0", {}, context};
+    EXPECT_EQ(instance.discover().status, ReadStatus::Failed);
+
+    LoggingHelper::setLogCallback({});
+
+    ASSERT_EQ(logs.size(), 1U);
+    EXPECT_NE(logs.front().find("remote references are not supported on Windows agents"), std::string::npos) << logs.front();
+}
+
+#endif
