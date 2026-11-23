@@ -1447,6 +1447,11 @@ public:
      * @param path The path to the JSON object to modify.
      * @return true if any member was erased, false otherwise.
      *
+     * func is called once per member, in member order; in recursive mode the members of a kept object are visited
+     * before the next member of its parent. A kept object member is descended through the first kept member with the
+     * same name, so with a repeated name the later occurrences are not visited. If func throws, the members erased
+     * before the call that threw stay erased, the others stay in place, and the exception propagates.
+     *
      * @throws std::runtime_error if the given path is invalid.
      */
     bool eraseIfKey(const std::function<bool(const std::string&)>&, bool recursive = false, const std::string& = "");

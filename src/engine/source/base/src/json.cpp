@@ -7,8 +7,10 @@
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
+#include <functional>
 #include <limits>
 #include <memory_resource>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -2227,7 +2229,125 @@ size_t Json::eraseMembersEqualTo(std::string_view path, const Json& value)
     return erased;
 }
 
-bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)
+namespace
+{
+
+// Moves the member at position from to position to, over a member that is dropped or already moved.
+void moveMember(json::Value::MemberIterator members, Position from, Position to)
+{
+    if (from != to)
+    {
+        members[to].name = members[from].name;
+        members[to].value = members[from].value;
+    }
+}
+
+// Ends a pass that kept firstFree members and has not looked at the members from next on yet: moves those down after
+// the kept ones, in order, and drops the rest of the member array at once.
+void closeGap(
+    json::Value& object, json::Value::MemberIterator members, Position next, Position count, Position firstFree)
+{
+    for (; next < count; ++next, ++firstFree)
+    {
+        moveMember(members, next, firstFree);
+    }
+    if (firstFree != object.MemberCount())
+    {
+        object.EraseMember(members + firstFree, object.MemberEnd());
+    }
+}
+
+// Erases, in one pass and in member order, the members of object whose name satisfies func; the kept members move
+// forward over the erased ones. In recursive mode, a kept member whose value is an object is descended through the
+// first kept member with the same name: the member a pointer built from that name would resolve to once the erased
+// members are gone. If func throws, at any level, each level closes its gap before the exception goes on, so the
+// members erased so far stay erased and the rest stay in place.
+bool eraseMembersIf(json::Value& object, const std::function<bool(const std::string&)>& func, bool recursive)
+{
+    // Recursive mode: the first kept member with a given name is found by scanning the kept members, until the scans
+    // have visited more than this many times the members of the object; from then on, through a hash index of the
+    // first kept member of each name. Small objects allocate nothing.
+    constexpr size_t FIRST_KEPT_SCAN_FACTOR = 4;
+
+    const Position count = object.MemberCount();
+    const auto members = object.MemberBegin();
+
+    std::optional<std::pmr::monotonic_buffer_resource> memory;
+    std::optional<std::pmr::unordered_map<std::string_view, Position>> firstKept;
+    size_t scanned = 0;
+
+    bool modified = false;
+    Position firstFree = 0;
+    Position next = 0;
+    try
+    {
+        while (next < count)
+        {
+            const Position position = next;
+            const std::string name {members[position].name.GetString(), members[position].name.GetStringLength()};
+            if (func(name))
+            {
+                ++next;
+                modified = true;
+                continue;
+            }
+
+            moveMember(members, position, firstFree);
+            ++next;
+            const Position kept = firstFree++;
+            Position first = kept;
+            if (firstKept)
+            {
+                // Every kept member enters the index, whatever its value: it may be the first of its name. Its name
+                // stays where it is for the rest of the pass, since the members only move down to positions after it.
+                first = firstKept->try_emplace(memberName(members[kept].name), kept).first->second;
+            }
+            if (recursive && members[kept].value.IsObject())
+            {
+                if (!firstKept)
+                {
+                    const auto name = memberName(members[kept].name);
+                    first = 0;
+                    while (memberName(members[first].name) != name)
+                    {
+                        ++first;
+                    }
+                    scanned += static_cast<size_t>(first) + 1;
+                    if (scanned > FIRST_KEPT_SCAN_FACTOR * static_cast<size_t>(count))
+                    {
+                        memory.emplace();
+                        firstKept.emplace(&*memory);
+                        firstKept->reserve(count);
+                        for (Position position = 0; position <= kept; ++position)
+                        {
+                            firstKept->try_emplace(memberName(members[position].name), position);
+                        }
+                    }
+                }
+                if (members[first].value.IsObject())
+                {
+                    modified |= eraseMembersIf(members[first].value, func, recursive);
+                }
+            }
+        }
+    }
+    catch (...)
+    {
+        closeGap(object, members, next, count, firstFree);
+        throw;
+    }
+
+    closeGap(object, members, next, count, firstFree);
+    return modified;
+}
+
+// The recursive erase with each level resolved again from the root through its path, for paths in URI-fragment form
+// (#/...): there the members met while descending are read back through a fragment, percent-decoded, and a name may
+// resolve to another member or make the nested path invalid.
+bool eraseIfKeyByPath(json::Document& doc,
+                      const std::function<bool(const std::string&)>& func,
+                      bool recursive,
+                      const std::string& path)
 {
     bool modified = false;
     const auto pp = json::makePointer(path);
@@ -2237,7 +2357,7 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
     }
 
-    auto* value = const_cast<json::Value*>(pp.Get(m_document));
+    auto* value = const_cast<json::Value*>(pp.Get(doc));
     if (!value || !value->IsObject())
     {
         return modified;
@@ -2263,15 +2383,40 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
                 }
                 else
                 {
-                    newPath += formatJsonPath(name, true);
+                    newPath += Json::formatJsonPath(name, true);
                 }
-                modified |= eraseIfKey(func, recursive, newPath);
+                modified |= eraseIfKeyByPath(doc, func, recursive, newPath);
             }
             ++it;
         }
     }
 
     return modified;
+}
+
+} // namespace
+
+bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)
+{
+    const auto pp = json::makePointer(path);
+
+    if (!pp.IsValid())
+    {
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    }
+
+    auto* value = const_cast<json::Value*>(pp.Get(m_document));
+    if (!value || !value->IsObject())
+    {
+        return false;
+    }
+
+    if (recursive && !path.empty() && path.front() == '#')
+    {
+        return eraseIfKeyByPath(m_document, func, recursive, path);
+    }
+
+    return eraseMembersIf(*value, func, recursive);
 }
 
 void Json::eraseRootKeysByPrefix(std::string_view prefix)
@@ -2286,18 +2431,20 @@ void Json::eraseRootKeysByPrefix(std::string_view prefix)
         throw std::runtime_error("Root JSON value is not an object");
     }
 
-    for (auto it = m_document.MemberBegin(); it != m_document.MemberEnd();)
+    const Position count = m_document.MemberCount();
+    const auto members = m_document.MemberBegin();
+    Position firstFree = 0;
+    for (Position position = 0; position < count; ++position)
     {
-        const std::string_view key {it->name.GetString(), it->name.GetStringLength()};
+        const auto key = memberName(members[position].name);
         if (key.size() >= prefix.size() && key.compare(0, prefix.size(), prefix) == 0)
         {
-            it = m_document.EraseMember(it);
+            continue;
         }
-        else
-        {
-            ++it;
-        }
+        moveMember(members, position, firstFree);
+        ++firstFree;
     }
+    closeGap(m_document, members, count, count, firstFree);
 }
 
 Json Json::makeObjectJson(const std::string& key, const json::Json& value)
