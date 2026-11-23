@@ -144,5 +144,9 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           target: "uds_http_server_utest"
-          allowed_skips: "0"
+          # Two cases skip themselves under AddressSanitizer, which aborts on the oversized
+          # allocation they need instead of throwing std::bad_alloc: BodyMemoryTest's
+          # AReserveThatCannotBeSatisfiedIsAnswered500AndReleased and RequestParserTest's
+          # AReserveThatCannotBeSatisfiedIsA500Reject. They run in the lane above, which keeps 0.
+          allowed_skips: "2"
           valgrind: "false"
