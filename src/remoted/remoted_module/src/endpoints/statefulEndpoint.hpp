@@ -15,6 +15,7 @@
 #include "endpoint.hpp"                     // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp"      // HttpResponse
 
+#include <chrono>
 #include <string>
 
 namespace remoted::endpoints::stateful
@@ -37,9 +38,32 @@ namespace remoted::endpoints::stateful
      * `Start.agentid` (403 on mismatch). @p responseTimeoutMs is the route's dedicated downstream
      * deadline (remoted.downstream_stateful_response_timeout): sessions are indexed and flushed
      * within the request, so it is deliberately longer than the global default.
+     *
+     * @p budgetMs is sent as `X-Wazuh-Response-Budget-Ms`: how long remoted will still listen for
+     * the answer (see responseBudgetMs()). Like the agent id it is written by us, never relayed.
      */
     remoted::downstream::DownstreamTarget
-    target(const std::string& socketPath, const std::string& agentId, int responseTimeoutMs);
+    target(const std::string& socketPath, const std::string& agentId, int responseTimeoutMs, long long budgetMs);
+
+    /**
+     * @brief How many milliseconds remoted will still listen for a `/stateful` answer.
+     *
+     * remoted stops listening at the earlier of two limits: its own response timer
+     * (@p responseTimeoutMs, started when the request is forwarded) and the HTTP server's request
+     * timeout (@p requestCapMs), which the server arms before the request reaches the worker pool.
+     * Only the time since @p receivedAt -- stamped inside the worker, once auth begins -- is
+     * discounted from that cap, so whatever the request waited in the pool queue is not, and the
+     * result can overstate what is left when the cap governs. The result is the smaller remainder,
+     * never below 1: the sync server uses it to avoid starting a session whose answer can no longer
+     * be delivered, and a value of 0 or less would read as "no budget" rather than "almost none".
+     *
+     * @p requestCapMs <= 0 means the route has no request-timeout cap, so only the response timer
+     * applies. A default (unstamped) @p receivedAt contributes no elapsed time.
+     */
+    long long responseBudgetMs(int responseTimeoutMs,
+                               long long requestCapMs,
+                               std::chrono::steady_clock::time_point receivedAt,
+                               std::chrono::steady_clock::time_point now);
 
     /**
      * @brief Map the downstream result to the agent response: passthrough of the sync contract.
@@ -81,13 +105,16 @@ namespace remoted::endpoints::stateful
      * point at storage that outlives the handler (a facade value member -- see
      * DownstreamTarget::httpMetrics). The handler counts its own empty-body 400 and hands the
      * pointer to the forwarder, which counts every delivered status and observes latency.
+     * @param requestCapMs The HTTP server's request timeout in milliseconds, used to discount the
+     * time already spent since the request was received from the forwarded response budget;
+     * 0 means no cap.
      */
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(remoted::downstream::DeferredForwarder& forwarder,
-                std::string socketPath,
-                int responseTimeoutMs,
-                int retryAfterSec,
-                const remoted::metrics::EndpointHttpMetrics* metrics = nullptr);
+    remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
+                                                         std::string socketPath,
+                                                         int responseTimeoutMs,
+                                                         int retryAfterSec,
+                                                         const remoted::metrics::EndpointHttpMetrics* metrics = nullptr,
+                                                         long long requestCapMs = 0);
 
 } // namespace remoted::endpoints::stateful
 

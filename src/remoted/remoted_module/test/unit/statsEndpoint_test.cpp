@@ -165,6 +165,7 @@ TEST(StatsEndpoint, TargetCarriesTheAuthenticatedAgentIdAsAHeader)
 {
     const auto target = stats::target(kSocketPath, "007");
     EXPECT_EQ(headerValue(target, "X-Wazuh-Agent-Id"), "007");
+    EXPECT_EQ(target.headers.size(), 1U);
 }
 
 /// Naming the service is what keeps a downstream failure WARN attributable now that remoted talks to

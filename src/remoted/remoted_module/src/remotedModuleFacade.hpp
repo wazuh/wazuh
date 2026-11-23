@@ -741,7 +741,8 @@ private:
                                                       inventorySyncSocketPath,
                                                       downstreamConfig.statefulResponseTimeoutMs,
                                                       downstreamConfig.statefulRetryAfterSec,
-                                                      &m_statefulHttpMetrics),
+                                                      &m_statefulHttpMetrics,
+                                                      static_cast<long long>(config.requestTimeoutSec) * 1000),
             remoted::http::ResponseMode::Buffered,
             statefulBodyDecoder);
 
@@ -749,8 +750,10 @@ private:
             "/stateful",
             downstreamConfig,
             config,
-            remoted::endpoints::stateful::target(
-                inventorySyncSocketPath, "0", downstreamConfig.statefulResponseTimeoutMs));
+            remoted::endpoints::stateful::target(inventorySyncSocketPath,
+                                                 "0",
+                                                 downstreamConfig.statefulResponseTimeoutMs,
+                                                 downstreamConfig.statefulResponseTimeoutMs));
 
         // /control: agent lifecycle (startup / notify / shutdown). Same auth path as /stateless
         // -- the gateway runs the full bearer-token validation and only calls this handler once auth

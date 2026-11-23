@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <string_view>
 #include <utility>
 
@@ -63,14 +64,38 @@ namespace remoted::endpoints::stateful
         }
     } // namespace
 
-    remoted::downstream::DownstreamTarget
-    target(const std::string& socketPath, const std::string& agentId, const int responseTimeoutMs)
+    long long responseBudgetMs(const int responseTimeoutMs,
+                               const long long requestCapMs,
+                               const std::chrono::steady_clock::time_point receivedAt,
+                               const std::chrono::steady_clock::time_point now)
+    {
+        if (requestCapMs <= 0)
+        {
+            return std::max<long long>(1, responseTimeoutMs);
+        }
+        const long long waitedMs =
+            receivedAt == std::chrono::steady_clock::time_point {}
+                ? 0
+                : std::chrono::duration_cast<std::chrono::milliseconds>(now - receivedAt).count();
+        const long long capMs = requestCapMs - waitedMs;
+        return std::max<long long>(1, std::min<long long>(responseTimeoutMs, capMs));
+    }
+
+    remoted::downstream::DownstreamTarget target(const std::string& socketPath,
+                                                 const std::string& agentId,
+                                                 const int responseTimeoutMs,
+                                                 const long long budgetMs)
     {
         remoted::downstream::DownstreamTarget result {
             socketPath, remoted::http::Method::Post, "/stateful", "application/octet-stream"};
         // Written by us, never by the agent: the value comes from the Authorization header the
         // gateway already authenticated, so it cannot be used to inject headers downstream.
         result.headers.emplace_back("X-Wazuh-Agent-Id", agentId);
+        // Contract: the time remoted still has before it stops listening for this answer, whether
+        // through its response timer or through the HTTP request timeout. The value is ours, never
+        // copied from the agent, and the sync server uses it to avoid starting a session that can
+        // no longer be answered in time.
+        result.headers.emplace_back("X-Wazuh-Response-Budget-Ms", std::to_string(budgetMs));
         result.serviceName = "inventory sync server";
         result.responseTimeoutMs = responseTimeoutMs;
         return result;
@@ -119,11 +144,13 @@ namespace remoted::endpoints::stateful
                                                          std::string socketPath,
                                                          const int responseTimeoutMs,
                                                          const int retryAfterSec,
-                                                         const remoted::metrics::EndpointHttpMetrics* metrics)
+                                                         const remoted::metrics::EndpointHttpMetrics* metrics,
+                                                         const long long requestCapMs)
     {
-        return [&forwarder, socketPath = std::move(socketPath), responseTimeoutMs, retryAfterSec, metrics](
-                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return
+            [&forwarder, socketPath = std::move(socketPath), responseTimeoutMs, retryAfterSec, metrics, requestCapMs](
+                std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             // The only content check done here. The body is an opaque FlatBuffer -- validation is
             // the sync server's job -- but an empty body cannot possibly be a FullSession, and
@@ -141,7 +168,9 @@ namespace remoted::endpoints::stateful
 
             // Built BEFORE the move: argument evaluation order is unspecified, so reading
             // authReq->agentId in the same call that moves authReq could dereference a null pointer.
-            auto downstreamTarget = target(socketPath, authReq->agentId, responseTimeoutMs);
+            const auto budgetMs = responseBudgetMs(
+                responseTimeoutMs, requestCapMs, authReq->receivedAt, std::chrono::steady_clock::now());
+            auto downstreamTarget = target(socketPath, authReq->agentId, responseTimeoutMs, budgetMs);
             downstreamTarget.httpMetrics = metrics;
             forwarder.forward(std::move(authReq),
                               std::move(responder),
