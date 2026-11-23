@@ -249,6 +249,11 @@ TEST(VdScanLaneTest, AVdSessionPastItsDeadlineIsRefusedBeforeScanning)
         << "only the parked session scanned: the withdrawn one never started";
     EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()))
         << "every refused session is past its deadline when answered: only the mark keeps it out of overrun";
+    const auto queueWait =
+        std::dynamic_pointer_cast<wazuh::metrics::IHistogram>(metrics->get(invsync::metrics::SESSION_QUEUE_WAIT));
+    ASSERT_NE(nullptr, queueWait);
+    EXPECT_EQ(1U, queueWait->snapshot().count)
+        << "the withdrawn session is sampled before it is refused (the parked one carries no enqueue stamp)";
 }
 
 /// The lane applies the margin too: inside it (19.5 s of a 20 s deadline) the session is withdrawn
@@ -499,6 +504,42 @@ TEST(VdScanLaneTest, OverrunCountsOnceOnEveryPathThatReachedTheIndexer)
             << "path " << static_cast<int>(path) << " answered " << status;
         EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()))
             << "it started in time: never withdrawn";
+    }
+}
+
+/// Overrun in the lane, as in the pipeline, means the deadline itself had passed: an answer inside
+/// the refusal margin but before the deadline (19.5 s of 20 s) is not counted, one after it is.
+TEST(VdScanLaneTest, AnAnswerInsideTheMarginButBeforeTheDeadlineIsNotOverrun)
+{
+    for (const auto& [offset, overran] :
+         {std::pair {std::chrono::milliseconds {19500}, false}, std::pair {std::chrono::milliseconds {20500}, true}})
+    {
+        auto metrics = std::make_shared<wazuh::metrics::Manager>();
+        const auto base = std::chrono::steady_clock::now();
+        auto offsetUs = std::make_shared<std::atomic<int64_t>>(0);
+        VdScanLaneConfig config;
+        config.now = [base, offsetUs]
+        {
+            return base + std::chrono::microseconds {offsetUs->load()};
+        };
+        LaneUnderTest fixture {config, metrics};
+
+        fixture.events->closeScanGate();
+        auto responder = std::make_shared<FutureResponder>();
+        auto item = makeItem(vdDeltaBody(), responder);
+        item.enqueuedAt = base;
+        item.budget = std::chrono::milliseconds {20000};
+        item.deadline = base + item.budget;
+        ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+        ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+        offsetUs->store(std::chrono::microseconds {offset}.count());
+        fixture.events->openScanGate();
+
+        EXPECT_EQ(200, responder->get().status);
+        EXPECT_EQ(overran ? 1U : 0U,
+                  static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()))
+            << "offset=" << offset.count() << " ms";
     }
 }
 

@@ -381,7 +381,7 @@ TEST(StatefulMakeHandler, EmptyBodyShortCircuitsBeforeForward)
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0);
     auto fixture = makeAuthReq("", "1001");
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -406,7 +406,7 @@ TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, &metrics);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, &metrics, 0);
 
     {
         auto fixture = makeAuthReq("", "1001"); // empty body: answered 400 by the handler itself
@@ -465,7 +465,7 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0);
     // Deliberately NOT a valid FlatBuffer: remoted must forward it opaquely, without parsing.
     auto fixture = makeAuthReq("\x01\x02binary-fullsession-bytes", "1001");
     auto responder = std::make_shared<CapturingResponder>();
@@ -552,7 +552,7 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
         server,
         Method::Post,
         "/stateful",
-        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20));
+        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0));
 
     // A wazuh-agent+jwt bearer for 001, minted with FakeKeystore's key for it.
     const std::string body = "\x01\x02opaque-fullsession";
@@ -602,7 +602,7 @@ TEST(StatefulMakeHandler, AnAgentSuppliedBudgetHeaderNeverReachesTheSyncServer)
         server,
         Method::Post,
         "/stateful",
-        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20));
+        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, nullptr, 0));
 
     const std::vector<std::uint8_t> key(32, 0x0A);
     const jwt_profile::v1::SecureBytes secret {key.data(), key.size()};

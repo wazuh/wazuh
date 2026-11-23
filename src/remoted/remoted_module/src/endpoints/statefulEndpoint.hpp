@@ -46,6 +46,15 @@ namespace remoted::endpoints::stateful
     target(const std::string& socketPath, const std::string& agentId, int responseTimeoutMs, long long budgetMs);
 
     /**
+     * @brief The HTTP server's request timeout, configured in seconds, as the millisecond cap
+     * responseBudgetMs() expects. A non-positive timeout stays non-positive: no cap.
+     */
+    inline long long requestCapMs(int requestTimeoutSec)
+    {
+        return static_cast<long long>(requestTimeoutSec) * 1000;
+    }
+
+    /**
      * @brief How many milliseconds remoted will still listen for a `/stateful` answer.
      *
      * remoted stops listening at the earlier of two limits: its own response timer
@@ -60,15 +69,6 @@ namespace remoted::endpoints::stateful
      * @p requestCapMs <= 0 means the route has no request-timeout cap, so only the response timer
      * applies. A default (unstamped) @p receivedAt contributes no elapsed time.
      */
-    /**
-     * @brief The HTTP server's request timeout, configured in seconds, as the millisecond cap
-     * responseBudgetMs() expects. A non-positive timeout stays non-positive: no cap.
-     */
-    inline long long requestCapMs(int requestTimeoutSec)
-    {
-        return static_cast<long long>(requestTimeoutSec) * 1000;
-    }
-
     long long responseBudgetMs(int responseTimeoutMs,
                                long long requestCapMs,
                                std::chrono::steady_clock::time_point receivedAt,
@@ -116,14 +116,15 @@ namespace remoted::endpoints::stateful
      * pointer to the forwarder, which counts every delivered status and observes latency.
      * @param requestCapMs The HTTP server's request timeout in milliseconds, used to discount the
      * time already spent since the request was received from the forwarded response budget;
-     * 0 means no cap.
+     * 0 means no cap. Deliberately without a default: a caller that forgot it would silently
+     * forward an overstated budget.
      */
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
                                                          std::string socketPath,
                                                          int responseTimeoutMs,
                                                          int retryAfterSec,
-                                                         const remoted::metrics::EndpointHttpMetrics* metrics = nullptr,
-                                                         long long requestCapMs = 0);
+                                                         const remoted::metrics::EndpointHttpMetrics* metrics,
+                                                         long long requestCapMs);
 
 } // namespace remoted::endpoints::stateful
 
