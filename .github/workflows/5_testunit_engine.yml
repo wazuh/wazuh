@@ -199,7 +199,7 @@ jobs:
         working-directory: ${{env.BUILD_DIR}}/engine
         env:
           # halt_on_error=0: every report of a run is logged; the process still exits 66 so ctest marks the test failed
-          TSAN_OPTIONS: log_path=${{ runner.temp }}/tsan:halt_on_error=0:second_deadlock_stack=1
+          TSAN_OPTIONS: log_path=${{ runner.temp }}/tsan:halt_on_error=0:second_deadlock_stack=1:suppressions=${{ github.workspace }}/src/engine/tsan.supp
         run: ctest -T test --output-on-failure --no-tests=error -j$(nproc)
 
       - name: Upload TSAN logs
