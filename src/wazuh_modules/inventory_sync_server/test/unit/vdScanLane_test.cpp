@@ -543,6 +543,47 @@ TEST(VdScanLaneTest, AnAnswerInsideTheMarginButBeforeTheDeadlineIsNotOverrun)
     }
 }
 
+/// The negative of the paths above: a Skipped verdict whose inventory is entirely out of family
+/// stages nothing, so nothing of it reached the indexer -- however late, it is not overrun. Pins
+/// that a Skipped scan does not mark by itself and that an unstaged outcome does not mark.
+TEST(VdScanLaneTest, ASkippedScanThatStagesNothingIsNotOverrun)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    const auto base = std::chrono::steady_clock::now();
+    auto offsetUs = std::make_shared<std::atomic<int64_t>>(0);
+    VdScanLaneConfig config;
+    config.now = [base, offsetUs]
+    {
+        return base + std::chrono::microseconds {offsetUs->load()};
+    };
+    LaneUnderTest fixture {config, metrics};
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    ValueSpec skipped;
+    skipped.id = "doc-1";
+    skipped.index = "alerts"; // out of family: stages nothing
+    const auto body = invsync::test::buildSyncDataSession(spec, {skipped});
+
+    fixture.events->closeScanGate();
+    auto responder = std::make_shared<FutureResponder>();
+    auto item = makeItem(body, responder);
+    item.enqueuedAt = base;
+    item.budget = std::chrono::milliseconds {20000};
+    item.deadline = base + item.budget;
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(item)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    fixture.events->m_vdScanSkip.store(true);
+    offsetUs->fetch_add(std::chrono::microseconds {std::chrono::seconds {40}}.count());
+    fixture.events->openScanGate();
+
+    EXPECT_EQ(200, responder->get().status);
+    EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_OVERRUN_LANE)->value()))
+        << "a skipped scan that staged nothing never reached the indexer";
+    EXPECT_EQ(0U, static_cast<uint64_t>(metrics->get(invsync::metrics::DEADLINE_EXPIRED_LANE)->value()));
+}
+
 TEST(VdScanLaneTest, AFailedScanAnswers500WithZeroDocumentsIndexed)
 {
     LaneUnderTest fixture;

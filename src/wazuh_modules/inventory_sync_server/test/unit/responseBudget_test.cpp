@@ -76,6 +76,13 @@ TEST(ResponseBudget, TheWireNameIsTheOneRemotedSends)
     EXPECT_EQ(20000ms, budget);
 }
 
+TEST(ResponseBudget, TheRefusalBodyIsTheOneAgentsDistinguish)
+{
+    // Spelled out, not taken from the constant: every other test compares against
+    // DEADLINE_EXPIRED_BODY itself, so a change to its text would pass them all.
+    EXPECT_STREQ(R"({"error":"deadline expired","code":503})", invsync::common::DEADLINE_EXPIRED_BODY);
+}
+
 TEST(ResponseBudget, StampDeadlineLeavesNoDeadlineWithoutAReadableHeader)
 {
     const auto now = std::chrono::steady_clock::now();

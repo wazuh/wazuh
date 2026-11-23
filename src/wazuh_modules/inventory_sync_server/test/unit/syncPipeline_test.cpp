@@ -471,7 +471,8 @@ TEST(SyncPipelineTest, AnItemDispatchedDuringShutdownMovesNoDeadlineCounter)
     EXPECT_EQ(503, response.status);
     EXPECT_EQ(R"({"error":"Service unavailable","code":503})", response.body);
     EXPECT_EQ(0U, counterValue(metrics, invsync::metrics::DEADLINE_EXPIRED_PIPELINE_BULK))
-        << "a drained item was never dispatched: the deadline counters stay put";
+        << "dispatched after stop() set the flag, it is answered by the shutdown re-check at dispatch, ahead "
+           "of the deadline check: the deadline counters stay put";
     EXPECT_EQ(0U, counterValue(metrics, invsync::metrics::DEADLINE_OVERRUN_PIPELINE_BULK))
         << "nor did it reach the indexer";
 }
