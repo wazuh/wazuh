@@ -1018,6 +1018,17 @@ again:
      * single-use token is spent. Refusing here mutates nothing, and the caller gives the token use
      * back because the response carries an error. */
     if (deadline_has_passed(deadline_ms)) {
+        /* Logged here, where it is decided, and not left to the dispatcher: this function answers
+         * with a response object rather than through the dispatcher's fail path, so without this
+         * line the node that discarded the enrollment would say nothing about it at all. INFO, not
+         * WARNING: nothing is wrong with the request, and a caller cannot forge a passed deadline
+         * -- only this manager being slower than the budget its caller gave it produces one.
+         * Throttled with the other client-caused rejections so a sick master cannot flood the log
+         * with one line per agent retrying. */
+        w_auth_log_client_rejection(true,
+                                    "Enrollment of '%s' discarded: the deadline the request carried "
+                                    "had already passed, so no agent was registered.",
+                                    name ? name : "");
         ierror = EREENROLLLATE;
         goto fail;
     }
@@ -1293,6 +1304,12 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
      * OS_DeleteKey below, so a refusal mutates nothing and exits through `fail:`, which releases
      * both the lock and the reservation. */
     if (deadline_has_passed(deadline_ms)) {
+        /* Same reason as the first-enrollment path: this is the only line that reports the discard
+         * on the node that decided it. A worker relays the master's refusal separately. */
+        w_auth_log_client_rejection(true,
+                                    "Re-enrollment of agent '%s' discarded: the deadline the request "
+                                    "carried had already passed, so nothing was rotated.",
+                                    kid);
         ierror = EREENROLLLATE;
         goto fail;
     }
