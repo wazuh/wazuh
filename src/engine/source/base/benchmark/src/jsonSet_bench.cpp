@@ -323,6 +323,69 @@ void BM_JsonMerge_ObjectRecursive(benchmark::State& state)
     runMerge(state, makeNestedObjectText(n, true), makeNestedObjectText(n, false), static_cast<size_t>(n), true);
 }
 
+/**
+ * @brief Array merges around the point where the hash index is built: range(0) = S source elements, range(1) = D
+ * destination elements "d<i>", range(2) = population (0: source strings absent from the destination; 1: source
+ * strings taken from the destination in order, wrapping around, so every one is found).
+ */
+void BM_JsonMerge_ArrayCrossover(benchmark::State& state)
+{
+    const auto s = state.range(0);
+    const auto d = state.range(1);
+    if (state.range(2) == 0)
+    {
+        runMerge(state, makeArrayText(s, "s"), makeArrayText(d, "d"), static_cast<size_t>(s + d));
+        return;
+    }
+    std::string src = "[";
+    for (int64_t i = 0; i < s; ++i)
+    {
+        src += (i > 0 ? ",\"d" : "\"d") + std::to_string(i % d) + "\"";
+    }
+    src += ']';
+    runMerge(state, src, makeArrayText(d, "d"), static_cast<size_t>(d));
+}
+
+/**
+ * @brief Elements that keep the scan: objects with a repeated name ({"a":<i>,"a":<i>}), half of the source present.
+ * Expected to grow quadratically: rapidjson's operator== lets such an object equal objects with other names, so no
+ * hash can be used for them.
+ */
+void BM_JsonMerge_ArrayIrregular(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    const auto text = [](int64_t first, int64_t count)
+    {
+        std::string out = "[";
+        for (int64_t i = first; i < first + count; ++i)
+        {
+            const auto id = std::to_string(i);
+            out += (i > first ? ",{\"a\":" : "{\"a\":") + id + ",\"a\":" + id + "}";
+        }
+        return out + "]";
+    };
+    runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
+}
+
+/**
+ * @brief Distinct integers from 2^62, half of the source present: integers that round to the same double share a hash
+ * bucket (at 2^62, 1024 consecutive integers per double), the bound of the hash index for integers above 2^53.
+ */
+void BM_JsonMerge_ArrayBigIntegers(benchmark::State& state)
+{
+    const auto n = state.range(0);
+    const auto text = [](int64_t first, int64_t count)
+    {
+        std::string out = "[";
+        for (int64_t i = first; i < first + count; ++i)
+        {
+            out += (i > first ? "," : "") + std::to_string((int64_t {1} << 62) + i);
+        }
+        return out + "]";
+    };
+    runMerge(state, text(n / 2, n), text(0, n), static_cast<size_t>(n + (n - n / 2)));
+}
+
 /** @brief Object text: a chain of depth objects under "c", the innermost holding t members "k<i>": "<prefix><i>". */
 std::string makeChainText(int64_t depth, int64_t t, const std::string& prefix)
 {
@@ -906,6 +969,13 @@ REGISTER_SCALING_BENCH(BM_JsonMerge_Array);
 REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayOverlap);
 REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayObjects);
 REGISTER_SCALING_BENCH(BM_JsonMerge_ArrayMixedNumbers);
+// The two bounds of the hash index: elements that keep the scan, and integers that share a bucket.
+BENCHMARK(BM_JsonMerge_ArrayIrregular)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_JsonMerge_ArrayBigIntegers)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);
+// Array merge crossover: (S, D, population) around the point where the index is built.
+BENCHMARK(BM_JsonMerge_ArrayCrossover)
+    ->ArgsProduct({{1, 4, 16, 64, 256, 1024, 4096}, {16, 256, 4096}, {0, 1}})
+    ->Unit(benchmark::kMicrosecond);
 // Recursive merge through a chain: (bottom members, depth of the chain).
 BENCHMARK(BM_JsonMerge_RecursiveCopy)
     ->ArgsProduct({{1024, 4096, 16384}, {1, 4, 16, 64}})

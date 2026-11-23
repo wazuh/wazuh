@@ -1419,3 +1419,39 @@ TEST(JsonAllocationInjectionTest, EraseIfKeyIndexResourceFailureLeavesEveryMembe
         }
     }
 }
+
+// Once its comparisons exceed MERGE_ARRAY_INDEX_SCAN_FACTOR times the size of the destination, the array merge looks
+// the rest of the source up through a hash index of the destination, which takes its memory from the default memory
+// resource. A failure there, or in the base allocator while the indexed part copies the long strings at the end of the
+// source, leaves the array as it was followed by a prefix of what the merge appends
+TEST(JsonAllocationInjectionTest, MergeArrayIndexedKeepsAPrefix)
+{
+    // Distinct numbers: every one is appended, so the destination grows and the index is built after about
+    // 2 * MERGE_ARRAY_INDEX_SCAN_FACTOR of them
+    std::string elements;
+    for (size_t i = 0; i < 3 * json::Json::MERGE_ARRAY_INDEX_SCAN_FACTOR; ++i)
+    {
+        elements += fmt::format("{},", i + 100);
+    }
+    const json::Json source(fmt::format(R"([{}"{}","{}",1])", elements, bigString('1'), bigString('2')).c_str());
+    const auto makeDoc = []
+    {
+        return json::Json(R"({"keep":"v","arr":[1,"a"]})");
+    };
+    const MergeOp op = [&source](json::Json& doc)
+    {
+        doc.merge(false, source, "/arr");
+    };
+    ASSERT_GT(indexAllocations(makeDoc, op), 0u) << "the input does not reach the indexed array merge";
+    for (const auto target : {Inject::Base, Inject::IndexResource})
+    {
+        SCOPED_TRACE(target == Inject::Base ? "base allocator" : "index resource");
+        const auto counts = sweepEveryPoint(target,
+                                            makeDoc,
+                                            op,
+                                            [](json::Json& now, const json::Json& before, const json::Json& after, bool)
+                                            { expectBetweenAt("/arr", now, before, after, false); });
+        EXPECT_GE(counts.points, 2u);
+        EXPECT_EQ(counts.absorbed, 0u);
+    }
+}
