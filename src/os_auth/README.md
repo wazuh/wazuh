@@ -98,7 +98,7 @@ it, inventory-sync applies it — and all three depend on these:
 | D13 | **The identity journal is not `fsync`ed** (`identity_journal.c`) | What it recovers from is a crashed process and an unreachable wazuh-db, not a power cut with the page still in cache. An `fsync` per enrollment would be paid by every agent, on the request path, in front of the answer — for a failure mode the rest of the design does not claim to survive. The bound that does hold is admission: a transition that cannot be appended is refused (`9031`) rather than performed unrecorded |
 | D14 | **A replacement is performed only once the whole request is admitted** (`w_auth_validate_data()`, `local_add()`) | The duplicate-IP and duplicate-name holders are judged by `w_auth_check_replace_agent()`, which removes nothing, and removed by `w_auth_remove_replaced_agent()` only after every refusal path has passed. Judging and removing the IP holder before the name check let a request carrying one agent's IP and another, non-replaceable agent's name delete the first and then be refused — an agent lost with nothing enrolled in its place, and invisible until the next keystore write. The remaining post-removal failures (`OS_AddNewAgent()` internal error, a journal append that fails on I/O) are not refusals of the request's content |
 | D15 | **A port-1515 enrollment issues no re-enrollment secret, on whichever node it arrives** (`local_add_ex()`, the `legacy` argument set by `w_request_agent_add_clustered()`) | The legacy answer has no field for the secret, so a worker dropped the one its master issued: the master stored a secret nobody held and journaled a transition nobody could recover, while a direct port-1515 enrollment stored none. A worker forwarding a port-1515 request now marks it `legacy`, and the master skips the secret and the journal for it, as `w_auth_add_agent()` always has |
-| D16 | **The local socket logs a refusal at the level of whose fault it is** (`local_log_refusal()`) | Every refusal went to `ERROR`, so a token exhausted or revoked, a duplicate or a write sent to a worker looked like a daemon fault. `ERROR` is kept for this daemon failing (`9001`, `9009`, `9016`, `9029`, `9031`), `WARNING` for capacity (`9013`, `9021`), debug level for the re-enrollment verdicts anyone reaching `/enroll` can fire (`9026`–`9028`, `9030`), `INFO` for the rest. `9032` is not one of the dispatcher's: `local_reenroll()` and `local_add_ex()` decide it and answer with their own response, so each logs its own throttled `INFO` line where the discard happens — otherwise a single-node master would refuse an enrollment and report it nowhere. The duplicate-IP and duplicate-name refusals, which a retrying agent repeats at its own rate, go through the client-rejection throttle on every door, and a worker relays a master's refusal from port 1515 in the local socket's shape (`Error <code>: <message>.`), throttled |
+| D16 | **The local socket logs a refusal at the level of whose fault it is** (`local_log_refusal()`) | Every refusal went to `ERROR`, so a token exhausted or revoked, a duplicate or a write sent to a worker looked like a daemon fault. `ERROR` is kept for this daemon failing (`9001`, `9009`, `9016`, `9029`, `9031`), `WARNING` for capacity (`9013`, `9021`), debug level for the re-enrollment verdicts anyone reaching `/enroll` can fire (`9026`–`9028`, `9030`), `INFO` for the rest. `9032` is not one of the dispatcher's: `local_add_clustered()` on a worker and `local_reenroll()` and `local_add_ex()` on the master decide it and answer with their own response, so each logs its own throttled `INFO` line where the discard happens — otherwise a single-node master would refuse an enrollment and report it nowhere. The duplicate-IP and duplicate-name refusals, which a retrying agent repeats at its own rate, go through the client-rejection throttle on every door, and a worker relays a master's refusal from port 1515 in the local socket's shape (`Error <code>: <message>.`), throttled |
 | D17 | **Networks are not indexed in the keystore's IP tree** (`keytree_ip_key()` in `shared/os_crypto/shared/keys.c`) | The tree answers "which agent holds this one address" — the duplicate-IP check and remoted's lookup of an ID-less legacy frame. A network was indexed by its base address with the prefix stripped, so a host equal to that base address was refused as its duplicate while every other host in the range was accepted, and two agents registered with one network shared, and on deletion removed, a single key. Only single addresses are indexed now (the registered form), and a key is removed only by the agent it maps to |
 
 ## Layout
@@ -219,21 +219,23 @@ no longer deliver the answer — and authd refuses a request that arrives past i
 (*Enrollment deadline expired*, remoted's **503**, counter `remoted.enroll.discarded_late`). Where it
 is enforced matters more than the value:
 
-- **On a worker**, `local_add_clustered()` cuts a **re-enrollment** whose deadline has gone before
-  spending a cluster round trip on it, and adds `remoted.enroll_deadline_tolerance` to the deadline
-  of whatever it does forward, so the master is not judging the hop itself or a clock difference. A
-  **first** enrollment is never cut there: every enrollment on a worker goes through that function,
-  and a first one must stay forwardable because its caller's retry has to be able to register the
-  agent.
+- **On a worker**, `local_add_clustered()` cuts a request whose deadline has gone — a
+  re-enrollment and a first enrollment alike — before spending a cluster round trip on it, checked
+  against its own clock with no tolerance (its own remoted stamped the deadline), and adds
+  `remoted.enroll_deadline_tolerance` only to the deadline of what it does forward, never to a
+  request it already knows is late.
 - **On the master**, `local_reenroll()` and `local_add_ex()` check it **with `mutex_keys` held, just
   before the identity journal append** — after the wazuh-db read and after the wait for that lock,
   which is longest exactly when this node is the busy one whose answers get lost. A refusal there
   mutates nothing: no rotation, no journal line, no keystore change, and the single-use token's
   reservation is given back because the answer carries an error.
-- **The discard is reported where it is decided.** Both checks log a throttled `INFO` line naming
-  the agent (`Re-enrollment of agent 'I' discarded: …` / `Enrollment of 'NAME' discarded: …`). They
-  do not reach `local_log_refusal()`, which only covers the refusals the dispatcher itself decides;
-  a worker separately relays the master's `9032` in its usual `Error <code>: <message>.` shape.
+- **The discard is reported where it is decided.** All three checks — the worker's and the
+  master's two — log a throttled `INFO` line naming the agent through `log_discarded_late()`
+  (`Re-enrollment of agent 'I' discarded: …` / `Enrollment of 'NAME' discarded: …`). They do not
+  reach `local_log_refusal()`, which only covers the refusals the dispatcher itself decides; a worker
+  that forwarded a request the master then discarded relays the master's `9032` through the same
+  throttle at `INFO`, in a shape of its own (`… discarded by the master node: …`), not as a
+  `WARNING` per request: with the master's clock ahead, every forwarded request gets one.
 - **No deadline means today's behaviour.** Absent, non-numeric, negative or out of range is read as
   `0` and the request is applied as before; the server API's `add` sends none. The tolerance is added
   only to a deadline that exists, never to `0`.

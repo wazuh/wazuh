@@ -369,11 +369,12 @@ So an agent may enroll against any node, with a token or a re-enrollment credent
 same answer: the master assigns the id, generates the key, consumes the token use and judges the
 re-enrollment. A transport failure while forwarding answers `9016`.
 
-A worker also **cuts a re-enrollment whose [deadline](#the-deadline-remoted-stamps) has already
-passed** instead of spending a cluster round trip on an answer nobody can receive: that one is
-refused locally with `9032`. A **first** enrollment is never cut here — on a worker every enrollment
-goes through this same path, and a first one must stay forwardable, because its caller retries and
-the retry has to be able to register the agent.
+A worker also **cuts an enrollment whose [deadline](#the-deadline-remoted-stamps) has already
+passed** instead of spending a cluster round trip on an answer nobody can receive: a re-enrollment
+and a first enrollment alike are refused locally with `9032`, and the worker logs the discard
+itself (see [Observability](architecture.md#observability)). It checks against its own clock with
+no tolerance — the deadline was stamped by its own remoted — and a request it already knows is
+late never reaches the master. The caller's retry carries a fresh deadline.
 
 When it does forward, the worker adds `remoted.enroll_deadline_tolerance`
 ([5 s by default](../remoted/configuration.md#remotedenroll_deadline_tolerance)) to the deadline, so
