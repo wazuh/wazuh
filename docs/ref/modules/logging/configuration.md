@@ -120,6 +120,9 @@ for example after `wazuh-manager-control enable debug` and a restart) adds
 2026/07/06 12:34:58 wazuh-manager-modulesd[23059] main.c:179 at main(): DEBUG: Created new thread for the 'control' module.
 ```
 
+A message always takes one line: a trailing line break is dropped and any other control character is
+written escaped (`\n`, `\r`, `\t`, otherwise `\xNN`); bytes above 0x7F are written as they are.
+
 ### JSON
 
 ```json
