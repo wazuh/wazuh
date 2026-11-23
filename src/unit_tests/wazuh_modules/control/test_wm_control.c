@@ -28,6 +28,7 @@
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/posix/stat_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_control_wrappers.h"
 #include "wm_control.h"
@@ -211,6 +212,15 @@ static void expect_in_manager_service(bool in_service) {
     will_return(__wrap_fclose, 0);
 }
 
+/* Outside the unit the request file is used when the helper has no set-user-ID bit. */
+static void expect_helper_stat(int result, mode_t mode) {
+    static struct stat helper;
+    helper.st_mode = mode;
+    expect_string(__wrap_stat, __file, "bin/wazuh-manager-service-control");
+    will_return(__wrap_stat, result == 0 ? &helper : NULL);
+    will_return(__wrap_stat, result);
+}
+
 /* A real descriptor, so the fstat on it is real too. */
 static int open_regular_file(void) {
     char path[] = "/tmp/test_wm_control_XXXXXX";
@@ -222,6 +232,7 @@ static int open_regular_file(void) {
 
 static void expect_service_control_accepted(pid_t pid, int thread_outcome) {
     expect_in_manager_service(false);
+    expect_helper_stat(0, S_IFREG | S_ISUID | 0750);
     will_return(__wrap_pipe, 10);
     will_return(__wrap_pipe, 11);
     will_return(__wrap_pipe, 0);
@@ -593,6 +604,8 @@ static void test_execute_action_fork_fails(void **state) {
     char *output = NULL;
 
     expect_in_manager_service(false);
+    /* A helper that cannot be examined is still run. */
+    expect_helper_stat(-1, 0);
     will_return(__wrap_pipe, 10);
     will_return(__wrap_pipe, 11);
     will_return(__wrap_pipe, 0);
@@ -677,7 +690,7 @@ static void test_execute_action_systemd_writes_request(void **state) {
         char *output = NULL;
         char request[64];
         char message[128];
-        snprintf(request, sizeof(request), "var/run/service-control/%s", actions[i]);
+        snprintf(request, sizeof(request), "var/service-control/%s", actions[i]);
         snprintf(message, sizeof(message), "Requested '%s' from systemd (request '%s')", actions[i], request);
         closed_fds_count = 0;
         const int fd = open_regular_file();
@@ -703,17 +716,45 @@ static void test_execute_action_systemd_writes_request(void **state) {
     }
 }
 
+/* A daemon started by hand outside the unit, where the helper has no set-user-ID bit. */
+static void test_execute_action_outside_unit_helper_not_setuid_writes_request(void **state) {
+    char *output = NULL;
+    closed_fds_count = 0;
+    const int fd = open_regular_file();
+
+    open_mocked = true;
+    expect_in_manager_service(false);
+    expect_helper_stat(0, S_IFREG | 0750);
+    expect_string(__wrap_open, path, "var/service-control/restart");
+    expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+    will_return(__wrap_open, fd);
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg,
+                  "Requested 'restart' from systemd (request 'var/service-control/restart')");
+
+    size_t ret = __real_wm_control_execute_action("restart", "wazuh-manager", &output);
+    open_mocked = false;
+
+    assert_string_equal(output, "ok accepted");
+    assert_int_equal(ret, strlen("ok accepted"));
+    assert_int_equal(closed_fds_count, 1);
+    assert_int_equal(closed_fds[0], fd);
+
+    __real_close(fd);
+    free(output);
+}
+
 static void test_execute_action_systemd_request_fails(void **state) {
     char *output = NULL;
 
     open_mocked = true;
     expect_in_manager_service(true);
-    expect_string(__wrap_open, path, "var/run/service-control/restart");
+    expect_string(__wrap_open, path, "var/service-control/restart");
     expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
     will_return(__wrap_open, -1);
     expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
-                  "Cannot create service control request 'var/run/service-control/restart': "
+                  "Cannot create service control request 'var/service-control/restart': "
                   "Permission denied (13)");
 
     size_t ret = __real_wm_control_execute_action("restart", "wazuh-manager", &output);
@@ -732,12 +773,12 @@ static void test_execute_action_systemd_request_not_regular(void **state) {
 
     open_mocked = true;
     expect_in_manager_service(true);
-    expect_string(__wrap_open, path, "var/run/service-control/reload");
+    expect_string(__wrap_open, path, "var/service-control/reload");
     expect_value(__wrap_open, flags, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
     will_return(__wrap_open, fd);
     expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
-                  "Service control request 'var/run/service-control/reload' is not a regular file");
+                  "Service control request 'var/service-control/reload' is not a regular file");
 
     size_t ret = __real_wm_control_execute_action("reload", "wazuh-manager", &output);
     open_mocked = false;
@@ -928,6 +969,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_execute_action_reaper_thread_fails,  setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_reaper_detach_fails,  setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_systemd_writes_request, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_execute_action_outside_unit_helper_not_setuid_writes_request, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_systemd_request_fails,  setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_execute_action_systemd_request_not_regular, setup_test_mode, teardown_test_mode),
         /* wm_control_in_manager_service */

@@ -15,11 +15,11 @@ list(APPEND tests_names "test_wm_control")
 # descriptors used by the peer authorization tests. wm_control_execute_action is
 # wrapped to expose __real_wm_control_execute_action; calls from wm_control_dispatch
 # stay inside the same translation unit and therefore exercise the real function.
-# open models the systemd request file.
+# open models the systemd request file, and stat the helper's set-user-ID bit.
 list(APPEND tests_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,wm_control_check_systemd -Wl,--wrap,wm_control_execute_action \
                          -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,wm_select_interruptible \
                          -Wl,--wrap,accept -Wl,--wrap,getsockopt -Wl,--wrap,getuid -Wl,--wrap,OS_RecvUnix -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_SendUnix \
-                         -Wl,--wrap,fork -Wl,--wrap,pipe -Wl,--wrap,poll -Wl,--wrap,read -Wl,--wrap,open -Wl,--wrap,close \
+                         -Wl,--wrap,fork -Wl,--wrap,pipe -Wl,--wrap,poll -Wl,--wrap,read -Wl,--wrap,open -Wl,--wrap,close -Wl,--wrap,stat \
                          -Wl,--wrap,waitpid -Wl,--wrap,kill -Wl,--wrap,CreateThread \
                          -Wl,--wrap,getpid -Wl,--wrap,access -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose \
                          -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \

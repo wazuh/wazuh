@@ -1021,7 +1021,7 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/run
-%dir %attr(700, wazuh-manager, wazuh-manager) %{_localstatedir}/var/run/service-control
+%dir %attr(700, wazuh-manager, wazuh-manager) %{_localstatedir}/var/service-control
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/upgrade
 
 %files -n wazuh-manager-debuginfo -f debugfiles.list

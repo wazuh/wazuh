@@ -9,7 +9,8 @@ compiled differently per build target:
 - **Manager** (`TARGET=manager`, Linux): the socket listener runs in the module's own thread in
   `wazuh-manager-modulesd`, and the action is executed by the helper `wazuh-manager-service-control`
   (`src/util/manager_service_control/main.c`): run as root by systemd from a request file when modulesd
-  runs in `wazuh-manager.service`, run by modulesd through its setuid bit otherwise.
+  runs in `wazuh-manager.service` or the helper has no setuid bit, run by modulesd through its setuid bit
+  otherwise.
 - **Unix agent** (`CLIENT` defined): the module thread spawns the listener as a further thread in the
   agent's `wazuh-modulesd`, which runs `systemctl` or `bin/wazuh-control` itself (macOS: a request
   flag for the launcher).
@@ -42,11 +43,11 @@ For the socket protocol, responses, error codes and the helper's usage, see the
 │  manager_restart / │                              │
 │  manager_reload)   │                              │
 └────────────────────┘                              │
-   in wazuh-manager.service                         │                   outside it
+   in the unit, or helper not setuid                │                   otherwise
           ┌─────────────────────────────────────────┴──────────┐
           ▼                                                    ▼
 ┌──────────────────────────────────────┐   ┌──────────────────────────────────────┐
-│ create var/run/service-control/      │   │ fork + execl, status pipe on fd 3,   │
+│ create var/service-control/          │   │ fork + execl, status pipe on fd 3,   │
 │  <action> (regular file only)        │   │ wait ≤ 5 s for '1'                   │
 │  → "ok accepted"                     │   └──────────────────┬───────────────────┘
 └──────────────────┬───────────────────┘                      │
@@ -174,15 +175,17 @@ The same function serves both builds; only two details differ:
 ### 3. Manager Action Executor
 
 On a Linux manager whose modulesd runs in `wazuh-manager.service` (`wm_control_in_manager_service()`: a line
-of `/proc/self/cgroup`, cgroup v1 or v2, ends in `/wazuh-manager.service`), `wm_control_execute_action()`
-creates the empty file `var/run/service-control/<action>` (`O_CREAT | O_NOFOLLOW | O_NONBLOCK`, mode `0660`,
+of `/proc/self/cgroup`, cgroup v1 or v2, ends in `/wazuh-manager.service`), or whose
+`bin/wazuh-manager-service-control` has no setuid bit (`stat()`; a systemd installation, where a daemon started
+by hand runs outside the unit), `wm_control_execute_action()`
+creates the empty file `var/service-control/<action>` (`O_CREAT | O_NOFOLLOW | O_NONBLOCK`, mode `0660`,
 in a `wazuh-manager:wazuh-manager` `0700` directory), checks with `fstat()` that it is a regular file, and
 answers `ok accepted`; if it cannot, it logs the error and answers `err Cannot write service control request`.
 The path unit `wazuh-manager-service-control-<action>.path` then starts the oneshot
 `wazuh-manager-service-control@<action>.service`, which removes the file and runs the helper as root (see the
 [README](README.md#restart-and-reload-under-systemd)).
 
-Outside the unit (no systemd, or a manager started by hand), it:
+Otherwise (no systemd, or a helper that cannot be examined), it:
 
 1. creates a pipe and forks;
 2. in the child, moves the pipe's write end to file descriptor 3 and `execl()`s
@@ -233,13 +236,13 @@ root.
    └─► SO_PEERCRED check
    └─► wm_control_dispatch("restart")
        └─► wm_control_execute_action("restart", "wazuh-manager")
-           ├─► in wazuh-manager.service: create var/run/service-control/restart → "ok accepted"
+           ├─► in wazuh-manager.service, or helper not setuid: create var/service-control/restart → "ok accepted"
            │   └─► wazuh-manager-service-control-restart.path
            │       └─► wazuh-manager-service-control@restart.service (root)
            │           ├─► rm the request file
            │           └─► bin/wazuh-manager-service-control restart
            │               └─► wazuh-manager-control check, then systemctl restart wazuh-manager.service
-           ├─► outside it: pipe() + fork()
+           ├─► otherwise: pipe() + fork()
            │   └─► child: execl("bin/wazuh-manager-service-control", "restart")
            │        ├─► checks pass → write '1' to fd 3
            │        └─► exec bin/wazuh-manager-control restart
@@ -286,7 +289,7 @@ waiting on the startup gate and before any other module, because agentd's reload
 gate go through the control socket.
 
 - **Manager**: `wm_control_main()` runs `process_control()` in the module thread. One connection at a
-  time; outside `wazuh-manager.service`, a detached thread per accepted action reaps the helper.
+  time; when modulesd runs the helper itself, a detached thread per accepted action reaps it.
 - **Agent (Unix)**: `wm_control_main()` spawns `process_control()` as a separate thread
   (`w_create_thread()`) and returns. One connection at a time; the forked child is not waited for.
 - **Agent (Windows)**: no dedicated thread; `control_dispatch()` runs on agentd's worker thread for the
@@ -296,14 +299,14 @@ gate go through the control socket.
 
 | Failure | Behaviour |
 |---------|-----------|
-| Bind | `Unable to bind to socket '<path>': ...` logged; the listener returns and the socket stays absent. The API then logs `Control socket has not been created` (`1901`) as a warning and writes the request file (in `wazuh-manager.service`) or runs `wazuh-manager-service-control` itself (see the [README](README.md#manager-restart-and-reload)) |
+| Bind | `Unable to bind to socket '<path>': ...` logged; the listener returns and the socket stays absent. The API then logs `Control socket has not been created` (`1901`) as a warning and writes the request file (in `wazuh-manager.service`, or with a helper that has no setuid bit) or runs `wazuh-manager-service-control` itself (see the [README](README.md#manager-restart-and-reload)) |
 | `select()` | `At process_control(): select(): ...` and modulesd exits |
 | `accept()` | logged (unless `EINTR`), next connection |
 | Receive error or empty message | logged, no answer sent |
 | Oversized message (observed with 70000 bytes) | not refused at receive: it is dispatched like any other, matches no command, and is answered `Err` and logged as `Unknown command: '<command>'` at `ERROR` (the command is cut at 128 bytes in the log) |
-| Manager in `wazuh-manager.service`: request file cannot be created, or is not a regular file | logged at `ERROR`; answer `err Cannot write service control request` |
-| Manager in `wazuh-manager.service`: helper refuses (its check included) | `wazuh-manager-service-control@<action>.service` fails; the reason is in its journal and, for the check, in `logs/wazuh-manager.log`. The client already has `ok accepted` |
-| Manager outside `wazuh-manager.service`: helper refuses or times out (`unauthorized caller` on a systemd host, where it has no setuid bit) | `Privileged service control rejected or could not execute '<action>'`; answer `err Service control rejected action` |
+| Manager writing the request (in `wazuh-manager.service`, or helper not setuid): request file cannot be created, or is not a regular file | logged at `ERROR`; answer `err Cannot write service control request` |
+| Manager writing the request: helper refuses (its check included) | `wazuh-manager-service-control@<action>.service` fails; the reason is in its journal and, for the check, in `logs/wazuh-manager.log`. The client already has `ok accepted` |
+| Manager running the helper (outside `wazuh-manager.service`, setuid helper): helper refuses or times out | `Privileged service control rejected or could not execute '<action>'`; answer `err Service control rejected action` |
 | Agent: fork | `Cannot fork for <action>`; answer `err Cannot fork` |
 | Agent: `execvp()` in the child | `Error executing <action> command (<bin>): ...`; child exits `1` (the client already has `ok `) |
 | Agent: unit not active for a systemd reload | `Service wazuh-agent is in state '<state>', systemctl cannot reload` or `... is not active after waiting 60 seconds`, then the `wazuh-control` fallback |
@@ -318,8 +321,9 @@ gate go through the control socket.
   from its caller, and refuses to run from a tampered installation (step 4 above).
 - **systemd**: `wazuh-manager.service` sets `NoNewPrivileges=yes` and the helper is installed `0750`, so no
   manager process can reach `root` by executing a file. A request file carries no data: its name is the
-  action, and only `wazuh-manager`, the owner of `var/run/service-control/` (`0700`), can leave one; the
-  rest of the `wazuh-manager` group, which the helper refuses as a caller, cannot. Without systemd the helper
+  action, and only `wazuh-manager`, the owner of `var/service-control/` (`0700`), can leave one; the
+  rest of the `wazuh-manager` group, which the helper refuses as a caller, cannot, and only `root` can replace
+  the directory (`var/` is `root:wazuh-manager` `0750`). Without systemd the helper
   keeps its setuid bit (`4750`).
 - **Fixed command set**: `restart` and `reload` only; no argument reaches a command line.
 

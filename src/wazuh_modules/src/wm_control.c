@@ -25,7 +25,7 @@
 #define MANAGER_SERVICE_CONTROL_BIN "bin/wazuh-manager-service-control"
 #define MANAGER_SERVICE_CONTROL_STATUS_FD 3
 #define MANAGER_SERVICE_CONTROL_TIMEOUT_MS 5000
-#define MANAGER_SERVICE_CONTROL_REQUEST "var/run/service-control/"
+#define MANAGER_SERVICE_CONTROL_REQUEST "var/service-control/"
 #define MANAGER_SERVICE_CGROUP "/wazuh-manager.service"
 /* The control socket serves one client at a time: a client that connects and sends nothing must not
  * hold it (and every restart or reload behind it) for longer than this. */
@@ -242,8 +242,12 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
 #if !defined(CLIENT) && defined(__linux__)
     (void)service;
     /* wazuh-manager.service sets NoNewPrivileges, so in it the set-user-ID helper cannot gain root: a path
-     * unit runs it as root once the request file exists. */
-    if (wm_control_in_manager_service()) {
+     * unit runs it as root once the request file exists. Wherever those units are installed the helper has no
+     * set-user-ID bit, so a daemon started by hand outside the unit leaves the request too; the path units
+     * only watch while wazuh-manager.service is active. */
+    struct stat helper;
+    if (wm_control_in_manager_service() ||
+        (stat(MANAGER_SERVICE_CONTROL_BIN, &helper) == 0 && !(helper.st_mode & S_ISUID))) {
         char request[sizeof(MANAGER_SERVICE_CONTROL_REQUEST) + 16];
         snprintf(request, sizeof(request), MANAGER_SERVICE_CONTROL_REQUEST "%s", action);
 

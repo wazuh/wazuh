@@ -317,7 +317,8 @@ exec 3>&-
 def service_control(tmp_path):
     """Install a stand-in service-control helper under a temporary installation directory.
 
-    Returns a function that writes the helper's body and gives its path.
+    Returns a function that writes the helper's body and gives its path. The helper is set-user-ID, as without
+    systemd, so it is run instead of leaving a request.
     """
     (tmp_path / 'bin').mkdir()
     (tmp_path / 'var' / 'run').mkdir(parents=True)
@@ -325,7 +326,7 @@ def service_control(tmp_path):
 
     def write(body):
         helper.write_text(body)
-        helper.chmod(0o755)
+        helper.chmod(0o4755)
         return helper
 
     with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
@@ -481,7 +482,7 @@ def test_in_manager_service(cgroup, expected):
 @pytest.fixture
 def request_dir(service_control, tmp_path):
     """Create the service-control request directory under the stand-in installation directory."""
-    path = tmp_path / 'var' / 'run' / 'service-control'
+    path = tmp_path / 'var' / 'service-control'
     path.mkdir(mode=0o700)
     return path
 
@@ -502,6 +503,20 @@ def test_manager_restart_reload_systemd_request(request_dir, caplog, function, a
     spawn.assert_not_called()
     assert request.read_bytes() == b''
     assert f'Manager {action} requested from systemd ({request})' in caplog.text
+
+
+def test_manager_restart_systemd_request_outside_unit(service_control, request_dir, caplog):
+    """Outside wazuh-manager.service, a helper without its set-user-ID bit is not run: the request is left instead."""
+    helper = service_control(HELPER_ACCEPT.format(after='exit 0'))
+    helper.chmod(0o750)
+    request = request_dir / 'restart'
+
+    with patch('wazuh.core.cluster.utils.os.posix_spawn') as spawn, caplog.at_level(logging.INFO, logger='wazuh'):
+        assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
+
+    spawn.assert_not_called()
+    assert request.read_bytes() == b''
+    assert f'Manager restart requested from systemd ({request})' in caplog.text
 
 
 def test_manager_restart_reload_systemd_request_fails(request_dir, tmp_path):

@@ -11,5 +11,5 @@ Conflicts=shutdown.target
 Before=shutdown.target
 
 [Path]
-PathExists=WAZUH_HOME_TMP/var/run/service-control/restart
+PathExists=WAZUH_HOME_TMP/var/service-control/restart
 Unit=wazuh-manager-service-control@restart.service
