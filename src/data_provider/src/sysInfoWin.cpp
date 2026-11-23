@@ -945,10 +945,13 @@ const std::set<std::string> getPythonDirectories()
         }
     };
 
+    pythonDirList.insert(R"(C:\Users\*\AppData\Roaming\Python\Python*\site-packages)");
+
     try
     {
         expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
         expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\WOW6432Node\Python\PythonCore\*\InstallPath)", "", postAction);
         /*
          * Microsoft Store Python does not expose its PEP 514 registration under HKEY_USERS
          * (it lives in the MSIX virtualized hive), so its site-packages directory is derived
